@@ -173,7 +173,6 @@ const YAW_COMBAT_SCENE = {
         return `<div class="mobile-combat-latest-strip" aria-label="${app._escapeHtml(app._label('combat.exchange.recent', 'Recent exchange'))}">`
             + `<div class="mobile-combat-latest-meta"><strong>${app._escapeHtml(actorName)}</strong><span>${app._escapeHtml(status)}</span></div>`
             + `<div class="mobile-combat-latest-text">${actionHtml}<span>${app._escapeHtml(text)}</span></div>`
-            + this.latestStoryHtml(app, { mobile: true })
             + `</div>`;
     },
 

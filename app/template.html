@@ -1613,8 +1613,11 @@
             max-width: 100%;
             margin: 0 auto;
             min-width: 0;
-            position: relative;
+            position: sticky;
+            bottom: 0;
             z-index: 4;
+            padding-top: 2px;
+            background: linear-gradient(180deg, rgba(18, 18, 34, 0.72), rgba(18, 18, 34, 0.98) 38%);
         }
 
         .desktop-command-composer .selection-sentence,
@@ -1627,11 +1630,10 @@
             width: min(100%, 720px);
             max-width: 100%;
             margin: 0 auto;
-            padding: 8px 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
+            padding: 8px 10px 10px;
+            display: grid;
+            align-items: stretch;
+            gap: 6px;
             border: 1px solid var(--border-default);
             border-radius: var(--radius-sm);
             background: rgba(26, 26, 46, 0.7);
@@ -1671,6 +1673,14 @@
             padding: 5px 10px;
         }
 
+        .scene-feed-header {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
         .desktop-story-copy {
             min-width: 0;
             display: grid;
@@ -1687,8 +1697,8 @@
         }
 
         .desktop-scene-feed-slot .story-latest {
-            overflow: hidden;
-            text-overflow: ellipsis;
+            overflow: visible;
+            text-overflow: clip;
         }
 
         .desktop-story-expand-btn {
@@ -6465,9 +6475,9 @@
 
             .mobile-story-latest {
                 margin-top: 4px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                overflow: visible;
+                text-overflow: clip;
+                white-space: normal;
             }
 
             .story-latest[data-has-scene-beat="true"] {
@@ -6508,6 +6518,33 @@
                 min-width: 0;
             }
 
+            .scene-beat-stream {
+                display: grid;
+                gap: 6px;
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+            }
+
+            .scene-beat-stream-empty,
+            .scene-beat-stream-item {
+                display: block;
+                min-width: 0;
+                padding: 6px 8px;
+                border: 1px solid rgba(88, 88, 132, 0.55);
+                border-radius: var(--radius-xs);
+                background: rgba(10, 22, 43, 0.42);
+            }
+
+            .scene-beat-stream-item.latest {
+                background: rgba(10, 22, 43, 0.72);
+                border-color: rgba(0, 212, 170, 0.32);
+            }
+
+            .scene-beat-stream-item:not(.latest) {
+                opacity: 0.74;
+            }
+
             .story-summary {
                 min-width: 0;
                 overflow: hidden;
@@ -6515,6 +6552,12 @@
                 white-space: nowrap;
                 color: var(--text-primary);
                 font-weight: 700;
+            }
+
+            .scene-beat-stream .story-summary {
+                overflow: visible;
+                text-overflow: clip;
+                white-space: normal;
             }
 
             .story-meta-line {
@@ -6528,6 +6571,13 @@
                 line-height: 1.2;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+            }
+
+            .scene-beat-stream .story-meta-line {
+                flex-wrap: wrap;
+                overflow: visible;
+                text-overflow: clip;
+                white-space: normal;
             }
 
             .story-actors,
@@ -7326,7 +7376,7 @@
 		                                <div class="mobile-scene-description" id="mobile-scene-description" data-stage-layer="story-passage" data-i18n="ui.scene.wildernessIntro">
 		                                    You find yourself in an untamed land where predators roam and only the strong survive.
 		                                </div>
-                                        <div class="story-latest mobile-story-latest" id="mobile-story-latest" data-surface-role="story-latest" aria-live="polite"></div>
+                                        <div class="story-latest mobile-story-latest scene-beat-stream" id="mobile-story-latest" data-surface-role="scene-feed-latest" aria-live="polite"></div>
 		                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" data-stage-layer="event-feed" aria-live="polite"></div>
 	                                <details class="mobile-activity-log" id="mobile-activity-log" data-surface-role="history-drawer">
 	                                    <summary class="mobile-activity-log-summary" data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-mobile-history" aria-label="Open activity log" data-i18n-aria-label="ui.activityLog.open">
@@ -7367,11 +7417,11 @@
                                 <div class="desktop-play-cell" id="desktop-play-cell-se"></div>
                             </div>
                             <div class="desktop-scene-feed-slot" id="desktop-scene-feed-slot" data-surface-role="scene-feed" aria-live="polite">
-                                <div class="desktop-story-copy">
+                                <div class="scene-feed-header">
                                     <span class="desktop-story-kicker">Scene</span>
-                                    <div class="story-latest" id="desktop-scene-feed-latest" data-surface-role="scene-feed-latest"></div>
+                                    <button class="nav-btn desktop-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Feed</button>
                                 </div>
-                                <button class="nav-btn desktop-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Feed</button>
+                                <div class="story-latest scene-beat-stream" id="desktop-scene-feed-latest" data-surface-role="scene-feed-latest"></div>
                             </div>
                             <div class="desktop-presence-rail" id="desktop-presence-rail" data-surface-role="presence-rail" aria-live="polite"></div>
                             <div class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden>

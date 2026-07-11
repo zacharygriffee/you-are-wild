@@ -12531,10 +12531,10 @@ test('Mobile combat scene renders one latest-exchange strip instead of boxed sum
 
   assertContains(elements.get('scene-description').innerHTML, 'combat-scene-summary', 'Desktop center should keep the full combat summary');
   assertContains(elements.get('mobile-scene-description').innerHTML, 'mobile-combat-latest-strip', 'Mobile scene should use the compact latest-exchange strip');
-  assertContains(elements.get('mobile-scene-description').innerHTML, 'mobile-combat-story-strip', 'Mobile combat scene should own the compact story strip');
+  assertNotContains(elements.get('mobile-scene-description').innerHTML, 'mobile-combat-story-strip', 'Mobile combat scene should not inject a duplicate story strip');
   assertContains(elements.get('mobile-scene-description').innerHTML, 'You hit Enemy for 8.', 'Mobile latest-exchange strip should show the newest combat exchange');
-  assertEqual(elements.get('mobile-story-latest').hidden, true, 'Standalone mobile story capsule should hide while combat scene owns story feedback');
-  assertEqual(elements.get('mobile-story-latest').innerHTML, '', 'Standalone mobile story capsule should not duplicate combat story placeholder');
+  assertEqual(elements.get('mobile-story-latest').hidden, false, 'Standalone mobile Scene Feed should remain visible in combat');
+  assertContains(elements.get('mobile-story-latest').innerHTML, 'Scene beats will appear here after interactions.', 'Standalone mobile Scene Feed should render the canonical beat placeholder');
   assertNotContains(elements.get('mobile-scene-description').innerHTML, 'combat-recent-exchange', 'Mobile scene should not embed the boxed recent-exchange list');
   assertNotContains(elements.get('mobile-scene-description').innerHTML, 'combat-turn-order', 'Mobile scene should not embed the full turn-order box');
 });
@@ -16788,6 +16788,9 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, '#app.story-sheet-open .mobile-story-handle', 'Mobile story handle should hide while the sheet is open');
   assertContains(template, '.mobile-tile-details-sheet', 'Mobile tile details sheet should have bottom-sheet styling');
   assertContains(template, '.story-meta-line', 'Story capsule should support result-first metadata layout');
+  assertContains(template, '.scene-beat-stream', 'Scene Feed should style inline newest-first beat streams');
+  assertContains(storyEventsContent, 'streamHtml(app, { limit = 5 } = {})', 'Scene Feed renderer should provide a compact beat stream');
+  assertContains(storyEventsContent, 'applyStreamElement(app, element, event, html', 'Scene Feed renderer should apply stream metadata to canonical slots');
   assertContains(template, '.story-event-detail-meta', 'Expanded Scene Feed should style structured beat metadata');
   assertContains(template, '.story-sub-events', 'Expanded Scene Feed should style sub-event lists');
   assertContains(storyEventsContent, 'emitResult(app, commandOrPlan = {}, result = \'\', options = {})', 'Story event helper should expose a command/result bridge');

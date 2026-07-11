@@ -574,6 +574,21 @@ const YAW_STORY_EVENTS = {
         return `<span class="story-latest-line"><span class="story-summary">${app._escapeHtml(event.summary)}</span><span class="story-meta-line">${meta}</span></span>`;
     },
 
+    streamHtml(app, { limit = 5 } = {}) {
+        const events = (app.storyEvents || []).slice(-Math.max(1, limit)).reverse();
+        if (!events.length) {
+            return `<div class="scene-beat-stream-empty">${this.compactHtml(app, null)}</div>`;
+        }
+        return events.map((event, index) => {
+            const attrs = this.latestAttributes(app, event);
+            const classes = ['scene-beat-stream-item'];
+            if (index === 0) classes.push('latest');
+            return `<article class="${classes.join(' ')}" data-scene-beat-id="${app._escapeHtml(attrs.id)}" data-scene-importance="${app._escapeHtml(attrs.importance)}" data-scene-result="${app._escapeHtml(attrs.result)}" data-has-scene-beat="true" aria-label="${app._escapeHtml(attrs.label)}">`
+                + this.compactHtml(app, event)
+                + `</article>`;
+        }).join('');
+    },
+
     latestAttributes(app, event = null) {
         const id = event?.id || '';
         const importance = event?.importance || 'empty';
@@ -588,6 +603,19 @@ const YAW_STORY_EVENTS = {
     },
 
     applyLatestElement(app, element, event, html, { hidden = false } = {}) {
+        if (!element) return;
+        const attrs = this.latestAttributes(app, event);
+        element.hidden = Boolean(hidden);
+        element.innerHTML = hidden ? '' : html;
+        element.setAttribute('data-scene-beat-id', attrs.id);
+        element.setAttribute('data-scene-importance', attrs.importance);
+        element.setAttribute('data-scene-result', attrs.result);
+        element.setAttribute('data-has-scene-beat', attrs.hasBeat);
+        element.setAttribute('aria-label', attrs.label);
+        element.classList.toggle('scene-beat-highlight', Boolean(event) && !hidden);
+    },
+
+    applyStreamElement(app, element, event, html, { hidden = false } = {}) {
         if (!element) return;
         const attrs = this.latestAttributes(app, event);
         element.hidden = Boolean(hidden);
@@ -659,13 +687,13 @@ const YAW_STORY_EVENTS = {
     render(app) {
         const latest = app.latestStoryEvent || (app.storyEvents || [])[app.storyEvents?.length - 1] || null;
         const latestHtml = this.compactHtml(app, latest);
+        const streamHtml = this.streamHtml(app, { limit: 5 });
         const mobileLatest = document.getElementById('mobile-story-latest');
         if (mobileLatest) {
-            const combatOwnsMobileStory = Boolean(app.combatState?.active);
-            this.applyLatestElement(app, mobileLatest, latest, latestHtml, { hidden: combatOwnsMobileStory });
+            this.applyStreamElement(app, mobileLatest, latest, streamHtml);
         }
         const desktopSceneLatest = document.getElementById('desktop-scene-feed-latest');
-        if (desktopSceneLatest) this.applyLatestElement(app, desktopSceneLatest, latest, latestHtml);
+        if (desktopSceneLatest) this.applyStreamElement(app, desktopSceneLatest, latest, streamHtml);
         document.querySelectorAll?.('.desktop-combat-story-latest, .mobile-combat-story-latest').forEach(el => {
             this.applyLatestElement(app, el, latest, latestHtml);
         });

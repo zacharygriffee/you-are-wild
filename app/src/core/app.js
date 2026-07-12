@@ -822,6 +822,7 @@
             mobileTargetPickerOpen: false,
             mobileCreatureRailOpen: false,
             transactionWindow: null,
+            holdingsWindow: null,
             inInterior: false,
             activeInterior: null,
             interiorLocation: { x: 0, y: 0 },
@@ -1311,6 +1312,18 @@
                     const release = prey.releaseEligible ? this._label('containment.releaseEligible', 'releasable') : this._label('containment.releaseBlocked', 'not releasable');
                     return `${prey.name} in ${containerLabel}: ${progress}% · vitality ${vital}% · ${release}`;
                 }).join(' | ');
+            },
+            _renderContainerInventory(unit, holderType = 'party', holderIndex = 0) {
+                return YAW_UNIT_CONTAINMENT.renderContainerInventory(this, unit, holderType, holderIndex);
+            },
+            releaseContained(holderType = 'party', holderIndex = 0, container = 'stomach', containedIndex = 0) {
+                return YAW_UNIT_CONTAINMENT.releaseContained(this, holderType, Number(holderIndex), container, Number(containedIndex));
+            },
+            digestContained(holderType = 'party', holderIndex = 0, container = 'stomach', containedIndex = 0) {
+                return YAW_UNIT_CONTAINMENT.digestContained(this, holderType, Number(holderIndex), container, Number(containedIndex));
+            },
+            inspectContained(holderType = 'party', holderIndex = 0, container = 'stomach', containedIndex = 0) {
+                return YAW_UNIT_CONTAINMENT.inspectContained(this, holderType, Number(holderIndex), container, Number(containedIndex));
             },
             _interiorKey(x = this.interiorLocation.x, y = this.interiorLocation.y) {
                 return YAW_STRUCTURE_NAVIGATION.interiorKey(this, x, y);
@@ -4199,8 +4212,59 @@
             },
 
             // ===== INVENTORY =====
+            _holdingSections(owner = this.player) {
+                return YAW_HOLDINGS.sections(this, owner);
+            },
+            _listPackItems(owner = this.player) {
+                return YAW_HOLDINGS.listPackItems(this, owner);
+            },
+            _listEquipmentSlots(owner = this.player) {
+                return YAW_HOLDINGS.listEquipmentSlots(this, owner);
+            },
+            _listContainerEntries(owner = this.player, containerId = 'stomach') {
+                return YAW_HOLDINGS.listContainerEntries(this, owner, containerId);
+            },
+            _listAllContainerEntries(owner = this.player) {
+                return YAW_HOLDINGS.listAllContainerEntries(this, owner);
+            },
+            _containerProfile(containerId = 'stomach') {
+                return YAW_HOLDINGS.containerProfile(this, containerId);
+            },
+            _containerLabel(containerId = 'stomach') {
+                return YAW_HOLDINGS.containerLabel(this, containerId);
+            },
+            _containerEntryStatus(entry) {
+                return YAW_HOLDINGS.containerEntryStatus(this, entry);
+            },
+            _containerEntryActions(owner, containerId, entry) {
+                return YAW_HOLDINGS.containerEntryActions(this, owner, containerId, entry);
+            },
+            _canReleaseContainerEntry(owner, containerId, entry) {
+                return YAW_HOLDINGS.canReleaseContainerEntry(this, owner, containerId, entry);
+            },
+            _canDigestContainer(owner, containerId, entry = null) {
+                return YAW_HOLDINGS.canDigestContainer(this, owner, containerId, entry);
+            },
+            _groundHoldings(tile = this._currentExplorationTile?.()) {
+                return YAW_HOLDINGS.groundHoldings(this, tile);
+            },
+            _holdingEntryKind(entry) {
+                return YAW_HOLDINGS.holdingEntryKind(entry);
+            },
             showInventory() {
                 return YAW_INVENTORY_PANEL.show(this);
+            },
+            closeHoldingsWindow() {
+                return YAW_HOLDINGS.close(this);
+            },
+            refreshHoldingsWindow() {
+                return YAW_HOLDINGS.refresh(this);
+            },
+            setHoldingsTab(tab) {
+                return YAW_HOLDINGS.setTab(this, tab);
+            },
+            showContainedHoldingDetail(holderType = 'party', holderIndex = 0, container = 'stomach', containedIndex = 0) {
+                return YAW_HOLDINGS.showContainedDetail(this, holderType, holderIndex, container, containedIndex);
             },
             setInventoryFilter(filter) {
                 return YAW_INVENTORY_PANEL.setFilter(this, filter);
@@ -4823,7 +4887,7 @@
                 }
             },
             showCharacterStats() {
-                return YAW_STATS_PANEL.showCharacter(this);
+                return YAW_HOLDINGS.show(this, this.player, { tab: 'stats' });
             },
             cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false },
             toggleCheat(cheat) {

@@ -2693,14 +2693,18 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/inventory-panel.js'", 'Inventory panel helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/inventory-panel.js'") < buildContent.indexOf("'src/core/app.js'"), 'Inventory panel helper should load before app.js');
   assertContains(inventoryPanelContent, 'const YAW_INVENTORY_PANEL = {', 'Inventory panel helper should expose the inventory panel service');
+  assertContains(inventoryPanelContent, 'const YAW_HOLDINGS = {', 'Inventory panel helper should expose the broader Holdings adapter service');
   assertContains(inventoryPanelContent, 'show(app)', 'Inventory panel helper should own panel rendering');
-  assertContains(inventoryPanelContent, "app.showPartyPanelDetail(title, html)", 'Inventory should render through party panel details');
-  assertContains(inventoryPanelContent, 'data-command-surface="inventory-detail"', 'Inventory drawer should identify its detail command surface');
+  assertContains(inventoryPanelContent, "return YAW_HOLDINGS.show(app, app.player, { tab: 'pack' });", 'Inventory entry point should delegate to the Pack tab in Holdings');
+  assertContains(inventoryPanelContent, "document.getElementById('holdings-window-root')", 'Holdings should render through the focused overlay root');
+  assertContains(inventoryPanelContent, 'role="dialog" aria-modal="true"', 'Holdings should render as a focused pseudo-window');
+  assertContains(inventoryPanelContent, 'data-command-grammar="holdings-management"', 'Holdings overlay should identify its management grammar');
+  assertContains(inventoryPanelContent, 'data-command-surface="holdings-window"', 'Holdings overlay should identify its focused command surface');
   assertContains(inventoryPanelContent, 'data-command-control="use-item"', 'Inventory use controls should identify item action controls');
   assertContains(inventoryPanelContent, 'data-command-control="equip-item"', 'Inventory equip controls should identify item action controls');
   assertContains(inventoryPanelContent, 'data-command-control="drop-item"', 'Inventory drop controls should identify item action controls');
-  assertContains(inventoryPanelContent, 'data-command-control="close-inventory"', 'Inventory back control should identify its drawer exit');
-  assertContains(inventoryPanelContent, 'data-command-control="close-inventory" data-command-slot="exit"', 'Inventory back control should identify the canonical exit slot');
+  assertContains(inventoryPanelContent, 'data-command-control="close-holdings"', 'Holdings close control should identify its overlay exit');
+  assertContains(inventoryPanelContent, 'data-command-control="close-holdings" data-command-slot="exit"', 'Holdings close control should identify the canonical exit slot');
   assertContains(inventoryPanelContent, 'drop(app, itemId)', 'Inventory panel helper should own direct drop-to-tile behavior');
   assertContains(inventoryPanelContent, 'app._persistCurrentExplorationTile(tile)', 'Dropped inventory should persist as tile-local state');
   assertNotContains(inventoryPanelContent, "document.getElementById('scene-description')", 'Inventory helper should not render into center tile content');
@@ -2763,7 +2767,7 @@ test('Stats panel helper module is registered before app code', () => {
   assertContains(statsPanelContent, 'data-command-control="back-to-stats"', 'Perk picker back control should identify its drawer exit');
   assertNotContains(statsPanelContent, "document.getElementById('scene-description')", 'Stats panel helper should not render into center tile content');
   assertContains(appContent, 'YAW_STATS_PANEL.showPartyMember(this, index)', 'App party member stats wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_STATS_PANEL.showCharacter(this)', 'App character stats wrapper should delegate to the helper');
+  assertContains(appContent, "YAW_HOLDINGS.show(this, this.player, { tab: 'stats' })", 'App character stats wrapper should open the focused Holdings stats tab');
   assertContains(appContent, 'YAW_STATS_PANEL.showPerkSelection(this)', 'App perk selection wrapper should delegate to the helper');
 });
 
@@ -2823,8 +2827,9 @@ test('Transaction window helper owns focused quest and shop pseudo-windows', () 
   assertContains(appContent, 'YAW_TRANSACTION_WINDOW.close(this)', 'App transaction close wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_TRANSACTION_WINDOW.refresh(this)', 'App transaction refresh wrapper should delegate to the helper');
   assertContains(combatLifecycleContent, 'app.closeTransactionWindow?.();', 'Combat start should safely close active transaction windows');
-  assertContains(movementFlowContent, 'if (app.transactionWindow) return false;', 'Movement should be inert while a transaction window is open');
+  assertContains(movementFlowContent, 'if (app.transactionWindow || app.holdingsWindow) return false;', 'Movement should be inert while transaction or Holdings windows are open');
   assertContains(templateContent, 'id="transaction-window-root"', 'Game template should provide a transaction window root');
+  assertContains(templateContent, 'id="holdings-window-root"', 'Game template should provide a focused Holdings window root');
   assertContains(templateContent, '.transaction-window', 'Template should style the transaction pseudo-window');
   assertContains(templateContent, '@media (max-width: 1024px)', 'Template should include mobile transaction window bounds');
 });
@@ -5214,6 +5219,10 @@ function makeElement() {
   };
 }
 
+function holdingsHtml(elements) {
+  return elements.get('holdings-window-root')?.innerHTML || '';
+}
+
 function loadAppForCombat(random = () => 0.5, options = {}) {
   const elements = new Map();
   const body = makeElement();
@@ -5285,6 +5294,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     'panel-party',
     'panel-map',
     'transaction-window-root',
+    'holdings-window-root',
     'story-sheet',
     'story-sheet-list'
   ].forEach(id => {
@@ -5334,7 +5344,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       locales: {
         en: {
           'action.fight': 'Fight', 'action.flirt': 'Talk', 'action.fuck': 'Play', 'action.feast': 'Eat', 'action.feed': 'Feed', 'action.flee': 'Flee', 'action.moveRow': 'Move Row', 'action.sync': 'Sync', 'action.skip': 'Skip', 'action.search': 'Search', 'action.rest': 'Rest', 'action.inventory': 'Items', 'action.interact': 'Interact', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge', 'action.scavenged': 'Scavenged',
-          'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}', 'inventory.full': 'Inventory is full.', 'inventory.empty': 'Empty.', 'inventory.noItemsMatch': 'No items match the current filter.', 'inventory.titleWithCount': 'Inventory ({count}/{max})', 'inventory.equippedSection': 'Equipped', 'inventory.equipped': 'Equipped {name}.', 'inventory.unequipped': 'Unequipped {name}.', 'inventory.noEquipment': 'No equipment', 'inventory.noBonus': 'No bonus', 'inventory.effect': 'Effect',
+          'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}', 'inventory.full': 'Inventory is full.', 'inventory.empty': 'Empty.', 'inventory.noItemsMatch': 'No items match the current filter.', 'inventory.titleWithCount': 'Inventory ({count}/{max})', 'inventory.equippedSection': 'Equipped', 'holdings.titleWithInventory': 'Holdings / Inventory ({count}/{max})', 'holdings.umbrella': 'Character / Holdings', 'holdings.tabs': 'Holdings sections', 'holdings.pack': 'Pack / Inventory', 'holdings.containers': 'Containers', 'holdings.ground': 'Here / Ground', 'inventory.equipped': 'Equipped {name}.', 'inventory.unequipped': 'Unequipped {name}.', 'inventory.noEquipment': 'No equipment', 'inventory.noBonus': 'No bonus', 'inventory.effect': 'Effect',
           'item.category': 'Category', 'item.category.all': 'All', 'item.category.consumable': 'Consumable', 'item.category.equipment': 'Equipment', 'item.category.valuable': 'Valuable', 'item.category.material': 'Material', 'item.category.misc': 'Misc', 'item.sort': 'Sort', 'item.sort.name': 'Name', 'item.sort.type': 'Type', 'item.sort.valueDesc': 'Value ↓', 'item.sort.valueAsc': 'Value ↑',
           'trade.title': '{name} Trade', 'trade.gold': 'Gold: {gold}', 'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}', 'trade.needGold': 'You need {price} gold to buy {name}.', 'trade.confirmBuy': 'Buy {name} for {price} gold?', 'trade.purchaseCancelled': 'Purchase cancelled: {name}.', 'trade.bought': 'Bought {name} for {price} gold.', 'trade.sold': 'Sold {name} for {price} gold.', 'trade.noStockMatches': 'No stock matches the current filter.', 'trade.noItemsToSell': 'No items to sell.', 'trade.noInventoryMatches': 'No inventory items match the current filter.',
           'quest.title': 'Quests', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}', 'quest.status.active': 'Active', 'quest.status.completed': 'Completed', 'quest.status.turnIn': 'Turn In', 'quest.noneActive': 'No active quests.', 'quest.noneMatchFilter': 'No quests match the current filter.', 'quest.alreadyInLog': '{title} is already in your quest log.', 'quest.accepted': 'Quest accepted: {title}.', 'quest.completed': 'Quest completed: {title}.', 'quest.completedTurnIn': 'Quest completed: {title}. Return to {giver} for your reward.', 'quest.defaultGiver': 'the quest giver', 'quest.notReadyTurnIn': 'That quest is not ready to turn in.', 'quest.alreadyTurnedIn': '{title} has already been turned in.', 'quest.turnedIn': 'Quest turned in: {title}.', 'quest.noObjectiveMarker': 'No map marker is available for that quest objective.', 'quest.mapFocusedObjective': 'Map focused on {title}: {label}.', 'quest.noTurnInLocation': 'No turn-in location is available for that quest.', 'quest.mapFocusedTurnIn': 'Map focused on {title} turn-in: {label}.', 'quest.checkpoint': 'Checkpoint', 'quest.checkpoint.complete': 'Complete', 'quest.checkpoint.current': 'Current', 'quest.checkpoint.pending': 'Pending', 'quest.checkpointAria': '{state} checkpoint {index}: {label} at {x}, {y}{guidance}', 'quest.youAreHere': 'You are here', 'quest.direction.north': '{count} north', 'quest.direction.south': '{count} south', 'quest.direction.east': '{count} east', 'quest.direction.west': '{count} west', 'quest.step.singular': 'step', 'quest.step.plural': 'steps', 'quest.guidance': '{distance} {stepLabel} {directions}', 'quest.terrainKnownRoute': 'known route crosses {parts}', 'quest.terrainRoad': '{count} road', 'quest.terrainBridge': '{count} bridge', 'quest.terrainRough': '{count} rough terrain', 'quest.markerPreview': 'Marker: {label} ({x}, {y})', 'quest.turnInPreview': 'Turn in with {label} ({x}, {y})',
@@ -5351,7 +5361,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
         },
         es: {
           'action.fight': 'Luchar', 'action.flirt': 'Hablar', 'action.fuck': 'Jugar', 'action.feast': 'Comer', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.search': 'Buscar', 'action.rest': 'Descansar', 'action.inventory': 'Objetos', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar', 'action.scavenged': 'Rebuscado',
-          'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}', 'inventory.full': 'El inventario esta lleno.', 'inventory.empty': 'Vacio.', 'inventory.noItemsMatch': 'No hay articulos que coincidan con el filtro actual.', 'inventory.titleWithCount': 'Inventario ({count}/{max})', 'inventory.equippedSection': 'Equipado', 'inventory.equipped': 'Equipaste {name}.', 'inventory.unequipped': 'Desequipaste {name}.', 'inventory.noEquipment': 'Sin equipo', 'inventory.noBonus': 'Sin bonificacion', 'inventory.effect': 'Efecto',
+          'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}', 'inventory.full': 'El inventario esta lleno.', 'inventory.empty': 'Vacio.', 'inventory.noItemsMatch': 'No hay articulos que coincidan con el filtro actual.', 'inventory.titleWithCount': 'Inventario ({count}/{max})', 'inventory.equippedSection': 'Equipado', 'holdings.titleWithInventory': 'Inventario / Pertenencias ({count}/{max})', 'holdings.umbrella': 'Personaje / Pertenencias', 'holdings.tabs': 'Secciones de pertenencias', 'holdings.pack': 'Mochila / Inventario', 'holdings.containers': 'Contenedores', 'holdings.ground': 'Aqui / Suelo', 'inventory.equipped': 'Equipaste {name}.', 'inventory.unequipped': 'Desequipaste {name}.', 'inventory.noEquipment': 'Sin equipo', 'inventory.noBonus': 'Sin bonificacion', 'inventory.effect': 'Efecto',
           'item.category': 'Categoria', 'item.category.all': 'Todos', 'item.category.consumable': 'Consumible', 'item.category.equipment': 'Equipo', 'item.category.valuable': 'Valioso', 'item.category.material': 'Material', 'item.category.misc': 'Varios', 'item.sort': 'Ordenar', 'item.sort.name': 'Nombre', 'item.sort.type': 'Tipo', 'item.sort.valueDesc': 'Valor ↓', 'item.sort.valueAsc': 'Valor ↑',
           'trade.title': 'Comercio con {name}', 'trade.gold': 'Oro: {gold}', 'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}', 'trade.needGold': 'Necesitas {price} de oro para comprar {name}.', 'trade.confirmBuy': 'Comprar {name} por {price} de oro?', 'trade.purchaseCancelled': 'Compra cancelada: {name}.', 'trade.bought': 'Compraste {name} por {price} de oro.', 'trade.sold': 'Vendiste {name} por {price} de oro.', 'trade.noStockMatches': 'No hay existencias que coincidan con el filtro actual.', 'trade.noItemsToSell': 'No hay articulos para vender.', 'trade.noInventoryMatches': 'No hay articulos de inventario que coincidan con el filtro actual.',
           'quest.title': 'Misiones', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}', 'quest.status.active': 'Activa', 'quest.status.completed': 'Completada', 'quest.status.turnIn': 'Entregar', 'quest.noneActive': 'No hay misiones activas.', 'quest.noneMatchFilter': 'No hay misiones que coincidan con el filtro actual.', 'quest.alreadyInLog': '{title} ya esta en tu registro de misiones.', 'quest.accepted': 'Mision aceptada: {title}.', 'quest.completed': 'Mision completada: {title}.', 'quest.completedTurnIn': 'Mision completada: {title}. Vuelve con {giver} para recibir tu recompensa.', 'quest.defaultGiver': 'quien dio la mision', 'quest.notReadyTurnIn': 'Esa mision aun no esta lista para entregar.', 'quest.alreadyTurnedIn': '{title} ya fue entregada.', 'quest.turnedIn': 'Mision entregada: {title}.', 'quest.noObjectiveMarker': 'No hay marcador de mapa disponible para ese objetivo de mision.', 'quest.mapFocusedObjective': 'Mapa enfocado en {title}: {label}.', 'quest.noTurnInLocation': 'No hay ubicacion de entrega disponible para esa mision.', 'quest.mapFocusedTurnIn': 'Mapa enfocado en entrega de {title}: {label}.', 'quest.checkpoint': 'Punto de ruta', 'quest.checkpoint.complete': 'Completado', 'quest.checkpoint.current': 'Actual', 'quest.checkpoint.pending': 'Pendiente', 'quest.checkpointAria': '{state} punto de ruta {index}: {label} en {x}, {y}{guidance}', 'quest.youAreHere': 'Estas aqui', 'quest.direction.north': '{count} norte', 'quest.direction.south': '{count} sur', 'quest.direction.east': '{count} este', 'quest.direction.west': '{count} oeste', 'quest.step.singular': 'paso', 'quest.step.plural': 'pasos', 'quest.guidance': '{distance} {stepLabel} {directions}', 'quest.terrainKnownRoute': 'la ruta conocida cruza {parts}', 'quest.terrainRoad': '{count} camino', 'quest.terrainBridge': '{count} puente', 'quest.terrainRough': '{count} terreno dificil', 'quest.markerPreview': 'Marcador: {label} ({x}, {y})', 'quest.turnInPreview': 'Entregar con {label} ({x}, {y})',
@@ -6433,7 +6443,7 @@ asyncTest('Safe-created character save/load keeps compatibility fields hidden in
   assertEqual(loaded.App.player.chest, 'tits', 'Loaded safe-created player should preserve hidden compatibility chest field');
 
   loaded.App.showCharacterStats();
-  const safeStatsHtml = loaded.elements.get('party-content').innerHTML;
+  const safeStatsHtml = holdingsHtml(loaded.elements);
   assertNotContains(safeStatsHtml, 'Body Type:', 'Loaded safe-tier stats should not reveal compatibility body type');
   assertNotContains(safeStatsHtml, 'Chest Type:', 'Loaded safe-tier stats should not reveal compatibility chest type');
   const inspectTarget = makeUnit('Safe Inspect Target', { id: 'loaded-safe-inspect', disposition: loaded.App.DISPOSITION.FRIENDLY, parts: 'cock', chest: 'tits' });
@@ -6444,7 +6454,7 @@ asyncTest('Safe-created character save/load keeps compatibility fields hidden in
 
   loaded.App.setContentTier('adult');
   loaded.App.showCharacterStats();
-  assertContains(loaded.elements.get('party-content').innerHTML, 'Body Type:', 'Adult tier after load should reveal explicit body detail fields');
+  assertContains(holdingsHtml(loaded.elements), 'Body Type:', 'Adult tier after load should reveal explicit body detail fields');
   loaded.App.outsideActionForCreature('inspect', 'loaded-safe-inspect');
   assertContains(loaded.App.log[loaded.App.log.length - 1].text, 'Body Type:', 'Adult tier after load should reveal explicit inspect fields');
 });
@@ -15950,12 +15960,12 @@ test('Inventory and character stats render equipped items', () => {
   App.party = [App.player];
   App.inventory = [{ id: 'ring-1', name: 'Focus Ring' }];
   App.showInventory();
-  assertContains(elements.get('party-content').innerHTML, 'Equipped', 'Inventory should show equipped section in the party panel');
-  assertContains(elements.get('party-content').innerHTML, 'Focus Ring', 'Inventory should show equippable item in the party panel');
-  assertContains(elements.get('party-content').innerHTML, 'Equip', 'Inventory should expose equip action in the party panel');
+  assertContains(holdingsHtml(elements), 'Pack / Inventory', 'Inventory should open the Holdings overlay pack tab');
+  assertContains(holdingsHtml(elements), 'Focus Ring', 'Inventory should show equippable item in the Holdings overlay');
+  assertContains(holdingsHtml(elements), 'Equip', 'Inventory should expose equip action in the Holdings overlay');
   assertNotContains(document.getElementById('scene-description').innerHTML, 'Focus Ring', 'Inventory should not replace center tile content');
   App.showCharacterStats();
-  assertContains(elements.get('party-content').innerHTML, 'Leather Cap', 'Character stats should list equipped item in the party panel');
+  assertContains(holdingsHtml(elements), 'Leather Cap', 'Character stats should list equipped item in the Holdings overlay');
   assertNotContains(document.getElementById('scene-description').innerHTML, 'Leather Cap', 'Character stats should not replace center tile content');
 });
 
@@ -15965,7 +15975,7 @@ test('Safe stats and inspect hide hidden body compatibility fields', () => {
   App.player = makeUnit('You', { id: 'player-safe-stats', parts: 'cock', chest: 'tits', bodyParts: ['wings'] });
   App.party = [App.player];
   App.showCharacterStats();
-  const safeStatsHtml = elements.get('party-content').innerHTML;
+  const safeStatsHtml = holdingsHtml(elements);
   assertNotContains(safeStatsHtml, 'Body Type:', 'Safe character stats should hide compatibility body type');
   assertNotContains(safeStatsHtml, 'Chest Type:', 'Safe character stats should hide compatibility chest type');
   assertContains(safeStatsHtml, 'Wings', 'Safe character stats should still show fantasy traits');
@@ -15978,7 +15988,7 @@ test('Safe stats and inspect hide hidden body compatibility fields', () => {
 
   App.setContentTier('adult');
   App.showCharacterStats();
-  assertContains(elements.get('party-content').innerHTML, 'Body Type:', 'Adult character stats should keep explicit body details available');
+  assertContains(holdingsHtml(elements), 'Body Type:', 'Adult character stats should keep explicit body details available');
   App.outsideActionForCreature('inspect', 'safe-inspect-target');
   assertContains(App.log[App.log.length - 1].text, 'Body Type:', 'Adult inspect should keep explicit body details available');
 });
@@ -15999,8 +16009,10 @@ test('Inventory equipment summary labels localize', () => {
   App.inventory = [{ id: 'coin-1', name: 'Old Coin' }];
   App.updateLanguage('es');
   App.showInventory();
-  const html = elements.get('party-content').innerHTML;
-  assertContains(html, 'Inventario (1/20)', 'Inventory title should localize with count');
+  let html = holdingsHtml(elements);
+  assertContains(html, 'Inventario / Pertenencias (1/20)', 'Holdings title should localize with count');
+  App.setHoldingsTab('equipment');
+  html = holdingsHtml(elements);
   assertContains(html, 'Equipado', 'Equipped section heading should localize');
   assertContains(App._equipmentCompactSummary(App.player), 'Sin equipo', 'Compact empty equipment summary should localize');
   assertEqual(App._equipmentBonusText({ id: 'coin-1', name: 'Old Coin' }), 'Sin bonificacion', 'No-bonus equipment text should localize');
@@ -16052,7 +16064,7 @@ test('Player card and character stats use the same live display stats', () => {
   App.party = [App.player];
   const cardHtml = App.renderUnitCard(App.player, 0, 'party');
   App.showCharacterStats();
-  const statsHtml = elements.get('party-content').innerHTML;
+  const statsHtml = holdingsHtml(elements);
   assertContains(cardHtml, 'unit-bars', 'Player card should render compact tactical bars');
   assertContains(cardHtml, 'unit-bar-health', 'Player card should render health bar');
   assertContains(cardHtml, 'unit-bar-pleasure', 'Player card should render pleasure bar');
@@ -16078,7 +16090,7 @@ test('Player stats view converges on party player when references drift', () => 
   App.renderParty();
   const cardHtml = elements.get('party-content').innerHTML;
   App.showCharacterStats();
-  const statsHtml = elements.get('party-content').innerHTML;
+  const statsHtml = holdingsHtml(elements);
   assertEqual(App.player, livePartyPlayer, 'Player reference should converge on the canonical party member');
   assertContains(cardHtml, 'aria-label="Punishment: 67%"', 'Party card should render the live party player stats as a tactical bar');
   assertNotContains(cardHtml, 'Pun:80/120', 'Default party card should not render dense live party player stats');
@@ -16556,16 +16568,20 @@ test('Inventory action labels localize with accessible names', () => {
   ];
   App.updateLanguage('es');
   App.showInventory();
-  const html = elements.get('party-content').innerHTML;
-  assertContains(html, 'data-command-surface="inventory-detail"', 'Inventory drawer should render as a detail command surface');
+  let html = holdingsHtml(elements);
+  assertContains(html, 'data-command-surface="holdings-window"', 'Inventory should render as a focused Holdings command surface');
+  App.setHoldingsTab('equipment');
+  html = holdingsHtml(elements);
   assertContains(html, 'data-command-control="unequip-item"', 'Inventory unequip button should expose its item control role');
+  assertContains(html, 'aria-label="Desequipar Head"', 'Unequip control should expose localized accessible label');
+  assertContains(html, '>Desequipar Head<', 'Unequip visible label should localize');
+  App.setHoldingsTab('pack');
+  html = holdingsHtml(elements);
   assertContains(html, 'data-command-control="use-item"', 'Inventory use button should expose its item control role');
   assertContains(html, 'data-command-control="equip-item"', 'Inventory equip button should expose its item control role');
   assertContains(html, 'data-command-control="drop-item"', 'Inventory drop button should expose its item control role');
-  assertContains(html, 'data-command-control="close-inventory"', 'Inventory back button should expose its drawer exit role');
-  assertContains(html, 'data-command-control="close-inventory" data-command-slot="exit"', 'Inventory back button should expose the canonical exit slot');
-  assertContains(html, 'aria-label="Desequipar Head"', 'Unequip control should expose localized accessible label');
-  assertContains(html, '>Desequipar Head<', 'Unequip visible label should localize');
+  assertContains(html, 'data-command-control="close-holdings"', 'Holdings back button should expose its overlay exit role');
+  assertContains(html, 'data-command-control="close-holdings" data-command-slot="exit"', 'Holdings back button should expose the canonical exit slot');
   assertContains(html, 'aria-label="Usar Healing Herb"', 'Use control should expose localized accessible label');
   assertContains(html, '>Usar<', 'Use visible label should localize');
   assertContains(html, 'aria-label="Equipar Focus Ring"', 'Equip control should expose localized accessible label');
@@ -16598,20 +16614,108 @@ test('Inventory supports item categories and sorting', () => {
     { id: 'coin-1', name: 'Old Coin' }
   ];
   App.setInventoryFilter('equipment');
-  let html = elements.get('party-content').innerHTML;
+  let html = holdingsHtml(elements);
   assertContains(html, 'Hide Armor', 'Equipment filter should show equipment');
   assertNotContains(html, 'Healing Herb', 'Equipment filter should hide consumables');
   App.setInventoryFilter('all');
   App.setInventorySort('value-asc');
-  html = elements.get('party-content').innerHTML;
+  html = holdingsHtml(elements);
   assert(html.indexOf('Old Coin') < html.indexOf('Healing Herb'), 'Value ascending sort should show cheaper items first');
   App.updateLanguage('es');
   App.showInventory();
-  html = elements.get('party-content').innerHTML;
+  html = holdingsHtml(elements);
   assertContains(html, 'Categoria', 'Inventory should expose localized category control');
   assertContains(html, '<option value="all" selected>Todos</option>', 'Inventory all-category option should localize');
   assertContains(html, 'Ordenar', 'Inventory should expose localized sort control');
   assertContains(html, '<option value="value-asc" selected>Valor ↑</option>', 'Inventory value sort option should localize');
+});
+
+test('Holdings adapters keep pack equipment containers and ground separate', () => {
+  const { App } = loadAppForCombat();
+  const held = makeUnit('Held Mouse', { id: 'held-mouse', CPun: 10, MPun: 50, size: 1, inStomach: true, releaseEligible: true });
+  const player = makeUnit('You', {
+    id: 'holder-player',
+    equipment: {
+      head: { id: 'cap-1', name: 'Leather Cap' },
+      body: null,
+      hands: null,
+      feet: null,
+      accessory1: null,
+      accessory2: null
+    },
+    stomach: [held]
+  });
+  const corpse = makeUnit('Ratfolk Remains', { id: 'rat-remains-holdings', disposition: App.DISPOSITION.CORPSE, CPun: 0, remainingPortions: 2 });
+  App.player = player;
+  App.party = [player];
+  App.inventory = [{ id: 'herb-1', name: 'Healing Herb' }];
+  App.creatures = [corpse];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, items: [{ id: 'tile-gem', name: 'Tile Gem' }] }]]);
+
+  const sections = App._holdingSections();
+  const pack = sections.find(section => section.id === 'pack');
+  const equipped = sections.find(section => section.id === 'equipped');
+  const containers = sections.find(section => section.id === 'containers');
+  const ground = sections.find(section => section.id === 'ground');
+
+  assertEqual(pack.entries.length, 1, 'Pack section should list only app.inventory items');
+  assertEqual(pack.entries[0].kind, 'pack-item', 'Pack entries should identify normal backpack items');
+  assertEqual(equipped.entries.some(entry => entry.item?.name === 'Leather Cap'), true, 'Equipped section should list equipped slots separately');
+  assertEqual(containers.entries.some(container => container.id === 'stomach' && container.entries.some(entry => entry.entry.name === 'Held Mouse')), true, 'Containers section should list contained units separately');
+  assertEqual(ground.ground.items.length, 1, 'Ground section should list tile items separately');
+  assertEqual(ground.ground.remains.length, 1, 'Ground section should list corpse/remains separately');
+  assertEqual(App._holdingEntryKind(containers.entries[0].entries[0]), 'contained-unit', 'Contained units should expose a distinct holding kind');
+});
+
+test('Holdings panel renders sectioned inventory without itemizing contained creatures or remains', () => {
+  const { App, elements } = loadAppForCombat();
+  const held = makeUnit('Held Bunnyfolk', { id: 'held-bunny', CPun: 12, MPun: 60, size: 1, inStomach: true, releaseEligible: true });
+  const player = makeUnit('You', {
+    id: 'holder-player-ui',
+    equipment: {
+      head: { id: 'cap-1', name: 'Leather Cap' },
+      body: null,
+      hands: null,
+      feet: null,
+      accessory1: null,
+      accessory2: null
+    },
+    stomach: [held]
+  });
+  const corpse = makeUnit('Mousefolk Remains', { id: 'mouse-remains-holdings', disposition: App.DISPOSITION.CORPSE, CPun: 0, remainingPortions: 2 });
+  App.player = player;
+  App.party = [player];
+  App.inventory = [{ id: 'ring-1', name: 'Focus Ring' }];
+  App.creatures = [corpse];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, items: [{ id: 'tile-herb', name: 'Tile Herb' }] }]]);
+
+  App.showInventory();
+  let html = holdingsHtml(elements);
+
+  assertContains(html, 'data-command-grammar="holdings-management"', 'Inventory entry point should render the broader Holdings management surface');
+  assertContains(html, 'role="dialog" aria-modal="true"', 'Holdings should render as a focused overlay');
+  assertContains(html, 'data-command-control="switch-holdings-tab"', 'Holdings should expose tabbed sections');
+  assertContains(html, 'data-holding-section="pack"', 'Holdings should render a Pack section');
+  assertContains(html, 'Focus Ring', 'Pack item should remain visible in the Pack section');
+  App.setHoldingsTab('equipment');
+  html = holdingsHtml(elements);
+  assertContains(html, 'data-holding-section="equipped"', 'Holdings should render an Equipped section');
+  App.setHoldingsTab('containers');
+  html = holdingsHtml(elements);
+  assertContains(html, 'data-holding-section="containers"', 'Holdings should render a Containers section');
+  assertContains(html, 'Held Bunnyfolk', 'Contained creature should appear in Containers');
+  assertContains(html, 'data-command-control="inspect-contained"', 'Contained entries should expose Inspect management');
+  assertContains(html, 'data-command-control="release-contained"', 'Contained entries should expose Release management');
+  assertContains(html, 'data-command-control="digest-contained"', 'Contained entries should expose Digest management');
+  App.setHoldingsTab('ground');
+  html = holdingsHtml(elements);
+  assertContains(html, 'data-holding-section="ground"', 'Holdings should render a Here/Ground section');
+  assertContains(html, 'Tile Herb', 'Tile item should appear in Here/Ground, not Pack');
+  assertContains(html, 'Mousefolk Remains', 'Remains should appear in Here/Ground, not Pack');
+  assertContains(html, 'data-holding-kind="remains"', 'Remains should keep a distinct holding kind');
+  assertNotContains(html, 'data-holding-kind="pack-item"><div class="holding-entry-main"><div class="holding-entry-name"><span>?</span> Held Bunnyfolk', 'Contained creatures should not render as pack items');
 });
 
 test('Inventory empty states localize', () => {
@@ -16621,11 +16725,11 @@ test('Inventory empty states localize', () => {
   App.updateLanguage('es');
   App.inventory = [];
   App.showInventory();
-  assertContains(elements.get('party-content').innerHTML, 'Vacio.', 'Empty inventory message should localize in the party panel');
+  assertContains(holdingsHtml(elements), 'Vacio.', 'Empty inventory message should localize in the Holdings overlay');
 
   App.inventory = [{ id: 'herb-1', name: 'Healing Herb' }];
   App.setInventoryFilter('equipment');
-  assertContains(elements.get('party-content').innerHTML, 'No hay articulos que coincidan con el filtro actual.', 'Filtered-empty inventory message should localize in the party panel');
+  assertContains(holdingsHtml(elements), 'No hay articulos que coincidan con el filtro actual.', 'Filtered-empty inventory message should localize in the Holdings overlay');
 });
 
 test('Non-player equipment renders as read-only card metadata', () => {
@@ -16665,7 +16769,7 @@ test('Non-player equipment renders as read-only card metadata', () => {
 });
 
 test('Party panel details clear legacy center action slot', () => {
-  const { App, document } = loadAppForCombat();
+  const { App, document, elements } = loadAppForCombat();
   App.player = makeUnit('You');
   App.party = [App.player];
   const actions = document.getElementById('scene-actions');
@@ -16676,12 +16780,12 @@ test('Party panel details clear legacy center action slot', () => {
   assertEqual(actions.style.display, 'none', 'Party stats should keep the legacy center action slot hidden');
   assertEqual(actions.innerHTML, '', 'Party stats should clear stale center actions while the composer owns controls');
   assertEqual(Boolean(actions.dataset.richHidden), false, 'Party stats should clear stale rich-hidden action state');
-  assertContains(document.getElementById('party-content').innerHTML, 'data-surface-role="actor-detail"', 'Character stats should render in the actor detail drawer surface');
-  assertContains(document.getElementById('party-content').innerHTML, 'class="party-stats-view character-stats-view"', 'Character stats should render in the party panel');
+  assertContains(holdingsHtml(elements), 'data-surface-role="holdings-window"', 'Character stats should render in the focused Holdings overlay');
+  assertContains(holdingsHtml(elements), 'data-holding-section="stats"', 'Character stats should open the Stats tab');
 });
 
 test('Party panel details repair leaked detail markup from center tile', () => {
-  const { App, document } = loadAppForCombat();
+  const { App, document, elements } = loadAppForCombat();
   App.player = makeUnit('You');
   App.party = [App.player];
   App.combatState.active = false;
@@ -16692,13 +16796,13 @@ test('Party panel details repair leaked detail markup from center tile', () => {
 
   App.showCharacterStats();
 
-  assertContains(document.getElementById('party-content').innerHTML, 'class="party-stats-view character-stats-view"', 'Character stats should render in the party panel');
+  assertContains(holdingsHtml(elements), 'data-holding-section="stats"', 'Character stats should render in the Holdings overlay');
   assertNotContains(document.getElementById('scene-description').innerHTML, 'party-stats-view', 'Stale stats markup should be cleared from the center tile');
   assertContains(document.getElementById('scene-description').textContent, 'Stable tile context', 'Center tile should restore the current tile context');
 });
 
 test('Inventory detail repair clears stale inventory markup from center tile', () => {
-  const { App, document } = loadAppForCombat();
+  const { App, document, elements } = loadAppForCombat();
   App.player = makeUnit('You');
   App.party = [App.player];
   App.inventory = [{ id: 'ring-1', name: 'Focus Ring' }];
@@ -16709,8 +16813,8 @@ test('Inventory detail repair clears stale inventory markup from center tile', (
 
   App.showInventory();
 
-  assertContains(document.getElementById('party-content').innerHTML, 'inventory-panel-detail', 'Inventory should render in the party panel');
-  assertContains(document.getElementById('party-content').innerHTML, 'Focus Ring', 'Inventory item should remain visible in the party panel');
+  assertContains(holdingsHtml(elements), 'inventory-panel-detail', 'Inventory should render in the Holdings overlay');
+  assertContains(holdingsHtml(elements), 'Focus Ring', 'Inventory item should remain visible in the Holdings overlay');
   assertNotContains(document.getElementById('scene-description').innerHTML, 'inventory-panel-detail', 'Stale inventory markup should be cleared from the center tile');
   assertContains(document.getElementById('scene-description').textContent, 'Known road fork', 'Center tile should restore current tile context after inventory opens');
 });
@@ -16734,11 +16838,11 @@ test('Closing party-panel stats during combat restores cards and keeps center ac
   document.getElementById('scene-title').textContent = "Round 2 - You's turn";
   document.getElementById('scene-actions').innerHTML = '<button>Combat center marker</button>';
   App.showCharacterStats();
-  assertContains(elements.get('party-content').innerHTML, 'class="party-stats-view character-stats-view"', 'Combat stats should render in party panel');
+  assertContains(holdingsHtml(elements), 'data-holding-section="stats"', 'Combat stats should render in the Holdings overlay');
   assertEqual(document.getElementById('scene-actions').innerHTML, '', 'Combat stats should clear stale center actions');
   assertEqual(document.getElementById('scene-actions').style.display, 'none', 'Combat stats should keep center actions hidden');
   assertEqual(document.getElementById('scene-actions').hidden, true, 'Combat stats should keep center actions hard-hidden');
-  App.closePanelDetails('party');
+  App.closeHoldingsWindow();
   assertEqual(App.combatState.active, true, 'Closing combat stats should not leave combat mode');
   assertContains(document.getElementById('scene-title').textContent, "Round 2 - You's turn", 'Closing combat stats should leave the combat turn title intact');
   assertNotContains(document.getElementById('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Closing combat stats should not restore redundant combat guidance');
@@ -16765,7 +16869,7 @@ test('Closing party-panel stats during an enemy turn does not reveal stale playe
   document.getElementById('scene-actions').innerHTML = '<button>Stale player action</button>';
   App.updateLanguage('es');
   App.showCharacterStats();
-  App.closePanelDetails('party');
+  App.closeHoldingsWindow();
   assertEqual(App.combatState.active, true, 'Closing enemy-turn stats should keep combat mode active');
   assertNotContains(elements.get('party-content').innerHTML, 'executeCombatIntent', 'Enemy-turn party cards should not expose player combat actions');
   assertEqual(elements.get('scene-actions').innerHTML, '', 'Party-panel stats close should clear stale center actions');
@@ -16890,17 +16994,16 @@ test('Character stats expose pending perk selection', () => {
   App.player = makeUnit('You <Hero>', { perks: [], pendingPerkChoices: 2 });
   App.party = [App.player];
   App.showCharacterStats();
-  let html = elements.get('party-content').innerHTML;
-  assertContains(html, 'class="party-stats-view character-stats-view"', 'Character stats should render in the bounded stats view');
-  assertContains(html, 'data-command-surface="stats-detail"', 'Character stats should render as a detail command surface');
-  assertContains(html, 'data-command-control="close-stats"', 'Character stats close should expose its drawer exit role');
-  assertContains(html, 'data-command-control="close-stats" data-command-slot="exit"', 'Character stats close should expose the canonical exit slot');
+  let html = holdingsHtml(elements);
+  assertContains(html, 'role="dialog" aria-modal="true"', 'Character stats should render in the focused Holdings overlay');
+  assertContains(html, 'data-holding-section="stats"', 'Character stats should render the Stats tab');
+  assertContains(html, 'data-command-surface="stats-detail"', 'Character stats controls should keep stats command metadata');
+  assertContains(html, 'data-command-control="close-holdings"', 'Character stats close should expose its overlay exit role');
+  assertContains(html, 'data-command-control="close-holdings" data-command-slot="exit"', 'Character stats close should expose the canonical exit slot');
   assertContains(html, 'data-command-control="open-perk-selection"', 'Character stats perk picker should expose its drawer route');
-  assertContains(html, 'class="party-stats-footer"', 'Character stats should keep close/perk actions in a sticky footer');
   assertContains(html, 'You &lt;Hero&gt;', 'Character stats should escape player names');
-  assertContains(html, "App.closePanelDetails('party')", 'Character stats close action should return to party cards');
+  assertContains(html, "App.closeHoldingsWindow()", 'Character stats close action should return to play state');
   assertContains(html, 'Choose Perk (2)', 'Character stats should show pending perk button');
-  assertContains(elements.get('mobile-party-strip').innerHTML, 'class="party-stats-view character-stats-view"', 'Character stats should also render in the mobile party surface');
   App.showPerkSelection();
   assertContains(elements.get('party-content').innerHTML, 'data-command-surface="perk-selection-detail"', 'Perk selection should render as a detail command surface');
   assertContains(elements.get('party-content').innerHTML, 'data-command-control="filter-perk-tree"', 'Perk filters should expose their drawer control role');
@@ -16922,19 +17025,20 @@ test('Perk and stat progression controls localize with accessible names', () => 
   App.party = [App.player];
   App.updateLanguage('es');
   App.showCharacterStats();
-  let html = elements.get('party-content').innerHTML;
-  assertContains(html, 'data-command-surface="stats-detail"', 'Character stats should render as a detail command surface');
+  let html = holdingsHtml(elements);
+  assertContains(html, 'data-holding-section="stats"', 'Character stats should render in the Holdings stats tab');
+  assertContains(html, 'data-command-surface="stats-detail"', 'Character stats controls should keep stats command metadata');
   assertContains(html, 'data-command-control="open-perk-selection"', 'Pending perk button should expose its drawer route role');
   assertContains(html, 'data-command-control="respec-perks"', 'Respec button should expose its drawer action role');
   assertContains(html, 'data-command-control="debug-grant-perk"', 'Debug perk button should expose its drawer action role');
-  assertContains(html, 'data-command-control="close-stats"', 'Character stats close button should expose its drawer exit role');
-  assertContains(html, 'data-command-control="close-stats" data-command-slot="exit"', 'Character stats close button should expose the canonical exit slot');
+  assertContains(html, 'data-command-control="close-holdings"', 'Character stats close button should expose its overlay exit role');
+  assertContains(html, 'data-command-control="close-holdings" data-command-slot="exit"', 'Character stats close button should expose the canonical exit slot');
   assertContains(html, 'aria-label="Elegir mejora (1)"', 'Pending perk button should expose localized accessible label');
   assertContains(html, '>Elegir mejora (1)<', 'Pending perk visible label should localize');
   assertContains(html, 'aria-label="Reiniciar mejoras"', 'Respec button should expose localized accessible label');
   assertContains(html, '>Reiniciar mejoras<', 'Respec visible label should localize');
   assertContains(html, 'aria-label="Debug +1 opcion de mejora"', 'Debug perk button should expose localized accessible label');
-  assertContains(html, 'aria-label="Cerrar"', 'Character stats close button should expose localized accessible label');
+  assertContains(html, 'aria-label="Volver"', 'Character stats close button should expose localized accessible label');
   assertContains(html, '<strong>Estadisticas de combate</strong>', 'Character combat stats label should localize');
   assertContains(html, '<strong>Cuerpo</strong>', 'Character body section label should localize');
   assertContains(html, '<strong>Herramientas de mejoras</strong>', 'Character perk tools label should localize');
@@ -17003,7 +17107,7 @@ test('Perk respec and debug tools refund choices and rollback bonuses', () => {
   assertEqual(App.player.Figh, 12, 'First perk should apply before respec');
   assertEqual(App.player.Feas, 13, 'Second perk should apply before respec');
   App.showCharacterStats();
-  let html = elements.get('party-content').innerHTML;
+  let html = holdingsHtml(elements);
   assertContains(html, 'Reiniciar mejoras', 'Character stats should expose localized perk respec tool');
   assertContains(html, 'Debug +1 opcion de mejora', 'Character stats should expose localized debug perk choice tool');
 
@@ -17021,7 +17125,7 @@ test('Perk respec and debug tools refund choices and rollback bonuses', () => {
 
   App.debugGrantPerkChoice(2);
   assertEqual(App.player.pendingPerkChoices, 4, 'Debug grant should add perk choices for balancing');
-  html = elements.get('party-content').innerHTML;
+  html = holdingsHtml(elements);
   assertContains(html, 'Elegir mejora (4)', 'Debug grant should refresh character stats with localized pending count');
 });
 
@@ -19103,6 +19207,100 @@ test('Release restores contained prey at reduced condition and clears active con
   assert(prey.status.vitalWeakness, 'Release below full vitality should apply Vital Weakness state');
   assertContains(App.latestSceneBeat.summary, 'released from You', 'Release should emit a Scene Beat');
   assertContains(App.log[App.log.length - 1].text, 'released from You', 'Release should also create a technical Activity Log entry');
+});
+
+test('Container inventory renders contained creatures with targeted release and digest actions', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', {
+    id: 'container-ui-holder',
+    expanded: true,
+    stomach: [
+      makeUnit('Held One', { id: 'held-one', CPun: 20, MPun: 100, size: 1, inStomach: true, releaseEligible: true }),
+      makeUnit('Held Two', { id: 'held-two', CPun: 10, MPun: 100, size: 1, inStomach: true, releaseEligible: true, progress: 30 })
+    ]
+  });
+  App.player = actor;
+  App.party = [actor];
+
+  const cardHtml = App.renderUnitCard(actor, 0, 'party');
+
+  assertContains(cardHtml, 'container-inventory', 'Expanded unit card should render body containers as an inventory-like section');
+  assertContains(cardHtml, 'data-command-grammar="container-management"', 'Container inventory should use a distinct management grammar');
+  assertContains(cardHtml, 'Held One', 'Container inventory should list the first contained creature');
+  assertContains(cardHtml, 'Held Two', 'Container inventory should list the second contained creature');
+  assertContains(cardHtml, "App.releaseContained('party',0,'stomach',1)", 'Release action should target the selected contained entry by index');
+  assertContains(cardHtml, "App.digestContained('party',0,'stomach',1)", 'Digest action should target the selected contained entry by index');
+});
+
+test('Container inventory release restores the selected contained creature, not always the first', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', {
+    id: 'container-release-holder',
+    stomach: [
+      makeUnit('First Prey', { id: 'first-prey', CPun: 20, MPun: 100, size: 1, inStomach: true, releaseEligible: true }),
+      makeUnit('Second Prey', { id: 'second-prey', CPun: 10, MPun: 100, size: 1, inStomach: true, releaseEligible: true, progress: 50, vitalRemaining: 5, vitalMax: 10 })
+    ]
+  });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [];
+
+  const released = App.releaseContained('party', 0, 'stomach', 1);
+
+  assertEqual(released, true, 'Container release command should resolve');
+  assertEqual(actor.stomach.length, 1, 'Release should remove exactly one contained entry');
+  assertEqual(actor.stomach[0].name, 'First Prey', 'Release should leave the first contained entry in place');
+  assertEqual(App.creatures.length, 1, 'Release should restore one creature to the active surface');
+  assertEqual(App.creatures[0].name, 'Second Prey', 'Release should restore the selected contained entry');
+  assertEqual(App.creatures[0].CPun, 5, 'Release should restore selected prey at reduced vital condition');
+  assertContains(App.latestSceneBeat.summary, 'Second Prey is released', 'Scene Feed should describe the selected release');
+});
+
+test('Container inventory digest terminalizes the selected contained creature', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', {
+    id: 'container-digest-holder',
+    hunger: 50,
+    stomach: [
+      makeUnit('First Prey', { id: 'first-digest-prey', CPun: 20, MPun: 100, size: 1, inStomach: true, releaseEligible: true }),
+      makeUnit('Second Prey', { id: 'second-digest-prey', CPun: 10, MPun: 100, size: 1, inStomach: true, releaseEligible: true })
+    ]
+  });
+  App.player = actor;
+  App.party = [actor];
+
+  const digested = App.digestContained('party', 0, 'stomach', 1);
+
+  assertEqual(digested, true, 'Container digest command should resolve');
+  assertEqual(actor.stomach[0].name, 'First Prey', 'Digest should leave the first contained entry untouched');
+  assertEqual(actor.stomach[0].state, 'contained', 'Digest should not terminalize the wrong entry');
+  assertEqual(actor.stomach[1].name, 'Second Prey', 'Digest should target the selected contained entry');
+  assertEqual(actor.stomach[1].state, 'terminal', 'Digest should terminalize the selected entry');
+  assertEqual(actor.stomach[1].releaseEligible, false, 'Terminal digestion should block release');
+  assertContains(App.latestSceneBeat.summary, 'Second Prey is fully digested', 'Scene Feed should describe the selected digestion');
+});
+
+test('Container inventory disables release for terminal contained creatures', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', {
+    id: 'container-terminal-holder',
+    expanded: true,
+    stomach: [
+      makeUnit('Terminal Prey', { id: 'terminal-prey', CPun: 0, MPun: 100, size: 1, inStomach: true, state: 'terminal', digestionState: 'terminal', releaseEligible: false, vitalRemaining: 0, vitalMax: 10 })
+    ]
+  });
+  App.player = actor;
+  App.party = [actor];
+
+  const cardHtml = App.renderUnitCard(actor, 0, 'party');
+
+  assertContains(cardHtml, 'Terminal Prey', 'Terminal contained creature should remain inspectable in container inventory');
+  assertContains(cardHtml, 'data-contained-state="terminal"', 'Terminal entry should expose lifecycle state metadata');
+  assertContains(cardHtml, 'data-command-control="release-contained"', 'Terminal entry should still show why release is unavailable');
+  assertContains(cardHtml, 'disabled aria-disabled="true"', 'Terminal entry release/digest actions should be disabled when unavailable');
+  const released = App.releaseContained('party', 0, 'stomach', 0);
+  assertEqual(released, false, 'Release command should reject terminal contained creatures');
+  assertEqual(App.creatures.length, 0, 'Rejected terminal release should not restore a creature');
 });
 
 test('Release blocks depleted vital containment without restoring prey', () => {

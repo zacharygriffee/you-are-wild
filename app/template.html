@@ -2871,6 +2871,190 @@
             text-overflow: ellipsis;
         }
 
+        .container-inventory {
+            display: grid;
+            gap: 8px;
+            padding: 8px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(16, 28, 48, 0.44);
+            color: var(--text-secondary);
+        }
+
+        .container-inventory-title {
+            color: var(--text-primary);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .container-inventory-section {
+            display: grid;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .container-inventory-header,
+        .container-inventory-entry {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .container-inventory-header {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .container-inventory-entry {
+            padding: 7px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 42, 74, 0.52);
+        }
+
+        .container-entry-main {
+            min-width: 0;
+        }
+
+        .container-entry-name {
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .container-entry-meta,
+        .container-inventory-empty {
+            color: var(--text-muted);
+            font-size: 11px;
+            line-height: 1.3;
+        }
+
+        .container-entry-actions {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .container-entry-actions .action-btn {
+            min-width: 0;
+            flex: 0 0 auto;
+            padding: 5px 7px;
+            font-size: 10px;
+        }
+
+        .holdings-panel-detail,
+        .holdings-detail {
+            display: grid;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .holdings-section {
+            display: grid;
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(16, 28, 48, 0.42);
+        }
+
+        .holdings-section-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .holdings-subtitle {
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .holdings-entry-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .holdings-entry {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+            padding: 8px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 42, 74, 0.48);
+        }
+
+        .holding-entry-main {
+            min-width: 0;
+        }
+
+        .holding-entry-name {
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .holding-entry-meta {
+            color: var(--text-muted);
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        .holding-entry-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .holding-entry-actions .nav-btn {
+            padding: 5px 8px;
+            font-size: 11px;
+        }
+
+        .holding-entry-actions .nav-btn.danger {
+            color: var(--accent-danger);
+        }
+
+        .holdings-footer {
+            display: flex;
+            justify-content: flex-end;
+            padding-top: 4px;
+        }
+
+        @media (max-width: 640px) {
+            .holdings-entry,
+            .container-inventory-entry {
+                grid-template-columns: 1fr;
+            }
+
+            .holding-entry-actions,
+            .container-entry-actions {
+                justify-content: flex-start;
+            }
+        }
+
         .unit-traits {
             display: flex;
             flex-wrap: wrap;
@@ -3604,11 +3788,13 @@
             background: rgba(0, 212, 170, 0.1);
         }
 
-        .transaction-window-root[hidden] {
+        .transaction-window-root[hidden],
+        .holdings-window-root[hidden] {
             display: none !important;
         }
 
-        .transaction-window-root {
+        .transaction-window-root,
+        .holdings-window-root {
             position: fixed;
             inset: 0;
             z-index: 1800;
@@ -3617,14 +3803,16 @@
             padding: max(18px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
         }
 
-        .transaction-backdrop {
+        .transaction-backdrop,
+        .holdings-backdrop {
             position: absolute;
             inset: 0;
             background: rgba(5, 5, 12, 0.72);
             backdrop-filter: blur(4px);
         }
 
-        .transaction-window {
+        .transaction-window,
+        .holdings-window {
             position: relative;
             width: min(920px, 100%);
             max-height: min(86dvh, 720px);
@@ -3638,7 +3826,13 @@
             color: var(--text-primary);
         }
 
-        .transaction-header {
+        .holdings-window {
+            width: min(1080px, 100%);
+            grid-template-rows: auto auto minmax(0, 1fr);
+        }
+
+        .transaction-header,
+        .holdings-window-header {
             display: flex;
             align-items: start;
             justify-content: space-between;
@@ -3647,23 +3841,46 @@
             border-bottom: 1px solid var(--border-subtle);
         }
 
-        .transaction-header h2 {
+        .transaction-header h2,
+        .holdings-window-header h2 {
             margin: 2px 0 0;
             color: var(--accent-primary);
             font-size: 20px;
             line-height: 1.2;
         }
 
-        .transaction-eyebrow {
+        .transaction-eyebrow,
+        .holdings-window-eyebrow {
             color: var(--text-muted);
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
         }
 
-        .transaction-close {
+        .transaction-close,
+        .holdings-close {
             min-width: 72px;
             min-height: 36px;
+        }
+
+        .holdings-tabs {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 10px 18px;
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(10, 20, 36, 0.48);
+        }
+
+        .holdings-tab {
+            flex: 0 0 auto;
+            min-height: 34px;
+        }
+
+        .holdings-tab.selected {
+            border-color: var(--accent-primary);
+            background: rgba(0, 212, 170, 0.15);
+            color: var(--text-primary);
         }
 
         .transaction-summary {
@@ -3695,10 +3912,64 @@
             white-space: nowrap;
         }
 
-        .transaction-body {
+        .transaction-body,
+        .holdings-window-body {
             min-height: 0;
             overflow: auto;
             padding: 14px 18px 18px;
+        }
+
+        .holdings-window-body .holdings-section {
+            margin: 0;
+        }
+
+        .holdings-character-summary {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: rgba(10, 20, 36, 0.48);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+        }
+
+        .holdings-character-avatar {
+            display: grid;
+            width: 44px;
+            height: 44px;
+            place-items: center;
+            background: rgba(0, 212, 170, 0.12);
+            border: 1px solid rgba(0, 212, 170, 0.45);
+            border-radius: var(--radius-sm);
+            font-size: 24px;
+        }
+
+        .holdings-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .holdings-stat-card {
+            display: grid;
+            gap: 6px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+        }
+
+        .holdings-stat-card strong {
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .holdings-stat-card span {
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1.45;
         }
 
         .transaction-filters > div {
@@ -3791,41 +4062,56 @@
 
         #app.transaction-window-open .stage,
         #app.transaction-window-open .panel-log,
-        #app.transaction-window-open .app-header {
+        #app.transaction-window-open .app-header,
+        #app.holdings-window-open .stage,
+        #app.holdings-window-open .panel-log,
+        #app.holdings-window-open .app-header {
             pointer-events: none;
         }
 
         #app.transaction-window-open .desktop-command-composer,
         #app.transaction-window-open .mobile-control-belt,
-        #app.transaction-window-open .mobile-unit-strips {
+        #app.transaction-window-open .mobile-unit-strips,
+        #app.holdings-window-open .desktop-command-composer,
+        #app.holdings-window-open .mobile-control-belt,
+        #app.holdings-window-open .mobile-unit-strips {
             visibility: hidden;
         }
 
         @media (max-width: 1024px) {
-            .transaction-window-root {
+            .transaction-window-root,
+            .holdings-window-root {
                 align-items: stretch;
                 justify-items: stretch;
                 padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
             }
 
-            .transaction-window {
+            .transaction-window,
+            .holdings-window {
                 width: 100%;
                 max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
                 border-radius: var(--radius-md);
             }
 
-            .transaction-header {
+            .transaction-header,
+            .holdings-window-header {
                 padding: 12px;
                 gap: 10px;
             }
 
-            .transaction-header h2 {
+            .transaction-header h2,
+            .holdings-window-header h2 {
                 font-size: 18px;
             }
 
-            .transaction-close {
+            .transaction-close,
+            .holdings-close {
                 min-width: 64px;
                 min-height: 44px;
+            }
+
+            .holdings-tabs {
+                padding: 8px 12px;
             }
 
             .transaction-summary {
@@ -3833,8 +4119,13 @@
                 padding: 10px 12px;
             }
 
-            .transaction-body {
+            .transaction-body,
+            .holdings-window-body {
                 padding: 10px 12px 12px;
+            }
+
+            .holdings-stat-grid {
+                grid-template-columns: 1fr;
             }
 
             .transaction-columns,
@@ -7388,6 +7679,7 @@
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-save-slots" title="Open save slots" aria-label="Open save slots" data-i18n-title="ui.nav.saveTitle" data-i18n-aria-label="ui.nav.saveTitle" onclick="App.closeAppMenu(); App.showSaveManager('save')">💾 <span data-i18n="save.save">Save</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-load-slots" title="Open load slots" aria-label="Open load slots" data-i18n-title="ui.nav.loadTitle" data-i18n-aria-label="ui.nav.loadTitle" onclick="App.closeAppMenu(); App.showSaveManager('load')">📂 <span data-i18n="save.load">Load</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-settings" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.openSettingsFromGame()">⚙️ <span data-i18n="ui.menu.settings">Settings</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-holdings" title="Open holdings" aria-label="Open holdings" onclick="App.closeAppMenu(); App.showCharacterStats()">📊 <span>Holdings</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-history" title="Toggle Activity Log" aria-label="Toggle Activity Log" data-i18n-title="ui.activityLog" data-i18n-aria-label="ui.activityLog" onclick="App.closeAppMenu(); App.toggleActivityLog()">📜 <span data-i18n="ui.activityLog">Activity Log</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-market" title="Open market" aria-label="Open market" data-i18n-title="ui.menu.marketTitle" data-i18n-aria-label="ui.menu.marketTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="ui.menu.market">Market</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-mods" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
@@ -7637,6 +7929,7 @@
         <!-- Backdrop for closing mobile panels by tapping outside -->
         <div class="panel-backdrop" id="panel-backdrop" onclick="App.closeAllPanels()"></div>
         <div class="transaction-window-root" id="transaction-window-root" hidden></div>
+        <div class="holdings-window-root" id="holdings-window-root" hidden></div>
     </div>
 
 

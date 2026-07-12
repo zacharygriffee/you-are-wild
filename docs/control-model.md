@@ -61,6 +61,8 @@ See [Scene Feed DSL](scene-feed-dsl.md) for the concrete `SceneBeat` shape, `Act
 
 See [Feast / Containment Doctrine](feast-containment-doctrine.md) for the V1 containment lifecycle, compatibility adapter over current stomach/prey fields, swallow/release/terminal rules, and feast/container mod seams. See [Feast / Containment V2 Doctrine](feast-containment-v2.md) for the vital-damage model and the rule that core Feast does not create itemized creature-piece inventory.
 
+See [Holdings / Inventory / Containers Doctrine](holdings-model.md) for the player-facing distinction between pack inventory, equipment slots, body containers, tile items, and corpse/remains pools.
+
 See [Balance / Cost Doctrine V1](balance-cost-doctrine.md) for hunger sign semantics, conservative action/travel costs, Spirit breakthrough behavior, action cost previews, and the boundary between V1 economy pressure and deferred broader balance work.
 
 ## Accepted Mechanics Decisions

@@ -100,6 +100,8 @@ Built-ins:
 
 Compact cards should show only small containment indicators. Medium and detail surfaces can show who contains whom, stomach fullness/capacity, digestion progress, release eligibility, and temporary effects.
 
+Expanded unit details treat body containers as inventory-like collections. Container entries expose contained creature identity, lifecycle state, vitality, digestion progress, and per-entry management actions such as `Release` and `Digest`/safe `Break Down`. These controls target a specific contained entry instead of implicitly acting on the first prey in the stomach. During combat, container management is restricted to the current actor and should spend that actor's turn; outside combat it behaves like inventory management.
+
 Scene Feed renders lifecycle beats:
 
 - swallowed/contained

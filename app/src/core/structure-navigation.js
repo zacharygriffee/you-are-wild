@@ -140,7 +140,7 @@ const YAW_STRUCTURE_NAVIGATION = {
     },
 
     moveInterior(app, dx, dy) {
-        if (app.transactionWindow) return false;
+        if (app.transactionWindow || app.holdingsWindow) return false;
         if (!app.activeInterior) return;
         const from = { x: app.interiorLocation.x, y: app.interiorLocation.y, interior: true };
         const nx = app.interiorLocation.x + dx;

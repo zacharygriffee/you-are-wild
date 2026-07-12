@@ -2347,6 +2347,129 @@ async function checkViewport(browser, name, width, height) {
     assert(Math.abs(desktopSurfaceStability.withTargets.surfaceWidth - desktopSurfaceStability.withoutTargets.surfaceWidth) <= 2, `${name}: desktop play surface width should stay stable when the local target panel collapses`);
     assert(Math.abs(desktopSurfaceStability.withTargets.centerWidth - desktopSurfaceStability.withoutTargets.centerWidth) <= 2, `${name}: desktop center tile width should stay stable when the local target panel collapses`);
 
+    const desktopTraversalRectContract = await page.evaluate(() => {
+      const tile = App._currentExplorationTile?.();
+      const originalCreatures = [...(App.creatures || [])];
+      const originalTileCreatures = tile && Array.isArray(tile.creatures) ? [...tile.creatures] : null;
+      const originalTileItems = tile && Array.isArray(tile.items) ? [...tile.items] : null;
+      const hadStructure = tile && Object.prototype.hasOwnProperty.call(tile, 'structure');
+      const originalStructure = hadStructure ? tile.structure : undefined;
+      const originalTargets = [...(App.explorationTargetIds || [])];
+      const originalActorIds = [...(App.explorationActorIds || [])];
+      const originalFocusedStageObject = App.focusedStageObject || null;
+      const originalPendingIntent = App.pendingIntent || null;
+      const originalIntentSelection = App.intentSelection ? { ...App.intentSelection } : null;
+
+      const rectFor = el => {
+        const rect = el.getBoundingClientRect();
+        return {
+          left: Math.round(rect.left),
+          top: Math.round(rect.top),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          right: Math.round(rect.right),
+          bottom: Math.round(rect.bottom)
+        };
+      };
+      const measure = label => ({
+        label,
+        surface: rectFor(document.getElementById('desktop-play-surface')),
+        center: rectFor(document.getElementById('desktop-play-cell-center')),
+        composer: rectFor(document.getElementById('desktop-command-composer')),
+        targetPanelEmpty: document.querySelector('.stage')?.classList.contains('target-panel-empty') || false
+      });
+      const render = () => {
+        App.renderCreatures();
+        App.renderMap();
+        App.renderExplorationActions();
+        App.renderDesktopPlaySurface();
+      };
+      const clearSelection = () => {
+        App.explorationTargetIds = [];
+        App.explorationActorIds = [];
+        App.focusedStageObject = null;
+        App.pendingIntent = null;
+        App.intentSelection = null;
+      };
+
+      clearSelection();
+      App.creatures = [];
+      if (tile) {
+        tile.creatures = [];
+        tile.items = [];
+        delete tile.structure;
+      }
+      render();
+      const empty = measure('empty');
+
+      if (tile) tile.structure = { name: 'Stable Gate', type: 'structure', icon: '🚪', action: 'enter' };
+      render();
+      const enter = measure('enter');
+
+      const stableCreature = {
+        id: 'desktop-stability-creature',
+        name: 'Stability Mousefolk',
+        species: 'human',
+        icon: '🐭',
+        disposition: App.DISPOSITION.NEUTRAL,
+        CPun: 100,
+        MPun: 100,
+        CPle: 40,
+        MPle: 100,
+        level: 1,
+        size: 4,
+        appetite: 4,
+        stomach: [],
+        womb: [],
+        balls: [],
+        inventory: [],
+        Figh: 10,
+        Flir: 10,
+        Fuck: 10,
+        Feas: 10,
+        Feed: 10,
+        Flee: 10,
+        con: 10,
+        wis: 10,
+        cha: 10
+      };
+      App.creatures = [stableCreature];
+      if (tile) tile.creatures = App.creatures;
+      render();
+      const creature = measure('creature');
+
+      App.toggleExplorationTarget('creature', 'desktop-stability-creature');
+      const target = measure('target');
+
+      App.creatures = originalCreatures;
+      if (tile) {
+        if (originalTileCreatures) tile.creatures = originalTileCreatures;
+        else delete tile.creatures;
+        if (originalTileItems) tile.items = originalTileItems;
+        else delete tile.items;
+        if (hadStructure) tile.structure = originalStructure;
+        else delete tile.structure;
+      }
+      App.explorationTargetIds = originalTargets;
+      App.explorationActorIds = originalActorIds;
+      App.focusedStageObject = originalFocusedStageObject;
+      App.pendingIntent = originalPendingIntent;
+      App.intentSelection = originalIntentSelection;
+      render();
+      return { empty, enter, creature, target };
+    });
+    const assertDesktopRectStable = (actual, expected, state, part) => {
+      for (const key of ['left', 'top', 'width', 'height']) {
+        assert(Math.abs(actual[key] - expected[key]) <= 1, `${name}: desktop ${part} ${key} should stay stable when ${state} appears`);
+      }
+    };
+    assert.strictEqual(desktopTraversalRectContract.empty.targetPanelEmpty, true, `${name}: desktop controlled stability baseline should start without a target panel`);
+    assert.strictEqual(desktopTraversalRectContract.creature.targetPanelEmpty, false, `${name}: desktop controlled stability state should exercise a visible target panel`);
+    ['enter', 'creature', 'target'].forEach(state => {
+      assertDesktopRectStable(desktopTraversalRectContract[state].surface, desktopTraversalRectContract.empty.surface, state, '3x3 surface');
+      assertDesktopRectStable(desktopTraversalRectContract[state].center, desktopTraversalRectContract.empty.center, state, 'center tile');
+    });
+
     await page.evaluate(() => App.toggleExplorationTarget('creature', 'creature-1'));
     await page.waitForTimeout(50);
     const desktopComposerOwnership = await page.evaluate(() => {

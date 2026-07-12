@@ -286,7 +286,12 @@ const YAW_HOLDINGS = {
     },
 
     renderPackSection(app, section, owner = app.player) {
-        let html = `<section class="holdings-section" data-holding-section="pack"><div class="holdings-section-title"><span>${app._escapeHtml(section.label)}</span><span>${section.count}/${section.max}</span></div>`;
+        const packLabel = app._label('holdings.sharedPack', 'Shared Pack');
+        const ownerHint = this.isPlayerOwner(app, owner)
+            ? ''
+            : app._label('holdings.sharedPackOwnerHint', 'Equips target {name}', { name: this.ownerLabel(app, owner) });
+        let html = `<section class="holdings-section" data-holding-section="pack"><div class="holdings-section-title"><span>${app._escapeHtml(packLabel)}</span><span>${section.count}/${section.max}</span></div>`;
+        if (ownerHint) html += `<p class="holding-entry-meta">${app._escapeHtml(ownerHint)}</p>`;
         html += app._itemListOptions('Inventory');
         const entries = app._filterAndSortItemEntries((app.inventory || []).map((item, index) => ({ item, index })), app.inventoryFilter, app.inventorySort);
         if ((app.inventory || []).length === 0) {
@@ -302,7 +307,7 @@ const YAW_HOLDINGS = {
 
     renderContainersSection(app, section, owner = app.player) {
         const holderIndex = Math.max(0, (app.party || []).indexOf(owner));
-        const inventoryHtml = YAW_UNIT_CONTAINMENT.renderContainerInventory(app, owner, 'party', holderIndex);
+        const inventoryHtml = YAW_UNIT_CONTAINMENT.renderContainerInventory(app, owner, 'party', holderIndex, { showTitle: false });
         const summary = section.entries.map(container => `${container.profile.label}: ${container.used}/${container.capacity}`).join(' · ');
         return `<section class="holdings-section" data-holding-section="containers">
             <div class="holdings-section-title"><span>${app._escapeHtml(section.label)}</span><span>${app._escapeHtml(summary || '')}</span></div>

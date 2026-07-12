@@ -2189,34 +2189,32 @@ async function runDesktopCompactCardRoundTripFlow(page) {
 
   await page.locator(`#party-content button[data-command-control="open-party-stats"]`).first().click();
   state = await page.evaluate(() => ({
-    statsDetailOpen: Boolean(document.querySelector('#party-content .party-stats-view')),
-    partyPanelFocused: document.querySelector('#panel-party')?.classList.contains('nav-focus') || false,
+    holdingsOpen: !document.querySelector('#holdings-window-root')?.hidden,
+    holdingsStatsOpen: Boolean(document.querySelector('#holdings-window-root [data-holding-section="stats"]')),
+    holdingsOwnerText: document.querySelector('#holdings-window-root')?.innerText || '',
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort(),
-    sentenceText: document.querySelector('#selection-sentence')?.innerText || '',
-    trayText: document.querySelector('#desktop-context-belt')?.innerText || '',
     centerLeak: (document.querySelector('#scene-description')?.innerHTML || '').includes('party-stats-view'),
     centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
-  assert.strictEqual(state.statsDetailOpen, true, 'Desktop Stats should open as a Party detail surface');
-  assert.strictEqual(state.partyPanelFocused, true, 'Desktop Stats should focus the Party detail panel without opening mobile drawers');
+  assert.strictEqual(state.holdingsOpen, true, 'Desktop Stats should open the focused Holdings overlay');
+  assert.strictEqual(state.holdingsStatsOpen, true, 'Desktop Stats should open the Holdings Stats tab');
+  assert(state.holdingsOwnerText.includes('Ally'), 'Desktop Holdings route should target the clicked party member');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening desktop Stats should preserve selected actors');
   assert.deepStrictEqual(state.targets, ['creature:friendly-1', 'party:player-1'], 'Opening desktop Stats should preserve marked targets');
-  assert(state.sentenceText.includes('Ally') && state.sentenceText.includes('Friendly'), 'Desktop Stats should leave the composer sentence intact');
-  assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Desktop Stats should leave composer target intents reachable');
   assert.strictEqual(state.centerLeak, false, 'Desktop Stats should not leak detail markup into center presentation');
   assert.strictEqual(state.centerHasActorControls, false, 'Desktop Stats should keep center free of actor controls');
 
-  await page.locator(`#party-content button[data-command-control="close-stats"]`).first().click();
+  await page.locator(`#holdings-window-root button[data-command-control="close-holdings"]`).first().click();
   state = await page.evaluate(() => ({
-    statsDetailOpen: Boolean(document.querySelector('#party-content .party-stats-view')),
+    holdingsOpen: !document.querySelector('#holdings-window-root')?.hidden,
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort(),
     partyCompactCards: document.querySelectorAll('#party-content .compact-tactical-card').length,
     sentenceText: document.querySelector('#selection-sentence')?.innerText || '',
     trayText: document.querySelector('#desktop-context-belt')?.innerText || ''
   }));
-  assert.strictEqual(state.statsDetailOpen, false, 'Closing desktop Stats should return to the Party card surface');
+  assert.strictEqual(state.holdingsOpen, false, 'Closing desktop Holdings should return to the Party card surface');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing desktop Stats should preserve selected actors');
   assert.deepStrictEqual(state.targets, ['creature:friendly-1', 'party:player-1'], 'Closing desktop Stats should preserve marked targets');
   assert(state.partyCompactCards >= 2, 'Closing desktop Stats should restore compact party cards');
@@ -3275,18 +3273,20 @@ async function runCompactRailRoundTripFlow(page) {
     App.showPartyMemberStats(1);
   });
   state = await page.evaluate(() => ({
-    partyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false,
-    statsVisible: Boolean(document.querySelector('#mobile-party-strip .party-stats-view')),
+    holdingsOpen: !document.querySelector('#holdings-window-root')?.hidden,
+    holdingsStatsOpen: Boolean(document.querySelector('#holdings-window-root [data-holding-section="stats"]')),
+    holdingsOwnerText: document.querySelector('#holdings-window-root')?.innerText || '',
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort()
   }));
-  assert.strictEqual(state.partyDrawerOpen, true, 'Mobile party stats detail should open the Party drawer');
-  assert.strictEqual(state.statsVisible, true, 'Mobile party stats detail should replace the compact actor rail temporarily');
-  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening party stats detail should preserve selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening party stats detail should preserve marked targets');
-  await page.evaluate(() => App.closePanelDetails('party'));
+  assert.strictEqual(state.holdingsOpen, true, 'Mobile party stats detail should open the Holdings overlay');
+  assert.strictEqual(state.holdingsStatsOpen, true, 'Mobile party stats detail should open the Holdings stats tab');
+  assert(state.holdingsOwnerText.includes('Ally'), 'Mobile party stats detail should target the selected party member in Holdings');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening party Holdings detail should preserve selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening party Holdings detail should preserve marked targets');
+  await page.locator('#holdings-window-root button[data-command-control="close-holdings"]').click();
   state = await page.evaluate(() => ({
-    partyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false,
+    holdingsOpen: !document.querySelector('#holdings-window-root')?.hidden,
     actorRailOpen: App.mobileActorBeltOpen,
     actorButtons: document.querySelectorAll('#mobile-actor-belt button[data-selection-mode="act-actor"]').length,
     actorDetailsVisible: Boolean(document.querySelector('#mobile-actor-belt .mobile-actor-details')),
@@ -3294,12 +3294,12 @@ async function runCompactRailRoundTripFlow(page) {
     targets: [...App.explorationTargetIds].sort(),
     sentence: document.querySelector('#mobile-selection-sentence')?.innerText || ''
   }));
-  assert.strictEqual(state.partyDrawerOpen, false, 'Party stats Back should close the Party drawer on mobile');
-  assert.strictEqual(state.actorRailOpen, true, 'Party stats Back should restore the compact actor rail');
-  assert(state.actorButtons >= 3 && state.actorDetailsVisible, 'Party stats Back should restore actor controls and Details');
-  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Party stats Back should keep selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Party stats Back should keep marked targets');
-  assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Party stats Back should keep the composer sentence visible');
+  assert.strictEqual(state.holdingsOpen, false, 'Closing Holdings should return to normal mobile play');
+  assert.strictEqual(state.actorRailOpen, true, 'Closing Holdings should restore the compact actor rail');
+  assert(state.actorButtons >= 3 && state.actorDetailsVisible, 'Closing Holdings should restore actor controls and Details');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing Holdings should keep selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Closing Holdings should keep marked targets');
+  assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Closing Holdings should keep the composer sentence visible');
 
   await page.locator(`#mobile-selection-sentence [data-command-control="open-target-slot"]`).click();
   state = await page.evaluate(() => {

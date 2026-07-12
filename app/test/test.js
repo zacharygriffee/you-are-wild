@@ -2771,7 +2771,7 @@ test('Stats panel helper module is registered before app code', () => {
   assertContains(statsPanelContent, 'data-command-control="choose-perk"', 'Perk choice buttons should identify their drawer action');
   assertContains(statsPanelContent, 'data-command-control="back-to-stats"', 'Perk picker back control should identify its drawer exit');
   assertNotContains(statsPanelContent, "document.getElementById('scene-description')", 'Stats panel helper should not render into center tile content');
-  assertContains(appContent, 'YAW_STATS_PANEL.showPartyMember(this, index)', 'App party member stats wrapper should delegate to the helper');
+  assertContains(appContent, "YAW_HOLDINGS.show(this, unit, { tab: 'stats' })", 'App party member stats wrapper should open Holdings for the selected unit');
   assertContains(appContent, "YAW_HOLDINGS.show(this, this.player, { tab: 'stats' })", 'App character stats wrapper should open the focused Holdings stats tab');
   assertContains(appContent, 'YAW_HOLDINGS.showPerkSelection(this)', 'App perk selection wrapper should open the focused Holdings perk picker');
 });
@@ -8598,7 +8598,8 @@ test('Compact exploration rail details round-trip preserves composer state', () 
   assertContains(el('mobile-target-action-tray').innerHTML, "selectIntent('creature','guide-1','trade','composer-tray')", 'Marked merchant should expose Trade before details open');
 
   App.showPartyMemberStats(1);
-  assertContains(el('mobile-party-strip').innerHTML, 'party-stats-view', 'Party detail should replace mobile actor rail temporarily');
+  assertContains(el('holdings-window-root').innerHTML, 'data-surface-role="holdings-window"', 'Party detail should open the Holdings overlay instead of replacing the mobile actor rail');
+  assertContains(el('holdings-window-root').innerHTML, 'Ally', 'Party detail Holdings route should target the selected ally');
   assertEqual(JSON.stringify(App.explorationActorIds), JSON.stringify(['ally-1']), 'Opening party detail should preserve selected actors');
   assert(App.explorationTargetIds.includes('creature:guide-1'), 'Opening party detail should preserve marked creature target');
   assertContains(el('mobile-selection-sentence').innerHTML, 'Ally', 'Party detail should keep actor in mobile composer sentence');
@@ -14376,7 +14377,8 @@ test('Party panel exposes management controls and leader badge', () => {
   ally.expanded = true;
   App.renderParty();
   html = elements.get('party-content').innerHTML;
-  assertContains(html, 'showPartyMemberStats(1)', 'Expanded party card should expose detailed stats');
+  assertContains(html, 'showPartyMemberStats(1)', 'Expanded party card should expose the Holdings route for detailed stats');
+  assertContains(html, '>Holdings<', 'Expanded party card should label deep management as Holdings');
   assertContains(html, 'setPartyLeader(1)', 'Expanded party card should expose set leader action');
   assertContains(html, 'dismissPartyMember(1)', 'Expanded ally card should expose dismiss action');
   assertContains(html, 'setPartyRole(1,this.value)', 'Ally card should expose party role selector');
@@ -16710,6 +16712,7 @@ test('Holdings panel renders sectioned inventory without itemizing contained cre
   App.setHoldingsTab('containers');
   html = holdingsHtml(elements);
   assertContains(html, 'data-holding-section="containers"', 'Holdings should render a Containers section');
+  assertNotContains(html, 'container-inventory-title', 'Holdings Containers tab should not repeat a nested Containers heading');
   assertContains(html, 'Held Bunnyfolk', 'Contained creature should appear in Containers');
   assertContains(html, 'data-command-control="inspect-contained"', 'Contained entries should expose Inspect management');
   assertContains(html, 'data-command-control="release-contained"', 'Contained entries should expose Release management');
@@ -16749,6 +16752,8 @@ test('Holdings owner selector switches stats equipment and containers while pack
   assertNotContains(html, 'Hide Armor', 'Equipment tab should not show player equipment when companion is selected');
   App.setHoldingsTab('pack');
   html = holdingsHtml(elements);
+  assertContains(html, 'Shared Pack', 'Pack tab should label inventory as shared party storage');
+  assertContains(html, 'Equips target Bunnyfolk', 'Shared Pack should clarify equip actions target the selected owner');
   assertContains(html, 'Focus Ring', 'Shared Pack should remain visible for selected companion owner');
   assertContains(html, 'Equip Focus Ring to Bunnyfolk', 'Pack equip action should target the selected owner');
   App.setHoldingsTab('containers');
@@ -16861,14 +16866,12 @@ test('Non-player equipment renders as read-only card metadata', () => {
   assertContains(elements.get('enemies-content').innerHTML, 'Equipment:', 'Expanded creature card should expose equipment metadata');
   assertContains(elements.get('enemies-content').innerHTML, 'Head: Leather Cap', 'Creature equipment should render read-only equipped item names');
   App.showPartyMemberStats(1);
-  const statsHtml = elements.get('party-content').innerHTML;
-  assertContains(statsHtml, 'class="party-stats-view"', 'Ally stats should render in a bounded party-panel stats view');
-  assertContains(statsHtml, 'class="party-stats-footer"', 'Ally stats should keep the close action in a sticky footer');
-  assertContains(statsHtml, 'aria-label="Close"', 'Ally stats should expose an immediate localized close action');
-  assertContains(statsHtml, "App.closePanelDetails('party')", 'Ally stats close action should return to party cards');
-  assertContains(statsHtml, '<strong>Equipment</strong>', 'Ally stats should expose equipment section');
-  assertContains(statsHtml, 'Body: Hide Armor', 'Ally equipment should render read-only in stats');
-  assertContains(elements.get('mobile-party-strip').innerHTML, 'class="party-stats-view"', 'Ally stats should also render in the mobile party surface');
+  const statsHtml = holdingsHtml(elements);
+  assertContains(statsHtml, 'data-surface-role="holdings-window"', 'Ally stats should open in the Holdings overlay');
+  assertContains(statsHtml, 'data-holding-section="stats"', 'Ally stats should render the Stats tab');
+  assertContains(statsHtml, 'Ally', 'Holdings stats should target the selected ally owner');
+  assertContains(statsHtml, 'Body: Hide Armor', 'Ally equipment should render as selected-owner stats');
+  assertContains(statsHtml, 'data-command-control="close-holdings"', 'Ally stats should expose the Holdings overlay exit action');
   assertNotContains(statsHtml, 'equipItem(', 'Non-player equipment stats should not expose player equip controls');
   assertNotContains(statsHtml, 'unequipItem(', 'Non-player equipment stats should not expose player unequip controls');
 });
@@ -16990,13 +16993,13 @@ test('Party member stats labels localize and escape names', () => {
   App.party = [player, ally];
   App.updateLanguage('es');
   App.showPartyMemberStats(1);
-  const html = elements.get('party-content').innerHTML;
-  assertContains(html, 'data-command-surface="stats-detail"', 'Party stats should render as a detail command surface');
-  assertContains(html, 'data-command-control="close-stats"', 'Party stats close should expose its drawer exit role');
-  assertContains(html, 'data-command-control="close-stats" data-command-slot="exit"', 'Party stats close should expose the canonical exit slot');
+  const html = holdingsHtml(elements);
+  assertContains(html, 'data-surface-role="holdings-window"', 'Party stats should render in the Holdings overlay');
+  assertContains(html, 'data-command-control="close-holdings"', 'Party stats close should expose its overlay exit role');
+  assertContains(html, 'data-command-control="close-holdings" data-command-slot="exit"', 'Party stats close should expose the canonical exit slot');
   assertContains(html, 'Ally &lt;One&gt;', 'Party stats should escape unit names');
-  assertContains(html, '<strong>Equipo</strong>', 'Party stats equipment label should localize');
-  assertContains(html, 'aria-label="Cerrar"', 'Party stats close action should localize');
+  assertContains(html, 'Equipo', 'Party stats equipment label should localize');
+  assertContains(html, 'aria-label="Volver"', 'Party stats close action should localize');
 });
 
 test('Equipment state persists through binary saves', () => {
@@ -19338,7 +19341,7 @@ test('Release restores contained prey at reduced condition and clears active con
 });
 
 test('Container inventory renders contained creatures with targeted release and digest actions', () => {
-  const { App } = loadAppForCombat(() => 0);
+  const { App, elements } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', {
     id: 'container-ui-holder',
     expanded: true,
@@ -19352,12 +19355,18 @@ test('Container inventory renders contained creatures with targeted release and 
 
   const cardHtml = App.renderUnitCard(actor, 0, 'party');
 
-  assertContains(cardHtml, 'container-inventory', 'Expanded unit card should render body containers as an inventory-like section');
-  assertContains(cardHtml, 'data-command-grammar="container-management"', 'Container inventory should use a distinct management grammar');
-  assertContains(cardHtml, 'Held One', 'Container inventory should list the first contained creature');
-  assertContains(cardHtml, 'Held Two', 'Container inventory should list the second contained creature');
-  assertContains(cardHtml, "App.releaseContained('party',0,'stomach',1)", 'Release action should target the selected contained entry by index');
-  assertContains(cardHtml, "App.digestContained('party',0,'stomach',1)", 'Digest action should target the selected contained entry by index');
+  assertNotContains(cardHtml, 'container-inventory', 'Expanded unit card should not render deep container management inside the side rail');
+  assertNotContains(cardHtml, 'data-command-grammar="container-management"', 'Container management controls should stay in Holdings');
+  assertContains(cardHtml, 'Belly:', 'Expanded unit card should keep compact container capacity summary');
+  assertContains(cardHtml, 'Held One', 'Expanded unit card should keep compact containment summary text');
+  App.showInventory();
+  App.setHoldingsTab('containers');
+  const holdings = holdingsHtml(elements);
+  assertContains(holdings, 'data-command-grammar="container-management"', 'Holdings Containers should own container management controls');
+  assertContains(holdings, 'Held One', 'Holdings Containers should list the first contained creature');
+  assertContains(holdings, 'Held Two', 'Holdings Containers should list the second contained creature');
+  assertContains(holdings, "App.releaseContained('party',0,'stomach',1)", 'Release action should target the selected contained entry by index');
+  assertContains(holdings, "App.digestContained('party',0,'stomach',1)", 'Digest action should target the selected contained entry by index');
 });
 
 test('Container inventory release restores the selected contained creature, not always the first', () => {
@@ -19409,7 +19418,7 @@ test('Container inventory digest terminalizes the selected contained creature', 
 });
 
 test('Container inventory disables release for terminal contained creatures', () => {
-  const { App } = loadAppForCombat(() => 0);
+  const { App, elements } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', {
     id: 'container-terminal-holder',
     expanded: true,
@@ -19420,12 +19429,14 @@ test('Container inventory disables release for terminal contained creatures', ()
   App.player = actor;
   App.party = [actor];
 
-  const cardHtml = App.renderUnitCard(actor, 0, 'party');
+  App.showInventory();
+  App.setHoldingsTab('containers');
+  const holdings = holdingsHtml(elements);
 
-  assertContains(cardHtml, 'Terminal Prey', 'Terminal contained creature should remain inspectable in container inventory');
-  assertContains(cardHtml, 'data-contained-state="terminal"', 'Terminal entry should expose lifecycle state metadata');
-  assertContains(cardHtml, 'data-command-control="release-contained"', 'Terminal entry should still show why release is unavailable');
-  assertContains(cardHtml, 'disabled aria-disabled="true"', 'Terminal entry release/digest actions should be disabled when unavailable');
+  assertContains(holdings, 'Terminal Prey', 'Terminal contained creature should remain inspectable in Holdings container inventory');
+  assertContains(holdings, 'data-contained-state="terminal"', 'Terminal entry should expose lifecycle state metadata');
+  assertContains(holdings, 'data-command-control="release-contained"', 'Terminal entry should still show why release is unavailable');
+  assertContains(holdings, 'disabled aria-disabled="true"', 'Terminal entry release/digest actions should be disabled when unavailable');
   const released = App.releaseContained('party', 0, 'stomach', 0);
   assertEqual(released, false, 'Release command should reject terminal contained creatures');
   assertEqual(App.creatures.length, 0, 'Rejected terminal release should not restore a creature');
@@ -19788,7 +19799,7 @@ test('Mobile party long-press menu exposes management actions', () => {
   assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Party long-press menu should use its visible title as dialog label');
   assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Party long-press menu title should be addressable');
   assertContains(body.innerHTML, 'Party actions', 'Party menu should use accessible party action label');
-  assertContains(body.innerHTML, 'Stats', 'Party menu should expose stats');
+  assertContains(body.innerHTML, 'Holdings', 'Party menu should expose Holdings');
   assertNotContains(body.innerHTML, "mobilePartyContextAction('actions'", 'Party menu should not duplicate marked-target actions behind an intent-sheet entry');
   assertNotContains(body.innerHTML, 'aria-label="Fight Ally"', 'Party menu should not expose primary action spam');
   assertContains(body.innerHTML, 'Make Leader', 'Party menu should expose leader action for allies');
@@ -19800,7 +19811,7 @@ test('Mobile party long-press menu exposes management actions', () => {
   assertEqual(App._getPartyLeader(), ally, 'Party menu leader action should update leader');
   App.showMobilePartyContext(1);
   App.mobilePartyContextAction('stats', 1);
-  assertContains(document.getElementById('party-content').innerHTML, 'Ally', 'Party menu stats action should open ally stats in the party panel');
+  assertContains(document.getElementById('holdings-window-root').innerHTML, 'Ally', 'Party menu stats action should open ally Holdings overlay');
   App.showMobilePartyContext(1);
   App.mobilePartyContextAction('close', 1);
   assertEqual(opener.focused, true, 'Closing party long-press menu should restore focus to opener');
@@ -19816,7 +19827,7 @@ test('Mobile party long-press menu uses localized management labels', () => {
   App.updateLanguage('es');
   App.showMobilePartyContext(1);
   assertContains(body.innerHTML, 'aria-label="Acciones del grupo"', 'Party menu label should localize');
-  assertContains(body.innerHTML, 'Estadisticas', 'Stats menu item should localize');
+  assertContains(body.innerHTML, 'Pertenencias', 'Holdings menu item should localize');
   assertNotContains(body.innerHTML, "mobilePartyContextAction('actions'", 'Localized party menu should not include a duplicate intent-sheet entry');
   assertContains(body.innerHTML, 'Hacer lider', 'Leader menu item should localize');
   assertContains(body.innerHTML, '>Rol<', 'Role field label should localize');

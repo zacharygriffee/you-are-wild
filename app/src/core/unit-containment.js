@@ -365,7 +365,7 @@ const YAW_UNIT_CONTAINMENT = {
         return holder && holder === app._currentCombatActor?.();
     },
 
-    renderContainerInventory(app, holder, holderType = 'party', holderIndex = 0) {
+    renderContainerInventory(app, holder, holderType = 'party', holderIndex = 0, options = {}) {
         if (!app || !holder) return '';
         const containers = ['stomach', 'womb', 'balls'];
         const sections = [];
@@ -419,8 +419,9 @@ const YAW_UNIT_CONTAINMENT = {
         }
         if (!sections.length) return '';
         const title = app._escapeHtml(app._label('containment.inventoryTitle', 'Containers'));
+        const titleHtml = options.showTitle === false ? '' : `<div class="container-inventory-title">${title}</div>`;
         return `<div class="container-inventory" data-command-surface="container-inventory" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-grammar="container-management" aria-label="${title}">
-            <div class="container-inventory-title">${title}</div>
+            ${titleHtml}
             ${sections.join('')}
         </div>`;
     },

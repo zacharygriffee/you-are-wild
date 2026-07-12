@@ -31,7 +31,7 @@ const YAW_MOBILE_CONTEXT_MENU = {
     const roleDescription = app._partyRoleDescription(role);
     const orderDescription = app._partyAIOrderDescription(order);
     let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(menuLabel)}" aria-labelledby="mobile-context-menu-title" data-command-surface="detail-management" data-command-mode="exploration"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${unit.icon || ''} ${unitLabel}</div><div class="mobile-context-menu-actions" role="menu" data-command-surface="detail-management" data-command-mode="exploration">`;
-    html += actionButton(app._label('party.stats', 'Stats'), 'stats');
+    html += actionButton(app._label('ui.holdings', 'Holdings'), 'stats');
     if (unit !== app.player && !unit.mc) {
       if (app._getPartyLeader() !== unit) html += actionButton(app._label('party.makeLeader', 'Make Leader'), 'lead');
       html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${app._escapeHtml(roleLabel)}</span><select class="nav-btn" ${detailAttrs} data-command-control="set-party-role" aria-label="${app._escapeHtml(roleAria)}" title="${app._escapeHtml(roleDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetRole(${index},this.value)">${roleOptions}</select><small>${app._escapeHtml(roleDescription)}</small></label>`;

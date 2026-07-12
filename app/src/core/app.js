@@ -2753,7 +2753,9 @@
             },
 
             showPartyMemberStats(index) {
-                return YAW_STATS_PANEL.showPartyMember(this, index);
+                const unit = this.party?.[index];
+                if (!unit) return false;
+                return YAW_HOLDINGS.show(this, unit, { tab: 'stats' });
             },
 
             selectExplorationActor(index) {

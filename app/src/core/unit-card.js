@@ -39,7 +39,7 @@ const YAW_UNIT_CARD = {
             actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" ${actorCommandAttrs} ${app._selectionControlAttrs('actor', actorPressed)} title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" ${targetCommandAttrs} ${app._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
             actionButtons += `</div>`;
             const detailControls = [];
-            const statsLabel = app._escapeHtml(app._label('party.stats', 'Stats'));
+            const statsLabel = app._escapeHtml(app._label('ui.holdings', 'Holdings'));
             const statsTitle = app._escapeHtml(app._label('party.statsFor', 'Show stats for {name}', { name: unitName }));
             detailControls.push(`<button class="action-btn" data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats" title="${statsTitle}" aria-label="${statsTitle}" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">${statsLabel}</button>`);
             if (isPlayer) {
@@ -179,7 +179,6 @@ const YAW_UNIT_CARD = {
         ].filter(Boolean).join('');
         const tacticalSummary = app._unitTacticalSummary?.(unit) || '';
         const containmentDetail = isExpanded ? app._containmentDetailSummary?.(unit) || '' : '';
-        const containerInventory = isExpanded ? app._renderContainerInventory?.(unit, type, index) || '' : '';
         const statLabels = {
             equipment: app._escapeHtml(app._label('party.equipment', 'Equipment'))
         };
@@ -204,7 +203,6 @@ const YAW_UNIT_CARD = {
                         <div style="display:grid;grid-template-columns:1fr;gap:8px;font-size:12px;">
                             <div style="color:${hasContained ? 'var(--accent-warning)' : 'var(--text-muted)'}">${capacitySummary}</div>
                             ${containmentDetail ? `<div class="unit-containment-detail" style="color:var(--accent-warning)">${app._escapeHtml(containmentDetail)}</div>` : ''}
-                            ${containerInventory}
                             <div style="color:var(--text-muted)"><span style="color:var(--text-primary)">${statLabels.equipment}:</span><br>${equipmentSummary}</div>
                         </div>
                         ${partyManagementControls}

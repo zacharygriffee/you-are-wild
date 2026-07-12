@@ -23,6 +23,93 @@ const YAW_HOLDINGS = {
         return labels[tab] || labels.stats;
     },
 
+    ownerId(app, unit = app.player) {
+        if (!unit) return 'player';
+        const partyIndex = (app.party || []).indexOf(unit);
+        if (unit.id != null) return String(unit.id);
+        if (partyIndex >= 0) return `party:${partyIndex}`;
+        if (unit.name) return `name:${unit.name}`;
+        return 'player';
+    },
+
+    ownerById(app, ownerId = null) {
+        const wanted = ownerId == null ? null : String(ownerId);
+        const owners = this.partyOwners(app);
+        if (wanted) {
+            const match = owners.find((unit, index) => (
+                this.ownerId(app, unit) === wanted
+                || (unit?.id != null && String(unit.id) === wanted)
+                || (`party:${index}` === wanted)
+                || (`name:${unit?.name || ''}` === wanted)
+            ));
+            if (match) return match;
+        }
+        return app._syncPlayerPartyReference?.() || app.player || owners[0] || null;
+    },
+
+    selectedOwner(app) {
+        return this.ownerById(app, app.holdingsWindow?.ownerId);
+    },
+
+    partyOwners(app) {
+        const seen = new Set();
+        const owners = [];
+        const add = unit => {
+            if (!unit || seen.has(unit)) return;
+            seen.add(unit);
+            owners.push(unit);
+        };
+        add(app._syncPlayerPartyReference?.() || app.player);
+        (app.party || []).forEach(add);
+        return owners;
+    },
+
+    ownerLabel(app, unit = app.player) {
+        if (!unit) return app._label('party.you', 'You');
+        const player = app._syncPlayerPartyReference?.() || app.player;
+        if (unit === player) return app._label('party.you', 'You');
+        return unit.name || app._label('ui.unknown', 'Unknown');
+    },
+
+    isPlayerOwner(app, unit = app.player) {
+        const player = app._syncPlayerPartyReference?.() || app.player;
+        return Boolean(unit && player && (unit === player || this.ownerId(app, unit) === this.ownerId(app, player)));
+    },
+
+    setOwner(app, ownerId) {
+        const owner = this.ownerById(app, ownerId);
+        if (!owner) return false;
+        const tab = this.tabs().includes(app.holdingsWindow?.tab) ? app.holdingsWindow.tab : 'stats';
+        app.holdingsWindow = {
+            ...(app.holdingsWindow || {}),
+            tab,
+            ownerType: 'party',
+            ownerId: this.ownerId(app, owner)
+        };
+        delete app.holdingsWindow.detail;
+        return this.renderWindow(app, owner, tab);
+    },
+
+    showForUnit(app, unit, options = {}) {
+        return this.show(app, unit || app.player, options);
+    },
+
+    renderOwnerSelector(app, owner = app.player) {
+        const owners = this.partyOwners(app);
+        if (owners.length <= 1) return '';
+        const selectedId = this.ownerId(app, owner);
+        const label = app._escapeHtml(app._label('holdings.owner', 'Owner'));
+        const chips = owners.map(unit => {
+            const id = this.ownerId(app, unit);
+            const selected = id === selectedId;
+            const name = app._escapeHtml(this.ownerLabel(app, unit));
+            const icon = app._escapeHtml(unit?.icon || '👤');
+            const title = app._escapeHtml(app._label('holdings.selectOwner', 'Show holdings for {name}', { name: this.ownerLabel(app, unit) }));
+            return `<button class="holdings-owner-chip${selected ? ' selected' : ''}" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="select-holdings-owner" data-command-slot="owner" aria-pressed="${selected ? 'true' : 'false'}" title="${title}" aria-label="${title}" onclick="App.setHoldingsOwner('${app._escapeJsString(id)}')"><span aria-hidden="true">${icon}</span><span>${name}</span></button>`;
+        }).join('');
+        return `<div class="holdings-owner-row" role="group" aria-label="${label}"><span class="holdings-owner-label">${label}</span>${chips}</div>`;
+    },
+
     listPackItems(app, owner = app.player) {
         return (app.inventory || []).map((item, index) => ({
             kind: 'pack-item',
@@ -155,41 +242,50 @@ const YAW_HOLDINGS = {
         ];
     },
 
-    renderEquipmentSection(app, section) {
+    renderEquipmentSection(app, section, owner = app.player) {
         const equippedLabel = app._escapeHtml(section.label);
+        const ownerName = this.ownerLabel(app, owner);
+        const ownerId = app._escapeJsString(this.ownerId(app, owner));
+        const ownerMeta = app._escapeHtml(app._label('holdings.equippedBy', 'Equipped by {name}', { name: ownerName }));
         let html = `<section class="holdings-section" data-holding-section="equipped"><div class="holdings-section-title">${equippedLabel}</div>`;
-        html += `<div class="holding-entry-meta">${app._equipmentSummary()}</div><div class="holding-entry-actions">`;
+        html += `<div class="holding-entry-meta">${ownerMeta}: ${app._equipmentSummary(owner)}</div><div class="holding-entry-actions">`;
         section.entries.forEach(({ slot, label, item }) => {
             if (!item) return;
-            const unequipTitle = app._escapeHtml(app._label('inventory.unequipSlot', 'Unequip {slot}', { slot: label }));
+            const unequipTitle = app._escapeHtml(this.isPlayerOwner(app, owner)
+                ? app._label('inventory.unequipSlot', 'Unequip {slot}', { slot: label })
+                : app._label('holdings.unequipSlotFromOwner', 'Unequip {slot} from {name}', { slot: label, name: ownerName }));
             const unequipLabel = app._escapeHtml(`${app._label('inventory.unequip', 'Unequip')} ${label}`);
-            html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="unequip-item" title="${unequipTitle}" aria-label="${unequipTitle}" onclick="App.unequipItem('${app._escapeJsString(slot)}')">${unequipLabel}</button>`;
+            html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="unequip-item" title="${unequipTitle}" aria-label="${unequipTitle}" onclick="App.unequipItem('${app._escapeJsString(slot)}','${ownerId}')">${unequipLabel}</button>`;
         });
         html += `</div></section>`;
         return html;
     },
 
-    renderPackItem(app, item) {
+    renderPackItem(app, item, owner = app.player) {
         const def = app.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
         const canUse = def.effect === 'heal' || def.effect === 'buff' || def.effect === 'damage';
         const canEquip = app._isEquippable(item);
         const itemKey = app._escapeJsString(item.id);
+        const ownerId = app._escapeJsString(this.ownerId(app, owner));
+        const ownerName = this.ownerLabel(app, owner);
         const name = app._escapeHtml(item.name || app._label('ui.item', 'item'));
         const useLabel = app._escapeHtml(app._label('inventory.use', 'Use'));
         const equipLabel = app._escapeHtml(app._label('inventory.equip', 'Equip'));
         const dropLabel = app._escapeHtml(app._label('inventory.drop', 'Drop'));
         const useTitle = app._escapeHtml(app._label('inventory.useItem', 'Use {name}', { name: item.name }));
-        const equipTitle = app._escapeHtml(app._label('inventory.equipItem', 'Equip {name}', { name: item.name }));
+        const equipTitle = app._escapeHtml(this.isPlayerOwner(app, owner)
+            ? app._label('inventory.equipItem', 'Equip {name}', { name: item.name })
+            : app._label('holdings.equipItemToOwner', 'Equip {item} to {name}', { item: item.name, name: ownerName }));
         const dropTitle = app._escapeHtml(app._label('inventory.dropItem', 'Drop {name}', { name: item.name }));
         let html = `<div class="holdings-entry pack-entry" data-holding-kind="pack-item"><div class="holding-entry-main"><div class="holding-entry-name"><span>${app._escapeHtml(def.icon || '?')}</span> ${name}</div>`;
         html += `<div class="holding-entry-meta">${app._escapeHtml(def.type || 'misc')} · ${app._escapeHtml(def.desc || '')}${canEquip ? '<br>' + app._equipmentBonusText(item) : ''}</div></div><div class="holding-entry-actions">`;
         if (canUse) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="use-item" title="${useTitle}" aria-label="${useTitle}" onclick="App.useItem('${itemKey}')">${useLabel}</button>`;
-        if (canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="equip-item" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${itemKey}')">${equipLabel}</button>`;
+        if (canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="equip-item" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${itemKey}','${ownerId}')">${equipLabel}</button>`;
         html += `<button class="nav-btn danger" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="drop-item" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button></div></div>`;
         return html;
     },
 
-    renderPackSection(app, section) {
+    renderPackSection(app, section, owner = app.player) {
         let html = `<section class="holdings-section" data-holding-section="pack"><div class="holdings-section-title"><span>${app._escapeHtml(section.label)}</span><span>${section.count}/${section.max}</span></div>`;
         html += app._itemListOptions('Inventory');
         const entries = app._filterAndSortItemEntries((app.inventory || []).map((item, index) => ({ item, index })), app.inventoryFilter, app.inventorySort);
@@ -198,7 +294,7 @@ const YAW_HOLDINGS = {
         } else if (entries.length === 0) {
             html += `<p class="holding-entry-meta">${app._escapeHtml(app._label('inventory.noItemsMatch', 'No items match the current filter.'))}</p>`;
         } else {
-            html += `<div class="holdings-entry-grid">${entries.map(({ item }) => this.renderPackItem(app, item)).join('')}</div>`;
+            html += `<div class="holdings-entry-grid">${entries.map(({ item }) => this.renderPackItem(app, item, owner)).join('')}</div>`;
         }
         html += `</section>`;
         return html;
@@ -251,15 +347,15 @@ const YAW_HOLDINGS = {
     render(app, owner = app.player) {
         const sections = this.sections(app, owner);
         return [
-            this.renderEquipmentSection(app, sections.find(section => section.id === 'equipped')),
-            this.renderPackSection(app, sections.find(section => section.id === 'pack')),
+            this.renderEquipmentSection(app, sections.find(section => section.id === 'equipped'), owner),
+            this.renderPackSection(app, sections.find(section => section.id === 'pack'), owner),
             this.renderContainersSection(app, sections.find(section => section.id === 'containers'), owner),
             this.renderGroundSection(app, sections.find(section => section.id === 'ground'))
         ].join('');
     },
 
     renderStatsSection(app, owner = app.player) {
-        const unit = app._syncPlayerPartyReference?.() || owner || app.player;
+        const unit = owner || app._syncPlayerPartyReference?.() || app.player;
         if (!unit) return '';
         const stats = app._unitDisplayStats(unit);
         const noneText = app._escapeHtml(app._label('party.none', 'None'));
@@ -300,10 +396,10 @@ const YAW_HOLDINGS = {
     renderTabBody(app, owner = app.player, tab = 'stats') {
         const sections = this.sections(app, owner);
         if (tab === 'stats') return this.renderStatsSection(app, owner);
-        if (tab === 'equipment') return this.renderEquipmentSection(app, sections.find(section => section.id === 'equipped'));
+        if (tab === 'equipment') return this.renderEquipmentSection(app, sections.find(section => section.id === 'equipped'), owner);
         if (tab === 'containers') return this.renderContainersSection(app, sections.find(section => section.id === 'containers'), owner);
         if (tab === 'ground') return this.renderGroundSection(app, sections.find(section => section.id === 'ground'));
-        return this.renderPackSection(app, sections.find(section => section.id === 'pack'));
+        return this.renderPackSection(app, sections.find(section => section.id === 'pack'), owner);
     },
 
     setUnderlyingInert(enabled) {
@@ -328,10 +424,12 @@ const YAW_HOLDINGS = {
     open(app, owner = app.player, options = {}) {
         const root = this.root();
         if (!root) return false;
+        owner = owner || this.selectedOwner(app) || app.player;
         const tab = this.tabs().includes(options.tab || app.holdingsWindow?.tab) ? (options.tab || app.holdingsWindow?.tab) : 'stats';
         app.holdingsWindow = {
             tab,
-            ownerId: owner?.id || owner?.name || 'player'
+            ownerType: 'party',
+            ownerId: this.ownerId(app, owner)
         };
         app._restoreCenterContextIfPanelDetailLeaked?.();
         const actions = document.getElementById('scene-actions');
@@ -371,7 +469,8 @@ const YAW_HOLDINGS = {
 
     refresh(app) {
         if (!app.holdingsWindow) return false;
-        return this.renderWindow(app, app.player, app.holdingsWindow.tab || 'stats');
+        const owner = this.selectedOwner(app);
+        return this.renderWindow(app, owner, app.holdingsWindow.tab || 'stats');
     },
 
     setTab(app, tab) {
@@ -379,7 +478,7 @@ const YAW_HOLDINGS = {
         if (!app.holdingsWindow) return this.open(app, app.player, { tab });
         app.holdingsWindow.tab = tab;
         delete app.holdingsWindow.detail;
-        return this.renderWindow(app, app.player, tab);
+        return this.renderWindow(app, this.selectedOwner(app), tab);
     },
 
     renderPerkSelectionBody(app) {
@@ -452,6 +551,13 @@ const YAW_HOLDINGS = {
     renderWindow(app, owner = app.player, tab = 'stats') {
         const root = this.root();
         if (!root) return false;
+        owner = owner || this.selectedOwner(app) || app.player;
+        app.holdingsWindow = {
+            ...(app.holdingsWindow || {}),
+            tab,
+            ownerType: 'party',
+            ownerId: this.ownerId(app, owner)
+        };
         const count = app.inventory?.length || 0;
         const titleText = app._label('holdings.titleWithInventory', 'Holdings / Inventory ({count}/{max})', { count, max: app.MAX_INVENTORY });
         const closeLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
@@ -475,6 +581,7 @@ const YAW_HOLDINGS = {
                 <nav class="holdings-tabs" role="tablist" aria-label="${app._escapeHtml(app._label('holdings.tabs', 'Holdings sections'))}">
                     ${tabButtons}
                 </nav>
+                ${this.renderOwnerSelector(app, owner)}
                 <div class="holdings-window-body inventory-panel-detail holdings-panel-detail" data-command-surface="holdings-window" data-command-mode="exploration" data-command-grammar="holdings-management">
                     ${this.renderTabBody(app, owner, tab)}
                 </div>
@@ -491,7 +598,13 @@ const YAW_HOLDINGS = {
         const detail = YAW_UNIT_CONTAINMENT.containedDetailHtml(app, holderType, holderIndex, container, containedIndex);
         const root = this.root();
         if (!detail || !root) return false;
-        app.holdingsWindow = { tab: 'containers', detail: 'contained' };
+        const owner = holderType === 'party' ? (app.party || [])[Number(holderIndex)] : this.selectedOwner(app);
+        app.holdingsWindow = {
+            tab: 'containers',
+            detail: 'contained',
+            ownerType: 'party',
+            ownerId: this.ownerId(app, owner || app.player)
+        };
         const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
         root.hidden = false;
         root.innerHTML = `
@@ -511,56 +624,65 @@ const YAW_HOLDINGS = {
 
 const YAW_INVENTORY_PANEL = {
     show(app) {
-        return YAW_HOLDINGS.show(app, app.player, { tab: 'pack' });
+        const owner = YAW_HOLDINGS.selectedOwner(app) || app.player;
+        return YAW_HOLDINGS.show(app, owner, { tab: 'pack' });
     },
 
     setFilter(app, filter) {
         app.inventoryFilter = ['all', 'consumable', 'equipment', 'valuable', 'material', 'misc'].includes(filter) ? filter : 'all';
-        app.showInventory();
+        YAW_HOLDINGS.refresh(app) || app.showInventory();
     },
 
     setSort(app, sort) {
         app.inventorySort = ['name', 'type', 'value-desc', 'value-asc'].includes(sort) ? sort : 'name';
-        app.showInventory();
+        YAW_HOLDINGS.refresh(app) || app.showInventory();
     },
 
-    equip(app, itemId) {
-        if (!app.player) return;
+    equip(app, itemId, ownerId = null) {
+        const owner = YAW_HOLDINGS.ownerById(app, ownerId || app.holdingsWindow?.ownerId);
+        if (!owner) return;
         const item = app.inventory.find(i => String(i.id) === String(itemId));
         if (!item || !app._isEquippable(item)) return;
         const def = app._getItemDef(item);
         const slot = def.slot;
-        app.player.equipment = app.player.equipment || {};
-        if (!app.player.equipmentBaseStats) app.player.equipmentBaseStats = app._captureEquipmentBaseStats(app.player);
-        const current = app.player.equipment[slot];
+        owner.equipment = owner.equipment || {};
+        if (!owner.equipmentBaseStats) owner.equipmentBaseStats = app._captureEquipmentBaseStats(owner);
+        const current = owner.equipment[slot];
         if (current) {
             app.inventory.push(current);
         }
         app.inventory = app.inventory.filter(i => String(i.id) !== String(itemId));
-        app.player.equipment[slot] = item;
-        app._recalculateEquipment(app.player);
-        app.log.push({ text: app._label('inventory.equipped', 'Equipped {name}.', { name: item.name }), type: 'discovery' });
+        owner.equipment[slot] = item;
+        app._recalculateEquipment(owner);
+        const logText = YAW_HOLDINGS.isPlayerOwner(app, owner)
+            ? app._label('inventory.equipped', 'Equipped {name}.', { name: item.name })
+            : app._label('holdings.equippedToOwner', 'Equipped {item} to {name}.', { item: item.name, name: YAW_HOLDINGS.ownerLabel(app, owner) });
+        app.log.push({ text: logText, type: 'discovery' });
         app.renderLog();
         app.renderParty();
-        app.showInventory();
+        YAW_HOLDINGS.open(app, owner, { tab: app.holdingsWindow?.tab || 'pack' });
         app.autoSave();
     },
 
-    unequip(app, slot) {
-        if (!app.player?.equipment || !app.player.equipment[slot]) return;
+    unequip(app, slot, ownerId = null) {
+        const owner = YAW_HOLDINGS.ownerById(app, ownerId || app.holdingsWindow?.ownerId);
+        if (!owner?.equipment || !owner.equipment[slot]) return;
         if (app.inventory.length >= app.MAX_INVENTORY) {
             app.log.push({ text: app._label('inventory.full', 'Inventory is full.'), type: 'discovery' });
             app.renderLog();
             return;
         }
-        const item = app.player.equipment[slot];
-        app.player.equipment[slot] = null;
-        app._recalculateEquipment(app.player);
+        const item = owner.equipment[slot];
+        owner.equipment[slot] = null;
+        app._recalculateEquipment(owner);
         app.inventory.push(item);
-        app.log.push({ text: app._label('inventory.unequipped', 'Unequipped {name}.', { name: item.name }), type: 'discovery' });
+        const logText = YAW_HOLDINGS.isPlayerOwner(app, owner)
+            ? app._label('inventory.unequipped', 'Unequipped {name}.', { name: item.name })
+            : app._label('holdings.unequippedFromOwner', 'Unequipped {item} from {name}.', { item: item.name, name: YAW_HOLDINGS.ownerLabel(app, owner) });
+        app.log.push({ text: logText, type: 'discovery' });
         app.renderLog();
         app.renderParty();
-        app.showInventory();
+        YAW_HOLDINGS.open(app, owner, { tab: app.holdingsWindow?.tab || 'equipment' });
         app.autoSave();
     },
 

@@ -2695,7 +2695,10 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(inventoryPanelContent, 'const YAW_INVENTORY_PANEL = {', 'Inventory panel helper should expose the inventory panel service');
   assertContains(inventoryPanelContent, 'const YAW_HOLDINGS = {', 'Inventory panel helper should expose the broader Holdings adapter service');
   assertContains(inventoryPanelContent, 'show(app)', 'Inventory panel helper should own panel rendering');
-  assertContains(inventoryPanelContent, "return YAW_HOLDINGS.show(app, app.player, { tab: 'pack' });", 'Inventory entry point should delegate to the Pack tab in Holdings');
+  assertContains(inventoryPanelContent, 'const owner = YAW_HOLDINGS.selectedOwner(app) || app.player;', 'Inventory entry point should preserve the selected Holdings owner');
+  assertContains(inventoryPanelContent, "return YAW_HOLDINGS.show(app, owner, { tab: 'pack' });", 'Inventory entry point should delegate to the Pack tab in Holdings');
+  assertContains(inventoryPanelContent, 'renderOwnerSelector(app, owner = app.player)', 'Holdings should expose an owner selector for party-owned stats equipment and containers');
+  assertContains(inventoryPanelContent, 'data-command-control="select-holdings-owner"', 'Holdings owner selector should expose stable command metadata');
   assertContains(inventoryPanelContent, "document.getElementById('holdings-window-root')", 'Holdings should render through the focused overlay root');
   assertContains(inventoryPanelContent, 'role="dialog" aria-modal="true"', 'Holdings should render as a focused pseudo-window');
   assertContains(inventoryPanelContent, 'data-command-grammar="holdings-management"', 'Holdings overlay should identify its management grammar');
@@ -2711,8 +2714,8 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(inventoryPanelContent, 'app._persistCurrentExplorationTile(tile)', 'Dropped inventory should persist as tile-local state');
   assertNotContains(inventoryPanelContent, "document.getElementById('scene-description')", 'Inventory helper should not render into center tile content');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.show(this)', 'App showInventory wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_INVENTORY_PANEL.equip(this, itemId)', 'App equip wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_INVENTORY_PANEL.unequip(this, slot)', 'App unequip wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INVENTORY_PANEL.equip(this, itemId, ownerId)', 'App equip wrapper should delegate to the helper with optional owner routing');
+  assertContains(appContent, 'YAW_INVENTORY_PANEL.unequip(this, slot, ownerId)', 'App unequip wrapper should delegate to the helper with optional owner routing');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.drop(this, itemId)', 'App drop wrapper should delegate to the helper');
 });
 
@@ -2881,9 +2884,9 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, "actorBelt.setAttribute('data-command-surface', 'actor-target-routing')", 'Mobile actor belt should identify the actor-routing command surface when open');
   assertContains(mobileUnitStripsContent, "actorBelt.setAttribute('data-command-mode', 'exploration')", 'Mobile actor belt should identify exploration command mode when open');
   assertContains(mobileUnitStripsContent, "app.renderTacticalCard(unit, index, 'party', { presentation: 'mobile', density: 'micro' })", 'Mobile actor rail should render shared micro tactical actor chips');
-  assertContains(mobileUnitStripsContent, "const exitControl = hasExplicitActors ? 'clear-actors' : 'close-actors';", 'Mobile actor rail exit should distinguish clear-selected state from close-picker state');
-  assertContains(mobileUnitStripsContent, "const exitHandler = hasExplicitActors ? 'App.clearExplorationActors()' : 'App.toggleMobileActorBelt()';", 'Mobile actor rail exit should close the picker before explicit actors exist');
-  assertContains(mobileUnitStripsContent, 'data-command-control="${exitControl}" data-command-slot="exit"', 'Mobile actor rail exit should identify the exit slot structurally');
+  assertContains(mobileUnitStripsContent, 'return `${details}${chips}`;', 'Mobile actor rail should lead with Details/Menu and omit the bulky close chip');
+  assertContains(mobileUnitStripsContent, 'return `${details}${chips || items ? `${chips}${items}` : empty}`;', 'Mobile target rail should lead with Details/Menu and omit the bulky close chip');
+  assertNotContains(mobileUnitStripsContent, "const exitControl = hasExplicitActors ? 'clear-actors' : 'close-actors';", 'Mobile actor rail should no longer spend first-slot space on clear/close controls');
   assertContains(mobileUnitStripsContent, 'data-command-control="open-actor-drawer" data-drawer-role="actors" data-return-rail="actor" data-command-slot="details"', 'Mobile actor rail Details chip should identify drawer routing and return rail metadata');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, i, 'party')", 'Mobile party strip should keep using mobile party chips');
   assertContains(mobileUnitStripsContent, "app.renderTacticalCard(unit, creatureIndex, 'creature'", 'Mobile target picker should render shared micro creature chips from canonical creature indexes');
@@ -16718,6 +16721,106 @@ test('Holdings panel renders sectioned inventory without itemizing contained cre
   assertContains(html, 'Mousefolk Remains', 'Remains should appear in Here/Ground, not Pack');
   assertContains(html, 'data-holding-kind="remains"', 'Remains should keep a distinct holding kind');
   assertNotContains(html, 'data-holding-kind="pack-item"><div class="holding-entry-main"><div class="holding-entry-name"><span>?</span> Held Bunnyfolk', 'Contained creatures should not render as pack items');
+});
+
+test('Holdings owner selector switches stats equipment and containers while pack stays shared', () => {
+  const { App, elements } = loadAppForCombat();
+  const held = makeUnit('Held Mousefolk', { id: 'held-mouse-owner', icon: '🐭', CPun: 9, MPun: 30, inStomach: true, releaseEligible: true });
+  const player = makeUnit('You', { id: 'player-owner', icon: '👤', Figh: 11, equipment: { body: { id: 'player-armor', name: 'Hide Armor' } } });
+  const ally = makeUnit('Bunnyfolk', { id: 'ally-owner', icon: '🐰', Figh: 22, equipment: { head: { id: 'ally-cap', name: 'Leather Cap' } }, stomach: [held] });
+  App.player = player;
+  App.party = [player, ally];
+  App.inventory = [{ id: 'ring-owner', name: 'Focus Ring' }];
+
+  App.showInventory();
+  let html = holdingsHtml(elements);
+  assertContains(html, 'data-command-control="select-holdings-owner"', 'Holdings should expose owner selection when party has companions');
+  assertContains(html, 'Focus Ring', 'Shared Pack should remain visible before owner switch');
+  App.setHoldingsOwner('ally-owner');
+  App.setHoldingsTab('stats');
+  html = holdingsHtml(elements);
+  assertContains(html, 'Bunnyfolk', 'Stats tab should render the selected companion owner');
+  assertContains(html, 'Figh: 22', 'Stats tab should use selected companion stats');
+  assertNotContains(html, 'Figh: 11', 'Stats tab should not fall back to player stats after owner switch');
+  App.setHoldingsTab('equipment');
+  html = holdingsHtml(elements);
+  assertContains(html, 'Equipped by Bunnyfolk', 'Equipment tab should label the selected owner');
+  assertContains(html, 'Leather Cap', 'Equipment tab should show selected owner equipment');
+  assertNotContains(html, 'Hide Armor', 'Equipment tab should not show player equipment when companion is selected');
+  App.setHoldingsTab('pack');
+  html = holdingsHtml(elements);
+  assertContains(html, 'Focus Ring', 'Shared Pack should remain visible for selected companion owner');
+  assertContains(html, 'Equip Focus Ring to Bunnyfolk', 'Pack equip action should target the selected owner');
+  App.setHoldingsTab('containers');
+  html = holdingsHtml(elements);
+  assertContains(html, 'Held Mousefolk', 'Containers tab should show selected companion containment');
+  assertContains(html, "App.releaseContained('party',1,'stomach',0)", 'Container Release should target the selected companion holder index');
+});
+
+test('Holdings can equip and unequip shared pack items to a companion owner', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'player-equip-owner' });
+  const ally = makeUnit('Ally', { id: 'ally-equip-owner', con: 8, equipment: { body: null } });
+  App.player = player;
+  App.party = [player, ally];
+  App.inventory = [{ id: 'armor-owner', name: 'Hide Armor' }];
+
+  App.showInventory();
+  App.setHoldingsOwner('ally-equip-owner');
+  App.equipItem('armor-owner', 'ally-equip-owner');
+  assertEqual(ally.equipment.body.name, 'Hide Armor', 'Equip should place the item on the selected companion');
+  assertEqual(ally.con, 11, 'Companion equipment bonus should apply to the companion stats');
+  assertEqual(App.inventory.length, 0, 'Equipped companion item should leave the shared pack');
+  assertEqual(App.log[App.log.length - 1].text, 'Equipped Hide Armor to Ally.', 'Equipment feedback should name the selected companion');
+
+  App.unequipItem('body', 'ally-equip-owner');
+  assertEqual(ally.equipment.body, null, 'Unequip should clear the companion equipment slot');
+  assertEqual(ally.con, 8, 'Unequip should restore companion baseline stats');
+  assertEqual(App.inventory[0].name, 'Hide Armor', 'Unequipped companion item should return to shared pack');
+  assertEqual(App.log[App.log.length - 1].text, 'Unequipped Hide Armor from Ally.', 'Unequip feedback should name the selected companion');
+});
+
+test('Holdings contained detail preserves selected companion owner on Back and release routes', () => {
+  const { App, elements } = loadAppForCombat();
+  const held = makeUnit('Held Frogfolk', { id: 'held-frog-owner', icon: '🐸', CPun: 10, MPun: 40, inStomach: true, releaseEligible: true });
+  const player = makeUnit('You', { id: 'player-container-owner' });
+  const ally = makeUnit('Holder', { id: 'ally-container-owner', stomach: [held] });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [];
+
+  App.showInventory();
+  App.setHoldingsOwner('ally-container-owner');
+  App.setHoldingsTab('containers');
+  assertContains(holdingsHtml(elements), 'Held Frogfolk', 'Selected companion container entry should render before inspect');
+  App.showContainedHoldingDetail('party', 1, 'stomach', 0);
+  assertContains(holdingsHtml(elements), 'Holder', 'Contained detail should show the companion holder');
+  App.setHoldingsTab('containers');
+  assertContains(holdingsHtml(elements), 'Held Frogfolk', 'Back from contained detail should return to selected companion containers');
+  App.releaseContained('party', 1, 'stomach', 0);
+  assertEqual(ally.stomach.length, 0, 'Release route should remove prey from selected companion container');
+  assert(App.creatures.some(unit => unit.id === 'held-frog-owner'), 'Release route should restore prey to active creatures');
+});
+
+test('Mobile actor and target picker rails lead with Details and omit bulky clear chips', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', { id: 'player-rail-owner' });
+  const ally = makeUnit('Ally', { id: 'ally-rail-owner' });
+  const creature = makeUnit('Deerfolk', { id: 'deer-rail-owner', disposition: App.DISPOSITION.NEUTRAL });
+  App.party = [App.player, ally];
+  App.creatures = [creature];
+  App.combatState.active = false;
+  App.mobileActorBeltOpen = true;
+  App.mobileTargetPickerOpen = true;
+  App.renderMobileExplorationControls();
+  const actorBelt = elements.get('mobile-actor-belt');
+  const targetBelt = elements.get('mobile-target-picker-belt');
+  assert(actorBelt.innerHTML.trim().startsWith('<button type="button" class="mobile-actor-chip mobile-actor-details mobile-strip-details-btn"'), 'Actor picker should lead with the Details/Menu chip');
+  assert(targetBelt.innerHTML.trim().startsWith('<button type="button" class="mobile-target-picker-chip mobile-actor-details mobile-strip-details-btn"'), 'Target picker should lead with the Details/Menu chip');
+  assertNotContains(actorBelt.innerHTML, 'mobile-actor-clear', 'Actor picker should not spend rail space on a bulky clear chip');
+  assertNotContains(targetBelt.innerHTML, 'mobile-actor-clear', 'Target picker should not spend rail space on a bulky clear chip');
+  assertContains(actorBelt.innerHTML, 'data-command-control="focus-actor"', 'Actor picker should keep actor controls usable');
+  assertContains(targetBelt.innerHTML, 'data-command-control="focus-target"', 'Target picker should keep target controls usable');
 });
 
 test('Inventory empty states localize', () => {

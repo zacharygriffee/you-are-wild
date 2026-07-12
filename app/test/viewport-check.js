@@ -1034,6 +1034,33 @@ async function checkViewport(browser, name, width, height) {
       }
     ];
     App.player.stomach.forEach(prey => App._normalizeContainmentRecord(App.player, prey, 'stomach'));
+    const companionHeld = {
+      id: 'viewport-companion-held',
+      containedId: 'viewport-companion-held',
+      name: 'Companion Held',
+      icon: '🐸',
+      CPun: 12,
+      MPun: 36,
+      size: 1,
+      inStomach: true,
+      releaseEligible: true,
+      progress: 15,
+      digestionProgress: 15,
+      vitalMax: 12,
+      vitalRemaining: 11
+    };
+    let companion = (App.party || []).find(unit => unit?.id === 'ally-1') || (App.party || [])[1];
+    if (!companion) {
+      companion = { ...App.player, id: 'ally-1', name: 'Ally', icon: '🐰' };
+      App.party = [App.player, companion];
+    }
+    companion.id = companion.id || 'ally-1';
+    companion.name = companion.name || 'Ally';
+    companion.icon = companion.icon || '🐰';
+    companion.equipment = { ...(companion.equipment || {}), head: { id: 'viewport-ally-cap', name: 'Leather Cap' } };
+    companion.stomach = [companionHeld];
+    App._normalizeContainmentRecord(companion, companionHeld, 'stomach');
+    if (!(App.party || []).includes(companion)) App.party = [App.player, companion];
     App.showCharacterStats();
   });
   await page.waitForTimeout(50);
@@ -1048,6 +1075,7 @@ async function checkViewport(browser, name, width, height) {
     const rect = dialog?.getBoundingClientRect();
     const closeRect = close?.getBoundingClientRect();
     const bodyRect = body?.getBoundingClientRect();
+    const ownerChips = Array.from(root?.querySelectorAll('[data-command-control="select-holdings-owner"]') || []);
     return {
       hidden: Boolean(root?.hidden),
       role: dialog?.getAttribute('role') || '',
@@ -1058,6 +1086,9 @@ async function checkViewport(browser, name, width, height) {
       closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
       closeInsideViewport: Boolean(closeRect && closeRect.left >= -1 && closeRect.right <= innerWidth + 1 && closeRect.top >= -1 && closeRect.bottom <= innerHeight + 1),
       tabs: tabs.map(tab => tab.getAttribute('data-command-slot') || tab.textContent.trim()),
+      ownerChipCount: ownerChips.length,
+      ownerChipLabels: ownerChips.map(chip => chip.textContent.trim()),
+      selectedOwner: ownerChips.find(chip => chip.getAttribute('aria-pressed') === 'true')?.textContent.trim() || '',
       bodyVisible: Boolean(bodyRect && bodyRect.width > 0 && bodyRect.height > 0),
       appClass: app?.classList.contains('holdings-window-open') || false,
       stageInert: stage?.hasAttribute('inert') || false,
@@ -1074,6 +1105,9 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(holdingsWindow.closeVisible, true, `${name}: Holdings window should expose a visible close control`);
   assert.strictEqual(holdingsWindow.closeInsideViewport, true, `${name}: Holdings close control should stay inside the viewport`);
   assert(holdingsWindow.tabs.includes('stats') && holdingsWindow.tabs.includes('equipment') && holdingsWindow.tabs.includes('pack') && holdingsWindow.tabs.includes('containers') && holdingsWindow.tabs.includes('ground'), `${name}: Holdings window should expose Stats, Equipment, Pack, Containers, and Here/Ground tabs`);
+  assert(holdingsWindow.ownerChipCount >= 2, `${name}: Holdings window should expose owner chips for player and companions`);
+  assert(holdingsWindow.ownerChipLabels.some(label => label.includes('Ally')), `${name}: Holdings owner selector should include companions`);
+  assert(holdingsWindow.selectedOwner.includes('You'), `${name}: Holdings should default to the player owner`);
   assert.strictEqual(holdingsWindow.bodyVisible, true, `${name}: Holdings window body should be visible`);
   assert.strictEqual(holdingsWindow.appClass, true, `${name}: Holdings window should mark the app shell while open`);
   assert.strictEqual(holdingsWindow.stageInert, true, `${name}: Holdings window should make the stage inert`);
@@ -1116,6 +1150,33 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(holdingsContainers.bodyVisible, true, `${name}: Holdings Containers body should be visible`);
   assert.strictEqual(holdingsContainers.bodyInsideViewport, true, `${name}: Holdings Containers body should stay viewport-bounded`);
   assert.strictEqual(holdingsContainers.pageOverflow, false, `${name}: Holdings Containers tab should not create horizontal overflow`);
+
+  await page.evaluate(() => {
+    App.setHoldingsOwner('ally-1');
+    App.setHoldingsTab('containers');
+  });
+  await page.waitForTimeout(50);
+  const companionContainers = await page.evaluate(() => {
+    const root = document.getElementById('holdings-window-root');
+    const selectedOwner = root?.querySelector('[data-command-control="select-holdings-owner"][aria-pressed="true"]')?.textContent.trim() || '';
+    const body = root?.querySelector('.holdings-window-body');
+    return {
+      selectedOwner,
+      text: body?.innerText || '',
+      releaseRoute: root?.querySelector('[data-command-control="release-contained"]')?.getAttribute('onclick') || '',
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert(companionContainers.selectedOwner.includes('Ally'), `${name}: Holdings owner switch should preserve selected companion`);
+  assert(companionContainers.text.includes('Companion Held'), `${name}: Companion Containers tab should show companion-held creatures`);
+  assert(companionContainers.releaseRoute.includes("App.releaseContained('party',1,'stomach',0)"), `${name}: Companion container actions should target the companion holder index`);
+  assert.strictEqual(companionContainers.pageOverflow, false, `${name}: Companion container owner switch should not create overflow`);
+
+  await page.evaluate(() => {
+    App.setHoldingsOwner(App._holdingsOwnerId(App.player));
+    App.setHoldingsTab('containers');
+  });
+  await page.waitForTimeout(50);
 
   await page.locator('#holdings-window-root [data-command-control="inspect-contained"]').first().click();
   await page.waitForTimeout(50);

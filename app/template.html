@@ -3906,6 +3906,56 @@
             color: var(--text-primary);
         }
 
+        .holdings-owner-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 8px 18px 10px;
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(10, 20, 36, 0.36);
+            scrollbar-width: thin;
+        }
+
+        .holdings-owner-label {
+            flex: 0 0 auto;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .holdings-owner-chip {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            gap: 6px;
+            min-height: 34px;
+            max-width: 170px;
+            padding: 6px 10px;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 42, 74, 0.7);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .holdings-owner-chip span:last-child {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .holdings-owner-chip.selected {
+            color: var(--text-primary);
+            border-color: var(--accent-primary);
+            background: rgba(0, 212, 170, 0.16);
+        }
+
         .transaction-summary {
             display: grid;
             grid-template-columns: 1.3fr 1.3fr 0.7fr 0.8fr;
@@ -4154,6 +4204,15 @@
 
             .holdings-tabs {
                 padding: 8px 12px;
+            }
+
+            .holdings-owner-row {
+                padding: 8px 12px;
+            }
+
+            .holdings-owner-chip {
+                min-height: 40px;
+                max-width: 150px;
             }
 
             .transaction-summary {

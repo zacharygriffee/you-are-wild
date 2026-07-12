@@ -193,43 +193,22 @@ const YAW_MOBILE_UNIT_STRIPS = {
             if (!unit || !app._isLivingCreature(unit)) return '';
             return app.renderTacticalCard(unit, index, 'party', { presentation: 'mobile', density: 'micro' });
         }).join('');
-        const hasExplicitActors = Boolean(app.explorationActorSelectionExplicit);
-        const exitLabel = app._escapeHtml(hasExplicitActors
-            ? app._label('target.clearActors', 'Clear actors')
-            : app._label('target.closeActors', 'Close actors'));
-        const exitTitle = app._escapeHtml(hasExplicitActors
-            ? app._label('target.clearActorsTitle', 'Clear selected actors')
-            : app._label('target.closeActorsTitle', 'Close actor picker'));
-        const exitControl = hasExplicitActors ? 'clear-actors' : 'close-actors';
-        const exitHandler = hasExplicitActors ? 'App.clearExplorationActors()' : 'App.toggleMobileActorBelt()';
-        const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="${exitControl}" data-command-slot="exit" title="${exitTitle}" aria-label="${exitTitle}" onclick="event.stopPropagation();${exitHandler}"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${exitLabel}</strong></span></button>`;
         const detailsLabel = app._escapeHtml(app._label('ui.details', 'Details'));
         const detailsTitle = app._escapeHtml(app._label('ui.openPartyDetails', 'Open party details'));
         const details = `<button type="button" class="mobile-actor-chip mobile-actor-details mobile-strip-details-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" data-drawer-role="actors" data-return-rail="actor" data-command-slot="details" title="${detailsTitle}" aria-label="${detailsTitle}" onclick="event.stopPropagation();App.openPanelFromRail('party','actor')"><span class="mobile-actor-chip-icon" aria-hidden="true">☰</span><span class="mobile-actor-chip-text"><strong>${detailsLabel}</strong></span></button>`;
-        return `${clear}${chips}${details}`;
+        return `${details}${chips}`;
     },
 
     targetControls(app) {
         const targets = this.visibleTargets(app);
         const chips = targets.map((unit, index) => this.targetControlChip(app, unit, index)).join('');
         const items = this.targetItemControl(app);
-        const hasTargets = (app._getExplorationTargets?.() || []).length > 0 || Boolean(app.focusedStageObject?.type === 'items');
-        const exitLabel = app._escapeHtml(hasTargets
-            ? app._label('target.clearTargets', 'Clear targets')
-            : app._label('target.closeTargets', 'Close targets'));
-        const exitTitle = app._escapeHtml(hasTargets
-            ? app._label('target.clearTargetsTitle', 'Clear selected targets')
-            : app._label('target.closeTargetsTitle', 'Close target picker'));
-        const exitHandler = hasTargets
-            ? 'App.clearExplorationTargets();App.clearFocusedStageObject?.()'
-            : 'App.toggleMobileTargetPicker()';
-        const clear = `<button type="button" class="mobile-target-picker-chip mobile-actor-clear" data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="${hasTargets ? 'clear-targets' : 'close-targets'}" data-command-slot="exit" title="${exitTitle}" aria-label="${exitTitle}" onclick="event.stopPropagation();${exitHandler}"><span class="mobile-target-picker-icon" aria-hidden="true">×</span><span class="mobile-target-picker-name">${exitLabel}</span></button>`;
         const detailsLabel = app._escapeHtml(app._label('ui.details', 'Details'));
         const detailsTitle = app._escapeHtml(app._label('ui.openCreatureDetails', 'Open creature details'));
         const details = `<button type="button" class="mobile-target-picker-chip mobile-actor-details mobile-strip-details-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer" data-drawer-role="targets" data-return-rail="target" data-command-slot="details" title="${detailsTitle}" aria-label="${detailsTitle}" onclick="event.stopPropagation();App.openPanelFromRail('enemies','target')"><span class="mobile-target-picker-icon" aria-hidden="true">☰</span><span class="mobile-target-picker-name">${detailsLabel}</span></button>`;
         const emptyLabel = app._escapeHtml(app._label('ui.noCreaturesHere', 'No creatures here'));
         const empty = `<div class="mobile-target-picker-chip" role="status" aria-label="${emptyLabel}"><span class="mobile-target-picker-icon" aria-hidden="true">∅</span><span class="mobile-target-picker-name">${emptyLabel}</span></div>`;
-        return `${clear}${chips || items ? `${chips}${items}` : empty}${details}`;
+        return `${details}${chips || items ? `${chips}${items}` : empty}`;
     },
 
     targetControlChip(app, unit, index) {

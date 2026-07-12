@@ -4192,12 +4192,12 @@
                 return YAW_EQUIPMENT_SYSTEM.recalculate(this, unit, { inferBase });
             },
 
-            equipItem(itemId) {
-                return YAW_INVENTORY_PANEL.equip(this, itemId);
+            equipItem(itemId, ownerId = null) {
+                return YAW_INVENTORY_PANEL.equip(this, itemId, ownerId);
             },
 
-            unequipItem(slot) {
-                return YAW_INVENTORY_PANEL.unequip(this, slot);
+            unequipItem(slot, ownerId = null) {
+                return YAW_INVENTORY_PANEL.unequip(this, slot, ownerId);
             },
 
             _equipmentSummary(unit = this.player) {
@@ -4214,6 +4214,27 @@
             // ===== INVENTORY =====
             _holdingSections(owner = this.player) {
                 return YAW_HOLDINGS.sections(this, owner);
+            },
+            _holdingsOwner() {
+                return YAW_HOLDINGS.selectedOwner(this);
+            },
+            _holdingsOwnerId(unit = this.player) {
+                return YAW_HOLDINGS.ownerId(this, unit);
+            },
+            _setHoldingsOwner(ownerId) {
+                return YAW_HOLDINGS.setOwner(this, ownerId);
+            },
+            setHoldingsOwner(ownerId) {
+                return YAW_HOLDINGS.setOwner(this, ownerId);
+            },
+            _partyHoldingOwners() {
+                return YAW_HOLDINGS.partyOwners(this);
+            },
+            _showHoldingsForUnit(unit, options = {}) {
+                return YAW_HOLDINGS.showForUnit(this, unit, options);
+            },
+            _holdingOwnerLabel(unit = this.player) {
+                return YAW_HOLDINGS.ownerLabel(this, unit);
             },
             _listPackItems(owner = this.player) {
                 return YAW_HOLDINGS.listPackItems(this, owner);

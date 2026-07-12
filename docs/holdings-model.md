@@ -6,6 +6,7 @@ Holdings is the broad player-facing view for things a player may inspect or mana
 
 ```text
 Holdings / Inventory Window
+├─ Owner selector (party member being inspected/managed)
 ├─ Equipped
 ├─ Pack / Inventory
 ├─ Containers
@@ -21,7 +22,8 @@ Holdings / Inventory Window
 ## Data Boundaries
 
 - Pack / Inventory maps to `app.inventory`.
-- Equipment maps to `unit.equipment`, primarily `player.equipment` for management.
+- Pack is shared by the party in the current model. There are no per-companion backpacks in core.
+- Equipment maps to the selected Holdings owner via `unit.equipment`.
 - Containers map to unit-owned containment arrays such as `unit.stomach`, `unit.womb`, and `unit.balls`.
 - Here / Ground maps to current tile items and local corpse/remains records.
 - Remains use Remains Pool and Scavenge behavior, not pack-item behavior.
@@ -32,11 +34,14 @@ The current implementation uses adapter helpers over existing fields. It does no
 ## UI Rules
 
 - Inventory/Pack item controls remain Use, Equip, Drop, Buy, Sell, Loot, and related item actions.
-- Equipped items remain slot-based and are not loose pack items until unequipped.
-- Contained creatures are containment entries. They can expose Inspect, Release, and Digest/Continue controls when their state allows it.
+- Holdings exposes a party-owner selector. Stats, Equipped, and Containers render for the selected party owner. Switching owners preserves the active tab where possible and falls back to the player if the previous owner leaves.
+- Pack remains shared. Equipping a Pack item equips it to the selected Holdings owner. Unequipping returns the item to the shared Pack.
+- Equipped items remain owner slot-based and are not loose pack items until unequipped.
+- Contained creatures are entries under the selected owner containers. They can expose Inspect, Release, and Digest/Continue controls when their state allows it.
 - Terminal or depleted containment entries remain inspectable but ordinary release is unavailable.
 - Corpses/remains are Here/Ground entries. Loot may create normal inventory items, but Scavenge consumes Remains Pool and must not create itemized creature pieces in core.
 - Tile items are Here/Ground entries until picked up.
+- Mobile actor/target picker rails reserve their first slot for Details/Menu access. Bulky Clear/Close chips do not belong in the rail; clearing should happen through composer slot controls, selected-chip toggles, dock toggles, or other non-bulky affordances.
 
 ## Compatibility And Modding
 
@@ -45,6 +50,12 @@ The default active container is `stomach` / Belly. `womb` / Inner and `balls` / 
 Adapter-style helpers should be preferred for UI work:
 
 - `_holdingSections(owner)`
+- `_holdingsOwner()`
+- `_holdingsOwnerId(unit)`
+- `_setHoldingsOwner(ownerId)`
+- `_partyHoldingOwners()`
+- `_showHoldingsForUnit(unit, options)`
+- `_holdingOwnerLabel(unit)`
 - `_listPackItems(owner)`
 - `_listEquipmentSlots(owner)`
 - `_listContainerEntries(owner, containerId)`

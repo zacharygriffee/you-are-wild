@@ -998,7 +998,44 @@ async function checkViewport(browser, name, width, height) {
   await checkLiveOverlayReturn({ control: 'open-mods', screenName: 'mods', closeControl: 'close-modules', label: 'Mods' });
   await checkLiveOverlayReturn({ control: 'open-market', screenName: 'market', closeControl: 'close-marketplace', label: 'Market' });
 
-  await page.evaluate(() => App.showCharacterStats());
+  await page.evaluate(() => {
+    App.player.stomach = [
+      {
+        id: 'viewport-held-one',
+        containedId: 'viewport-held-one',
+        name: 'Held One',
+        icon: '🐰',
+        CPun: 20,
+        MPun: 40,
+        size: 1,
+        inStomach: true,
+        releaseEligible: true,
+        progress: 25,
+        digestionProgress: 25,
+        vitalMax: 20,
+        vitalRemaining: 15
+      },
+      {
+        id: 'viewport-terminal-one',
+        containedId: 'viewport-terminal-one',
+        name: 'Terminal One',
+        icon: '🐀',
+        CPun: 0,
+        MPun: 40,
+        size: 1,
+        inStomach: true,
+        releaseEligible: false,
+        state: 'terminal',
+        digestionState: 'terminal',
+        progress: 100,
+        digestionProgress: 100,
+        vitalMax: 20,
+        vitalRemaining: 0
+      }
+    ];
+    App.player.stomach.forEach(prey => App._normalizeContainmentRecord(App.player, prey, 'stomach'));
+    App.showCharacterStats();
+  });
   await page.waitForTimeout(50);
   const holdingsWindow = await page.evaluate(() => {
     const root = document.getElementById('holdings-window-root');
@@ -1042,6 +1079,88 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(holdingsWindow.stageInert, true, `${name}: Holdings window should make the stage inert`);
   assert.strictEqual(holdingsWindow.focusTrapIsDialog, true, `${name}: Holdings window should activate its dialog focus trap`);
   assert.strictEqual(holdingsWindow.pageOverflow, false, `${name}: Holdings window should not create horizontal overflow`);
+
+  await page.evaluate(() => App.setHoldingsTab('containers'));
+  await page.waitForTimeout(50);
+  const holdingsContainers = await page.evaluate(() => {
+    const root = document.getElementById('holdings-window-root');
+    const body = root?.querySelector('.holdings-window-body');
+    const entries = Array.from(root?.querySelectorAll('.container-inventory-entry') || []);
+    const releaseButtons = Array.from(root?.querySelectorAll('[data-command-control="release-contained"]') || []);
+    const digestButtons = Array.from(root?.querySelectorAll('[data-command-control="digest-contained"]') || []);
+    const inspectButtons = Array.from(root?.querySelectorAll('[data-command-control="inspect-contained"]') || []);
+    const bodyRect = body?.getBoundingClientRect();
+    return {
+      text: body?.innerText || '',
+      entryCount: entries.length,
+      inspectCount: inspectButtons.length,
+      releaseCount: releaseButtons.length,
+      digestCount: digestButtons.length,
+      releaseTitles: releaseButtons.map(button => button.getAttribute('title') || ''),
+      digestTitles: digestButtons.map(button => button.getAttribute('title') || ''),
+      disabledReleaseCount: releaseButtons.filter(button => button.disabled || button.getAttribute('aria-disabled') === 'true').length,
+      disabledDigestCount: digestButtons.filter(button => button.disabled || button.getAttribute('aria-disabled') === 'true').length,
+      bodyVisible: Boolean(bodyRect && bodyRect.width > 0 && bodyRect.height > 0),
+      bodyInsideViewport: Boolean(bodyRect && bodyRect.left >= -1 && bodyRect.right <= innerWidth + 1 && bodyRect.top >= -1 && bodyRect.bottom <= innerHeight + 1),
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert(holdingsContainers.text.includes('Held One') && holdingsContainers.text.includes('Terminal One'), `${name}: Holdings Containers tab should list contained creatures`);
+  assert(holdingsContainers.text.includes('Vitality') && holdingsContainers.text.includes('Progress'), `${name}: Holdings Containers tab should expose vitality and digestion progress`);
+  assert(holdingsContainers.entryCount >= 2, `${name}: Holdings Containers tab should render separate contained entries`);
+  assert(holdingsContainers.inspectCount >= 2, `${name}: Holdings Containers tab should keep contained entries inspectable`);
+  assert(holdingsContainers.releaseCount >= 2 && holdingsContainers.digestCount >= 2, `${name}: Holdings Containers tab should expose release and digest controls with disabled states where needed`);
+  assert(holdingsContainers.releaseTitles.every(Boolean) && holdingsContainers.digestTitles.every(Boolean), `${name}: Holdings container controls should keep accessible titles`);
+  assert(holdingsContainers.disabledReleaseCount >= 1, `${name}: terminal contained entries should disable Release instead of disappearing from the list`);
+  assert(holdingsContainers.disabledDigestCount >= 1, `${name}: terminal contained entries should disable Digest instead of disappearing from the list`);
+  assert.strictEqual(holdingsContainers.bodyVisible, true, `${name}: Holdings Containers body should be visible`);
+  assert.strictEqual(holdingsContainers.bodyInsideViewport, true, `${name}: Holdings Containers body should stay viewport-bounded`);
+  assert.strictEqual(holdingsContainers.pageOverflow, false, `${name}: Holdings Containers tab should not create horizontal overflow`);
+
+  await page.locator('#holdings-window-root [data-command-control="inspect-contained"]').first().click();
+  await page.waitForTimeout(50);
+  const containedDetail = await page.evaluate(() => {
+    const root = document.getElementById('holdings-window-root');
+    const title = root?.querySelector('#holdings-window-title');
+    const close = root?.querySelector('.holdings-close[data-command-control="close-holdings"]');
+    const back = root?.querySelector('[data-command-control="back-holdings"]');
+    const release = root?.querySelector('[data-command-control="release-contained"]');
+    const digest = root?.querySelector('[data-command-control="digest-contained"]');
+    return {
+      title: title?.textContent?.trim() || '',
+      text: root?.innerText || '',
+      closeText: close?.textContent?.trim() || '',
+      closeTitle: close?.getAttribute('title') || '',
+      backText: back?.textContent?.trim() || '',
+      backTitle: back?.getAttribute('title') || '',
+      releaseTitle: release?.getAttribute('title') || '',
+      digestTitle: digest?.getAttribute('title') || '',
+      appClass: document.getElementById('app')?.classList.contains('holdings-window-open') || false,
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert(containedDetail.title.includes('Held One'), `${name}: contained Inspect should open the selected creature inside Holdings`);
+  assert(containedDetail.text.includes('Vitality') && containedDetail.text.includes('Integrity'), `${name}: contained Inspect should show vitality, integrity, and release state`);
+  assert.strictEqual(containedDetail.closeText, 'Close', `${name}: contained Inspect header exit should close the overlay rather than masquerading as Back`);
+  assert.strictEqual(containedDetail.closeTitle, 'Close', `${name}: contained Inspect close control should keep an accessible title`);
+  assert.strictEqual(containedDetail.backText, 'Back', `${name}: contained Inspect should expose an in-body Back control to return to Containers`);
+  assert.strictEqual(containedDetail.backTitle, 'Back', `${name}: contained Inspect Back control should keep an accessible title`);
+  assert(containedDetail.releaseTitle && containedDetail.digestTitle, `${name}: contained Inspect Release/Digest controls should keep accessible titles`);
+  assert.strictEqual(containedDetail.appClass, true, `${name}: contained Inspect should stay inside the Holdings overlay state`);
+  assert.strictEqual(containedDetail.pageOverflow, false, `${name}: contained Inspect should not create horizontal overflow`);
+
+  await page.locator('#holdings-window-root [data-command-control="back-holdings"]').click();
+  await page.waitForTimeout(50);
+  const returnedContainers = await page.evaluate(() => {
+    const root = document.getElementById('holdings-window-root');
+    return {
+      title: root?.querySelector('#holdings-window-title')?.textContent?.trim() || '',
+      selectedTab: root?.querySelector('.holdings-tab.selected')?.getAttribute('data-command-slot') || '',
+      hasContainerEntries: Boolean(root?.querySelector('.container-inventory-entry'))
+    };
+  });
+  assert.strictEqual(returnedContainers.selectedTab, 'containers', `${name}: contained Inspect Back should return to the Containers tab`);
+  assert.strictEqual(returnedContainers.hasContainerEntries, true, `${name}: contained Inspect Back should restore the container entry list`);
 
   await page.locator('#holdings-window-root .holdings-close[data-command-control="close-holdings"]').click();
   await page.waitForTimeout(50);

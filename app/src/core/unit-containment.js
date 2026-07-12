@@ -457,16 +457,19 @@ const YAW_UNIT_CONTAINMENT = {
         const vital = Math.round(this.vitalRatio(prey) * 100);
         const progress = Math.round(prey.progress ?? prey.digestionProgress ?? 0);
         const containerLabel = this.containerLabel(app, container);
-        const backLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
+        const backText = app._label('inventory.back', 'Back');
+        const releaseText = app._label('containment.release', 'Release');
+        const digestText = app._label('containment.digest', 'Digest');
+        const backLabel = app._escapeHtml(backText);
         const holderTypeArg = app._escapeJsString(holderType);
         const containerArg = app._escapeJsString(container);
         const releaseAvailable = this.canReleaseFromVitalState(prey);
         const terminal = ['terminal', 'released', 'passed', 'depleted'].includes(state);
         const releaseButton = releaseAvailable
-            ? `<button class="nav-btn" data-command-surface="container-inspect" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-control="release-contained" onclick="App.releaseContained('${holderTypeArg}',${holderIndex},'${containerArg}',${containedIndex})">${app._escapeHtml(app._label('containment.release', 'Release'))}</button>`
+            ? `<button class="nav-btn" data-command-surface="container-inspect" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-control="release-contained" title="${app._escapeHtml(app._label('containment.releaseTitle', 'Release {name}', { name: prey.name || app._label('containment.unknownPrey', 'Contained creature') }))}" aria-label="${app._escapeHtml(app._label('containment.releaseTitle', 'Release {name}', { name: prey.name || app._label('containment.unknownPrey', 'Contained creature') }))}" onclick="App.releaseContained('${holderTypeArg}',${holderIndex},'${containerArg}',${containedIndex})">${app._escapeHtml(releaseText)}</button>`
             : '';
         const digestButton = !terminal
-            ? `<button class="nav-btn" data-command-surface="container-inspect" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-control="digest-contained" onclick="App.digestContained('${holderTypeArg}',${holderIndex},'${containerArg}',${containedIndex})">${app._escapeHtml(app._label('containment.digest', 'Digest'))}</button>`
+            ? `<button class="nav-btn" data-command-surface="container-inspect" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-control="digest-contained" title="${app._escapeHtml(app._label('containment.digestTitle', 'Digest {name}', { name: prey.name || app._label('containment.unknownPrey', 'Contained creature') }))}" aria-label="${app._escapeHtml(app._label('containment.digestTitle', 'Digest {name}', { name: prey.name || app._label('containment.unknownPrey', 'Contained creature') }))}" onclick="App.digestContained('${holderTypeArg}',${holderIndex},'${containerArg}',${containedIndex})">${app._escapeHtml(digestText)}</button>`
             : '';
         const html = `<div class="inventory-panel-detail holdings-detail" data-command-surface="container-inspect" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}">
             <h3>${app._escapeHtml(title)}</h3>
@@ -479,7 +482,7 @@ const YAW_UNIT_CONTAINMENT = {
                         <div class="holding-entry-meta">${app._escapeHtml(app._label('containment.integrity', 'Integrity'))}: ${app._escapeHtml(prey.integrity || 'intact')} · ${app._escapeHtml(app._label('containment.releaseEligible', 'Release'))}: ${releaseAvailable ? app._escapeHtml(app._label('ui.yes', 'Yes')) : app._escapeHtml(app._label('ui.no', 'No'))}</div>
                     </div>
                 </div>
-                <div class="holding-entry-actions">${releaseButton}${digestButton}<button class="nav-btn" data-command-surface="container-inspect" data-command-control="back-holdings" data-command-slot="exit" onclick="App.setHoldingsTab ? App.setHoldingsTab('containers') : App.showInventory()">${backLabel}</button></div>
+                <div class="holding-entry-actions">${releaseButton}${digestButton}<button class="nav-btn" data-command-surface="container-inspect" data-command-control="back-holdings" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="App.setHoldingsTab ? App.setHoldingsTab('containers') : App.showInventory()">${backLabel}</button></div>
             </div>
         </div>`;
         return { title, html };

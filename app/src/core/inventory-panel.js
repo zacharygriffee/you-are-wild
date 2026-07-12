@@ -492,13 +492,14 @@ const YAW_HOLDINGS = {
         const root = this.root();
         if (!detail || !root) return false;
         app.holdingsWindow = { tab: 'containers', detail: 'contained' };
+        const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
         root.hidden = false;
         root.innerHTML = `
             <div class="holdings-backdrop" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" onclick="App.closeHoldingsWindow()"></div>
             <section class="holdings-window" role="dialog" aria-modal="true" aria-labelledby="holdings-window-title" data-surface-role="holdings-window" data-command-surface="holdings-window" data-command-mode="exploration">
                 <header class="holdings-window-header">
                     <div><div class="holdings-window-eyebrow">${app._escapeHtml(this.tabLabel(app, 'containers'))}</div><h2 id="holdings-window-title">${app._escapeHtml(detail.title)}</h2></div>
-                    <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" onclick="App.closeHoldingsWindow()">${app._escapeHtml(app._label('inventory.back', 'Back'))}</button>
+                    <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
                 </header>
                 <div class="holdings-window-body">${detail.html}</div>
             </section>`;

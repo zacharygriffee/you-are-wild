@@ -3906,7 +3906,7 @@
             },
 
             showPerkSelection() {
-                return YAW_STATS_PANEL.showPerkSelection(this);
+                return YAW_HOLDINGS.showPerkSelection(this);
             },
 
             // ===== MERCHANTS / TRADE =====

@@ -378,7 +378,75 @@ const YAW_HOLDINGS = {
         if (!this.tabs().includes(tab)) tab = 'stats';
         if (!app.holdingsWindow) return this.open(app, app.player, { tab });
         app.holdingsWindow.tab = tab;
+        delete app.holdingsWindow.detail;
         return this.renderWindow(app, app.player, tab);
+    },
+
+    renderPerkSelectionBody(app) {
+        const pending = app.player?.pendingPerkChoices || 0;
+        const choices = app._availablePerkChoices();
+        const filters = app._availablePerkTreeFilters(app.player);
+        if (!filters.some(([value]) => value === app.perkTreeFilter)) app.perkTreeFilter = 'all';
+        const visibleTrees = Object.entries(app._perkTreesForUnit(app.player)).filter(([treeId]) => app.perkTreeFilter === 'all' || app.perkTreeFilter === treeId);
+        const pendingLabel = app._escapeHtml(app._label('perk.pending', 'Pending choices: {count}', { count: pending }));
+        const treesLabel = app._escapeHtml(app._label('perk.trees', 'Perk trees'));
+        let html = `<div class="perk-selection-detail holdings-perk-selection" data-command-surface="perk-selection-detail" data-command-mode="exploration"><p class="holding-entry-meta">${pendingLabel}</p><div class="action-legend" role="tablist" aria-label="${treesLabel}">`;
+        filters.forEach(([value, label]) => {
+            const active = app.perkTreeFilter === value ? ' selected' : '';
+            const escapedValue = app._escapeHtml(value);
+            const filterLabel = app._escapeHtml(label);
+            html += `<button class="action-chip${active}" role="tab" aria-selected="${app.perkTreeFilter === value ? 'true' : 'false'}" data-perk-filter="${escapedValue}" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="filter-perk-tree" title="${filterLabel}" aria-label="${filterLabel}" onclick="App.setPerkTreeFilter('${app._escapeJsString(value)}')">${filterLabel}</button>`;
+        });
+        html += `</div><div class="holdings-entry-grid holdings-perk-grid">`;
+        for (const [treeId, tree] of visibleTrees) {
+            html += `<section class="holdings-section option-card" data-perk-tree="${app._escapeHtml(treeId)}"><div class="holdings-section-title">${app._escapeHtml(tree.label)}</div><div style="display:grid;gap:8px;">`;
+            choices.filter(perk => perk.tree === treeId).forEach(perk => {
+                const disabled = pending <= 0 || !perk.available ? ' disabled' : '';
+                const reqTree = perk.requires?.tree ? app._perkTreesForUnit(app.player)[perk.requires.tree]?.label || perk.requires.tree : null;
+                const req = perk.requires ? (perk.requires.perk ? ` Requires ${perk.requires.perk}.` : ` Requires ${perk.requires.count || 1} ${reqTree} perk${(perk.requires.count || 1) === 1 ? '' : 's'}.`) : '';
+                const chooseTitle = app._escapeHtml(app._label('perk.chooseNamed', 'Choose {name}', { name: perk.name }));
+                html += `<button class="nav-btn" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="choose-perk" data-command-intent="choosePerk" title="${chooseTitle}" aria-label="${chooseTitle}" ${disabled} onclick="App.choosePerk('${app._escapeJsString(perk.id)}')"><strong>${app._escapeHtml(perk.name)}</strong> <span style="color:var(--text-muted);font-size:11px">[${app._escapeHtml(perk.treeLabel)}]</span><br><span style="font-size:11px;color:var(--text-muted)">${app._escapeHtml(perk.desc)}${app._escapeHtml(req)}</span></button>`;
+            });
+            html += `</div></section>`;
+        }
+        return `${html}</div></div>`;
+    },
+
+    showPerkSelection(app) {
+        const root = this.root();
+        if (!root || !app.player) return false;
+        app.holdingsWindow = { tab: 'stats', detail: 'perks', ownerId: app.player.id || app.player.name || 'player' };
+        app._restoreCenterContextIfPanelDetailLeaked?.();
+        app.closeIntentMenu?.();
+        app.closePanelDetails?.('party');
+        app.closePanelDetails?.('enemies');
+        const titleLabel = app._escapeHtml(app._label('perk.choose', 'Choose Perk'));
+        const backLabel = app._escapeHtml(app._label('perk.back', 'Back'));
+        const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
+        root.hidden = false;
+        root.innerHTML = `
+            <div class="holdings-backdrop" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" onclick="App.closeHoldingsWindow()"></div>
+            <section class="holdings-window" role="dialog" aria-modal="true" aria-labelledby="holdings-window-title" data-surface-role="holdings-window" data-command-surface="holdings-window" data-command-mode="exploration" data-command-grammar="holdings-management">
+                <header class="holdings-window-header">
+                    <div>
+                        <div class="holdings-window-eyebrow">${app._escapeHtml(app._label('holdings.umbrella', 'Character / Holdings'))}</div>
+                        <h2 id="holdings-window-title">${titleLabel}</h2>
+                    </div>
+                    <div class="holdings-window-actions">
+                        <button class="nav-btn" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="back-to-stats" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="App.showCharacterStats()">${backLabel}</button>
+                        <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
+                    </div>
+                </header>
+                <div class="holdings-window-body inventory-panel-detail holdings-panel-detail" data-command-surface="holdings-window" data-command-mode="exploration" data-command-grammar="holdings-management">
+                    ${this.renderPerkSelectionBody(app)}
+                </div>
+            </section>`;
+        document.getElementById('app')?.classList?.add('holdings-window-open');
+        this.setUnderlyingInert(true);
+        const dialog = root.querySelector('.holdings-window');
+        app._activateFocusTrap?.(dialog, { close: () => app.closeHoldingsWindow() });
+        try { root.querySelector('.holdings-close')?.focus({ preventScroll: true }); } catch (e) { root.querySelector('.holdings-close')?.focus(); }
+        return true;
     },
 
     renderWindow(app, owner = app.player, tab = 'stats') {

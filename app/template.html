@@ -3857,6 +3857,14 @@
             text-transform: uppercase;
         }
 
+        .holdings-window-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
         .transaction-close,
         .holdings-close {
             min-width: 72px;
@@ -3970,6 +3978,16 @@
             color: var(--text-primary);
             font-size: 13px;
             line-height: 1.45;
+        }
+
+        .holdings-perk-grid {
+            margin-top: 12px;
+        }
+
+        .holdings-perk-selection .nav-btn {
+            text-align: left;
+            white-space: normal;
+            padding: 8px;
         }
 
         .transaction-filters > div {
@@ -4108,6 +4126,15 @@
             .holdings-close {
                 min-width: 64px;
                 min-height: 44px;
+            }
+
+            .holdings-window-actions {
+                width: 100%;
+                justify-content: stretch;
+            }
+
+            .holdings-window-actions .nav-btn {
+                flex: 1 1 110px;
             }
 
             .holdings-tabs {
@@ -7691,7 +7718,7 @@
                     <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-review-map" title="Toggle map panel" aria-label="Toggle map panel" data-i18n-title="ui.nav.mapTitle" data-i18n-aria-label="ui.nav.mapTitle" onclick="togglePanel('map')">🗺️ <span data-i18n="ui.map">Map</span></button>
                     <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-actor-drawer" title="Toggle party panel" aria-label="Toggle party panel" data-i18n-title="ui.nav.partyTitle" data-i18n-aria-label="ui.nav.partyTitle" onclick="togglePanel('party')">👥 <span data-i18n="ui.party">Party</span></button>
                     <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-target-drawer" title="Toggle creatures panel" aria-label="Toggle creatures panel" data-i18n-title="ui.nav.creaturesTitle" data-i18n-aria-label="ui.nav.creaturesTitle" onclick="togglePanel('enemies')">⚔️ <span data-i18n="ui.enemies">Enemies</span></button>
-                    <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-stats-drawer" title="Open character stats" aria-label="Open character stats" data-i18n-title="ui.nav.statsTitle" data-i18n-aria-label="ui.nav.statsTitle" onclick="App.showCharacterStats()">📊 <span data-i18n="ui.stats">Stats</span></button>
+                    <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-holdings" title="Open holdings" aria-label="Open holdings" data-i18n-title="ui.nav.holdingsTitle" data-i18n-aria-label="ui.nav.holdingsTitle" onclick="App.showCharacterStats()">📊 <span data-i18n="ui.holdings">Holdings</span></button>
                 </nav>
             </header>
 
@@ -7808,7 +7835,7 @@
 	                            </div>
                                 <button class="nav-btn mobile-story-handle" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Scene</button>
 	                            <div class="mobile-panel-dock" data-surface-role="drawer-shortcuts" data-command-surface="drawer-shortcuts" data-command-mode="navigation" aria-label="Mobile panel shortcuts" data-i18n-aria-label="ui.mobilePanels">
-	                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-stats-drawer" title="Stats" aria-label="Stats" data-i18n-title="ui.stats" data-i18n-aria-label="ui.stats" onclick="App.showCharacterStats()">📊 <span class="mobile-panel-dock-label" data-i18n="ui.stats">Stats</span></button>
+	                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-holdings" title="Holdings" aria-label="Holdings" data-i18n-title="ui.holdings" data-i18n-aria-label="ui.holdings" onclick="App.showCharacterStats()">📊 <span class="mobile-panel-dock-label" data-i18n="ui.holdings">Holdings</span></button>
 	                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-review-map" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">🗺️ <span class="mobile-panel-dock-label" data-i18n="ui.map">Map</span></button>
                                 <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-actor-rail" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="App.toggleMobilePartyRail()">👥 <span class="mobile-panel-dock-label" data-i18n="ui.party">Party</span></button>
 	                                <button class="nav-btn" id="mobile-creatures-dock-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-target-rail" title="Creatures" aria-label="Creatures" data-i18n-title="ui.creatures" data-i18n-aria-label="ui.creatures" onclick="App.toggleMobileCreatureRail()">⚔️ <span class="mobile-panel-dock-label" data-i18n="ui.creatures">Creatures</span><span class="mobile-panel-dock-badge" id="mobile-creature-dock-badge" hidden aria-hidden="true"></span></button>

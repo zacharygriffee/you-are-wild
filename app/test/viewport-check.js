@@ -998,6 +998,81 @@ async function checkViewport(browser, name, width, height) {
   await checkLiveOverlayReturn({ control: 'open-mods', screenName: 'mods', closeControl: 'close-modules', label: 'Mods' });
   await checkLiveOverlayReturn({ control: 'open-market', screenName: 'market', closeControl: 'close-marketplace', label: 'Market' });
 
+  await page.evaluate(() => App.showCharacterStats());
+  await page.waitForTimeout(50);
+  const holdingsWindow = await page.evaluate(() => {
+    const root = document.getElementById('holdings-window-root');
+    const dialog = root?.querySelector('.holdings-window');
+    const close = root?.querySelector('.holdings-close[data-command-control="close-holdings"]');
+    const tabs = Array.from(root?.querySelectorAll('[data-command-control="switch-holdings-tab"]') || []);
+    const body = root?.querySelector('.holdings-window-body');
+    const app = document.getElementById('app');
+    const stage = document.querySelector('#app > .stage');
+    const rect = dialog?.getBoundingClientRect();
+    const closeRect = close?.getBoundingClientRect();
+    const bodyRect = body?.getBoundingClientRect();
+    return {
+      hidden: Boolean(root?.hidden),
+      role: dialog?.getAttribute('role') || '',
+      ariaModal: dialog?.getAttribute('aria-modal') || '',
+      surfaceRole: dialog?.getAttribute('data-surface-role') || '',
+      title: root?.querySelector('#holdings-window-title')?.textContent?.trim() || '',
+      inViewport: Boolean(rect && rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
+      closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+      closeInsideViewport: Boolean(closeRect && closeRect.left >= -1 && closeRect.right <= innerWidth + 1 && closeRect.top >= -1 && closeRect.bottom <= innerHeight + 1),
+      tabs: tabs.map(tab => tab.getAttribute('data-command-slot') || tab.textContent.trim()),
+      bodyVisible: Boolean(bodyRect && bodyRect.width > 0 && bodyRect.height > 0),
+      appClass: app?.classList.contains('holdings-window-open') || false,
+      stageInert: stage?.hasAttribute('inert') || false,
+      focusTrapIsDialog: App._focusTrap?.container === dialog,
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(holdingsWindow.hidden, false, `${name}: Holdings window should be visible from live play`);
+  assert.strictEqual(holdingsWindow.role, 'dialog', `${name}: Holdings window should use dialog semantics`);
+  assert.strictEqual(holdingsWindow.ariaModal, 'true', `${name}: Holdings window should be modal`);
+  assert.strictEqual(holdingsWindow.surfaceRole, 'holdings-window', `${name}: Holdings window should identify its surface role`);
+  assert(holdingsWindow.title.length > 0, `${name}: Holdings window should expose a title`);
+  assert.strictEqual(holdingsWindow.inViewport, true, `${name}: Holdings window should stay inside the viewport`);
+  assert.strictEqual(holdingsWindow.closeVisible, true, `${name}: Holdings window should expose a visible close control`);
+  assert.strictEqual(holdingsWindow.closeInsideViewport, true, `${name}: Holdings close control should stay inside the viewport`);
+  assert(holdingsWindow.tabs.includes('stats') && holdingsWindow.tabs.includes('equipment') && holdingsWindow.tabs.includes('pack') && holdingsWindow.tabs.includes('containers') && holdingsWindow.tabs.includes('ground'), `${name}: Holdings window should expose Stats, Equipment, Pack, Containers, and Here/Ground tabs`);
+  assert.strictEqual(holdingsWindow.bodyVisible, true, `${name}: Holdings window body should be visible`);
+  assert.strictEqual(holdingsWindow.appClass, true, `${name}: Holdings window should mark the app shell while open`);
+  assert.strictEqual(holdingsWindow.stageInert, true, `${name}: Holdings window should make the stage inert`);
+  assert.strictEqual(holdingsWindow.focusTrapIsDialog, true, `${name}: Holdings window should activate its dialog focus trap`);
+  assert.strictEqual(holdingsWindow.pageOverflow, false, `${name}: Holdings window should not create horizontal overflow`);
+
+  await page.locator('#holdings-window-root .holdings-close[data-command-control="close-holdings"]').click();
+  await page.waitForTimeout(50);
+  const returnedHoldings = await page.evaluate(() => {
+    const root = document.getElementById('holdings-window-root');
+    const app = document.getElementById('app');
+    const dock = document.querySelector('.mobile-panel-dock');
+    const playSurface = document.getElementById('mobile-play-surface');
+    const desktopSurface = document.querySelector('.desktop-play-surface');
+    const activeSurface = innerWidth < 600 ? playSurface : desktopSurface;
+    const surfaceRect = activeSurface?.getBoundingClientRect();
+    return {
+      hidden: Boolean(root?.hidden),
+      appClass: app?.classList.contains('holdings-window-open') || false,
+      stageInert: document.querySelector('#app > .stage')?.hasAttribute('inert') || false,
+      focusTrapCleared: !App._focusTrap,
+      dockVisible: Boolean(dock) && getComputedStyle(dock).display !== 'none' && dock.getBoundingClientRect().height > 0,
+      surfaceVisible: Boolean(surfaceRect && surfaceRect.width > 0 && surfaceRect.height > 0),
+      surfaceInsideViewport: !surfaceRect || (surfaceRect.left >= -1 && surfaceRect.right <= innerWidth + 1),
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(returnedHoldings.hidden, true, `${name}: closing Holdings should hide the window root`);
+  assert.strictEqual(returnedHoldings.appClass, false, `${name}: closing Holdings should clear the app shell marker`);
+  assert.strictEqual(returnedHoldings.stageInert, false, `${name}: closing Holdings should restore stage interactivity`);
+  assert.strictEqual(returnedHoldings.focusTrapCleared, true, `${name}: closing Holdings should clear the focus trap`);
+  if (width < 600) assert.strictEqual(returnedHoldings.dockVisible, true, `${name}: mobile dock should be visible after Holdings closes`);
+  assert.strictEqual(returnedHoldings.surfaceVisible, true, `${name}: play surface should be visible after Holdings closes`);
+  assert.strictEqual(returnedHoldings.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after Holdings closes`);
+  assert.strictEqual(returnedHoldings.pageOverflow, false, `${name}: closing Holdings should not introduce horizontal overflow`);
+
   if (width < 600) {
     await page.evaluate(() => togglePanel('party'));
     await page.waitForTimeout(350);

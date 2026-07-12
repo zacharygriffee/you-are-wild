@@ -19050,6 +19050,27 @@ test('Marked-target contextual utilities sort before routine actions', () => {
   assertNotContains(remainsHtml, 'data-command-intent="fight"', 'Remains should not expose routine living-target actions');
 });
 
+test('Action priority keeps contextual actions ahead of routine and utility actions', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const sorted = App._sortActionEntries([
+    { action: 'feed' },
+    { action: 'fight' },
+    { action: 'inspect' },
+    { action: 'trade' },
+    { action: 'turnInQuest' },
+    { action: 'scavenge' },
+    { action: 'loot' },
+    { action: 'recruit' },
+    { action: 'viewQuest' },
+    { action: 'acceptQuest' }
+  ]).map(entry => entry.action);
+  assertEqual(
+    sorted.join(','),
+    'recruit,turnInQuest,viewQuest,acceptQuest,trade,loot,scavenge,inspect,fight,feed',
+    'Contextual actions should stay ahead of routine actions with stable same-priority quest ordering'
+  );
+});
+
 test('Marked creature target Fight button resolves the default attack', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', { id: 'player-1', Figh: 40 });

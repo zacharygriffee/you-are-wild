@@ -34,6 +34,7 @@ const YAW_ACTION_UI = {
             quest: 20,
             acceptQuest: 20,
             viewQuest: 20,
+            turnInQuest: 20,
             trade: 30,
             loot: 40,
             scavenge: 50,

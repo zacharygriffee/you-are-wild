@@ -6119,6 +6119,21 @@
                 flex: 0 0 clamp(148px, 40vw, 160px);
             }
 
+            .mobile-control-belt.actor-controls-open .mobile-actor-belt > .mobile-actor-chip.mobile-actor-details.mobile-strip-details-btn,
+            .mobile-control-belt.actor-controls-open .mobile-actor-belt > .mobile-unit-chip.micro-tactical-card {
+                align-self: center;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-belt > .mobile-actor-chip.mobile-actor-details.mobile-strip-details-btn {
+                flex: 0 0 50px;
+                width: 50px;
+                min-width: 50px;
+                max-width: 50px;
+                height: 50px;
+                min-height: 50px;
+                max-height: 50px;
+            }
+
             .mobile-target-picker-belt .mobile-target-picker-chip.mobile-unit-chip.micro-tactical-card {
                 flex: 0 0 clamp(148px, 40vw, 160px);
                 width: auto;
@@ -6455,6 +6470,9 @@
             }
 
             .mobile-unit-chip.micro-tactical-card .action-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
                 width: 40px;
                 min-width: 40px;
                 max-width: 40px;
@@ -6465,6 +6483,14 @@
                 background: transparent;
                 box-shadow: none;
                 font-size: 0;
+                line-height: 1;
+            }
+
+            .mobile-unit-chip.micro-tactical-card .action-btn::before {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
             }
 
             .mobile-unit-chip .corner-card-controls {

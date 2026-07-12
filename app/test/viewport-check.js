@@ -2079,6 +2079,19 @@ async function checkViewport(browser, name, width, height) {
       const close = panel?.querySelector('[data-command-control="close-actor-drawer"]');
       const panelRect = panel?.getBoundingClientRect();
       const closeRect = close?.getBoundingClientRect();
+      const compactCards = Array.from(panel?.querySelectorAll('.unit-card.compact-tactical-card.density-medium:not(.expanded)') || []);
+      const cardRects = compactCards.map(card => card.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
+      const ringCounts = compactCards.map(card => card.querySelectorAll('.tactical-stat-ring').length);
+      const clippedCardButtons = compactCards.flatMap(card => Array.from(card.querySelectorAll('button')).filter(button => {
+        const buttonRect = button.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        return buttonRect.width > 0 && buttonRect.height > 0 && (
+          buttonRect.left < cardRect.left - 1 ||
+          buttonRect.right > cardRect.right + 1 ||
+          buttonRect.top < cardRect.top - 1 ||
+          buttonRect.bottom > cardRect.bottom + 1
+        );
+      }).map(button => button.getAttribute('data-command-control') || button.textContent.trim()));
       return {
         panelActive: panel?.classList.contains('active') || false,
         panelInsideViewport: Boolean(panelRect && panelRect.left >= -1 && panelRect.right <= innerWidth + 1 && panelRect.top >= -1 && panelRect.bottom <= innerHeight + 1),
@@ -2089,6 +2102,11 @@ async function checkViewport(browser, name, width, height) {
         targetIds: (App.explorationTargetIds || []).join(','),
         closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
         closeSlot: close?.getAttribute('data-command-slot') || '',
+        compactCardCount: compactCards.length,
+        compactMinHeight: cardRects.length ? Math.min(...cardRects.map(rect => rect.height)) : 0,
+        compactMaxHeight: cardRects.length ? Math.max(...cardRects.map(rect => rect.height)) : 0,
+        compactCardsHaveRings: ringCounts.every(count => count >= 3),
+        clippedCardButtons,
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
       };
     });
@@ -2101,6 +2119,11 @@ async function checkViewport(browser, name, width, height) {
     assert(actorDrawer.targetIds.includes('creature:creature-1'), `${name}: actor Details should preserve marked creature targets`);
     assert.strictEqual(actorDrawer.closeVisible, true, `${name}: actor Details drawer should expose a visible close exit`);
     assert.strictEqual(actorDrawer.closeSlot, 'exit', `${name}: actor Details close should identify the exit slot`);
+    assert(actorDrawer.compactCardCount >= 2, `${name}: actor Details drawer should render collapsed medium party cards`);
+    assert(actorDrawer.compactMinHeight >= 60, `${name}: collapsed medium party cards should keep a usable touch height, got ${actorDrawer.compactMinHeight}`);
+    assert(actorDrawer.compactMaxHeight <= 92, `${name}: collapsed medium party cards should not waste vertical drawer space, got ${actorDrawer.compactMaxHeight}`);
+    assert.strictEqual(actorDrawer.compactCardsHaveRings, true, `${name}: collapsed medium party cards should keep stat rings visible`);
+    assert.deepStrictEqual(actorDrawer.clippedCardButtons, [], `${name}: collapsed medium party card controls should not clip`);
     assert.strictEqual(actorDrawer.pageOverflow, false, `${name}: actor Details drawer should not create horizontal overflow`);
 
     await page.locator('#panel-party [data-command-control="close-actor-drawer"]').click();
@@ -2150,6 +2173,19 @@ async function checkViewport(browser, name, width, height) {
       const close = panel?.querySelector('[data-command-control="close-target-drawer"]');
       const panelRect = panel?.getBoundingClientRect();
       const closeRect = close?.getBoundingClientRect();
+      const compactCards = Array.from(panel?.querySelectorAll('.unit-card.compact-tactical-card.density-medium:not(.expanded)') || []);
+      const cardRects = compactCards.map(card => card.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
+      const ringCounts = compactCards.map(card => card.querySelectorAll('.tactical-stat-ring').length);
+      const clippedCardButtons = compactCards.flatMap(card => Array.from(card.querySelectorAll('button')).filter(button => {
+        const buttonRect = button.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        return buttonRect.width > 0 && buttonRect.height > 0 && (
+          buttonRect.left < cardRect.left - 1 ||
+          buttonRect.right > cardRect.right + 1 ||
+          buttonRect.top < cardRect.top - 1 ||
+          buttonRect.bottom > cardRect.bottom + 1
+        );
+      }).map(button => button.getAttribute('data-command-control') || button.textContent.trim()));
       return {
         panelActive: panel?.classList.contains('active') || false,
         panelInsideViewport: Boolean(panelRect && panelRect.left >= -1 && panelRect.right <= innerWidth + 1 && panelRect.top >= -1 && panelRect.bottom <= innerHeight + 1),
@@ -2159,6 +2195,11 @@ async function checkViewport(browser, name, width, height) {
         targetIds: (App.explorationTargetIds || []).join(','),
         closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
         closeSlot: close?.getAttribute('data-command-slot') || '',
+        compactCardCount: compactCards.length,
+        compactMinHeight: cardRects.length ? Math.min(...cardRects.map(rect => rect.height)) : 0,
+        compactMaxHeight: cardRects.length ? Math.max(...cardRects.map(rect => rect.height)) : 0,
+        compactCardsHaveRings: ringCounts.every(count => count >= 3),
+        clippedCardButtons,
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
       };
     });
@@ -2170,6 +2211,11 @@ async function checkViewport(browser, name, width, height) {
     assert(targetDrawer.targetIds.includes('creature:creature-1'), `${name}: target Details should preserve marked targets`);
     assert.strictEqual(targetDrawer.closeVisible, true, `${name}: target Details drawer should expose a visible close exit`);
     assert.strictEqual(targetDrawer.closeSlot, 'exit', `${name}: target Details close should identify the exit slot`);
+    assert(targetDrawer.compactCardCount >= 1, `${name}: target Details drawer should render collapsed medium target cards`);
+    assert(targetDrawer.compactMinHeight >= 60, `${name}: collapsed medium target cards should keep a usable touch height, got ${targetDrawer.compactMinHeight}`);
+    assert(targetDrawer.compactMaxHeight <= 92, `${name}: collapsed medium target cards should not waste vertical drawer space, got ${targetDrawer.compactMaxHeight}`);
+    assert.strictEqual(targetDrawer.compactCardsHaveRings, true, `${name}: collapsed medium target cards should keep stat rings visible`);
+    assert.deepStrictEqual(targetDrawer.clippedCardButtons, [], `${name}: collapsed medium target card controls should not clip`);
     assert.strictEqual(targetDrawer.pageOverflow, false, `${name}: target Details drawer should not create horizontal overflow`);
 
     await page.locator('#panel-enemies [data-command-control="close-target-drawer"]').click();

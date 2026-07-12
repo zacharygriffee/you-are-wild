@@ -4508,6 +4508,112 @@
                 padding-top: 56px;
             }
 
+            .panel-party .unit-card.compact-tactical-card.density-medium,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium {
+                min-height: 68px;
+                margin-bottom: 6px;
+                padding: 6px 46px 6px 50px;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium.has-corner-controls .unit-header,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium.has-corner-controls .unit-header {
+                min-height: 54px;
+                padding-top: 0;
+                align-items: center;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .unit-info,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .unit-info {
+                display: grid;
+                grid-template-columns: minmax(64px, 1fr) auto;
+                align-items: center;
+                column-gap: 8px;
+                row-gap: 2px;
+                width: 100%;
+                min-width: 0;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .unit-name,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .unit-name {
+                grid-column: 1;
+                font-size: 12px;
+                line-height: 1.1;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .unit-meta,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .unit-meta {
+                grid-column: 1;
+                margin: 0;
+                font-size: 9px;
+                line-height: 1.05;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .unit-card-status,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .unit-card-status {
+                display: none;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .tactical-stat-rings,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .tactical-stat-rings {
+                grid-column: 2;
+                grid-row: 1 / span 3;
+                justify-content: flex-end;
+                gap: 3px;
+                width: auto;
+                margin: 0;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .tactical-stat-ring,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .tactical-stat-ring {
+                width: 24px;
+                height: 24px;
+                font-size: 9px;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .tactical-stat-ring::before,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .tactical-stat-ring::before {
+                inset: 3px;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .unit-traits,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .unit-traits,
+            .panel-party .unit-card.compact-tactical-card.density-medium .unit-selection-chips,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .unit-selection-chips {
+                grid-column: 1 / -1;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 3px;
+                margin: 2px 0 0;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .unit-trait-chip,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .unit-trait-chip,
+            .panel-party .unit-card.compact-tactical-card.density-medium .unit-selection-chip,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .unit-selection-chip {
+                padding: 1px 5px;
+                font-size: 9px;
+                line-height: 1.1;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .corner-card-controls,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .corner-card-controls {
+                top: 6px;
+                left: 6px;
+                right: 6px;
+                align-items: center;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .corner-card-controls .action-btn,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .corner-card-controls .action-btn,
+            .panel-party .unit-card.compact-tactical-card.density-medium .corner-card-controls .presentation-corner-badge,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .corner-card-controls .presentation-corner-badge {
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                height: 44px;
+                min-height: 44px;
+            }
+
             .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn,
             .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn {
                 --mobile-card-icon-content: "•";

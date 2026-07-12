@@ -76,10 +76,20 @@ const YAW_HOLDINGS = {
         return Boolean(unit && player && (unit === player || this.ownerId(app, unit) === this.ownerId(app, player)));
     },
 
+    ownerSelectableForTab(app, unit = app.player, tab = 'stats') {
+        return tab !== 'pack' || this.isPlayerOwner(app, unit);
+    },
+
+    ownerForTab(app, owner = app.player, tab = 'stats') {
+        if (tab !== 'pack') return owner || app.player;
+        return app._syncPlayerPartyReference?.() || app.player || owner;
+    },
+
     setOwner(app, ownerId) {
-        const owner = this.ownerById(app, ownerId);
+        let owner = this.ownerById(app, ownerId);
         if (!owner) return false;
         const tab = this.tabs().includes(app.holdingsWindow?.tab) ? app.holdingsWindow.tab : 'stats';
+        owner = this.ownerForTab(app, owner, tab);
         app.holdingsWindow = {
             ...(app.holdingsWindow || {}),
             tab,
@@ -97,15 +107,22 @@ const YAW_HOLDINGS = {
     renderOwnerSelector(app, owner = app.player) {
         const owners = this.partyOwners(app);
         if (owners.length <= 1) return '';
-        const selectedId = this.ownerId(app, owner);
+        const tab = this.tabs().includes(app.holdingsWindow?.tab) ? app.holdingsWindow.tab : 'stats';
+        const selectedOwner = this.ownerForTab(app, owner, tab);
+        const selectedId = this.ownerId(app, selectedOwner);
         const label = app._escapeHtml(app._label('holdings.owner', 'Owner'));
         const chips = owners.map(unit => {
             const id = this.ownerId(app, unit);
             const selected = id === selectedId;
+            const selectable = this.ownerSelectableForTab(app, unit, tab);
             const name = app._escapeHtml(this.ownerLabel(app, unit));
             const icon = app._escapeHtml(unit?.icon || '👤');
-            const title = app._escapeHtml(app._label('holdings.selectOwner', 'Show holdings for {name}', { name: this.ownerLabel(app, unit) }));
-            return `<button class="holdings-owner-chip${selected ? ' selected' : ''}" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="select-holdings-owner" data-command-slot="owner" aria-pressed="${selected ? 'true' : 'false'}" title="${title}" aria-label="${title}" onclick="App.setHoldingsOwner('${app._escapeJsString(id)}')"><span aria-hidden="true">${icon}</span><span>${name}</span></button>`;
+            const title = selectable
+                ? app._escapeHtml(app._label('holdings.selectOwner', 'Show holdings for {name}', { name: this.ownerLabel(app, unit) }))
+                : app._escapeHtml(app._label('holdings.packPlayerOnly', 'Pack inventory is player-only for now. Containers remain available for {name}.', { name: this.ownerLabel(app, unit) }));
+            const disabled = selectable ? '' : ' disabled aria-disabled="true"';
+            const action = selectable ? ` onclick="App.setHoldingsOwner('${app._escapeJsString(id)}')"` : '';
+            return `<button class="holdings-owner-chip${selected ? ' selected' : ''}${selectable ? '' : ' disabled'}" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="select-holdings-owner" data-command-slot="owner" data-owner-selectable="${selectable ? 'true' : 'false'}" aria-pressed="${selected ? 'true' : 'false'}" title="${title}" aria-label="${title}"${disabled}${action}><span aria-hidden="true">${icon}</span><span>${name}</span></button>`;
         }).join('');
         return `<div class="holdings-owner-row" role="group" aria-label="${label}"><span class="holdings-owner-label">${label}</span>${chips}</div>`;
     },
@@ -286,6 +303,7 @@ const YAW_HOLDINGS = {
     },
 
     renderPackSection(app, section, owner = app.player) {
+        owner = this.ownerForTab(app, owner, 'pack');
         const packLabel = app._label('holdings.sharedPack', 'Shared Pack');
         const ownerHint = this.isPlayerOwner(app, owner)
             ? ''
@@ -431,6 +449,7 @@ const YAW_HOLDINGS = {
         if (!root) return false;
         owner = owner || this.selectedOwner(app) || app.player;
         const tab = this.tabs().includes(options.tab || app.holdingsWindow?.tab) ? (options.tab || app.holdingsWindow?.tab) : 'stats';
+        owner = this.ownerForTab(app, owner, tab);
         app.holdingsWindow = {
             tab,
             ownerType: 'party',
@@ -483,7 +502,7 @@ const YAW_HOLDINGS = {
         if (!app.holdingsWindow) return this.open(app, app.player, { tab });
         app.holdingsWindow.tab = tab;
         delete app.holdingsWindow.detail;
-        return this.renderWindow(app, this.selectedOwner(app), tab);
+        return this.renderWindow(app, this.ownerForTab(app, this.selectedOwner(app), tab), tab);
     },
 
     renderPerkSelectionBody(app) {
@@ -556,7 +575,7 @@ const YAW_HOLDINGS = {
     renderWindow(app, owner = app.player, tab = 'stats') {
         const root = this.root();
         if (!root) return false;
-        owner = owner || this.selectedOwner(app) || app.player;
+        owner = this.ownerForTab(app, owner || this.selectedOwner(app) || app.player, tab);
         app.holdingsWindow = {
             ...(app.holdingsWindow || {}),
             tab,

@@ -3909,16 +3909,16 @@
         .holdings-owner-row {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 8px;
-            overflow-x: auto;
             padding: 8px 18px 10px;
             border-bottom: 1px solid var(--border-subtle);
             background: rgba(10, 20, 36, 0.36);
-            scrollbar-width: thin;
         }
 
         .holdings-owner-label {
             flex: 0 0 auto;
+            align-self: center;
             color: var(--text-muted);
             font-size: 11px;
             font-weight: 800;
@@ -3932,7 +3932,7 @@
             align-items: center;
             gap: 6px;
             min-height: 34px;
-            max-width: 170px;
+            max-width: min(210px, 100%);
             padding: 6px 10px;
             color: var(--text-secondary);
             border: 1px solid var(--border-default);
@@ -3954,6 +3954,14 @@
             color: var(--text-primary);
             border-color: var(--accent-primary);
             background: rgba(0, 212, 170, 0.16);
+        }
+
+        .holdings-owner-chip.disabled,
+        .holdings-owner-chip:disabled {
+            cursor: not-allowed;
+            opacity: 0.48;
+            border-style: dashed;
+            background: rgba(42, 42, 74, 0.42);
         }
 
         .transaction-summary {
@@ -4207,12 +4215,15 @@
             }
 
             .holdings-owner-row {
+                flex-wrap: nowrap;
+                overflow-x: auto;
                 padding: 8px 12px;
+                scrollbar-width: thin;
             }
 
             .holdings-owner-chip {
                 min-height: 40px;
-                max-width: 150px;
+                max-width: 170px;
             }
 
             .transaction-summary {

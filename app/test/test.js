@@ -16742,6 +16742,7 @@ test('Holdings owner selector switches stats equipment and containers while pack
   App.setHoldingsOwner('ally-owner');
   App.setHoldingsTab('stats');
   html = holdingsHtml(elements);
+  assertNotContains(html, 'data-owner-selectable="false"', 'Stats tab owner chips should remain clickable');
   assertContains(html, 'Bunnyfolk', 'Stats tab should render the selected companion owner');
   assertContains(html, 'Figh: 22', 'Stats tab should use selected companion stats');
   assertNotContains(html, 'Figh: 11', 'Stats tab should not fall back to player stats after owner switch');
@@ -16753,10 +16754,14 @@ test('Holdings owner selector switches stats equipment and containers while pack
   App.setHoldingsTab('pack');
   html = holdingsHtml(elements);
   assertContains(html, 'Shared Pack', 'Pack tab should label inventory as shared party storage');
-  assertContains(html, 'Equips target Bunnyfolk', 'Shared Pack should clarify equip actions target the selected owner');
+  assertContains(html, 'Pack inventory is player-only for now. Containers remain available for Bunnyfolk.', 'Pack tab should explain disabled companion inventory selection');
+  assertContains(html, 'data-owner-selectable="false"', 'Pack tab should disable non-player owner selection for now');
   assertContains(html, 'Focus Ring', 'Shared Pack should remain visible for selected companion owner');
-  assertContains(html, 'Equip Focus Ring to Bunnyfolk', 'Pack equip action should target the selected owner');
+  assertContains(html, 'Equip Focus Ring', 'Pack equip action should remain available for the player inventory owner');
+  assertNotContains(html, 'Equip Focus Ring to Bunnyfolk', 'Pack tab should not target companion inventories yet');
+  assertNotContains(html, 'Equips target Bunnyfolk', 'Pack tab should not imply companion inventory ownership yet');
   App.setHoldingsTab('containers');
+  App.setHoldingsOwner('ally-owner');
   html = holdingsHtml(elements);
   assertContains(html, 'Held Mousefolk', 'Containers tab should show selected companion containment');
   assertContains(html, "App.releaseContained('party',1,'stomach',0)", 'Container Release should target the selected companion holder index');

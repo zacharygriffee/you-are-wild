@@ -327,6 +327,13 @@ const YAW_COMBAT_SYNC = {
                 return result;
             }
         }
+        for (const participant of sync.participants || []) {
+            app._applyActionCost?.(baseAction, participant, sync.target, {}, {
+                mode: 'combat',
+                source: 'sync-resolution',
+                emitScene: true
+            });
+        }
         let result = '';
         switch (sync.type) {
             case 'sync_fuck': {
@@ -351,6 +358,8 @@ const YAW_COMBAT_SYNC = {
                     setTimeout(() => {
                         app._confirmRecruitCreature(sync.target);
                     }, 100);
+                    const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
+                    if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else if (totalCharm > resist) {
                     sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
                     result = `${sync.participants.map(p => p.name).join(' and ')} play with ${sync.target.name}! They are dazed but not fully relaxed.`;
@@ -359,6 +368,8 @@ const YAW_COMBAT_SYNC = {
                         sync.target.orgasmed = true;
                         if (app.settings.refractoryPeriod) sync.target.refractory = true;
                     }
+                    const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
+                    if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
                     result = `${sync.target.name} does not want to play with the group!`;
                 }
@@ -379,11 +390,15 @@ const YAW_COMBAT_SYNC = {
                     sync.target.willing = true;
                     app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
                     result = `${sync.participants.map(p => p.name).join(' and ')} talk ${sync.target.name} into standing down! They are convinced.`;
+                    const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
+                    if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else if (totalCharm > resist) {
                     sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
                     sync.target.charmed = (sync.target.charmed || 0) + 1;
                     sync.target.Figh = Math.max(1, (sync.target.Figh || 10) - 1);
                     result = `${sync.participants.map(p => p.name).join(' and ')} talk with ${sync.target.name}, softening their guard. Spirit rises to ${sync.target.CPle}/${sync.target.MPle}.`;
+                    const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
+                    if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
                     result = `${sync.target.name} resists the group's combined charm!`;
                 }

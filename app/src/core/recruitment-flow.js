@@ -24,7 +24,7 @@ const YAW_RECRUITMENT_FLOW = {
         if (!recruitableDisposition) return false;
         if (!app._hasBaselineInteractionEligibility(target, 'recruit')) return false;
         const spiritRatio = (target.CPle || 0) / Math.max(1, target.MPle || 100);
-        return spiritRatio >= 0.85 || this.score(app, actor, target) >= 85;
+        return Boolean(target.recruitReady) || spiritRatio >= 0.85 || this.score(app, actor, target) >= 85;
     },
 
     fromIndex(app, index) {

@@ -25,6 +25,28 @@ const YAW_COMBAT_INTENTS = {
             return false;
         }
         app.activeActor = current;
+        const pressure = app._canAffordActionPressure?.(action, current, { mode: 'combat' }) || { ok: true };
+        if (!pressure.ok) {
+            app.combatCorrectionMessage = { text: pressure.text, reason: pressure.reason || 'cost-blocked', action, time: Date.now() };
+            app._pushLog?.(pressure.text, 'combat', { actor: current, action, phase: pressure.reason || 'cost-blocked' });
+            app.emitStoryResult?.({
+                mode: 'combat',
+                actors: [current],
+                targets: [],
+                action,
+                tags: ['hunger', 'blocked'],
+                source: 'balance-system'
+            }, pressure.text, {
+                mode: 'combat',
+                resultKind: 'failure',
+                importance: 'hint',
+                tags: ['hunger', 'blocked'],
+                source: 'balance-system'
+            });
+            app._renderInteractionState?.({ exploration: false, toolbelt: true });
+            app.renderLog();
+            return false;
+        }
         if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast' || action === 'scavenge') {
             if (action !== 'scavenge' && YAW_COMBAT_PLANNING.shouldPlanIntent(app)) {
                 if (!YAW_COMBAT_PLANNING.requiresCommit(app)) {

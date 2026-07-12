@@ -26,6 +26,7 @@ const YAW_MOVEMENT_FLOW = {
         app.clearTileBoundExplorationTargets();
         app.location.x += dx; app.location.y += dy;
         app._advanceTime(1);
+        app._applyTravelCost?.(app.party, { action: 'move', source: 'travel' });
         app._clearTileEvents();
         document.getElementById('coords').textContent = `${app.location.x}, ${app.location.y}`;
 

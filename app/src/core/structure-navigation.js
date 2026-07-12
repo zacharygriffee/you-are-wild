@@ -199,7 +199,10 @@ const YAW_STRUCTURE_NAVIGATION = {
         }
         const healAmount = 30 + app._partyRoleEffect('support', 10, 20);
         const healed = new Set([app.player, ...app.party]);
-        healed.forEach(p => { p.CPun = Math.min(p.MPun, p.CPun + healAmount); });
+        healed.forEach(p => {
+            p.CPun = Math.min(p.MPun, p.CPun + healAmount);
+            app._applyHungerRelief?.(p, app.BALANCE_V1?.relief?.rest ?? 10, { action: 'rest', source: 'rest' });
+        });
         app._advanceTime(8);
         const restedText = app._label('log.rested', 'Rested and recovered.');
         app.log.push({ text: restedText, type: 'heal' });

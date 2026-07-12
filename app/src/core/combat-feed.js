@@ -116,6 +116,7 @@ const YAW_COMBAT_FEED = {
         if (!target) return false;
         const actorName = actor.name === app.player?.name ? 'You' : actor.name;
         const actorVerb = actor.name === app.player?.name ? '' : 's';
+        app._applyActionCost?.('feed', actor, target, {}, { mode: 'combat', source: 'combat-feed', emitScene: true });
         const result = app._doSubAction('feed', subId, actor, target, actorName, actorVerb);
         app.log.push({ text: result, type: 'heal' });
         app._emitCombatAction('feed', actor, target, result);

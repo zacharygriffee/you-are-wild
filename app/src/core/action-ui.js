@@ -6,9 +6,10 @@
 const YAW_ACTION_UI = {
     iconButton(app, key, icon, onclick, extraClass = '', attrs = '') {
         const label = app._uiLabel(key);
+        const titleLabel = app._actionCostTitle ? app._actionCostTitle(key, label) : label;
         const className = `action-btn${extraClass ? ' ' + extraClass : ''}`;
         const attrText = attrs ? ` ${attrs}` : '';
-        return `<button class="${className}"${attrText} title="${label}" aria-label="${label}" onclick="${onclick}"><span class="action-icon" aria-hidden="true">${icon}</span><span class="action-caption">${label}</span></button>`;
+        return `<button class="${className}"${attrText} title="${app._escapeHtml(titleLabel)}" aria-label="${app._escapeHtml(titleLabel)}" onclick="${onclick}"><span class="action-icon" aria-hidden="true">${icon}</span><span class="action-caption">${label}</span></button>`;
     },
 
     combatIntentButton(app, key, actor, extraClass = '') {

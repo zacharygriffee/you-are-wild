@@ -14,6 +14,7 @@ const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.
 const NEXT_OBJECTIVES = path.join(__dirname, '..', '..', 'docs', 'next-objectives.md');
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
+const BALANCE_COST_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'balance-cost-doctrine.md');
 const args = process.argv.slice(2);
 const filterArg = args.find(arg => arg.startsWith('--filter='));
 const activeFilter = filterArg ? filterArg.split('=')[1] : 'all';
@@ -136,6 +137,7 @@ const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-
 const defeatRecoveryContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'defeat-recovery.js'), 'utf8');
 const logViewContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'log-view.js'), 'utf8');
 const storyEventsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'story-events.js'), 'utf8');
+const balanceSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'balance-system.js'), 'utf8');
 const tileEventFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-event-feed.js'), 'utf8');
 const structureNavigationContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'structure-navigation.js'), 'utf8');
 const movementFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'movement-flow.js'), 'utf8');
@@ -149,6 +151,8 @@ const unitContainersContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-c
 const unitContainmentContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-containment.js'), 'utf8');
 const feastContainmentDoc = fs.readFileSync(FEAST_CONTAINMENT_DOCTRINE, 'utf8');
 const feastContainmentV2Doc = fs.readFileSync(FEAST_CONTAINMENT_V2, 'utf8');
+const balanceCostDoc = fs.readFileSync(BALANCE_COST_DOCTRINE, 'utf8');
+const controlModelContent = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'control-model.md'), 'utf8');
 const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
 const interactionPlanContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-plan.js'), 'utf8');
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
@@ -258,6 +262,10 @@ function loadContentPacksForTest(CONTENT) {
   const console = { log() {}, warn() {}, error() {} };
   new Function('window', 'CONTENT', 'console', `${marketplaceContent}\nreturn window.CONTENT_PACKS;`)(window, CONTENT, console);
   return window.CONTENT_PACKS;
+}
+
+function loadBalanceSystemForTest() {
+  return new Function(`${balanceSystemContent}\nreturn YAW_BALANCE_SYSTEM;`)();
 }
 
 function createFakeIndexedDb(options = {}) {
@@ -1418,6 +1426,87 @@ test('Storage helper module is registered before app code', () => {
   assertContains(appContent, 'MODULE_SYSTEM.closeDatabase()', 'Clear-all should close the module database before deleting IndexedDB namespaces');
   assertContains(combatSaveStateContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(app, saveData, slotName)', 'Combat refresh writes should delegate to storage helper with the requested slot');
   assertContains(combatSaveStateContent, 'YAW_STORAGE.readCombatRefreshSnapshot(app, slotName)', 'Combat refresh reads should delegate to storage helper');
+});
+
+test('Balance system module is registered before action resolution code', () => {
+  assertContains(buildContent, "'src/core/balance-system.js'", 'Balance system should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/story-events.js'") < buildContent.indexOf("'src/core/balance-system.js'"), 'Balance system should load after story events for Scene Beat emission');
+  assert(buildContent.indexOf("'src/core/balance-system.js'") < buildContent.indexOf("'src/core/app.js'"), 'Balance system should load before app.js facades');
+  assertContains(balanceSystemContent, 'const YAW_BALANCE_SYSTEM = {', 'Balance system should expose the V1 economy helper');
+  assertContains(appContent, '_applyTravelCost(units = this.party', 'App should expose travel cost facade');
+  assertContains(appContent, '_applyActionCost(action, actor = null', 'App should expose action cost facade');
+  assertContains(appContent, '_resolveSpiritThreshold(actor, target', 'App should expose Spirit threshold facade');
+  assertContains(appContent, 'seduceEnemy: 50, flirtEnemy: 50', 'Nonviolent enemy resolution should have baseline XP parity with fight defeat');
+  assertContains(recruitmentFlowContent, 'Boolean(target.recruitReady)', 'Recruitment should honor explicit Spirit breakthrough readiness');
+});
+
+test('Balance system applies conservative hunger pressure and relief', () => {
+  const balance = loadBalanceSystemForTest();
+  const labels = {
+    'cost.preview.fight': 'Hunger + injury risk',
+    'cost.block.tooHungryPlay': '{actor} is too hungry for that kind of effort.',
+    'scene.cost.hungry': '{actor} is getting hungry after repeated effort.'
+  };
+  const app = {
+    BALANCE_V1: {},
+    DISPOSITION: { FRIENDLY: 'friendly' },
+    combatState: { active: false },
+    _label(key, fallback, vars = {}) {
+      let value = labels[key] || fallback;
+      Object.entries(vars).forEach(([name, replacement]) => {
+        value = value.replace(new RegExp(`\\{${name}\\}`, 'g'), replacement);
+      });
+      return value;
+    },
+    emitStoryResult(plan, summary, outcome) {
+      this.lastBeat = { plan, summary, outcome };
+      return this.lastBeat;
+    }
+  };
+  const actor = { name: 'Tester', hunger: 30, CPun: 10 };
+  balance.applyTravelCost(app, [actor]);
+  assertEqual(actor.hunger, 31, 'Travel should apply tiny hunger pressure');
+  balance.applyActionCost(app, 'fight', actor, null, {}, { emitScene: true });
+  assertEqual(actor.hunger, 34, 'Fight should apply moderate V1 hunger pressure');
+  balance.applyHungerRelief(app, actor, 10);
+  assertEqual(actor.hunger, 24, 'Rest-like relief should reduce hunger');
+  actor.hunger = 85;
+  assertEqual(balance.canAffordActionPressure(app, 'fuck', actor).ok, false, 'Starving actors should be blocked from high-exertion Play');
+  actor.hunger = 40;
+  assertEqual(balance.canAffordActionPressure(app, 'flirt', actor).ok, true, 'Talk should remain available at normal hunger');
+  assertContains(balance.costTitle(app, 'fight', 'Fight'), 'Hunger + injury risk', 'Cost previews should append to button titles');
+});
+
+test('Spirit breakthrough marks recruit availability without auto-joining', () => {
+  const balance = loadBalanceSystemForTest();
+  const app = {
+    BALANCE_V1: {},
+    DISPOSITION: { FRIENDLY: 'friendly' },
+    combatState: { active: false },
+    party: [],
+    _label(key, fallback, vars = {}) {
+      return fallback.replace(/\{target\}/g, vars.target || 'Target');
+    }
+  };
+  const actor = { name: 'Speaker' };
+  const target = { name: 'Bunnyfolk', CPle: 85, MPle: 100, disposition: 'neutral' };
+  const result = balance.resolveSpiritThreshold(app, actor, target, 'flirt', { emitScene: false });
+  assert(result && result.summary.includes('Bunnyfolk'), 'Spirit breakthrough should return a readable summary');
+  assertEqual(target.recruitReady, true, 'Spirit breakthrough should mark explicit recruit readiness');
+  assertEqual(target.willing, true, 'Spirit breakthrough should make the target willing');
+  assertEqual(target.disposition, 'friendly', 'Spirit breakthrough should pacify the target');
+  assertEqual(target.CPle, 20, 'Spirit should drop to the post-breakthrough floor');
+  assertEqual(app.party.includes(target), false, 'Spirit breakthrough should not auto-recruit');
+});
+
+test('Balance doctrine documents V1 scope and deferred work', () => {
+  assertContains(balanceCostDoc, 'higher numbers to mean hungrier', 'Balance doc should lock hunger sign semantics');
+  assertContains(balanceCostDoc, 'Spirit / CPle / MPle', 'Balance doc should preserve Spirit compatibility naming');
+  assertContains(balanceCostDoc, 'Spirit breakthrough threshold: `85%`', 'Balance doc should lock the V1 threshold');
+  assertContains(balanceCostDoc, 'does not automatically join the party', 'Balance doc should require explicit Recruit after threshold');
+  assertContains(balanceCostDoc, 'Baseline nonviolent victory should be equivalent', 'Balance doc should lock nonviolent XP parity');
+  assertContains(balanceCostDoc, 'does not implement:', 'Balance doc should separate V1 from deferred balancing');
+  assertContains(controlModelContent, 'Balance / Cost Doctrine V1', 'Control model should link the balance doctrine');
 });
 
 test('World state helper module is registered before app code', () => {
@@ -5008,7 +5097,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${balanceSystemContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

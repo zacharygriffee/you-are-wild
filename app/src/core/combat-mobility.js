@@ -9,6 +9,7 @@ const YAW_COMBAT_MOBILITY = {
         if (!app.combatState.active || !actor || actor.CPun <= 0) return;
         app._clearTransientInteractionState();
         actor.combatRow = actor.combatRow === 'back' ? 'front' : 'back';
+        app._applyActionCost?.('moveRow', actor, null, {}, { mode: 'combat', source: 'move-row', emitScene: true });
         app._pushLog(app._label('combat.moveRowLog', '{name} moves to the {row} row.', {
             name: actor.name,
             row: app._combatRowLabel(actor.combatRow)
@@ -29,6 +30,7 @@ const YAW_COMBAT_MOBILITY = {
             return false;
         }
         app._clearTransientInteractionState();
+        app._applyActionCost?.('flee', actor, enemy, {}, { mode: 'combat', source: 'flee', emitScene: true });
         const fleeChance = 0.6 + ((actor.Flee || 10) - (enemy.spd || 10)) * 0.02;
         const isPlayer = actor.name === app.player?.name;
         const rollKey = isPlayer ? 'combat-player-flee' : 'combat-party-flee';

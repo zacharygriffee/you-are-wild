@@ -6,6 +6,7 @@
 const YAW_TILE_RESOURCES = {
     search(app) {
         app._advanceTime(1);
+        app._applyActionCost?.('search', app.player, null, {}, { mode: 'adventure', source: 'search', emitScene: true });
         const tile = app._currentExplorationTile();
         const tileX = Number(tile?.x ?? app.location?.x ?? 0);
         const tileY = Number(tile?.y ?? app.location?.y ?? 0);

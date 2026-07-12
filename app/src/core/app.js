@@ -712,13 +712,35 @@
                     ]
                 }
             },
-            XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 60, flirtEnemy: 35, feedAlly: 20, feedEnemy: 25, discoverLandmark: 25, consumeAlly: 40 },
+            XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 50, flirtEnemy: 50, feedAlly: 20, feedEnemy: 25, discoverLandmark: 25, consumeAlly: 40 },
             BALANCE: {
                 xpCurveMultiplier: 1.5,
                 levelPunishmentGain: 10,
                 levelPleasureGain: 5,
                 levelStatGain: 1,
                 recruitXP: 30
+            },
+            BALANCE_V1: {
+                hungerMax: 100,
+                hungerWarning: 60,
+                hungerHungry: 70,
+                hungerStarving: 85,
+                spiritThresholdRatio: 0.85,
+                spiritPostResolveRatio: 0.2,
+                costs: {
+                    move: 1,
+                    search: 1,
+                    fight: 3,
+                    flirt: 1,
+                    fuck: 4,
+                    feast: 2,
+                    feed: 1,
+                    flee: 3,
+                    moveRow: 1
+                },
+                relief: {
+                    rest: 10
+                }
             },
 
             // === STATE ===
@@ -1671,6 +1693,40 @@
 
             _awardCombatXP(amount) {
                 this.combatState.xpEarned = (this.combatState.xpEarned || 0) + amount;
+            },
+
+            _balanceConfig() {
+                return YAW_BALANCE_SYSTEM.ensure(this);
+            },
+            _applyHungerPressure(unit, amount, context = {}) {
+                return YAW_BALANCE_SYSTEM.applyHungerPressure(this, unit, amount, context);
+            },
+            _applyHungerRelief(unit, amount, context = {}) {
+                return YAW_BALANCE_SYSTEM.applyHungerRelief(this, unit, amount, context);
+            },
+            _applyTravelCost(units = this.party, context = {}) {
+                return YAW_BALANCE_SYSTEM.applyTravelCost(this, units, context);
+            },
+            _previewActionCost(action, actor = null, target = null, context = {}) {
+                return YAW_BALANCE_SYSTEM.previewActionCost(this, action, actor, target, context);
+            },
+            _actionCostTitle(action, baseTitle = this._uiLabel(action), actor = null, target = null, context = {}) {
+                return YAW_BALANCE_SYSTEM.costTitle(this, action, baseTitle, actor, target, context);
+            },
+            _canAffordActionPressure(action, actor = null, context = {}) {
+                return YAW_BALANCE_SYSTEM.canAffordActionPressure(this, action, actor, context);
+            },
+            _applyActionCost(action, actor = null, target = null, outcome = {}, context = {}) {
+                return YAW_BALANCE_SYSTEM.applyActionCost(this, action, actor, target, outcome, context);
+            },
+            _spiritThresholdState(unit) {
+                return YAW_BALANCE_SYSTEM.spiritThresholdState(this, unit);
+            },
+            _resolveSpiritThreshold(actor, target, action = 'flirt', context = {}) {
+                return YAW_BALANCE_SYSTEM.resolveSpiritThreshold(this, actor, target, action, context);
+            },
+            _costSceneBeat(action, actor, target, costResult = {}) {
+                return YAW_BALANCE_SYSTEM.emitCostSceneBeat(this, action, actor, target, costResult);
             },
 
             // ===== MAP SYSTEM =====
@@ -3308,6 +3364,8 @@
                                 if (!this.party.includes(target)) target.disposition = this.DISPOSITION.FRIENDLY;
                                 this._updateQuestProgress('seduce', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                             }
+                            const breakthrough = this._resolveSpiritThreshold?.(livingActors[0], target, action, { emitScene: false });
+                            if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                         } else {
                             result = this._label('group.social.resists', "{target} resists the group's attention.", { target: target.name });
                         }
@@ -3318,6 +3376,13 @@
                         return true;
                 }
                 this.log.push({ text: result, type: 'discovery' });
+                livingActors.forEach(actor => {
+                    this._applyActionCost?.(action, actor, target, { affected: true }, {
+                        mode: 'adventure',
+                        source: 'exploration-group-resolution',
+                        emitScene: true
+                    });
+                });
                 this.emitStoryResult({ mode: 'adventure', actors: livingActors, targets: [target], action, shape: 'many-to-one' }, result);
                 this.renderLog();
                 this.renderParty();
@@ -3338,6 +3403,30 @@
                 let affected = true;
                 let startCombatAfter = false;
                 let combatTargets = [];
+                const pressure = this._canAffordActionPressure?.(action, actor, { mode: 'adventure' }) || { ok: true };
+                if (!pressure.ok) {
+                    const text = pressure.text || this._label('cost.block.tooHungryPlay', '{actor} is too hungry for that kind of effort.', { actor: actorName });
+                    this.log.push({ text, type: 'discovery' });
+                    this.emitStoryResult?.({
+                        mode: 'adventure',
+                        actors: [actor],
+                        targets: [target].filter(Boolean),
+                        action,
+                        tags: ['hunger', 'blocked'],
+                        source: 'balance-system'
+                    }, text, {
+                        resultKind: 'failure',
+                        importance: 'hint',
+                        tags: ['hunger', 'blocked'],
+                        source: 'balance-system'
+                    });
+                    this.lastActionResolution = { action, actor, target, ok: false, affected: false, message: text };
+                    this.renderLog();
+                    this.renderParty();
+                    this.renderCreatures();
+                    if (!this.combatState.active) this.renderExplorationActions();
+                    return false;
+                }
                 switch (action) {
                     case 'fight': {
                         if (target.disposition !== this.DISPOSITION.ENEMY && !this.party.includes(target)) {
@@ -3384,6 +3473,8 @@
                                     result += ` ${this._label('explore.fuck.recover', '{target} needs a moment to catch their breath...', { target: target.name })}`;
                                 }
                             }
+                            const breakthrough = this._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
+                            if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                             if (!this.party.includes(target) && this._canRecruit(actor, target)) {
                                 result += ` ${this._label('explore.recruit.possible', '{target} may be willing to join the party.', { target: target.name })}`;
                             }
@@ -3445,6 +3536,8 @@
                                 target.disposition = this.DISPOSITION.FRIENDLY;
                                 target.willing = true;
                             }
+                            const breakthrough = this._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
+                            if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                             if (!this.party.includes(target) && this._canRecruit(actor, target)) {
                                 result += ` ${this._label('explore.recruit.possible', '{target} may be willing to join the party.', { target: target.name })}`;
                             }
@@ -3485,6 +3578,13 @@
                             : `${target.name} [${target.species}]: Punishment ${target.CPun}/${target.MPun}, Spirit ${target.CPle}/${target.MPle}, Size ${target.size}, Appetite ${target.appetite}, Body Type: ${labelBodyType(target.parts) || 'none'}, Chest Type: ${labelBodyType(target.chest) || 'none'}`;
                         break;
                     }
+                }
+                if (action !== 'inspect') {
+                    this._applyActionCost?.(action, actor, target, { affected }, {
+                        mode: 'adventure',
+                        source: 'exploration-resolution',
+                        emitScene: true
+                    });
                 }
                 this.log.push({ text: result, type: 'discovery' });
                 if (!options.suppressStory) {

@@ -115,6 +115,12 @@ const YAW_COMBAT_RESOLUTION = {
                 if (advanceTurn) app.nextTurn();
                 return true;
             }
+            app._applyActionCost?.(action, actor, target, {}, {
+                mode: 'combat',
+                source: 'combat-resolution',
+                emitScene: true,
+                applyCost: options.applyCost
+            });
             switch (action) {
             case 'scavenge': {
                 const consumed = app._consumeCorpsePortions(target, [actor]);
@@ -175,6 +181,8 @@ const YAW_COMBAT_RESOLUTION = {
                         target.orgasmed = true;
                         app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
                     }
+                    const breakthrough = app._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
+                    if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
                     result = `${target.name} rejects the conversation with ${actorName}!`;
                 }
@@ -206,6 +214,8 @@ const YAW_COMBAT_RESOLUTION = {
                             }, 100);
                         }
                     }
+                    const breakthrough = app._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
+                    if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
                     result = `${target.name} does not want to play!`;
                 }

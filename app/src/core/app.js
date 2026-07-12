@@ -5274,7 +5274,10 @@
                 return YAW_COMBAT_SAVE_STATE.clearRefreshSnapshot(this, slotName);
             },
             async autoSave() {
-                return YAW_SAVE_PERSISTENCE.autoSave(this);
+                const options = arguments[0] || {};
+                return options && Object.keys(options).length
+                    ? YAW_SAVE_PERSISTENCE.autoSave(this, options)
+                    : YAW_SAVE_PERSISTENCE.autoSave(this);
             },
             async saveToSlot(slotName) {
                 return YAW_SAVE_SLOT_FLOW.saveToSlot(this, slotName);

@@ -18447,6 +18447,28 @@ test('Save slot destructive confirmations localize', async () => {
   assertEqual(deleteAttempts.length, 0, 'Cancelled slot delete should not remove the selected slot');
 });
 
+test('Auto-save debounce coalesces rapid movement saves into one slot write', async () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'debounce-player' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.AUTO_SAVE_DEBOUNCE_MS = 5;
+  let writes = 0;
+  App.persistWorldStateToMapStore = async () => 0;
+  App._dbPut = async () => { writes += 1; };
+
+  await App.autoSave();
+  await App.autoSave();
+  await App.autoSave();
+  assertEqual(writes, 0, 'Debounced auto-save should not write synchronously inside the click task');
+  await new Promise(resolve => setTimeout(resolve, 25));
+  assertEqual(writes, 1, 'Rapid auto-save requests should coalesce into one slot write');
+
+  await App.autoSave({ immediate: true });
+  assertEqual(writes, 2, 'Immediate auto-save flush should still write when explicitly requested');
+});
+
 test('Manual saves keep independent world snapshots and clear stale tile events on load', async () => {
   const Binary = loadBinaryForTest();
   const savedBuffers = new Map();

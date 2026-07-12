@@ -2770,6 +2770,8 @@ async function checkViewport(browser, name, width, height) {
         label,
         surface: rectFor(document.getElementById('desktop-play-surface')),
         center: rectFor(document.getElementById('desktop-play-cell-center')),
+        south: rectFor(document.getElementById('desktop-play-cell-s')),
+        sceneFeed: rectFor(document.getElementById('desktop-scene-feed-slot')),
         composer: rectFor(document.getElementById('desktop-command-composer')),
         targetPanelEmpty: document.querySelector('.stage')?.classList.contains('target-panel-empty') || false
       });
@@ -2863,6 +2865,10 @@ async function checkViewport(browser, name, width, height) {
     ['enter', 'creature', 'target'].forEach(state => {
       assertDesktopRectStable(desktopTraversalRectContract[state].surface, desktopTraversalRectContract.empty.surface, state, '3x3 surface');
       assertDesktopRectStable(desktopTraversalRectContract[state].center, desktopTraversalRectContract.empty.center, state, 'center tile');
+    });
+    ['empty', 'enter', 'creature', 'target'].forEach(state => {
+      const rects = desktopTraversalRectContract[state];
+      assert(rects.sceneFeed.top >= rects.south.bottom + 1, `${name}: desktop Scene Feed should stay below the south traversal row when ${state} appears`);
     });
 
     await page.evaluate(() => App.toggleExplorationTarget('creature', 'creature-1'));

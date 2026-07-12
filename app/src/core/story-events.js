@@ -724,7 +724,7 @@ const YAW_STORY_EVENTS = {
         }
         this.updateMobileNewBeatIndicator(app);
         const desktopSceneLatest = document.getElementById('desktop-scene-feed-latest');
-        if (desktopSceneLatest) this.applyStreamElement(app, desktopSceneLatest, latest, streamHtml);
+        if (desktopSceneLatest) this.applyLatestElement(app, desktopSceneLatest, latest, latestHtml);
         document.querySelectorAll?.('.desktop-combat-story-latest, .mobile-combat-story-latest').forEach(el => {
             this.applyLatestElement(app, el, latest, latestHtml);
         });

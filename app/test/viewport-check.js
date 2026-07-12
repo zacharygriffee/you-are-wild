@@ -2302,6 +2302,159 @@ async function checkViewport(browser, name, width, height) {
     assert(desktopPanels.surface.width <= 982, `${name}: desktop play surface should cap width instead of expanding with spare side-panel space`);
     assert(desktopPanels.center.width > 0 && desktopPanels.center.height > 0, `${name}: desktop center play tile should be visible`);
 
+    const desktopCombatSceneLayout = await page.evaluate(() => {
+      const tile = App._currentExplorationTile?.();
+      const originalCreatures = [...(App.creatures || [])];
+      const originalParty = [...(App.party || [])];
+      const originalPlayer = App.player;
+      const originalCombatState = App.combatState ? {
+        ...App.combatState,
+        turnQueue: Array.isArray(App.combatState.turnQueue) ? [...App.combatState.turnQueue] : [],
+        syncActions: Array.isArray(App.combatState.syncActions) ? [...App.combatState.syncActions] : []
+      } : null;
+      const originalLog = [...(App.log || [])];
+      const originalTileCreatures = tile && Array.isArray(tile.creatures) ? [...tile.creatures] : null;
+      const originalTileItems = tile && Array.isArray(tile.items) ? [...tile.items] : null;
+      const make = (name, id, icon = '👤') => ({
+        id,
+        name,
+        species: 'human',
+        icon,
+        CPun: 100,
+        MPun: 100,
+        CPle: 50,
+        MPle: 100,
+        level: 1,
+        size: 4,
+        appetite: 4,
+        stomach: [],
+        womb: [],
+        balls: [],
+        inventory: [],
+        Figh: 10,
+        Flir: 10,
+        Fuck: 10,
+        Feas: 10,
+        Feed: 10,
+        Flee: 10,
+        con: 10,
+        wis: 10,
+        cha: 10
+      });
+      const player = make('You', 'desktop-combat-player', '👤');
+      player.mc = true;
+      const ally = make('Ally', 'desktop-combat-ally', '🐰');
+      const helper = make('Mousefolk', 'desktop-combat-helper', '🐭');
+      const enemy = { ...make('Ratfolk', 'desktop-combat-enemy', '🐀'), disposition: App.DISPOSITION.ENEMY };
+      App.player = player;
+      App.party = [player, ally, helper];
+      App.creatures = [enemy];
+      if (tile) tile.creatures = App.creatures;
+      App.combatState = {
+        active: true,
+        round: 1,
+        currentTurn: 0,
+        turnQueue: [
+          { unit: player, initiative: 12 },
+          { unit: ally, initiative: 10 },
+          { unit: helper, initiative: 8 },
+          { unit: enemy, initiative: 5 }
+        ],
+        syncActions: [],
+        processing: false
+      };
+      App.log = [
+        ...originalLog,
+        { text: 'Combat started with Ratfolk!', type: 'combat', phase: 'start' },
+        { text: 'Ratfolk hits You for 8 punishment!', type: 'combat', actorName: 'Ratfolk', action: 'fight' },
+        { text: 'You play with Ratfolk. Spirit rises.', type: 'combat', actorName: 'You', action: 'fuck' }
+      ];
+      App.emitSceneBeat?.({
+        mode: 'combat',
+        action: 'fight',
+        actors: [enemy],
+        targets: [player],
+        source: 'desktop-layout-check'
+      }, {
+        summary: 'Ratfolk hits You for 8 punishment.',
+        passage: 'Ratfolk catches You during the exchange.',
+        resultKind: 'success',
+        source: 'desktop-layout-check'
+      });
+      App.renderCreatures();
+      App.renderParty();
+      App.renderCombatSceneForTurn(player);
+      App.renderDesktopPlaySurface();
+      App.renderDesktopCombatComposer(player);
+
+      const read = selector => {
+        const el = document.querySelector(selector);
+        const rect = el?.getBoundingClientRect?.();
+        const style = el ? getComputedStyle(el) : null;
+        return {
+          exists: Boolean(el),
+          hidden: Boolean(el?.hidden),
+          display: style?.display || '',
+          overflowY: style?.overflowY || '',
+          top: rect ? Math.round(rect.top) : 0,
+          bottom: rect ? Math.round(rect.bottom) : 0,
+          width: rect ? Math.round(rect.width) : 0,
+          height: rect ? Math.round(rect.height) : 0,
+          scrollHeight: el?.scrollHeight || 0,
+          clientHeight: el?.clientHeight || 0,
+          text: el?.innerText || ''
+        };
+      };
+      const metrics = {
+        surface: read('#desktop-play-surface'),
+        center: read('#desktop-play-cell-center'),
+        content: read('#desktop-play-cell-center .desktop-play-cell-content'),
+        summary: read('#desktop-play-cell-center .combat-scene-summary'),
+        feedSlot: read('#desktop-scene-feed-slot'),
+        composer: read('#desktop-command-composer'),
+        belt: read('#desktop-context-belt'),
+        actionButtons: Array.from(document.querySelectorAll('#desktop-context-belt button')).map(button => {
+          const rect = button.getBoundingClientRect();
+          return {
+            text: button.textContent.trim(),
+            top: rect.top,
+            bottom: rect.bottom,
+            width: rect.width,
+            height: rect.height
+          };
+        }),
+        viewportHeight: innerHeight
+      };
+
+      App.combatState = originalCombatState || { active: false, round: 0, currentTurn: 0, turnQueue: [], syncActions: [], processing: false };
+      App.player = originalPlayer;
+      App.party = originalParty;
+      App.creatures = originalCreatures;
+      App.log = originalLog;
+      if (tile) {
+        if (originalTileCreatures) tile.creatures = originalTileCreatures;
+        else delete tile.creatures;
+        if (originalTileItems) tile.items = originalTileItems;
+        else delete tile.items;
+      }
+      App.renderCreatures();
+      App.renderParty();
+      App.renderMap();
+      App.renderDesktopPlaySurface();
+      App.renderExplorationActions();
+      return metrics;
+    });
+    assert.strictEqual(desktopCombatSceneLayout.summary.exists, true, `${name}: desktop combat stage should render the combat summary`);
+    assert.strictEqual(desktopCombatSceneLayout.feedSlot.exists, true, `${name}: desktop combat should keep the Scene Feed slot rendered`);
+    assert.strictEqual(desktopCombatSceneLayout.composer.hidden, false, `${name}: desktop combat composer should be visible for current actor controls`);
+    assert(desktopCombatSceneLayout.center.scrollHeight <= desktopCombatSceneLayout.center.clientHeight + 1, `${name}: desktop combat center should not require internal scrolling to see the battle context`);
+    assert(desktopCombatSceneLayout.summary.bottom <= desktopCombatSceneLayout.center.bottom + 1, `${name}: desktop combat summary should fit visibly inside the battle center`);
+    assert(desktopCombatSceneLayout.feedSlot.top >= desktopCombatSceneLayout.surface.bottom - 1, `${name}: desktop Scene Feed should sit below the combat stage`);
+    assert(desktopCombatSceneLayout.feedSlot.bottom <= desktopCombatSceneLayout.composer.top + 1, `${name}: desktop Scene Feed should remain visible above the combat composer`);
+    assert(desktopCombatSceneLayout.composer.bottom <= desktopCombatSceneLayout.viewportHeight + 1, `${name}: desktop combat composer should stay inside the viewport`);
+    assert(desktopCombatSceneLayout.actionButtons.length >= 5, `${name}: desktop combat composer should expose the primary action grid`);
+    assert(desktopCombatSceneLayout.actionButtons.every(button => button.bottom <= desktopCombatSceneLayout.viewportHeight + 1 && button.width >= 58 && button.height >= 38), `${name}: desktop combat action buttons should remain visible and usable`);
+
     const desktopSurfaceStability = await page.evaluate(() => {
       const measure = () => {
         const stage = document.querySelector('.stage');

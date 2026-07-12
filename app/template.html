@@ -642,6 +642,7 @@
         }
 
         .desktop-play-surface.combat-active {
+            --desktop-play-surface-height: clamp(360px, calc(100dvh - 395px), 520px);
             grid-template-columns: 1fr;
             grid-template-rows: minmax(0, 1fr);
             gap: 0;
@@ -680,15 +681,15 @@
         .desktop-play-surface.combat-active .desktop-battle-center {
             overflow: auto;
             background: rgba(20, 20, 40, 0.96);
-            padding: clamp(10px, 1.4vw, 18px);
-            scroll-padding-block: clamp(10px, 1.4vw, 18px);
+            padding: clamp(8px, 1vw, 12px);
+            scroll-padding-block: clamp(8px, 1vw, 12px);
         }
 
         .desktop-play-surface.combat-active .desktop-play-cell-content {
             max-width: min(100%, 760px);
             min-height: 0;
             justify-content: flex-start;
-            gap: 8px;
+            gap: 6px;
         }
 
         .desktop-play-surface.combat-active .desktop-play-cell-content::before,
@@ -696,16 +697,26 @@
             display: none;
         }
 
+        .desktop-play-surface.combat-active .scene-title {
+            margin-bottom: 0;
+            font-size: clamp(21px, 2vw, 24px);
+            line-height: 1.12;
+        }
+
+        .desktop-play-surface.combat-active .scene-description {
+            line-height: 1.35;
+        }
+
         .desktop-battle-stack {
             width: 100%;
             display: grid;
-            gap: 8px;
+            gap: 6px;
             align-items: stretch;
         }
 
         .desktop-battle-stack .desktop-battle-lane {
-            min-height: 50px;
-            padding: 5px 6px;
+            min-height: 44px;
+            padding: 3px 5px;
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-sm);
             background: rgba(26, 26, 46, 0.58);
@@ -1270,7 +1281,7 @@
             width: 100%;
             max-width: 720px;
             display: grid;
-            gap: var(--space-sm);
+            gap: 6px;
             text-align: left;
             color: var(--text-secondary);
         }
@@ -1281,7 +1292,7 @@
             align-items: baseline;
             justify-content: space-between;
             gap: var(--space-xs) var(--space-md);
-            padding: 8px 10px;
+            padding: 6px 8px;
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-sm);
             background: rgba(42, 42, 74, 0.6);
@@ -1297,7 +1308,7 @@
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 6px;
-            padding: 8px 10px;
+            padding: 6px 8px;
             border: 1px solid rgba(0, 245, 212, 0.22);
             border-radius: var(--radius-sm);
             background: rgba(0, 245, 212, 0.055);
@@ -1316,7 +1327,7 @@
             align-items: baseline;
             justify-content: space-between;
             gap: 8px;
-            padding: 6px 8px;
+            padding: 4px 6px;
             border-radius: var(--radius-sm);
             background: rgba(255, 255, 255, 0.035);
         }
@@ -1340,8 +1351,8 @@
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-sm);
             background: rgba(20, 20, 40, 0.55);
-            padding: 10px;
-            max-height: min(24dvh, 180px);
+            padding: 6px 8px;
+            max-height: min(12dvh, 86px);
             overflow: auto;
             overscroll-behavior: contain;
         }
@@ -1379,13 +1390,13 @@
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .combat-recent-exchange ol {
             list-style: none;
             display: grid;
-            gap: 6px;
+            gap: 4px;
         }
 
         .combat-exchange-item {
@@ -1393,11 +1404,11 @@
             grid-template-columns: auto auto minmax(0, 1fr) auto;
             align-items: start;
             gap: 6px;
-            padding: 5px 6px;
+            padding: 4px 6px;
             border-radius: var(--radius-sm);
             background: rgba(255, 255, 255, 0.025);
             font-size: 12px;
-            line-height: 1.35;
+            line-height: 1.25;
         }
 
         .combat-exchange-item.muted {
@@ -1635,8 +1646,7 @@
             max-width: 100%;
             margin: 0 auto;
             min-width: 0;
-            position: sticky;
-            bottom: 0;
+            position: relative;
             z-index: 4;
             padding-top: 2px;
             background: linear-gradient(180deg, rgba(18, 18, 34, 0.72), rgba(18, 18, 34, 0.98) 38%);
@@ -1967,6 +1977,11 @@
             align-items: center;
             flex-wrap: wrap;
             margin: 0;
+        }
+
+        .desktop-combat-composer .unit-combat-actions > .action-btn {
+            min-width: 64px;
+            min-height: 52px;
         }
 
         .mobile-play-surface {

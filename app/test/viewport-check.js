@@ -1751,6 +1751,9 @@ async function checkViewport(browser, name, width, height) {
       const beltRect = belt.getBoundingClientRect();
       const actorBeltRect = actorBelt.getBoundingClientRect();
       const mapRect = map.getBoundingClientRect();
+      const detailsChip = actorBelt.querySelector('.mobile-actor-details.mobile-strip-details-btn');
+      const detailsRect = detailsChip?.getBoundingClientRect();
+      const microChips = Array.from(actorBelt.querySelectorAll('.mobile-unit-chip.micro-tactical-card')).map(chip => chip.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
       const chips = Array.from(actorBelt.querySelectorAll('.mobile-actor-chip, .mobile-unit-chip, .compact-tactical-card')).map(chip => {
         const rect = chip.getBoundingClientRect();
         return {
@@ -1762,6 +1765,10 @@ async function checkViewport(browser, name, width, height) {
           height: rect.height
         };
       }).filter(rect => rect.width > 0 && rect.height > 0);
+      const centerY = rect => rect.top + rect.height / 2;
+      const detailsCenter = detailsRect ? centerY(detailsRect) : 0;
+      const microCenters = microChips.map(centerY);
+      const microHeights = microChips.map(rect => rect.height);
       return {
         label: 'actor picker',
         actorBeltOpen: Boolean(App.mobileActorBeltOpen),
@@ -1773,6 +1780,11 @@ async function checkViewport(browser, name, width, height) {
         actorBeltAboveDock: actorBeltRect.bottom <= dockRect.top + 1,
         actorBeltInsideBelt: actorBeltRect.top >= beltRect.top - 1 && actorBeltRect.bottom <= beltRect.bottom + 1,
         actorChipCount: chips.length,
+        actorRailVisualBand: actorBeltRect.height,
+        detailsChipHeight: detailsRect?.height || 0,
+        microChipMinHeight: microHeights.length ? Math.min(...microHeights) : 0,
+        microChipMaxHeight: microHeights.length ? Math.max(...microHeights) : 0,
+        detailsAlignedWithMicroCards: Boolean(detailsRect && microCenters.length && microCenters.every(value => Math.abs(value - detailsCenter) <= 1.5)),
         actorChipsAboveDock: chips.every(rect => rect.bottom <= dockRect.top + 1),
         actorChipsInsideBelt: chips.every(rect => rect.top >= beltRect.top - 1 && rect.bottom <= beltRect.bottom + 1),
         beltScrollHeight: belt.scrollHeight,
@@ -1790,6 +1802,10 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(openedActorPicker.actorBeltAboveDock, true, `${name}: open actor picker should stay fully above the fixed dock`);
     assert.strictEqual(openedActorPicker.actorBeltInsideBelt, true, `${name}: open actor picker should fit inside the fixed command belt`);
     assert(openedActorPicker.actorChipCount >= 3, `${name}: open actor picker should expose exit, actors, and details chips`);
+    assert(openedActorPicker.actorRailVisualBand >= 54, `${name}: open actor picker should reserve enough vertical rail band for card borders and selected glow`);
+    assert(openedActorPicker.detailsChipHeight >= 49 && openedActorPicker.detailsChipHeight <= 51, `${name}: actor picker Details/menu chip should match compact card height`);
+    assert(openedActorPicker.microChipMinHeight >= 49 && openedActorPicker.microChipMaxHeight <= 51, `${name}: actor picker micro cards should share a stable compact height`);
+    assert.strictEqual(openedActorPicker.detailsAlignedWithMicroCards, true, `${name}: actor picker Details/menu chip should align with party micro cards`);
     assert.strictEqual(openedActorPicker.actorChipsAboveDock, true, `${name}: open actor picker chips should stay fully above the fixed dock`);
     assert.strictEqual(openedActorPicker.actorChipsInsideBelt, true, `${name}: open actor picker chips should fit inside the fixed command belt`);
     assert(openedActorPicker.beltScrollHeight <= openedActorPicker.beltClientHeight + 1, `${name}: open actor picker should not require internal belt scrolling`);

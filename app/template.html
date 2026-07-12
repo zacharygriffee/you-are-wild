@@ -4357,7 +4357,7 @@
                 --mobile-control-belt-compact-height: 112px;
                 --mobile-control-belt-max-height: 286px;
                 --mobile-scene-height: clamp(112px, 17dvh, 148px);
-                --mobile-map-height: clamp(320px, 37dvh, 340px);
+                --mobile-map-height: 340px;
                 --mobile-hinge-y: clamp(392px, 52dvh, 476px);
             }
 
@@ -4856,6 +4856,7 @@
                 flex-direction: column;
                 gap: 8px;
                 padding: 10px;
+                box-sizing: border-box;
                 flex: 0 0 var(--mobile-map-height);
                 height: var(--mobile-map-height);
                 min-height: var(--mobile-map-height);

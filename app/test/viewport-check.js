@@ -1435,6 +1435,8 @@ async function checkViewport(browser, name, width, height) {
         mapHeight: mapRect.height,
         mapTop: mapRect.top,
         mapBottom: mapRect.bottom,
+        mapContentContained: miniMapRect.bottom <= mapRect.bottom + 1,
+        mapBeforeSceneFeed: mapRect.bottom <= storyLatestRect.top + 1,
         sheetHeight: sheetRect.height,
         sheetBottom: sheetRect.bottom,
         storyLatestTop: storyLatestRect.top,
@@ -1533,6 +1535,8 @@ async function checkViewport(browser, name, width, height) {
       `${name}: mobile latest Scene Beat should start visibly above the sticky command belt`
     );
     assert(mobileControls.mapBottom <= mobileControls.sheetBottom + 1, `${name}: mobile traversal stage should render before the inline Scene Feed`);
+    assert.strictEqual(mobileControls.mapContentContained, true, `${name}: mobile 3x3 traversal grid should not be clipped by the traversal card`);
+    assert.strictEqual(mobileControls.mapBeforeSceneFeed, true, `${name}: mobile Scene Feed should start after the traversal card, not overlap the map`);
     assert.notStrictEqual(mobileControls.topStoryButtonDisplay, 'none', `${name}: compact story capsule button should be visible on mobile`);
     assert.strictEqual(mobileControls.storyHandleDisplay, 'none', `${name}: retired floating story handle should not occupy the mobile action zone`);
     assert(/scene|feed|story/i.test(mobileControls.storyHandleText), `${name}: retained mobile scene feed handle markup should stay labeled accessibly`);

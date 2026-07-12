@@ -88,7 +88,7 @@ const YAW_BALANCE_SYSTEM = {
     previewActionCost(app, action = '', actor = null, target = null, context = {}) {
         const key = String(action || '').replace(/^sync_/, '');
         const amount = this.costForAction(app, key, actor, target, context);
-        if (key === 'move' || context.mode === 'travel') return { amount, tone: 'tiny', label: app._label('cost.preview.move', 'Tiny hunger') };
+        if (key === 'move' || key === 'search' || context.mode === 'travel') return { amount, tone: 'tiny', label: app._label('cost.preview.move', 'Tiny hunger') };
         if (key === 'flirt') return { amount, tone: 'low', label: app._label('cost.preview.talk', 'Low effort') };
         if (key === 'fuck') return { amount, tone: 'moderate', label: app._label('cost.preview.play', 'Moderate hunger') };
         if (key === 'fight') return { amount, tone: 'risk', label: app._label('cost.preview.fight', 'Hunger + injury risk') };

@@ -61,11 +61,17 @@ const YAW_COMBAT_RESOLUTION = {
                     resolved = true;
                     continue;
                 }
-                const targetResolved = app.executeActionAgainstTarget(command.action, actor, multiTarget, { advanceTurn: false, suppressStory: true }) !== false;
+                const targetResolved = app.executeActionAgainstTarget(command.action, actor, multiTarget, { advanceTurn: false, suppressStory: true, applyCost: false }) !== false;
                 if (targetResolved && app.lastCombatActionResult?.result) resultLines.push(app.lastCombatActionResult.result);
                 resolved = targetResolved || resolved;
             }
             if (resolved) {
+                app._applyActionCost?.(command.action, actor, target, {}, {
+                    mode: 'combat',
+                    source: 'combat-multi-target-resolution',
+                    emitScene: true,
+                    applyCost: command.applyCost
+                });
                 const targetNames = targets.map(unit => unit?.name).filter(Boolean).join(', ');
                 const summary = resultLines.length > 0
                     ? resultLines.join(' ')

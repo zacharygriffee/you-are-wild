@@ -3033,7 +3033,7 @@
                         skippedSet.add(target);
                         continue;
                     }
-                    const resolved = this.outsideActionOnTarget(action, target, actor, { ...options, allowPartySacrifice: false, suppressStory: true });
+                    const resolved = this.outsideActionOnTarget(action, target, actor, { ...options, allowPartySacrifice: false, suppressStory: true, applyCost: false });
                     if (resolved === false || this.lastActionResolution?.affected === false) skippedSet.add(target);
                 }
                 const affected = targetList.filter(target => !skippedSet.has(target)).map(t => t.name);
@@ -3049,6 +3049,13 @@
                     });
                 if (skipped.length > 0) summary += ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`;
                 this.log.push({ text: summary, type: 'discovery' });
+                if (affected.length > 0) {
+                    this._applyActionCost?.(action, actor, targetList[0], { affected: true }, {
+                        mode: 'adventure',
+                        source: 'exploration-multi-target-resolution',
+                        emitScene: true
+                    });
+                }
                 this.emitStoryResult({ mode: 'adventure', actors: [actor], targets: targetList, action, shape: 'one-to-many' }, summary);
                 this._normalizeExplorationSelections();
                 this.renderLog();
@@ -3583,7 +3590,8 @@
                     this._applyActionCost?.(action, actor, target, { affected }, {
                         mode: 'adventure',
                         source: 'exploration-resolution',
-                        emitScene: true
+                        emitScene: true,
+                        applyCost: options.applyCost
                     });
                 }
                 this.log.push({ text: result, type: 'discovery' });

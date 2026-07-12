@@ -1444,6 +1444,8 @@ test('Balance system applies conservative hunger pressure and relief', () => {
   const balance = loadBalanceSystemForTest();
   const labels = {
     'cost.preview.fight': 'Hunger + injury risk',
+    'cost.preview.play': 'Moderate hunger',
+    'cost.preview.rest': 'Recover, time passes',
     'cost.block.tooHungryPlay': '{actor} is too hungry for that kind of effort.',
     'scene.cost.hungry': '{actor} is getting hungry after repeated effort.'
   };
@@ -1475,6 +1477,213 @@ test('Balance system applies conservative hunger pressure and relief', () => {
   actor.hunger = 40;
   assertEqual(balance.canAffordActionPressure(app, 'flirt', actor).ok, true, 'Talk should remain available at normal hunger');
   assertContains(balance.costTitle(app, 'fight', 'Fight'), 'Hunger + injury risk', 'Cost previews should append to button titles');
+  assertContains(balance.costTitle(app, 'fuck', 'Play'), 'Moderate hunger', 'High-social cost previews should describe moderate hunger');
+  assertContains(balance.costTitle(app, 'rest', 'Rest'), 'Recover, time passes', 'Rest cost previews should describe recovery plus time');
+  assertEqual(balance.costTitle(app, 'recruit', 'Recruit'), 'Recruit', 'No-cost contextual actions should not receive misleading cost text');
+});
+
+test('Rest applies V1 hunger relief while preserving recovery and time pressure', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-rest', CPun: 40, MPun: 100, hunger: 55 });
+  const ally = makeUnit('Ally', { id: 'ally-rest', CPun: 20, MPun: 90, hunger: 75 });
+  App.player = player;
+  App.party = [player, ally];
+  App.activeInterior = null;
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, structure: 'cabin', creatures: [], items: [] }]]);
+  App.timeHour = 6;
+  assertEqual(App._canRestHere(), true, 'Test setup should provide a safe rest-capable structure');
+  App.rest();
+  assertEqual(player.CPun, 70, 'Rest should preserve existing recovery behavior for the player');
+  assertEqual(ally.CPun, 50, 'Rest should preserve existing recovery behavior for party members');
+  assertEqual(player.hunger, 45, 'Rest should reduce player hunger pressure by the configured V1 relief');
+  assertEqual(ally.hunger, 65, 'Rest should reduce ally hunger pressure by the configured V1 relief');
+  assertEqual(App.timeHour, 14, 'Rest should preserve existing time pressure');
+});
+
+test('Starving high-social actions are blocked with guidance and no hunger charge', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'player-starving', Flir: 40, Fuck: 40, hunger: 85 });
+  const target = makeUnit('Bunnyfolk', { id: 'bunny-starving', disposition: App.DISPOSITION.NEUTRAL, CPle: 0, MPle: 100 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  const result = App.outsideActionOnTarget('fuck', target, actor);
+  assertEqual(result, false, 'Starving Play/Seduce-style actions should be rejected');
+  assertEqual(actor.hunger, 85, 'Blocked high-social action should not charge hunger');
+  assert(App.storyEvents.some(event => event.tags?.includes('blocked')), 'Blocked high-social action should emit Scene Feed guidance');
+  assertEqual(App._canAffordActionPressure('flirt', actor).ok, true, 'Talk should remain available at the starving threshold');
+});
+
+test('Cost previews cover combat, exploration, tile, and no-cost contextual actions', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const actor = makeUnit('You', { id: 'preview-player' });
+  App.player = actor;
+  App.party = [actor];
+  const combatFight = App._combatIntentButton('fight', actor);
+  const exploreTalk = App._iconActionButton('flirt', App._actionIcon('flirt'), 'App.noop()');
+  const tileSearch = App._iconActionButton('search', App._actionIcon('search'), 'App.noop()');
+  const recruitTitle = App._actionCostTitle('recruit', 'Recruit');
+  assertContains(combatFight, 'Hunger + injury risk', 'Combat intent buttons should expose cost previews in title/aria-label');
+  assertContains(exploreTalk, 'Low effort', 'Exploration target action buttons should expose cost previews in title/aria-label');
+  assertContains(tileSearch, 'Tiny hunger', 'Tile/location Search buttons should expose tiny hunger pressure in title/aria-label');
+  assertEqual(recruitTitle, 'Recruit', 'Recruit should remain a no-cost contextual action title');
+  assertEqual(App._actionCostTitle('acceptQuest', 'Accept Quest'), 'Accept Quest', 'Quest actions should remain no-cost contextual titles');
+  assertEqual(App._actionCostTitle('trade', 'Trade'), 'Trade', 'Trade should remain a no-cost contextual title');
+  assertEqual(App._actionCostTitle('loot', 'Loot'), 'Loot', 'Loot should remain a no-cost contextual title');
+});
+
+test('Multi-target actions charge once per actor command, not once per target', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'multi-cost-player', Figh: 40, hunger: 10 });
+  const first = makeUnit('Ratfolk 1', { id: 'multi-cost-rat-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  const second = makeUnit('Ratfolk 2', { id: 'multi-cost-rat-2', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [first, second];
+  const resolved = App.outsideActionOnTargets('fight', [first, second], actor);
+  assertEqual(resolved, true, 'Exploration multi-target command should resolve');
+  assertEqual(actor.hunger, 13, 'Exploration one-to-many Fight should charge one Fight cost, not one per target');
+
+  const combat = loadAppForCombat(() => 0);
+  const combatActor = makeUnit('You', { id: 'combat-multi-cost-player', Flir: 40, cha: 20, hunger: 20 });
+  const enemyA = makeUnit('Goblin 1', { id: 'combat-multi-cost-goblin-1', disposition: combat.App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 });
+  const enemyB = makeUnit('Goblin 2', { id: 'combat-multi-cost-goblin-2', disposition: combat.App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 });
+  combat.App.player = combatActor;
+  combat.App.party = [combatActor];
+  combat.App.creatures = [enemyA, enemyB];
+  combat.App.combatState.active = true;
+  combat.App.activeActor = combatActor;
+  combat.App.nextTurn = function() {};
+  combat.App._resolveCombatAction({ mode: 'combat', actors: [combatActor], targets: [enemyA, enemyB], action: 'flirt' });
+  assertEqual(combatActor.hunger, 21, 'Combat one-to-many Talk should charge one Talk cost, not one per target');
+});
+
+test('Group action resolution charges each participant once and fizzle does not double-charge', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const lead = makeUnit('Lead', { id: 'sync-cost-lead', hunger: 10, Flir: 40, cha: 20 });
+  const helper = makeUnit('Helper', { id: 'sync-cost-helper', hunger: 20, Flir: 40, cha: 20 });
+  const target = makeUnit('Target', { id: 'sync-cost-target', disposition: App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 });
+  App.player = lead;
+  App.party = [lead, helper];
+  App.creatures = [target];
+  App.combatState.active = true;
+  App.activeActor = lead;
+  App.nextTurn = function() {};
+  App._resolveSyncAction({ type: 'sync_flirt', participants: [lead, helper], target });
+  assertEqual(lead.hunger, 11, 'Resolved group Talk should charge the lead once');
+  assertEqual(helper.hunger, 21, 'Resolved group Talk should charge the helper once');
+
+  const invalid = makeUnit('Invalid Target', { id: 'sync-invalid-target', disposition: App.DISPOSITION.ENEMY, CPun: 0, hunger: 0 });
+  lead.hunger = 30;
+  helper.hunger = 40;
+  App._resolveSyncAction({ type: 'sync_flirt', participants: [lead, helper], target: invalid });
+  assertEqual(lead.hunger, 30, 'Invalid/fizzled group plan should not silently charge the lead');
+  assertEqual(helper.hunger, 40, 'Invalid/fizzled group plan should not silently charge the helper');
+});
+
+test('Known-impossible combat previews cost nothing while allowed failed attempts can cost', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'cost-failure-player', hunger: 20, Figh: 40 });
+  const target = makeUnit('Harpy', { id: 'cost-failure-harpy', disposition: App.DISPOSITION.ENEMY, CPun: 100 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  App.combatState.active = true;
+  App.activeActor = actor;
+  App.nextTurn = function() {};
+  App._combatReachResult = () => ({ canAttempt: true, canSucceed: false, reason: 'flying', profile: 'melee' });
+  App.executeActionAgainstTarget('fight', actor, target);
+  assertEqual(actor.hunger, 20, 'Known-impossible reach failure should not charge hunger');
+  assert(App.storyEvents.some(event => event.tags?.includes('cannot-reach')), 'Known-impossible reach failure should explain the blocked attempt in Scene Feed');
+
+  App.storyEvents = [];
+  App._combatReachResult = () => ({ canAttempt: true, canSucceed: true, profile: 'melee' });
+  App._terrainCausesMiss = () => true;
+  App.executeActionAgainstTarget('fight', actor, target);
+  assertEqual(actor.hunger, 23, 'Allowed failed/missed attempt should still charge the action cost');
+});
+
+test('Combat XP parity covers fight talk and play without breakthrough double-awards', () => {
+  const fight = loadAppForCombat(() => 0);
+  const fighter = makeUnit('You', { id: 'xp-fighter', Figh: 100, hunger: 0 });
+  const fightTarget = makeUnit('Ratfolk', { id: 'xp-ratfolk', disposition: fight.App.DISPOSITION.ENEMY, CPun: 1, MPun: 100, con: 1 });
+  fight.App.player = fighter;
+  fight.App.party = [fighter];
+  fight.App.creatures = [fightTarget];
+  fight.App.combatState.active = true;
+  fight.App.activeActor = fighter;
+  fight.App.nextTurn = function() {};
+  fight.App._combatActionRating = () => 100;
+  fight.App._combatDamageVariance = () => 0;
+  fight.App.executeActionAgainstTarget('fight', fighter, fightTarget);
+  assertEqual(fight.App.combatState.xpEarned, fight.App.XP_REWARDS.defeatEnemy, 'Fight defeat should grant baseline defeat XP');
+
+  const talk = loadAppForCombat(() => 0);
+  const speaker = makeUnit('You', { id: 'xp-speaker', Flir: 100, cha: 40, hunger: 0 });
+  const talkTarget = makeUnit('Siren', { id: 'xp-siren', disposition: talk.App.DISPOSITION.ENEMY, CPle: 79, MPle: 100, wis: 1 });
+  talk.App.player = speaker;
+  talk.App.party = [speaker];
+  talk.App.creatures = [talkTarget];
+  talk.App.combatState.active = true;
+  talk.App.activeActor = speaker;
+  talk.App.nextTurn = function() {};
+  talk.App._combatActionRating = () => 100;
+  talk.App.executeActionAgainstTarget('flirt', speaker, talkTarget);
+  assertEqual(talk.App.combatState.xpEarned, talk.App.XP_REWARDS.defeatEnemy, 'Talk/social enemy resolution should grant baseline parity XP');
+  assertEqual(talkTarget.recruitReady, true, 'Talk breakthrough should mark recruit readiness');
+  assertEqual(talkTarget.CPle, 20, 'Talk breakthrough should drop Spirit to the post-resolution floor');
+
+  const play = loadAppForCombat(() => 0);
+  const charmer = makeUnit('You', { id: 'xp-charmer', Flir: 100, Fuck: 100, hunger: 0 });
+  const playTarget = makeUnit('Bunnyfolk', { id: 'xp-bunnyfolk', disposition: play.App.DISPOSITION.ENEMY, CPle: 79, MPle: 100, wis: 1 });
+  play.App.player = charmer;
+  play.App.party = [charmer];
+  play.App.creatures = [playTarget];
+  play.App.combatState.active = true;
+  play.App.activeActor = charmer;
+  play.App.nextTurn = function() {};
+  play.App._combatActionRating = () => 100;
+  play.App.executeActionAgainstTarget('fuck', charmer, playTarget);
+  assertEqual(play.App.combatState.xpEarned, play.App.XP_REWARDS.defeatEnemy, 'Play/Seduce enemy resolution should grant baseline parity XP');
+  assertEqual(playTarget.recruitReady, true, 'Play/Seduce breakthrough should mark recruit readiness');
+  assertEqual(play.App.party.includes(playTarget), false, 'Breakthrough and XP parity should not auto-join the target');
+});
+
+test('Scene Feed cost feedback emits thresholds and relief without movement spam', () => {
+  const balance = loadBalanceSystemForTest();
+  const labels = {
+    'scene.cost.hungry': '{actor} is getting hungry after repeated effort.',
+    'scene.cost.starving': '{actor} is dangerously hungry after the exertion.',
+    'scene.cost.relief': '{actor} feels less hungry.'
+  };
+  const app = {
+    BALANCE_V1: {},
+    combatState: { active: false },
+    _label(key, fallback, vars = {}) {
+      let value = labels[key] || fallback;
+      Object.entries(vars).forEach(([name, replacement]) => {
+        value = value.replace(new RegExp(`\\{${name}\\}`, 'g'), replacement);
+      });
+      return value;
+    },
+    emitStoryResult(plan, summary, outcome) {
+      this.storyEvents = this.storyEvents || [];
+      this.storyEvents.unshift({ plan, summary, outcome, tags: outcome?.tags || plan?.tags || [] });
+    }
+  };
+  const mover = { name: 'Walker', hunger: 0, CPun: 100 };
+  balance.applyTravelCost(app, [mover]);
+  balance.applyTravelCost(app, [mover]);
+  assertEqual((app.storyEvents || []).length, 0, 'Repeated tiny movement should not spam Scene Feed beats');
+
+  const hungry = { name: 'Hungry', hunger: 69, CPun: 100 };
+  balance.applyActionCost(app, 'fight', hungry, null, {}, { emitScene: true });
+  assert((app.storyEvents || []).some(event => event.summary.includes('getting hungry')), 'Crossing hungry threshold should emit useful Scene Feed feedback');
+
+  app.storyEvents = [];
+  balance.applyHungerRelief(app, hungry, 10, { action: 'rest', emitScene: true });
+  assert((app.storyEvents || []).some(event => event.tags?.includes('relief')), 'Meaningful hunger relief should emit recovery feedback');
 });
 
 test('Spirit breakthrough marks recruit availability without auto-joining', () => {
@@ -1497,6 +1706,11 @@ test('Spirit breakthrough marks recruit availability without auto-joining', () =
   assertEqual(target.disposition, 'friendly', 'Spirit breakthrough should pacify the target');
   assertEqual(target.CPle, 20, 'Spirit should drop to the post-breakthrough floor');
   assertEqual(app.party.includes(target), false, 'Spirit breakthrough should not auto-recruit');
+
+  const playTarget = { name: 'Deerfolk', CPle: 90, MPle: 100, disposition: 'neutral' };
+  const playResult = balance.resolveSpiritThreshold(app, actor, playTarget, 'fuck', { emitScene: false });
+  assert(playResult, 'Play/Seduce should be able to trigger the same breakthrough path');
+  assertEqual(playTarget.recruitReady, true, 'Play/Seduce breakthrough should mark recruit readiness');
 });
 
 test('Balance doctrine documents V1 scope and deferred work', () => {
@@ -1505,6 +1719,8 @@ test('Balance doctrine documents V1 scope and deferred work', () => {
   assertContains(balanceCostDoc, 'Spirit breakthrough threshold: `85%`', 'Balance doc should lock the V1 threshold');
   assertContains(balanceCostDoc, 'does not automatically join the party', 'Balance doc should require explicit Recruit after threshold');
   assertContains(balanceCostDoc, 'Baseline nonviolent victory should be equivalent', 'Balance doc should lock nonviolent XP parity');
+  assertContains(balanceCostDoc, 'One-to-many actions use command-level costs', 'Balance doc should lock multi-target command cost semantics');
+  assertContains(balanceCostDoc, 'does not apply an extra hunger charge', 'Balance doc should lock V1 fizzle cost behavior');
   assertContains(balanceCostDoc, 'does not implement:', 'Balance doc should separate V1 from deferred balancing');
   assertContains(controlModelContent, 'Balance / Cost Doctrine V1', 'Control model should link the balance doctrine');
 });

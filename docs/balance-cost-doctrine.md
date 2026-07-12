@@ -44,6 +44,10 @@ These numbers are deliberately low. The goal is to reveal tradeoffs without maki
 
 Impossible actions that are blocked during selection or preview should not charge a cost. Actions that are allowed to resolve and then fail can still cost the actor because the attempt happened.
 
+One-to-many actions use command-level costs in V1. A single actor performing one multi-target command pays the action cost once for that command, not once per target. Group actions charge each committed participant once when the group action resolves, not once per target. If a delayed/group plan fizzles before resolution because the target or participants are no longer valid, the current V1 behavior consumes the queued plan/turn flow but does not apply an extra hunger charge.
+
+Rest is relief, not a free reset. It reduces hunger by the configured relief amount while preserving the existing recovery and time-passage behavior.
+
 ## Spirit Breakthrough
 
 When social actions raise a non-party target to the V1 Spirit threshold, the target enters a breakthrough state:

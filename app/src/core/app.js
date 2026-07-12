@@ -1115,6 +1115,7 @@
                 this.applyAccessibilitySettings();
                 this.applyStaticLocalization();
                 this.initAppMenu();
+                this.initMobileUnitStripGestures();
                 this.updateTierButtons();
                 this.initSpeciesGrid();
                 this.selectedSpecies = 'human';
@@ -5163,6 +5164,9 @@
             },
             applyMobileMapZoom() {
                 return YAW_MOBILE_GESTURES.applyMobileMapZoom(this);
+            },
+            initMobileUnitStripGestures() {
+                return YAW_MOBILE_GESTURES.initUnitStripPan(this);
             },
             startMobileCreaturePress(e, targetId) {
                 return YAW_MOBILE_GESTURES.startCreaturePress(this, targetId);

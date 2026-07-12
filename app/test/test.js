@@ -20053,6 +20053,18 @@ test('Mobile map pinch changes zoom and applies transform', () => {
   assertEqual(App._pinchStartDistance, 0, 'Pinch end should clear gesture distance');
 });
 
+test('Mobile combat unit strips own horizontal touch scrolling', () => {
+  assertContains(template, '.mobile-unit-strip {\n                display: flex;\n                gap: 8px;\n                overflow-x: auto;', 'Mobile unit strips should remain the horizontal scroll containers');
+  assertContains(template, '.mobile-unit-strip > *,\n            .mobile-unit-strip .action-btn,\n            .mobile-unit-strip button {\n                touch-action: pan-x;', 'Mobile unit strip children should permit horizontal pan gestures over cards and controls');
+  assertContains(mobileGesturesContent, 'initUnitStripPan(app)', 'Mobile gestures should initialize strip pan support');
+  assertContains(mobileGesturesContent, "target?.closest?.('.mobile-unit-strip')", 'Strip pan support should delegate from any touched child to the nearest strip');
+  assertContains(mobileGesturesContent, 'pan.strip.scrollLeft = pan.scrollLeft - dx', 'Horizontal touch moves should scroll the touched unit strip directly');
+  assertContains(mobileGesturesContent, 'this.cancelCreaturePress(app)', 'Horizontal strip pans should cancel creature long-press timers');
+  assertContains(mobileGesturesContent, 'this.cancelPartyPress(app)', 'Horizontal strip pans should cancel party long-press timers');
+  assertContains(mobileGesturesContent, "{ passive: false, capture: true }", 'Touchmove listener should be able to prevent parent vertical scrolling during horizontal strip pans');
+  assertContains(appContent, 'this.initMobileUnitStripGestures();', 'App init should wire mobile unit strip pan support');
+});
+
 test('Mobile panel dock replaces edge swipe panel gestures', () => {
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should be present');
   assertContains(template, 'position: fixed', 'Mobile panel dock should stay anchored to the viewport');

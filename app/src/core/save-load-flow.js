@@ -10,6 +10,7 @@ const YAW_SAVE_LOAD_FLOW = {
             const slotLabel = app._slotDisplayLabel(slotName);
             let saveData = null;
             const combatSnapshot = app._readCombatRefreshSnapshot(slotName);
+            const usedCombatRefreshSnapshot = Boolean(combatSnapshot?.saveData);
             if (combatSnapshot?.saveData) {
                 saveData = combatSnapshot.saveData;
             }
@@ -199,6 +200,7 @@ const YAW_SAVE_LOAD_FLOW = {
                 combatActive: Boolean(app.combatState?.active),
                 location: { ...app.location }
             });
+            if (usedCombatRefreshSnapshot) app._clearCombatRefreshSnapshot(slotName);
             return true;
         } catch (e) {
             console.error('Load failed:', e);

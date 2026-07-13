@@ -185,8 +185,7 @@ const YAW_SAVE_PERSISTENCE = {
         app._setStoredValue('lastSlot', slotName);
         app._setStoredValue('lastSaveTime', savedAt);
         app._setSaveTime(slotName, savedAt);
-        if (app.combatState?.active) app._writeCombatRefreshSnapshot(slotName);
-        else app._clearCombatRefreshSnapshot(slotName);
+        app._clearCombatRefreshSnapshot(slotName);
         app._emitModuleHook('onGameSave', {
             slotName,
             auto: Boolean(options.auto),

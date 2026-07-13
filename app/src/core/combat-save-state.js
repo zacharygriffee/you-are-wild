@@ -4,15 +4,19 @@
  */
 
 const YAW_COMBAT_SAVE_STATE = {
+    checkpointDomains() {
+        return ['manifest', 'party', 'currentTile', 'combat', 'sceneFeed', 'activityLog'];
+    },
+
     writeRefreshSnapshot(app, slotName = app.activeSlot) {
         slotName = app._normalizeSaveSlotName(slotName);
-        if (!app.combatState?.active || !app.player || typeof Binary === 'undefined') return false;
+        if (!app.combatState?.active || !app.player) return false;
         try {
-            app._prepareSaveSnapshot();
-            const saveData = Binary.saveGame(app, { omitWorldMap: false });
-            return YAW_STORAGE.writeCombatRefreshSnapshot(app, saveData, slotName);
+            app.markAutoSaveDirty?.(this.checkpointDomains(), 'combat-turn-boundary');
+            app.autoSave?.({ delayMs: 0, reason: 'combat-turn-boundary' });
+            return true;
         } catch (e) {
-            console.warn('Combat refresh snapshot failed', e);
+            console.warn('Combat sparse checkpoint failed', e);
             return false;
         }
     },

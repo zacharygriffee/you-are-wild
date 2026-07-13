@@ -1424,7 +1424,7 @@ test('Storage helper module is registered before app code', () => {
   assertNotContains(storageSystemContent, 'deleteFrom(app.LEGACY_SAVE_DB_NAME)', 'Save deletes should not open the legacy FFF_Saves namespace');
   assertContains(moduleSystemContent, 'closeDatabase()', 'Module system should expose a way to close IndexedDB before destructive deletion');
   assertContains(appContent, 'MODULE_SYSTEM.closeDatabase()', 'Clear-all should close the module database before deleting IndexedDB namespaces');
-  assertContains(combatSaveStateContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(app, saveData, slotName)', 'Combat refresh writes should delegate to storage helper with the requested slot');
+  assertContains(storageSystemContent, 'writeCombatRefreshSnapshot(app, saveData, slotName', 'Storage should retain legacy combat refresh write support for old recovery tests and compatibility');
   assertContains(combatSaveStateContent, 'YAW_STORAGE.readCombatRefreshSnapshot(app, slotName)', 'Combat refresh reads should delegate to storage helper');
 });
 
@@ -1914,7 +1914,9 @@ test('Combat save state helper module is registered before app code', () => {
   assertContains(combatSaveStateContent, 'syncActions: (savedCombat.syncActions || []).map', 'Combat restore should rebuild saved sync actions in the helper');
   assertContains(combatSaveStateContent, 'app._sanitizeCombatState({ preserveTurn: true })', 'Combat restore should sanitize restored combat state in the helper');
   assertContains(combatSaveStateContent, 'resumeLoadedCombat(app)', 'Combat save state helper should own loaded combat resume');
-  assertContains(combatSaveStateContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(app, saveData, slotName)', 'Refresh writes should keep using active YAW storage helpers');
+  assertContains(combatSaveStateContent, "app.markAutoSaveDirty?.(this.checkpointDomains(), 'combat-turn-boundary')", 'Refresh writes should now request sparse combat checkpoints');
+  assertContains(combatSaveStateContent, "app.autoSave?.({ delayMs: 0, reason: 'combat-turn-boundary' })", 'Combat checkpoints should be scheduled for coalesced autosave instead of synchronous localStorage writes');
+  assertNotContains(combatSaveStateContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(app, saveData, slotName)', 'Combat refresh writes should not write full combat payloads to localStorage');
   assertContains(combatSaveStateContent, 'YAW_STORAGE.readCombatRefreshSnapshot(app, slotName)', 'Refresh reads should keep using active YAW storage helpers');
   assertContains(combatSaveStateContent, 'loaded?.questState?.combatState?.active', 'Refresh reads should reject non-combat snapshots');
   assertContains(combatSaveStateContent, 'YAW_DEFEAT_RECOVERY.isWipedCombatSave(app, loaded)', 'Refresh reads should reject wiped combat snapshots');
@@ -2322,7 +2324,8 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatTurnsContent, 'const YAW_COMBAT_TURNS = {', 'Combat turns helper should expose the combat turns service');
   assertContains(combatTurnsContent, 'processTurn(app)', 'Combat turns helper should own turn processing');
   assertContains(combatTurnsContent, 'newRound(app)', 'Combat turns helper should own round advancement');
-  assertContains(combatTurnsContent, 'app._writeCombatRefreshSnapshot()', 'Combat turns helper should preserve combat refresh snapshots before player action');
+  assertContains(combatTurnsContent, 'app._writeCombatRefreshSnapshot()', 'Combat turns helper should request a sparse combat checkpoint before player action');
+  assertNotContains(combatTurnsContent, 'Binary.saveGame', 'Combat turns should not build full binary saves in the turn loop');
   assertNotContains(combatTurnsContent, 'Math.random', 'Combat turns helper should not use ambient randomness');
   assertContains(appContent, 'YAW_COMBAT_TURNS.processTurn(this)', 'App processTurn wrapper should delegate to combat turns');
   assertContains(appContent, 'YAW_COMBAT_TURNS.newRound(this)', 'App new round wrapper should delegate to combat turns');
@@ -6622,8 +6625,12 @@ test('Loading combat on an enemy turn resumes the turn instead of freezing', asy
   assertNotContains(elements.get('scene-title').textContent, 'Loaded', 'Loaded combat should not remain on the generic loaded scene');
 });
 
-test('Combat refresh snapshot restores current turn when IndexedDB save is stale', async () => {
-  const Binary = loadBinaryForTest();
+test('Combat refresh checkpoint marks sparse combat domains without localStorage payloads', () => {
+  let binaryWrites = 0;
+  const Binary = {
+    saveGame() { binaryWrites += 1; return new Uint8Array([1, 2, 3]); },
+    loadGame: () => ({})
+  };
   const first = loadAppForCombat(() => 0.5, { binary: Binary });
   const { App, storage } = first;
   const player = makeUnit('You', { id: 'player-refresh-combat', Figh: 20 });
@@ -6655,28 +6662,20 @@ test('Combat refresh snapshot restores current turn when IndexedDB save is stale
     syncActions: []
   };
   App.activeActor = player;
-  App._prepareSaveSnapshot();
-  const staleSave = Binary.saveGame(App, { omitWorldMap: false });
-  enemy.CPun = 12;
-  App.combatState.round = 4;
-  App._writeCombatRefreshSnapshot();
+  let autoSaveOptions = null;
+  App.autoSave = options => { autoSaveOptions = options; return true; };
 
-  const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
-  for (const [key, value] of storage.entries()) loadedApp.storage.set(key, value);
-  loadedApp.App._dbGet = async () => staleSave;
-  loadedApp.App.loadWorldStateFromMapStore = async () => {};
-  const restored = await loadedApp.App.loadFromSlot('slot1');
-  assertEqual(restored, true, 'Slot load should succeed using the refresh snapshot');
-  assertEqual(loadedApp.App.combatState.active, true, 'Refresh snapshot should keep combat active');
-  assertEqual(loadedApp.App.combatState.round, 4, 'Refresh snapshot should restore the newer combat round');
-  assertEqual(loadedApp.App.combatState.currentTurn, 0, 'Refresh snapshot should restore whose turn it is');
-  assertEqual(loadedApp.App.creatures[0].CPun, 12, 'Refresh snapshot should restore newer enemy damage instead of stale IndexedDB state');
-  assertContains(loadedApp.elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Restored refresh combat should render usable composer actions');
+  assertEqual(App._writeCombatRefreshSnapshot(), true, 'Combat checkpoint request should succeed for active combat');
+  assertEqual(binaryWrites, 0, 'Combat checkpoint should not run Binary.saveGame');
+  assertEqual(storage.has(App._combatRefreshKey('slot1')), false, 'Combat checkpoint should not write a localStorage combat payload');
+  assertEqual(autoSaveOptions.delayMs, 0, 'Combat checkpoint should schedule a coalesced near-immediate autosave');
+  assertEqual(autoSaveOptions.reason, 'combat-turn-boundary', 'Combat checkpoint should label its autosave reason');
+  const dirty = App.dirtySaveDomains().sort();
+  assertIncludesEvery(dirty, ['manifest', 'party', 'currentTile', 'combat', 'sceneFeed', 'activityLog'], 'Combat checkpoint should dirty sparse combat boundary domains');
 });
 
-test('Combat refresh snapshot uses compact base64 storage and still accepts legacy byte arrays', () => {
+test('Legacy combat refresh snapshots remain readable without app write path', () => {
   const Binary = {
-    saveGame() { return new Uint8Array([1, 2, 3, 4, 5]); },
     loadGame(buffer) {
       return {
         questState: { combatState: { active: buffer?.[0] === 1 } }
@@ -6684,30 +6683,16 @@ test('Combat refresh snapshot uses compact base64 storage and still accepts lega
     }
   };
   const { App, storage } = loadAppForCombat(() => 0.5, { binary: Binary });
-  App.player = makeUnit('You', { id: 'player-refresh-format' });
-  const enemy = makeUnit('Enemy', { id: 'enemy-refresh-format', disposition: App.DISPOSITION.ENEMY });
-  App.party = [App.player];
-  App.creatures = [enemy];
   App.activeSlot = 'slot1';
-  App.location = { x: 0, y: 0 };
-  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
-  App.combatState = {
-    active: true,
-    round: 1,
-    currentTurn: 0,
-    processing: false,
-    xpEarned: 0,
-    turnQueue: [{ unit: App.player, initiative: 20 }, { unit: enemy, initiative: 10 }],
-    syncActions: []
-  };
-
-  assertEqual(App._writeCombatRefreshSnapshot('slot1'), true, 'Combat refresh snapshot should write');
   const key = App._combatRefreshKey('slot1');
-  const parsed = JSON.parse(storage.get(key));
-  assertEqual(parsed.schema, 'yaw-combat-refresh-v2', 'Refresh snapshot should use the compact v2 envelope');
-  assertEqual(parsed.encoding, 'base64', 'Refresh snapshot should identify compact base64 encoding');
-  assertEqual(typeof parsed.dataB64, 'string', 'Refresh snapshot should store binary data as base64');
-  assertEqual(Array.isArray(parsed.data), false, 'Refresh snapshot should not store a quota-heavy byte array');
+  storage.set(key, JSON.stringify({
+    schema: 'yaw-combat-refresh-v2',
+    slot: 'slot1',
+    savedAt: Date.now(),
+    encoding: 'base64',
+    dataB64: 'AQIDBAU='
+  }));
+
   const readCompact = App._readCombatRefreshSnapshot('slot1');
   assertEqual(Array.from(readCompact.saveData).join(','), '1,2,3,4,5', 'Compact refresh snapshot should decode to original bytes');
 
@@ -6844,7 +6829,7 @@ test('Safe place action is available only on safe overworld rest-capable structu
 
 test('Defeated combat refresh snapshots are rejected and cleared', () => {
   const Binary = loadBinaryForTest();
-  const { App, storage } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App, storage, window } = loadAppForCombat(() => 0.5, { binary: Binary });
   const player = makeUnit('You', { id: 'player-wiped-refresh', CPun: 0, MPun: 100, knockedOut: true });
   const enemy = makeUnit('Plantfolk', { id: 'enemy-wiped-refresh', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 40 });
   App.player = player;
@@ -6863,7 +6848,9 @@ test('Defeated combat refresh snapshots are rejected and cleared', () => {
     syncActions: []
   };
 
-  assertEqual(App._writeCombatRefreshSnapshot(), true, 'Wiped combat snapshot should write before read validation');
+  App._prepareSaveSnapshot();
+  const wipedBytes = Binary.saveGame(App, { omitWorldMap: false });
+  window.YAW_STORAGE.writeCombatRefreshSnapshot(App, wipedBytes, 'slot1');
   assert(storage.has('yaw-combat-refresh-slot1'), 'Refresh snapshot should exist before validation');
   assertEqual(App._readCombatRefreshSnapshot('slot1'), null, 'Wiped combat snapshot should be rejected');
   assertEqual(storage.has('yaw-combat-refresh-slot1'), false, 'Rejected wiped combat snapshot should be cleared');
@@ -7090,7 +7077,7 @@ test('Combat sanitizer removes stale queue and sync references', () => {
 
 test('Expired combat refresh snapshots are ignored and cleared', () => {
   const Binary = loadBinaryForTest();
-  const { App, storage } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App, storage, window } = loadAppForCombat(() => 0.5, { binary: Binary });
   const player = makeUnit('You', { id: 'player-expired-refresh' });
   const enemy = makeUnit('Enemy', { id: 'enemy-expired-refresh', disposition: App.DISPOSITION.ENEMY });
   App.player = player;
@@ -7100,7 +7087,8 @@ test('Expired combat refresh snapshots are ignored and cleared', () => {
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
   App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: [] };
-  assertEqual(App._writeCombatRefreshSnapshot(), true, 'Combat refresh snapshot should write for active combat');
+  App._prepareSaveSnapshot();
+  window.YAW_STORAGE.writeCombatRefreshSnapshot(App, Binary.saveGame(App, { omitWorldMap: false }), 'slot1');
   const key = App._combatRefreshKey('slot1');
   const parsed = JSON.parse(storage.get(key));
   parsed.savedAt = Date.now() - App.COMBAT_REFRESH_TTL_MS - 1;
@@ -7140,7 +7128,7 @@ test('Manual non-combat saves clear stale combat refresh snapshots for the saved
   const Binary = loadBinaryForTest();
   const savedBuffers = [];
   const first = loadAppForCombat(() => 0.5, { binary: Binary });
-  const { App, storage } = first;
+  const { App, storage, window } = first;
   const oldPlayer = makeUnit('Old Fighter', { id: 'old-player' });
   const oldEnemy = makeUnit('Old Enemy', { id: 'old-enemy', disposition: App.DISPOSITION.ENEMY });
   App.player = oldPlayer;
@@ -7150,7 +7138,8 @@ test('Manual non-combat saves clear stale combat refresh snapshots for the saved
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [oldEnemy], items: [] }]]);
   App.combatState = { active: true, round: 3, currentTurn: 1, processing: false, xpEarned: 0, turnQueue: [{ unit: oldPlayer, initiative: 20 }, { unit: oldEnemy, initiative: 10 }], syncActions: [] };
-  assertEqual(App._writeCombatRefreshSnapshot('slot1'), true, 'Test should create a stale combat refresh snapshot first');
+  App._prepareSaveSnapshot();
+  window.YAW_STORAGE.writeCombatRefreshSnapshot(App, Binary.saveGame(App, { omitWorldMap: false }), 'slot1');
   assertEqual(storage.has(App._combatRefreshKey('slot1')), true, 'Combat refresh snapshot should exist before manual save');
 
   const newPlayer = makeSerializableUnit('Peaceful Save', { id: 'peaceful-player', CPun: 50, MPun: 100 });
@@ -19030,9 +19019,6 @@ test('Sparse load falls back to Binary when sparse record is corrupted', async (
 
 test('Combat refresh snapshot takes precedence over sparse manifest on load', async () => {
   const Binary = {
-    saveGame(app) {
-      return new Uint8Array([app.player?.name === 'Refresh Save' ? 2 : 1]);
-    },
     loadGame(buffer) {
       const refresh = buffer?.[0] === 2;
       const name = refresh ? 'Refresh Save' : 'Full Save';
@@ -19060,7 +19046,7 @@ test('Combat refresh snapshot takes precedence over sparse manifest on load', as
     }
   };
   const harness = loadAppForCombat(() => 0.5, { binary: Binary });
-  const { App } = harness;
+  const { App, storage, window } = harness;
   const stored = new Map();
   stored.set('saveManifests:slot1', {
     schema: 'yaw-sparse-save-v1',
@@ -19079,7 +19065,8 @@ test('Combat refresh snapshot takes precedence over sparse manifest on load', as
   App.screen = 'game';
   App.activeSlot = 'slot1';
   App.combatState = { active: true, round: 3, currentTurn: 1, turnQueue: [] };
-  App._writeCombatRefreshSnapshot('slot1');
+  window.YAW_STORAGE.writeCombatRefreshSnapshot(App, new Uint8Array([2]), 'slot1');
+  assert(storage.has(App._combatRefreshKey('slot1')), 'Legacy refresh fixture should exist before load');
   App.player = null;
   App.combatState = { active: false };
   App.loadWorldStateFromMapStore = async () => 0;
@@ -19088,6 +19075,7 @@ test('Combat refresh snapshot takes precedence over sparse manifest on load', as
 
   assertEqual(ok, true, 'Load should succeed through combat refresh snapshot');
   assertEqual(App.player.name, 'Refresh Save', 'Combat refresh should take precedence over sparse manifest');
+  assertEqual(storage.has(App._combatRefreshKey('slot1')), false, 'Legacy combat refresh snapshot should be cleared after successful recovery');
 });
 
 test('Manual saves keep independent world snapshots and clear stale tile events on load', async () => {

@@ -42,14 +42,69 @@ const YAW_STORAGE = {
         return `${app.storageKeys.combatRefreshPrefix}${slotName || 'slot1'}`;
     },
 
+    bytesToBase64(bytes) {
+        const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+        if (typeof Buffer !== 'undefined') return Buffer.from(data).toString('base64');
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let i = 0; i < data.length; i += chunkSize) {
+            binary += String.fromCharCode(...data.subarray(i, i + chunkSize));
+        }
+        return btoa(binary);
+    },
+
+    base64ToBytes(value) {
+        if (typeof value !== 'string') return null;
+        if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(value, 'base64'));
+        const binary = atob(value);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+    },
+
+    parseCombatRefreshData(parsed) {
+        if (!parsed || typeof parsed !== 'object') return null;
+        if (typeof parsed.dataB64 === 'string') return this.base64ToBytes(parsed.dataB64);
+        if (!Array.isArray(parsed.data)) return null;
+        const validBytes = parsed.data.every(value => Number.isInteger(value) && value >= 0 && value <= 255);
+        return validBytes ? new Uint8Array(parsed.data) : null;
+    },
+
+    isQuotaError(error) {
+        return Boolean(error && (
+            error.name === 'QuotaExceededError'
+            || error.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+            || error.code === 22
+            || error.code === 1014
+        ));
+    },
+
     writeCombatRefreshSnapshot(app, saveData, slotName = app.activeSlot) {
         if (typeof localStorage === 'undefined' || !saveData) return false;
-        localStorage.setItem(this.combatRefreshKey(app, slotName), JSON.stringify({
+        const key = this.combatRefreshKey(app, slotName);
+        const payload = JSON.stringify({
+            schema: 'yaw-combat-refresh-v2',
             slot: slotName,
             savedAt: Date.now(),
-            data: Array.from(saveData)
-        }));
-        return true;
+            encoding: 'base64',
+            dataB64: this.bytesToBase64(saveData)
+        });
+        try {
+            localStorage.removeItem(key);
+            localStorage.setItem(key, payload);
+            return true;
+        } catch (e) {
+            try { localStorage.removeItem(key); } catch (clearError) {}
+            if (this.isQuotaError(e)) {
+                if (!app._combatRefreshQuotaWarnings) app._combatRefreshQuotaWarnings = new Set();
+                if (!app._combatRefreshQuotaWarnings.has(slotName)) {
+                    app._combatRefreshQuotaWarnings.add(slotName);
+                    console.warn('Combat refresh snapshot skipped: localStorage quota exceeded; primary autosave remains active.');
+                }
+                return false;
+            }
+            throw e;
+        }
     },
 
     readCombatRefreshSnapshot(app, slotName = app.activeSlot) {
@@ -63,12 +118,12 @@ const YAW_STORAGE = {
             this.clearCombatRefreshSnapshot(app, slotName);
             return null;
         }
-        if (!parsed || parsed.slot !== slotName || !Array.isArray(parsed.data)) {
+        if (!parsed || parsed.slot !== slotName) {
             this.clearCombatRefreshSnapshot(app, slotName);
             return null;
         }
-        const validBytes = parsed.data.every(value => Number.isInteger(value) && value >= 0 && value <= 255);
-        if (!validBytes) {
+        const saveData = this.parseCombatRefreshData(parsed);
+        if (!saveData) {
             this.clearCombatRefreshSnapshot(app, slotName);
             return null;
         }
@@ -77,7 +132,7 @@ const YAW_STORAGE = {
             this.clearCombatRefreshSnapshot(app, slotName);
             return null;
         }
-        return { saveData: new Uint8Array(parsed.data), savedAt };
+        return { saveData, savedAt };
     },
 
     clearCombatRefreshSnapshot(app, slotName = app.activeSlot) {

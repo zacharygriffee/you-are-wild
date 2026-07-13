@@ -6674,6 +6674,52 @@ test('Combat refresh snapshot restores current turn when IndexedDB save is stale
   assertContains(loadedApp.elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Restored refresh combat should render usable composer actions');
 });
 
+test('Combat refresh snapshot uses compact base64 storage and still accepts legacy byte arrays', () => {
+  const Binary = {
+    saveGame() { return new Uint8Array([1, 2, 3, 4, 5]); },
+    loadGame(buffer) {
+      return {
+        questState: { combatState: { active: buffer?.[0] === 1 } }
+      };
+    }
+  };
+  const { App, storage } = loadAppForCombat(() => 0.5, { binary: Binary });
+  App.player = makeUnit('You', { id: 'player-refresh-format' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-refresh-format', disposition: App.DISPOSITION.ENEMY });
+  App.party = [App.player];
+  App.creatures = [enemy];
+  App.activeSlot = 'slot1';
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: App.player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+
+  assertEqual(App._writeCombatRefreshSnapshot('slot1'), true, 'Combat refresh snapshot should write');
+  const key = App._combatRefreshKey('slot1');
+  const parsed = JSON.parse(storage.get(key));
+  assertEqual(parsed.schema, 'yaw-combat-refresh-v2', 'Refresh snapshot should use the compact v2 envelope');
+  assertEqual(parsed.encoding, 'base64', 'Refresh snapshot should identify compact base64 encoding');
+  assertEqual(typeof parsed.dataB64, 'string', 'Refresh snapshot should store binary data as base64');
+  assertEqual(Array.isArray(parsed.data), false, 'Refresh snapshot should not store a quota-heavy byte array');
+  const readCompact = App._readCombatRefreshSnapshot('slot1');
+  assertEqual(Array.from(readCompact.saveData).join(','), '1,2,3,4,5', 'Compact refresh snapshot should decode to original bytes');
+
+  storage.set(key, JSON.stringify({
+    slot: 'slot1',
+    savedAt: Date.now(),
+    data: [1, 8, 7]
+  }));
+  const legacy = App._readCombatRefreshSnapshot('slot1');
+  assertEqual(Array.from(legacy.saveData).join(','), '1,8,7', 'Legacy byte-array refresh snapshots should remain loadable');
+});
+
 test('Defeat ends combat into a durable recovery state', () => {
   const { App, elements, hooks } = loadAppForCombat(() => 0.5);
   const player = makeUnit('You', { id: 'player-defeat-state', CPun: 0, MPun: 100, knockedOut: true });

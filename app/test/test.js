@@ -1737,7 +1737,9 @@ test('World state helper module is registered before app code', () => {
   assertContains(worldStateContent, 'app._syncCurrentTileCreatures()', 'World state helper should synchronize current creatures before delta persistence');
   assertContains(worldStateContent, 'restoreWorldState(app, loaded)', 'World state helper should own restored world reconstruction');
   assertContains(worldStateContent, 'app.worldMeta = app._normalizeWorldMeta(loaded.worldMeta', 'World restore should normalize loaded metadata in the helper');
-  assertContains(worldStateContent, 'app.persistTileDelta(effective.x, effective.y, effective)', 'World restore should rebuild sparse tile deltas in the helper');
+  assertContains(worldStateContent, 'app.persistTileDelta(effective.x, effective.y, effective, { markDirty: false })', 'World restore should rebuild sparse tile deltas without marking load state dirty');
+  assertContains(worldStateContent, 'markWorldTileDirty(app, x, y, reason', 'World state helper should expose dirty tile tracking');
+  assertContains(worldStateContent, 'dirtyWorldTileKeys(app)', 'World state helper should expose dirty tile key inspection');
   assertContains(worldStateContent, 'exploreTile(app, x, y)', 'World state helper should own first-discovery tile mutation');
   assertContains(worldStateContent, 'revealVisibleTiles(app', 'World state helper should own nearby map sight reveal');
   assertContains(worldStateContent, 'WorldGen.hash01(app._mapSeed()', 'World tile descriptions should be deterministic in the helper');
@@ -1747,7 +1749,8 @@ test('World state helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_WORLD_STATE.exploreTile(this, x, y)', 'App explore-tile wrapper should delegate to world state');
   assertContains(appContent, 'YAW_WORLD_STATE.revealVisibleTiles(this, x, y, radius)', 'App sight reveal wrapper should delegate to world state');
   assertContains(appContent, 'YAW_WORLD_STATE.getBaseTile(this, x, y)', 'App base tile wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_WORLD_STATE.persistTileDelta(this, x, y, tile)', 'App tile delta wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_WORLD_STATE.persistTileDelta(this, x, y, tile, options)', 'App tile delta wrapper should delegate to the helper with options');
+  assertContains(appContent, 'YAW_WORLD_STATE.markWorldTileDirty(this, x, y, reason)', 'App dirty tile wrapper should delegate to world state');
   assertContains(appContent, 'YAW_WORLD_STATE.applyTileDeltaRecords(this, records)', 'App sparse record wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.restoreWorldState(this, loaded)', 'App world restore wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.getTile(this, x, y)', 'App tile cache wrapper should delegate to the helper');
@@ -1763,6 +1766,8 @@ test('World store helper module is registered before app code', () => {
   assertContains(worldStoreContent, "createObjectStore('chunkDeltas'", 'World store helper should reserve chunk delta storage');
   assertContains(worldStoreContent, "createObjectStore('entityIndex'", 'World store helper should reserve entity index storage');
   assertContains(worldStoreContent, 'app.persistAllTileDeltas()', 'World store persistence should flush tile deltas before writing');
+  assertContains(worldStoreContent, 'persistDirty(app, keys = [], options = {})', 'World store helper should persist explicit dirty tile keys for sparse autosave');
+  assertContains(worldStoreContent, "worldPersistenceMode: options.mode || 'dirty-tiles'", 'Dirty world persistence should report dirty-tile mode');
   assertContains(worldStoreContent, 'app._applyTileDeltaRecords(records)', 'World store loading should apply normalized tile delta records');
   assertContains(worldStoreContent, 'forkCurrent(app', 'World store helper should support save-slot world forks');
   assertContains(worldStoreContent, 'referencedWorldIds(app)', 'World store helper should collect save-referenced worlds before cleanup');
@@ -1770,6 +1775,7 @@ test('World store helper module is registered before app code', () => {
   assertContains(worldStoreContent, "['worlds', 'tileDeltas', 'chunkDeltas', 'entityIndex']", 'World cleanup should cover world metadata and delta stores');
   assertContains(appContent, 'YAW_WORLD_STORE.dbOpen(this)', 'App world DB wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STORE.persist(this)', 'App world persistence wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_WORLD_STORE.persistDirty(this, keys)', 'App dirty world persistence wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STORE.load(this)', 'App world load wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STORE.forkCurrent(this', 'App world fork wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STORE.pruneUnreferenced(this', 'App world cleanup wrapper should delegate to the helper');
@@ -18654,6 +18660,142 @@ test('Sparse autosave debug exposes snapshot and world-store performance diagnos
   assert(debug.performanceDiagnostic && debug.performanceDiagnostic.phases.length > 0, 'Debug state should expose a ranked save timing diagnostic');
   assertEqual(debug.performanceDiagnostic.worldRecordCount, 4, 'Performance diagnostic should include world record count');
   assert(debug.slowSaveDiagnostic, 'Slow-save diagnostic should be recorded when save exceeds the configured threshold');
+});
+
+test('Routine movement sparse autosave skips full snapshot and writes dirty world tiles only', async () => {
+  const harness = loadAppForCombat(() => 0.99);
+  const App = enableRealAutoSaveHarness(harness);
+  App.player = makeUnit('You', { id: 'sparse-move-player' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.AUTO_SAVE_DEBOUNCE_MS = 0;
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'grove';
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  const stored = new Map();
+  App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  App._dbPut = async (store, key, value) => stored.set(`${store}:${key}`, value);
+  let fullPrepareCalls = 0;
+  let fullWorldStoreCalls = 0;
+  let dirtyWorldStoreCalls = 0;
+  let dirtyWorldKeys = [];
+  App._prepareSaveSnapshot = () => {
+    fullPrepareCalls += 1;
+    App._lastSaveSnapshotDebug = { mode: 'full-test', totalMs: 1, persistAllTileDeltasMs: 1, worldMapSize: App.worldMap.size, tileDeltaCountAfter: App.tileDeltas.size };
+  };
+  App.persistWorldStateToMapStore = async () => {
+    fullWorldStoreCalls += 1;
+    App._lastWorldStoreDebug = { worldPersistenceMode: 'baseline', worldTilesScanned: App.worldMap.size, worldTilesWritten: App.tileDeltas.size, recordCount: App.tileDeltas.size, totalMs: 1 };
+    App.clearDirtyWorldTileKeys?.();
+    return App.tileDeltas.size;
+  };
+  App.persistDirtyWorldTilesToMapStore = async keys => {
+    dirtyWorldStoreCalls += 1;
+    dirtyWorldKeys = [...keys];
+    App._lastWorldStoreDebug = { worldPersistenceMode: 'dirty-tiles', worldDirtyKeys: [...keys], worldTilesScanned: keys.length, worldTilesWritten: keys.length, recordCount: keys.length, totalMs: 1 };
+    App.clearDirtyWorldTileKeys?.(keys);
+    return keys.length;
+  };
+
+  await App.autoSave({ immediate: true });
+  const baselineFallbacks = App.saveDebugState().defaultDirtyFallbackCount;
+  assertEqual(fullPrepareCalls, 1, 'Initial sparse baseline may use full snapshot prep');
+  assertEqual(fullWorldStoreCalls, 1, 'Initial sparse baseline may use full world persistence');
+
+  fullPrepareCalls = 0;
+  fullWorldStoreCalls = 0;
+  App.clearSaveDirtyAll();
+  App.move(1, 0);
+  await App.autoSave({ immediate: true });
+
+  const debug = App.saveDebugState();
+  assertEqual(fullPrepareCalls, 0, 'Routine movement sparse autosave should not call full _prepareSaveSnapshot');
+  assertEqual(fullWorldStoreCalls, 0, 'Routine movement sparse autosave should not call full world persistence');
+  assertEqual(dirtyWorldStoreCalls, 1, 'Routine movement should persist dirty world tiles');
+  assert(dirtyWorldKeys.length > 0 && dirtyWorldKeys.length < App.worldMap.size, 'Movement should write a bounded dirty tile set, not the full known map');
+  assertEqual(debug.worldStoreDebug.worldPersistenceMode, 'dirty-tiles', 'Movement world persistence should use dirty-tile mode');
+  assertEqual(debug.defaultDirtyFallbackUsed, false, 'Routine movement should not use default all-dirty fallback');
+  assertEqual(debug.defaultDirtyFallbackCount, baselineFallbacks, 'Routine movement should not increment default fallback count after baseline');
+  assertIncludesEvery(debug.lastDirtyDomains, ['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'Movement sparse save should keep movement-related domains');
+  assertExcludesEvery(debug.lastDirtyDomains, ['settings', 'inventory'], 'Movement sparse save should exclude unrelated domains');
+});
+
+test('Routine inventory and scene sparse autosaves avoid default fallback and world persistence', async () => {
+  const harness = loadAppForCombat(() => 0.5);
+  const App = enableRealAutoSaveHarness(harness);
+  App.player = makeUnit('You', { id: 'sparse-routine-player' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.inventory = [{ id: 'routine-charm', name: 'Lucky Charm' }];
+  const stored = new Map();
+  App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  App._dbPut = async (store, key, value) => stored.set(`${store}:${key}`, value);
+  App.persistWorldStateToMapStore = async () => {
+    App._lastWorldStoreDebug = { worldPersistenceMode: 'baseline', worldTilesScanned: 0, worldTilesWritten: 0, recordCount: 0, totalMs: 0 };
+    return 0;
+  };
+  App.persistDirtyWorldTilesToMapStore = async () => {
+    throw new Error('Inventory and Scene Feed-only autosaves should not persist world tiles');
+  };
+
+  await App.autoSave({ immediate: true });
+  const baselineFallbacks = App.saveDebugState().defaultDirtyFallbackCount;
+
+  App.equipItem('routine-charm');
+  await App.autoSave({ immediate: true });
+  const equipDebug = App.saveDebugState();
+  assertEqual(equipDebug.defaultDirtyFallbackUsed, false, 'Equipment autosave should not use default all-dirty fallback');
+  assertEqual(equipDebug.defaultDirtyFallbackCount, baselineFallbacks, 'Equipment autosave should not increment fallback count');
+  assertIncludesEvery(equipDebug.lastDirtyDomains, ['manifest', 'player', 'party', 'inventory', 'holdings', 'activityLog'], 'Equipment autosave should write inventory owner domains');
+  assertExcludesEvery(equipDebug.lastDirtyDomains, ['combat', 'worldTiles', 'settings'], 'Equipment autosave should exclude combat world and settings');
+  assertEqual(equipDebug.worldStoreDebug.worldPersistenceMode, 'skipped', 'Equipment autosave should skip world persistence');
+
+  App.emitSceneBeat({ mode: 'adventure', actors: [App.player], action: 'observe' }, 'A scene-only beat.');
+  await App.autoSave({ immediate: true });
+  const sceneDebug = App.saveDebugState();
+  assertEqual(sceneDebug.defaultDirtyFallbackUsed, false, 'Scene Feed-only autosave should not use default all-dirty fallback');
+  assertEqual(sceneDebug.defaultDirtyFallbackCount, baselineFallbacks, 'Scene Feed-only autosave should not increment fallback count');
+  assertEqual(sceneDebug.recordDomains.join(','), 'sceneFeed', 'Scene Feed-only autosave should write only the sceneFeed record');
+  assertEqual(sceneDebug.worldStoreDebug.worldPersistenceMode, 'skipped', 'Scene Feed-only autosave should skip world persistence');
+});
+
+test('Slow sparse save warning prints flat diagnostics without object expansion', async () => {
+  const harness = loadAppForCombat(() => 0.5);
+  const App = enableRealAutoSaveHarness(harness);
+  App.player = makeUnit('You', { id: 'sparse-flat-player' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.SAVE_SLOW_LOG_MS = -1;
+  const stored = new Map();
+  App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  App._dbPut = async (store, key, value) => stored.set(`${store}:${key}`, value);
+  App.persistWorldStateToMapStore = async () => {
+    App._lastWorldStoreDebug = { worldPersistenceMode: 'baseline', worldTilesScanned: 12, worldTilesWritten: 3, recordCount: 3, totalMs: 7 };
+    return 3;
+  };
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = message => warnings.push(String(message));
+  try {
+    await App.autoSave({ immediate: true });
+  } finally {
+    console.warn = originalWarn;
+  }
+  const warning = warnings.find(line => line.includes('Sparse save slot1 took')) || '';
+  assertContains(warning, 'reason:', 'Slow save warning should include dirty reason as flat text');
+  assertContains(warning, 'dirty:', 'Slow save warning should include dirty domains as flat text');
+  assertContains(warning, 'recordDomains:', 'Slow save warning should include record domains as flat text');
+  assertContains(warning, 'fallbackUsed:', 'Slow save warning should include fallback state as flat text');
+  assertContains(warning, 'prepareSnapshotMs:', 'Slow save warning should include snapshot timing as flat text');
+  assertContains(warning, 'worldStoreMs:', 'Slow save warning should include world-store timing as flat text');
+  assertContains(warning, 'worldTilesScanned:', 'Slow save warning should include scanned tile count as flat text');
+  assertContains(warning, 'worldTilesWritten:', 'Slow save warning should include written tile count as flat text');
+  assertContains(warning, 'manifestWriteMs:', 'Slow save warning should include manifest timing as flat text');
 });
 
 test('Sparse save load reconstructs app state and preserves Binary fallback compatibility', async () => {

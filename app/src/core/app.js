@@ -1799,8 +1799,20 @@
             _tileDeltaFromEffectiveTile(tile) {
                 return YAW_WORLD_STATE.tileDeltaFromEffectiveTile(this, tile);
             },
-            persistTileDelta(x, y, tile = null) {
-                return YAW_WORLD_STATE.persistTileDelta(this, x, y, tile);
+            persistTileDelta(x, y, tile = null, options = {}) {
+                return YAW_WORLD_STATE.persistTileDelta(this, x, y, tile, options);
+            },
+            markWorldTileDirty(x, y, reason = '') {
+                return YAW_WORLD_STATE.markWorldTileDirty(this, x, y, reason);
+            },
+            markCurrentWorldTileDirty(reason = '') {
+                return YAW_WORLD_STATE.markCurrentWorldTileDirty(this, reason);
+            },
+            dirtyWorldTileKeys() {
+                return YAW_WORLD_STATE.dirtyWorldTileKeys(this);
+            },
+            clearDirtyWorldTileKeys(keys = null) {
+                return YAW_WORLD_STATE.clearDirtyWorldTileKeys(this, keys);
             },
             persistAllTileDeltas() {
                 return YAW_WORLD_STATE.persistAllTileDeltas(this);
@@ -5372,6 +5384,9 @@
             },
             async persistWorldStateToMapStore() {
                 return YAW_WORLD_STORE.persist(this);
+            },
+            async persistDirtyWorldTilesToMapStore(keys = []) {
+                return YAW_WORLD_STORE.persistDirty(this, keys);
             },
             async loadWorldStateFromMapStore() {
                 return YAW_WORLD_STORE.load(this);

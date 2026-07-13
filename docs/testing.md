@@ -45,11 +45,15 @@ Save/load tests should cover both compatibility full saves and sparse autosaves.
 
 - dirty-domain tracking and retry preservation;
 - narrow dirty domains for common mutation owners such as movement, equipment, tile items, Scene Feed-only beats, containment, quests, and UI-only Holdings owner switching;
+- routine sparse autosaves after the first slot baseline do not call full `_prepareSaveSnapshot()`;
+- routine movement/combat autosaves persist explicit dirty world tile keys instead of scanning or writing the entire known map;
 - serializable per-domain DTO records;
 - manifest-last commit order;
 - sparse load reconstruction with combat refresh precedence and full Binary fallback;
 - autosave queue coalescing by manifest commit, not raw IndexedDB put count;
-- save performance diagnostics that expose `_prepareSaveSnapshot()` timing, world-store timing, internal tile-delta preparation timing, and a ranked dominant phase.
+- flat slow-save diagnostics and `saveDebugState()` fields for `prepareSnapshotMs`, `worldStoreMs`, `worldTilesScanned`, `worldTilesWritten`, record write/build time, manifest write time, fallback reason/callsite, world persistence mode, and a ranked dominant phase.
+
+Avoid strict timing thresholds in tests. Prefer structural proof: stub full snapshot prep, full world persistence, and dirty-tile persistence to assert which path ran for a given mutation.
 
 ## Source Boundary
 

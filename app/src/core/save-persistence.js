@@ -38,6 +38,7 @@ const YAW_SAVE_PERSISTENCE = {
                 lastDefaultDirtyFallback: false,
                 defaultDirtyFallbackCount: 0,
                 lastDefaultDirtyReason: '',
+                lastDefaultDirtyCallSite: '',
                 lastDirtyReason: '',
                 lastSnapshotDebug: null,
                 lastWorldStoreDebug: null,
@@ -103,9 +104,18 @@ const YAW_SAVE_PERSISTENCE = {
             defaultDirtyFallbackUsed: Boolean(sparse.lastDefaultDirtyFallback),
             defaultDirtyFallbackCount: sparse.defaultDirtyFallbackCount || 0,
             defaultDirtyFallbackReason: sparse.lastDefaultDirtyReason || '',
+            defaultDirtyFallbackCallSite: sparse.lastDefaultDirtyCallSite || '',
             queueState: sparse.queueState || (queue.saving ? 'saving' : (queue.timer ? 'scheduled' : 'idle')),
             lastSaveMode: sparse.lastMode || 'none',
             lastTimings: sparse.lastTimings || {},
+            prepareSnapshotMs: sparse.lastTimings?.prepareSnapshotMs || 0,
+            worldStoreMs: sparse.lastTimings?.worldStoreMs || 0,
+            worldTilesScanned: sparse.lastWorldStoreDebug?.worldTilesScanned || 0,
+            worldTilesWritten: sparse.lastWorldStoreDebug?.worldTilesWritten || 0,
+            recordBuildMs: sparse.lastTimings?.recordBuildMs || 0,
+            recordWriteMs: sparse.lastTimings?.recordWriteMs || 0,
+            manifestWriteMs: sparse.lastTimings?.manifestWriteMs || 0,
+            totalMs: sparse.lastTimings?.totalMs || sparse.lastTotalMs || 0,
             snapshotDebug: sparse.lastSnapshotDebug || null,
             worldStoreDebug: sparse.lastWorldStoreDebug || null,
             performanceDiagnostic: sparse.lastPerformanceDiagnostic || null,
@@ -121,6 +131,11 @@ const YAW_SAVE_PERSISTENCE = {
         state.lastDefaultDirtyFallback = true;
         state.defaultDirtyFallbackCount = (state.defaultDirtyFallbackCount || 0) + 1;
         state.lastDefaultDirtyReason = String(reason || 'autosave-default');
+        try {
+            state.lastDefaultDirtyCallSite = (new Error()).stack?.split('\n').slice(2, 5).map(line => line.trim()).join(' | ') || '';
+        } catch (e) {
+            state.lastDefaultDirtyCallSite = '';
+        }
         this.markSaveDirtyMany(app, domains, reason || 'autosave-default');
         return domains;
     },
@@ -213,6 +228,48 @@ const YAW_SAVE_PERSISTENCE = {
         return app._lastSaveSnapshotDebug || { totalMs: timings.prepareSnapshotMs };
     },
 
+    prepareSparseState(app, dirtyDomains = [], timings = {}) {
+        const start = this.nowMs();
+        const domains = new Set(dirtyDomains || []);
+        const now = () => this.nowMs();
+        const debug = {
+            mode: 'sparse',
+            dirtyDomains: Array.from(domains),
+            worldMapSize: app.worldMap?.size || 0,
+            tileDeltaCountBefore: app.tileDeltas?.size || 0,
+            dirtyWorldTileKeys: typeof app.dirtyWorldTileKeys === 'function' ? app.dirtyWorldTileKeys() : []
+        };
+        let phaseStart = now();
+        if (domains.has('player') || domains.has('party') || domains.has('holdings') || domains.has('combat') || domains.has('quests')) {
+            app._syncPlayerPartyReference();
+        }
+        debug.syncPlayerPartyMs = Math.round(now() - phaseStart);
+        phaseStart = now();
+        if (domains.has('player') || domains.has('party') || domains.has('combat') || domains.has('currentTile') || domains.has('worldTiles')) {
+            app._normalizeExplorationSelections();
+        }
+        debug.normalizeSelectionsMs = Math.round(now() - phaseStart);
+        phaseStart = now();
+        if (domains.has('party') || domains.has('combat') || domains.has('currentTile') || domains.has('worldTiles')) {
+            app._syncCurrentTileCreatures();
+        }
+        debug.syncCurrentTileCreaturesMs = Math.round(now() - phaseStart);
+        phaseStart = now();
+        if (domains.has('currentTile') || domains.has('worldTiles')) {
+            app.markCurrentWorldTileDirty?.('sparse-current-tile');
+            const currentKey = app._tileKey?.(app.location?.x || 0, app.location?.y || 0);
+            const currentTile = currentKey ? app.worldMap?.get(currentKey) : null;
+            if (currentTile) app.persistTileDelta?.(currentTile.x, currentTile.y, currentTile, { markDirty: true, reason: 'sparse-current-tile' });
+        }
+        debug.persistDirtyCurrentTileMs = Math.round(now() - phaseStart);
+        debug.tileDeltaCountAfter = app.tileDeltas?.size || 0;
+        debug.dirtyWorldTileKeysAfter = typeof app.dirtyWorldTileKeys === 'function' ? app.dirtyWorldTileKeys() : [];
+        debug.totalMs = Math.round(now() - start);
+        timings.prepareSnapshotMs = debug.totalMs;
+        app._lastSaveSnapshotDebug = debug;
+        return debug;
+    },
+
     timingDiagnostic(app, timings = {}, context = {}) {
         const phases = [];
         for (const [phase, value] of Object.entries(timings || {})) {
@@ -235,6 +292,31 @@ const YAW_SAVE_PERSISTENCE = {
             worldStore: app._lastWorldStoreDebug || null,
             phases
         };
+    },
+
+    flatSlowSaveSummary(app, slotName, totalMs, dirtyDomains = [], recordDomains = [], timings = {}) {
+        const debug = this.saveDebugState(app);
+        const world = debug.worldStoreDebug || {};
+        const lines = [
+            `Sparse save ${slotName} took ${totalMs}ms`,
+            `reason: ${debug.dirtyReason || ''}`,
+            `dirty: ${(dirtyDomains || []).join(', ')}`,
+            `records: ${recordDomains.length}`,
+            `recordDomains: ${(recordDomains || []).join(', ')}`,
+            `fallbackUsed: ${debug.defaultDirtyFallbackUsed}`,
+            `defaultFallbackReason: ${debug.defaultDirtyFallbackReason || ''}`,
+            `prepareSnapshotMs: ${timings.prepareSnapshotMs || 0}`,
+            `worldStoreMs: ${timings.worldStoreMs || 0}`,
+            `worldPersistenceMode: ${world.worldPersistenceMode || 'skipped'}`,
+            `worldTilesScanned: ${world.worldTilesScanned || 0}`,
+            `worldTilesWritten: ${world.worldTilesWritten || 0}`,
+            `worldDirtyKeys: ${(world.worldDirtyKeys || []).join(', ')}`,
+            `recordBuildMs: ${timings.recordBuildMs || 0}`,
+            `recordWriteMs: ${timings.recordWriteMs || 0}`,
+            `manifestWriteMs: ${timings.manifestWriteMs || 0}`,
+            `totalMs: ${timings.totalMs || totalMs}`
+        ];
+        return lines.join('\n');
     },
 
     serializableClone(value, fallback = null) {
@@ -443,7 +525,6 @@ const YAW_SAVE_PERSISTENCE = {
         sparse.queueState = 'saving';
         sparse.lastError = null;
         sparse.lastDefaultDirtyFallback = false;
-        this.measurePrepareSaveSnapshot(app, timings);
         const dirtyStart = this.nowMs();
         const previousManifest = await app._dbGet('saveManifests', slotName).catch(() => null);
         if (!previousManifest) this.markDefaultAutoDirty(app, 'initial-sparse-baseline');
@@ -451,13 +532,27 @@ const YAW_SAVE_PERSISTENCE = {
         this.markSaveDirty(app, 'manifest', 'sparse-write');
         const dirtyDomains = this.dirtySaveDomains(app);
         timings.dirtyCollectionMs = Math.round(this.nowMs() - dirtyStart);
+        if (!previousManifest) this.measurePrepareSaveSnapshot(app, timings);
+        else this.prepareSparseState(app, dirtyDomains, timings);
         const recordKeys = { ...(previousManifest?.recordKeys || {}) };
         let worldStoreSaved = false;
         let worldRecordCount = 0;
+        app._lastWorldStoreDebug = {
+            worldPersistenceMode: 'skipped',
+            worldTilesScanned: 0,
+            worldTilesWritten: 0,
+            worldDirtyKeys: [],
+            recordCount: 0,
+            totalMs: 0
+        };
         if (dirtyDomains.includes('worldTiles') || dirtyDomains.includes('currentTile') || !previousManifest) {
             const worldStart = this.nowMs();
             try {
-                worldRecordCount = await app.persistWorldStateToMapStore();
+                if (!previousManifest) {
+                    worldRecordCount = await app.persistWorldStateToMapStore();
+                } else {
+                    worldRecordCount = await app.persistDirtyWorldTilesToMapStore(app.dirtyWorldTileKeys?.() || []);
+                }
                 worldStoreSaved = true;
             } catch (e) {
                 console.warn('World map persistence failed during sparse save', e);
@@ -551,12 +646,7 @@ const YAW_SAVE_PERSISTENCE = {
             recordCount: written.length
         });
         if (totalMs > (app.SAVE_SLOW_LOG_MS || 120)) {
-            console.warn(`Sparse save to ${slotName} took ${totalMs}ms`, {
-                dirtyDomains,
-                records: written.length,
-                timings,
-                diagnostic: sparse.lastSlowSaveDiagnostic
-            });
+            console.warn(this.flatSlowSaveSummary(app, slotName, totalMs, dirtyDomains, written, timings));
         }
         return { slotName, savedAt, worldStoreSaved, mode: 'sparse', recordCount: written.length, dirtyDomains, manifest };
     },
@@ -627,7 +717,7 @@ const YAW_SAVE_PERSISTENCE = {
         if (!app.player || app.screen !== 'game') return false;
         const state = this.autoSaveState(app);
         state.dirty = true;
-        if (!this.hasDirtySaveDomains(app)) this.markDefaultAutoDirty(app);
+        if (!this.hasDirtySaveDomains(app)) this.markDefaultAutoDirty(app, options.reason || 'autosave-call-without-targeted-domains');
         if (state.timer) clearTimeout(state.timer);
         const delay = this.autoSaveDelay(app, options);
         this.sparseSaveState(app).queueState = 'scheduled';

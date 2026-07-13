@@ -27,6 +27,38 @@ const YAW_WORLD_STATE = {
         return `${worldId || app.worldMeta?.worldId || 'world_default'}:${x}:${y}`;
     },
 
+    dirtyWorldTileState(app) {
+        if (!(app._dirtyWorldTileKeys instanceof Set)) app._dirtyWorldTileKeys = new Set(app._dirtyWorldTileKeys || []);
+        return app._dirtyWorldTileKeys;
+    },
+
+    markWorldTileDirty(app, x, y, reason = '') {
+        const nx = Number(x);
+        const ny = Number(y);
+        if (!Number.isFinite(nx) || !Number.isFinite(ny)) return false;
+        this.dirtyWorldTileState(app).add(app._tileKey(Math.floor(nx), Math.floor(ny)));
+        app._lastWorldTileDirtyReason = String(reason || 'world-tile-dirty');
+        return true;
+    },
+
+    markCurrentWorldTileDirty(app, reason = '') {
+        return this.markWorldTileDirty(app, app.location?.x || 0, app.location?.y || 0, reason || 'current-world-tile');
+    },
+
+    dirtyWorldTileKeys(app) {
+        return Array.from(this.dirtyWorldTileState(app));
+    },
+
+    clearDirtyWorldTileKeys(app, keys = null) {
+        const state = this.dirtyWorldTileState(app);
+        if (!keys) {
+            state.clear();
+            return true;
+        }
+        for (const key of keys || []) state.delete(String(key));
+        return true;
+    },
+
     defaultWorldMeta() {
         return { worldId: 'world_legacy', seed: 'default', generatorVersion: 1, mapModsHash: 'legacy' };
     },
@@ -131,12 +163,13 @@ const YAW_WORLD_STATE = {
         return Object.keys(delta).length ? delta : null;
     },
 
-    persistTileDelta(app, x, y, tile = null) {
+    persistTileDelta(app, x, y, tile = null, options = {}) {
         const key = app._tileKey(x, y);
         const effective = tile || app.worldMap.get(key);
         const delta = app._tileDeltaFromEffectiveTile(effective);
         if (delta) app.tileDeltas.set(key, delta);
         else app.tileDeltas.delete(key);
+        if (options.markDirty !== false) app.markWorldTileDirty?.(x, y, options.reason || 'tile-delta');
         return delta;
     },
 
@@ -144,7 +177,7 @@ const YAW_WORLD_STATE = {
         if (!app.tileDeltas) app.tileDeltas = new Map();
         app._syncCurrentTileCreatures();
         for (const tile of app.worldMap.values()) {
-            app.persistTileDelta(tile.x, tile.y, tile);
+            app.persistTileDelta(tile.x, tile.y, tile, { markDirty: false });
         }
         return app.tileDeltas;
     },
@@ -204,7 +237,7 @@ const YAW_WORLD_STATE = {
                 const effective = app.applyTileDelta(app.getBaseTile(tile.x, tile.y), tile);
                 const effectiveKey = app._tileKey(effective.x, effective.y);
                 app.worldMap.set(effectiveKey, effective);
-                app.persistTileDelta(effective.x, effective.y, effective);
+                app.persistTileDelta(effective.x, effective.y, effective, { markDirty: false });
                 if (effective.explored) app.exploredTiles.add(effectiveKey);
             }
         }

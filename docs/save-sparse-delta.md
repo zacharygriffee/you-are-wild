@@ -33,6 +33,11 @@ Helpers:
 - `App.clearSaveDirtyAll()`
 - `App.dirtySaveDomains()`
 - `App.hasDirtySaveDomains()`
+- `App.markWorldTileDirty(x, y, reason)`
+- `App.markCurrentWorldTileDirty(reason)`
+- `App.dirtyWorldTileKeys()`
+- `App.clearDirtyWorldTileKeys(keys)`
+- `App.persistDirtyWorldTilesToMapStore(keys)`
 - `App.saveDebugState()`
 
 Autosave marks a conservative default set when no explicit dirty domains exist. Future action code should mark narrower domains as it is touched.
@@ -81,8 +86,13 @@ World tile deltas stay in `YAW_Worlds` stores:
 
 Sparse autosave:
 
-1. Prepare the live save snapshot.
+1. Prepare live save state.
+   - First sparse baseline for a slot may run full `_prepareSaveSnapshot()` so the slot has a complete compatibility boundary.
+   - Routine sparse autosaves use narrow sparse preparation and should not call full `_prepareSaveSnapshot()`.
+   - Manual/full saves still use full snapshot preparation.
 2. Persist world tile deltas when `worldTiles` or `currentTile` are dirty.
+   - First sparse baseline may persist all known tile deltas.
+   - Routine sparse autosaves persist only explicit dirty world tile keys.
 3. Write dirty domain records.
 4. Write the slot manifest last.
 5. Clear dirty domains only after manifest success.
@@ -123,18 +133,24 @@ Old saves remain loadable. Manual full saves still use the Binary fallback path.
 - sparse record count;
 - queue state;
 - last save mode: `sparse`, `full`, `fallback`, or `none`;
-- timing breakdown for save snapshot preparation, dirty collection, record building, world store, record writes, manifest write, full Binary build/write when applicable, and total time;
-- `snapshotDebug`, including `_prepareSaveSnapshot()` internal phase timing, world map size, tile-delta count before/after, and the `persistAllTileDeltas()` time spent inside snapshot preparation;
-- `worldStoreDebug`, including `persistWorldStateToMapStore()` internal phase timing, world-map size, tile-delta count before/after, record count, IndexedDB open time, record build time, and transaction time;
+- flat top-level fields for `prepareSnapshotMs`, `worldStoreMs`, `worldTilesScanned`, `worldTilesWritten`, `recordBuildMs`, `recordWriteMs`, `manifestWriteMs`, and `totalMs`;
+- timing breakdown for save state preparation, dirty collection, record building, world store, record writes, manifest write, full Binary build/write when applicable, and total time;
+- `snapshotDebug`, including either full `_prepareSaveSnapshot()` internal phase timing or routine sparse-prep timing, world map size, tile-delta count before/after, dirty world tile keys, and the `persistAllTileDeltas()` time spent inside full snapshot preparation when full prep is used;
+- `worldStoreDebug`, including `worldPersistenceMode` (`baseline`, `dirty-tiles`, `skipped`, or `fallback-full-scan`), fallback reason when relevant, dirty world tile keys, world tiles scanned/written/deleted, record count, IndexedDB open time, record build time, and transaction time;
 - `performanceDiagnostic`, a ranked phase summary that identifies the dominant save phase for the latest save;
 - `slowSaveDiagnostic`, populated when the save exceeds `App.SAVE_SLOW_LOG_MS`.
 
-Saves slower than `App.SAVE_SLOW_LOG_MS` log a warning with timing details and the ranked diagnostic.
+Saves slower than `App.SAVE_SLOW_LOG_MS` log a flat multi-line warning instead of an object that requires console expansion. The warning includes the save slot, dirty reason, dirty domains, record domains, fallback state, snapshot preparation time, world store time, world persistence mode, tile scan/write counts, record build/write timing, manifest timing, and total time.
 
 During mobile movement/combat playtests, check `App.saveDebugState()` after a hitch. The first questions should be:
 
-1. Is `lastTimings.prepareSnapshotMs` high? If yes, inspect `snapshotDebug.persistAllTileDeltasMs`, `snapshotDebug.worldMapSize`, and `snapshotDebug.tileDeltaCountAfter`.
-2. Is `lastTimings.worldStoreMs` high? If yes, inspect `worldStoreDebug.persistAllTileDeltasMs`, `worldStoreDebug.recordCount`, `worldStoreDebug.dbOpenMs`, and `worldStoreDebug.txMs`.
+1. Is `prepareSnapshotMs` high?
+   - For routine autosaves, `snapshotDebug.mode` should be `sparse`. If it is full after the initial baseline, inspect the fallback reason/callsite.
+   - For full/manual/baseline saves, inspect `snapshotDebug.persistAllTileDeltasMs`, `snapshotDebug.worldMapSize`, and `snapshotDebug.tileDeltaCountAfter`.
+2. Is `worldStoreMs` high?
+   - For routine movement/combat saves, `worldStoreDebug.worldPersistenceMode` should normally be `dirty-tiles`, with `worldTilesScanned` matching the bounded dirty key count.
+   - If it is `fallback-full-scan`, inspect `worldStoreDebug.fallbackReason` and `defaultDirtyFallbackCallSite`.
+   - If IndexedDB dominates, inspect `worldStoreDebug.dbOpenMs`, `worldStoreDebug.recordBuildMs`, and `worldStoreDebug.txMs`.
 3. Is `performanceDiagnostic.dominantPhase` neither `prepareSnapshotMs` nor `worldStoreMs`? Then inspect record build/write or manifest phases before optimizing world storage.
 
-This pass intentionally measures both `persistAllTileDeltas()` calls: one inside `_prepareSaveSnapshot()` and one inside `persistWorldStateToMapStore()`. If both phases are consistently material, the next optimization should remove or narrow redundant tile-delta preparation rather than guessing at IndexedDB first.
+Routine sparse autosave should no longer scan or write the entire known map after the first sparse baseline. If playtest hitches still point at sparse prep or dirty-tile persistence, the next optimization target should be the specific dirty owner or IndexedDB transaction shown by the flat diagnostics, not a broad save rewrite.

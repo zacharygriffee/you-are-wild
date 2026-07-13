@@ -34,10 +34,12 @@ const YAW_WORLD_STORE = {
         });
     },
 
-    async persist(app) {
+    async persist(app, options = {}) {
         const totalStart = this.nowMs();
         const debug = {
             worldId: app.worldMeta?.worldId || '',
+            worldPersistenceMode: options.mode || 'baseline',
+            fallbackReason: options.fallbackReason || '',
             worldMapSize: app.worldMap?.size || 0,
             tileDeltaCountBefore: app.tileDeltas?.size || 0
         };
@@ -55,6 +57,8 @@ const YAW_WORLD_STORE = {
         const records = Array.from(app.tileDeltas.entries()).map(([key, delta]) => app._tileDeltaRecordFromEntry(key, delta));
         debug.recordBuildMs = Math.round(this.nowMs() - phaseStart);
         debug.recordCount = records.length;
+        debug.worldTilesScanned = debug.worldMapSize;
+        debug.worldTilesWritten = records.length;
         return new Promise((resolve, reject) => {
             const txStart = this.nowMs();
             const tx = db.transaction(['worlds', 'tileDeltas'], 'readwrite');
@@ -76,6 +80,7 @@ const YAW_WORLD_STORE = {
                 debug.txMs = Math.round(this.nowMs() - txStart);
                 debug.totalMs = Math.round(this.nowMs() - totalStart);
                 app._lastWorldStoreDebug = debug;
+                app.clearDirtyWorldTileKeys?.();
                 db.close();
                 resolve(records.length);
             };
@@ -83,6 +88,81 @@ const YAW_WORLD_STORE = {
                 debug.txMs = Math.round(this.nowMs() - txStart);
                 debug.totalMs = Math.round(this.nowMs() - totalStart);
                 debug.error = tx.error?.message || String(tx.error || 'world-store-persist-error');
+                app._lastWorldStoreDebug = debug;
+                db.close();
+                reject(tx.error);
+            };
+        });
+    },
+
+    async persistDirty(app, keys = [], options = {}) {
+        const uniqueKeys = Array.from(new Set((keys || []).map(key => String(key || '')).filter(Boolean)));
+        if (!uniqueKeys.length) {
+            app._lastWorldStoreDebug = {
+                worldPersistenceMode: 'fallback-full-scan',
+                fallbackReason: 'worldTiles-dirty-without-dirty-keys',
+                worldTilesScanned: app.worldMap?.size || 0,
+                worldTilesWritten: 0,
+                worldDirtyKeys: [],
+                totalMs: 0
+            };
+            return await this.persist(app, {
+                mode: 'fallback-full-scan',
+                fallbackReason: 'worldTiles-dirty-without-dirty-keys'
+            });
+        }
+        const totalStart = this.nowMs();
+        app.worldMeta = app._normalizeWorldMeta(app.worldMeta, app._defaultWorldMeta());
+        const worldId = app.worldMeta.worldId || 'world_default';
+        const debug = {
+            worldId,
+            worldPersistenceMode: options.mode || 'dirty-tiles',
+            worldMapSize: app.worldMap?.size || 0,
+            tileDeltaCountBefore: app.tileDeltas?.size || 0,
+            worldDirtyKeys: [...uniqueKeys],
+            worldTilesScanned: uniqueKeys.length
+        };
+        let phaseStart = this.nowMs();
+        const records = [];
+        const deletes = [];
+        for (const key of uniqueKeys) {
+            const [x, y] = key.split(',').map(Number);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+            const tile = app.worldMap.get(key);
+            app.persistTileDelta(x, y, tile, { markDirty: false });
+            const delta = app.tileDeltas?.get(key);
+            const storeKey = app._tileDeltaStoreKey(worldId, x, y);
+            if (delta) records.push(app._tileDeltaRecordFromEntry(key, delta));
+            else deletes.push(storeKey);
+        }
+        debug.recordBuildMs = Math.round(this.nowMs() - phaseStart);
+        debug.recordCount = records.length;
+        debug.worldTilesWritten = records.length;
+        debug.worldTilesDeleted = deletes.length;
+        debug.tileDeltaCountAfter = app.tileDeltas?.size || 0;
+        phaseStart = this.nowMs();
+        const db = await app._worldDbOpen();
+        debug.dbOpenMs = Math.round(this.nowMs() - phaseStart);
+        return new Promise((resolve, reject) => {
+            const txStart = this.nowMs();
+            const tx = db.transaction(['worlds', 'tileDeltas'], 'readwrite');
+            const worlds = tx.objectStore('worlds');
+            const tileDeltas = tx.objectStore('tileDeltas');
+            worlds.put({ ...app.worldMeta, worldId, updatedAt: Date.now() });
+            for (const record of records) tileDeltas.put(record);
+            for (const key of deletes) tileDeltas.delete(key);
+            tx.oncomplete = () => {
+                debug.txMs = Math.round(this.nowMs() - txStart);
+                debug.totalMs = Math.round(this.nowMs() - totalStart);
+                app._lastWorldStoreDebug = debug;
+                app.clearDirtyWorldTileKeys?.(uniqueKeys);
+                db.close();
+                resolve(records.length);
+            };
+            tx.onerror = () => {
+                debug.txMs = Math.round(this.nowMs() - txStart);
+                debug.totalMs = Math.round(this.nowMs() - totalStart);
+                debug.error = tx.error?.message || String(tx.error || 'world-store-dirty-persist-error');
                 app._lastWorldStoreDebug = debug;
                 db.close();
                 reject(tx.error);

@@ -283,21 +283,17 @@ const YAW_HOLDINGS = {
         const canUse = def.effect === 'heal' || def.effect === 'buff' || def.effect === 'damage';
         const canEquip = app._isEquippable(item);
         const itemKey = app._escapeJsString(item.id);
-        const ownerId = app._escapeJsString(this.ownerId(app, owner));
-        const ownerName = this.ownerLabel(app, owner);
         const name = app._escapeHtml(item.name || app._label('ui.item', 'item'));
         const useLabel = app._escapeHtml(app._label('inventory.use', 'Use'));
         const equipLabel = app._escapeHtml(app._label('inventory.equip', 'Equip'));
         const dropLabel = app._escapeHtml(app._label('inventory.drop', 'Drop'));
         const useTitle = app._escapeHtml(app._label('inventory.useItem', 'Use {name}', { name: item.name }));
-        const equipTitle = app._escapeHtml(this.isPlayerOwner(app, owner)
-            ? app._label('inventory.equipItem', 'Equip {name}', { name: item.name })
-            : app._label('holdings.equipItemToOwner', 'Equip {item} to {name}', { item: item.name, name: ownerName }));
+        const equipTitle = app._escapeHtml(app._label('inventory.equipItem', 'Equip {name}', { name: item.name }));
         const dropTitle = app._escapeHtml(app._label('inventory.dropItem', 'Drop {name}', { name: item.name }));
         let html = `<div class="holdings-entry pack-entry" data-holding-kind="pack-item"><div class="holding-entry-main"><div class="holding-entry-name"><span>${app._escapeHtml(def.icon || '?')}</span> ${name}</div>`;
         html += `<div class="holding-entry-meta">${app._escapeHtml(def.type || 'misc')} · ${app._escapeHtml(def.desc || '')}${canEquip ? '<br>' + app._equipmentBonusText(item) : ''}</div></div><div class="holding-entry-actions">`;
         if (canUse) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="use-item" title="${useTitle}" aria-label="${useTitle}" onclick="App.useItem('${itemKey}')">${useLabel}</button>`;
-        if (canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="equip-item" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${itemKey}','${ownerId}')">${equipLabel}</button>`;
+        if (canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="equip-item" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${itemKey}')">${equipLabel}</button>`;
         html += `<button class="nav-btn danger" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="drop-item" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button></div></div>`;
         return html;
     },
@@ -305,11 +301,7 @@ const YAW_HOLDINGS = {
     renderPackSection(app, section, owner = app.player) {
         owner = this.ownerForTab(app, owner, 'pack');
         const packLabel = app._label('holdings.sharedPack', 'Shared Pack');
-        const ownerHint = this.isPlayerOwner(app, owner)
-            ? ''
-            : app._label('holdings.sharedPackOwnerHint', 'Equips target {name}', { name: this.ownerLabel(app, owner) });
         let html = `<section class="holdings-section" data-holding-section="pack"><div class="holdings-section-title"><span>${app._escapeHtml(packLabel)}</span><span>${section.count}/${section.max}</span></div>`;
-        if (ownerHint) html += `<p class="holding-entry-meta">${app._escapeHtml(ownerHint)}</p>`;
         html += app._itemListOptions('Inventory');
         const entries = app._filterAndSortItemEntries((app.inventory || []).map((item, index) => ({ item, index })), app.inventoryFilter, app.inventorySort);
         if ((app.inventory || []).length === 0) {
@@ -663,6 +655,8 @@ const YAW_INVENTORY_PANEL = {
     },
 
     equip(app, itemId, ownerId = null) {
+        // Pack UI is player-only for now. ownerId remains as a legacy/internal compatibility seam
+        // until companion equipment gets a deliberate management flow separate from Pack.
         const owner = YAW_HOLDINGS.ownerById(app, ownerId || app.holdingsWindow?.ownerId);
         if (!owner) return;
         const item = app.inventory.find(i => String(i.id) === String(itemId));

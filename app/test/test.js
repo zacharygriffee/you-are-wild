@@ -16767,7 +16767,7 @@ test('Holdings owner selector switches stats equipment and containers while pack
   assertContains(html, "App.releaseContained('party',1,'stomach',0)", 'Container Release should target the selected companion holder index');
 });
 
-test('Holdings can equip and unequip shared pack items to a companion owner', () => {
+test('Legacy Holdings equip seam can still target a companion owner directly', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-equip-owner' });
   const ally = makeUnit('Ally', { id: 'ally-equip-owner', con: 8, equipment: { body: null } });

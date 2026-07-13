@@ -35,8 +35,10 @@ The current implementation uses adapter helpers over existing fields. It does no
 
 - Inventory/Pack item controls remain Use, Equip, Drop, Buy, Sell, Loot, and related item actions.
 - Holdings exposes a party-owner selector. Stats, Equipped, and Containers render for the selected party owner. Switching owners preserves the active tab where possible and falls back to the player if the previous owner leaves.
-- Pack remains shared. Equipping a Pack item equips it to the selected Holdings owner. Unequipping returns the item to the shared Pack.
-- Pack should be labeled as shared when a companion owner is selected. Core does not expose per-companion backpacks.
+- Pack remains shared and player-owned in the visible core UI. The Pack tab disables non-player owner chips and always shows the player/shared Pack owner.
+- Equipping from Pack equips to the player in the visible core UI. Companion equip-from-Pack remains a deferred/compatibility-only path until companion equipment management gets a deliberate flow outside Pack.
+- Unequipping from a selected owner returns the item to the shared Pack when inventory capacity allows.
+- Pack should be labeled as shared. Core does not expose per-companion backpacks.
 - Equipped items remain owner slot-based and are not loose pack items until unequipped.
 - Contained creatures are entries under the selected owner containers. They can expose Inspect, Release, and Digest/Continue controls when their state allows it.
 - Terminal or depleted containment entries remain inspectable but ordinary release is unavailable.

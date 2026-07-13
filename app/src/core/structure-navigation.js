@@ -84,6 +84,17 @@ const YAW_STRUCTURE_NAVIGATION = {
         return structureId === 'camp' && tile?.overlays?.poi?.category === 'restSite';
     },
 
+    isStructureEnterable(app, structureId, tile = null) {
+        if (!structureId) return false;
+        const struct = app.STRUCTURES?.[structureId] || null;
+        return Boolean(
+            tile?.enterable === true
+            || tile?.interior?.enabled === true
+            || struct?.enterable === true
+            || struct?.interior?.enabled === true
+        );
+    },
+
     enter(app) {
         if (app.inInterior) return;
         const tile = this.currentOverworldTile(app);
@@ -91,6 +102,11 @@ const YAW_STRUCTURE_NAVIGATION = {
             app.log.push({ text: app._label('structure.noStructure', 'There is no structure to enter here.'), type: 'discovery' });
             app.renderLog();
             return;
+        }
+        if (!this.isStructureEnterable(app, tile.structure, tile)) {
+            app.log.push({ text: app._label('structure.notEnterable', 'There is no interior to enter here.'), type: 'discovery' });
+            app.renderLog();
+            return false;
         }
         tile.creatures = app._tileCreatures(app.creatures);
         app.activeInterior = this.ensureInterior(app, tile);

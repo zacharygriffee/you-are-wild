@@ -1350,6 +1350,9 @@
             _isRestCapableStructure(structureId, tile = null) {
                 return YAW_STRUCTURE_NAVIGATION.isRestCapableStructure(this, structureId, tile);
             },
+            _isStructureEnterable(structureId, tile = null) {
+                return YAW_STRUCTURE_NAVIGATION.isStructureEnterable(this, structureId, tile);
+            },
             _isTimid(unit) {
                 return Boolean(unit && (unit.timid || this._getSpeciesTemperament(unit.species).timid));
             },

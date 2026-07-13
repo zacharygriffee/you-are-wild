@@ -82,13 +82,16 @@ const YAW_CENTER_CONTEXT = {
             };
             if (tile.structure) {
                 const structure = app.STRUCTURES?.[tile.structure] || {};
+                const enterable = app._isStructureEnterable?.(tile.structure, tile) || false;
                 addPlace({
                     id: `structure:${tile.structure}`,
                     name: structure.name || tile.structure,
                     icon: structure.icon || '🚪',
-                    meta: app._label('action.enter', 'Enter'),
+                    meta: enterable
+                        ? app._label('action.enter', 'Enter')
+                        : app._label('ui.tileInfo.structure', 'Structure'),
                     tone: 'structure',
-                    intent: 'enter'
+                    intent: enterable ? 'enter' : ''
                 });
             }
             if (tile.hasLandmark && tile.landmarkName) {
@@ -289,7 +292,7 @@ const YAW_CENTER_CONTEXT = {
                 const structure = app.STRUCTURES?.[structureId] || {};
                 if (!tile?.structure || tile.structure !== structureId) return false;
                 name = structure.name || structureId;
-                intent = 'enter';
+                intent = app._isStructureEnterable?.(structureId, tile) ? 'enter' : 'choose';
             } else if (String(ref || '').startsWith('landmark:')) {
                 const landmarkName = String(ref).slice('landmark:'.length);
                 if (!tile?.hasLandmark || tile.landmarkName !== landmarkName) return false;
@@ -302,7 +305,7 @@ const YAW_CENTER_CONTEXT = {
             app.renderMobileCreatureStrip?.();
             this.renderPresence(app);
             if (typeof document !== 'undefined') {
-                const focusIntent = String(ref || '').startsWith('structure:') ? 'enter' : '';
+                const focusIntent = intent === 'enter' ? 'enter' : '';
                 const selector = focusIntent
                     ? `#mobile-explore-actions [data-command-intent="${focusIntent}"], #desktop-context-belt [data-command-intent="${focusIntent}"]`
                     : '#mobile-explore-actions .action-btn, #desktop-context-belt .action-btn, #mobile-control-belt, #desktop-context-belt';
@@ -475,7 +478,10 @@ const YAW_CENTER_CONTEXT = {
         if (app._canSearchHere()) keys.unshift('search');
         if (app._canSetSafeAnchor()) keys.push('setSafePlace');
         if (app.inInterior) keys.unshift('exit');
-        else if (app._currentExplorationTile()?.structure) keys.unshift('enter');
+        else {
+            const tile = app._currentExplorationTile?.();
+            if (tile?.structure && app._isStructureEnterable?.(tile.structure, tile)) keys.unshift('enter');
+        }
         if (app._canRestHere()) keys.unshift('rest');
         return keys;
     },

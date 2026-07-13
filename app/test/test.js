@@ -8065,7 +8065,7 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   const exploreHtml = elements.get('desktop-context-belt').innerHTML;
   assertEqual(elements.get('scene-actions').innerHTML, '', 'Desktop center presentation should not own exploration action buttons');
   assertContains(exploreHtml, 'aria-label="Rest"', 'Desktop context belt should keep real Rest button');
-  assertContains(exploreHtml, 'aria-label="Enter"', 'Desktop context belt should keep real Enter button');
+  assertNotContains(exploreHtml, 'aria-label="Enter"', 'Desktop context belt should not expose core structure interiors by default');
   assertNotContains(exploreHtml, 'aria-label="Items"', 'Desktop exploration should not duplicate player inventory in center');
   assertNotContains(exploreHtml, 'action-legend', 'Desktop exploration should not render a duplicate tiny icon legend beside real buttons');
 
@@ -8182,7 +8182,7 @@ test('Center tile stays traversal and context only across interaction states', (
   assertNotContains(el('desktop-presence-rail').innerHTML, 'data-selection-mode="act-actor"', 'Desktop stage rail should not expose actor selection state');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'data-selection-mode="mark-target"', 'Desktop stage rail should not expose target selection state');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="focus-place"', 'Desktop structure presence should identify place-focus routing');
-  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-intent="enter"', 'Desktop structure presence should point at the stable Enter intent');
+  assertNotContains(el('desktop-presence-rail').innerHTML, 'data-command-intent="enter"', 'Desktop structure presence should not claim an Enter intent by default');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-mode="exploration"', 'Desktop presence routing should identify exploration command mode');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Focus Camp location actions"', 'Desktop structure presence should advertise location-action focus semantics');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'data-command-control="open-target-picker"', 'Desktop stage rail should not expose overflow target pickers for side-panel creatures');
@@ -8204,19 +8204,19 @@ test('Center tile stays traversal and context only across interaction states', (
   App.renderMap();
   assertContains(el('mobile-mini-map').innerHTML, 'mobile-play-presence-dot place', 'Mobile center tile should expose structures as compact place presence');
   assertContains(el('mobile-mini-map').innerHTML, 'data-command-control="focus-place"', 'Mobile place presence should identify place-focus routing');
-  assertContains(el('mobile-mini-map').innerHTML, 'data-command-intent="enter"', 'Mobile structure presence should point at the stable Enter intent');
+  assertNotContains(el('mobile-mini-map').innerHTML, 'data-command-intent="enter"', 'Mobile structure presence should not claim an Enter intent by default');
   assertContains(el('mobile-mini-map').innerHTML, "App.focusPresence('place','structure:camp')", 'Mobile structure presence should focus the location composer path');
   App.creatures = crowdedCreatures;
 
   assertEqual(App.focusPresence('place', 'structure:camp'), true, 'Structure presence focus should resolve through the location composer path');
   assertEqual(App.inInterior, false, 'Structure presence focus should not enter the structure directly');
-  assertContains(el('desktop-context-belt').innerHTML, 'data-command-intent="enter"', 'Structure presence focus should expose Enter in the desktop composer belt');
+  assertNotContains(el('desktop-context-belt').innerHTML, 'data-command-intent="enter"', 'Structure presence focus should not expose Enter in the desktop composer belt by default');
   assertContains(el('desktop-context-belt').innerHTML, 'data-command-group="selection-exits"', 'Structure focus should put Clear focus in the composer exit group');
-  assertContains(el('desktop-context-belt').innerHTML, 'data-command-group="location-intents"', 'Structure focus should keep Enter in the location intent group');
+  assertNotContains(el('desktop-context-belt').innerHTML, 'App.enterStructure()', 'Structure focus should not generate an interior action by default');
   assertContains(el('selection-sentence').innerHTML, 'Camp', 'Structure focus should show the place object in the desktop command sentence');
-  assertContains(el('selection-sentence').innerHTML, 'Enter', 'Structure focus should show Enter as the pending intent');
+  assertContains(el('selection-sentence').innerHTML, 'Choose', 'Structure focus should keep intent pending when interiors are not enabled');
   assertEqual(el('selection-sentence').getAttribute('data-command-target-count'), '1', 'Structure focus should expose one focused place in metadata');
-  assertEqual(el('selection-sentence').getAttribute('data-command-intent'), 'enter', 'Structure focus should expose the stable Enter intent in sentence metadata');
+  assertEqual(el('selection-sentence').getAttribute('data-command-intent'), 'choose', 'Structure focus should expose pending intent metadata without a core interior action');
   assertContains(el('desktop-presence-rail').innerHTML, 'selected selected-stage-focus', 'Focused structure should visibly mark its desktop stage presence chip');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused"', 'Focused structure should expose stage-focus pressed state');
   assertContains(el('mobile-selection-sentence').innerHTML, 'Camp', 'Structure focus should show the place object in the mobile command sentence');
@@ -11189,7 +11189,7 @@ test('Support party role improves safe rest recovery', () => {
   assertEqual(support.CPun, 60, 'Support role should also benefit resting allies');
 });
 
-test('Structures expose enter action and create persistent interiors', () => {
+test('Structures hide core enter action by default and explicit enterable structures preserve interiors', () => {
   const { App, elements } = loadAppForCombat(() => 1);
   const player = makeUnit('You');
   App.player = player;
@@ -11203,6 +11203,11 @@ test('Structures expose enter action and create persistent interiors', () => {
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], items: [{ id: 'ground-herb', name: 'Healing Herb' }], structure: 'cabin', structureSpawned: true }]]);
   const context = App._centerTileContext();
   assertContains(context.title, 'Cabin', `Structure center context should include structure title. Got ${context.title}`);
+  assertNotContains(App._contextActionKeys().join(','), 'enter', 'Structure center context should not include enter by default');
+  assertNotContains(App._renderContextActions(), 'App.enterStructure()', 'Structure center context should not generate enter action by default');
+  assertEqual(App.enterStructure(), false, 'Direct enter should reject non-enterable structures');
+  assertEqual(App.log[App.log.length - 1].text, 'No hay un interior para entrar aqui.', 'Non-enterable structure feedback should localize');
+  App.STRUCTURES.cabin.enterable = true;
   assertContains(App._contextActionKeys().join(','), 'enter', 'Structure center context should include enter action key');
   assertContains(App._renderContextActions(), 'App.enterStructure()', 'Structure center context should generate enter action');
   App.showExplorationActions();
@@ -11327,6 +11332,7 @@ test('Interior item pickup and drop persist through structure tile deltas', () =
   App.location = { x: 0, y: 0 };
   App.currentBiome = 'forest';
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: 'cabin', structureSpawned: true }]]);
+  App.STRUCTURES.cabin.enterable = true;
   App.enterStructure();
   autoSaveCalls = 0;
   App._currentExplorationTile().items = [{ id: 'room-key', name: 'Room Key' }];
@@ -11352,6 +11358,7 @@ test('Interior movement persists room creatures and exits to overworld', () => {
   App.party = [player];
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: 'cabin', structureSpawned: true }]]);
+  App.STRUCTURES.cabin.enterable = true;
   App.updateLanguage('es');
   App.enterStructure();
   App.creatures = [roomCreature];

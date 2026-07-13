@@ -1591,8 +1591,8 @@ async function checkViewport(browser, name, width, height) {
     };
     const locationActionHinge = await page.evaluate(() => {
       const tile = App.getTile?.(App.location?.x || 0, App.location?.y || 0);
-      const previousStructure = tile ? tile.structure : null;
-      if (tile) tile.structure = 'camp';
+      const previousItems = tile && Array.isArray(tile.items) ? [...tile.items] : null;
+      if (tile) tile.items = [{ id: 'hinge-herb', name: 'Hinge Herb' }];
       App.renderMap?.();
       App.renderExplorationActions?.();
       App.renderMobileExplorationControls?.();
@@ -1602,15 +1602,15 @@ async function checkViewport(browser, name, width, height) {
         label: 'location actions',
         mapTop: mapRect.top,
         mapBottom: mapRect.bottom,
-        hasEnter: /Enter/.test(actions?.innerText || '')
+        hasLocationAction: /Items|Take/.test(actions?.innerText || '')
       };
-      if (tile) tile.structure = previousStructure;
+      if (tile) tile.items = previousItems || [];
       App.renderMap?.();
       App.renderExplorationActions?.();
       App.renderMobileExplorationControls?.();
       return result;
     });
-    assert.strictEqual(locationActionHinge.hasEnter, true, `${name}: fixture should expose Enter while checking mobile hinge stability`);
+    assert.strictEqual(locationActionHinge.hasLocationAction, true, `${name}: fixture should expose a location action while checking mobile hinge stability`);
     assertStableMobileMapHinge(locationActionHinge);
     const closedCreatureCue = await page.evaluate(() => {
       App.mobileCreatureRailOpen = false;
@@ -2803,9 +2803,9 @@ async function checkViewport(browser, name, width, height) {
       render();
       const empty = measure('empty');
 
-      if (tile) tile.structure = { name: 'Stable Gate', type: 'structure', icon: '🚪', action: 'enter' };
+      if (tile) tile.items = [{ id: 'desktop-stability-herb', name: 'Stability Herb' }];
       render();
-      const enter = measure('enter');
+      const locationAction = measure('location action');
 
       const stableCreature = {
         id: 'desktop-stability-creature',
@@ -2857,7 +2857,7 @@ async function checkViewport(browser, name, width, height) {
       App.pendingIntent = originalPendingIntent;
       App.intentSelection = originalIntentSelection;
       render();
-      return { empty, enter, creature, target };
+      return { empty, locationAction, creature, target };
     });
     const assertDesktopRectStable = (actual, expected, state, part) => {
       for (const key of ['left', 'top', 'width', 'height']) {
@@ -2866,11 +2866,11 @@ async function checkViewport(browser, name, width, height) {
     };
     assert.strictEqual(desktopTraversalRectContract.empty.targetPanelEmpty, true, `${name}: desktop controlled stability baseline should start without a target panel`);
     assert.strictEqual(desktopTraversalRectContract.creature.targetPanelEmpty, false, `${name}: desktop controlled stability state should exercise a visible target panel`);
-    ['enter', 'creature', 'target'].forEach(state => {
+    ['locationAction', 'creature', 'target'].forEach(state => {
       assertDesktopRectStable(desktopTraversalRectContract[state].surface, desktopTraversalRectContract.empty.surface, state, '3x3 surface');
       assertDesktopRectStable(desktopTraversalRectContract[state].center, desktopTraversalRectContract.empty.center, state, 'center tile');
     });
-    ['empty', 'enter', 'creature', 'target'].forEach(state => {
+    ['empty', 'locationAction', 'creature', 'target'].forEach(state => {
       const rects = desktopTraversalRectContract[state];
       assert(rects.sceneFeed.top >= rects.south.bottom + 1, `${name}: desktop Scene Feed should stay below the south traversal row when ${state} appears`);
     });

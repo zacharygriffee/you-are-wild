@@ -8,21 +8,27 @@ const YAW_SAVE_LOAD_FLOW = {
         slotName = app._normalizeSaveSlotName(slotName);
         try {
             const slotLabel = app._slotDisplayLabel(slotName);
-            let saveData = await app._dbGet('saves', slotName);
+            let saveData = null;
+            let loaded = await app._loadSparseSlotData(slotName).catch(e => {
+                console.warn('Sparse save load skipped', e);
+                return null;
+            });
+            if (!loaded) saveData = await app._dbGet('saves', slotName);
             const combatSnapshot = app._readCombatRefreshSnapshot(slotName);
             if (combatSnapshot?.saveData) saveData = combatSnapshot.saveData;
-            if (!saveData) {
+            if (!loaded && !saveData) {
                 alert(app._label('save.error.noSave', 'No save in {slot}', { slot: slotLabel }));
                 return false;
             }
 
-            let loaded;
-            try {
-                loaded = Binary.loadGame(saveData);
-            } catch (e) {
-                console.error('Incompatible save:', e);
-                app.showSaveRecoveryDialog(slotName, saveData);
-                return false;
+            if (!loaded) {
+                try {
+                    loaded = Binary.loadGame(saveData);
+                } catch (e) {
+                    console.error('Incompatible save:', e);
+                    app.showSaveRecoveryDialog(slotName, saveData);
+                    return false;
+                }
             }
             app._clearTransientInteractionState();
             app._clearTileEvents();
@@ -139,6 +145,11 @@ const YAW_SAVE_LOAD_FLOW = {
                     ...(entry?.phase ? { phase: String(entry.phase) } : {})
                 })).filter(entry => entry.text)
                 : (loaded.log || []).map(t => ({ text: t, type: 'discovery' }));
+            app.storyEvents = Array.isArray(loaded.questState?.storyEvents) ? loaded.questState.storyEvents : [];
+            app.sceneEvents = app.storyEvents;
+            app.latestStoryEvent = loaded.questState?.latestStoryEvent || app.storyEvents[app.storyEvents.length - 1] || null;
+            app.latestSceneBeat = app.latestStoryEvent;
+            app.storyEventSeq = Number.isFinite(loaded.questState?.storyEventSeq) ? loaded.questState.storyEventSeq : app.storyEvents.length;
             app.creatures = [];
             app.inventory = loaded.inventory || [];
             app.quests = loaded.questState?.quests || [];

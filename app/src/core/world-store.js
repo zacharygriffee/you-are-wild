@@ -111,15 +111,21 @@ const YAW_WORLD_STORE = {
                 console.warn(`Failed to read save slot ${slotName} for world cleanup`, e);
                 return null;
             }
-            if (!saveData) continue;
-            try {
-                const loaded = Binary.loadGame(saveData);
-                const meta = app._normalizeWorldMeta(loaded.worldMeta, null);
-                if (meta?.worldId) ids.add(meta.worldId);
-            } catch (e) {
-                console.warn(`Skipped world cleanup because ${slotName} could not be decoded`, e);
-                return null;
+            if (saveData) {
+                try {
+                    const loaded = Binary.loadGame(saveData);
+                    const meta = app._normalizeWorldMeta(loaded.worldMeta, null);
+                    if (meta?.worldId) ids.add(meta.worldId);
+                } catch (e) {
+                    console.warn(`Skipped world cleanup because ${slotName} could not be decoded`, e);
+                    return null;
+                }
             }
+            try {
+                const manifest = await app._dbGet('saveManifests', slotName);
+                const meta = app._normalizeWorldMeta(manifest?.worldMeta, null);
+                if (meta?.worldId) ids.add(meta.worldId);
+            } catch (e) {}
         }
         return ids;
     },

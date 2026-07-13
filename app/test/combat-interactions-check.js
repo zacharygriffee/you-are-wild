@@ -26,10 +26,12 @@ async function clearBrowserStorage(page) {
 
 async function createIndexedDb(page, name, stores = ['records']) {
   await page.evaluate(({ name, stores }) => new Promise((resolve, reject) => {
-    const req = indexedDB.open(name, 1);
+    const version = name === 'YAW_Saves' ? 2 : 1;
+    const req = indexedDB.open(name, version);
     req.onupgradeneeded = event => {
       const db = event.target.result;
-      for (const store of stores) {
+      const storeList = name === 'YAW_Saves' ? Array.from(new Set([...stores, 'saves', 'saveManifests', 'saveRecords'])) : stores;
+      for (const store of storeList) {
         if (!db.objectStoreNames.contains(store)) db.createObjectStore(store);
       }
     };
@@ -43,10 +45,14 @@ async function createIndexedDb(page, name, stores = ['records']) {
 
 async function putIndexedDbValue(page, name, store, key, value) {
   await page.evaluate(({ name, store, key, value }) => new Promise((resolve, reject) => {
-    const req = indexedDB.open(name, 1);
+    const version = name === 'YAW_Saves' ? 2 : 1;
+    const req = indexedDB.open(name, version);
     req.onupgradeneeded = event => {
       const db = event.target.result;
-      if (!db.objectStoreNames.contains(store)) db.createObjectStore(store);
+      const stores = name === 'YAW_Saves' ? ['saves', 'saveManifests', 'saveRecords'] : [store];
+      for (const storeName of stores) {
+        if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
+      }
     };
     req.onsuccess = event => {
       const db = event.target.result;

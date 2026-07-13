@@ -125,10 +125,12 @@ const YAW_STORAGE = {
 
     async dbOpen(app, dbName = app.SAVE_DB_NAME) {
         return new Promise((resolve, reject) => {
-            const req = indexedDB.open(dbName, 1);
+            const req = indexedDB.open(dbName, app.SAVE_DB_VERSION || 1);
             req.onupgradeneeded = e => {
                 const db = e.target.result;
                 if (!db.objectStoreNames.contains('saves')) db.createObjectStore('saves');
+                if (!db.objectStoreNames.contains('saveManifests')) db.createObjectStore('saveManifests');
+                if (!db.objectStoreNames.contains('saveRecords')) db.createObjectStore('saveRecords');
             };
             req.onsuccess = e => resolve(e.target.result);
             req.onerror = () => reject(req.error);

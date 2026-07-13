@@ -1068,9 +1068,12 @@
                 saveTimePrefix: 'fff-save-time-'
             },
             SAVE_DB_NAME: 'YAW_Saves',
+            SAVE_DB_VERSION: 2,
             LEGACY_SAVE_DB_NAME: 'FFF_Saves',
             WORLD_DB_NAME: 'YAW_Worlds',
             WORLD_DB_VERSION: 1,
+            SPARSE_SAVE_ENABLED: true,
+            SAVE_SLOW_LOG_MS: 120,
             COMBAT_REFRESH_TTL_MS: 2 * 60 * 60 * 1000,
             _saveTimeKey(slotName) { return YAW_STORAGE.saveTimeKey(this, this._normalizeSaveSlotName(slotName)); },
             _legacySaveTimeKey(slotName) { return YAW_STORAGE.legacySaveTimeKey(this, this._normalizeSaveSlotName(slotName)); },
@@ -5285,6 +5288,30 @@
                 return options && Object.keys(options).length
                     ? YAW_SAVE_PERSISTENCE.autoSave(this, options)
                     : YAW_SAVE_PERSISTENCE.autoSave(this);
+            },
+            markSaveDirty(domain, reason = '') {
+                return YAW_SAVE_PERSISTENCE.markSaveDirty(this, domain, reason);
+            },
+            markSaveDirtyMany(domains = [], reason = '') {
+                return YAW_SAVE_PERSISTENCE.markSaveDirtyMany(this, domains, reason);
+            },
+            clearSaveDirty(domain) {
+                return YAW_SAVE_PERSISTENCE.clearSaveDirty(this, domain);
+            },
+            clearSaveDirtyAll() {
+                return YAW_SAVE_PERSISTENCE.clearSaveDirtyAll(this);
+            },
+            dirtySaveDomains() {
+                return YAW_SAVE_PERSISTENCE.dirtySaveDomains(this);
+            },
+            hasDirtySaveDomains() {
+                return YAW_SAVE_PERSISTENCE.hasDirtySaveDomains(this);
+            },
+            saveDebugState() {
+                return YAW_SAVE_PERSISTENCE.saveDebugState(this);
+            },
+            async _loadSparseSlotData(slotName) {
+                return YAW_SAVE_PERSISTENCE.loadSparseSlotData(this, slotName);
             },
             async saveToSlot(slotName) {
                 return YAW_SAVE_SLOT_FLOW.saveToSlot(this, slotName);

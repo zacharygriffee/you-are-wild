@@ -121,6 +121,10 @@ const YAW_SAVE_SLOT_FLOW = {
         if (!slotName) return false;
         try {
             await app._dbDelete('saves', slotName);
+            await app._dbDelete('saveManifests', slotName).catch(() => {});
+            for (const domain of (YAW_SAVE_PERSISTENCE.RECORD_DOMAINS || [])) {
+                await app._dbDelete('saveRecords', YAW_SAVE_PERSISTENCE.recordKey(slotName, domain)).catch(() => {});
+            }
             app._removeSaveTime(slotName);
             app._clearCombatRefreshSnapshot(slotName);
             const lastSlot = app._normalizeSaveSlotName(app._getStoredValue('lastSlot'), null);

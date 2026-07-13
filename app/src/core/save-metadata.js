@@ -24,7 +24,8 @@ const YAW_SAVE_METADATA = {
         const slots = [];
         for (const slotName of this.slotNames()) {
             const saveData = await app._dbGet('saves', slotName);
-            if (saveData) {
+            const sparseManifest = saveData ? null : await app._dbGet('saveManifests', slotName).catch(() => null);
+            if (saveData || sparseManifest) {
                 const time = parseInt(app._getSaveTime(slotName), 10) || 0;
                 slots.push({ slotName, time });
             }
@@ -42,7 +43,8 @@ const YAW_SAVE_METADATA = {
         }
         if (lastSlot) {
             const saveData = await app._dbGet('saves', lastSlot);
-            if (saveData) {
+            const sparseManifest = saveData ? null : await app._dbGet('saveManifests', lastSlot).catch(() => null);
+            if (saveData || sparseManifest) {
                 if (rawLastSlot !== lastSlot) app._setStoredValue('lastSlot', lastSlot);
                 const saveTime = app._getSaveTime(lastSlot);
                 if (parseInt(saveTime, 10) > 0) app._setStoredValue('lastSaveTime', saveTime);

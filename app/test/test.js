@@ -18463,7 +18463,8 @@ test('Auto-save debounce coalesces rapid movement saves into one slot write', as
   App.AUTO_SAVE_DEBOUNCE_MS = 5;
   let writes = 0;
   App.persistWorldStateToMapStore = async () => 0;
-  App._dbPut = async () => { writes += 1; };
+  App._dbGet = async () => null;
+  App._dbPut = async (store) => { if (store === 'saveManifests') writes += 1; };
 
   await App.autoSave();
   await App.autoSave();
@@ -18474,6 +18475,98 @@ test('Auto-save debounce coalesces rapid movement saves into one slot write', as
 
   await App.autoSave({ immediate: true });
   assertEqual(writes, 2, 'Immediate auto-save flush should still write when explicitly requested');
+});
+
+test('Sparse save dirty tracker writes manifest last and only changed records after baseline', async () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'sparse-player', species: 'human' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.location = { x: 4, y: -2 };
+  App.currentBiome = 'grove';
+  App.log = [{ text: 'Sparse save baseline', type: 'discovery' }];
+  App.persistWorldStateToMapStore = async () => 2;
+  const stored = new Map();
+  let writes = [];
+  App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  App._dbPut = async (store, key, value) => {
+    writes.push({ store, key, value });
+    stored.set(`${store}:${key}`, value);
+  };
+
+  await App.autoSave({ immediate: true });
+  assert(writes.some(write => write.store === 'saveRecords' && write.key === 'slot1:player'), 'Initial sparse save should write player record');
+  assertEqual(writes[writes.length - 1].store, 'saveManifests', 'Sparse save should commit manifest after records');
+  assertEqual(App.saveDebugState().lastSaveMode, 'sparse', 'Sparse autosave should record sparse debug mode');
+  assertEqual(App.dirtySaveDomains().length, 0, 'Successful sparse save should clear dirty domains');
+
+  writes = [];
+  App.markSaveDirty('player', 'unit-test');
+  await App.autoSave({ immediate: true });
+  const recordWrites = writes.filter(write => write.store === 'saveRecords');
+  assertEqual(recordWrites.length, 1, 'Second sparse save should write only explicitly dirty record');
+  assertEqual(recordWrites[0].key, 'slot1:player', 'Dirty player save should write only the player record key');
+  assertEqual(writes[writes.length - 1].store, 'saveManifests', 'Second sparse save should still commit manifest last');
+});
+
+test('Sparse save load reconstructs app state and preserves Binary fallback compatibility', async () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('Sparse You', { id: 'sparse-load-player', species: 'human' });
+  App.party = [App.player, makeUnit('Sparse Ally', { id: 'sparse-load-ally', species: 'bunny' })];
+  App.screen = 'game';
+  App.activeSlot = 'slot2';
+  App.location = { x: 7, y: 3 };
+  App.currentBiome = 'plains';
+  App.timeHour = 14;
+  App.dayCount = 2;
+  App.inventory = [{ id: 'coin', name: 'Coin' }];
+  App.quests = [{ id: 'quest-1', title: 'Check the field' }];
+  App.log = [{ text: 'Sparse loaded log', type: 'move' }];
+  App.storyEvents = [{ id: 'beat-1', summary: 'Sparse beat', actors: ['Sparse You'], targets: [], intent: 'observe' }];
+  App.latestStoryEvent = App.storyEvents[0];
+  App.worldMeta = { worldId: 'sparse-load-world', seed: 'sparse-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.persistWorldStateToMapStore = async () => 1;
+  const stored = new Map();
+  App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  App._dbPut = async (store, key, value) => stored.set(`${store}:${key}`, value);
+  await App.autoSave({ immediate: true });
+
+  const loaded = loadAppForCombat(() => 0.5);
+  loaded.App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  let worldLoads = 0;
+  loaded.App.loadWorldStateFromMapStore = async () => { worldLoads += 1; return 1; };
+  const ok = await loaded.App.loadFromSlot('slot2');
+
+  assertEqual(ok, true, 'Sparse slot should load without a Binary save blob');
+  assertEqual(loaded.App.player.name, 'Sparse You', 'Sparse load should restore player identity');
+  assertEqual(loaded.App.party.length, 2, 'Sparse load should restore party record');
+  assertEqual(loaded.App.location.x, 7, 'Sparse load should restore x coordinate');
+  assertEqual(loaded.App.location.y, 3, 'Sparse load should restore y coordinate');
+  assertEqual(loaded.App.inventory[0].name, 'Coin', 'Sparse load should restore inventory record');
+  assertEqual(loaded.App.storyEvents[0].summary, 'Sparse beat', 'Sparse load should restore Scene Feed record');
+  assertEqual(worldLoads, 1, 'Sparse load should restore world deltas through the world store');
+});
+
+test('Sparse save manifest failure preserves dirty domains for retry', async () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'sparse-fail-player' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.persistWorldStateToMapStore = async () => 0;
+  App._dbGet = async () => null;
+  App._dbPut = async (store) => {
+    if (store === 'saveManifests') throw new Error('manifest write failed');
+  };
+  App.markSaveDirty('player', 'unit-test');
+
+  const ok = await App.autoSave({ immediate: true });
+
+  assertEqual(ok, false, 'Failed sparse save should report failed autosave');
+  assert(App.dirtySaveDomains().includes('player'), 'Failed sparse save should keep player dirty for retry');
+  assert(App.dirtySaveDomains().includes('manifest'), 'Failed sparse save should keep manifest dirty for retry');
+  assertEqual(App.saveDebugState().lastSaveMode, 'fallback', 'Failed sparse save should expose fallback/debug mode');
 });
 
 test('Manual saves keep independent world snapshots and clear stale tile events on load', async () => {

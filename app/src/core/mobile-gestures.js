@@ -41,17 +41,17 @@ const YAW_MOBILE_GESTURES = {
         if (map) map.style.transform = `scale(${app.mobileMapZoom || 1})`;
     },
 
-    initUnitStripPan(app) {
-        if (app._mobileUnitStripPanInitialized) return;
-        if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') return;
-        app._mobileUnitStripPanInitialized = true;
-        app._mobileUnitStripPan = null;
+    unitStripPanSelector: '.mobile-unit-strip, .mobile-actor-belt, .mobile-target-picker-belt',
 
-        const stripFor = target => target?.closest?.('.mobile-unit-strip') || null;
-        document.addEventListener('touchstart', event => {
+    bindUnitStripPan(app, strip) {
+        if (!strip || typeof strip.addEventListener !== 'function') return;
+        strip.dataset = strip.dataset || {};
+        if (strip.dataset.unitStripPanBound === 'true') return;
+        strip.dataset.unitStripPanBound = 'true';
+        strip.addEventListener('touchstart', event => {
             if (!event.touches || event.touches.length !== 1) return;
-            const strip = stripFor(event.target);
-            if (!strip) return;
+            const touchedStrip = event.target?.closest?.(this.unitStripPanSelector) || event.currentTarget || strip;
+            if (touchedStrip !== strip && !strip.contains?.(touchedStrip)) return;
             const touch = event.touches[0];
             app._mobileUnitStripPan = {
                 strip,
@@ -60,11 +60,11 @@ const YAW_MOBILE_GESTURES = {
                 scrollLeft: strip.scrollLeft || 0,
                 active: false
             };
-        }, { passive: true, capture: true });
+        }, { passive: true });
 
-        document.addEventListener('touchmove', event => {
+        strip.addEventListener('touchmove', event => {
             const pan = app._mobileUnitStripPan;
-            if (!pan || !event.touches || event.touches.length !== 1) return;
+            if (!pan || pan.strip !== strip || !event.touches || event.touches.length !== 1) return;
             const touch = event.touches[0];
             const dx = touch.clientX - pan.startX;
             const dy = touch.clientY - pan.startY;
@@ -76,11 +76,21 @@ const YAW_MOBILE_GESTURES = {
             }
             pan.strip.scrollLeft = pan.scrollLeft - dx;
             if (event.cancelable && typeof event.preventDefault === 'function') event.preventDefault();
-        }, { passive: false, capture: true });
+        }, { passive: false });
 
         const clear = () => { app._mobileUnitStripPan = null; };
-        document.addEventListener('touchend', clear, { passive: true, capture: true });
-        document.addEventListener('touchcancel', clear, { passive: true, capture: true });
+        strip.addEventListener('touchend', clear, { passive: true });
+        strip.addEventListener('touchcancel', clear, { passive: true });
+    },
+
+    initUnitStripPan(app, root = document) {
+        if (typeof document === 'undefined') return;
+        app._mobileUnitStripPan = app._mobileUnitStripPan || null;
+        const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
+        const strips = scope.querySelectorAll?.(this.unitStripPanSelector) || [];
+        for (const strip of strips) {
+            this.bindUnitStripPan(app, strip);
+        }
     },
 
     startCreaturePress(app, targetId) {

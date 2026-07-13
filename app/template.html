@@ -5499,6 +5499,7 @@
                 padding: 2px 10px 6px 0;
                 scroll-padding-inline: 10px;
                 scrollbar-width: none;
+                touch-action: pan-x;
             }
 
             .mobile-actor-belt::-webkit-scrollbar {
@@ -5514,6 +5515,16 @@
                 padding: 2px 10px 6px 0;
                 scroll-padding-inline: 10px;
                 scrollbar-width: none;
+                touch-action: pan-x;
+            }
+
+            .mobile-actor-belt > *,
+            .mobile-actor-belt .action-btn,
+            .mobile-actor-belt button,
+            .mobile-target-picker-belt > *,
+            .mobile-target-picker-belt .action-btn,
+            .mobile-target-picker-belt button {
+                touch-action: pan-x;
             }
 
             .mobile-target-picker-belt::-webkit-scrollbar {

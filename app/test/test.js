@@ -4891,7 +4891,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.center-presence-chip.selected', 'Desktop stage presence should visibly mark selected actor and target chips');
   assertContains(template, '.mobile-map-card {\n                order: 1;', 'mobile traversal stage should lead the mobile play stack');
   assertContains(template, 'overflow-x: hidden;\n                overflow-y: auto;\n                overscroll-behavior-y: contain;', 'mobile stage should be the primary vertical scroll container for inline Scene Feed history');
-  assertContains(template, '.mobile-map-card {\n                order: 1;\n                margin-top: clamp(140px, 26dvh, 260px);', 'mobile traversal stage should be bottom-weighted above the fixed composer');
+  assertContains(template, '.mobile-map-card {\n                order: 1;\n                grid-row: 1;\n                align-self: end;', 'mobile traversal stage should anchor to the fixed hinge above the composer');
   assertContains(template, '.mobile-scene-sheet {\n                order: 2;', 'mobile Scene Feed should sit below the mode-specific stage area');
   assertContains(template, '.mobile-story-latest {\n                margin-top: 4px;\n                overflow: visible;', 'mobile Scene Feed should stay in the main stage flow instead of becoming a clipped nested scroll box');
   assertContains(template, '.mobile-play-surface:not(.combat-active) .mobile-scene-header', 'mobile exploration Scene Feed should keep review access without consuming a full feedback row');
@@ -4923,7 +4923,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-control-belt.has-controls {\n                display: grid;', 'mobile control belt should only display when real controls are present');
   assertContains(template, '.mobile-control-row {\n                display: none;', 'mobile secondary control row should collapse unless it has visible controls');
   assertContains(template, '.mobile-control-row.has-visible-controls {\n                display: flex;', 'mobile secondary control row should opt into display only for visible actor/target controls');
-  assertContains(template, '--mobile-control-belt-compact-height: 104px;', 'mobile control belt should reserve compact space for simple cue/location controls');
+  assertContains(template, '--mobile-control-belt-compact-height: 112px;', 'mobile control belt should reserve compact space for simple cue/location controls');
   assertContains(template, '.mobile-play-surface.has-control-belt.control-belt-expanded', 'mobile play surface should keep consistent dock space for expanded composer states');
   assertContains(template, '.mobile-play-surface.has-control-belt .mobile-map-card', 'mobile active composer states should keep the traversal stage compact enough for inline Scene Feed visibility');
   assertContains(template, '.mobile-play-surface.control-belt-expanded .mobile-map-card', 'mobile expanded composer states should preserve a usable 3x3 stage height');
@@ -4936,7 +4936,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.has-control-belt', 'mobile play surface should reserve bottom space when the context belt is populated');
   assertContains(template, '.mobile-control-belt {\n                order: 4;', 'mobile command belt should keep a stable layer after stage feedback');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 4;\n                position: fixed;', 'mobile combat action belt should stay reachable above the dock without being pushed by Scene Beats');
-  assertContains(template, 'max-height: min(238px, 36dvh);\n                overflow-y: visible;', 'mobile combat action belt should reserve enough zero-scroll height for the primary intent grid');
+  assertContains(template, 'max-height: min(268px, 40dvh);\n                overflow-y: visible;', 'mobile combat action belt should reserve enough zero-scroll height for the primary intent grid');
   assertContains(mobileCombatToolbeltContent, "if (app.targetSelection?.source === 'combat') return '';", 'mobile combat should hide the full intent grid during target confirmation phases');
   assertContains(mobileCombatToolbeltContent, 'if (app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent) return \'\';', 'mobile combat should hide the full intent grid once a group intent is pending');
   assertContains(mobileCombatToolbeltContent, 'if (!app.combatPlanSelection.pendingIntent) return \'\';', 'mobile combat should hide Confirm/Clear until a group intent is pending');
@@ -5000,7 +5000,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-strips', 'combat mode should size unit strips independently from the scene summary');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-map-card {\n                display: none;', 'combat mode should hide map navigation');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-strips {\n                order: 2;', 'combat unit strips should participate in the battle surface after traversal is hidden');
-  assertContains(template, 'flex: 0 0 auto;\n                margin-top: clamp(180px, 34dvh, 300px);', 'combat unit strips should be bottom-weighted without expanding into blank space');
+  assertContains(template, 'grid-row: 1;\n                align-self: end;\n                display: flex;', 'combat unit strips should anchor to the fixed hinge without margin-based positioning');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card {\n                order: 1;', 'combat enemy strip should render above the party strip');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 2;', 'combat party strip should render before the Scene Beat stream');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 4;', 'combat prompt should render as a fixed composer after combat strips and Scene Feed');
@@ -20665,12 +20665,18 @@ test('Mobile map pinch changes zoom and applies transform', () => {
 test('Mobile combat unit strips own horizontal touch scrolling', () => {
   assertContains(template, '.mobile-unit-strip {\n                display: flex;\n                gap: 8px;\n                overflow-x: auto;', 'Mobile unit strips should remain the horizontal scroll containers');
   assertContains(template, '.mobile-unit-strip > *,\n            .mobile-unit-strip .action-btn,\n            .mobile-unit-strip button {\n                touch-action: pan-x;', 'Mobile unit strip children should permit horizontal pan gestures over cards and controls');
+  assertContains(template, '.mobile-actor-belt > *,\n            .mobile-actor-belt .action-btn,\n            .mobile-actor-belt button,', 'Mobile actor picker belt children should permit horizontal pan gestures');
+  assertContains(template, '.mobile-target-picker-belt > *,\n            .mobile-target-picker-belt .action-btn,\n            .mobile-target-picker-belt button {', 'Mobile target picker belt children should permit horizontal pan gestures');
   assertContains(mobileGesturesContent, 'initUnitStripPan(app)', 'Mobile gestures should initialize strip pan support');
-  assertContains(mobileGesturesContent, "target?.closest?.('.mobile-unit-strip')", 'Strip pan support should delegate from any touched child to the nearest strip');
+  assertContains(mobileGesturesContent, "unitStripPanSelector: '.mobile-unit-strip, .mobile-actor-belt, .mobile-target-picker-belt'", 'Strip pan support should bind all mobile horizontal unit belts');
+  assertContains(mobileGesturesContent, "event.target?.closest?.(this.unitStripPanSelector)", 'Strip pan support should delegate from any touched child to the nearest strip');
+  assertContains(mobileGesturesContent, "strip.dataset.unitStripPanBound === 'true'", 'Strip pan support should avoid duplicate listeners on rerendered rails');
+  assertContains(mobileGesturesContent, "strip.addEventListener('touchmove'", 'Touchmove handling should be scoped to each horizontal rail');
   assertContains(mobileGesturesContent, 'pan.strip.scrollLeft = pan.scrollLeft - dx', 'Horizontal touch moves should scroll the touched unit strip directly');
   assertContains(mobileGesturesContent, 'this.cancelCreaturePress(app)', 'Horizontal strip pans should cancel creature long-press timers');
   assertContains(mobileGesturesContent, 'this.cancelPartyPress(app)', 'Horizontal strip pans should cancel party long-press timers');
-  assertContains(mobileGesturesContent, "{ passive: false, capture: true }", 'Touchmove listener should be able to prevent parent vertical scrolling during horizontal strip pans');
+  assertContains(mobileGesturesContent, "{ passive: false }", 'Rail touchmove listener should be able to prevent parent vertical scrolling during horizontal strip pans');
+  assertNotContains(mobileGesturesContent, "document.addEventListener('touchmove'", 'Touchmove should not be registered as a global scroll-blocking document listener');
   assertContains(appContent, 'this.initMobileUnitStripGestures();', 'App init should wire mobile unit strip pan support');
 });
 

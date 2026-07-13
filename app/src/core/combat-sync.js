@@ -314,7 +314,7 @@ const YAW_COMBAT_SYNC = {
             return;
         }
         const baseAction = app._syncBaseAction(sync.type);
-        if (app._isPhysicalCombatAction?.(baseAction)) {
+        if (app._isReachSensitiveCombatAction?.(baseAction)) {
             const reachResults = (sync.participants || []).map(unit => app._combatReachResult?.(unit, sync.target, baseAction)).filter(Boolean);
             if (reachResults.length !== (sync.participants || []).length || !reachResults.every(result => result.canSucceed)) {
                 const reach = reachResults.find(result => result?.canAttempt && !result.canSucceed) || reachResults[0] || null;

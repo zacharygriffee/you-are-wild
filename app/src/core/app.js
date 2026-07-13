@@ -2172,6 +2172,10 @@
                 return YAW_COMBAT_RULES.isPhysicalCombatAction(action);
             },
 
+            _isReachSensitiveCombatAction(action) {
+                return YAW_COMBAT_RULES.isReachSensitiveCombatAction(action);
+            },
+
             _combatReachProfile(actor, action = 'fight') {
                 return YAW_COMBAT_RULES.intentReachProfile(this, actor, action);
             },
@@ -2190,6 +2194,14 @@
 
             _combatReachFailureText(actors = [], target = null, action = 'fight', reach = null) {
                 return YAW_COMBAT_RULES.reachFailureText(this, actors, target, action, reach);
+            },
+
+            _combatMoveRowIntentLabel(actor = null) {
+                return YAW_COMBAT_RULES.moveRowIntentLabel(this, actor);
+            },
+
+            _combatFleeRowModifier(actor = null, enemies = []) {
+                return YAW_COMBAT_RULES.fleeRowModifier(this, actor, enemies);
             },
 
             _terrainCausesMiss(actor, target, action = 'fight') {

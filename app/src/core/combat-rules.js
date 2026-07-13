@@ -68,14 +68,20 @@ const YAW_COMBAT_RULES = {
         return [];
     },
 
+    isAbleFrontBlocker(app, unit, protectedUnit = null) {
+        if (!unit || unit === protectedUnit) return false;
+        if (unit.CPun <= 0 || unit.knockedOut || unit.fledCombat) return false;
+        if (unit.disposition === app?.DISPOSITION?.CORPSE || unit.corpse || unit.isRemains) return false;
+        if (unit.combatRow !== 'front') return false;
+        const status = unit.status || {};
+        if (status.stunned || status.frozen || status.asleep || status.recovering || status.restrainedSkip) return false;
+        if (status.freeze?.turns > 0 || status.sleep?.turns > 0 || status.stun?.turns > 0) return false;
+        return true;
+    },
+
     livingFrontBlockers(app, target) {
         if (!target) return [];
-        return this.sideUnitsFor(app, target).filter(unit => unit
-            && unit !== target
-            && unit.CPun > 0
-            && unit.combatRow === 'front'
-            && !unit.fledCombat
-            && unit.disposition !== app.DISPOSITION?.CORPSE);
+        return this.sideUnitsFor(app, target).filter(unit => this.isAbleFrontBlocker(app, unit, target));
     },
 
     isBackRowProtected(app, target) {
@@ -91,6 +97,30 @@ const YAW_COMBAT_RULES = {
         return base === 'fight' || base === 'feast';
     },
 
+    isReachSensitiveCombatAction(action) {
+        const base = String(action || '').replace(/^sync_/, '');
+        return base === 'fight' || base === 'feast' || base === 'fuck';
+    },
+
+    hasSpecialReachAccess(actor, action = 'fight') {
+        const base = String(action || '').replace(/^sync_/, '');
+        return Boolean(actor?.specialReach
+            || actor?.reach
+            || actor?.reachAccess
+            || actor?.snareReach
+            || actor?.grabReach
+            || actor?.sizeReach
+            || actor?.combatReachProfiles?.[base] === 'special'
+            || actor?.reachProfiles?.[base] === 'special');
+    },
+
+    hasContactPermission(actor, target = null, action = 'feast') {
+        if (this.hasSpecialReachAccess(actor, action)) return true;
+        if (actor?.contactReach || actor?.contactPermission) return true;
+        if (target?.status?.snared || target?.status?.grabbed || target?.status?.restrained) return true;
+        return false;
+    },
+
     intentReachProfile(_app, actor, action = 'fight') {
         const base = String(action || '').replace(/^sync_/, '');
         const override = actor?.combatReachProfiles?.[base] || actor?.reachProfiles?.[base] || actor?.reachProfile || actor?.fightProfile;
@@ -101,7 +131,8 @@ const YAW_COMBAT_RULES = {
             return 'melee';
         }
         if (base === 'feast') return 'contact';
-        if (base === 'flirt' || base === 'fuck') return 'social';
+        if (base === 'fuck') return 'contact';
+        if (base === 'flirt') return 'social';
         if (base === 'feed') return 'support';
         return 'none';
     },
@@ -123,63 +154,58 @@ const YAW_COMBAT_RULES = {
             result.reason = 'invalid-target';
             return result;
         }
-        if (!this.isPhysicalCombatAction(base)) {
+        if (profile === 'social' || profile === 'support' || profile === 'none' || !this.isReachSensitiveCombatAction(base)) {
             result.canSucceed = true;
             return result;
         }
-        if (profile === 'hybrid') {
+        if (profile === 'hybrid' || profile === 'special') {
             result.canSucceed = true;
             return result;
         }
         if (profile === 'ranged') {
-            if (actor?.combatRow !== 'back' && !target?.flying) {
+            if (actor?.combatRow !== 'back') {
                 result.reason = 'ranged-needs-back-row';
                 result.counterplay = 'retreat';
+                return result;
+            }
+            if (target?.combatRow === 'front' && !target?.flying && !this.hasSpecialReachAccess(actor, base)) {
+                result.reason = 'ranged-front-row-limited';
+                result.counterplay = 'target-back-row-or-advance';
                 return result;
             }
             result.canSucceed = true;
             return result;
         }
         if (profile === 'contact' || base === 'feast') {
-            if (actor?.flying) {
-                result.canSucceed = true;
-                return result;
-            }
-            if (actor?.combatRow === 'back' && target?.combatRow === 'front' && !actor?.ranged) {
+            const hasContactAccess = this.hasContactPermission(actor, target, base);
+            if (actor?.combatRow === 'back' && !hasContactAccess) {
                 result.reason = 'contact-needs-front-row';
                 result.counterplay = 'advance-or-social';
-                return result;
-            }
-            if (target?.flying && !actor?.antiflying) {
-                result.reason = 'target-flying-contact';
-                result.counterplay = 'flying-or-anti-flying';
                 return result;
             }
             if (target?.combatRow === 'back') {
                 result.protectedBackRow = this.isBackRowProtected(app, target);
                 result.exposedBackRow = !result.protectedBackRow;
-                if (result.protectedBackRow) {
+                if (result.protectedBackRow && !hasContactAccess) {
                     result.reason = 'contact-protected-back-row';
                     result.counterplay = 'front-blockers-or-social';
                     return result;
                 }
-                result.canSucceed = true;
+            }
+            if (target?.flying && !actor?.antiflying && !actor?.flying && !hasContactAccess) {
+                result.reason = 'target-flying-contact';
+                result.counterplay = 'flying-or-anti-flying';
                 return result;
             }
             result.canSucceed = true;
             return result;
         }
-        if (profile === 'melee' && actor?.combatRow === 'back' && target?.combatRow === 'front' && !actor?.flying && !actor?.ranged) {
+        if (profile === 'melee' && actor?.combatRow === 'back' && !this.hasSpecialReachAccess(actor, base)) {
             result.reason = 'melee-needs-front-row';
             result.counterplay = 'advance-or-social';
             return result;
         }
-        if (target?.flying && !actor?.flying && !actor?.ranged && !actor?.antiflying) {
-            result.reason = 'target-flying';
-            result.counterplay = 'flying-ranged-anti-flying';
-            return result;
-        }
-        if (target?.combatRow === 'back' && !actor?.flying && !actor?.ranged) {
+        if (target?.combatRow === 'back' && !actor?.flying && !actor?.ranged && !this.hasSpecialReachAccess(actor, base)) {
             result.protectedBackRow = this.isBackRowProtected(app, target);
             result.exposedBackRow = !result.protectedBackRow;
             if (result.protectedBackRow) {
@@ -187,6 +213,11 @@ const YAW_COMBAT_RULES = {
                 result.counterplay = 'front-blockers-ranged-flying-social';
                 return result;
             }
+        }
+        if (target?.flying && !actor?.flying && !actor?.ranged && !actor?.antiflying && !this.hasSpecialReachAccess(actor, base)) {
+            result.reason = 'target-flying';
+            result.counterplay = 'flying-ranged-anti-flying';
+            return result;
         }
         result.canSucceed = true;
         return result;
@@ -248,7 +279,33 @@ const YAW_COMBAT_RULES = {
                 target: targetName
             });
         }
+        if (reason === 'ranged-front-row-limited') {
+            return app._label('combat.reachFail.rangedFrontLimited', '{actors} tries {action} on {target}, but this ranged attack is meant for back-row or flying targets. Advance for close pressure, pick a back-row target, or try a social action.', {
+                actors: actorText,
+                action: actionLabel,
+                target: targetName
+            });
+        }
         return app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actorText, target: targetName });
+    },
+
+    moveRowIntentLabel(app, actor = null) {
+        const row = actor?.combatRow;
+        if (row === 'back') return app._label('action.advance', 'Advance');
+        if (row === 'front') return app._label('action.retreat', 'Retreat');
+        return app._label('action.moveRow', 'Move Row');
+    },
+
+    fleeRowModifier(app, actor, enemies = []) {
+        if (!actor) return 0;
+        if (actor.combatRow === 'back') return 0.1;
+        const threatened = actor.combatRow === 'front'
+            && (enemies || []).some(enemy => enemy
+                && enemy.CPun > 0
+                && !enemy.fledCombat
+                && enemy.disposition === app?.DISPOSITION?.ENEMY
+                && (enemy.combatRow || this.defaultCombatRow(enemy)) === 'front');
+        return threatened ? -0.1 : 0;
     },
 
     terrainCausesMiss(app, actor, target, action = 'fight') {

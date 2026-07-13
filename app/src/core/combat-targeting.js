@@ -151,7 +151,7 @@ const YAW_COMBAT_TARGETING = {
         if (!target || target.CPun <= 0 || target.disposition !== app.DISPOSITION.ENEMY) return false;
         if (livingParticipants.length < 2) return false;
         const action = this.syncBaseAction(syncType);
-        if (app._isPhysicalCombatAction?.(action)) {
+        if (app._isReachSensitiveCombatAction?.(action)) {
             return livingParticipants.every(unit => app._combatReachResult?.(unit, target, action)?.canSucceed);
         }
         return livingParticipants.every(unit => app._canAttemptCombatTarget(unit, target, action));
@@ -160,8 +160,8 @@ const YAW_COMBAT_TARGETING = {
     reachWarning(app, actors = [], unit, action) {
         const actorList = (Array.isArray(actors) ? actors : [actors]).filter(Boolean);
         if (!unit || !actorList.length) return null;
-        const physical = app._isPhysicalCombatAction?.(action);
-        if (!physical) return null;
+        const reachSensitive = app._isReachSensitiveCombatAction?.(action);
+        if (!reachSensitive) return null;
         const results = actorList.map(actor => app._combatReachResult?.(actor, unit, action)).filter(Boolean);
         if (results.some(result => result.canSucceed)) return null;
         return results.find(result => result.canAttempt) || null;

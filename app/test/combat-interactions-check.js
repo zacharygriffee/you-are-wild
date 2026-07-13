@@ -735,9 +735,16 @@ async function runReachabilityMatrix(page) {
   assert(state.enemyPle > 0, 'Flirt should still target flying back-row enemies because it is not physical reach');
 
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
-  await clickIntentAndTarget(page, 'fuck');
-  state = await page.evaluate(() => ({ enemyPle: App.creatures[0]?.CPle }));
-  assert(state.enemyPle > 0, 'Social combat action should still target flying back-row enemies because it is not physical reach');
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fuck')"]`).first().click();
+  target = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
+  await target.waitFor({ state: 'visible', timeout: 1000 });
+  attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
+  assert.strictEqual(attrs.disabled, true, 'Contact-social Play target should be disabled when row/flying contact is impossible');
+  assert.strictEqual(attrs.ariaDisabled, 'true', 'Contact-social Play target should expose disabled state');
+  assert(attrs.label.includes('close contact') || attrs.label.includes('out of reach'), 'Contact-social Play target should explain the contact reach blocker');
+  state = await page.evaluate(() => ({ enemyPle: App.creatures[0]?.CPle, targetSelectionAction: App.targetSelection?.action || null }));
+  assert.strictEqual(state.enemyPle, 0, 'Blocked contact-social Play should not resolve before a valid target can be selected');
+  assert.strictEqual(state.targetSelectionAction, 'fuck', 'Blocked contact-social Play should preserve selected intent for correction');
 }
 
 async function runMultiEnemyCombatTargetingFlow(page) {

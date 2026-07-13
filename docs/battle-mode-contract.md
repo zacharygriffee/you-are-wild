@@ -14,10 +14,11 @@ Battle mode is not a separate action model. It is the normal actor, target, and 
 
 - Initiative queue decides whose actor card is active.
 - Current actor gates which panel controls are enabled.
-- Row and reach rules constrain valid targets.
+- Intent-owned row and reach rules constrain valid targets. Fight, Feast/contact, Play/Seduce/contact-social, Talk, support, ranged, flying, and anti-flying profiles are evaluated by the shared reach helpers rather than one global row rule.
 - Terrain can modify speed, reach, cover, or status outcomes.
 - Group actions resolve through the same intent model, but timing is delayed to the slowest participant.
-- Physical group actions require every committed physical participant to have a valid contribution path at queue time; if the battlefield changes before resolution, the queued plan can fizzle through the compatibility group-action plumbing.
+- Physical and contact-social group actions require every committed participant to have a valid contribution path at queue time; if the battlefield changes before resolution, the queued plan can fizzle through the compatibility group-action plumbing.
+- The internal `moveRow` command remains stable, but player-facing combat labels it as Advance from the back row and Retreat from the front row.
 - Sync remains compatibility/internal terminology and plumbing. Player-facing combat should use Lead Actor + Helpers -> Target(s) -> Intent -> Commit.
 - Flee is actor-specific. A party member can opt out; when all remaining party members have fled or fallen, combat resolves.
 

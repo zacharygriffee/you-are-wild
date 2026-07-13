@@ -124,18 +124,19 @@ Current implementation:
 - Flying or ranged units default to the back row; other units default to the front row when combat starts.
 - `Fight` uses an intent-owned reach profile: melee, ranged, or hybrid depending on actor traits and future action metadata.
 - `Feast` uses a close/contact profile by default.
-- Talk, Play, Feed, support, and other social/support intents ignore row reach unless a specific mechanic says otherwise.
-- Flying can engage across rows. Flying targets still need an appropriate physical answer for contact-style actions.
-- Ranged actors can reach flying targets and can use ranged reach from the back row. A ranged actor in the front row may need to retreat before using a purely ranged profile against grounded targets.
-- Anti-flying actors answer front-row flying targets for relevant physical profiles.
+- Talk, Feed, support, and other non-contact social/support intents ignore row reach unless a specific mechanic says otherwise.
+- Play/Seduce is contact-social by default and follows close/contact reach until an authored variant says otherwise.
+- Flying can bypass rows for Fight/aerial profiles. Flying targets still need an appropriate answer for contact-style actions.
+- Ranged Fight is valid from the back row, can reach back-row and flying targets, and is not the default answer to front-row grounded targets.
+- Anti-flying actors answer flying targets for relevant physical profiles, but anti-flying does not bypass front-row blockers by itself.
 - Front-row blockers protect back-row units on the same side. Ordinary melee and close/contact actions cannot target a protected back-row unit while living front-row blockers remain.
 - If a side has no living front-row blockers, back-row targets are exposed. Ordinary melee and close/contact actions may reach exposed back-row targets unless a specific action profile says otherwise.
 - Back-row ordinary melee and close/contact actors cannot freely hit front-row targets without a future special reach profile. Known impossible target selection should block and explain the issue before spending the turn.
 - If a committed or delayed group plan becomes impossible before resolution, it can fizzle and consume the committed plan through existing group timing, with Scene Feed explaining the failure.
 - Current reach is intentionally narrow: the current implementation does not yet model equipment reach, snare/grab, pull, advanced row AI, or area distribution.
-- `Move Row` toggles the active actor between front and back row and consumes that actor's turn. UI copy should not imply that moving rows always solves back-row targeting.
+- `Move Row` toggles the active actor between front and back row and consumes that actor's turn. UI copy labels this as Advance or Retreat while preserving the internal `moveRow` id, and should not imply that moving rows always solves back-row targeting.
 - Flying still occupies a row for UI purposes. Flying can bypass row blockers, and flying targets still require flying, ranged, or anti-flying reach. Do not add a third air lane until a later formal pass needs it.
-- Group physical plans require every committed physical participant to have a valid contribution path by default. Social group actions can ignore rows unless a mechanic says otherwise.
+- Group physical and contact-social plans require every committed participant to have a valid contribution path by default. Talk/support group actions can ignore rows unless a mechanic says otherwise.
 
 Future row mechanics can add equipment reach, snare/grab/pull, size, terrain, and ability-specific profile predicates without changing the basic doctrine that intents own reach.
 

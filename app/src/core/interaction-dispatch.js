@@ -190,7 +190,7 @@ const YAW_INTERACTION_DISPATCH = {
                 for (const target of command.targets) {
                     if (!target || target.CPun <= 0) return { ok: false, reason: 'invalid-combat-target' };
                     if (constraints.hostileOnly !== false && target.disposition !== app.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };
-                    if (constraints.checkReach !== false && app._isPhysicalCombatAction?.(normalizedCombatAction)) {
+                    if (constraints.checkReach !== false && app._isReachSensitiveCombatAction?.(normalizedCombatAction)) {
                         const reachResults = reachActors.map(unit => app._combatReachResult?.(unit, target, normalizedCombatAction)).filter(Boolean);
                         const allContribute = reachResults.length === reachActors.length && reachResults.every(result => result.canSucceed);
                         if (!allContribute) return { ok: false, reason: 'cannot-reach' };
@@ -257,7 +257,7 @@ const YAW_INTERACTION_DISPATCH = {
     combatReachCorrection(app, command, actor, target) {
         if (!target) return null;
         const baseAction = String(command?.metadata?.baseAction || command?.action || 'fight').replace(/^sync_/, '') || 'fight';
-        if (!app._isPhysicalCombatAction?.(baseAction)) return null;
+        if (!app._isReachSensitiveCombatAction?.(baseAction)) return null;
         const actors = command?.timing === 'slowest-participant'
             ? (command?.actors || [])
             : [actor].filter(Boolean);

@@ -105,7 +105,7 @@ const YAW_COMBAT_ACTIONS = {
             if (showLegacySync) {
                 buttons.push(app._iconActionButton('sync', '👥', "event.stopPropagation();App.executeCombatIntent('sync')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="sync" data-command-grammar="actor-target-intent" data-command-slot="intent" data-command-legacy="sync"'));
             }
-            const moveRowText = app._label('action.moveRow', 'Move Row');
+            const moveRowText = app._combatMoveRowIntentLabel?.(actor) || app._label('action.moveRow', 'Move Row');
             const moveRowLabel = app._escapeHtml(moveRowText);
             const moveRowTitle = app._escapeHtml(app._actionCostTitle?.('moveRow', moveRowText, actor, null, { mode: 'combat' }) || moveRowText);
             buttons.push(`<button class="action-btn" data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="moveRow" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${moveRowTitle}" aria-label="${moveRowTitle}" onclick="event.stopPropagation();App.executeCombatIntent('moveRow')">↕️ ${moveRowLabel}</button>`);

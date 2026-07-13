@@ -18614,6 +18614,48 @@ test('Sparse save dirty tracker writes manifest last and only changed records af
   assert(Number.isFinite(debug.lastTimings.totalMs), 'Debug timings should expose total milliseconds');
 });
 
+test('Sparse autosave debug exposes snapshot and world-store performance diagnostics', async () => {
+  const harness = loadAppForCombat(() => 0.5);
+  const App = enableRealAutoSaveHarness(harness);
+  App.player = makeUnit('You', { id: 'sparse-perf-player' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.location = { x: 2, y: 2 };
+  App.currentBiome = 'grove';
+  App.SAVE_SLOW_LOG_MS = -1;
+  App.persistWorldStateToMapStore = async () => {
+    App._lastWorldStoreDebug = {
+      totalMs: 39,
+      persistAllTileDeltasMs: 11,
+      dbOpenMs: 3,
+      recordBuildMs: 5,
+      txMs: 20,
+      recordCount: 4,
+      worldMapSize: 8,
+      tileDeltaCountAfter: 4
+    };
+    return 4;
+  };
+  const stored = new Map();
+  App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  App._dbPut = async (store, key, value) => stored.set(`${store}:${key}`, value);
+
+  App.markSaveDirtyMany(['currentTile', 'worldTiles'], 'perf-diagnostic-test');
+  await App.autoSave({ immediate: true });
+
+  const debug = App.saveDebugState();
+  assert(Number.isFinite(debug.lastTimings.prepareSnapshotMs), 'Debug timings should expose prepareSaveSnapshot milliseconds');
+  assert(Number.isFinite(debug.lastTimings.worldStoreMs), 'Debug timings should expose world-store milliseconds');
+  assert(debug.snapshotDebug && Number.isFinite(debug.snapshotDebug.persistAllTileDeltasMs), 'Snapshot diagnostics should include tile-delta preparation timing');
+  assertEqual(debug.snapshotDebug.worldMapSize, App.worldMap.size, 'Snapshot diagnostics should expose world map size');
+  assertEqual(debug.worldStoreDebug.recordCount, 4, 'World-store diagnostics should expose persisted world record count');
+  assertEqual(debug.worldStoreDebug.txMs, 20, 'World-store diagnostics should expose IndexedDB transaction time');
+  assert(debug.performanceDiagnostic && debug.performanceDiagnostic.phases.length > 0, 'Debug state should expose a ranked save timing diagnostic');
+  assertEqual(debug.performanceDiagnostic.worldRecordCount, 4, 'Performance diagnostic should include world record count');
+  assert(debug.slowSaveDiagnostic, 'Slow-save diagnostic should be recorded when save exceeds the configured threshold');
+});
+
 test('Sparse save load reconstructs app state and preserves Binary fallback compatibility', async () => {
   const harness = loadAppForCombat(() => 0.5);
   const App = enableRealAutoSaveHarness(harness);

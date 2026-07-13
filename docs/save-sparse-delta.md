@@ -123,6 +123,18 @@ Old saves remain loadable. Manual full saves still use the Binary fallback path.
 - sparse record count;
 - queue state;
 - last save mode: `sparse`, `full`, `fallback`, or `none`;
-- timing breakdown for dirty collection, record building, world store, record writes, manifest write, and total time.
+- timing breakdown for save snapshot preparation, dirty collection, record building, world store, record writes, manifest write, full Binary build/write when applicable, and total time;
+- `snapshotDebug`, including `_prepareSaveSnapshot()` internal phase timing, world map size, tile-delta count before/after, and the `persistAllTileDeltas()` time spent inside snapshot preparation;
+- `worldStoreDebug`, including `persistWorldStateToMapStore()` internal phase timing, world-map size, tile-delta count before/after, record count, IndexedDB open time, record build time, and transaction time;
+- `performanceDiagnostic`, a ranked phase summary that identifies the dominant save phase for the latest save;
+- `slowSaveDiagnostic`, populated when the save exceeds `App.SAVE_SLOW_LOG_MS`.
 
-Saves slower than `App.SAVE_SLOW_LOG_MS` log a warning with timing details.
+Saves slower than `App.SAVE_SLOW_LOG_MS` log a warning with timing details and the ranked diagnostic.
+
+During mobile movement/combat playtests, check `App.saveDebugState()` after a hitch. The first questions should be:
+
+1. Is `lastTimings.prepareSnapshotMs` high? If yes, inspect `snapshotDebug.persistAllTileDeltasMs`, `snapshotDebug.worldMapSize`, and `snapshotDebug.tileDeltaCountAfter`.
+2. Is `lastTimings.worldStoreMs` high? If yes, inspect `worldStoreDebug.persistAllTileDeltasMs`, `worldStoreDebug.recordCount`, `worldStoreDebug.dbOpenMs`, and `worldStoreDebug.txMs`.
+3. Is `performanceDiagnostic.dominantPhase` neither `prepareSnapshotMs` nor `worldStoreMs`? Then inspect record build/write or manifest phases before optimizing world storage.
+
+This pass intentionally measures both `persistAllTileDeltas()` calls: one inside `_prepareSaveSnapshot()` and one inside `persistWorldStateToMapStore()`. If both phases are consistently material, the next optimization should remove or narrow redundant tile-delta preparation rather than guessing at IndexedDB first.

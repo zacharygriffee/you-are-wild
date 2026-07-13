@@ -4,6 +4,11 @@
  */
 
 const YAW_WORLD_STORE = {
+    nowMs() {
+        if (typeof performance !== 'undefined' && typeof performance.now === 'function') return performance.now();
+        return Date.now();
+    },
+
     makeWorldId(app, purpose = 'world') {
         const cleanPurpose = String(purpose || 'world').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 24) || 'world';
         const random = Math.floor(Math.random() * 0xFFFFFF).toString(36).padStart(4, '0');
@@ -30,15 +35,31 @@ const YAW_WORLD_STORE = {
     },
 
     async persist(app) {
+        const totalStart = this.nowMs();
+        const debug = {
+            worldId: app.worldMeta?.worldId || '',
+            worldMapSize: app.worldMap?.size || 0,
+            tileDeltaCountBefore: app.tileDeltas?.size || 0
+        };
+        let phaseStart = this.nowMs();
         app.persistAllTileDeltas();
+        debug.persistAllTileDeltasMs = Math.round(this.nowMs() - phaseStart);
+        debug.tileDeltaCountAfter = app.tileDeltas?.size || 0;
         app.worldMeta = app._normalizeWorldMeta(app.worldMeta, app._defaultWorldMeta());
         const worldId = app.worldMeta.worldId || 'world_default';
+        debug.worldId = worldId;
+        phaseStart = this.nowMs();
         const db = await app._worldDbOpen();
+        debug.dbOpenMs = Math.round(this.nowMs() - phaseStart);
+        phaseStart = this.nowMs();
+        const records = Array.from(app.tileDeltas.entries()).map(([key, delta]) => app._tileDeltaRecordFromEntry(key, delta));
+        debug.recordBuildMs = Math.round(this.nowMs() - phaseStart);
+        debug.recordCount = records.length;
         return new Promise((resolve, reject) => {
+            const txStart = this.nowMs();
             const tx = db.transaction(['worlds', 'tileDeltas'], 'readwrite');
             const worlds = tx.objectStore('worlds');
             const tileDeltas = tx.objectStore('tileDeltas');
-            const records = Array.from(app.tileDeltas.entries()).map(([key, delta]) => app._tileDeltaRecordFromEntry(key, delta));
             worlds.put({ ...app.worldMeta, worldId, updatedAt: Date.now() });
             const cursorReq = tileDeltas.openCursor();
             cursorReq.onsuccess = e => {
@@ -51,8 +72,21 @@ const YAW_WORLD_STORE = {
                 cursor.continue();
             };
             cursorReq.onerror = () => reject(cursorReq.error);
-            tx.oncomplete = () => { db.close(); resolve(records.length); };
-            tx.onerror = () => { db.close(); reject(tx.error); };
+            tx.oncomplete = () => {
+                debug.txMs = Math.round(this.nowMs() - txStart);
+                debug.totalMs = Math.round(this.nowMs() - totalStart);
+                app._lastWorldStoreDebug = debug;
+                db.close();
+                resolve(records.length);
+            };
+            tx.onerror = () => {
+                debug.txMs = Math.round(this.nowMs() - txStart);
+                debug.totalMs = Math.round(this.nowMs() - totalStart);
+                debug.error = tx.error?.message || String(tx.error || 'world-store-persist-error');
+                app._lastWorldStoreDebug = debug;
+                db.close();
+                reject(tx.error);
+            };
         });
     },
 

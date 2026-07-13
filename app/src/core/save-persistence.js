@@ -38,7 +38,11 @@ const YAW_SAVE_PERSISTENCE = {
                 lastDefaultDirtyFallback: false,
                 defaultDirtyFallbackCount: 0,
                 lastDefaultDirtyReason: '',
-                lastDirtyReason: ''
+                lastDirtyReason: '',
+                lastSnapshotDebug: null,
+                lastWorldStoreDebug: null,
+                lastPerformanceDiagnostic: null,
+                lastSlowSaveDiagnostic: null
             };
         }
         if (!(app._sparseSaveState.dirtyDomains instanceof Set)) {
@@ -102,6 +106,10 @@ const YAW_SAVE_PERSISTENCE = {
             queueState: sparse.queueState || (queue.saving ? 'saving' : (queue.timer ? 'scheduled' : 'idle')),
             lastSaveMode: sparse.lastMode || 'none',
             lastTimings: sparse.lastTimings || {},
+            snapshotDebug: sparse.lastSnapshotDebug || null,
+            worldStoreDebug: sparse.lastWorldStoreDebug || null,
+            performanceDiagnostic: sparse.lastPerformanceDiagnostic || null,
+            slowSaveDiagnostic: sparse.lastSlowSaveDiagnostic || null,
             lastError: sparse.lastError || null,
             dirtyReason: sparse.lastDirtyReason || ''
         };
@@ -138,16 +146,25 @@ const YAW_SAVE_PERSISTENCE = {
 
     async writeFullSlot(app, slotName, options = {}) {
         slotName = app._normalizeSaveSlotName(slotName);
-        app._prepareSaveSnapshot();
+        const sparse = this.sparseSaveState(app);
+        const timings = {};
+        const totalStart = this.nowMs();
+        this.measurePrepareSaveSnapshot(app, timings);
         let worldStoreSaved = false;
+        const worldStart = this.nowMs();
         try {
             await app.persistWorldStateToMapStore();
             worldStoreSaved = true;
         } catch (e) {
             console.warn('World map persistence failed', e);
         }
+        timings.worldStoreMs = Math.round(this.nowMs() - worldStart);
+        const binaryStart = this.nowMs();
         const saveData = Binary.saveGame(app, { omitWorldMap: worldStoreSaved && options.auto === true });
+        timings.binaryBuildMs = Math.round(this.nowMs() - binaryStart);
+        const dbStart = this.nowMs();
         await app._dbPut('saves', slotName, saveData);
+        timings.fullSaveWriteMs = Math.round(this.nowMs() - dbStart);
         app.activeSlot = slotName;
         const savedAt = Date.now().toString();
         app._setStoredValue('lastSlot', slotName);
@@ -161,10 +178,22 @@ const YAW_SAVE_PERSISTENCE = {
             worldStoreSaved,
             combatActive: Boolean(app.combatState?.active)
         });
-        const sparse = this.sparseSaveState(app);
+        timings.totalMs = Math.round(this.nowMs() - totalStart);
         sparse.lastMode = 'full';
         sparse.lastSavedAt = Number(savedAt);
         sparse.lastRecordCount = 1;
+        sparse.lastTotalMs = timings.totalMs;
+        sparse.lastTimings = timings;
+        sparse.lastSnapshotDebug = app._lastSaveSnapshotDebug || null;
+        sparse.lastWorldStoreDebug = app._lastWorldStoreDebug || null;
+        sparse.lastPerformanceDiagnostic = this.timingDiagnostic(app, timings, {
+            mode: 'full',
+            slotName,
+            worldRecordCount: app._lastWorldStoreDebug?.recordCount || 0
+        });
+        sparse.lastSlowSaveDiagnostic = timings.totalMs > (app.SAVE_SLOW_LOG_MS || 120)
+            ? sparse.lastPerformanceDiagnostic
+            : null;
         return { slotName, saveData, savedAt, worldStoreSaved, mode: 'full' };
     },
 
@@ -175,6 +204,37 @@ const YAW_SAVE_PERSISTENCE = {
     nowMs() {
         if (typeof performance !== 'undefined' && typeof performance.now === 'function') return performance.now();
         return Date.now();
+    },
+
+    measurePrepareSaveSnapshot(app, timings = {}) {
+        const start = this.nowMs();
+        app._prepareSaveSnapshot();
+        timings.prepareSnapshotMs = Math.round(this.nowMs() - start);
+        return app._lastSaveSnapshotDebug || { totalMs: timings.prepareSnapshotMs };
+    },
+
+    timingDiagnostic(app, timings = {}, context = {}) {
+        const phases = [];
+        for (const [phase, value] of Object.entries(timings || {})) {
+            if (!phase.endsWith('Ms') || phase === 'totalMs') continue;
+            const ms = Number(value);
+            if (Number.isFinite(ms)) phases.push({ phase, ms });
+        }
+        phases.sort((a, b) => b.ms - a.ms);
+        const dominant = phases[0] || { phase: 'none', ms: 0 };
+        return {
+            mode: context.mode || 'unknown',
+            slotName: context.slotName || '',
+            totalMs: Number(timings.totalMs || 0),
+            dominantPhase: dominant.phase,
+            dominantMs: dominant.ms,
+            dirtyDomains: Array.isArray(context.dirtyDomains) ? [...context.dirtyDomains] : [],
+            recordDomains: Array.isArray(context.recordDomains) ? [...context.recordDomains] : [],
+            worldRecordCount: Number(context.worldRecordCount || 0),
+            snapshot: app._lastSaveSnapshotDebug || null,
+            worldStore: app._lastWorldStoreDebug || null,
+            phases
+        };
     },
 
     serializableClone(value, fallback = null) {
@@ -383,7 +443,7 @@ const YAW_SAVE_PERSISTENCE = {
         sparse.queueState = 'saving';
         sparse.lastError = null;
         sparse.lastDefaultDirtyFallback = false;
-        app._prepareSaveSnapshot();
+        this.measurePrepareSaveSnapshot(app, timings);
         const dirtyStart = this.nowMs();
         const previousManifest = await app._dbGet('saveManifests', slotName).catch(() => null);
         if (!previousManifest) this.markDefaultAutoDirty(app, 'initial-sparse-baseline');
@@ -468,6 +528,18 @@ const YAW_SAVE_PERSISTENCE = {
         sparse.revision = revision;
         sparse.lastSavedAt = Number(savedAt);
         sparse.lastTimings = timings;
+        sparse.lastSnapshotDebug = app._lastSaveSnapshotDebug || null;
+        sparse.lastWorldStoreDebug = app._lastWorldStoreDebug || null;
+        sparse.lastPerformanceDiagnostic = this.timingDiagnostic(app, timings, {
+            mode: 'sparse',
+            slotName,
+            dirtyDomains,
+            recordDomains: written,
+            worldRecordCount
+        });
+        sparse.lastSlowSaveDiagnostic = totalMs > (app.SAVE_SLOW_LOG_MS || 120)
+            ? sparse.lastPerformanceDiagnostic
+            : null;
         sparse.queueState = 'idle';
         app._emitModuleHook('onGameSave', {
             slotName,
@@ -479,7 +551,12 @@ const YAW_SAVE_PERSISTENCE = {
             recordCount: written.length
         });
         if (totalMs > (app.SAVE_SLOW_LOG_MS || 120)) {
-            console.warn(`Sparse save to ${slotName} took ${totalMs}ms`, { dirtyDomains, records: written.length, timings });
+            console.warn(`Sparse save to ${slotName} took ${totalMs}ms`, {
+                dirtyDomains,
+                records: written.length,
+                timings,
+                diagnostic: sparse.lastSlowSaveDiagnostic
+            });
         }
         return { slotName, savedAt, worldStoreSaved, mode: 'sparse', recordCount: written.length, dirtyDomains, manifest };
     },

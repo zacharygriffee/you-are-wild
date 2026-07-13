@@ -1806,10 +1806,27 @@
                 return YAW_WORLD_STATE.persistAllTileDeltas(this);
             },
             _prepareSaveSnapshot() {
+                const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now();
+                const start = now();
+                const debug = {
+                    worldMapSize: this.worldMap?.size || 0,
+                    tileDeltaCountBefore: this.tileDeltas?.size || 0
+                };
+                let phaseStart = now();
                 this._syncPlayerPartyReference();
+                debug.syncPlayerPartyMs = Math.round(now() - phaseStart);
+                phaseStart = now();
                 this._normalizeExplorationSelections();
+                debug.normalizeSelectionsMs = Math.round(now() - phaseStart);
+                phaseStart = now();
                 this._syncCurrentTileCreatures();
-                this.persistAllTileDeltas();
+                debug.syncCurrentTileCreaturesMs = Math.round(now() - phaseStart);
+                phaseStart = now();
+                const deltas = this.persistAllTileDeltas();
+                debug.persistAllTileDeltasMs = Math.round(now() - phaseStart);
+                debug.tileDeltaCountAfter = deltas?.size || this.tileDeltas?.size || 0;
+                debug.totalMs = Math.round(now() - start);
+                this._lastSaveSnapshotDebug = debug;
             },
             _tileDeltaRecordFromEntry(key, delta) {
                 return YAW_WORLD_STATE.tileDeltaRecordFromEntry(this, key, delta);

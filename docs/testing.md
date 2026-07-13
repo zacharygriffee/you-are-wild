@@ -48,7 +48,8 @@ Save/load tests should cover both compatibility full saves and sparse autosaves.
 - serializable per-domain DTO records;
 - manifest-last commit order;
 - sparse load reconstruction with combat refresh precedence and full Binary fallback;
-- autosave queue coalescing by manifest commit, not raw IndexedDB put count.
+- autosave queue coalescing by manifest commit, not raw IndexedDB put count;
+- save performance diagnostics that expose `_prepareSaveSnapshot()` timing, world-store timing, internal tile-delta preparation timing, and a ranked dominant phase.
 
 ## Source Boundary
 

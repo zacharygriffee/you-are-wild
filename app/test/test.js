@@ -18477,8 +18477,107 @@ test('Auto-save debounce coalesces rapid movement saves into one slot write', as
   assertEqual(writes, 2, 'Immediate auto-save flush should still write when explicitly requested');
 });
 
+function enableRealAutoSaveHarness(harness) {
+  harness.App.autoSave = function(options = {}) {
+    return harness.window.YAW_SAVE_PERSISTENCE.autoSave(harness.App, options || {});
+  };
+  return harness.App;
+}
+
+function assertIncludesEvery(actual, expected, message) {
+  for (const value of expected) {
+    assert(actual.includes(value), `${message}: expected ${value} in [${actual.join(', ')}]`);
+  }
+}
+
+function assertExcludesEvery(actual, expected, message) {
+  for (const value of expected) {
+    assert(!actual.includes(value), `${message}: expected ${value} to be absent from [${actual.join(', ')}]`);
+  }
+}
+
+test('Sparse autosave dirty domains stay narrow for common gameplay mutations', () => {
+  const moved = loadAppForCombat(() => 0.99);
+  moved.App.player = makeUnit('You', { id: 'dirty-move-player' });
+  moved.App.party = [moved.App.player];
+  moved.App.screen = 'game';
+  moved.App.location = { x: 0, y: 0 };
+  moved.App.currentBiome = 'grove';
+  moved.App.clearSaveDirtyAll();
+  moved.App.move(1, 0);
+  const movementDomains = moved.App.dirtySaveDomains();
+  assertIncludesEvery(movementDomains, ['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'Movement should dirty traversal domains');
+  assertExcludesEvery(movementDomains, ['combat', 'settings', 'inventory'], 'Movement should not dirty unrelated domains');
+
+  const inventory = loadAppForCombat(() => 0.5);
+  inventory.App.player = makeUnit('You', { id: 'dirty-inventory-player' });
+  inventory.App.party = [inventory.App.player];
+  inventory.App.screen = 'game';
+  inventory.App.inventory = [{ id: 'charm-1', name: 'Lucky Charm' }];
+  inventory.App.clearSaveDirtyAll();
+  inventory.App.equipItem('charm-1');
+  const inventoryDomains = inventory.App.dirtySaveDomains();
+  assertIncludesEvery(inventoryDomains, ['manifest', 'player', 'party', 'inventory', 'holdings', 'activityLog'], 'Equipment should dirty inventory and owner state');
+  assertExcludesEvery(inventoryDomains, ['combat', 'worldTiles', 'settings'], 'Equipment should not dirty combat world or settings');
+
+  const drop = loadAppForCombat(() => 0.5);
+  drop.App.player = makeUnit('You', { id: 'dirty-drop-player' });
+  drop.App.party = [drop.App.player];
+  drop.App.screen = 'game';
+  drop.App.location = { x: 0, y: 0 };
+  drop.App.inventory = [{ id: 'coin-1', name: 'Old Coin' }];
+  drop.App.clearSaveDirtyAll();
+  drop.App.dropItem('coin-1');
+  const dropDomains = drop.App.dirtySaveDomains();
+  assertIncludesEvery(dropDomains, ['manifest', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'activityLog'], 'Drop should dirty pack and tile state');
+  assertExcludesEvery(dropDomains, ['combat', 'settings'], 'Drop should not dirty combat or settings');
+
+  const scene = loadAppForCombat(() => 0.5);
+  scene.App.player = makeUnit('You', { id: 'dirty-scene-player' });
+  scene.App.party = [scene.App.player];
+  scene.App.screen = 'game';
+  scene.App.clearSaveDirtyAll();
+  scene.App.emitSceneBeat({ mode: 'adventure', actors: [scene.App.player], action: 'observe' }, 'A narrow beat.');
+  const sceneDomains = scene.App.dirtySaveDomains();
+  assertIncludesEvery(sceneDomains, ['sceneFeed'], 'Scene Beat emission should dirty Scene Feed');
+  assertExcludesEvery(sceneDomains, ['inventory', 'worldTiles', 'settings'], 'Scene Beat emission should not dirty unrelated domains');
+
+  const containment = loadAppForCombat(() => 0.5);
+  containment.App.player = makeUnit('You', { id: 'dirty-holder', size: 8 });
+  const prey = makeUnit('Bunnyfolk', { id: 'dirty-prey', species: 'bunny', size: 2, CPun: 20, MPun: 100 });
+  containment.App.party = [containment.App.player];
+  containment.App.creatures = [prey];
+  containment.App.screen = 'game';
+  containment.App.clearSaveDirtyAll();
+  containment.App._containTargetIn(containment.App.player, prey, 'stomach');
+  const containmentDomains = containment.App.dirtySaveDomains();
+  assertIncludesEvery(containmentDomains, ['manifest', 'party', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'Containment should dirty holder tile and feedback domains');
+  assertExcludesEvery(containmentDomains, ['settings'], 'Containment should not dirty settings');
+
+  const quest = loadAppForCombat(() => 0.5);
+  quest.App.player = makeUnit('You', { id: 'dirty-quest-player' });
+  quest.App.party = [quest.App.player];
+  quest.App.screen = 'game';
+  quest.App.quests = [{ id: 'travel-quest', status: 'active', title: 'Walk', objectives: [{ id: 'walk-1', type: 'travel', required: 2, progress: 0 }] }];
+  quest.App.clearSaveDirtyAll();
+  quest.App._updateQuestProgress('travel', { count: 1 });
+  const questDomains = quest.App.dirtySaveDomains();
+  assertIncludesEvery(questDomains, ['manifest', 'quests', 'player', 'party', 'inventory', 'sceneFeed', 'activityLog'], 'Quest progress should dirty quest and possible reward domains');
+  assertExcludesEvery(questDomains, ['combat', 'worldTiles', 'settings'], 'Quest progress should not dirty combat world or settings unless affected');
+
+  const holdings = loadAppForCombat(() => 0.5);
+  holdings.App.player = makeUnit('You', { id: 'holdings-you' });
+  const ally = makeUnit('Ally', { id: 'holdings-ally' });
+  holdings.App.party = [holdings.App.player, ally];
+  holdings.App.holdingsWindow = { tab: 'stats', ownerId: 'holdings-you' };
+  holdings.App.clearSaveDirtyAll();
+  holdings.App.setHoldingsOwner('holdings-ally');
+  assertEqual(holdings.App.dirtySaveDomains().length, 0, 'Switching Holdings owner should be UI-only and not dirty the save');
+});
+
 test('Sparse save dirty tracker writes manifest last and only changed records after baseline', async () => {
-  const { App } = loadAppForCombat(() => 0.5);
+  const harness = loadAppForCombat(() => 0.5);
+  const App = enableRealAutoSaveHarness(harness);
   App.player = makeUnit('You', { id: 'sparse-player', species: 'human' });
   App.party = [App.player];
   App.screen = 'game';
@@ -18508,10 +18607,16 @@ test('Sparse save dirty tracker writes manifest last and only changed records af
   assertEqual(recordWrites.length, 1, 'Second sparse save should write only explicitly dirty record');
   assertEqual(recordWrites[0].key, 'slot1:player', 'Dirty player save should write only the player record key');
   assertEqual(writes[writes.length - 1].store, 'saveManifests', 'Second sparse save should still commit manifest last');
+  const debug = App.saveDebugState();
+  assertEqual(debug.recordDomains.join(','), 'player', 'Debug state should expose the sparse record domain list');
+  assertEqual(debug.recordKeys.join(','), 'slot1:player', 'Debug state should expose sparse record keys');
+  assertEqual(debug.defaultDirtyFallbackUsed, false, 'Targeted sparse save should not use default-all fallback');
+  assert(Number.isFinite(debug.lastTimings.totalMs), 'Debug timings should expose total milliseconds');
 });
 
 test('Sparse save load reconstructs app state and preserves Binary fallback compatibility', async () => {
-  const { App } = loadAppForCombat(() => 0.5);
+  const harness = loadAppForCombat(() => 0.5);
+  const App = enableRealAutoSaveHarness(harness);
   App.player = makeUnit('Sparse You', { id: 'sparse-load-player', species: 'human' });
   App.party = [App.player, makeUnit('Sparse Ally', { id: 'sparse-load-ally', species: 'bunny' })];
   App.screen = 'game';
@@ -18549,7 +18654,8 @@ test('Sparse save load reconstructs app state and preserves Binary fallback comp
 });
 
 test('Sparse save manifest failure preserves dirty domains for retry', async () => {
-  const { App } = loadAppForCombat(() => 0.5);
+  const harness = loadAppForCombat(() => 0.5);
+  const App = enableRealAutoSaveHarness(harness);
   App.player = makeUnit('You', { id: 'sparse-fail-player' });
   App.party = [App.player];
   App.screen = 'game';
@@ -18567,6 +18673,143 @@ test('Sparse save manifest failure preserves dirty domains for retry', async () 
   assert(App.dirtySaveDomains().includes('player'), 'Failed sparse save should keep player dirty for retry');
   assert(App.dirtySaveDomains().includes('manifest'), 'Failed sparse save should keep manifest dirty for retry');
   assertEqual(App.saveDebugState().lastSaveMode, 'fallback', 'Failed sparse save should expose fallback/debug mode');
+});
+
+test('Sparse autosave writes narrow records and never full Binary for routine domains', async () => {
+  const harness = loadAppForCombat(() => 0.5);
+  const App = enableRealAutoSaveHarness(harness);
+  App.player = makeUnit('You', { id: 'sparse-narrow-player' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.location = { x: 2, y: 0 };
+  App.currentBiome = 'grove';
+  App.persistWorldStateToMapStore = async () => 1;
+  const stored = new Map();
+  const writes = [];
+  App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  App._dbPut = async (store, key, value) => {
+    writes.push({ store, key, value });
+    stored.set(`${store}:${key}`, value);
+  };
+
+  await App.autoSave({ immediate: true });
+  writes.length = 0;
+  App.inventory = [{ id: 'potion', name: 'Potion' }];
+  App.markSaveDirtyMany(['inventory', 'holdings'], 'inventory-only-test');
+  await App.autoSave({ immediate: true });
+
+  const recordDomains = writes.filter(write => write.store === 'saveRecords').map(write => write.value.domain).sort();
+  assertEqual(recordDomains.join(','), 'holdings,inventory', 'Inventory-only sparse save should write only inventory/holdings records');
+  assertEqual(writes.some(write => write.store === 'saves'), false, 'Routine sparse autosave should not write full Binary save data');
+  assertEqual(writes[writes.length - 1].store, 'saveManifests', 'Manifest should commit after narrow record writes');
+});
+
+test('Sparse load falls back to Binary when sparse record is corrupted', async () => {
+  const Binary = {
+    saveGame: () => new Uint8Array([7]),
+    loadGame: () => ({
+      version: 11,
+      playerName: 'Binary Fallback',
+      playerSpecies: 'human',
+      playerGender: 'female',
+      locationX: 0,
+      locationY: 0,
+      playerHp: 90,
+      playerMaxHp: 100,
+      playerStats: { str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10 },
+      playerLevel: 1,
+      party: [makeUnit('Binary Fallback', { id: 'binary-fallback-player' })],
+      log: [],
+      currentBiome: 'grove',
+      worldMap: {},
+      exploredTiles: [],
+      inventory: [],
+      timeHour: 8,
+      questState: { quests: [], combatState: { active: false } },
+      worldMeta: null
+    })
+  };
+  const harness = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App } = harness;
+  const stored = new Map();
+  stored.set('saveManifests:slot1', {
+    schema: 'yaw-sparse-save-v1',
+    slotName: 'slot1',
+    recordKeys: { player: 'slot1:player' },
+    location: { x: 0, y: 0 }
+  });
+  stored.set('saveRecords:slot1:player', { schema: 'bad-record', domain: 'player', data: {} });
+  stored.set('saves:slot1', new Uint8Array([7]));
+  App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  App.loadWorldStateFromMapStore = async () => 0;
+
+  const ok = await App.loadFromSlot('slot1');
+
+  assertEqual(ok, true, 'Corrupt sparse record should fall back to Binary save when available');
+  assertEqual(App.player.name, 'Binary Fallback', 'Binary fallback should provide loaded player state');
+});
+
+test('Combat refresh snapshot takes precedence over sparse manifest on load', async () => {
+  const Binary = {
+    saveGame(app) {
+      return new Uint8Array([app.player?.name === 'Refresh Save' ? 2 : 1]);
+    },
+    loadGame(buffer) {
+      const refresh = buffer?.[0] === 2;
+      const name = refresh ? 'Refresh Save' : 'Full Save';
+      return {
+        version: 11,
+        playerName: name,
+        playerSpecies: 'human',
+        playerGender: 'female',
+        locationX: 0,
+        locationY: 0,
+        playerHp: 88,
+        playerMaxHp: 100,
+        playerStats: { str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10 },
+        playerLevel: 1,
+        party: [makeUnit(name, { id: `${name}-id` })],
+        log: [],
+        currentBiome: 'grove',
+        worldMap: {},
+        exploredTiles: [],
+        inventory: [],
+        timeHour: 8,
+        questState: { quests: [], combatState: { active: refresh, round: 3, currentTurn: 1, turnQueue: [] } },
+        worldMeta: null
+      };
+    }
+  };
+  const harness = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App } = harness;
+  const stored = new Map();
+  stored.set('saveManifests:slot1', {
+    schema: 'yaw-sparse-save-v1',
+    slotName: 'slot1',
+    recordKeys: { player: 'slot1:player' },
+    location: { x: 0, y: 0 }
+  });
+  stored.set('saveRecords:slot1:player', {
+    schema: 'yaw-save-record-v1',
+    domain: 'player',
+    data: { playerName: 'Sparse Save', playerSpecies: 'human', playerGender: 'female', playerHp: 100, playerMaxHp: 100, playerLevel: 1 }
+  });
+  App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  App.player = makeUnit('Refresh Save', { id: 'refresh-save-player' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.combatState = { active: true, round: 3, currentTurn: 1, turnQueue: [] };
+  App._writeCombatRefreshSnapshot('slot1');
+  App.player = null;
+  App.combatState = { active: false };
+  App.loadWorldStateFromMapStore = async () => 0;
+
+  const ok = await App.loadFromSlot('slot1');
+
+  assertEqual(ok, true, 'Load should succeed through combat refresh snapshot');
+  assertEqual(App.player.name, 'Refresh Save', 'Combat refresh should take precedence over sparse manifest');
 });
 
 test('Manual saves keep independent world snapshots and clear stale tile events on load', async () => {

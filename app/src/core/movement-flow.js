@@ -93,6 +93,7 @@ const YAW_MOVEMENT_FLOW = {
             tile,
             interior: false
         });
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'quests', 'sceneFeed', 'activityLog'], 'movement');
         app.autoSave();
     }
 };

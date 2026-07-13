@@ -32,7 +32,13 @@ const YAW_SAVE_PERSISTENCE = {
                 revision: 0,
                 lastSavedAt: 0,
                 lastError: null,
-                lastTimings: {}
+                lastTimings: {},
+                lastRecordDomains: [],
+                lastRecordKeys: [],
+                lastDefaultDirtyFallback: false,
+                defaultDirtyFallbackCount: 0,
+                lastDefaultDirtyReason: '',
+                lastDirtyReason: ''
             };
         }
         if (!(app._sparseSaveState.dirtyDomains instanceof Set)) {
@@ -88,17 +94,33 @@ const YAW_SAVE_PERSISTENCE = {
             dirtyDomains: this.dirtySaveDomains(app),
             lastDirtyDomains: sparse.lastDirtyDomains || [],
             recordCount: sparse.lastRecordCount || 0,
+            recordDomains: sparse.lastRecordDomains || [],
+            recordKeys: sparse.lastRecordKeys || [],
+            defaultDirtyFallbackUsed: Boolean(sparse.lastDefaultDirtyFallback),
+            defaultDirtyFallbackCount: sparse.defaultDirtyFallbackCount || 0,
+            defaultDirtyFallbackReason: sparse.lastDefaultDirtyReason || '',
             queueState: sparse.queueState || (queue.saving ? 'saving' : (queue.timer ? 'scheduled' : 'idle')),
             lastSaveMode: sparse.lastMode || 'none',
             lastTimings: sparse.lastTimings || {},
-            lastError: sparse.lastError || null
+            lastError: sparse.lastError || null,
+            dirtyReason: sparse.lastDirtyReason || ''
         };
     },
 
-    markDefaultAutoDirty(app) {
+    markDefaultAutoDirty(app, reason = 'autosave-default') {
         const domains = ['manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'combat', 'quests', 'settings', 'sceneFeed', 'activityLog'];
-        this.markSaveDirtyMany(app, domains, 'autosave-default');
+        const state = this.sparseSaveState(app);
+        state.lastDefaultDirtyFallback = true;
+        state.defaultDirtyFallbackCount = (state.defaultDirtyFallbackCount || 0) + 1;
+        state.lastDefaultDirtyReason = String(reason || 'autosave-default');
+        this.markSaveDirtyMany(app, domains, reason || 'autosave-default');
         return domains;
+    },
+
+    markAutoSaveDirty(app, domains = [], reason = '') {
+        const list = Array.isArray(domains) ? domains : [domains];
+        if (!list.length) return false;
+        return this.markSaveDirtyMany(app, list, reason || 'autosave-targeted');
     },
 
     autoSaveDelay(app, options = {}) {
@@ -360,12 +382,15 @@ const YAW_SAVE_PERSISTENCE = {
         const totalStart = this.nowMs();
         sparse.queueState = 'saving';
         sparse.lastError = null;
+        sparse.lastDefaultDirtyFallback = false;
         app._prepareSaveSnapshot();
+        const dirtyStart = this.nowMs();
         const previousManifest = await app._dbGet('saveManifests', slotName).catch(() => null);
-        if (!previousManifest) this.markDefaultAutoDirty(app);
-        if (!this.hasDirtySaveDomains(app)) this.markDefaultAutoDirty(app);
+        if (!previousManifest) this.markDefaultAutoDirty(app, 'initial-sparse-baseline');
+        if (!this.hasDirtySaveDomains(app)) this.markDefaultAutoDirty(app, 'autosave-without-targeted-domains');
         this.markSaveDirty(app, 'manifest', 'sparse-write');
         const dirtyDomains = this.dirtySaveDomains(app);
+        timings.dirtyCollectionMs = Math.round(this.nowMs() - dirtyStart);
         const recordKeys = { ...(previousManifest?.recordKeys || {}) };
         let worldStoreSaved = false;
         let worldRecordCount = 0;
@@ -380,17 +405,26 @@ const YAW_SAVE_PERSISTENCE = {
             timings.worldStoreMs = Math.round(this.nowMs() - worldStart);
         }
         const written = [];
-        const recordStart = this.nowMs();
+        const buildStart = this.nowMs();
+        const recordsToWrite = [];
         for (const domain of this.RECORD_DOMAINS) {
             if (!dirtyDomains.includes(domain) && previousManifest) continue;
             const key = this.recordKey(slotName, domain);
-            const record = {
-                schema: 'yaw-save-record-v1',
-                slotName,
+            recordsToWrite.push({
                 domain,
-                savedAt: Date.now(),
-                data: this.buildSparseRecord(app, domain)
-            };
+                key,
+                record: {
+                    schema: 'yaw-save-record-v1',
+                    slotName,
+                    domain,
+                    savedAt: Date.now(),
+                    data: this.buildSparseRecord(app, domain)
+                }
+            });
+        }
+        timings.recordBuildMs = Math.round(this.nowMs() - buildStart);
+        const recordStart = this.nowMs();
+        for (const { domain, key, record } of recordsToWrite) {
             await app._dbPut('saveRecords', key, record);
             recordKeys[domain] = key;
             written.push(domain);
@@ -424,9 +458,12 @@ const YAW_SAVE_PERSISTENCE = {
         app._clearCombatRefreshSnapshot(slotName);
         this.clearSaveDirtyAll(app);
         const totalMs = Math.round(this.nowMs() - totalStart);
+        timings.totalMs = totalMs;
         sparse.lastTotalMs = totalMs;
         sparse.lastDirtyDomains = dirtyDomains;
         sparse.lastRecordCount = written.length;
+        sparse.lastRecordDomains = [...written];
+        sparse.lastRecordKeys = written.map(domain => recordKeys[domain]).filter(Boolean);
         sparse.lastMode = 'sparse';
         sparse.revision = revision;
         sparse.lastSavedAt = Number(savedAt);
@@ -456,6 +493,9 @@ const YAW_SAVE_PERSISTENCE = {
             const record = await app._dbGet('saveRecords', key).catch(() => null);
             if (record?.schema === 'yaw-save-record-v1' && record.domain === domain) {
                 records[domain] = record.data || {};
+            } else {
+                console.warn('Sparse save record missing or invalid; falling back to full save if available', { slotName, domain, key });
+                return null;
             }
         }
         return this.buildSparseLoadedData(records, manifest);

@@ -21,7 +21,7 @@
 - **Creature canon:** Humanoid/Sapient Creature Canon doctrine now lives in `docs/creature-canon.md`; use it when formalizing default species taxonomy, sapience metadata, body-plan metadata, and interaction eligibility gates.
 - **Controls doctrine:** The UI-safe control model now lives in `docs/control-model.md`; use it before broad traversal, actor/target selection, intent menu, Combat Toolbelt, battle-surface, or inspection-surface changes.
 - **Save/world storage:** Save-as/new-slot now forks mutable world state to a fresh `worldId`, while slot delete and delete-all saves prune unreferenced `YAW_Worlds` records without deleting worlds still referenced by another save.
-- **Sparse save foundation:** routine autosaves now use a sparse manifest/record path in `YAW_Saves` v2, with manifest-last commits, dirty-domain tracking, save timing/debug state, sparse load reconstruction, and full Binary save fallback for compatibility/manual checkpoints. See `docs/save-sparse-delta.md`.
+- **Sparse save foundation:** routine autosaves now use a sparse manifest/record path in `YAW_Saves` v2, with manifest-last commits, targeted dirty-domain tracking, save timing/debug state, sparse load reconstruction, combat refresh precedence, and full Binary save fallback for compatibility/manual checkpoints. Common gameplay mutation owners mark narrow domains before autosave, while all-domain fallback remains measurable debug-only compatibility behavior. See `docs/save-sparse-delta.md`.
 
 ### Ready-To-Implement Backlog Status (2026-07-11)
 

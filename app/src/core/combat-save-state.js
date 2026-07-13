@@ -140,6 +140,7 @@ const YAW_COMBAT_SAVE_STATE = {
             app.showActorActions(unit);
         } else {
             app.processTurn();
+            app.markAutoSaveDirty?.(['manifest', 'party', 'currentTile', 'combat', 'sceneFeed', 'activityLog'], 'combat-enemy-turn');
             app.autoSave();
         }
         return true;

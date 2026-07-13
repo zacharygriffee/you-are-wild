@@ -68,6 +68,7 @@ const YAW_TRADE_FLOW = {
         app.renderLog();
         app.renderParty();
         app.showTrade(targetId);
+        app.markAutoSaveDirty?.(['manifest', 'player', 'inventory', 'sceneFeed', 'activityLog'], 'trade-buy');
         app.autoSave();
     },
 
@@ -110,6 +111,7 @@ const YAW_TRADE_FLOW = {
         app.renderLog();
         app.renderParty();
         app.showTrade(targetId);
+        app.markAutoSaveDirty?.(['manifest', 'player', 'inventory', 'sceneFeed', 'activityLog'], 'trade-sell');
         app.autoSave();
     }
 };

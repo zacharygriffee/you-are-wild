@@ -523,6 +523,8 @@ const YAW_UNIT_CONTAINMENT = {
         });
         app.log?.push?.({ text: `${prey.name || 'Contained creature'} released from ${holder.name || 'holder'} ${this.containerLabel(app, container)} at reduced condition.`, type: app.combatState?.active ? 'combat' : 'discovery' });
         this.refreshAfterContainerCommand(app, holderType);
+        app.markAutoSaveDirty?.(['manifest', 'party', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'containment-release');
+        app.autoSave?.();
         if (app.combatState?.active) app.nextTurn?.();
         return true;
     },
@@ -549,6 +551,8 @@ const YAW_UNIT_CONTAINMENT = {
         this.terminalize(app, holder, prey, { key: container });
         app.log?.push?.({ text: `${holder.name || 'Holder'} digests ${prey.name || 'contained creature'} in ${this.containerLabel(app, container)}.`, type: app.combatState?.active ? 'combat' : 'discovery' });
         this.refreshAfterContainerCommand(app, holderType);
+        app.markAutoSaveDirty?.(['manifest', 'party', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'containment-digest');
+        app.autoSave?.();
         if (app.combatState?.active) app.nextTurn?.();
         return true;
     },

@@ -88,6 +88,7 @@ const YAW_COMBAT_RESOLUTION = {
             app.renderParty();
             app._syncCurrentTileCreatures();
             app._sanitizeCombatState({ preserveTurn: true });
+            app.markAutoSaveDirty?.(['manifest', 'party', 'currentTile', 'combat', 'quests', 'sceneFeed', 'activityLog'], 'combat-multi-target');
             app.autoSave();
             app.nextTurn();
             return resolved;
@@ -117,6 +118,7 @@ const YAW_COMBAT_RESOLUTION = {
                 app.renderParty();
                 app._syncCurrentTileCreatures();
                 app._sanitizeCombatState({ preserveTurn: true });
+                app.markAutoSaveDirty?.(['manifest', 'party', 'currentTile', 'combat', 'sceneFeed', 'activityLog'], 'combat-reach-failure');
                 app.autoSave();
                 if (advanceTurn) app.nextTurn();
                 return true;
@@ -251,6 +253,7 @@ const YAW_COMBAT_RESOLUTION = {
             app.renderParty();
             app._syncCurrentTileCreatures();
             app._sanitizeCombatState({ preserveTurn: true });
+            app.markAutoSaveDirty?.(['manifest', 'party', 'currentTile', 'combat', 'quests', 'sceneFeed', 'activityLog'], 'combat-action');
             app.autoSave();
             if (advanceTurn) app.nextTurn();
             return true;

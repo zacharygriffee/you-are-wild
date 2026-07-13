@@ -126,6 +126,7 @@ const YAW_STRUCTURE_NAVIGATION = {
         app.renderCreatures();
         app.renderLog();
         app.showExplorationActions();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'structure-enter');
         app.autoSave();
     },
 
@@ -152,6 +153,7 @@ const YAW_STRUCTURE_NAVIGATION = {
         app.renderMap();
         app.renderCreatures();
         app.renderLog();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'structure-exit');
         app.autoSave();
     },
 
@@ -201,6 +203,7 @@ const YAW_STRUCTURE_NAVIGATION = {
             tile: room,
             interior: true
         });
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'structure-move');
         app.autoSave();
     },
 
@@ -226,6 +229,7 @@ const YAW_STRUCTURE_NAVIGATION = {
         app.renderLog();
         app.renderParty();
         app.renderExplorationActions();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'rest');
         app.autoSave();
     }
 };

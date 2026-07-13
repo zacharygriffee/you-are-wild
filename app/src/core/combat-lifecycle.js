@@ -122,6 +122,7 @@ const YAW_COMBAT_LIFECYCLE = {
         app.renderCreatures();
         app.showExplorationActions();
         app.renderMobileCombatToolbelt();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'combat', 'quests', 'sceneFeed', 'activityLog'], `combat-end-${outcome}`);
         app.autoSave();
     },
 

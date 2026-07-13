@@ -66,6 +66,7 @@ const YAW_PARTY_MANAGEMENT = {
         }), type: 'discovery' });
         app.renderParty();
         app.renderLog();
+        app.markAutoSaveDirty?.(['manifest', 'party', 'quests', 'activityLog'], 'party-ai-order');
         app.autoSave();
     },
 
@@ -79,6 +80,7 @@ const YAW_PARTY_MANAGEMENT = {
         }), type: 'discovery' });
         app.renderParty();
         app.renderLog();
+        app.markAutoSaveDirty?.(['manifest', 'party', 'quests', 'activityLog'], 'party-role');
         app.autoSave();
     },
 
@@ -94,6 +96,7 @@ const YAW_PARTY_MANAGEMENT = {
         app.log.push({ text: app._label('party.leaderSet', '{name} is now party leader.', { name: unit.name }), type: 'discovery' });
         app.renderLog();
         app.renderParty();
+        app.markAutoSaveDirty?.(['manifest', 'party', 'quests', 'activityLog'], 'party-leader');
         app.autoSave();
     },
 
@@ -109,6 +112,7 @@ const YAW_PARTY_MANAGEMENT = {
         app.log.push({ text: app._label('party.positionChanged', '{name} changes party position.', { name: unit.name }), type: 'discovery' });
         app.renderLog();
         app.renderParty();
+        app.markAutoSaveDirty?.(['manifest', 'party', 'quests', 'activityLog'], 'party-reorder');
         app.autoSave();
         return true;
     },
@@ -192,6 +196,7 @@ const YAW_PARTY_MANAGEMENT = {
         app.renderLog();
         app.renderParty();
         app.renderCreatures();
+        app.markAutoSaveDirty?.(['manifest', 'party', 'currentTile', 'worldTiles', 'quests', 'activityLog'], 'party-dismiss');
         app.autoSave();
         return true;
     }

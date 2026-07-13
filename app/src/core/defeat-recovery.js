@@ -61,6 +61,7 @@ const YAW_DEFEAT_RECOVERY = {
         app._addTileEvent(message, 'discovery');
         app.renderLog();
         app.showExplorationActions();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'quests', 'activityLog'], 'safe-anchor');
         app.autoSave();
         return true;
     },
@@ -231,6 +232,7 @@ const YAW_DEFEAT_RECOVERY = {
         app.renderCreatures();
         app.renderLog();
         app.showExplorationActions();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'combat', 'quests', 'sceneFeed', 'activityLog'], 'regenerate');
         app.autoSave();
         return true;
     },

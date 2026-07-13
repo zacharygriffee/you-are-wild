@@ -79,6 +79,7 @@ const YAW_RECRUITMENT_FLOW = {
         app.renderCreatures();
         app.renderLog();
         app.showExplorationActions();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'quests', 'sceneFeed', 'activityLog'], 'recruitment');
         app.autoSave();
         return true;
     }

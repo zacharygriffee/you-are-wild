@@ -78,6 +78,7 @@ const YAW_PERK_FLOW = {
         app.renderParty();
         if (app.player.pendingPerkChoices > 0) app.showPerkSelection();
         else app.showCharacterStats();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'quests', 'activityLog'], 'perk-choice');
         app.autoSave();
     },
 
@@ -101,6 +102,7 @@ const YAW_PERK_FLOW = {
         app.renderLog();
         app.renderParty();
         app.showCharacterStats();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'quests', 'activityLog'], 'perk-respec');
         app.autoSave();
     },
 
@@ -129,6 +131,7 @@ const YAW_PERK_FLOW = {
         app.log.push({ text: `Debug: granted ${grant} perk choice${grant === 1 ? '' : 's'}.`, type: 'discovery' });
         app.renderLog();
         app.showCharacterStats();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'quests', 'activityLog'], 'perk-debug-grant');
         app.autoSave();
     }
 };

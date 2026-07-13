@@ -227,6 +227,7 @@ const YAW_QUEST_FLOW = {
         app.renderLog();
         app.renderCreatures();
         if (app.refreshTransactionWindow?.()) {
+            app.markAutoSaveDirty?.(['manifest', 'quests', 'sceneFeed', 'activityLog'], 'quest-accept');
             app.autoSave();
             return normalized;
         }
@@ -239,6 +240,7 @@ const YAW_QUEST_FLOW = {
         } else {
             app.showQuestLog();
         }
+        app.markAutoSaveDirty?.(['manifest', 'quests', 'sceneFeed', 'activityLog'], 'quest-accept');
         app.autoSave();
         return normalized;
     },
@@ -293,6 +295,7 @@ const YAW_QUEST_FLOW = {
         if (changed) {
             app.renderLog();
             app.renderParty();
+            app.markAutoSaveDirty?.(['manifest', 'quests', 'player', 'party', 'inventory', 'sceneFeed', 'activityLog'], 'quest-progress');
             app.autoSave();
         }
         return changed;
@@ -350,6 +353,7 @@ const YAW_QUEST_FLOW = {
         app.renderLog();
         app.renderParty();
         if (!app.refreshTransactionWindow?.()) app.showQuestLog();
+        app.markAutoSaveDirty?.(['manifest', 'quests', 'player', 'party', 'inventory', 'sceneFeed', 'activityLog'], 'quest-turn-in');
         app.autoSave();
         return granted;
     },

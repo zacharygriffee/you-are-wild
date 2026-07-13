@@ -1413,6 +1413,7 @@
                 target.CPun = 0;
                 target.CPle = 0;
                 this._removeContainedTarget(target);
+                this.markAutoSaveDirty?.(['manifest', 'party', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'containment-contained');
                 return prey;
             },
             _turnCreatureHostile(unit) {
@@ -3737,6 +3738,7 @@
                 this.renderLog();
                 this.renderCreatures();
                 this.renderExplorationActions();
+                this.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'currentTile', 'worldTiles', 'quests', 'sceneFeed', 'activityLog'], 'corpse-loot');
                 this.autoSave();
                 return true;
             },
@@ -3802,6 +3804,7 @@
                 this.renderParty();
                 this.renderCreatures();
                 this.renderExplorationActions();
+                this.markAutoSaveDirty?.(['manifest', 'party', 'holdings', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'corpse-scavenge');
                 this.autoSave();
                 return true;
             },
@@ -5294,6 +5297,9 @@
             },
             markSaveDirtyMany(domains = [], reason = '') {
                 return YAW_SAVE_PERSISTENCE.markSaveDirtyMany(this, domains, reason);
+            },
+            markAutoSaveDirty(domains = [], reason = '') {
+                return YAW_SAVE_PERSISTENCE.markAutoSaveDirty(this, domains, reason);
             },
             clearSaveDirty(domain) {
                 return YAW_SAVE_PERSISTENCE.clearSaveDirty(this, domain);

@@ -9,13 +9,18 @@ const YAW_SAVE_LOAD_FLOW = {
         try {
             const slotLabel = app._slotDisplayLabel(slotName);
             let saveData = null;
-            let loaded = await app._loadSparseSlotData(slotName).catch(e => {
-                console.warn('Sparse save load skipped', e);
-                return null;
-            });
-            if (!loaded) saveData = await app._dbGet('saves', slotName);
             const combatSnapshot = app._readCombatRefreshSnapshot(slotName);
-            if (combatSnapshot?.saveData) saveData = combatSnapshot.saveData;
+            if (combatSnapshot?.saveData) {
+                saveData = combatSnapshot.saveData;
+            }
+            let loaded = null;
+            if (!saveData) {
+                loaded = await app._loadSparseSlotData(slotName).catch(e => {
+                    console.warn('Sparse save load skipped', e);
+                    return null;
+                });
+            }
+            if (!loaded && !saveData) saveData = await app._dbGet('saves', slotName);
             if (!loaded && !saveData) {
                 alert(app._label('save.error.noSave', 'No save in {slot}', { slot: slotLabel }));
                 return false;

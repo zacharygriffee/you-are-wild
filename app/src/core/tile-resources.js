@@ -49,6 +49,7 @@ const YAW_TILE_RESOURCES = {
         app._addTileEvent(result, 'discovery');
         app.renderLog();
         app.renderExplorationActions();
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'quests', 'sceneFeed', 'activityLog'], 'search');
         app.autoSave();
     },
 
@@ -90,6 +91,7 @@ const YAW_TILE_RESOURCES = {
             app._addTileEvent(fullText, 'loot');
             app.renderLog();
             app.renderExplorationActions();
+            app.markAutoSaveDirty?.(['manifest', 'inventory', 'currentTile', 'worldTiles', 'activityLog'], 'tile-items-full');
             app.autoSave();
             return true;
         }
@@ -114,6 +116,7 @@ const YAW_TILE_RESOURCES = {
         }
         app.renderLog();
         app.renderExplorationActions();
+        app.markAutoSaveDirty?.(['manifest', 'inventory', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'take-tile-items');
         app.autoSave();
         return true;
     }

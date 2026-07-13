@@ -679,6 +679,7 @@ const YAW_INVENTORY_PANEL = {
         app.renderLog();
         app.renderParty();
         YAW_HOLDINGS.open(app, owner, { tab: app.holdingsWindow?.tab || 'pack' });
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'activityLog'], 'inventory-equip');
         app.autoSave();
     },
 
@@ -701,6 +702,7 @@ const YAW_INVENTORY_PANEL = {
         app.renderLog();
         app.renderParty();
         YAW_HOLDINGS.open(app, owner, { tab: app.holdingsWindow?.tab || 'equipment' });
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'activityLog'], 'inventory-unequip');
         app.autoSave();
     },
 
@@ -719,6 +721,7 @@ const YAW_INVENTORY_PANEL = {
         app.showInventory();
         app.renderExplorationActions();
         app.renderLog();
+        app.markAutoSaveDirty?.(['manifest', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'activityLog'], 'inventory-drop');
         app.autoSave();
         return true;
     }

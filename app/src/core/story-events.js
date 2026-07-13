@@ -559,6 +559,7 @@ const YAW_STORY_EVENTS = {
         app.latestStoryEvent = event;
         app.sceneEvents = app.storyEvents;
         app.latestSceneBeat = event;
+        app.markAutoSaveDirty?.(['sceneFeed'], 'scene-feed');
         this.render(app);
         return event;
     },

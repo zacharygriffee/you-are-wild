@@ -254,6 +254,7 @@ const YAW_CREATE_FLOW = {
         app.renderLog();
         app.updateScene('The Beginning', 'You awaken in an unfamiliar place. The air smells of ' + app.biomes.forest.name + '.', false);
         app._addTileEvent(app._label('ui.tileEvent.arrival', 'You arrive here.'), 'move');
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'quests', 'sceneFeed', 'activityLog'], 'new-run');
         app.autoSave();
     }
 };

@@ -37,6 +37,26 @@ Helpers:
 
 Autosave marks a conservative default set when no explicit dirty domains exist. Future action code should mark narrower domains as it is touched.
 
+Routine gameplay should mark targeted domains before requesting autosave. The conservative default remains a compatibility fallback and is exposed in debug state so it can be treated as rare, measurable behavior rather than the normal path.
+
+Expected common-domain ownership:
+
+| Mutation | Expected dirty domains |
+| --- | --- |
+| Movement / tile entry | `manifest`, `player`, `party`, `currentTile`, `worldTiles`, `quests`, `sceneFeed`, `activityLog` |
+| Structure enter/exit/interior move/rest | `manifest`, `player`, `party`, `currentTile`, `worldTiles`, `sceneFeed`, `activityLog` |
+| Combat action / reach failure / enemy turn | `manifest`, `party`, `currentTile`, `combat`, `sceneFeed`, `activityLog`; `quests` only where combat outcome/progress can change |
+| Combat end / regenerate | `manifest`, `player`, `party`, `currentTile`, `worldTiles`, `combat`, `quests`, `sceneFeed`, `activityLog` |
+| Equipment / inventory owner state | `manifest`, `player`, `party`, `inventory`, `holdings`, `activityLog` |
+| Drop / pickup / tile item | `manifest`, `inventory`, `holdings`, `currentTile`, `worldTiles`, `sceneFeed`, `activityLog` |
+| Scene Beat only | `sceneFeed` |
+| Containment / release / digest | `manifest`, `party`, `holdings`, `currentTile`, `worldTiles`, `combat`, `sceneFeed`, `activityLog` |
+| Corpse scavenge | `manifest`, `party`, `holdings`, `currentTile`, `worldTiles`, `sceneFeed`, `activityLog` |
+| Quest accept/progress/turn-in | `manifest`, `quests`, `sceneFeed`, `activityLog`, plus `player`, `party`, or `inventory` when rewards/progress can affect them |
+| Trade buy/sell | `manifest`, `player`, `inventory`, `sceneFeed`, `activityLog` |
+| Settings record | `manifest`, `settings` when slot-level settings are explicitly dirtied |
+| Holdings owner switch | no dirty domain; this is UI-only selection state |
+
 ## IndexedDB Stores
 
 `YAW_Saves` version 2 contains:
@@ -67,7 +87,7 @@ Sparse autosave:
 4. Write the slot manifest last.
 5. Clear dirty domains only after manifest success.
 
-If record or manifest writing fails, dirty domains remain set for retry. The previous committed manifest remains the load boundary.
+If record or manifest writing fails, dirty domains remain set for retry. The previous committed manifest remains the load boundary. Sparse records are treated as a committed set: if a manifest points to a missing or invalid record, sparse reconstruction returns `null` so load can use the full Binary fallback when available.
 
 ## Queue Semantics
 
@@ -83,10 +103,11 @@ Routine autosaves are debounced. Explicit immediate saves flush the current pend
 
 Load order:
 
-1. Try sparse manifest + records.
-2. Reconstruct the Binary-compatible loaded shape.
-3. Load world tile deltas from `YAW_Worlds`.
-4. Fall back to old full Binary save data when no sparse manifest exists.
+1. If a valid combat refresh snapshot exists for the slot, load that first. It is the authoritative crash/refresh recovery boundary for active combat.
+2. Otherwise, try sparse manifest + records.
+3. Reconstruct the Binary-compatible loaded shape.
+4. Load world tile deltas from `YAW_Worlds`.
+5. Fall back to old full Binary save data when no sparse manifest exists or sparse records are incomplete/corrupt.
 
 Old saves remain loadable. Manual full saves still use the Binary fallback path.
 
@@ -97,9 +118,11 @@ Old saves remain loadable. Manual full saves still use the Binary fallback path.
 - last total save milliseconds;
 - last dirty domains;
 - current dirty domains;
+- sparse record domains and keys written by the last save;
+- whether the default all-dirty fallback was used and why;
 - sparse record count;
 - queue state;
 - last save mode: `sparse`, `full`, `fallback`, or `none`;
-- timing breakdown for world store, record writes, and manifest write.
+- timing breakdown for dirty collection, record building, world store, record writes, manifest write, and total time.
 
 Saves slower than `App.SAVE_SLOW_LOG_MS` log a warning with timing details.

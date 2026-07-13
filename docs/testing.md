@@ -44,9 +44,10 @@ These checks are still targeted rather than exhaustive. Add focused tests when c
 Save/load tests should cover both compatibility full saves and sparse autosaves. The sparse path is documented in `docs/save-sparse-delta.md` and should verify:
 
 - dirty-domain tracking and retry preservation;
+- narrow dirty domains for common mutation owners such as movement, equipment, tile items, Scene Feed-only beats, containment, quests, and UI-only Holdings owner switching;
 - serializable per-domain DTO records;
 - manifest-last commit order;
-- sparse load reconstruction with full Binary fallback;
+- sparse load reconstruction with combat refresh precedence and full Binary fallback;
 - autosave queue coalescing by manifest commit, not raw IndexedDB put count.
 
 ## Source Boundary

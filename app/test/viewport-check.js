@@ -1070,11 +1070,15 @@ async function checkViewport(browser, name, width, height) {
     const close = root?.querySelector('.holdings-close[data-command-control="close-holdings"]');
     const tabs = Array.from(root?.querySelectorAll('[data-command-control="switch-holdings-tab"]') || []);
     const body = root?.querySelector('.holdings-window-body');
+    const ownerRow = root?.querySelector('.holdings-owner-row');
+    const statsSummary = root?.querySelector('.holdings-character-summary');
     const app = document.getElementById('app');
     const stage = document.querySelector('#app > .stage');
     const rect = dialog?.getBoundingClientRect();
     const closeRect = close?.getBoundingClientRect();
     const bodyRect = body?.getBoundingClientRect();
+    const ownerRect = ownerRow?.getBoundingClientRect();
+    const statsSummaryRect = statsSummary?.getBoundingClientRect();
     const ownerChips = Array.from(root?.querySelectorAll('[data-command-control="select-holdings-owner"]') || []);
     return {
       hidden: Boolean(root?.hidden),
@@ -1090,6 +1094,8 @@ async function checkViewport(browser, name, width, height) {
       ownerChipLabels: ownerChips.map(chip => chip.textContent.trim()),
       selectedOwner: ownerChips.find(chip => chip.getAttribute('aria-pressed') === 'true')?.textContent.trim() || '',
       bodyVisible: Boolean(bodyRect && bodyRect.width > 0 && bodyRect.height > 0),
+      ownerAboveBody: Boolean(ownerRect && bodyRect && ownerRect.bottom <= bodyRect.top + 1),
+      ownerAboveStatsSummary: Boolean(ownerRect && statsSummaryRect && ownerRect.bottom <= statsSummaryRect.top + 1),
       appClass: app?.classList.contains('holdings-window-open') || false,
       stageInert: stage?.hasAttribute('inert') || false,
       focusTrapIsDialog: App._focusTrap?.container === dialog,
@@ -1109,6 +1115,8 @@ async function checkViewport(browser, name, width, height) {
   assert(holdingsWindow.ownerChipLabels.some(label => label.includes('Ally')), `${name}: Holdings owner selector should include companions`);
   assert(holdingsWindow.selectedOwner.includes('You'), `${name}: Holdings should default to the player owner`);
   assert.strictEqual(holdingsWindow.bodyVisible, true, `${name}: Holdings window body should be visible`);
+  assert.strictEqual(holdingsWindow.ownerAboveBody, true, `${name}: Holdings owner selector should not overlap the body`);
+  assert.strictEqual(holdingsWindow.ownerAboveStatsSummary, true, `${name}: Holdings owner selector should not overlap the stats summary`);
   assert.strictEqual(holdingsWindow.appClass, true, `${name}: Holdings window should mark the app shell while open`);
   assert.strictEqual(holdingsWindow.stageInert, true, `${name}: Holdings window should make the stage inert`);
   assert.strictEqual(holdingsWindow.focusTrapIsDialog, true, `${name}: Holdings window should activate its dialog focus trap`);
@@ -1120,6 +1128,8 @@ async function checkViewport(browser, name, width, height) {
     const root = document.getElementById('holdings-window-root');
     const body = root?.querySelector('.holdings-window-body');
     const entries = Array.from(root?.querySelectorAll('.container-inventory-entry') || []);
+    const consumedEntries = Array.from(root?.querySelectorAll('.container-inventory-entry[data-contained-list="consumed"]') || []);
+    const activeEntries = entries.filter(entry => entry.getAttribute('data-contained-list') !== 'consumed');
     const releaseButtons = Array.from(root?.querySelectorAll('[data-command-control="release-contained"]') || []);
     const digestButtons = Array.from(root?.querySelectorAll('[data-command-control="digest-contained"]') || []);
     const inspectButtons = Array.from(root?.querySelectorAll('[data-command-control="inspect-contained"]') || []);
@@ -1127,13 +1137,15 @@ async function checkViewport(browser, name, width, height) {
     return {
       text: body?.innerText || '',
       entryCount: entries.length,
+      activeEntryCount: activeEntries.length,
+      consumedEntryCount: consumedEntries.length,
       inspectCount: inspectButtons.length,
       releaseCount: releaseButtons.length,
       digestCount: digestButtons.length,
+      consumedReleaseCount: consumedEntries.reduce((count, entry) => count + entry.querySelectorAll('[data-command-control="release-contained"]').length, 0),
+      consumedDigestCount: consumedEntries.reduce((count, entry) => count + entry.querySelectorAll('[data-command-control="digest-contained"]').length, 0),
       releaseTitles: releaseButtons.map(button => button.getAttribute('title') || ''),
       digestTitles: digestButtons.map(button => button.getAttribute('title') || ''),
-      disabledReleaseCount: releaseButtons.filter(button => button.disabled || button.getAttribute('aria-disabled') === 'true').length,
-      disabledDigestCount: digestButtons.filter(button => button.disabled || button.getAttribute('aria-disabled') === 'true').length,
       bodyVisible: Boolean(bodyRect && bodyRect.width > 0 && bodyRect.height > 0),
       bodyInsideViewport: Boolean(bodyRect && bodyRect.left >= -1 && bodyRect.right <= innerWidth + 1 && bodyRect.top >= -1 && bodyRect.bottom <= innerHeight + 1),
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
@@ -1143,10 +1155,11 @@ async function checkViewport(browser, name, width, height) {
   assert(holdingsContainers.text.includes('Vitality') && holdingsContainers.text.includes('Progress'), `${name}: Holdings Containers tab should expose vitality and digestion progress`);
   assert(holdingsContainers.entryCount >= 2, `${name}: Holdings Containers tab should render separate contained entries`);
   assert(holdingsContainers.inspectCount >= 2, `${name}: Holdings Containers tab should keep contained entries inspectable`);
-  assert(holdingsContainers.releaseCount >= 2 && holdingsContainers.digestCount >= 2, `${name}: Holdings Containers tab should expose release and digest controls with disabled states where needed`);
+  assert(holdingsContainers.activeEntryCount >= 1 && holdingsContainers.consumedEntryCount >= 1, `${name}: Holdings Containers tab should split active containment from consumed history`);
+  assert(holdingsContainers.releaseCount >= 1 && holdingsContainers.digestCount >= 1, `${name}: active contained entries should expose release and digest controls`);
   assert(holdingsContainers.releaseTitles.every(Boolean) && holdingsContainers.digestTitles.every(Boolean), `${name}: Holdings container controls should keep accessible titles`);
-  assert(holdingsContainers.disabledReleaseCount >= 1, `${name}: terminal contained entries should disable Release instead of disappearing from the list`);
-  assert(holdingsContainers.disabledDigestCount >= 1, `${name}: terminal contained entries should disable Digest instead of disappearing from the list`);
+  assert.strictEqual(holdingsContainers.consumedReleaseCount, 0, `${name}: consumed entries should not expose active Release controls`);
+  assert.strictEqual(holdingsContainers.consumedDigestCount, 0, `${name}: consumed entries should not expose active Digest controls`);
   assert.strictEqual(holdingsContainers.bodyVisible, true, `${name}: Holdings Containers body should be visible`);
   assert.strictEqual(holdingsContainers.bodyInsideViewport, true, `${name}: Holdings Containers body should stay viewport-bounded`);
   assert.strictEqual(holdingsContainers.pageOverflow, false, `${name}: Holdings Containers tab should not create horizontal overflow`);

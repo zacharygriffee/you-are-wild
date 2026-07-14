@@ -3647,7 +3647,7 @@
                     }
                     case 'inspect': {
                         const safeTier = this._tierValue(CONTENT?.preferences?.maxTier ?? 0) < 2;
-                        const labelBodyType = (value) => (typeof YAW_STATS_PANEL !== 'undefined' && YAW_STATS_PANEL?.bodyTypeLabel) ? YAW_STATS_PANEL.bodyTypeLabel(value) : value;
+                        const labelBodyType = (value) => (typeof YAW_STATS_PANEL !== 'undefined' && YAW_STATS_PANEL?.bodyTypeLabel) ? YAW_STATS_PANEL.bodyTypeLabel(value, this) : value;
                         result = safeTier
                             ? `${target.name} [${target.species}]: Punishment ${target.CPun}/${target.MPun}, Spirit ${target.CPle}/${target.MPle}, Size ${target.size}, Appetite ${target.appetite}`
                             : `${target.name} [${target.species}]: Punishment ${target.CPun}/${target.MPun}, Spirit ${target.CPle}/${target.MPle}, Size ${target.size}, Appetite ${target.appetite}, Body Type: ${labelBodyType(target.parts) || 'none'}, Chest Type: ${labelBodyType(target.chest) || 'none'}`;
@@ -4709,6 +4709,15 @@
             },
             dismissToast(toastId) {
                 return YAW_LOG_VIEW.dismissToast(this, toastId);
+            },
+            pauseToast(toastId) {
+                return YAW_LOG_VIEW.pauseToast(this, toastId);
+            },
+            resumeToast(toastId) {
+                return YAW_LOG_VIEW.resumeToast(this, toastId);
+            },
+            resetToastTimer(toastId) {
+                return YAW_LOG_VIEW.resetToastTimer(this, toastId);
             },
             clearToasts(options = {}) {
                 return YAW_LOG_VIEW.clearToasts(this, options);

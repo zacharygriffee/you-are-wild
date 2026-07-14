@@ -8,8 +8,15 @@ const YAW_STATS_PANEL = {
         return `<div class="option-card"><strong>${app._escapeHtml(app._label(labelKey, fallback))}</strong><br>${body}</div>`;
     },
 
-    bodyTypeLabel(value) {
-        return { clit: 'Body Type A', cock: 'Body Type B', tits: 'Chest Type A', pecs: 'Chest Type B' }[value] || value;
+    bodyTypeLabel(value, app = null) {
+        const labels = {
+            clit: ['anatomy.adult.vulva', 'Vulva'],
+            cock: ['anatomy.adult.penis', 'Penis'],
+            tits: ['anatomy.adult.breasts', 'Breasts'],
+            pecs: ['anatomy.adult.pecs', 'Pecs']
+        };
+        const label = labels[value];
+        return label ? (app?._label?.(label[0], label[1]) || label[1]) : value;
     },
 
     showPartyMember(app, index) {
@@ -54,8 +61,8 @@ const YAW_STATS_PANEL = {
         const levelText = app._escapeHtml(app._label('party.levelSpecies', 'Level {level} {species}', { level: stats.level, species: p.species }));
         const xpText = app._escapeHtml(app._label('character.xp', 'XP: {xp}/{xpToNext}', { xp: p.xp, xpToNext: p.xpToNext }));
         const noneText = app._escapeHtml(app._label('party.none', 'None'));
-        const parts = app._escapeHtml(this.bodyTypeLabel(p.parts) || app._label('party.none', 'None'));
-        const chest = app._escapeHtml(this.bodyTypeLabel(p.chest) || app._label('party.none', 'None'));
+        const parts = app._escapeHtml(this.bodyTypeLabel(p.parts, app) || app._label('party.none', 'None'));
+        const chest = app._escapeHtml(this.bodyTypeLabel(p.chest, app) || app._label('party.none', 'None'));
         const bodyParts = (p.bodyParts || []).map(b => app._escapeHtml(app.BODY_PARTS[b]?.label || b)).join(', ') || noneText;
         const safeTier = app._tierValue(CONTENT?.preferences?.maxTier ?? 0) < 2;
         const bodySummary = safeTier

@@ -3441,6 +3441,16 @@
             outline-offset: 2px;
         }
 
+        .toast-text {
+            overflow-wrap: anywhere;
+        }
+
+        .log-status {
+            color: var(--text-muted);
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
         @keyframes toast-in {
             from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
@@ -3937,7 +3947,7 @@
 
         .holdings-window {
             width: min(1080px, 100%);
-            grid-template-rows: auto auto minmax(0, 1fr);
+            grid-template-rows: auto auto auto minmax(0, 1fr);
         }
 
         .transaction-header,
@@ -7879,8 +7889,8 @@
     <!-- CHARACTER CREATION SCREEN -->
     <div id="screen-create" class="screen screen-create">
         <div class="create-container">
-            <h1 class="create-title">Create Your Character</h1>
-            <p class="create-subtitle">Begin your journey in a world of predators and prey</p>
+            <h1 class="create-title" data-i18n="create.title">Create Your Character</h1>
+            <p class="create-subtitle" data-i18n="create.subtitle">Begin your journey in a living wilderness</p>
 
             <div class="create-section">
                 <h3 class="section-title" data-i18n="settings.contentLevel">Content Level</h3>
@@ -7893,12 +7903,12 @@
             <!-- Species Selection -->
             <div class="accordion-section" data-accordion="species">
                 <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="species" aria-controls="body-species" aria-expanded="true" onclick="App.toggleAccordion('species')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('species')}">
-                    <span>Choose Your Species</span>
+                    <span data-i18n="create.species">Choose Your Species</span>
                     <span class="accordion-arrow" id="arrow-species">▼</span>
                 </div>
                 <div class="accordion-body" id="body-species" style="display:block;">
                     <div id="species-info" style="margin-bottom:12px;padding:12px;background:var(--bg-tertiary);border-radius:var(--radius-md);min-height:60px;">
-                        <p style="color:var(--text-muted);font-size:13px;">Select a species to see details.</p>
+                        <p style="color:var(--text-muted);font-size:13px;" data-i18n="create.speciesDetailsPrompt">Select a species to see details.</p>
                     </div>
                     <div class="option-grid" id="species-grid">
                         <!-- Populated by JS -->
@@ -7909,53 +7919,57 @@
             <!-- Gender Selection -->
             <div class="accordion-section" data-accordion="gender">
                 <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="gender" aria-controls="body-gender" aria-expanded="false" onclick="App.toggleAccordion('gender')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('gender')}">
-                    <span>Gender</span>
+                    <span data-i18n="create.gender">Identity</span>
                     <span class="accordion-arrow" id="arrow-gender">▶</span>
                 </div>
                 <div class="accordion-body" id="body-gender" style="display:none;">
                     <div class="option-grid" id="gender-grid">
                         <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="female" data-value="female" onclick="App.selectGender('female');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♀️</div>
-                            <div class="option-label">Female</div>
-                            <div class="option-desc">Play as female</div>
+                            <div class="option-label" data-i18n="create.gender.female">Female</div>
+                            <div class="option-desc" data-i18n="create.gender.femaleDesc">Play as female</div>
                         </div>
                         <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="male" data-value="male" onclick="App.selectGender('male');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♂️</div>
-                            <div class="option-label">Male</div>
-                            <div class="option-desc">Play as male</div>
+                            <div class="option-label" data-i18n="create.gender.male">Male</div>
+                            <div class="option-desc" data-i18n="create.gender.maleDesc">Play as male</div>
                         </div>
                         <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="nonbinary" data-value="nonbinary" onclick="App.selectGender('nonbinary');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">⚧</div>
-                            <div class="option-label">Non-Binary</div>
-                            <div class="option-desc">Other gender identity</div>
+                            <div class="option-label" data-i18n="create.gender.nonbinary">Non-Binary</div>
+                            <div class="option-desc" data-i18n="create.gender.nonbinaryDesc">Other gender identity</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Body Type Selection -->
+            <!-- Anatomy Selection -->
             <div class="accordion-section" data-accordion="anatomy">
                 <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="anatomy" aria-controls="body-anatomy" aria-expanded="false" onclick="App.toggleAccordion('anatomy')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('anatomy')}">
-                    <span>Body Type</span>
+                    <span data-i18n="create.bodyOptions">Body Options</span>
                     <span class="accordion-arrow" id="arrow-anatomy">▶</span>
                 </div>
                 <div class="accordion-body" id="body-anatomy" style="display:none;">
                     <div class="option-grid" id="anatomy-grid">
                         <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="body-type-a" data-part="clit" onclick="App.selectPart('clit');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">◇</div>
-                            <div class="option-label">Body Type A</div>
+                            <div class="option-label" data-i18n="anatomy.lowerA">Lower Option A</div>
+                            <div class="option-desc" data-i18n="anatomy.lowerProfile">Lower profile</div>
                         </div>
                         <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="body-type-b" data-part="cock" onclick="App.selectPart('cock');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">◆</div>
-                            <div class="option-label">Body Type B</div>
+                            <div class="option-label" data-i18n="anatomy.lowerB">Lower Option B</div>
+                            <div class="option-desc" data-i18n="anatomy.lowerProfile">Lower profile</div>
                         </div>
                         <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="chest-type-a" data-part="tits" onclick="App.selectPart('tits');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">△</div>
-                            <div class="option-label">Chest Type A</div>
+                            <div class="option-label" data-i18n="anatomy.chestA">Chest Option A</div>
+                            <div class="option-desc" data-i18n="anatomy.chestProfile">Chest profile</div>
                         </div>
                         <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="chest-type-b" data-part="pecs" onclick="App.selectPart('pecs');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">💪</div>
-                            <div class="option-label">Chest Type B</div>
+                            <div class="option-label" data-i18n="anatomy.chestB">Chest Option B</div>
+                            <div class="option-desc" data-i18n="anatomy.chestProfile">Chest profile</div>
                         </div>
                     </div>
                 </div>
@@ -7964,7 +7978,7 @@
             <!-- Trait Selection -->
             <div class="accordion-section" data-accordion="bodyparts">
                 <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="bodyparts" aria-controls="body-bodyparts" aria-expanded="false" onclick="App.toggleAccordion('bodyparts')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('bodyparts')}">
-                    <span>Traits</span>
+                    <span data-i18n="create.traits">Traits</span>
                     <span class="accordion-arrow" id="arrow-bodyparts">▶</span>
                 </div>
                 <div class="accordion-body" id="body-bodyparts" style="display:none;">
@@ -7977,45 +7991,45 @@
             <!-- Target Preferences -->
             <div class="accordion-section" data-accordion="preferences">
                 <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="preferences" aria-controls="body-preferences" aria-expanded="false" onclick="App.toggleAccordion('preferences')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('preferences')}">
-                    <span>Preferred Encounters</span>
+                    <span data-i18n="create.preferences">Preferred Encounters</span>
                     <span class="accordion-arrow" id="arrow-preferences">▶</span>
                 </div>
                 <div class="accordion-body" id="body-preferences" style="display:none;">
                     <div class="option-grid" id="preference-grid">
                         <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="female" data-value="female" onclick="App.selectEncounterPreference('female')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♀️</div>
-                            <div class="option-label">Females</div>
-                            <div class="option-desc">75% bias</div>
+                            <div class="option-label" data-i18n="create.preference.females">Females</div>
+                            <div class="option-desc" data-i18n="create.preference.bias">75% bias</div>
                         </div>
                         <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="male" data-value="male" onclick="App.selectEncounterPreference('male')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♂️</div>
-                            <div class="option-label">Males</div>
-                            <div class="option-desc">75% bias</div>
+                            <div class="option-label" data-i18n="create.preference.males">Males</div>
+                            <div class="option-desc" data-i18n="create.preference.bias">75% bias</div>
                         </div>
                         <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="nonbinary" data-value="nonbinary" onclick="App.selectEncounterPreference('nonbinary')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">⚧</div>
-                            <div class="option-label">Non-Binary</div>
-                            <div class="option-desc">75% bias</div>
+                            <div class="option-label" data-i18n="create.preference.nonbinary">Non-Binary</div>
+                            <div class="option-desc" data-i18n="create.preference.bias">75% bias</div>
                         </div>
                         <div class="option-card selected" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="any" data-value="any" onclick="App.selectEncounterPreference('any')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">🎲</div>
-                            <div class="option-label">Any</div>
-                            <div class="option-desc">Even mix</div>
+                            <div class="option-label" data-i18n="create.preference.any">Any</div>
+                            <div class="option-desc" data-i18n="create.preference.evenMix">Even mix</div>
                         </div>
                     </div>
-                    <div class="encounter-weight-controls" aria-label="Encounter identity weights">
+                    <div class="encounter-weight-controls" aria-label="Encounter identity weights" data-i18n-aria-label="create.encounterWeights">
                         <label class="encounter-weight-row" for="encounter-weight-female">
-                            <span>Females</span>
+                            <span data-i18n="create.preference.females">Females</span>
                             <input id="encounter-weight-female" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-encounter-weight" data-encounter-identity="female" type="range" min="0" max="100" value="34" oninput="App.updateEncounterWeight('female', this.value)">
                             <span class="encounter-weight-value" id="encounter-weight-female-value">34%</span>
                         </label>
                         <label class="encounter-weight-row" for="encounter-weight-male">
-                            <span>Males</span>
+                            <span data-i18n="create.preference.males">Males</span>
                             <input id="encounter-weight-male" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-encounter-weight" data-encounter-identity="male" type="range" min="0" max="100" value="33" oninput="App.updateEncounterWeight('male', this.value)">
                             <span class="encounter-weight-value" id="encounter-weight-male-value">33%</span>
                         </label>
                         <label class="encounter-weight-row" for="encounter-weight-nonbinary">
-                            <span>Non-Binary</span>
+                            <span data-i18n="create.preference.nonbinary">Non-Binary</span>
                             <input id="encounter-weight-nonbinary" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-encounter-weight" data-encounter-identity="nonbinary" type="range" min="0" max="100" value="33" oninput="App.updateEncounterWeight('nonbinary', this.value)">
                             <span class="encounter-weight-value" id="encounter-weight-nonbinary-value">33%</span>
                         </label>
@@ -8025,7 +8039,7 @@
 
             <!-- Name Input -->
             <div class="create-section create-name-section">
-                <h3 class="section-title">Name</h3>
+                <h3 class="section-title" data-i18n="create.name">Name</h3>
                 <input id="char-name" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-character-name" type="text" placeholder="Enter your name..." data-i18n-placeholder="create.namePlaceholder" autocomplete="off"
                        style="width:100%;padding:12px 16px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:16px;box-sizing:border-box;">
             </div>
@@ -8033,7 +8047,7 @@
             <div id="create-validation" class="create-validation" role="alert" aria-live="polite"></div>
             <div style="display:grid;grid-template-columns:1fr;gap:8px;">
                 <button class="action-btn" type="button" data-command-surface="character-creation" data-command-mode="setup" data-command-control="randomize-character" data-i18n="create.random" onclick="App.randomizeCharacter()">Random Character</button>
-                <button class="action-btn primary create-submit" data-command-surface="character-creation" data-command-mode="setup" data-command-control="create-character" onclick="createCharacter()">
+                <button class="action-btn primary create-submit" data-command-surface="character-creation" data-command-mode="setup" data-command-control="create-character" data-i18n="create.begin" onclick="createCharacter()">
                     Begin Adventure →
                 </button>
             </div>
@@ -8288,6 +8302,7 @@
                 <div class="log-header">
                     <span class="log-title">📜 <span data-i18n="ui.activityLog">Activity Log</span><span class="log-collapsed-summary" id="log-collapsed-summary"></span></span>
                     <div class="log-header-actions" data-command-surface="history-controls" data-command-mode="history">
+                        <span class="log-status" id="log-status" role="status" aria-live="polite" aria-atomic="true"></span>
                         <button class="nav-btn log-layout-toggle" id="log-toggle-collapse" data-command-surface="history-controls" data-command-mode="history" data-command-control="minimize-history" style="padding: 2px 8px; font-size: 10px;" title="Minimize log" aria-label="Minimize log" data-i18n-title="ui.log.minimize" data-i18n-aria-label="ui.log.minimize" data-i18n="ui.log.minimize" onclick="App.toggleLogCollapsed()">Minimize</button>
                         <button class="nav-btn log-layout-toggle" id="log-toggle-expand" data-command-surface="history-controls" data-command-mode="history" data-command-control="expand-history" style="padding: 2px 8px; font-size: 10px;" title="Expand log" aria-label="Expand log" data-i18n-title="ui.log.expand" data-i18n-aria-label="ui.log.expand" data-i18n="ui.log.expand" onclick="App.toggleLogExpanded()">Expand</button>
                         <button class="nav-btn" data-command-surface="history-controls" data-command-mode="history" data-command-control="export-history" style="padding: 2px 8px; font-size: 10px;" title="Export visible log entries" aria-label="Export visible log entries" data-i18n-title="ui.log.export" data-i18n-aria-label="ui.log.export" data-i18n="ui.log.export" onclick="App.exportLog()">Export</button>
@@ -8295,21 +8310,21 @@
                     </div>
                 </div>
                 <div class="log-controls" id="log-controls" data-command-surface="history-filter" data-command-mode="history">
-                    <button class="nav-btn log-filter-btn active" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="all" title="Show all log entries" aria-label="Show all log entries" data-i18n-title="ui.log.all" data-i18n-aria-label="ui.log.all" data-i18n="ui.log.all" onclick="App.setLogFilter('all')">All</button>
-                    <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="combat" title="Show combat log entries" aria-label="Show combat log entries" data-i18n-title="ui.log.combat" data-i18n-aria-label="ui.log.combat" data-i18n="ui.log.combat" onclick="App.setLogFilter('combat')">Combat</button>
-                    <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="discovery" title="Show discovery log entries" aria-label="Show discovery log entries" data-i18n-title="ui.log.discovery" data-i18n-aria-label="ui.log.discovery" data-i18n="ui.log.discovery" onclick="App.setLogFilter('discovery')">Discovery</button>
-                    <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="loot" title="Show loot log entries" aria-label="Show loot log entries" data-i18n-title="ui.log.loot" data-i18n-aria-label="ui.log.loot" data-i18n="ui.log.loot" onclick="App.setLogFilter('loot')">Loot</button>
-                    <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="heal" title="Show healing log entries" aria-label="Show healing log entries" data-i18n-title="ui.log.heal" data-i18n-aria-label="ui.log.heal" data-i18n="ui.log.heal" onclick="App.setLogFilter('heal')">Heal</button>
+                    <button class="nav-btn log-filter-btn active" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="all" aria-pressed="true" title="Show all log entries" aria-label="Show all log entries" data-i18n-title="ui.log.all" data-i18n-aria-label="ui.log.all" data-i18n="ui.log.all" onclick="App.setLogFilter('all')">All</button>
+                    <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="combat" aria-pressed="false" title="Show combat log entries" aria-label="Show combat log entries" data-i18n-title="ui.log.combat" data-i18n-aria-label="ui.log.combat" data-i18n="ui.log.combat" onclick="App.setLogFilter('combat')">Combat</button>
+                    <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="discovery" aria-pressed="false" title="Show discovery log entries" aria-label="Show discovery log entries" data-i18n-title="ui.log.discovery" data-i18n-aria-label="ui.log.discovery" data-i18n="ui.log.discovery" onclick="App.setLogFilter('discovery')">Discovery</button>
+                    <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="loot" aria-pressed="false" title="Show loot log entries" aria-label="Show loot log entries" data-i18n-title="ui.log.loot" data-i18n-aria-label="ui.log.loot" data-i18n="ui.log.loot" onclick="App.setLogFilter('loot')">Loot</button>
+                    <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="heal" aria-pressed="false" title="Show healing log entries" aria-label="Show healing log entries" data-i18n-title="ui.log.heal" data-i18n-aria-label="ui.log.heal" data-i18n="ui.log.heal" onclick="App.setLogFilter('heal')">Heal</button>
                     <input class="log-search" id="log-search" type="search" data-command-surface="history-filter" data-command-mode="history" data-command-control="search-history" placeholder="Search log" aria-label="Search log" data-i18n-placeholder="ui.log.search" data-i18n-aria-label="ui.log.search" oninput="App.setLogSearch(this.value)">
                 </div>
-                <div class="log-content" id="log-content" aria-live="polite" aria-relevant="additions text">
-                    <div class="log-entry" role="status" data-i18n="ui.welcomeLog">Welcome to You Are Wild</div>
-                    <div class="log-entry discovery" role="status" data-i18n="ui.log.createdCharacter">Created your character. The journey begins...</div>
+                <div class="log-content" id="log-content" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Activity log entries" data-i18n-aria-label="ui.log.entries">
+                    <div class="log-entry" role="listitem" data-i18n="ui.welcomeLog">Welcome to You Are Wild</div>
+                    <div class="log-entry discovery" role="listitem" data-i18n="ui.log.createdCharacter">Created your character. The journey begins...</div>
                 </div>
             </div>
         </div>
 
-        <div class="toast-stack" id="toast-stack" aria-live="polite" aria-relevant="additions text" aria-label="Notifications" data-i18n-aria-label="ui.toast.notifications" hidden></div>
+        <div class="toast-stack" id="toast-stack" aria-live="polite" aria-relevant="additions text" aria-label="Notifications" data-i18n-aria-label="ui.toast.notifications" role="region" hidden></div>
 
         <!-- Legacy mobile action bar shell; combat intents live in the mobile combat toolbelt. -->
         <div class="mobile-action-bar" id="mobile-actions" style="display: none;">

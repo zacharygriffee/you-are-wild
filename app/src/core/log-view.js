@@ -192,7 +192,13 @@ const YAW_LOG_VIEW = {
         const meta = this.categoryMeta(app, type);
         let cn = 'log-entry';
         if (type) cn += ` ${type}`;
-        return `<div class="${cn}" role="status"><span class="log-time">${app._escapeHtml(this.timestamp(app, entry, indexFromEnd))}</span><span class="log-category" aria-label="${app._escapeHtml(meta.label)}"><span aria-hidden="true">${app._escapeHtml(meta.icon)}</span> ${app._escapeHtml(meta.label)}</span>${app._escapeHtml(entry.text)}</div>`;
+        return `<div class="${cn}" role="listitem"><span class="log-time">${app._escapeHtml(this.timestamp(app, entry, indexFromEnd))}</span><span class="log-category" aria-label="${app._escapeHtml(meta.label)}"><span aria-hidden="true">${app._escapeHtml(meta.icon)}</span> ${app._escapeHtml(meta.label)}</span>${app._escapeHtml(entry.text)}</div>`;
+    },
+
+    visibleCountLabel(app, count = 0) {
+        const key = count === 1 ? 'ui.log.visibleCount.one' : 'ui.log.visibleCount';
+        const fallback = count === 1 ? '1 visible entry' : '{count} visible entries';
+        return app._label(key, fallback, { count });
     },
 
     render(app) {
@@ -201,8 +207,12 @@ const YAW_LOG_VIEW = {
         const entries = filtered.slice(-20).reverse().map((e, visibleIndex) => this.renderEntry(app, e, visibleIndex)).join('');
         if (container) container.innerHTML = entries || `<div class="log-entry text-muted">${app._escapeHtml(app._label('log.noEntriesMatchFilter', 'No log entries match the current filter.'))}</div>`;
         document.querySelectorAll?.('.log-filter-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.logFilter === (app.logFilter || 'all'));
+            const active = btn.dataset.logFilter === (app.logFilter || 'all');
+            btn.classList.toggle('active', active);
+            btn.setAttribute('aria-pressed', String(active));
         });
+        const status = document.getElementById('log-status');
+        if (status) status.textContent = this.visibleCountLabel(app, filtered.length);
         const search = document.getElementById('log-search');
         if (search && search.value !== (app.logSearch || '')) search.value = app.logSearch || '';
         const mobileLog = document.getElementById('mobile-log-summary');
@@ -238,16 +248,53 @@ const YAW_LOG_VIEW = {
         const allowedTypes = ['danger', 'quest', 'loot', 'blocked', 'system'];
         const type = allowedTypes.includes(toast.type) ? toast.type : 'system';
         const importance = toast.importance || 'normal';
-        const persistent = toast.persistent === true || importance === 'major';
+        const persistent = toast.persistent === true;
+        const durationMs = persistent ? 0 : this.toastDurationMs(toast);
         return {
             id: toast.id || `toast_${Date.now()}_${++app.toastSeq}`,
             text,
             type,
             importance,
             persistent,
+            durationMs,
+            remainingMs: durationMs,
+            expiresAt: persistent ? null : Date.now() + durationMs,
+            timeoutId: null,
+            paused: false,
             dedupeKey: toast.dedupeKey || `${type}:${text}`,
             createdAt: Date.now()
         };
+    },
+
+    toastDurationMs(toast = {}) {
+        const explicit = Number(toast.durationMs);
+        if (Number.isFinite(explicit) && explicit > 0) return Math.max(1200, Math.min(30000, explicit));
+        if (toast.importance === 'major') return 10000;
+        if (toast.importance === 'notable') return 8000;
+        return 6000;
+    },
+
+    clearToastTimer(toast) {
+        if (!toast?.timeoutId) return;
+        if (typeof window !== 'undefined' && typeof window.clearTimeout === 'function') {
+            window.clearTimeout(toast.timeoutId);
+        }
+        toast.timeoutId = null;
+    },
+
+    scheduleToastDismiss(app, toast) {
+        if (!toast || toast.persistent) return;
+        if (typeof window === 'undefined' || typeof window.setTimeout !== 'function') return;
+        this.clearToastTimer(toast);
+        const delay = Math.max(0, Number(toast.remainingMs || toast.durationMs || 6000));
+        const startedAt = Date.now();
+        toast.paused = false;
+        toast.remainingMs = delay;
+        toast.expiresAt = startedAt + delay;
+        toast.timeoutId = window.setTimeout(() => {
+            toast.timeoutId = null;
+            this.dismissToast(app, toast.id);
+        }, delay);
     },
 
     showToast(app, input = {}) {
@@ -255,30 +302,66 @@ const YAW_LOG_VIEW = {
         if (!toast) return null;
         app.toasts = Array.isArray(app.toasts) ? app.toasts : [];
         const existingIndex = app.toasts.findIndex(entry => entry.dedupeKey === toast.dedupeKey);
-        if (existingIndex >= 0) app.toasts.splice(existingIndex, 1);
+        if (existingIndex >= 0) {
+            this.clearToastTimer(app.toasts[existingIndex]);
+            app.toasts.splice(existingIndex, 1);
+        }
         app.toasts.push(toast);
         while (app.toasts.length > 2) {
             const removable = app.toasts.findIndex(entry => !entry.persistent);
-            app.toasts.splice(removable >= 0 ? removable : 0, 1);
+            const removed = app.toasts.splice(removable >= 0 ? removable : 0, 1)[0];
+            this.clearToastTimer(removed);
         }
         this.renderToasts(app);
-        if (!toast.persistent && typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
-            window.setTimeout(() => this.dismissToast(app, toast.id), 6000);
-        }
+        this.scheduleToastDismiss(app, toast);
         return toast;
     },
 
     dismissToast(app, toastId) {
-        app.toasts = (app.toasts || []).filter(toast => String(toast.id) !== String(toastId));
+        app.toasts = (app.toasts || []).filter(toast => {
+            const keep = String(toast.id) !== String(toastId);
+            if (!keep) this.clearToastTimer(toast);
+            return keep;
+        });
         this.renderToasts(app);
         return app.toasts.length;
     },
 
     clearToasts(app, options = {}) {
         const includePersistent = options.includePersistent !== false;
-        app.toasts = includePersistent ? [] : (app.toasts || []).filter(toast => toast.persistent);
+        app.toasts = (app.toasts || []).filter(toast => {
+            const keep = !includePersistent && toast.persistent;
+            if (!keep) this.clearToastTimer(toast);
+            return keep;
+        });
         this.renderToasts(app);
         return app.toasts.length;
+    },
+
+    pauseToast(app, toastId) {
+        const toast = (app.toasts || []).find(entry => String(entry.id) === String(toastId));
+        if (!toast || toast.persistent || toast.paused) return 0;
+        const remaining = toast.expiresAt ? Math.max(0, toast.expiresAt - Date.now()) : toast.remainingMs;
+        toast.remainingMs = remaining;
+        toast.paused = true;
+        this.clearToastTimer(toast);
+        return remaining;
+    },
+
+    resumeToast(app, toastId) {
+        const toast = (app.toasts || []).find(entry => String(entry.id) === String(toastId));
+        if (!toast || toast.persistent || !toast.paused) return 0;
+        this.scheduleToastDismiss(app, toast);
+        return toast.remainingMs;
+    },
+
+    resetToastTimer(app, toastId) {
+        const toast = (app.toasts || []).find(entry => String(entry.id) === String(toastId));
+        if (!toast || toast.persistent) return 0;
+        toast.remainingMs = toast.durationMs || this.toastDurationMs(toast);
+        toast.paused = false;
+        this.scheduleToastDismiss(app, toast);
+        return toast.remainingMs;
     },
 
     renderToasts(app) {
@@ -289,7 +372,8 @@ const YAW_LOG_VIEW = {
             const type = app._escapeHtml(toast.type || 'system');
             const text = app._escapeHtml(toast.text);
             const id = app._escapeHtml(toast.id);
-            return `<div class="toast toast-${type}" role="status" data-toast-id="${id}"><span class="toast-text">${text}</span><button class="toast-dismiss" data-command-surface="toast" data-command-mode="system" data-command-control="dismiss-toast" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.dismissToast('${id}')">×</button></div>`;
+            const role = toast.type === 'danger' || toast.type === 'blocked' ? 'alert' : 'status';
+            return `<div class="toast toast-${type}" role="${role}" aria-atomic="true" data-toast-id="${id}" data-toast-type="${type}" onmouseenter="App.pauseToast('${id}')" onmouseleave="App.resumeToast('${id}')" onfocusin="App.pauseToast('${id}')" onfocusout="App.resumeToast('${id}')" onpointerdown="if(!event.target.closest?.('.toast-dismiss')) App.resetToastTimer('${id}')"><span class="toast-text">${text}</span><button class="toast-dismiss" data-command-surface="toast" data-command-mode="system" data-command-control="dismiss-toast" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.dismissToast('${id}')">×</button></div>`;
         }).join('');
         container.innerHTML = html;
         container.hidden = !html;

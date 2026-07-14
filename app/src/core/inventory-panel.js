@@ -376,7 +376,12 @@ const YAW_HOLDINGS = {
         const noneText = app._escapeHtml(app._label('party.none', 'None'));
         const perks = (unit.perks || []).map(perk => app._escapeHtml(perk.name)).join(', ') || noneText;
         const bodyParts = (unit.bodyParts || []).map(part => app._escapeHtml(app.BODY_PARTS?.[part]?.label || part)).join(', ') || noneText;
-        const bodyTypeLabel = value => ({ clit: 'Body Type A', cock: 'Body Type B', tits: 'Chest Type A', pecs: 'Chest Type B' }[value] || value);
+        const bodyTypeLabel = value => ({
+            clit: app._label('anatomy.adult.vulva', 'Vulva'),
+            cock: app._label('anatomy.adult.penis', 'Penis'),
+            tits: app._label('anatomy.adult.breasts', 'Breasts'),
+            pecs: app._label('anatomy.adult.pecs', 'Pecs')
+        }[value] || value);
         const safeTier = app._tierValue?.(CONTENT?.preferences?.maxTier ?? 0) < 2;
         const levelText = app._escapeHtml(app._label('party.levelSpecies', 'Level {level} {species}', { level: stats.level, species: unit.species }));
         const xpText = app._escapeHtml(app._label('character.xp', 'XP: {xp}/{xpToNext}', { xp: unit.xp || 0, xpToNext: unit.xpToNext || 0 }));

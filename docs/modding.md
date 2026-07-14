@@ -76,6 +76,14 @@ Feature-expansion proposals should explicitly choose one of three destinations b
 - **First-party optional mod/content pack:** desirable expansion that should be installable or toggleable without increasing core complexity.
 - **Third-party mod seam:** documented API capability where the project supplies hooks and examples, but does not own the feature content or balance.
 
+## Body Features And Adult Anatomy
+
+The default/SFW game should describe player-facing creation choices as neutral body options, traits, builds, capacities, and visible features. Safe mode hides explicit anatomy controls and uses compatibility defaults only for saves and mechanics. Do not expose explicit anatomy words in the static creation UI or safe stats/inspection surfaces.
+
+Internal ids such as lower/chest anatomy values may remain stable for save compatibility and adult-capable mechanics, but rendered labels must pass through content-tier-aware localization. Core adult detail views may use adult-specific labels when the player has opted into the adult tier. Uncensored modules or agent-authored packs must declare an appropriate `contentRating`, use adult-specific labels/templates, and preserve the same content-tier gates.
+
+When expanding build/body gameplay, prefer SFW mechanics in core first: capacity, appetite, size, mobility, intimidation, charm, visibility, equipment fit, and trait interactions. Explicit anatomy mechanics belong in adult-rated modules or clearly gated first-party optional packs unless a future doctrine change deliberately moves them into core adult content.
+
 ## Content Rating
 
 Content ratings are metadata for install and UI policy. Text rendering still goes through `CONTENT` preferences and tier checks. Adult or mature content should not be introduced into core-safe defaults, and templates that are unavailable at a selected tier should fall back rather than returning empty output.

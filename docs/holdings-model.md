@@ -41,7 +41,8 @@ The current implementation uses adapter helpers over existing fields. It does no
 - Pack should be labeled as shared. Core does not expose per-companion backpacks.
 - Equipped items remain owner slot-based and are not loose pack items until unequipped.
 - Contained creatures are entries under the selected owner containers. They can expose Inspect, Release, and Digest/Continue controls when their state allows it.
-- Terminal or depleted containment entries remain inspectable but ordinary release is unavailable.
+- Active contained creatures render under their concrete container, such as Belly, and count against that container's used capacity.
+- Terminal, digested, or depleted containment records render under a separate Consumed section. They remain inspectable history records, do not count against active container capacity, and do not expose ordinary Release or Digest controls unless a future mechanic or mod explicitly enables that behavior.
 - Corpses/remains are Here/Ground entries. Loot may create normal inventory items, but Scavenge consumes Remains Pool and must not create itemized creature pieces in core.
 - Tile items are Here/Ground entries until picked up.
 - Mobile actor/target picker rails reserve their first slot for Details/Menu access. Bulky Clear/Close chips do not belong in the rail; clearing should happen through composer slot controls, selected-chip toggles, dock toggles, or other non-bulky affordances.

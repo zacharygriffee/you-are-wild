@@ -54,11 +54,36 @@ Species that should participate in baseline party, recruit, social, quest, merch
 
 Mutating runtime registries requires declared permissions:
 
+- `MODS.getContext(options)` requires `ui.read`
 - `MODS.addBiome()` requires `world:add_biome`
 - `MODS.addSpecies()` requires `content:add_species`
 - `MODS.addItem()` requires `content:add_item`
 
 If a module calls one of these APIs without the matching permission, enablement fails, partial runtime contributions are cleaned up, and the module remains disabled in storage.
+
+## Public Narrative Context
+
+Narrative and optional LLM-facing modules should call `MODS.getContext({ limit })` instead of reading `App`, save records, DOM text, or compatibility fields directly. The returned JSON-serializable contract is versioned through `context.version` and currently contains:
+
+- active mode and content policy
+- safe location/tile summary
+- public party and nearby-unit summaries
+- bounded quest summaries
+- bounded Scene Beat summaries
+- bounded Activity Log summaries
+
+The limit is clamped to 1-50 entries. Public unit summaries intentionally omit anatomy compatibility fields, containers, inventory, raw status payloads, save internals, credentials, and executable values. A narrative module can retain the returned snapshot, but must not treat it as a mutable reference to core state.
+
+```js
+const context = MODS.getContext({ limit: 12 });
+MODS.log(JSON.stringify({
+  mode: context.mode,
+  location: context.location.tile,
+  latestBeat: context.sceneBeats.at(-1) || null
+}));
+```
+
+Core remains authoritative. A model response may provide presentation, continuity notes, or optional prose, but it cannot become the only record of a mechanical result.
 
 ## Narrative And Structural Mod Lanes
 

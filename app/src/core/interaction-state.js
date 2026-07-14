@@ -466,6 +466,9 @@ const YAW_INTERACTION_STATE = {
         if (!slot) return;
         slot.innerHTML = html || '';
         if (html) {
+            slot.setAttribute('role', 'status');
+            slot.setAttribute('aria-live', 'polite');
+            slot.setAttribute('aria-atomic', 'true');
             slot.setAttribute('data-command-surface', 'command-sentence');
             slot.setAttribute('data-command-mode', mode);
             slot.setAttribute('data-command-grammar', 'actor-target-intent');
@@ -473,6 +476,9 @@ const YAW_INTERACTION_STATE = {
             slot.setAttribute('data-command-target-count', String(meta.targetCount ?? 0));
             slot.setAttribute('data-command-intent', meta.intent || 'choose');
         } else {
+            slot.removeAttribute('role');
+            slot.removeAttribute('aria-live');
+            slot.removeAttribute('aria-atomic');
             slot.removeAttribute('data-command-surface');
             slot.removeAttribute('data-command-mode');
             slot.removeAttribute('data-command-grammar');

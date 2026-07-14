@@ -6,7 +6,7 @@
  */
 
 const YAW_STORY_EVENTS = {
-    maxEvents: 18,
+    maxEvents: 60,
     builtInTemplates: [],
 
     currentContentTier() {
@@ -506,16 +506,34 @@ const YAW_STORY_EVENTS = {
         const actors = this.units(input.actors || input.actor || []);
         const targets = this.units(input.targets || input.target || []);
         const intent = input.intent || input.action || 'action';
+        const mode = input.mode || (app.combatState?.active ? 'combat' : 'adventure');
         const rawSummary = String(input.summary || input.result || '').trim();
         const summary = rawSummary || this.defaultSummary(app, actors, targets, intent);
         const passage = String(input.passage || summary).trim();
         const actorNames = this.unitNames(app, actors);
         const targetNames = this.unitNames(app, targets);
         app.storyEventSeq = (Number(app.storyEventSeq) || 0) + 1;
+        const id = `story-${app.storyEventSeq}`;
+        const metadata = { ...(input.metadata || {}) };
+        const combatRound = Number.isFinite(metadata.combatRound)
+            ? metadata.combatRound
+            : (mode === 'combat' && Number.isFinite(app.combatState?.round) ? app.combatState.round : null);
+        const combatTurn = Number.isFinite(metadata.combatTurn)
+            ? metadata.combatTurn
+            : (mode === 'combat' && Number.isFinite(app.combatState?.currentTurn) ? app.combatState.currentTurn : null);
+        const combatEncounter = String(metadata.combatEncounter || app.combatState?.sceneExchangeId || '');
+        const combatExchangeId = combatRound !== null
+            ? (combatEncounter ? `${combatEncounter}-round-${combatRound}` : `combat-round-${combatRound}`)
+            : '';
+        const exchangeId = String(input.exchangeId || metadata.exchangeId || combatExchangeId || id);
+        if (combatRound !== null) metadata.combatRound = combatRound;
+        if (combatTurn !== null) metadata.combatTurn = combatTurn;
+        if (combatEncounter) metadata.combatEncounter = combatEncounter;
+        metadata.exchangeId = exchangeId;
         return {
-            id: `story-${app.storyEventSeq}`,
+            id,
             type: input.type || 'scene-beat',
-            mode: input.mode || (app.combatState?.active ? 'combat' : 'adventure'),
+            mode,
             action: input.action || intent,
             subAction: input.subAction || null,
             shape: input.shape || input.metadata?.shape || '',
@@ -534,7 +552,8 @@ const YAW_STORY_EVENTS = {
             contentTier: Number.isFinite(input.contentTier) ? input.contentTier : this.currentContentTier(),
             source: input.source || input.metadata?.source || 'scene-feed',
             subEvents: Array.isArray(input.subEvents) ? input.subEvents : [],
-            metadata: input.metadata || {},
+            exchangeId,
+            metadata,
             location: input.location || this.locationLabel(app),
             time: input.time || app._timeLabel?.() || '',
             createdAt: app.storyEventSeq
@@ -561,6 +580,11 @@ const YAW_STORY_EVENTS = {
         app.latestSceneBeat = event;
         app.markAutoSaveDirty?.(['sceneFeed'], 'scene-feed');
         this.render(app);
+        const announcer = document.getElementById?.('scene-feed-announcer');
+        if (announcer) {
+            announcer.textContent = event.summary;
+            announcer.setAttribute('data-scene-beat-id', event.id);
+        }
         return event;
     },
 
@@ -575,18 +599,60 @@ const YAW_STORY_EVENTS = {
         return `<span class="story-latest-line"><span class="story-summary">${app._escapeHtml(event.summary)}</span><span class="story-meta-line">${meta}</span></span>`;
     },
 
-    streamHtml(app, { limit = 5 } = {}) {
-        const events = (app.storyEvents || []).slice(-Math.max(1, limit)).reverse();
+    exchangeInfo(app, event) {
+        const combatRound = Number(event?.metadata?.combatRound);
+        const hasCombatRound = event?.mode === 'combat' && Number.isFinite(combatRound);
+        return {
+            id: String(event?.exchangeId || event?.metadata?.exchangeId || event?.id || ''),
+            label: event?.metadata?.exchangeLabel || (hasCombatRound
+                ? app._label('scene.exchange.round', 'Round {round}', { round: combatRound })
+                : ''),
+            isCombat: hasCombatRound
+        };
+    },
+
+    exchangeGroups(app, events = []) {
+        const groups = [];
+        events.forEach(event => {
+            const exchange = this.exchangeInfo(app, event);
+            const current = groups[groups.length - 1];
+            if (current?.id === exchange.id) {
+                current.events.push(event);
+                return;
+            }
+            groups.push({ ...exchange, events: [event] });
+        });
+        return groups.reverse();
+    },
+
+    exchangeEventCountLabel(app, count) {
+        return count === 1
+            ? app._label('scene.exchange.oneEvent', '1 event')
+            : app._label('scene.exchange.eventCount', '{count} events', { count });
+    },
+
+    streamHtml(app, { limit = this.maxEvents } = {}) {
+        const events = (app.storyEvents || []).slice(-Math.max(1, limit));
         if (!events.length) {
             return `<div class="scene-beat-stream-empty">${this.compactHtml(app, null)}</div>`;
         }
-        return events.map((event, index) => {
-            const attrs = this.latestAttributes(app, event);
-            const classes = ['scene-beat-stream-item'];
-            if (index === 0) classes.push('latest');
-            return `<article class="${classes.join(' ')}" data-scene-beat-id="${app._escapeHtml(attrs.id)}" data-scene-importance="${app._escapeHtml(attrs.importance)}" data-scene-result="${app._escapeHtml(attrs.result)}" data-has-scene-beat="true" aria-label="${app._escapeHtml(attrs.label)}">`
-                + this.compactHtml(app, event)
-                + `</article>`;
+        const latestId = events[events.length - 1]?.id;
+        return this.exchangeGroups(app, events).map((group, groupIndex) => {
+            const classes = ['scene-exchange-group'];
+            if (groupIndex === 0) classes.push('latest');
+            if (!group.label) classes.push('unlabeled');
+            const header = group.label
+                ? `<header class="scene-exchange-header"><strong>${app._escapeHtml(group.label)}</strong><span>${app._escapeHtml(this.exchangeEventCountLabel(app, group.events.length))}</span></header>`
+                : '';
+            const items = group.events.map(event => {
+                const attrs = this.latestAttributes(app, event);
+                const itemClasses = ['scene-beat-stream-item'];
+                if (event.id === latestId) itemClasses.push('latest');
+                return `<article class="${itemClasses.join(' ')}" data-scene-beat-id="${app._escapeHtml(attrs.id)}" data-scene-importance="${app._escapeHtml(attrs.importance)}" data-scene-result="${app._escapeHtml(attrs.result)}" data-has-scene-beat="true" aria-label="${app._escapeHtml(attrs.label)}">`
+                    + this.compactHtml(app, event)
+                    + `</article>`;
+            }).join('');
+            return `<section class="${classes.join(' ')}" data-scene-exchange-id="${app._escapeHtml(group.id)}">${header}<div class="scene-exchange-events">${items}</div></section>`;
         }).join('');
     },
 
@@ -618,6 +684,8 @@ const YAW_STORY_EVENTS = {
 
     applyStreamElement(app, element, event, html, { hidden = false } = {}) {
         if (!element) return;
+        const anchor = this.captureScrollAnchor(element);
+        const previousId = element.getAttribute?.('data-scene-beat-id') || '';
         const attrs = this.latestAttributes(app, event);
         element.hidden = Boolean(hidden);
         element.innerHTML = hidden ? '' : html;
@@ -625,38 +693,96 @@ const YAW_STORY_EVENTS = {
         element.setAttribute('data-scene-importance', attrs.importance);
         element.setAttribute('data-scene-result', attrs.result);
         element.setAttribute('data-has-scene-beat', attrs.hasBeat);
-        element.setAttribute('aria-label', attrs.label);
+        element.setAttribute('aria-label', app._label('scene.exchange.feedLabel', 'Scene feed, newest exchanges first'));
         element.classList.toggle('scene-beat-highlight', Boolean(event) && !hidden);
+        this.restoreScrollAnchor(element, anchor);
+        this.bindStreamNavigation(app, element);
+        if (anchor && previousId && previousId !== attrs.id) {
+            const indicator = this.streamIndicator(element);
+            if (indicator) indicator.dataset.pendingCount = String((Number(indicator.dataset.pendingCount) || 0) + 1);
+        }
+        this.refreshStreamIndicator(app, element);
     },
 
-    bindMobileNewBeatIndicator(app) {
-        const indicator = document.getElementById('mobile-new-beat-indicator');
-        const scroller = document.querySelector('#panel-main .panel-content');
+    streamScroller(element) {
+        if (!element) return null;
+        if (element.id === 'desktop-scene-feed-latest') return document.getElementById('desktop-scene-scroll');
+        if (element.id === 'mobile-story-latest') return document.querySelector('#panel-main .panel-content');
+        return null;
+    },
+
+    streamIndicator(element) {
+        const id = element?.dataset?.sceneIndicatorId;
+        return id ? document.getElementById(id) : null;
+    },
+
+    captureScrollAnchor(element) {
+        const scroller = this.streamScroller(element);
+        if (!scroller?.getBoundingClientRect || !element?.querySelectorAll) return null;
+        const beats = Array.from(element.querySelectorAll('[data-scene-beat-id]'));
+        if (!beats.length) return null;
+        const viewport = scroller.getBoundingClientRect();
+        const firstRect = beats[0].getBoundingClientRect();
+        if (firstRect.top >= viewport.top - 4) return null;
+        const anchor = beats.find(beat => beat.getBoundingClientRect().bottom > viewport.top + 4);
+        if (!anchor) return null;
+        return {
+            id: anchor.getAttribute('data-scene-beat-id'),
+            offset: anchor.getBoundingClientRect().top - viewport.top
+        };
+    },
+
+    restoreScrollAnchor(element, anchor) {
+        const scroller = this.streamScroller(element);
+        if (!anchor || !scroller?.getBoundingClientRect || !element?.querySelectorAll) return;
+        const match = Array.from(element.querySelectorAll('[data-scene-beat-id]'))
+            .find(beat => beat.getAttribute('data-scene-beat-id') === anchor.id);
+        if (!match) return;
+        const viewport = scroller.getBoundingClientRect();
+        const nextOffset = match.getBoundingClientRect().top - viewport.top;
+        scroller.scrollTop += nextOffset - anchor.offset;
+    },
+
+    latestBeatVisible(element) {
+        const scroller = this.streamScroller(element);
+        const latest = element?.querySelector?.('.scene-beat-stream-item.latest');
+        if (!scroller?.getBoundingClientRect || !latest?.getBoundingClientRect) return true;
+        const viewport = scroller.getBoundingClientRect();
+        const rect = latest.getBoundingClientRect();
+        return rect.top >= viewport.top - 4 && rect.bottom <= viewport.bottom + 4;
+    },
+
+    refreshStreamIndicator(app, element) {
+        const indicator = this.streamIndicator(element);
+        if (!indicator) return;
+        const pending = Number(indicator.dataset.pendingCount) || 0;
+        const visible = this.latestBeatVisible(element);
+        if (visible) indicator.dataset.pendingCount = '0';
+        const count = visible ? 0 : pending;
+        indicator.hidden = !app.latestStoryEvent || count <= 0;
+        if (count > 0) {
+            const label = app._label('scene.exchange.newEvents', '{count} new', { count });
+            indicator.textContent = label;
+            indicator.title = app._label('scene.exchange.jumpNewest', 'Jump to newest scene beat');
+            indicator.setAttribute('aria-label', `${indicator.title}. ${label}`);
+        }
+    },
+
+    bindStreamNavigation(app, element) {
+        const indicator = this.streamIndicator(element);
+        const scroller = this.streamScroller(element);
         if (!indicator || !scroller || indicator.dataset.bound === 'true') return;
         indicator.dataset.bound = 'true';
-        const update = () => {
-            const hasBeat = Boolean(app.latestStoryEvent);
-            indicator.hidden = !hasBeat || scroller.scrollTop <= 24;
-        };
         indicator.addEventListener('click', () => {
-            const feed = document.getElementById('mobile-story-latest');
-            if (feed) {
-                feed.scrollIntoView({ block: 'start', behavior: document.body.classList.contains('reduced-motion') ? 'auto' : 'smooth' });
-            } else {
-                scroller.scrollTop = 0;
-            }
+            const latest = element.querySelector?.('.scene-beat-stream-item.latest');
+            latest?.scrollIntoView?.({
+                block: 'nearest',
+                behavior: document.body.classList.contains('reduced-motion') ? 'auto' : 'smooth'
+            });
+            indicator.dataset.pendingCount = '0';
             indicator.hidden = true;
         });
-        scroller.addEventListener('scroll', update, { passive: true });
-        update();
-    },
-
-    updateMobileNewBeatIndicator(app) {
-        const indicator = document.getElementById('mobile-new-beat-indicator');
-        const scroller = document.querySelector('#panel-main .panel-content');
-        if (!indicator || !scroller) return;
-        this.bindMobileNewBeatIndicator(app);
-        indicator.hidden = !app.latestStoryEvent || scroller.scrollTop <= 24;
+        scroller.addEventListener('scroll', () => this.refreshStreamIndicator(app, element), { passive: true });
     },
 
     deltaLabel(app, delta) {
@@ -708,24 +834,28 @@ const YAW_STORY_EVENTS = {
     },
 
     listHtml(app) {
-        const events = (app.storyEvents || []).slice(-this.maxEvents).reverse();
+        const events = (app.storyEvents || []).slice(-this.maxEvents);
         if (!events.length) {
             return `<div class="story-empty">${app._escapeHtml(app._label('scene.noEvents', 'No scene beats yet. Resolve an interaction to begin the scene feed.'))}</div>`;
         }
-        return events.map(event => this.eventHtml(app, event)).join('');
+        return this.exchangeGroups(app, events).map(group => {
+            const header = group.label
+                ? `<header class="story-event-group-header"><h3>${app._escapeHtml(group.label)}</h3><span>${app._escapeHtml(this.exchangeEventCountLabel(app, group.events.length))}</span></header>`
+                : '';
+            return `<section class="story-event-group${group.label ? '' : ' unlabeled'}" data-scene-exchange-id="${app._escapeHtml(group.id)}">${header}${group.events.map(event => this.eventHtml(app, event)).join('')}</section>`;
+        }).join('');
     },
 
     render(app) {
         const latest = app.latestStoryEvent || (app.storyEvents || [])[app.storyEvents?.length - 1] || null;
         const latestHtml = this.compactHtml(app, latest);
-        const streamHtml = this.streamHtml(app, { limit: 5 });
+        const streamHtml = this.streamHtml(app, { limit: this.maxEvents });
         const mobileLatest = document.getElementById('mobile-story-latest');
         if (mobileLatest) {
             this.applyStreamElement(app, mobileLatest, latest, streamHtml);
         }
-        this.updateMobileNewBeatIndicator(app);
         const desktopSceneLatest = document.getElementById('desktop-scene-feed-latest');
-        if (desktopSceneLatest) this.applyLatestElement(app, desktopSceneLatest, latest, latestHtml);
+        if (desktopSceneLatest) this.applyStreamElement(app, desktopSceneLatest, latest, streamHtml);
         document.querySelectorAll?.('.desktop-combat-story-latest, .mobile-combat-story-latest').forEach(el => {
             this.applyLatestElement(app, el, latest, latestHtml);
         });

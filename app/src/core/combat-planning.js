@@ -270,26 +270,21 @@ const YAW_COMBAT_PLANNING = {
         return app._dispatchInteractionCommand(command);
     },
 
-    controls(app) {
+    controls(app, options = {}) {
         if (!app.combatPlanSelection?.active) return '';
         const actorCount = this.actors(app).length;
         const pendingIntent = app.combatPlanSelection.pendingIntent;
+        if (!pendingIntent) return '';
         const intentLabel = pendingIntent ? app._uiLabel(pendingIntent) : app._label('ui.chooseAction', 'Choose');
         const confirmLabel = app._escapeHtml(actorCount > 1
             ? app._label('combat.group.commitIntent', 'Commit Group {intent}', { intent: intentLabel })
             : app._label('combat.action.commitIntent', 'Commit {intent}', { intent: intentLabel }));
-        const changeLabel = app._escapeHtml(app._label('combat.group.changeIntent', 'Change Intent'));
-        const clearLabel = app._escapeHtml(app._label('combat.group.clearCompact', 'Clear'));
-        const pending = Boolean(app.combatPlanSelection.pendingIntent);
-        const confirm = pending
-            ? `<button class="action-btn primary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-combat-plan" data-command-slot="intent" data-command-intent="${app._escapeHtml(pendingIntent)}" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="event.stopPropagation();App.confirmCombatPlan()">${confirmLabel}</button>`
-            : '';
-        const change = pending
-            ? `<button class="action-btn compact-secondary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-intent" data-command-slot="intent" title="${changeLabel}" aria-label="${changeLabel}" onclick="event.stopPropagation();App.clearCombatPlanIntent()">${changeLabel}</button>`
+        const reset = options.includeReset
+            ? `<button class="action-btn compact-secondary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-group" data-command-slot="exit" title="${app._escapeHtml(app._label('combat.group.clearCompact', 'Clear'))}" aria-label="${app._escapeHtml(app._label('combat.group.clearCompact', 'Clear'))}" onclick="event.stopPropagation();App.clearCombatPlan()">${app._escapeHtml(app._label('combat.group.clearCompact', 'Clear'))}</button>`
             : '';
         return `<div class="unit-actions unit-combat-actions compact combat-group-compose-controls" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${confirmLabel}">
-            ${confirm}${change}
-            <button class="action-btn compact-secondary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-group" data-command-slot="exit" title="${clearLabel}" aria-label="${clearLabel}" onclick="event.stopPropagation();App.clearCombatPlan()">${clearLabel}</button>
+            <button class="action-btn primary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-combat-plan" data-command-slot="intent" data-command-intent="${app._escapeHtml(pendingIntent)}" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="event.stopPropagation();App.confirmCombatPlan()">${confirmLabel}</button>
+            ${reset}
         </div>`;
     },
 

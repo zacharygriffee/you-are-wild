@@ -42,7 +42,7 @@ The player-facing semantic surface is the Scene Feed, not "Story." It represents
 
 Scene Beat is the semantic source of truth for presentation. It should be built from `InteractionPlan + ActionOutcome` or equivalent structured command/result data, not by parsing Activity Log strings. Activity Log and Scene Feed may both render related information, but they serve different audiences:
 
-- Scene Feed: immediate readable player feedback, latest beat, recent beat sheet, and later POV narration.
+- Scene Feed: immediate readable player feedback, a newest-first exchange stream, detailed recent-beat sheet, and later POV narration.
 - Activity Log: durable technical/history feed, filters, search, export, debugging, and continuity context.
 - LLM/mod narrative layers: optional consumers that can use Scene Beats, Activity history, raw systemic JSON, or generated template output, but core play must remain functional without any LLM.
 
@@ -76,7 +76,7 @@ These decisions are settled doctrine until a later explicit mechanics pass reope
 - Recruited NPCs lose shop or quest-giver duties by default. Keeping those functions requires a special authored companion role or future explicit role-retention mechanic.
 - Pre-beta containment save changes may break old saves if a clean versioned schema becomes necessary. Prefer compatibility adapters when practical, but do not compromise central containment mechanics merely to preserve unreleased legacy saves.
 - Feast/containment uses regular damage and vital damage as separate living-creature tracks, with corpse/remains scavenging handled through a separate Remains Pool. Normal fight damage does not reduce vital integrity by default. Digestion, chew, slurp, and fragment can apply vital damage, scavenge consumes finite remains mass, and core should represent these as state/ledger data rather than creature-piece inventory items. Feast V2 is stomach-first by default: non-stomach containers, pass-through, nested simulation, itemized butchering, and permanent stat gain remain compatibility, modded, or future mechanics rather than default core behavior.
-- Mobile feedback uses a persistent latest Scene Beat plus an explicit expanded Scene Feed sheet. Transient highlighting is allowed to draw attention to a new beat, but transient-only feedback is not. Collapsed mobile feedback must not cover the composer, action controls, actor/target pickers, or dock.
+- Desktop and mobile feedback use the same persistent newest-first Scene Feed contract. New exchange groups appear above older groups, beats within an exchange stay chronological, and the stream grows through the layout's primary scroll container without covering the composer, action controls, actor/target pickers, or dock. Transient highlighting may draw attention to a new beat, but transient-only feedback is not sufficient; the expanded Scene Feed sheet remains available for detailed review.
 
 ### Quest Species Matching Doctrine
 
@@ -106,6 +106,8 @@ Battle mode should be carved out only after the actor, target, and intent model 
 
 Battle mode owns turn order, combat constraints, and event focus. It is related to Traversal mode because battles happen on the play surface, but it is distinct from Traversal mode because routine movement is no longer the primary loop.
 
+Active combat also obeys the [Combat Progress Invariant](combat-progress-invariant.md): every state must resolve combat, advance automatically, or expose a usable turn command or restoring phase exit. Save/load, status loss, AI, responsive layouts, and modded combat phases share that contract.
+
 - Battle mode should reduce, hide, or demote routine movement affordances while combat is active. Directional movement returns only for explicit escape flow, forced repositioning, or future battle mechanics that deliberately spend a combat command.
 - The party, creature, and enemy panels/chips are the primary actor and target surfaces in both combat and exploration. Combat adds current-turn and initiative constraints over the same selection model rather than replacing it.
 - The center stage remains the primary combat event focus, not the primary duplicated action grid. It should show the current exchange, recent battle event summary, selected actor and target context, important status changes, and terrain or row context that matters to the next decision.
@@ -123,11 +125,11 @@ Current implementation:
 
 - Flying or ranged units default to the back row; other units default to the front row when combat starts.
 - `Fight` uses an intent-owned reach profile: melee, ranged, or hybrid depending on actor traits and future action metadata.
-- `Feast` uses a close/contact profile by default.
+- `Feast` uses a close/contact profile by default and requires front-row contact unless an explicit contact-reach profile says otherwise.
 - Talk, Feed, support, and other non-contact social/support intents ignore row reach unless a specific mechanic says otherwise.
-- Play/Seduce is contact-social by default and follows close/contact reach until an authored variant says otherwise.
-- Flying can bypass rows for Fight/aerial profiles. Flying targets still need an appropriate answer for contact-style actions.
-- Ranged Fight is valid from the back row, can reach back-row and flying targets, and is not the default answer to front-row grounded targets.
+- Play/Seduce is contact-social by default and requires front-row contact until an authored variant says otherwise.
+- Flying can bypass rows for Fight/aerial profiles. Flying does not automatically bypass front-row requirements for Feast or Play/Seduce, and flying targets still need flying, anti-flying, or explicit contact reach for contact-style actions.
+- Ranged Fight can reach front-row grounded targets, protected back-row targets, and flying targets from either row. Back-row ranged attackers keep distance and may take small balance modifiers, but ranged is reach access rather than a restriction to back-row targets.
 - Anti-flying actors answer flying targets for relevant physical profiles, but anti-flying does not bypass front-row blockers by itself.
 - Front-row blockers protect back-row units on the same side. Ordinary melee and close/contact actions cannot target a protected back-row unit while living front-row blockers remain.
 - If a side has no living front-row blockers, back-row targets are exposed. Ordinary melee and close/contact actions may reach exposed back-row targets unless a specific action profile says otherwise.

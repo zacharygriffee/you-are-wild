@@ -324,8 +324,8 @@
             clearCombatPlan(reason = 'cancel') {
                 return YAW_COMBAT_PLANNING.clear(this, reason);
             },
-            _combatPlanControls() {
-                return YAW_COMBAT_PLANNING.controls(this);
+            _combatPlanControls(options = {}) {
+                return YAW_COMBAT_PLANNING.controls(this, options);
             },
             _combatPendingIntent() {
                 return YAW_COMBAT_PLANNING.pendingIntent(this);
@@ -356,6 +356,12 @@
             },
             _isCurrentCombatActor(unit) {
                 return YAW_COMBAT_ACTOR_STATE.isCurrent(this, unit);
+            },
+            _combatProgressState() {
+                return YAW_COMBAT_ACTOR_STATE.progressState(this);
+            },
+            _recoverCombatProgress(reason = 'unknown') {
+                return YAW_COMBAT_ACTOR_STATE.recoverProgress(this, reason);
             },
             _clearCenterActionsForCombat() {
                 return YAW_SCENE_SHELL.clearCenterActionsForCombat(this);
@@ -3649,8 +3655,24 @@
                         const safeTier = this._tierValue(CONTENT?.preferences?.maxTier ?? 0) < 2;
                         const labelBodyType = (value) => (typeof YAW_STATS_PANEL !== 'undefined' && YAW_STATS_PANEL?.bodyTypeLabel) ? YAW_STATS_PANEL.bodyTypeLabel(value, this) : value;
                         result = safeTier
-                            ? `${target.name} [${target.species}]: Punishment ${target.CPun}/${target.MPun}, Spirit ${target.CPle}/${target.MPle}, Size ${target.size}, Appetite ${target.appetite}`
-                            : `${target.name} [${target.species}]: Punishment ${target.CPun}/${target.MPun}, Spirit ${target.CPle}/${target.MPle}, Size ${target.size}, Appetite ${target.appetite}, Body Type: ${labelBodyType(target.parts) || 'none'}, Chest Type: ${labelBodyType(target.chest) || 'none'}`;
+                            ? this._label('inspect.summary.safe', '{name} [{species}]: Punishment {punishment}, Spirit {spirit}, Size {size}, Appetite {appetite}', {
+                                name: target.name,
+                                species: target.species,
+                                punishment: `${target.CPun}/${target.MPun}`,
+                                spirit: `${target.CPle}/${target.MPle}`,
+                                size: target.size,
+                                appetite: target.appetite
+                            })
+                            : this._label('inspect.summary.adult', '{name} [{species}]: Punishment {punishment}, Spirit {spirit}, Size {size}, Appetite {appetite}, Lower Anatomy: {parts}, Chest Shape: {chest}', {
+                                name: target.name,
+                                species: target.species,
+                                punishment: `${target.CPun}/${target.MPun}`,
+                                spirit: `${target.CPle}/${target.MPle}`,
+                                size: target.size,
+                                appetite: target.appetite,
+                                parts: labelBodyType(target.parts) || this._label('party.none', 'None'),
+                                chest: labelBodyType(target.chest) || this._label('party.none', 'None')
+                            });
                         break;
                     }
                 }

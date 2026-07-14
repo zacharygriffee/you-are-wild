@@ -263,6 +263,7 @@ const YAW_COMBAT_RESOLUTION = {
             app.renderLog();
             app.renderCreatures();
             app.renderParty();
+            app._recoverCombatProgress?.('combat-action-error');
             return false;
         } finally {
             if (app.combatState) app.combatState.processing = false;

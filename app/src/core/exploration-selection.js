@@ -199,6 +199,7 @@ const YAW_EXPLORATION_SELECTION = {
         }
         if (app.combatState?.active) app._renderInteractionState({ exploration: false, toolbelt: true });
         else app._renderInteractionState({ exploration: true, toolbelt: false });
+        return true;
     },
 
     clearTargets(app) {

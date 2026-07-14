@@ -111,7 +111,7 @@ const YAW_UNIT_CARD_STATUS = {
             return app._label('combat.tacticalSummary.rangedBackRow', 'Ranged back-row attacker. Fight, Feast, and social intents each use their own reach profile.');
         }
         if (unit.flying) {
-            return app._label('combat.tacticalSummary.flying', 'Flying target. Physical contact usually needs flying, ranged, or anti-flying reach; social intents can still work.');
+            return app._label('combat.tacticalSummary.flying', 'Flying target. Fight needs flying, ranged, or anti-flying reach; close contact needs flying, anti-flying, or explicit contact reach.');
         }
         if (row === 'back') {
             return app._label('combat.tacticalSummary.backRow', 'Back-row unit. Intent reach matters: social intents can cross rows, while close/contact actions may fail.');

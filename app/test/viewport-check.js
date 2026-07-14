@@ -2367,6 +2367,13 @@ async function checkViewport(browser, name, width, height) {
         processing: false
       };
       App.log.push({ text: 'You hit Enemy for 4.', type: 'combat', actorName: 'You', action: 'fight' });
+      App.emitSceneBeat({
+        mode: 'combat',
+        actors: [App.player],
+        targets: [enemy],
+        action: 'fight',
+        source: 'viewport-check'
+      }, 'You hit Enemy for 4.');
       App.renderCreatures();
       App.renderParty();
       App.renderCombatSceneForTurn(App.player);
@@ -2377,18 +2384,20 @@ async function checkViewport(browser, name, width, height) {
       const dock = document.querySelector('.mobile-panel-dock');
       const map = document.querySelector('.mobile-map-card');
       const controlBelt = document.getElementById('mobile-control-belt');
-      const latest = document.querySelector('.mobile-combat-latest-strip');
+      const context = document.querySelector('.mobile-combat-context-strip');
+      const sceneFeed = document.getElementById('mobile-story-latest');
       const mobileDesc = document.getElementById('mobile-scene-description');
       const dockRect = dock.getBoundingClientRect();
-      const latestRect = latest.getBoundingClientRect();
+      const contextRect = context.getBoundingClientRect();
       const controlRect = controlBelt.getBoundingClientRect();
       return {
         mapDisplay: getComputedStyle(map).display,
         controlDisplay: getComputedStyle(controlBelt).display,
         controlHeight: controlRect.height,
-        latestText: latest?.innerText || '',
-        latestTop: latestRect.top,
-        latestBottom: latestRect.bottom,
+        contextText: context?.innerText || '',
+        sceneFeedText: sceneFeed?.innerText || '',
+        contextTop: contextRect.top,
+        contextBottom: contextRect.bottom,
         dockTop: dockRect.top,
         descHasBoxedRecent: Boolean(mobileDesc?.querySelector('.combat-recent-exchange')),
         descHasTurnOrder: Boolean(mobileDesc?.querySelector('.combat-turn-order')),
@@ -2398,9 +2407,11 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileCombat.mapDisplay, 'none', `${name}: mobile combat should hide traversal map`);
     assert.strictEqual(mobileCombat.controlDisplay, 'none', `${name}: empty exploration control belt should hide during combat`);
     assert.strictEqual(mobileCombat.controlHeight, 0, `${name}: hidden exploration control belt should not consume combat space`);
-    assert(mobileCombat.latestText.includes('You hit Enemy for 4.'), `${name}: mobile combat should expose one latest-exchange strip`);
-    assert(mobileCombat.latestTop >= 0, `${name}: latest-exchange strip should be visible in the viewport`);
-    assert(mobileCombat.latestBottom <= mobileCombat.dockTop + 1, `${name}: latest-exchange strip should stay above the fixed dock`);
+    assert(mobileCombat.contextText.includes('Choose your next action.'), `${name}: mobile combat should expose compact current-turn context`);
+    assert(!mobileCombat.contextText.includes('You hit Enemy for 4.'), `${name}: mobile turn context should not duplicate resolved feed history`);
+    assert(mobileCombat.sceneFeedText.includes('You hit Enemy for 4.'), `${name}: shared mobile Scene Feed should expose the resolved exchange`);
+    assert(mobileCombat.contextTop >= 0, `${name}: mobile turn context should be visible in the viewport`);
+    assert(mobileCombat.contextBottom <= mobileCombat.dockTop + 1, `${name}: mobile turn context should stay above the fixed dock`);
     assert.strictEqual(mobileCombat.descHasBoxedRecent, false, `${name}: mobile combat should not embed the boxed recent-exchange list`);
     assert.strictEqual(mobileCombat.descHasTurnOrder, false, `${name}: mobile combat should not embed the full turn-order box`);
     assert.strictEqual(mobileCombat.pageOverflow, false, `${name}: mobile combat strip should not create horizontal overflow`);
@@ -2723,10 +2734,12 @@ async function checkViewport(browser, name, width, height) {
       };
       const metrics = {
         surface: read('#desktop-play-surface'),
+        sceneScroll: read('#desktop-scene-scroll'),
         center: read('#desktop-play-cell-center'),
         content: read('#desktop-play-cell-center .desktop-play-cell-content'),
         summary: read('#desktop-play-cell-center .combat-scene-summary'),
         feedSlot: read('#desktop-scene-feed-slot'),
+        latestExchange: read('#desktop-scene-feed-latest .scene-exchange-group.latest'),
         composer: read('#desktop-command-composer'),
         belt: read('#desktop-context-belt'),
         actionButtons: Array.from(document.querySelectorAll('#desktop-context-belt button')).map(button => {
@@ -2763,13 +2776,48 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(desktopCombatSceneLayout.summary.exists, true, `${name}: desktop combat stage should render the combat summary`);
     assert.strictEqual(desktopCombatSceneLayout.feedSlot.exists, true, `${name}: desktop combat should keep the Scene Feed slot rendered`);
     assert.strictEqual(desktopCombatSceneLayout.composer.hidden, false, `${name}: desktop combat composer should be visible for current actor controls`);
+    assert(desktopCombatSceneLayout.sceneScroll.bottom <= desktopCombatSceneLayout.composer.top + 1, `${name}: desktop scene content should stop above the docked composer`);
+    assert(desktopCombatSceneLayout.sceneScroll.overflowY === 'auto' || desktopCombatSceneLayout.sceneScroll.overflowY === 'scroll', `${name}: desktop battle and narrative content should own vertical scrolling`);
     assert(desktopCombatSceneLayout.center.scrollHeight <= desktopCombatSceneLayout.center.clientHeight + 1, `${name}: desktop combat center should not require internal scrolling to see the battle context`);
     assert(desktopCombatSceneLayout.summary.bottom <= desktopCombatSceneLayout.center.bottom + 1, `${name}: desktop combat summary should fit visibly inside the battle center`);
     assert(desktopCombatSceneLayout.feedSlot.top >= desktopCombatSceneLayout.surface.bottom - 1, `${name}: desktop Scene Feed should sit below the combat stage`);
-    assert(desktopCombatSceneLayout.feedSlot.bottom <= desktopCombatSceneLayout.composer.top + 1, `${name}: desktop Scene Feed should remain visible above the combat composer`);
+    assert(desktopCombatSceneLayout.feedSlot.top < desktopCombatSceneLayout.composer.top, `${name}: desktop Scene Feed should begin visibly above the combat composer`);
+    assert(desktopCombatSceneLayout.latestExchange.exists && desktopCombatSceneLayout.latestExchange.top < desktopCombatSceneLayout.composer.top, `${name}: newest desktop exchange should begin in the visible scene viewport`);
     assert(desktopCombatSceneLayout.composer.bottom <= desktopCombatSceneLayout.viewportHeight + 1, `${name}: desktop combat composer should stay inside the viewport`);
     assert(desktopCombatSceneLayout.actionButtons.length >= 5, `${name}: desktop combat composer should expose the primary action grid`);
     assert(desktopCombatSceneLayout.actionButtons.every(button => button.bottom <= desktopCombatSceneLayout.viewportHeight + 1 && button.width >= 58 && button.height >= 38), `${name}: desktop combat action buttons should remain visible and usable`);
+
+    const desktopDockStability = await page.evaluate(() => {
+      const scroll = document.getElementById('desktop-scene-scroll');
+      const composer = document.getElementById('desktop-command-composer');
+      const before = composer.getBoundingClientRect();
+      const spacer = document.createElement('div');
+      spacer.setAttribute('data-test-scene-overflow', 'true');
+      spacer.style.flex = '0 0 1200px';
+      spacer.style.width = '1px';
+      scroll.appendChild(spacer);
+      scroll.scrollTop = scroll.scrollHeight;
+      const after = composer.getBoundingClientRect();
+      const scrollRect = scroll.getBoundingClientRect();
+      const result = {
+        beforeTop: before.top,
+        beforeBottom: before.bottom,
+        afterTop: after.top,
+        afterBottom: after.bottom,
+        scrollBottom: scrollRect.bottom,
+        scrollHeight: scroll.scrollHeight,
+        clientHeight: scroll.clientHeight,
+        scrollTop: scroll.scrollTop
+      };
+      spacer.remove();
+      scroll.scrollTop = 0;
+      return result;
+    });
+    assert(desktopDockStability.scrollHeight > desktopDockStability.clientHeight, `${name}: dock test should create overflowing scene content`);
+    assert(desktopDockStability.scrollTop > 0, `${name}: desktop scene region should accept independent scrolling`);
+    assert(Math.abs(desktopDockStability.beforeTop - desktopDockStability.afterTop) <= 1, `${name}: scene scrolling should not move the command shelf top edge`);
+    assert(Math.abs(desktopDockStability.beforeBottom - desktopDockStability.afterBottom) <= 1, `${name}: scene scrolling should not move the command shelf bottom edge`);
+    assert(desktopDockStability.scrollBottom <= desktopDockStability.afterTop + 1, `${name}: overflowing scene content should remain above the command shelf`);
 
     const desktopSurfaceStability = await page.evaluate(() => {
       const measure = () => {
@@ -3185,6 +3233,7 @@ async function checkViewport(browser, name, width, height) {
     await checkViewport(browser, 'narrow mobile 360', 360, 780);
     await checkViewport(browser, 'mobile', 393, 852);
     await checkViewport(browser, 'short mobile', 313, 670);
+    await checkViewport(browser, 'compact desktop', 1100, 768);
     await checkViewport(browser, 'desktop', 1365, 768);
   } finally {
     await browser.close();

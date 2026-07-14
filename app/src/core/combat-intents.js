@@ -25,6 +25,11 @@ const YAW_COMBAT_INTENTS = {
             return false;
         }
         app.activeActor = current;
+        if (action === 'skip') {
+            app._clearTransientInteractionState?.();
+            app.nextTurn();
+            return true;
+        }
         const pressure = app._canAffordActionPressure?.(action, current, { mode: 'combat' }) || { ok: true };
         if (!pressure.ok) {
             app.combatCorrectionMessage = { text: pressure.text, reason: pressure.reason || 'cost-blocked', action, time: Date.now() };
@@ -111,13 +116,6 @@ const YAW_COMBAT_INTENTS = {
             app.combatTargetIds = [];
             app.combatPlanSelection = null;
             app.attemptFlee(current);
-            return true;
-        }
-        if (action === 'skip') {
-            app.combatTargetId = null;
-            app.combatTargetIds = [];
-            app.combatPlanSelection = null;
-            app.nextTurn();
             return true;
         }
         return false;

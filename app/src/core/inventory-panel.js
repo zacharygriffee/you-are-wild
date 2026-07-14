@@ -86,10 +86,9 @@ const YAW_HOLDINGS = {
     },
 
     setOwner(app, ownerId) {
-        let owner = this.ownerById(app, ownerId);
+        const owner = this.ownerById(app, ownerId);
         if (!owner) return false;
         const tab = this.tabs().includes(app.holdingsWindow?.tab) ? app.holdingsWindow.tab : 'stats';
-        owner = this.ownerForTab(app, owner, tab);
         app.holdingsWindow = {
             ...(app.holdingsWindow || {}),
             tab,
@@ -572,12 +571,14 @@ const YAW_HOLDINGS = {
     renderWindow(app, owner = app.player, tab = 'stats') {
         const root = this.root();
         if (!root) return false;
-        owner = this.ownerForTab(app, owner || this.selectedOwner(app) || app.player, tab);
+        const requestedOwner = owner || this.selectedOwner(app) || app.player;
+        owner = this.ownerForTab(app, requestedOwner, tab);
+        const storedOwner = tab === 'pack' ? requestedOwner : owner;
         app.holdingsWindow = {
             ...(app.holdingsWindow || {}),
             tab,
             ownerType: 'party',
-            ownerId: this.ownerId(app, owner)
+            ownerId: this.ownerId(app, storedOwner)
         };
         const count = app.inventory?.length || 0;
         const titleText = app._label('holdings.titleWithInventory', 'Holdings / Inventory ({count}/{max})', { count, max: app.MAX_INVENTORY });

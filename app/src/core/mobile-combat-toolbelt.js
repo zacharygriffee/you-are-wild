@@ -53,7 +53,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const cancelLabel = app._label('ui.cancel', 'Cancel');
         if (app.combatPlanSelection?.active) {
             if (!app.combatPlanSelection.pendingIntent) return '';
-            const controls = app._combatPlanControls?.() || '';
+            const controls = app._combatPlanControls?.({ includeReset: true }) || '';
             const intentLabel = app._uiLabel(app.combatPlanSelection.pendingIntent);
             const phaseLabel = app._label('combat.group.commitIntent', 'Commit Group {intent}', { intent: intentLabel });
             return controls ? `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(phaseLabel)}">${controls}</div>` : '';

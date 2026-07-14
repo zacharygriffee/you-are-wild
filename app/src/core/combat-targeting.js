@@ -93,7 +93,9 @@ const YAW_COMBAT_TARGETING = {
         if (targetPickActive) {
             app.combatTargetIds = [unitId];
             app.combatTargetId = unitId;
-            return this.executeIntentOnMarkedTarget(app, app.targetSelection.action, app.activeActor || app._currentCombatActor() || app.player);
+            app._clearCenterActionsForCombat();
+            app._renderInteractionState({ exploration: false, toolbelt: true });
+            return true;
         }
         const ids = this.targetIds(app);
         app.combatTargetIds = ids.includes(unitId)
@@ -243,7 +245,9 @@ const YAW_COMBAT_TARGETING = {
             if (!this.canSelectCreatureTarget(app, target)) return false;
             app.combatTargetIds = [app._unitSelectionId(target)];
             app.combatTargetId = app.combatTargetIds[0];
-            return this.executeIntentOnMarkedTarget(app, action, actor);
+            app._clearCenterActionsForCombat();
+            app._renderInteractionState({ exploration: false, toolbelt: true });
+            return true;
         }
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',

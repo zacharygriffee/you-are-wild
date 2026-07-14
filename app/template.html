@@ -580,20 +580,42 @@
             box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
         }
 
+        .panel-main .panel-content {
+            min-height: 0;
+            overflow: hidden;
+            padding: 0;
+        }
+
         .scene-display {
-            min-height: 100%;
+            min-height: 0;
+            height: 100%;
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto;
+            align-items: stretch;
+            text-align: center;
+            padding: 0;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        .desktop-scene-scroll {
+            width: 100%;
+            min-width: 0;
+            min-height: 0;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
             align-items: center;
-            text-align: center;
-            padding: clamp(16px, 3dvh, 28px) var(--space-xl) var(--space-xl);
             gap: 10px;
+            padding: clamp(16px, 3dvh, 28px) var(--space-xl) var(--space-xl);
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior-y: contain;
+            scrollbar-gutter: stable;
         }
 
         .desktop-play-surface {
             --desktop-play-surface-width: min(100%, var(--desktop-main-stage-width, 820px));
-            --desktop-play-surface-height: clamp(320px, calc(100dvh - 430px), 500px);
+            --desktop-play-surface-height: clamp(320px, calc(100dvh - 550px), 500px);
             width: var(--desktop-play-surface-width);
             height: var(--desktop-play-surface-height);
             flex: 0 0 var(--desktop-play-surface-height);
@@ -1348,16 +1370,6 @@
             white-space: nowrap;
         }
 
-        .combat-recent-exchange {
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
-            background: rgba(20, 20, 40, 0.55);
-            padding: 6px 8px;
-            max-height: min(12dvh, 86px);
-            overflow: auto;
-            overscroll-behavior: contain;
-        }
-
         .combat-pending-groups {
             display: grid;
             gap: 6px;
@@ -1394,29 +1406,6 @@
             margin-bottom: 4px;
         }
 
-        .combat-recent-exchange ol {
-            list-style: none;
-            display: grid;
-            gap: 4px;
-        }
-
-        .combat-exchange-item {
-            display: grid;
-            grid-template-columns: auto auto minmax(0, 1fr) auto;
-            align-items: start;
-            gap: 6px;
-            padding: 4px 6px;
-            border-radius: var(--radius-sm);
-            background: rgba(255, 255, 255, 0.025);
-            font-size: 12px;
-            line-height: 1.25;
-        }
-
-        .combat-exchange-item.muted {
-            grid-template-columns: minmax(0, 1fr);
-            color: var(--text-muted);
-        }
-
         .combat-exchange-actor {
             color: var(--text-primary);
             font-weight: 700;
@@ -1432,12 +1421,6 @@
         .combat-exchange-text {
             min-width: 0;
             overflow-wrap: anywhere;
-        }
-
-        .combat-exchange-time {
-            color: var(--text-muted);
-            font-size: 10px;
-            white-space: nowrap;
         }
 
         .combat-pending-group {
@@ -1643,14 +1626,21 @@
         .desktop-command-composer {
             display: grid;
             gap: 6px;
-            width: min(100%, 720px);
+            width: 100%;
             max-width: 100%;
             margin: 0 auto;
             min-width: 0;
             position: relative;
             z-index: 4;
-            padding-top: 2px;
-            background: linear-gradient(180deg, rgba(18, 18, 34, 0.72), rgba(18, 18, 34, 0.98) 38%);
+            max-height: min(190px, 32dvh);
+            padding: 8px clamp(16px, 3dvh, 28px) 10px;
+            border-top: 1px solid var(--border-default);
+            background: rgba(18, 18, 34, 0.98);
+            box-shadow: 0 -8px 18px rgba(4, 4, 14, 0.2);
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior-y: contain;
+            scrollbar-gutter: stable;
         }
 
         .desktop-command-composer .selection-sentence,
@@ -1741,6 +1731,207 @@
             font-size: 11px;
         }
 
+        .visually-hidden {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
+            border: 0 !important;
+        }
+
+        .scene-feed-header {
+            position: sticky;
+            top: -8px;
+            z-index: 3;
+            padding: 2px 0;
+            background: rgba(10, 22, 43, 0.96);
+        }
+
+        .scene-feed-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .scene-new-beat-indicator {
+            min-height: 30px;
+            padding: 5px 9px;
+            border-color: rgba(0, 212, 170, 0.45);
+            color: var(--accent-primary);
+            font-size: 10px;
+            line-height: 1;
+            text-transform: uppercase;
+        }
+
+        .scene-new-beat-indicator[hidden] {
+            display: none;
+        }
+
+        .story-latest {
+            min-width: 0;
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .story-latest[data-scene-importance="hint"],
+        .story-latest[data-scene-importance="failure"],
+        .story-latest[data-scene-result="failure"] {
+            color: var(--accent-warning);
+        }
+
+        .story-latest[data-scene-importance="notable"],
+        .story-latest[data-scene-importance="major"],
+        .story-latest[data-scene-result="decisive"] {
+            color: var(--accent-primary);
+        }
+
+        .scene-beat-highlight[data-has-scene-beat="true"] {
+            animation: scene-beat-pulse 700ms ease-out 1;
+        }
+
+        @keyframes scene-beat-pulse {
+            0% { background: rgba(0, 212, 170, 0.18); box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.25); }
+            100% { background: transparent; box-shadow: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .scene-beat-highlight[data-has-scene-beat="true"] {
+                animation: none;
+            }
+        }
+
+        .story-latest-line {
+            display: grid;
+            gap: 3px;
+            max-width: 100%;
+            min-width: 0;
+        }
+
+        .scene-beat-stream {
+            display: grid;
+            gap: 8px;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+        }
+
+        .scene-beat-stream-empty {
+            display: block;
+            min-width: 0;
+            padding: 6px 8px;
+            color: var(--text-muted);
+        }
+
+        .scene-exchange-group {
+            min-width: 0;
+            border-top: 1px solid rgba(88, 88, 132, 0.48);
+        }
+
+        .scene-exchange-group:first-child {
+            border-top: 0;
+        }
+
+        .scene-exchange-group.latest {
+            background: rgba(0, 212, 170, 0.045);
+        }
+
+        .scene-exchange-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 7px 8px 3px;
+            color: var(--text-muted);
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .scene-exchange-header strong {
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .scene-exchange-events {
+            display: grid;
+            min-width: 0;
+        }
+
+        .scene-beat-stream-item {
+            display: block;
+            min-width: 0;
+            padding: 7px 8px;
+            border-top: 1px solid rgba(88, 88, 132, 0.22);
+        }
+
+        .scene-exchange-events .scene-beat-stream-item:first-child,
+        .scene-exchange-group.unlabeled .scene-beat-stream-item {
+            border-top: 0;
+        }
+
+        .scene-beat-stream-item:not(.latest) {
+            opacity: 0.82;
+        }
+
+        .story-summary {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .scene-beat-stream .story-summary {
+            overflow: visible;
+            text-overflow: clip;
+            white-space: normal;
+        }
+
+        .story-meta-line {
+            min-width: 0;
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+            overflow: hidden;
+            color: var(--text-muted);
+            font-size: 10px;
+            line-height: 1.2;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .scene-beat-stream .story-meta-line {
+            flex-wrap: wrap;
+            overflow: visible;
+            text-overflow: clip;
+            white-space: normal;
+        }
+
+        .story-actors,
+        .story-targets {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .story-intent {
+            flex: 0 0 auto;
+            color: var(--accent-primary);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .story-empty {
+            color: var(--text-muted);
+        }
+
         .story-sheet {
             position: fixed;
             inset: 0;
@@ -1790,6 +1981,33 @@
             display: grid;
             gap: 10px;
             text-align: left;
+        }
+
+        .story-event-group {
+            display: grid;
+            gap: 8px;
+        }
+
+        .story-event-group + .story-event-group {
+            padding-top: 10px;
+            border-top: 1px solid var(--border-default);
+        }
+
+        .story-event-group-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--text-muted);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .story-event-group-header h3 {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            letter-spacing: 0;
         }
 
         .story-event {
@@ -7155,7 +7373,7 @@
                 margin-top: 0;
             }
 
-            .mobile-combat-latest-strip {
+            .mobile-combat-context-strip {
                 display: grid;
                 gap: 4px;
                 padding: 8px 10px;
@@ -7167,19 +7385,19 @@
                 color: var(--text-secondary);
             }
 
-            .mobile-combat-latest-meta,
-            .mobile-combat-latest-text {
+            .mobile-combat-context-meta,
+            .mobile-combat-context-text {
                 display: flex;
                 align-items: baseline;
                 gap: 6px;
                 min-width: 0;
             }
 
-            .mobile-combat-latest-meta {
+            .mobile-combat-context-meta {
                 justify-content: space-between;
             }
 
-            .mobile-combat-latest-meta strong {
+            .mobile-combat-context-meta strong {
                 min-width: 0;
                 color: var(--text-primary);
                 overflow: hidden;
@@ -7187,16 +7405,25 @@
                 white-space: nowrap;
             }
 
-            .mobile-combat-latest-meta span {
+            .mobile-combat-context-meta span {
                 flex: 0 0 auto;
                 color: var(--text-muted);
             }
 
-            .mobile-combat-latest-text span:last-child {
+            .mobile-combat-context-text {
+                justify-content: space-between;
+            }
+
+            .mobile-combat-context-text span {
                 min-width: 0;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+            }
+
+            .mobile-combat-context-text span:last-child {
+                flex: 0 0 auto;
+                color: var(--text-muted);
             }
 
             .mobile-combat-story-strip {
@@ -7282,138 +7509,11 @@
                 white-space: nowrap;
             }
 
-            .story-latest {
-                min-width: 0;
-                color: var(--text-secondary);
-                font-size: 12px;
-                line-height: 1.35;
-            }
-
             .mobile-story-latest {
                 margin-top: 4px;
                 overflow: visible;
                 text-overflow: clip;
                 white-space: normal;
-            }
-
-            .story-latest[data-has-scene-beat="true"] {
-                border-radius: var(--radius-xs);
-            }
-
-            .story-latest[data-scene-importance="hint"],
-            .story-latest[data-scene-importance="failure"],
-            .story-latest[data-scene-result="failure"] {
-                color: var(--accent-warning);
-            }
-
-            .story-latest[data-scene-importance="notable"],
-            .story-latest[data-scene-importance="major"],
-            .story-latest[data-scene-result="decisive"] {
-                color: var(--accent-primary);
-            }
-
-            .scene-beat-highlight[data-has-scene-beat="true"] {
-                animation: scene-beat-pulse 700ms ease-out 1;
-            }
-
-            @keyframes scene-beat-pulse {
-                0% { background: rgba(0, 212, 170, 0.18); box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.25); }
-                100% { background: transparent; box-shadow: none; }
-            }
-
-            @media (prefers-reduced-motion: reduce) {
-                .scene-beat-highlight[data-has-scene-beat="true"] {
-                    animation: none;
-                }
-            }
-
-            .story-latest-line {
-                display: grid;
-                gap: 2px;
-                max-width: 100%;
-                min-width: 0;
-            }
-
-            .scene-beat-stream {
-                display: grid;
-                gap: 6px;
-                width: 100%;
-                max-width: 100%;
-                min-width: 0;
-            }
-
-            .scene-beat-stream-empty,
-            .scene-beat-stream-item {
-                display: block;
-                min-width: 0;
-                padding: 6px 8px;
-                border: 1px solid rgba(88, 88, 132, 0.55);
-                border-radius: var(--radius-xs);
-                background: rgba(10, 22, 43, 0.42);
-            }
-
-            .scene-beat-stream-item.latest {
-                background: rgba(10, 22, 43, 0.72);
-                border-color: rgba(0, 212, 170, 0.32);
-            }
-
-            .scene-beat-stream-item:not(.latest) {
-                opacity: 0.74;
-            }
-
-            .story-summary {
-                min-width: 0;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                color: var(--text-primary);
-                font-weight: 700;
-            }
-
-            .scene-beat-stream .story-summary {
-                overflow: visible;
-                text-overflow: clip;
-                white-space: normal;
-            }
-
-            .story-meta-line {
-                min-width: 0;
-                display: flex;
-                align-items: baseline;
-                gap: 5px;
-                overflow: hidden;
-                color: var(--text-muted);
-                font-size: 10px;
-                line-height: 1.2;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-
-            .scene-beat-stream .story-meta-line {
-                flex-wrap: wrap;
-                overflow: visible;
-                text-overflow: clip;
-                white-space: normal;
-            }
-
-            .story-actors,
-            .story-targets {
-                min-width: 0;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-
-            .story-intent {
-                flex: 0 0 auto;
-                color: var(--accent-primary);
-                font-size: 10px;
-                font-weight: 700;
-                text-transform: uppercase;
-            }
-
-            .story-empty {
-                color: var(--text-muted);
             }
 
             .story-sheet {
@@ -8192,13 +8292,13 @@
 		                            <div class="mobile-scene-sheet" data-surface-role="story">
 		                                <div class="mobile-scene-header">
                                             <div class="mobile-scene-title" id="mobile-scene-title" data-stage-layer="story-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</div>
-                                            <button class="nav-btn mobile-new-beat-indicator" id="mobile-new-beat-indicator" data-command-surface="story-controls" data-command-mode="story" data-command-control="jump-new-scene-beat" title="Jump to newest scene beat" aria-label="Jump to newest scene beat" hidden>New</button>
+                                            <button class="nav-btn mobile-new-beat-indicator scene-new-beat-indicator" id="mobile-new-beat-indicator" data-command-surface="story-controls" data-command-mode="story" data-command-control="jump-new-scene-beat" title="Jump to newest scene beat" aria-label="Jump to newest scene beat" hidden>New</button>
                                             <button class="nav-btn mobile-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Scene</button>
                                         </div>
 		                                <div class="mobile-scene-description" id="mobile-scene-description" data-stage-layer="story-passage" data-i18n="ui.scene.wildernessIntro">
 		                                    You find yourself in an untamed land where predators roam and only the strong survive.
 		                                </div>
-                                        <div class="story-latest mobile-story-latest scene-beat-stream" id="mobile-story-latest" data-surface-role="scene-feed-latest" aria-live="polite"></div>
+                                        <div class="story-latest mobile-story-latest scene-beat-stream" id="mobile-story-latest" data-surface-role="scene-feed-latest" data-scene-indicator-id="mobile-new-beat-indicator" role="log" aria-live="off" aria-relevant="additions" aria-label="Scene feed, newest exchanges first"></div>
 		                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" data-stage-layer="event-feed" aria-live="polite"></div>
 	                                <details class="mobile-activity-log" id="mobile-activity-log" data-surface-role="history-drawer">
 	                                    <summary class="mobile-activity-log-summary" data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-mobile-history" aria-label="Open activity log" data-i18n-aria-label="ui.activityLog.open">
@@ -8217,6 +8317,7 @@
 	                            </div>
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
+                            <div class="desktop-scene-scroll" id="desktop-scene-scroll" data-surface-role="scene-scroll">
                             <div class="desktop-play-surface" id="desktop-play-surface" data-surface-role="play-traversal" aria-label="Current play surface">
                                 <div class="desktop-play-cell" id="desktop-play-cell-nw"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-n"></div>
@@ -8238,14 +8339,18 @@
                                 <div class="desktop-play-cell" id="desktop-play-cell-s"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-se"></div>
                             </div>
-                            <div class="desktop-scene-feed-slot" id="desktop-scene-feed-slot" data-surface-role="scene-feed" aria-live="polite">
+                            <div class="desktop-scene-feed-slot" id="desktop-scene-feed-slot" data-surface-role="scene-feed">
                                 <div class="scene-feed-header">
                                     <span class="desktop-story-kicker">Scene</span>
-                                    <button class="nav-btn desktop-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Feed</button>
+                                    <div class="scene-feed-header-actions">
+                                        <button class="nav-btn scene-new-beat-indicator" id="desktop-new-beat-indicator" data-command-surface="story-controls" data-command-mode="story" data-command-control="jump-new-scene-beat" title="Jump to newest scene beat" aria-label="Jump to newest scene beat" hidden>New</button>
+                                        <button class="nav-btn desktop-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Feed</button>
+                                    </div>
                                 </div>
-                                <div class="story-latest scene-beat-stream" id="desktop-scene-feed-latest" data-surface-role="scene-feed-latest"></div>
+                                <div class="story-latest scene-beat-stream" id="desktop-scene-feed-latest" data-surface-role="scene-feed-latest" data-scene-indicator-id="desktop-new-beat-indicator" role="log" aria-live="off" aria-relevant="additions" aria-label="Scene feed, newest exchanges first"></div>
                             </div>
                             <div class="desktop-presence-rail" id="desktop-presence-rail" data-surface-role="presence-rail" aria-live="polite"></div>
+                            </div>
                             <div class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden>
                                 <div class="selection-sentence" id="selection-sentence" role="status" aria-live="polite" aria-atomic="true"></div>
                                 <div class="desktop-context-belt" id="desktop-context-belt" data-surface-role="command-composer" aria-label="Location actions" data-i18n-aria-label="ui.locationActions"></div>
@@ -8255,6 +8360,7 @@
                     </div>
                 </div>
 
+                <div class="visually-hidden" id="scene-feed-announcer" role="status" aria-live="polite" aria-atomic="true"></div>
                 <div class="story-sheet" id="story-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="story-sheet-title" hidden>
                     <div class="story-sheet-window">
                         <div class="story-sheet-header">

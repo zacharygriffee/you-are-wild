@@ -92,8 +92,7 @@ const YAW_COMBAT_SYNC = {
 
     composeControls(app) {
         if (!this.isSlotCompose(app)) return '';
-        const label = app._escapeHtml(app._label('combat.group.clear', 'Clear Group'));
-        return `<div class="unit-actions unit-combat-actions compact combat-group-compose-controls" data-command-surface="combat-group-compose" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${label}"><button class="action-btn" data-command-surface="combat-group-compose" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-group" data-command-slot="exit" title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.clearCombatGroupCompose()">${label}</button></div>`;
+        return '';
     },
 
     ensureSlotCompose(app) {

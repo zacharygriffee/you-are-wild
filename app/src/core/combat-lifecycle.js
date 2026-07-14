@@ -12,6 +12,7 @@ const YAW_COMBAT_LIFECYCLE = {
         app.mode = app.GAME_MODE.COMBAT;
         app.combatState.active = true;
         app.combatState.round = 1;
+        app.combatState.sceneExchangeId = `combat-${(Number(app.storyEventSeq) || 0) + 1}`;
         app.combatState.syncActions = [];
         app.combatState.xpEarned = 0;
         app.party.forEach(p => app._normalizeUnit(p, { disposition: app.DISPOSITION.PARTY }));

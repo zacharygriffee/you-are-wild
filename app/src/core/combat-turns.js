@@ -4,6 +4,22 @@
  */
 
 const YAW_COMBAT_TURNS = {
+    emitSkippedTurn(app, unit, summary, tags = []) {
+        app.emitSceneBeat?.({
+            mode: 'combat',
+            actors: [unit].filter(Boolean),
+            action: 'skip',
+            tags: ['status', 'turn-skipped', ...tags],
+            source: 'combat-status'
+        }, summary, {
+            mode: 'combat',
+            resultKind: 'status',
+            importance: 'notable',
+            tags: ['status', 'turn-skipped', ...tags],
+            source: 'combat-status'
+        });
+    },
+
     processTurn(app) {
         if (!app.combatState.active) return;
         app._sanitizeCombatState({ preserveTurn: true });
@@ -21,7 +37,9 @@ const YAW_COMBAT_TURNS = {
         if (!currentUnit || currentUnit.CPun <= 0 || currentUnit.knockedOut || currentUnit.fledCombat) { app.nextTurn(); return; }
         if (currentUnit.refractory) {
             currentUnit.refractory = false;
-            app._pushLog(app._label('combat.status.recovering', '{name} is recovering and skips their turn.', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'skip' });
+            const summary = app._label('combat.status.recovering', '{name} is recovering and skips their turn.', { name: currentUnit.name });
+            app._pushLog(summary, 'combat', { actor: currentUnit, phase: 'skip' });
+            this.emitSkippedTurn(app, currentUnit, summary, ['recovering']);
             app.renderLog();
             app.nextTurn();
             return;
@@ -44,21 +62,28 @@ const YAW_COMBAT_TURNS = {
         const statusSkip = app._skipTurnFromStatus(currentUnit);
         if (statusSkip) {
             app._pushLog(statusSkip, 'combat', { actor: currentUnit, phase: 'status' });
+            this.emitSkippedTurn(app, currentUnit, statusSkip);
             app.renderLog(); app.nextTurn(); return;
         }
         if (currentUnit.status?.restrained && currentUnit.status.restrained.turns > 0) {
-            app._pushLog(app._label('combat.status.restrainedSkip', '{name} is restrained and cannot act!', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'status' });
+            const summary = app._label('combat.status.restrainedSkip', '{name} is restrained and cannot act!', { name: currentUnit.name });
+            app._pushLog(summary, 'combat', { actor: currentUnit, phase: 'status' });
+            this.emitSkippedTurn(app, currentUnit, summary, ['restrained']);
             app.renderLog(); app.nextTurn(); return;
         }
         if (currentUnit.status?.stuck && currentUnit.status.stuck.turns > 0) {
             currentUnit.status.stuck.turns--;
             if (currentUnit.status.stuck.turns <= 0) delete currentUnit.status.stuck;
-            app._pushLog(app._label('combat.status.stuck', '{name} is stuck in the terrain and loses their turn!', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'terrain' });
+            const summary = app._label('combat.status.stuck', '{name} is stuck in the terrain and loses their turn!', { name: currentUnit.name });
+            app._pushLog(summary, 'combat', { actor: currentUnit, phase: 'terrain' });
+            this.emitSkippedTurn(app, currentUnit, summary, ['stuck']);
             app.renderLog(); app.nextTurn(); return;
         }
         if (currentUnit.status?.enveloped && currentUnit.status.enveloped.turns > 0) {
             currentUnit.CPun -= 4;
-            app._pushLog(`${currentUnit.name} is enveloped by ${currentUnit.status.enveloped.by}!`, 'combat', { actor: currentUnit, phase: 'status' });
+            const summary = `${currentUnit.name} is enveloped by ${currentUnit.status.enveloped.by}!`;
+            app._pushLog(summary, 'combat', { actor: currentUnit, phase: 'status' });
+            this.emitSkippedTurn(app, currentUnit, summary, ['enveloped']);
             if (currentUnit.CPun <= 0) { app._pushLog(`${currentUnit.name} succumbs to the envelopment!`, 'combat', { actor: currentUnit, phase: 'status' }); }
             app.renderLog(); app.nextTurn(); return;
         }

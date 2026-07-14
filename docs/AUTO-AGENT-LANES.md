@@ -15,48 +15,25 @@ workspaces without turning broad product direction into unattended code changes.
 
 ## Current Lanes
 
-`docs/next-objectives.md` is the current backlog authority. The lane map still
-contains useful narrow work packages, but some terminal content checks may lag
-behind source refactors. Before dispatching unattended work, reconcile lane
-checks with the promoted backlog order: UI polish/accessibility/localization,
-docs hygiene, modding/optional LLM doctrine, core-vs-mod feature triage,
-mechanics balance, then later row/reach audit.
+`docs/next-objectives.md` is the current backlog authority. Completed doctrine
+and prototype lanes have been removed from the lane map so terminal checks track
+maintained source ownership instead of historical milestones.
 
-1. `humanoid-creature-canon-doctrine`
-   - Docs-first lane for default species framing and interaction eligibility.
-   - Establishes that baseline interactable creatures should read as
-     human-level sentient, person-like fantasy beings; ordinary animal
-     classifications are mod opt-ins with stronger gating.
+1. `ui-accessibility-localization-regressions`
+   - Fixes demonstrated UI regressions and hardens locale parity, keyboard/ARIA,
+     overflow, and supported viewport behavior.
 
-2. `controls-doctrine`
-   - Docs-first lane for traversal, selection, intent, and inspection controls.
-   - This should complete before broad autonomous UI work.
+2. `mod-public-context-examples`
+   - Hardens the permission-gated public context used by narrative and optional
+     LLM-facing modules without creating a core model/network dependency.
 
-3. `center-tile-traversal-doctrine`
-   - Docs-first lane for the unified 3x3 play surface.
-   - Defines play-surface vs display-map terminology, tile-scoped events,
-     directional movement affordances, expanded map mode, dumb-state-machine
-     viability, optional future LLM-assisted presentation, and desktop hotkeys
-     before UI code changes.
+3. `multi-interaction-regression-hardening`
+   - Covers existing actor-target-intent contracts and selection cleanup without
+     inventing unresolved group semantics.
 
-4. `combat-toolbelt-doctrine`
-   - Docs-first lane for battle layout.
-   - Defines party/enemy strips, intent popup/action-sheet placement, center-stage
-     focus, reduced movement affordances during combat, and party-member flee
-     semantics before implementation.
-
-5. `desktop-intent-menu`
-   - Desktop-only action menu layout work.
-   - Preserve mobile bottom-sheet and long-press behavior.
-
-6. `quest-preview`
-   - Low-priority feature lane.
-   - Adds a localized, safe preview path before quest acceptance.
-
-7. `asset-tileset-manifest`
-   - Feature lane for asset/tileset metadata, AI-generated provenance, relative
-   paths, and fallback behavior.
-   - Does not import the tilesheet yet.
+4. `deterministic-map-invariants`
+   - Adds narrow start-safety, traversal, and deterministic overlay tests while
+     preserving sparse world generation and save compatibility.
 
 New or revised lanes should distinguish narrative/presentation mods from
 structural/gameplay mods. Narrative or LLM-facing work should consume

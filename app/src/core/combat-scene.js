@@ -126,7 +126,6 @@ const YAW_COMBAT_SCENE = {
             total
         });
         const description = this.turnDescription(app, actor);
-        const recent = this.recentExchangeEntries(app, 3);
         const pendingGroups = this.pendingGroupEntries(app);
         const selectedIntent = this.selectedIntentEntry(app, actor);
         const turnOrder = this.turnOrderEntry(app, actor);
@@ -137,25 +136,16 @@ const YAW_COMBAT_SCENE = {
         const pendingHtml = pendingGroups.length
             ? `<div class="combat-pending-groups" aria-label="${app._escapeHtml(app._label('combat.exchange.pendingTitle', 'Queued groups'))}"><div class="combat-exchange-title">${app._escapeHtml(app._label('combat.exchange.pendingTitle', 'Queued groups'))}</div>${pendingGroups.map(entry => `<div class="combat-pending-group"><span class="combat-exchange-intent">${app._escapeHtml(entry.action)}</span><span class="combat-exchange-text">${app._escapeHtml(entry.text)}</span></div>`).join('')}</div>`
             : '';
-        const recentHtml = recent.length
-            ? recent.map(entry => {
-                const actorName = entry.actorName ? `<span class="combat-exchange-actor">${app._escapeHtml(entry.actorName)}</span>` : '';
-                const action = entry.action ? `<span class="combat-exchange-intent">${app._escapeHtml(app._uiLabel(entry.action))}</span>` : '';
-                const stamp = app._logTimestamp(entry);
-                return `<li class="combat-exchange-item">${actorName}${action}<span class="combat-exchange-text">${app._escapeHtml(entry.text)}</span><span class="combat-exchange-time">${app._escapeHtml(stamp)}</span></li>`;
-            }).join('')
-            : `<li class="combat-exchange-item muted"><span class="combat-exchange-text">${app._escapeHtml(app._label('combat.exchange.none', 'No exchanges yet.'))}</span></li>`;
         return `<section class="combat-scene-summary" aria-label="${app._escapeHtml(app._label('combat.exchange.summary', 'Combat summary'))}">`
             + `<div class="combat-current-turn"><span>${app._escapeHtml(status)}</span><strong>${app._escapeHtml(actor?.name || app._label('ui.combat', 'Combat'))}</strong></div>`
             + `<div class="combat-turn-order" aria-label="${app._escapeHtml(turnOrderLabel)}"><div class="combat-exchange-title">${app._escapeHtml(turnOrderLabel)}</div><div class="combat-turn-order-row"><span>${app._escapeHtml(app._label('combat.exchange.currentActor', 'Current'))}</span><strong>${app._escapeHtml(turnOrder.currentName)}</strong></div><div class="combat-turn-order-row"><span>${app._escapeHtml(app._label('combat.exchange.nextActor', 'Next'))}</span><strong>${app._escapeHtml(turnOrder.nextName)}</strong></div></div>`
             + `<p>${app._escapeHtml(description)}</p>`
             + selectedIntentHtml
             + pendingHtml
-            + `<div class="combat-recent-exchange"><div class="combat-exchange-title">${app._escapeHtml(app._label('combat.exchange.recent', 'Recent exchange'))}</div><ol>${recentHtml}</ol></div>`
             + `</section>`;
     },
 
-    mobileLatestHtml(app, unit = null) {
+    mobileContextHtml(app, unit = null) {
         const actor = this.actor(app, unit);
         const turn = (app.combatState?.currentTurn ?? 0) + 1;
         const total = Math.max(1, app.combatState?.turnQueue?.length || 1);
@@ -164,15 +154,12 @@ const YAW_COMBAT_SCENE = {
             turn,
             total
         });
-        const recent = this.recentExchangeEntries(app, 1)[0] || null;
-        const fallbackText = this.turnDescription(app, actor);
-        const actorName = recent?.actorName || actor?.name || app._label('ui.combat', 'Combat');
-        const action = recent?.action ? app._uiLabel(recent.action) : '';
-        const text = recent?.text || fallbackText;
-        const actionHtml = action ? `<span class="combat-exchange-intent">${app._escapeHtml(action)}</span>` : '';
-        return `<div class="mobile-combat-latest-strip" aria-label="${app._escapeHtml(app._label('combat.exchange.recent', 'Recent exchange'))}">`
-            + `<div class="mobile-combat-latest-meta"><strong>${app._escapeHtml(actorName)}</strong><span>${app._escapeHtml(status)}</span></div>`
-            + `<div class="mobile-combat-latest-text">${actionHtml}<span>${app._escapeHtml(text)}</span></div>`
+        const turnOrder = this.turnOrderEntry(app, actor);
+        const text = this.turnDescription(app, actor);
+        const next = app._label('combat.exchange.nextActor', 'Next') + ': ' + turnOrder.nextName;
+        return `<div class="mobile-combat-context-strip" aria-label="${app._escapeHtml(app._label('combat.exchange.summary', 'Combat summary'))}">`
+            + `<div class="mobile-combat-context-meta"><strong>${app._escapeHtml(actor?.name || app._label('ui.combat', 'Combat'))}</strong><span>${app._escapeHtml(status)}</span></div>`
+            + `<div class="mobile-combat-context-text"><span>${app._escapeHtml(text)}</span><span>${app._escapeHtml(next)}</span></div>`
             + `</div>`;
     },
 
@@ -181,7 +168,7 @@ const YAW_COMBAT_SCENE = {
         YAW_CENTER_CONTEXT.clearPresence();
         const title = this.turnTitle(app, unit);
         const html = this.sceneHtml(app, unit);
-        const mobileHtml = this.mobileLatestHtml(app, unit);
+        const mobileHtml = this.mobileContextHtml(app, unit);
         const textDescription = this.turnDescription(app, unit);
         const titleEl = document.getElementById('scene-title');
         const descEl = document.getElementById('scene-description');

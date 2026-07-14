@@ -9,6 +9,90 @@ const YAW_COMBAT_ACTOR_STATE = {
         return app.combatState.turnQueue?.[app.combatState.currentTurn]?.unit || null;
     },
 
+    blockingStatus(unit) {
+        if (!unit) return null;
+        if (unit.refractory) return 'refractory';
+        const status = unit.status || {};
+        if (status.stun?.turns > 0) return 'stun';
+        if (status.freeze?.skip) return 'freeze';
+        if (status.sleep?.turns > 0) return 'sleep';
+        if (status.restrained?.turns > 0) return 'restrained';
+        if (status.stuck?.turns > 0) return 'stuck';
+        if (status.enveloped?.turns > 0) return 'enveloped';
+        if (status.fear?.turns > 0 && unit.CPun < unit.MPun * 0.3) return 'fear-flee';
+        return null;
+    },
+
+    progressState(app) {
+        if (!app.combatState?.active) {
+            return { kind: 'inactive', phase: 'none', actorId: null, actorName: null, commands: [] };
+        }
+        const livingEnemies = app._livingEnemies?.(app.creatures) || [];
+        const livingParty = (app.party || []).filter(unit => unit?.CPun > 0 && !unit.knockedOut && !unit.fledCombat);
+        if (livingEnemies.length === 0 || livingParty.length === 0) {
+            return {
+                kind: 'terminal',
+                phase: livingEnemies.length === 0 ? 'victory' : 'defeat',
+                actorId: null,
+                actorName: null,
+                commands: ['resolve-combat']
+            };
+        }
+        const actor = this.current(app);
+        if (!actor) {
+            return { kind: 'automatic', phase: 'repair-queue', actorId: null, actorName: null, commands: ['process-turn'] };
+        }
+        const actorId = app._unitSelectionId(actor);
+        const base = { actorId, actorName: actor.name || actorId };
+        const blockingStatus = this.blockingStatus(actor);
+        if (blockingStatus) {
+            return { kind: 'automatic', phase: `status-${blockingStatus}`, ...base, commands: ['process-turn'] };
+        }
+        const controllable = app.party.includes(actor) && (actor.name === app.player?.name || actor.obedient !== false);
+        if (!controllable) {
+            return { kind: 'automatic', phase: app.party.includes(actor) ? 'ally-ai' : 'enemy-ai', ...base, commands: ['process-turn'] };
+        }
+        if (app.combatState.processing) {
+            return { kind: 'invalid', phase: 'stale-processing', ...base, commands: ['recover-combat'] };
+        }
+        if (app.feedSelection?.active) {
+            return { kind: 'manual', phase: 'feed-options', ...base, commands: ['cancel-feed'] };
+        }
+        if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
+            return { kind: 'manual', phase: `sync-${app.syncSelection.phase || 'choose'}`, ...base, commands: ['cancel-sync'] };
+        }
+        if (app.targetSelection?.source === 'combat') {
+            return { kind: 'manual', phase: 'targeting', ...base, commands: ['cancel-targeting'] };
+        }
+        if (app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent) {
+            return { kind: 'manual', phase: 'combat-plan-confirm', ...base, commands: ['confirm-combat-plan', 'clear-intent'] };
+        }
+        if (app._isCombatGroupCompose?.()) {
+            return { kind: 'manual', phase: 'combat-group-compose', ...base, commands: ['skip', 'flee', 'clear-group'] };
+        }
+        return { kind: 'manual', phase: 'choose-action', ...base, commands: ['skip', 'flee'] };
+    },
+
+    recoverProgress(app, reason = 'unknown') {
+        if (!app.combatState?.active || app._recoveringCombatProgress) return false;
+        app._recoveringCombatProgress = true;
+        try {
+            app.combatState.processing = false;
+            app._clearTransientInteractionState?.();
+            this.sanitize(app, { preserveTurn: true });
+            app.combatProgressDiagnostic = {
+                reason: String(reason || 'unknown'),
+                snapshot: this.progressState(app),
+                round: app.combatState.round || 1,
+                turn: app.combatState.currentTurn || 0
+            };
+            app.processTurn();
+            return true;
+        } finally {
+            app._recoveringCombatProgress = false;
+        }
+    },
+
     ambushInitiativeBonus(app) {
         return Math.max(25, 100 - app._partyRoleEffect('guard', 35, 75));
     },

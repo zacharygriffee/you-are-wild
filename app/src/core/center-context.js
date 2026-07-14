@@ -386,8 +386,8 @@ const YAW_CENTER_CONTEXT = {
         const actorCount = overflow.filter(entry => entry?.type === 'player' || entry?.type === 'party').length;
         const stageCount = overflow.filter(entry => entry?.type === 'items' || entry?.type === 'place').length;
         if (creatureCount > 0) return { route: 'target', control: 'open-target-picker', count: creatureCount };
-        if (actorCount > 0) return { route: 'actor', control: 'open-actor-picker', count: actorCount };
         if (stageCount > 0) return { route: 'stage', control: 'focus-stage-presence', count: stageCount };
+        if (actorCount > 0) return { route: 'actor', control: 'open-actor-picker', count: actorCount };
         return { route: 'details', control: 'open-details', count: 0 };
     },
 

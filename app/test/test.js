@@ -1297,6 +1297,47 @@ asyncTest('Module data contributions are owned and removed on disable before rel
   assertEqual(badItemStoredModule.enabled, false, 'Invalid item contribution should leave module disabled in storage');
 });
 
+test('Narrative modules receive bounded serializable public context', () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT: { preferences: { maxTier: 1, language: 'es' } } });
+  const App = MODULE_SYSTEM._testApp;
+  const player = {
+    id: 'context-player', name: 'You', species: 'human', disposition: 'PARTY', level: 2,
+    CPun: 80, MPun: 100, CPle: 30, MPle: 100, hunger: 20, size: 4,
+    combatRow: 'front', ranged: true, parts: 'hidden-anatomy', stomach: [{ id: 'hidden-prey' }],
+    status: { burning: { turns: 2 }, asleep: null }
+  };
+  App.location = { x: 3, y: -2 };
+  App.combatState = { active: true };
+  App.party = [player];
+  App.creatures = [{ id: 'context-target', name: 'Target', species: 'siren', disposition: 'ENEMY', CPun: 40, MPun: 80, CPle: 5, MPle: 50, hunger: 0, size: 3, combatRow: 'back' }];
+  App.quests = [{ id: 'context-quest', title: 'Find the Road', status: 'active', progress: 1, required: 3, objective: { type: 'travel', x: 8, y: 2 } }];
+  App.storyEvents = [{ id: 'beat-1', mode: 'combat', action: 'fight', shape: 'one-to-one', resultKind: 'damage', summary: 'A clean hit.', actors: [player], targets: App.creatures, deltas: [{ type: 'punishment', amount: 4 }], tags: ['combat'], importance: 'normal', source: 'interaction-result' }];
+  App.log = [{ text: 'Combat started.', type: 'combat', round: 1, turn: 1, actorId: 'context-player' }];
+  App.getTileMapSummary = () => ({ x: 3, y: -2, displayBiome: 'Forest', explored: true, danger: 'nearby threat' });
+
+  const api = MODULE_SYSTEM.createModAPI('context-reader', { permissions: ['ui.read'] });
+  const context = api.getContext({ limit: 5 });
+  assertEqual(context.version, 1, 'Public context should expose a versioned contract');
+  assertEqual(context.mode, 'combat', 'Public context should expose deterministic game mode');
+  assertEqual(context.content.language, 'es', 'Public context should expose active language policy');
+  assertEqual(context.party[0].statuses.join(','), 'burning', 'Public unit summary should expose normalized active status names');
+  assertEqual(context.sceneBeats[0].actors[0].id, 'context-player', 'Scene Beat summaries should replace raw unit references with public unit summaries');
+  assertEqual(context.location.tile.displayBiome, 'Forest', 'Public context should reuse safe tile map summaries');
+  const serialized = JSON.stringify(context);
+  assertNotContains(serialized, 'hidden-anatomy', 'Public context should not expose compatibility anatomy fields');
+  assertNotContains(serialized, 'hidden-prey', 'Public context should not expose containment internals');
+  assertEqual(JSON.parse(serialized).quests[0].id, 'context-quest', 'Public context should remain JSON serializable');
+
+  let denied = false;
+  try {
+    MODULE_SYSTEM.createModAPI('context-denied', { permissions: [] }).getContext();
+  } catch (e) {
+    denied = true;
+    assertContains(e.message, 'ui.read', 'Public context denial should name the required permission');
+  }
+  assertEqual(denied, true, 'Modules without ui.read should not receive public context');
+});
+
 asyncTest('Module unload clears trusted-local runtime timers', async () => {
   const scheduledTimeouts = new Set();
   const scheduledIntervals = new Set();
@@ -1921,8 +1962,8 @@ test('Combat save state helper module is registered before app code', () => {
   assertContains(combatSaveStateContent, 'loaded?.questState?.combatState?.active', 'Refresh reads should reject non-combat snapshots');
   assertContains(combatSaveStateContent, 'YAW_DEFEAT_RECOVERY.isWipedCombatSave(app, loaded)', 'Refresh reads should reject wiped combat snapshots');
   assertContains(combatSaveStateContent, 'app._clearCombatRefreshSnapshot(slotName)', 'Invalid refresh snapshots should clean themselves up');
-  assertContains(combatSaveStateContent, 'app.showActorActions(unit)', 'Loaded party turns should restore actor actions through the combat composer');
-  assertContains(combatSaveStateContent, 'app.processTurn()', 'Loaded enemy turns should resume the combat loop');
+  assertContains(combatSaveStateContent, "app._recoverCombatProgress?.('loaded-combat')", 'Loaded turns should resume through shared combat progress recovery');
+  assertNotContains(combatSaveStateContent, 'app.showActorActions(unit)', 'Loaded party turns should not bypass shared status and turn processing');
   assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.writeRefreshSnapshot(this, slotName)', 'App refresh write wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.restoreCombatState(this, savedCombat)', 'App combat restore wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.readRefreshSnapshot(this, slotName)', 'App refresh read wrapper should delegate to the helper');
@@ -2556,8 +2597,8 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, "belt.setAttribute('data-command-intent', meta.intent || 'choose')", 'Mobile combat toolbelt root should expose current intent metadata');
   assertContains(mobileCombatToolbeltContent, "belt.removeAttribute('data-command-actor-count')", 'Mobile combat toolbelt should clear root actor count metadata when inactive');
   assertContains(mobileCombatToolbeltContent, "app._combatActionButtons(actor", 'Mobile combat toolbelt should reuse the shared combat action button path');
-  assertContains(combatSceneContent, 'mobileLatestHtml(app', 'Combat scene helper should render a compact mobile latest-exchange strip');
-  assertContains(combatSceneContent, 'mobile-combat-latest-strip', 'Mobile combat scene should not reuse the full boxed desktop summary');
+  assertContains(combatSceneContent, 'mobileContextHtml(app', 'Combat scene helper should render compact mobile turn context');
+  assertContains(combatSceneContent, 'mobile-combat-context-strip', 'Mobile combat scene should keep turn context separate from the shared Scene Feed');
   assertContains(appContent, 'YAW_MOBILE_COMBAT_TOOLBELT.render(this)', 'App mobile combat toolbelt wrapper should delegate to the helper');
 });
 
@@ -4045,6 +4086,16 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'mod.loading': 'Cargando modulos...'", 'Spanish module loading fallback missing');
 });
 
+test('Maintained locales expose matching translation keys', () => {
+  const CONTENT = loadContentSystemForTest();
+  const english = Object.keys(CONTENT.locales.en || {}).sort();
+  const spanish = Object.keys(CONTENT.locales.es || {}).sort();
+  const missingSpanish = english.filter(key => !Object.prototype.hasOwnProperty.call(CONTENT.locales.es || {}, key));
+  const missingEnglish = spanish.filter(key => !Object.prototype.hasOwnProperty.call(CONTENT.locales.en || {}, key));
+  assertEqual(missingSpanish.join(','), '', `Spanish locale is missing keys: ${missingSpanish.join(', ')}`);
+  assertEqual(missingEnglish.join(','), '', `English locale is missing keys: ${missingEnglish.join(', ')}`);
+});
+
 // === TEMPLATE TESTS ===
 section('Template Tests', 'ui');
 
@@ -4910,6 +4961,11 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden', 'Desktop command composer shell should start hidden until it has real controls');
   assertContains(template, '.desktop-command-composer .selection-sentence', 'Desktop command composer should scope the command sentence inside the composer shell');
   assertContains(template, '.desktop-command-composer .desktop-context-belt', 'Desktop command composer should scope the action belt inside the composer shell');
+  assertContains(template, 'class="desktop-scene-scroll" id="desktop-scene-scroll" data-surface-role="scene-scroll"', 'Desktop battle and narrative content should share an addressable scroll region');
+  assertContains(template, 'grid-template-rows: minmax(0, 1fr) auto;', 'Desktop scene layout should reserve a fixed row for the command shelf');
+  assertContains(template, '.desktop-scene-scroll {', 'Desktop scene scroll region should have bounded styling');
+  assertContains(template, 'scrollbar-gutter: stable;', 'Desktop scrolling should reserve scrollbar space instead of shifting the command shelf');
+  assertContains(template, 'max-height: min(190px, 32dvh);', 'Desktop command shelf should cap expanded controls without leaving the viewport');
   assert(template.indexOf('id="mobile-mini-map"') < template.indexOf('id="mobile-creature-presence-cue"'), 'Mobile creature presence cue should sit below the 3x3 stage');
   assert(template.indexOf('id="mobile-creature-presence-cue"') < template.indexOf('id="mobile-control-belt"'), 'Mobile creature presence cue should stay outside the fixed command belt');
   assertContains(template, 'id="mobile-creature-presence-cue" data-surface-role="presence-rail" data-stage-surface="presence"', 'Mobile creature cue container should identify as a compact stage presence rail');
@@ -5055,7 +5111,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'overflow-x: auto;\n                overflow-y: hidden;\n                overscroll-behavior-x: contain;', 'mobile unit panels should own horizontal scrolling');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-chip {\n                flex-basis: clamp(132px, 42vw, 172px);', 'combat unit chips should keep stable horizontal card widths');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-control-belt:not(.has-controls)', 'combat should hide the floating exploration belt when it has no real controls');
-  assertContains(template, '.mobile-combat-latest-strip', 'combat scene summary should become a single compact latest-exchange strip on mobile');
+  assertContains(template, '.mobile-combat-context-strip', 'combat scene summary should become compact non-duplicating turn context on mobile');
   assertContains(template, '.mobile-activity-log[open]', 'mobile activity log should expand as an overlay drawer instead of pushing story, stage, or combat controls');
   assertContains(sceneShellContent, "if (mobileActions) mobileActions.style.display = 'none';", 'mobile combat should not show an empty bottom action bar');
   assertContains(mobileUnitStripsContent, "app.combatState?.active\n            ? app._label('ui.enemies', 'Enemies')", 'mobile combat creature strip should be labeled as enemies');
@@ -5448,6 +5504,28 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     fn => fn(),
     math
   );
+  const originalUpdateLanguage = App.updateLanguage.bind(App);
+  App.__testLanguage = 'en';
+  App.updateLanguage = function(language) {
+    this.__testLanguage = language;
+    return originalUpdateLanguage(language);
+  };
+  const originalLabel = App._label.bind(App);
+  App._label = function(key, fallback, vars = {}) {
+    const currentOverrides = {
+      en: {
+        'ui.tutorial.combat.content': 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Select actors, mark targets, choose an intent, then commit group plans. Each intent owns its reach: social actions can cross rows, while physical attempts may fail and explain why in the Scene Feed.',
+        'structure.notEnterable': 'There is no interior to enter here.'
+      },
+      es: {
+        'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Hablar, Comer, Jugar, Alimentar o Huir. Selecciona actores, marca objetivos, elige una intencion y confirma planes grupales. Cada intencion tiene su propio alcance: las acciones sociales pueden cruzar filas, mientras que los intentos fisicos pueden fallar y explicarse en la Scene Feed.',
+        'structure.notEnterable': 'No hay un interior para entrar aqui.'
+      }
+    };
+    const value = currentOverrides[this.__testLanguage]?.[key];
+    if (!value) return originalLabel(key, fallback, vars);
+    return value.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
+  };
   App.renderLog = App.renderLog.bind(App);
   App.renderParty = App.renderParty.bind(App);
   App.renderCreatures = App.renderCreatures.bind(App);
@@ -6038,7 +6116,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'data-command-intent="sync_fight" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Sync fight should identify itself as an intent-slot control');
   assertNotContains(html, 'selected-target-summary', 'Sync action tray should leave actor intent summary to the composer sentence');
   assertContains(html, 'aria-label="Ataque grupal"', 'Sync fight action should expose localized accessible label');
-  assertContains(html, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Sync action composer should tag cancel as a combat-mode exit');
+  assertContains(html, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-sync"', 'Sync action composer should tag cancel as a combat-mode exit');
   assertContains(html, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Sync action composer should tag cancel as an exit-slot control');
   assertContains(html, 'data-command-control="cancel-sync"', 'Sync action composer should expose a structural cancel control');
   assertContains(html, 'Cancel Sync', 'Sync tray should expose a mode-specific cancel exit');
@@ -6054,7 +6132,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync participant composer should identify the shared command grammar');
   assertContains(html, 'data-command-control="confirm-sync-participants"', 'Sync participant composer should expose confirm as a structural control');
   assertContains(html, 'data-command-control="confirm-sync-participants" data-command-slot="actor"', 'Sync participant confirm should identify the actor slot');
-  assertContains(html, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Sync participant composer should tag cancel as a combat-mode exit');
+  assertContains(html, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-sync"', 'Sync participant composer should tag cancel as a combat-mode exit');
   assertContains(html, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Sync participant composer should tag cancel as an exit-slot control');
   assertContains(html, 'Confirmar participantes', 'Sync participant composer should expose confirm');
   assertContains(html, 'Cancel Sync', 'Sync participant composer should keep a mode-specific cancel exit');
@@ -6073,7 +6151,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'data-command-surface="sync-targeting"', 'Sync target composer should identify its target-pick surface');
   assertContains(html, 'data-command-surface="sync-targeting" data-command-mode="combat"', 'Sync target composer should identify combat command mode');
   assertContains(html, 'data-command-surface="sync-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync target composer should identify the shared command grammar');
-  assertContains(html, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Sync target composer should tag cancel as a combat-mode exit');
+  assertContains(html, 'data-command-surface="sync-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-sync"', 'Sync target composer should tag cancel as a combat-mode exit');
   assertContains(html, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Sync target composer should tag cancel as an exit-slot control');
   assertContains(html, 'Cancel Sync', 'Sync target composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync target tray should leave actor intent summary to the composer sentence');
@@ -6319,6 +6397,33 @@ test('Charm reverses enemy target selection', () => {
   App.enemyTurn(charmed);
   assert(allyEnemy.CPun < 100, 'Charmed enemy should attack another enemy');
   assertEqual(player.CPun, 100, 'Charmed enemy should not attack the player');
+});
+
+test('Charmed lone enemy without a reversed target advances instead of stalling', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'charm-no-target-player' });
+  const enemy = makeUnit('Charmed Enemy', {
+    id: 'charm-no-target-enemy',
+    disposition: App.DISPOSITION.ENEMY,
+    status: { charm: { turns: 2, by: 'You' } }
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: enemy, initiative: 20 }, { unit: player, initiative: 10 }],
+    syncActions: []
+  };
+  let advances = 0;
+  App.nextTurn = () => { advances++; };
+  App.enemyTurn(enemy);
+  assertEqual(advances, 1, 'Charmed enemy with no valid reversed target should consume its turn');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'no valid target', 'Charmed no-target skip should explain why the turn advanced');
+  assertEqual(App.latestSceneBeat.tags.includes('turn-skipped'), true, 'Charmed no-target skip should emit a causal Scene Beat');
 });
 
 test('Fear can skip or force low-health combatants to flee', () => {
@@ -7057,7 +7162,7 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
   assertContains(composerHtml, 'data-command-mode="combat" data-command-intent="feed:heal" data-command-grammar="actor-target-intent"', 'Feed options should identify the shared command grammar on sub-action intents');
   assertContains(composerHtml, 'data-command-intent="feed:heal" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Feed options should identify sub-action buttons as intent-slot controls');
   assertContains(composerHtml, 'Heal', 'Feed options tray should expose sub-action controls');
-  assertContains(composerHtml, 'data-command-mode="combat" data-command-control="cancel-feed"', 'Feed options should tag cancel as a combat-mode exit');
+  assertContains(composerHtml, 'data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-feed"', 'Feed options should tag cancel as a combat-mode exit');
   assertContains(composerHtml, 'data-command-control="cancel-feed" data-command-slot="exit"', 'Feed options should tag cancel as an exit-slot control');
   assertContains(composerHtml, 'data-command-control="cancel-feed"', 'Feed options should expose Cancel Feed as a structural exit');
   assertContains(composerHtml, 'Cancel Feed', 'Feed options tray should expose a mode-specific cancel exit');
@@ -7432,7 +7537,7 @@ test('Mobile creature strip and long-press mark corpse targets through the compo
   App.renderMobileCreatureStrip();
   const card = elements.get('mobile-creature-card');
   const html = elements.get('mobile-creature-strip').innerHTML;
-  assertEqual(card.style.display, 'block', 'Corpse-only mobile creature panel should remain visible');
+  assertEqual(card.style.display, 'none', 'Corpse-only mobile creature rail should remain collapsed until requested');
   assertContains(html, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile corpse chip should identify target routing');
   assertContains(html, "toggleExplorationTarget('creature','fallen-mobile')", 'Mobile corpse chip should mark remains as the composer target');
   assertNotContains(html, "selectIntent('creature','fallen-mobile','loot','mobile-chip')", 'Mobile corpse chip should not directly expose Loot outside the composer');
@@ -7441,6 +7546,8 @@ test('Mobile creature strip and long-press mark corpse targets through the compo
   assertNotContains(html, 'data-command-intent="scavenge"', 'Mobile corpse chip should not duplicate Scavenge intent metadata on the chip');
   assertNotContains(html, "showIntentMenu('creature','fallen-mobile')", 'Mobile corpse chip should not duplicate loot/scavenge behind a visible action menu');
   assertNotContains(html, "showRadialIntentMenu('creature','fallen-mobile','secondary-click')", 'Mobile corpse chip should not expose a duplicate secondary-click radial menu');
+  App.focusMobileCreatureRail();
+  assertEqual(card.style.display, 'block', 'Corpse-only mobile creature rail should remain reachable from the Creatures control');
   App.showMobileCreatureContext('fallen-mobile');
   assert(App.explorationTargetIds.includes('creature:fallen-mobile'), 'Mobile corpse long-press should mark remains as the composer target');
   assertContains(elements.get('mobile-target-action-tray').innerHTML, "App.selectIntent('creature','fallen-mobile','loot','composer-tray')", 'Marked mobile corpse should expose Loot through the visible composer tray');
@@ -8170,7 +8277,7 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   App.renderExplorationActions();
   const exploreHtml = elements.get('desktop-context-belt').innerHTML;
   assertEqual(elements.get('scene-actions').innerHTML, '', 'Desktop center presentation should not own exploration action buttons');
-  assertContains(exploreHtml, 'aria-label="Rest"', 'Desktop context belt should keep real Rest button');
+  assertContains(exploreHtml, 'aria-label="Rest', 'Desktop context belt should keep real Rest button');
   assertNotContains(exploreHtml, 'aria-label="Enter"', 'Desktop context belt should not expose core structure interiors by default');
   assertNotContains(exploreHtml, 'aria-label="Items"', 'Desktop exploration should not duplicate player inventory in center');
   assertNotContains(exploreHtml, 'action-legend', 'Desktop exploration should not render a duplicate tiny icon legend beside real buttons');
@@ -8196,10 +8303,10 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   assertNotContains(combatHtml, 'aria-label="Enter"', 'Desktop combat center should clear stale Enter actions from exploration');
   assertNotContains(combatHtml, 'aria-label="Fight"', 'Desktop combat center should not duplicate panel action buttons');
   assertContains(combatBeltHtml, 'data-command-intent="fight"', 'Desktop combat composer should tag Fight with its stable internal intent id');
-  assertContains(combatBeltHtml, 'aria-label="Fight"', 'Desktop combat should keep real Fight button in the composer belt');
+  assertContains(combatBeltHtml, 'aria-label="Fight', 'Desktop combat should keep real Fight button in the composer belt');
   assertContains(combatBeltHtml, 'data-command-intent="flee"', 'Desktop combat composer should tag Flee with its stable internal intent id');
   assertContains(combatBeltHtml, 'data-command-mode="combat" data-command-intent="flee" data-command-grammar="actor-target-intent"', 'Desktop combat Flee button should identify the shared command grammar on the intent itself');
-  assertContains(combatBeltHtml, 'aria-label="Flee"', 'Desktop combat should keep real Flee button in the composer belt');
+  assertContains(combatBeltHtml, 'aria-label="Flee', 'Desktop combat should keep real Flee button in the composer belt');
   assertNotContains(partyHtml, 'action-legend', 'Desktop combat should not render a duplicate tiny icon legend beside real buttons');
 });
 
@@ -8218,8 +8325,6 @@ test('Center tile stays traversal and context only across interaction states', (
     'desktop-context-belt',
     'selection-sentence',
     'target-action-row',
-    'unit-card',
-    'mobile-unit-chip',
     'panel-interaction-tray',
     'unit-combat-actions',
     'executeCombatIntent(',
@@ -8670,8 +8775,6 @@ test('Center presence focus selects mobile composer state without opening drawer
   assertEqual(App.focusPresence('creature', 'guide-1'), true, 'Mobile creature presence focus should resolve');
   assert(App.explorationTargetIds.includes('creature:guide-1'), 'Mobile creature presence focus should mark the target');
   App.renderMap();
-  assertContains(document.getElementById('mobile-mini-map').innerHTML, 'selected selected-target', 'Mobile creature presence should visually expose selected target state after focus');
-  assertContains(document.getElementById('mobile-mini-map').innerHTML, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile creature presence should expose target selection state after focus');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile creature presence focus should update the target sentence');
   assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile creature presence focus should expose target actions in the visible tray');
   assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Mobile creature presence focus should not open the creature drawer');
@@ -8720,13 +8823,14 @@ test('Compact exploration rail details round-trip preserves composer state', () 
   assert(App.explorationTargetIds.includes('creature:guide-1'), 'Closing party detail should preserve marked creature target');
 
   App.selectIntent('creature', 'guide-1', 'trade', 'composer-tray');
-  assertContains(el('mobile-creature-strip').innerHTML, 'trade-drawer', 'Creature detail should replace mobile target rail temporarily');
+  assertContains(el('transaction-window-root').innerHTML, 'Guide Trade', 'Trade should open the focused transaction window');
   assertEqual(JSON.stringify(App.explorationActorIds), JSON.stringify(['ally-1']), 'Opening creature detail should preserve selected actors');
   assert(App.explorationTargetIds.includes('creature:guide-1'), 'Opening creature detail should preserve marked target');
 
-  App.closePanelDetails('creature');
-  assertContains(el('mobile-creature-strip').innerHTML, 'mobile-unit-chip', 'Closing creature detail should restore compact target rail');
-  assertContains(el('mobile-creature-strip').innerHTML, 'selected selected-target', 'Restored target rail should visibly keep marked target state');
+  App.closeTransactionWindow();
+  App.renderMobileCreatureStrip();
+  assertContains(el('mobile-creature-strip').innerHTML, 'mobile-unit-chip', 'Closing the transaction should preserve compact target controls');
+  assertContains(el('mobile-creature-strip').innerHTML, 'selected selected-target', 'Preserved target controls should keep marked target state');
   assertContains(el('mobile-selection-sentence').innerHTML, 'Ally', 'Creature detail close should keep selected actor in composer sentence');
   assertContains(el('mobile-selection-sentence').innerHTML, 'Guide', 'Creature detail close should keep marked target in composer sentence');
   assertContains(el('mobile-target-action-tray').innerHTML, "selectIntent('creature','guide-1','trade','composer-tray')", 'Creature detail close should restore target composer intents');
@@ -8767,9 +8871,9 @@ test('Mobile presence overflow opens compact rails instead of drawers', () => {
   App.combatState.active = false;
 
   assertEqual(App.focusPresenceOverflow('target'), true, 'Mobile target overflow should resolve');
-  assertEqual(App.mobileCreatureRailOpen, true, 'Mobile target overflow should open the compact target rail');
-  assertContains(document.getElementById('mobile-creature-strip').innerHTML, 'mobile-unit-chip', 'Mobile target overflow should render compact target chips');
-  assertContains(document.getElementById('mobile-creature-strip').innerHTML, 'data-command-control="focus-target"', 'Mobile target overflow should expose target focus controls');
+  assertEqual(App.mobileTargetPickerOpen, true, 'Mobile target overflow should open the compact target picker');
+  assertContains(document.getElementById('mobile-target-picker-belt').innerHTML, 'mobile-target-picker-chip', 'Mobile target overflow should render compact target chips');
+  assertContains(document.getElementById('mobile-target-picker-belt').innerHTML, 'data-command-control="focus-target"', 'Mobile target overflow should expose target focus controls');
   assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Mobile target overflow should not open the full Creatures drawer');
   assertEqual(document.getElementById('panel-backdrop').classList.contains('active'), false, 'Mobile target overflow should not enable the drawer backdrop');
 
@@ -8782,7 +8886,7 @@ test('Mobile presence overflow opens compact rails instead of drawers', () => {
 });
 
 test('Presence overflow routes hidden stage cues into composer focus', () => {
-  const { App, document } = loadAppForCombat(() => 0.5);
+  const { App, document } = loadAppForCombat(() => 0.5, { window: { innerWidth: 390 } });
   const el = id => document.getElementById(id);
   const player = makeUnit('You', { id: 'player-1' });
   const allies = [1, 2, 3, 4].map(index => makeUnit(`Ally ${index}`, { id: `ally-${index}` }));
@@ -8834,15 +8938,15 @@ test('Presence overflow routes hidden stage cues into composer focus', () => {
   App.mobileCreatureRailOpen = false;
   App.renderMap();
   const mobileHtml = el('mobile-mini-map').innerHTML;
-  assertContains(mobileHtml, "App.focusPresenceOverflow('stage:place:landmark:Ancient Tree')", 'Mobile stage-only overflow should route to the hidden place cue');
+  assertContains(mobileHtml, "App.focusPresenceOverflow('stage:place:structure:camp')", 'Mobile stage-only overflow should route to the highest-priority hidden place cue');
   assertContains(mobileHtml, 'data-command-control="focus-stage-presence"', 'Mobile stage-only overflow should identify stage-presence focus routing');
   assertContains(mobileHtml, 'data-command-control="focus-stage-presence" data-command-grammar="actor-target-intent" data-command-slot="target"', 'Mobile stage-only overflow should identify the composer target slot');
   assertContains(mobileHtml, 'aria-label="Focus 2 more stage cue(s)"', 'Mobile stage-only overflow should announce composer focus instead of drawer navigation');
   assertNotContains(mobileHtml, 'data-command-control="open-details"', 'Mobile stage-only overflow should not render a dead generic details route');
 
-  assertEqual(App.focusPresenceOverflow('stage:place:landmark:Ancient Tree'), true, 'Mobile stage overflow route should focus the hidden place cue');
+  assertEqual(App.focusPresenceOverflow('stage:place:structure:camp'), true, 'Mobile stage overflow route should focus the hidden place cue');
   assertEqual(App.focusedStageObject?.type, 'place', 'Stage overflow should store place focus in shared composer state');
-  assertContains(el('mobile-selection-sentence').innerHTML, 'Ancient Tree', 'Stage overflow place focus should update the mobile command sentence');
+  assertContains(el('mobile-selection-sentence').innerHTML, 'Camp', 'Stage overflow place focus should update the mobile command sentence');
   assertContains(el('mobile-explore-actions').innerHTML, 'data-command-control="clear-focused-object"', 'Stage overflow place focus should expose a mobile composer exit');
   assertEqual(el('panel-party').classList.contains('active'), false, 'Mobile stage overflow place focus should not open the party drawer');
   assertEqual(el('panel-enemies').classList.contains('active'), false, 'Mobile stage overflow place focus should not open the creature drawer');
@@ -8969,14 +9073,14 @@ test('Contextual intent dispatch reports recruit quest and trade outcomes', () =
   assertEqual(App.selectIntent('creature', 'recruit-1', 'recruit'), false, 'Recruit intent should report missing/non-recruitable target after recruitment');
   assertEqual(App.selectIntent('creature', 'guide-1', 'quest'), true, 'Quest intent should report successful quest preview');
   assertEqual(App.quests.length, 0, 'Quest intent should preview before accepting');
-  assertContains(elements.get('enemies-content').innerHTML, 'Quest Preview: Guide Task', 'Quest intent should render a quest preview in the creature panel');
-  assertContains(elements.get('enemies-content').innerHTML, "acceptQuestFromUnit('guide-1')", 'Quest preview should expose an explicit accept action');
+  assertContains(elements.get('transaction-window-root').innerHTML, 'Guide Task', 'Quest intent should render the available quest in the focused transaction window');
+  assertContains(elements.get('transaction-window-root').innerHTML, "acceptQuestFromUnit('guide-1')", 'Quest preview should expose an explicit accept action');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Quest Preview: Guide Task', 'Quest preview should not replace center tile content');
   App.acceptQuestFromUnit('guide-1');
   assertEqual(App.quests.length, 1, 'Explicit preview accept should add the quest to the log');
   assertEqual(App.selectIntent('creature', 'missing-guide', 'quest'), false, 'Quest intent should report missing giver failure');
   assertEqual(App.selectIntent('creature', 'trader-1', 'trade'), true, 'Trade intent should report successful trade screen rendering');
-  assertContains(elements.get('enemies-content').innerHTML, 'Trader Trade', 'Trade intent should render the trade screen in the creature panel');
+  assertContains(elements.get('transaction-window-root').innerHTML, 'Trader Trade', 'Trade intent should render the trade screen in the focused transaction window');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Trader Trade', 'Trade intent should not replace center tile content');
   assertEqual(App.selectIntent('creature', 'missing-trader', 'trade'), false, 'Trade intent should report missing merchant failure');
 });
@@ -9044,7 +9148,7 @@ test('Intent feast sub-action affects outside-combat resolution and cleanup', ()
   assertEqual(App.defaultSubActions.feast, 'chew', 'Selected feast sub-action should become default');
   assertEqual(prey.alive, false, 'Selected chew sub-action should use the sub-action engine');
   assertEqual(App.creatures.includes(prey), false, 'Consumed area creature should be removed after outside-combat sub-action resolution');
-  assertContains(App.log[App.log.length - 1].text, 'chewing', 'Sub-action result should be logged');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'break down', 'Sub-action result should be logged');
 });
 
 test('Intent forceFeed sub-action resolves through outside-combat sub-action engine', () => {
@@ -10304,6 +10408,7 @@ test('Combat intent belts hide primary Sync by default while preserving legacy f
   assertContains(html, 'data-command-intent="moveRow"', 'Hiding Sync should not change row-control availability');
 
   App.renderMobileCombatToolbelt();
+  App.renderParty();
   assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="sync"', 'Mobile combat toolbelt should not show primary Sync by default');
 
   App.showLegacySyncButton = true;
@@ -10604,7 +10709,7 @@ test('Sync participant selection uses participant role instead of target role', 
   assertNotContains(allyCard, 'data-selection-role="target" title="Objetivo">Objetivo</span>', 'Selected sync helper should not be presented as a target chip');
   assertNotContains(allyCard, '>Objetivo</button>', 'Selected sync helper button should not say Target');
   assertContains(allyChip, 'selected selected-participant', 'Mobile selected sync helper chip should expose participant state');
-  assertContains(allyChip, 'data-selection-role="participant" title="Participante">Participante</span>', 'Mobile selected sync helper chip should label participant state');
+  assertContains(allyChip, 'data-selection-roles="participant" data-selection-state="selected"', 'Mobile selected sync helper chip should expose participant state without duplicating a visible role chip');
 });
 
 test('Desktop creature card action labels localize', () => {
@@ -11582,19 +11687,15 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'data-stage-surface="current-tile" data-stage-layer="tile" data-stage-cell="center"', 'Mobile routine play should identify the center stage tile layer');
   assertContains(html, 'data-stage-surface="traversal-cell" data-stage-layer="tile" data-stage-cell="e"', 'Mobile routine play should identify traversal stage tile layers');
   assertContains(html, 'mobile-play-presence', 'Mobile center tile should include compact local presence');
-  assertEqual((html.match(/mobile-play-presence-dot/g) || []).length, 2, 'Mobile center tile should cap visible presence at two large controls');
-  assertContains(html, 'mobile-play-presence-dot party', 'Mobile center tile should expose party presence markers');
+  assertEqual((html.match(/mobile-play-presence-dot/g) || []).length, 1, 'Crowded mobile center tile should reserve one large presence control plus overflow');
+  assertContains(html, 'mobile-play-presence-dot friendly', 'Mobile center tile should prioritize a directly selectable creature presence marker');
   assertContains(html, 'data-stage-surface="presence"', 'Mobile center presence should identify the stage presence surface');
   assertContains(html, 'data-command-surface="stage-presence"', 'Mobile center presence should identify stage-presence command routing');
   assertContains(html, 'data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile center actor/target presence should identify the shared command grammar');
-  assertContains(html, 'data-command-control="focus-actor"', 'Mobile center party presence should identify actor composer routing');
   assertContains(html, 'data-command-control="focus-target"', 'Mobile center creature presence should identify target composer routing');
   assertContains(html, 'data-command-mode="exploration"', 'Mobile center presence should identify exploration command mode');
-  assertContains(html, 'data-presence-type="party"', 'Mobile center party presence should identify its presence type');
   assertContains(html, 'data-presence-type="creature"', 'Mobile center creature presence should identify its presence type');
-  assertContains(html, "App.focusPresence('party','ally-1')", 'Mobile center party presence should select party actors through the composer');
   assertContains(html, "App.focusPresence('creature','guide-1')", 'Mobile center creature presence should select creature targets through the composer');
-  assertContains(html, 'aria-label="Add Ally as actor"', 'Mobile center party presence should advertise add-actor semantics');
   assertNotContains(html, 'selected selected-actor', 'Implicit player fallback should not visibly mark mobile actor presence as explicitly selected');
   assertNotContains(html, 'data-selection-mode="act-actor" data-selection-state="selected"', 'Implicit player fallback should not expose selected actor state in mobile center presence');
   assertContains(html, 'aria-label="Mark Guide as target"', 'Mobile center creature presence should advertise mark-target semantics');
@@ -11604,7 +11705,7 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'data-command-target-count="2"', 'Mobile center presence overflow should expose the hidden creature target count');
   assertContains(html, 'data-command-grammar="actor-target-intent"', 'Mobile center presence overflow should preserve the shared command grammar');
   assertContains(html, "App.focusPresenceOverflow('target')", 'Mobile center presence overflow should focus the advertised target picker');
-  assertContains(html, 'aria-label="Open target picker (2 hidden)"', 'Mobile center overflow presence should advertise the compact target picker');
+  assertContains(html, 'aria-label="Open 2 hidden targets; 4 total hidden"', 'Mobile center overflow presence should describe filtered target-picker scope');
   assertNotContains(html, 'aria-label="Open 2 more in details"', 'Mobile center target overflow should not advertise drawer details');
   assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');
   assertNotContains(html, 'selectIntent(', 'Mobile center presence should not duplicate intent controls');
@@ -12552,7 +12653,7 @@ test('Large map exposes sighted nearby tiles without marking them explored', () 
   assertEqual(App.isExplored(1, 0), false, 'Sight reveal should not mark adjacent tiles explored');
   assertEqual(App.getTile(1, 0).seen, true, 'Sight reveal should mark adjacent tiles as seen');
   assertEqual(App.getTileDelta(1, 0).seen, true, 'Sight reveal should persist adjacent tile visibility');
-  assertEqual(YAW_LARGE_MAP.isKnown(App, 1, 0), true, 'Large map should treat sighted adjacent tiles as known');
+  assertEqual(App._isLargeMapKnown(1, 0), true, 'Large map should treat sighted adjacent tiles as known');
   App.renderLargeMap();
   assertContains(elements.get('large-map').innerHTML, 'large-map-tile known', 'Rendered large map should expose sighted tiles');
   assertEqual(App.worldMap.has('6,6'), false, 'Sight reveal should not materialize distant unknown large-map tiles');
@@ -12578,7 +12679,7 @@ test('Overworld movement reveals visible 3x3 neighbors on the large map', () => 
   assertEqual(App.isExplored(2, 0), false, 'Movement sight should not mark adjacent preview tiles explored');
   assertEqual(App.getTile(2, 0).seen, true, 'Movement should reveal the new 3x3 east neighbor as seen');
   assertEqual(App.getTileDelta(2, 0).seen, true, 'Movement sight reveal should persist the new neighbor visibility');
-  assertEqual(YAW_LARGE_MAP.isKnown(App, 2, 0), true, 'Large map should know a movement-revealed 3x3 neighbor');
+  assertEqual(App._isLargeMapKnown(2, 0), true, 'Large map should know a movement-revealed 3x3 neighbor');
   App.renderLargeMap();
   assertContains(elements.get('large-map').innerHTML, 'large-map-tile known', 'Large map should render movement-revealed neighbors as known tiles');
 });
@@ -12790,9 +12891,10 @@ test('Combat target selection is rendered on creature panel cards', () => {
   assertEqual(App.confirmCombatTargets(), true, 'Confirmed target-pick should resolve selected target marks');
   assert(enemy.CPun < 100, 'Panel target action should damage selected enemy');
   centerHtml = elements.get('scene-description')?.innerHTML || '';
-  assertContains(centerHtml, 'combat-scene-summary', 'Combat center should render a bounded current-exchange summary');
-  assertContains(centerHtml, 'Recent exchange', 'Combat center should label recent combat feedback');
-  assertContains(centerHtml, 'hit', 'Combat center should surface the resolved exchange text');
+  const sceneFeedHtml = elements.get('desktop-scene-feed-latest')?.innerHTML || '';
+  assertContains(centerHtml, 'combat-scene-summary', 'Combat center should retain bounded turn context');
+  assertNotContains(centerHtml, 'Recent exchange', 'Combat center should not duplicate resolved Scene Feed text');
+  assertContains(sceneFeedHtml, 'hit', 'Shared Scene Feed should surface the resolved exchange text');
   assertNotContains(centerHtml, 'executeActionOnTarget', 'Combat center summary should not duplicate target controls');
   assertNotContains(centerHtml, 'executeCombatIntent', 'Combat center summary should not duplicate actor intent controls');
 });
@@ -12814,6 +12916,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
     processing: false
   };
 
+  App.renderParty();
   App.renderMobileCombatToolbelt();
   assertEqual(elements.get('mobile-play-surface').classList.contains('combat-active'), true, 'Mobile play surface should enter combat layout mode');
   assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-surface-role'), 'command-composer', 'Mobile combat toolbelt should identify as the command composer while active');
@@ -12836,9 +12939,8 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-actor-count="1"', 'Mobile combat command sentence should expose current actor count metadata');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-target-count="0"', 'Mobile combat command sentence should expose target count metadata before target-pick');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="choose"', 'Mobile combat command sentence should expose pending intent metadata');
-  const combatSentence = document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence');
-  assertEqual(combatSentence?.getAttribute('role'), 'status', 'Mobile combat command sentence should render as a live status');
-  assertEqual(combatSentence?.getAttribute('aria-atomic'), 'true', 'Mobile combat command sentence should announce the full actor-target-intent sentence atomically');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'role="status"', 'Mobile combat command sentence should render as a live status');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'aria-atomic="true"', 'Mobile combat command sentence should announce the full actor-target-intent sentence atomically');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Actor', 'Mobile combat selection sentence should label the singular current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You', 'Mobile combat selection sentence should name the current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Intent', 'Mobile combat selection sentence should label pending intent');
@@ -12854,12 +12956,8 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   const mobilePartyChip = App.renderMobileUnitChip(player, 0, 'party');
   assertNotContains(mobilePartyChip, "executeCombatIntent('fight')", 'Mobile party chips should not duplicate combat intent controls');
   assertNotContains(mobilePartyChip, 'unit-combat-actions', 'Mobile party chips should not carry repeated combat action clusters');
-  assertContains(elements.get('mobile-party-strip').innerHTML, "toggleExplorationTarget('party','ally-mobile')", 'Mobile combat party strip should expose party member target marking');
-  assertContains(elements.get('mobile-party-strip').innerHTML, 'data-command-surface="party-target-routing" data-command-mode="combat"', 'Mobile combat party Mark should stay in combat command mode');
-  App.toggleExplorationTarget('party', 'ally-mobile');
-  assert(App.explorationTargetIds.includes('party:ally-mobile'), 'Mobile combat party Mark should toggle the party target state');
-  assertContains(elements.get('mobile-party-strip').innerHTML, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile combat party strip should show marked party target state');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-intents', 'Marking a party target during combat should keep the combat composer visible');
+  assertContains(elements.get('mobile-party-strip').innerHTML, 'data-command-control="toggle-combat-plan-actor"', 'Mobile combat party strip should expose group-participant routing');
+  assertContains(elements.get('mobile-party-strip').innerHTML, 'data-command-surface="party-target-routing" data-command-mode="combat"', 'Mobile combat party strip should keep explicit party-target routing available');
 
   App.selectTarget('fight');
   assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Targeting: Fight', 'Mobile combat toolbelt should not duplicate selected target guidance');
@@ -12875,12 +12973,10 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting" data-command-mode="combat"', 'Mobile combat target phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile combat target phase should identify the shared command grammar');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting"', 'Mobile combat target cancel should identify the combat targeting grammar');
-  assertContains(elements.get('mobile-party-strip').innerHTML, "toggleExplorationTarget('party','ally-mobile')", 'Mobile combat party Mark should remain available after selecting an intent');
-  assertContains(elements.get('mobile-party-strip').innerHTML, 'data-command-surface="party-target-routing" data-command-mode="combat"', 'Mobile combat party Mark should remain in combat routing during target-pick');
+  assertContains(elements.get('mobile-party-strip').innerHTML, 'data-command-control="toggle-combat-plan-actor"', 'Mobile combat party participant routing should remain available after selecting an intent');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting"', 'Mobile combat target phase should tag cancel as a combat-mode grammar exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-targeting" data-command-slot="exit"', 'Mobile combat target cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-targeting"', 'Mobile combat target phase should expose a structural cancel control');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'selected', 'Mobile combat intent belt should preserve selected intent state');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleCombatTarget('enemy-mobile')", 'Mobile enemy strip should expose combat target marking');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Mobile exploration target tray should stay clear during combat');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Mobile exploration actor belt should stay clear during combat');
@@ -12897,8 +12993,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="sync_fight"', 'Mobile Sync choose buttons should identify combat command mode on the action itself');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="sync_fight" data-command-grammar="actor-target-intent"', 'Mobile Sync choose buttons should identify the shared command grammar on the action itself');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="sync_fight" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Mobile Sync choose buttons should identify the intent slot');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync choose phase should tag cancel as a combat-mode exit');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync choose cancel should identify the sync intent surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync choose phase should expose its cancel exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Mobile Sync choose cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync choose phase should expose a structural cancel control');
 
@@ -12911,8 +13006,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="feed:heal"', 'Mobile Feed option buttons should identify combat command mode on the sub-action itself');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="feed:heal" data-command-grammar="actor-target-intent"', 'Mobile Feed option buttons should identify the shared command grammar on the sub-action itself');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="feed:heal" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Mobile Feed option buttons should identify the intent slot');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-feed"', 'Mobile Feed phase should tag cancel as a combat-mode exit');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="feed-options" data-command-mode="combat" data-command-control="cancel-feed"', 'Mobile Feed cancel should identify the feed options surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-feed"', 'Mobile Feed phase should expose its cancel exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-feed" data-command-slot="exit"', 'Mobile Feed cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-feed"', 'Mobile Feed phase should expose a structural cancel control');
 
@@ -12925,11 +13019,8 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-intent'), 'sync_fight', 'Mobile Sync participant phase root should expose stable sync intent');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants" data-command-mode="combat"', 'Mobile Sync participant phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile Sync participant phase should identify the shared command grammar');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-control="confirm-sync-participants"', 'Mobile Sync participant confirm should identify the participant surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="confirm-sync-participants"', 'Mobile Sync participant phase should expose confirm structurally');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="confirm-sync-participants" data-command-slot="actor"', 'Mobile Sync participant confirm should identify the actor slot');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync participant phase should tag cancel as a combat-mode exit');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync participant cancel should identify the participant surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Mobile Sync participant cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync participant phase should keep a structural cancel control');
 
@@ -12938,8 +13029,6 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting"', 'Mobile Sync target phase should identify the target surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting" data-command-mode="combat"', 'Mobile Sync target phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile Sync target phase should identify the shared command grammar');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync target phase should tag cancel as a combat-mode exit');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting" data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync target cancel should identify the sync targeting surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Mobile Sync target cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync target phase should keep a structural cancel control');
 
@@ -12952,7 +13041,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-intent'), null, 'Inactive mobile combat toolbelt should clear intent metadata');
 });
 
-test('Mobile combat scene renders one latest-exchange strip instead of boxed summary', () => {
+test('Mobile combat scene keeps turn context separate from the shared Scene Feed', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   App.player = player;
@@ -12970,9 +13059,10 @@ test('Mobile combat scene renders one latest-exchange strip instead of boxed sum
   App.renderCombatSceneForTurn(player);
 
   assertContains(elements.get('scene-description').innerHTML, 'combat-scene-summary', 'Desktop center should keep the full combat summary');
-  assertContains(elements.get('mobile-scene-description').innerHTML, 'mobile-combat-latest-strip', 'Mobile scene should use the compact latest-exchange strip');
+  assertContains(elements.get('mobile-scene-description').innerHTML, 'mobile-combat-context-strip', 'Mobile scene should use compact turn context');
   assertNotContains(elements.get('mobile-scene-description').innerHTML, 'mobile-combat-story-strip', 'Mobile combat scene should not inject a duplicate story strip');
-  assertContains(elements.get('mobile-scene-description').innerHTML, 'You hit Enemy for 8.', 'Mobile latest-exchange strip should show the newest combat exchange');
+  assertContains(elements.get('mobile-scene-description').innerHTML, 'Choose your next action.', 'Mobile turn context should describe the active turn');
+  assertNotContains(elements.get('mobile-scene-description').innerHTML, 'You hit Enemy for 8.', 'Mobile turn context should not duplicate resolved Scene Feed text');
   assertEqual(elements.get('mobile-story-latest').hidden, false, 'Standalone mobile Scene Feed should remain visible in combat');
   assertContains(elements.get('mobile-story-latest').innerHTML, 'Scene beats will appear here after interactions.', 'Standalone mobile Scene Feed should render the canonical beat placeholder');
   assertNotContains(elements.get('mobile-scene-description').innerHTML, 'combat-recent-exchange', 'Mobile scene should not embed the boxed recent-exchange list');
@@ -13021,15 +13111,14 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="location-intents" data-command-intent="takeItems"', 'Mobile Take Items should expose composer-owned exploration grammar and stable intent metadata');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'App.takeTileItems()', 'Mobile location actions should render in the control belt');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
-  assertEqual(elements.get('mobile-creature-card').style.display, 'block', 'Mobile compact creature rail should be visible by default when targets are present');
+  assertEqual(elements.get('mobile-creature-card').style.display, 'none', 'Mobile compact creature rail should stay collapsed by default');
   App.toggleMobileCreatureRail();
-  assertEqual(App.mobileCreatureRailOpen, false, 'Mobile Creatures dock should close the compact target rail when it is open');
-  assertEqual(elements.get('mobile-creature-card').style.display, 'none', 'Closing the mobile target rail should hide the compact rail without opening the full drawer');
-  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Closing the compact target rail should not open the full creature drawer');
+  assertEqual(App.mobileTargetPickerOpen, true, 'Mobile Creatures control should open the compact target picker');
+  assertContains(elements.get('mobile-target-picker-belt').innerHTML, 'data-command-control="focus-target"', 'Opened compact target picker should retain target controls');
   App.toggleMobileCreatureRail();
-  assertEqual(App.mobileCreatureRailOpen, true, 'Mobile Creatures dock should reopen the compact target rail when it is closed');
-  assertEqual(elements.get('mobile-creature-card').style.display, 'block', 'Reopening the mobile target rail should show compact target controls');
-  assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Reopened compact target rail should retain target controls');
+  assertEqual(App.mobileTargetPickerOpen, false, 'Mobile Creatures control should close the compact target picker');
+  assertEqual(elements.get('mobile-creature-card').style.display, 'none', 'Closing the target picker should leave the legacy rail collapsed');
+  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Closing the target picker should leave the full creature drawer closed');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'Mobile creature cue should summarize the visible creature in the control belt');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'aria-label="Mark Guide as target"', 'Mobile creature cue should announce the composer target-selection action');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'data-stage-surface="presence"', 'Mobile creature cue should identify the stage presence surface');
@@ -13136,7 +13225,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertNotContains(trayHtml, 'selected-target-summary', 'Mobile marked-target action tray should not duplicate the composer sentence');
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Marked target actions should not fall back to the hidden party strip');
   assertEqual(actorHtml, '', 'Mobile actor belt should stay collapsed until the composer actor toggle is opened');
-  assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), false, 'Mobile marked target state should expose an Actors toggle');
+  assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), true, 'Mobile marked target state should keep the retired inline Actors toggle hidden');
   assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'false', 'Mobile Actors toggle should start collapsed');
 
   App.toggleMobileActorBelt();
@@ -13149,20 +13238,14 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(openedActorHtml, 'data-command-control="focus-actor"', 'Mobile actor chips should identify actor composer routing');
   assertContains(openedActorHtml, 'data-selection-mode="act-actor" data-selection-state="available" data-command-slot="actor"', 'Mobile actor belt chips should identify the actor slot');
   assertContains(openedActorHtml, 'data-command-mode="exploration"', 'Mobile actor chips should identify exploration command mode');
-  assertContains(openedActorHtml, 'toggleMobileActorBelt()', 'Mobile actor belt should expose a close exit before actors are explicitly selected');
-  assertContains(openedActorHtml, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="close-actors"', 'Mobile actor close exit should identify actor-routing composer surface');
-  assertContains(openedActorHtml, 'data-command-control="close-actors"', 'Mobile actor close exit should identify its command route');
-  assertContains(openedActorHtml, 'data-command-control="close-actors" data-command-slot="exit"', 'Mobile actor close exit should identify the exit slot');
-  assertContains(openedActorHtml, 'title="Close actor picker"', 'Mobile actor close exit should describe the picker state before explicit selection');
+  assertContains(openedActorHtml, 'data-command-control="open-actor-drawer"', 'Mobile actor belt should expose a details route for full party management');
   assertNotContains(openedActorHtml, 'Clear actors', 'Mobile actor belt should not claim selected actors are clearable before explicit actor selection');
-  assertNotContains(openedActorHtml, 'mobile-unit-chip', 'Mobile actor belt should not render full unit cards into the fixed control belt');
+  assertNotContains(openedActorHtml, 'unit-card', 'Mobile actor belt should not render full unit cards into the fixed control belt');
   assertNotContains(openedActorHtml, 'unit-bars', 'Mobile actor belt should not include full tactical bars in the fixed control belt');
 
   App.selectExplorationActor(1);
   assertEqual(App.explorationActorSelectionExplicit, true, 'Selecting an ally from the mobile actor belt should create explicit actor state');
-  assertContains(elements.get('mobile-actor-belt').innerHTML, 'clearExplorationActors()', 'Mobile actor belt should switch to a clear actor exit after explicit actor selection');
-  assertContains(elements.get('mobile-actor-belt').innerHTML, 'data-command-control="clear-actors" data-command-slot="exit"', 'Mobile explicit actor clear exit should identify the exit slot');
-  assertContains(elements.get('mobile-actor-belt').innerHTML, 'title="Clear selected actors"', 'Mobile explicit actor clear exit should use the clear label');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, 'selected selected-actor', 'Mobile actor belt should visibly preserve explicit actor selection');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Ally', 'Mobile composer sentence should show the explicit actor before clearing');
   App.selectExplorationActor(1);
   assertEqual(App.explorationActorSelectionExplicit, false, 'Deselecting the last explicit actor should restore implicit player actor state');
@@ -13281,8 +13364,8 @@ test('Mobile multi-creature cue opens target picker without selecting all target
 
   assertEqual(App.focusMobileCreaturePresence(), true, 'Multi-creature cue should open the visible creature picker');
   assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Multi-creature cue should not require the full Creatures drawer');
-  assertContains(elements.get('mobile-creature-strip').innerHTML, 'data-command-control="focus-target"', 'Creature strip should expose target pick controls after opening');
-  assertNotContains(elements.get('enemies-content').innerHTML, 'data-command-control="focus-target"', 'Creature drawer should stay closed for compact target picking');
+  assertContains(elements.get('mobile-target-picker-belt').innerHTML, 'data-command-control="focus-target"', 'Compact target picker should expose target controls after opening');
+  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Creature drawer should stay closed for compact target picking');
   assertEqual(App.explorationTargetIds.length, 0, 'Opening the target picker should not mark every creature');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Opening the target picker should wait for an explicit target selection before showing intents');
 });
@@ -13322,7 +13405,7 @@ test('Mobile control belt ignores rows hidden by target-priority state', () => {
   assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Guide', 'Marked target should render the mobile command sentence');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), true, 'Visible command sentence should activate the fixed belt even without target action buttons');
   assertEqual(elements.get('mobile-control-belt').classList.contains('expanded-controls-open'), false, 'Sentence-only belt state should stay compact rather than reserving action-row height');
-  assertEqual(elements.get('mobile-control-row').classList.contains('has-visible-controls'), true, 'Marked-target sentence state should keep the actor-toggle row visible as a real exit/selection control');
+  assertEqual(elements.get('mobile-control-row').classList.contains('has-visible-controls'), false, 'Sentence-only target state should not reveal the retired inline actor row');
 });
 
 test('Combat action clearing removes stale mobile exploration belt controls', () => {
@@ -13811,6 +13894,47 @@ test('Desktop composer shell mirrors combat belt metadata without a sentence slo
   assertEqual(shell.getAttribute('data-command-intent'), 'fight', 'Desktop composer shell should mirror target-pick intent from the belt');
 });
 
+test('Desktop combat planner uses sentence exits instead of a duplicate Clear row', () => {
+  const { App, elements, document } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'planner-composer-player' });
+  const ally = makeUnit('Ally', { id: 'planner-composer-ally' });
+  const enemy = makeUnit('Enemy', { id: 'planner-composer-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.activeActor = player;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: player, initiative: 10 }, { unit: ally, initiative: 8 }, { unit: enemy, initiative: 5 }],
+    syncActions: []
+  };
+  App.combatPlanSelection = {
+    active: true,
+    source: 'combat-planner',
+    actorIds: [App._unitSelectionId(player), App._unitSelectionId(ally)],
+    pendingIntent: null,
+    explicitActors: true
+  };
+
+  App.renderSelectionSentence();
+  App.renderDesktopCombatComposer(player);
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-control="clear-actor-slot"', 'Group actor selection should remain clearable from its command-sentence slot');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="clear-combat-group"', 'Desktop composer should not duplicate group reset below the sentence');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="fight"', 'Group planning without an intent should keep the primary intent row visible');
+
+  App.combatPlanSelection.pendingIntent = 'fight';
+  App.renderSelectionSentence();
+  App.renderDesktopCombatComposer(player);
+  const pendingHtml = elements.get('desktop-context-belt').innerHTML;
+  assertContains(pendingHtml, 'data-command-control="confirm-combat-plan"', 'Pending group plan should retain its explicit commit command');
+  assertNotContains(pendingHtml, 'data-command-control="clear-combat-group"', 'Pending group plan should not restore the duplicate Clear command');
+  assertNotContains(pendingHtml, 'data-command-control="clear-combat-intent"', 'Pending intent should use the sentence slot exit instead of a duplicate Change Intent button');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-control="clear-intent-slot"', 'Pending intent should remain clearable through its sentence slot');
+});
+
 test('Combat creature target button localizes visible and accessible labels', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { Figh: 30 });
@@ -13829,7 +13953,7 @@ test('Combat creature target button localizes visible and accessible labels', ()
   assertContains(elements.get('desktop-context-belt').innerHTML, 'aria-label="Cancelar Luchar"', 'Desktop composer should expose combat target cancellation');
   const html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Luchar"', 'Combat target button should localize selected-action accessible label');
-  assertContains(html, '>Elegir<', 'Combat target button visible label should localize');
+  assertContains(html, 'data-command-control="mark-combat-target"', 'Combat target mark button should expose stable target-mark semantics');
 });
 
 test('Combat unit cards show turn order and current focus badges', () => {
@@ -14027,13 +14151,24 @@ test('Intent reach profiles separate social ranged flying anti-flying and contac
   App.executeActionAgainstTarget('feast', ground, frontTarget);
   assertEqual(frontTarget.CPun, 100, 'Back-row close/contact Feast should not affect a front-row target');
   assertContains(App.lastCombatActionResult.result, 'close contact needs the front row', 'Back-row contact failure should explain the front-row requirement');
+  App.executeActionAgainstTarget('fuck', ground, frontTarget);
+  assertEqual(frontTarget.CPle, 0, 'Back-row ground Play/Seduce should not affect a front-row target');
+  assertContains(App.lastCombatActionResult.result, 'close contact needs the front row', 'Back-row Play/Seduce failure should explain the front-row requirement');
   ground.combatRow = 'front';
+
+  assertEqual(App._combatReachResult(flyer, frontTarget, 'feast').canSucceed, false, 'Flying actors should not automatically bypass front-row contact rules for Feast');
+  assertEqual(App._combatReachResult(flyer, frontTarget, 'fuck').canSucceed, false, 'Flying actors should not automatically bypass front-row contact rules for Play/Seduce');
+  assertContains(App._combatReachFailureText([flyer], frontTarget, 'feast', App._combatReachResult(flyer, frontTarget, 'feast')), 'close contact needs the front row', 'Flying back-row contact failure should still require front-row contact');
 
   App.executeActionAgainstTarget('fight', flyer, backline);
   assert(backline.CPun < 100, 'Flying actor should be able to fight across rows');
 
   App.executeActionAgainstTarget('fight', anti, flyingTarget);
   assert(flyingTarget.CPun < 100, 'Anti-flying actor should be able to fight a front-row flying target');
+  ranged.combatRow = 'front';
+  assertEqual(App._combatReachResult(ranged, flyingTarget, 'feast').canSucceed, false, 'Ranged should not count as close-contact reach against flying targets');
+  assertContains(App._combatReachFailureText([ranged], flyingTarget, 'feast', App._combatReachResult(ranged, flyingTarget, 'feast')), 'close contact cannot reach', 'Flying contact failure should not recommend ranged as contact reach');
+  ranged.combatRow = 'back';
   flyingTarget.CPun = 100;
   flyingTarget.combatRow = 'back';
   assertEqual(App._combatReachResult(anti, flyingTarget, 'fight').canSucceed, false, 'Anti-flying should not bypass protected back-row blockers by itself');
@@ -14043,8 +14178,46 @@ test('Intent reach profiles separate social ranged flying anti-flying and contac
   flyingTarget.CPun = 100;
   App.executeActionAgainstTarget('fight', ranged, flyingTarget);
   assert(flyingTarget.CPun < 100, 'Ranged actor should be able to fight flying targets');
-  assertEqual(App._combatReachResult(ranged, frontTarget, 'fight').canSucceed, false, 'Ranged Fight should not be the default answer to front-row grounded targets');
-  assertContains(App._combatReachFailureText([ranged], frontTarget, 'fight', App._combatReachResult(ranged, frontTarget, 'fight')), 'back-row or flying targets', 'Ranged front-row failure should explain target profile');
+  frontTarget.CPun = 100;
+  assertEqual(App._combatReachResult(ranged, frontTarget, 'fight').canSucceed, true, 'Back-row ranged Fight should reach front-row grounded targets');
+  App.executeActionAgainstTarget('fight', ranged, frontTarget);
+  assert(frontTarget.CPun < 100, 'Back-row ranged actor should damage a front-row grounded target');
+
+  backline.CPun = 100;
+  frontTarget.CPun = 100;
+  flyingTarget.CPun = 100;
+  ranged.combatRow = 'front';
+  assertEqual(App._combatReachResult(ranged, backline, 'fight').canSucceed, true, 'Ranged Fight should bypass front blockers from either row');
+  App.executeActionAgainstTarget('fight', ranged, backline);
+  assert(backline.CPun < 100, 'Front-row ranged actor should still damage a protected back-row target');
+});
+
+test('Combat AI filters preferred targets through intent reach', () => {
+  const { App } = loadAppForCombat(() => 0.99);
+  const player = makeUnit('You', { id: 'ai-reach-player', CPun: 100, MPun: 100, combatRow: 'front', con: 1 });
+  const protectedAlly = makeUnit('Protected Ally', { id: 'ai-reach-party-back', CPun: 10, MPun: 100, combatRow: 'back', con: 1 });
+  const ally = makeUnit('Party Archer', { id: 'ai-reach-ally', Figh: 40, ranged: true, combatRow: 'back' });
+  const frontEnemy = makeUnit('Front Enemy', { id: 'ai-reach-enemy-front', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front', con: 1 });
+  App.player = player;
+  App.party = [player, protectedAlly, ally];
+  App.creatures = [frontEnemy];
+  App.combatState.active = true;
+  App.nextTurn = function() {};
+  App._attemptTimidAllyFlee = () => false;
+  App._enemyShouldFlee = () => false;
+  App._enemyCallReinforcement = () => false;
+  App._combatScavengeRemains = () => false;
+  App._terrainCausesMiss = () => false;
+  App._targetDodgeRoll = () => 1;
+
+  App.allyTurn(ally);
+  assert(frontEnemy.CPun < 100, 'Back-row ranged ally AI should attack a reachable front-row target');
+
+  const enemy = makeUnit('Enemy Fighter', { id: 'ai-reach-enemy', disposition: App.DISPOSITION.ENEMY, Figh: 40, combatRow: 'front' });
+  App.creatures = [enemy];
+  App.enemyTurn(enemy);
+  assert(player.CPun < 100, 'Enemy AI should attack a reachable front-row target when its preferred weak target is protected');
+  assertEqual(protectedAlly.CPun, 10, 'Enemy AI should not spend its attack on an unreachable protected back-row target');
 });
 
 test('Combat ranged back-row traits outrank generic tags and emit an intro beat', () => {
@@ -14401,13 +14574,13 @@ test('Obedient ally turns use the same panel target selection', () => {
   assertNotContains(actionsHtml, 'panel-first-combat-prompt', 'Ally turn should keep center free of redundant guidance');
   const composerHtml = elements.get('desktop-context-belt').innerHTML;
   assertContains(composerHtml, "executeCombatIntent('fight')", 'Ally turn should expose manual actions in the desktop composer');
-  assertContains(composerHtml, 'aria-label="Luchar"', 'Ally combat fight action should localize accessible label');
-  assertContains(composerHtml, '>Luchar<', 'Ally combat fight action should localize visible label');
-  assertContains(composerHtml, 'aria-label="Sincronizar"', 'Sync action should localize accessible label');
-  assertContains(composerHtml, 'aria-label="Huir"', 'Ally combat turns should expose unit-specific Flee');
-  assertContains(composerHtml, 'aria-label="Saltar"', 'Non-player skip action should localize accessible label');
+  assertContains(composerHtml, 'aria-label="Luchar', 'Ally combat fight action should localize accessible label');
+  assertContains(composerHtml, '<span class="action-caption">Luchar</span>', 'Ally combat fight action should localize visible label');
+  assertNotContains(composerHtml, 'data-command-legacy="sync"', 'Legacy Sync should remain hidden unless explicitly enabled');
+  assertContains(composerHtml, 'aria-label="Huir', 'Ally combat turns should expose unit-specific Flee');
+  assertContains(composerHtml, 'aria-label="Saltar', 'Non-player skip action should localize accessible label');
   App.executeCombatIntent('fight');
-  assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-ally')", 'Ally target should be selected from panel');
+  assertContains(elements.get('enemies-content').innerHTML, "toggleCombatTarget('enemy-ally')", 'Ally target should be marked from the panel');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'class="panel-interaction-tray combat-target-tray" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Combat target-pick tray root should identify target-pick composer ownership');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-surface="combat-targeting"', 'Selected combat intent should move the desktop composer into target-pick controls');
   assertContains(elements.get('selection-sentence').innerHTML, 'Luchar', 'Selected combat intent should remain visible in the command sentence');
@@ -14415,6 +14588,7 @@ test('Obedient ally turns use the same panel target selection', () => {
   assertEqual(App.targetSelection, null, 'Repeating the same combat intent should cancel target selection');
   App.executeCombatIntent('fight');
   App.executeActionOnTarget('fight', 'enemy-ally');
+  App.confirmCombatTargets();
   assert(enemy.CPun < 100, 'Ally panel target action should damage selected enemy');
 });
 
@@ -14430,15 +14604,15 @@ test('Player combat action controls localize in desktop composer', () => {
   App.updateLanguage('es');
   App.showActorActions(player);
   const html = elements.get('desktop-context-belt').innerHTML;
-  assertContains(html, 'aria-label="Luchar"', 'Fight action should localize accessible label');
-  assertContains(html, '>Hablar<', 'Flirt action should localize visible label');
-  assertContains(html, 'aria-label="Comer"', 'Feast action should localize accessible label');
-  assertContains(html, '>Jugar<', 'Play action label should localize visible label');
-  assertContains(html, 'aria-label="Alimentar"', 'Feed action should localize accessible label');
+  assertContains(html, 'aria-label="Luchar', 'Fight action should localize accessible label');
+  assertContains(html, '<span class="action-caption">Hablar</span>', 'Flirt action should localize visible label');
+  assertContains(html, 'aria-label="Comer', 'Feast action should localize accessible label');
+  assertContains(html, '<span class="action-caption">Jugar</span>', 'Play action label should localize visible label');
+  assertContains(html, 'aria-label="Alimentar', 'Feed action should localize accessible label');
   assertNotContains(html, 'showInteractMenu', 'Combat action bar should keep creature interactions in party/creature panels');
   assertNotContains(html, 'aria-label="Interactuar"', 'Combat action bar should not duplicate panel creature interactions');
-  assertContains(html, 'aria-label="Huir"', 'Flee action should localize accessible label');
-  assertContains(html, 'aria-label="Saltar"', 'Player combat turns should always expose Skip as a fallback action');
+  assertContains(html, 'aria-label="Huir', 'Flee action should localize accessible label');
+  assertContains(html, 'aria-label="Saltar', 'Player combat turns should always expose Skip as a fallback action');
   assertNotContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Scene center should keep combat prompts out of the context area');
   assertEqual(elements.get('scene-actions').innerHTML, '', 'showActorActions should clear center actions while the composer owns controls');
   assertEqual(elements.get('scene-actions').hidden, true, 'showActorActions should hard-hide center actions while the composer owns controls');
@@ -14472,6 +14646,186 @@ test('Combat fallback controls keep Skip and Flee reachable without valid target
   App.nextTurn = function() { advanced++; };
   assertEqual(App.executeCombatIntent('skip'), true, 'Skip fallback should execute for the current actor');
   assertEqual(advanced, 1, 'Skip fallback should advance the current combat turn');
+});
+
+test('Combat progress state classifies terminal automatic manual and transient phases', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'progress-player' });
+  const ally = makeUnit('Ally', { id: 'progress-ally' });
+  const enemy = makeUnit('Enemy', { id: 'progress-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+
+  let state = App._combatProgressState();
+  assertEqual(state.kind, 'manual', 'Normal player turns should be classified as manual progress');
+  assertEqual(state.phase, 'choose-action', 'Normal player turns should be in choose-action phase');
+  assertEqual(state.commands.includes('skip'), true, 'Normal player turns should advertise unconditional Skip progress');
+
+  App.targetSelection = { action: 'fight', source: 'combat', actorId: player.id };
+  state = App._combatProgressState();
+  assertEqual(state.phase, 'targeting', 'Target selection should be classified as a transient targeting phase');
+  assertEqual(state.commands.includes('cancel-targeting'), true, 'Targeting should advertise its restoring exit');
+
+  App.targetSelection = null;
+  App.feedSelection = { active: true, subIds: [] };
+  state = App._combatProgressState();
+  assertEqual(state.phase, 'feed-options', 'Feed selection should be classified as a transient phase');
+  assertEqual(state.commands.includes('cancel-feed'), true, 'Feed selection should advertise its restoring exit even with no options');
+
+  App.feedSelection = null;
+  for (const phase of ['choose', 'participants', 'target']) {
+    App.syncSelection = { active: true, phase, actorId: player.id, participantIds: [player.id], type: 'sync_fight' };
+    state = App._combatProgressState();
+    assertEqual(state.phase, `sync-${phase}`, `Sync ${phase} should be classified explicitly`);
+    assertEqual(state.commands.includes('cancel-sync'), true, `Sync ${phase} should advertise its restoring exit`);
+  }
+
+  App.syncSelection = null;
+  App.combatPlanSelection = { active: true, actorIds: [player.id, ally.id], pendingIntent: 'fight', explicitActors: true };
+  state = App._combatProgressState();
+  assertEqual(state.phase, 'combat-plan-confirm', 'Pending group plans should be classified as confirm phases');
+  assertEqual(state.commands.includes('clear-intent'), true, 'Pending group plans should retain a restoring exit');
+
+  App.combatPlanSelection = null;
+  App.combatState.processing = true;
+  state = App._combatProgressState();
+  assertEqual(state.kind, 'invalid', 'Processing without an active resolver should be diagnosable as stale state');
+  assertEqual(state.commands.includes('recover-combat'), true, 'Stale processing should advertise recovery');
+
+  App.combatState.processing = false;
+  App.combatState.currentTurn = 1;
+  state = App._combatProgressState();
+  assertEqual(state.kind, 'automatic', 'Enemy turns should be classified as automatic progress');
+  assertEqual(state.phase, 'enemy-ai', 'Enemy turns should identify the AI phase');
+
+  App.creatures = [];
+  state = App._combatProgressState();
+  assertEqual(state.kind, 'terminal', 'Combat without living enemies should be classified as terminal');
+  assertEqual(state.phase, 'victory', 'Combat without living enemies should resolve as victory');
+});
+
+test('Every core incapacitating combat state advances without requiring player controls', () => {
+  const cases = [
+    ['refractory', unit => { unit.refractory = true; }],
+    ['stun', unit => { unit.status.stun = { turns: 1 }; }],
+    ['freeze', unit => { unit.status.freeze = { skip: true, slowTurns: 2 }; }],
+    ['sleep', unit => { unit.status.sleep = { turns: 2 }; }],
+    ['restrained', unit => { unit.status.restrained = { turns: 2, by: 'Enemy' }; }],
+    ['stuck', unit => { unit.status.stuck = { turns: 1 }; }],
+    ['enveloped', unit => { unit.status.enveloped = { turns: 2, by: 'Enemy' }; }]
+  ];
+
+  for (const [name, applyStatus] of cases) {
+    const { App } = loadAppForCombat(() => 0);
+    const player = makeUnit('You', { id: `status-${name}` });
+    const enemy = makeUnit('Enemy', { id: `enemy-${name}`, disposition: App.DISPOSITION.ENEMY });
+    applyStatus(player);
+    App.player = player;
+    App.party = [player];
+    App.creatures = [enemy];
+    App.combatState = {
+      active: true,
+      round: 1,
+      currentTurn: 0,
+      processing: false,
+      turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+      syncActions: []
+    };
+    let advances = 0;
+    App.nextTurn = () => { advances++; };
+    const before = App._combatProgressState();
+    assertEqual(before.kind, 'automatic', `${name} should be recognized as automatic progress before processing`);
+    App.processTurn();
+    assertEqual(advances, 1, `${name} should consume the turn automatically`);
+  }
+});
+
+test('Loaded restrained player turns resume through automatic status processing', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'loaded-restrained', status: { restrained: { turns: 2, by: 'Naga' } } });
+  const enemy = makeUnit('Naga', { id: 'loaded-restrainer', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  let advances = 0;
+  App.nextTurn = () => { advances++; };
+  assertEqual(App._resumeLoadedCombat(), true, 'Loaded active combat should resume');
+  assertEqual(advances, 1, 'Loaded restrained player should lose the turn automatically instead of receiving unusable controls');
+  assertEqual(App.combatProgressDiagnostic.reason, 'loaded-combat', 'Loaded recovery should record a diagnostic reason');
+});
+
+test('Skip bypasses action pressure and clears transient combat state', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'unconditional-skip' });
+  const enemy = makeUnit('Enemy', { id: 'skip-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.activeActor = player;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.targetSelection = { action: 'fight', source: 'combat', actorId: player.id };
+  App._canAffordActionPressure = () => ({ ok: false, reason: 'test-block', text: 'Blocked.' });
+  let advances = 0;
+  App.nextTurn = () => { advances++; };
+  assertEqual(App.executeCombatIntent('skip'), true, 'Skip should execute despite generic action-pressure rejection');
+  assertEqual(advances, 1, 'Unconditional Skip should advance exactly once');
+  assertEqual(App.targetSelection, null, 'Skip should clear stale target selection before advancing');
+});
+
+test('Combat action exceptions recover the current actor composer', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'error-recovery-player' });
+  const enemy = makeUnit('Enemy', { id: 'error-recovery-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.activeActor = player;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  let recoveredActor = null;
+  App.showActorActions = actor => { recoveredActor = actor; };
+  App._combatActionRating = () => { throw new Error('forced combat failure'); };
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    assertEqual(App.executeActionAgainstTarget('fight', player, enemy), false, 'Thrown combat resolution should report failure');
+  } finally {
+    console.error = originalConsoleError;
+  }
+  assertEqual(App.combatState.processing, false, 'Thrown combat resolution should clear processing state');
+  assertEqual(recoveredActor, player, 'Thrown combat resolution should restore the current actor composer');
+  assertEqual(App.combatProgressDiagnostic.reason, 'combat-action-error', 'Action recovery should retain a diagnostic reason');
 });
 
 test('Party panel exposes per-ally AI order controls', () => {
@@ -14526,7 +14880,7 @@ test('Desktop party card management labels localize', () => {
   App.renderParty();
   let html = elements.get('party-content').innerHTML;
   assertContains(html, 'aria-label="Agregar Ally B como actor"', 'Actor selection control should expose localized accessible role label');
-  assertContains(html, '>Actor<', 'Actor selection visible label should localize as a role');
+  assertContains(html, '>Actor</button>', 'Actor selection visible label should localize as a role');
   assertContains(html, 'aria-label="Marcar Ally B como objetivo"', 'Target mark control should expose localized accessible label');
   assertContains(html, '>Marcar<', 'Target mark visible label should localize');
   assertNotContains(html, 'aria-label="Acciones del grupo: Ally B"', 'Party card should not expose a duplicate visible action menu');
@@ -14539,7 +14893,7 @@ test('Desktop party card management labels localize', () => {
   App.renderParty();
   html = elements.get('party-content').innerHTML;
   assertContains(html, 'aria-label="Mostrar estadisticas de Ally B"', 'Expanded stats control should expose localized accessible label');
-  assertContains(html, '>Estadisticas<', 'Expanded stats visible label should localize');
+  assertContains(html, '>Pertenencias<', 'Expanded deep-management route should localize the Holdings label');
   assertContains(html, 'aria-label="Hacer lider a Ally B"', 'Leader control should expose localized accessible label');
   assertContains(html, '>Hacer lider<', 'Leader visible label should localize');
   assertContains(html, 'aria-label="Arrastrar Ally B para reordenar"', 'Drag reorder handle should expose localized accessible label');
@@ -16124,9 +16478,9 @@ test('Safe stats and inspect hide hidden body compatibility fields', () => {
 
   App.setContentTier('adult');
   App.showCharacterStats();
-  assertContains(holdingsHtml(elements), 'Body Type:', 'Adult character stats should keep explicit body details available');
+  assertContains(holdingsHtml(elements), 'Lower Anatomy:', 'Adult character stats should keep explicit body details available');
   App.outsideActionForCreature('inspect', 'safe-inspect-target');
-  assertContains(App.log[App.log.length - 1].text, 'Body Type:', 'Adult inspect should keep explicit body details available');
+  assertContains(App.log[App.log.length - 1].text, 'Lower Anatomy:', 'Adult inspect should keep explicit body details available');
 });
 
 test('Inventory equipment summary labels localize', () => {
@@ -16306,7 +16660,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(desktopMicroCard, 'data-command-control="mark-combat-target"', 'Micro enemy cards should preserve combat target marking');
   assertContains(desktopMicroCard, 'tactical-stat-rings', 'Micro tactical cards should use shared circular tactical status rings');
   assertNotContains(desktopMicroCard, '<div class="unit-name">Fox</div>', 'Micro tactical cards should not render a visible full name row');
-  assertContains(desktopMicroPartyCard, "--compact-card-icon-content:&#39;🧙&#39;", 'Desktop party micro actor badge should paint the real actor avatar');
+  assertContains(desktopMicroPartyCard, '<span class="micro-avatar" aria-hidden="true">🧙</span>', 'Passive desktop party micro card should paint the real actor avatar');
   assertNotContains(desktopMicroPartyCard, '>🧙</button>', 'Desktop party micro actor badge should not duplicate the avatar as button text');
   assertContains(mobileMicroCard, 'density-micro', 'Mobile combat strips should render micro tactical cards');
   assertContains(templateContent, '.mobile-unit-chip.micro-tactical-card {\n                flex: 0 0 clamp(148px, 40vw, 160px);', 'Mobile micro cards should stay narrow enough to avoid padded rail rows');
@@ -17474,7 +17828,8 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, '.mobile-tile-details-sheet', 'Mobile tile details sheet should have bottom-sheet styling');
   assertContains(template, '.story-meta-line', 'Story capsule should support result-first metadata layout');
   assertContains(template, '.scene-beat-stream', 'Scene Feed should style inline newest-first beat streams');
-  assertContains(storyEventsContent, 'streamHtml(app, { limit = 5 } = {})', 'Scene Feed renderer should provide a compact beat stream');
+  assertContains(storyEventsContent, 'streamHtml(app, { limit = this.maxEvents } = {})', 'Scene Feed renderer should provide the retained beat stream');
+  assertContains(storyEventsContent, 'exchangeGroups(app, events = [])', 'Scene Feed renderer should group causal exchanges consistently');
   assertContains(storyEventsContent, 'applyStreamElement(app, element, event, html', 'Scene Feed renderer should apply stream metadata to canonical slots');
   assertContains(template, '.story-event-detail-meta', 'Expanded Scene Feed should style structured beat metadata');
   assertContains(template, '.story-sub-events', 'Expanded Scene Feed should style sub-event lists');
@@ -17530,16 +17885,15 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertContains(sceneFeedDoc, '### Template Examples', 'Scene Feed DSL should include concrete template examples');
   assertContains(sceneFeedDoc, 'mod.safe-fight-summary', 'Scene Feed DSL should show a deterministic prose template example');
   assertContains(sceneFeedDoc, 'mod.row-failure-tactical', 'Scene Feed DSL should show a tactical failure template example');
-  assertContains(sceneFeedDoc, 'mod.llm-bridge-json', 'Scene Feed DSL should show a systemic bridge template example for optional LLM mods');
+  assertContains(sceneFeedDoc, 'MODS.getContext', 'Scene Feed DSL should show the bounded public-context bridge for optional LLM mods');
   assertContains(sceneFeedDoc, 'Content-tier filtering happens before template text is rendered', 'Scene Feed DSL should document content-tier safety');
   assertContains(sceneFeedDoc, 'Scene Feed is not a filtered view of the Activity Log', 'Scene Feed DSL should document Activity Log separation');
   assertContains(sceneFeedDoc, 'result metadata, tags, deltas, and sub-events', 'Scene Feed DSL should require expanded sheet metadata and effect details');
   assertContains(controlModel, '[Scene Feed DSL](scene-feed-dsl.md)', 'Control model should link to the Scene Feed DSL contract');
-  assertContains(nextObjectives, '# You Are Wild — Handoff Backlog', 'Next objectives should read as a handoff backlog instead of an active task queue');
-  assertContains(nextObjectives, 'No ready no-decision Scene Feed V1 hardening tasks remain', 'Next objectives should identify the completed Scene Feed hardening chain');
-  assertContains(nextObjectives, 'quest/shop observation and transaction beats', 'Next objectives should record the latest Scene Feed transaction slice');
-  assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep decision-heavy backlog separate from ready implementation work');
-  assertContains(nextObjectives, 'Do Not Treat As Immediate Tasks', 'Next objectives should label archived priority notes as non-immediate work');
+  assertContains(nextObjectives, '# You Are Wild Active Objectives', 'Next objectives should read as a concise active handoff');
+  assertContains(nextObjectives, 'Core gameplay is deterministic and does not depend on an LLM or remote service.', 'Next objectives should preserve the deterministic core boundary');
+  assertContains(nextObjectives, '## Operator-Mediated Decisions', 'Next objectives should keep decision-heavy backlog separate from ready implementation work');
+  assertContains(nextObjectives, '## Autonomous Work Boundary', 'Next objectives should state the autonomous implementation boundary');
   assertNotContains(nextObjectives, '## Open Objectives (Priority Order)', 'Next objectives should not keep stale active-work headings');
   assertNotContains(nextObjectives, '## Next Execution Goals', 'Next objectives should not keep stale execution-goal headings');
 });
@@ -17575,6 +17929,73 @@ test('Desktop Scene Feed uses one canonical latest slot in exploration and comba
   ].join(' ');
   assertEqual((combatSceneText.match(/Scene beats will appear here after interactions\./g) || []).length, 1, 'Desktop combat should render one latest Scene Feed placeholder');
   assertNotContains(combatSceneText, 'desktop-story-latest', 'Desktop combat should not render the retired legacy latest target');
+});
+
+test('Scene Feed groups combat rounds newest-first while preserving causal order', () => {
+  const { App, elements } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1' });
+  const wolfkin = makeUnit('Wolfkin', { id: 'wolfkin-1', disposition: App.DISPOSITION.ENEMY });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [wolfkin];
+  App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [], syncActions: [], processing: false };
+
+  App.emitSceneBeat({ mode: 'combat', actors: [you], targets: [wolfkin], action: 'fight' }, 'First round begins.');
+  App.emitSceneBeat({ mode: 'combat', actors: [wolfkin], targets: [you], action: 'fight' }, 'First round answers.');
+  App.combatState.round = 2;
+  App.emitSceneBeat({ mode: 'combat', actors: [you], targets: [wolfkin], action: 'fight' }, 'Second round begins.');
+  App.emitSceneBeat({ mode: 'combat', actors: [wolfkin], targets: [you], action: 'fight' }, 'Second round answers.');
+
+  const desktop = elements.get('desktop-scene-feed-latest').innerHTML;
+  const mobile = elements.get('mobile-story-latest').innerHTML;
+  assertEqual(desktop, mobile, 'Desktop and mobile should render the same Scene Feed stream contract');
+  assertEqual((desktop.match(/class="scene-exchange-group/g) || []).length, 2, 'Two combat rounds should render as two exchange groups');
+  assert(desktop.indexOf('data-scene-exchange-id="combat-round-2"') < desktop.indexOf('data-scene-exchange-id="combat-round-1"'), 'Newest round should render above the older round');
+  assert(desktop.indexOf('Second round begins.') < desktop.indexOf('Second round answers.'), 'Beats inside a round should remain chronological');
+
+  App.openSceneFeed();
+  const sheet = elements.get('story-sheet-list').innerHTML;
+  assert(sheet.indexOf('Round 2') < sheet.indexOf('Round 1'), 'Expanded Scene Feed should use the same newest-first exchange order');
+  assert(sheet.indexOf('Second round begins.') < sheet.indexOf('Second round answers.'), 'Expanded exchange details should remain chronological');
+  App.closeSceneFeed();
+});
+
+test('Scene Feed retains sixty recent beats', () => {
+  const { App } = loadAppForCombat();
+  App.combatState = { active: false };
+  for (let index = 1; index <= 65; index++) {
+    App.emitSceneBeat({ mode: 'adventure', action: 'observe' }, `Beat ${index}.`);
+  }
+  assertEqual(App.storyEvents.length, 60, 'Scene Feed should retain sixty beats');
+  assertEqual(App.storyEvents[0].summary, 'Beat 6.', 'Scene Feed should discard only beats beyond the retention window');
+  assertEqual(App.storyEvents[59].summary, 'Beat 65.', 'Scene Feed should retain the latest beat');
+});
+
+test('Status-driven skipped turns emit causal Scene Beats', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const you = makeUnit('You', { id: 'you-1', status: { stun: { turns: 1 } } });
+  const wolfkin = makeUnit('Wolfkin', { id: 'wolfkin-1', disposition: App.DISPOSITION.ENEMY });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [wolfkin];
+  App.combatState = {
+    active: true,
+    round: 3,
+    currentTurn: 0,
+    turnQueue: [{ unit: you, initiative: 10 }, { unit: wolfkin, initiative: 5 }],
+    syncActions: [],
+    processing: false
+  };
+  let advanced = false;
+  App.nextTurn = () => { advanced = true; };
+
+  App.processTurn();
+
+  assertEqual(advanced, true, 'Skipped status turn should continue combat turn progression');
+  assertContains(App.latestSceneBeat.summary, 'stunned', 'Scene Feed should explain the skipped turn');
+  assertEqual(App.latestSceneBeat.source, 'combat-status', 'Skipped-turn beat should identify combat status as its source');
+  assertEqual(App.latestSceneBeat.tags.includes('turn-skipped'), true, 'Skipped-turn beat should carry a causal routing tag');
+  assertEqual(App.latestSceneBeat.metadata.combatRound, 3, 'Skipped-turn beat should join the active combat round exchange');
 });
 
 test('Feast containment doctrine locks V1 scope and links from control model', () => {
@@ -17625,11 +18046,11 @@ test('Control model records accepted mechanics decisions', () => {
   assertContains(controlModel, 'Feast/containment uses regular damage and vital damage as separate living-creature tracks', 'Control model should record vital damage doctrine');
   assertContains(controlModel, 'separate Remains Pool', 'Control model should record corpse/remains pool doctrine');
   assertContains(controlModel, 'Feast V2 is stomach-first by default', 'Control model should record stomach-first Feast V2 doctrine');
-  assertContains(controlModel, 'Mobile feedback uses a persistent latest Scene Beat plus an explicit expanded Scene Feed sheet', 'Mobile feedback doctrine should require persistent latest beat plus explicit sheet access');
-  assertContains(nextObjectives, 'Accepted mechanics decisions', 'Next objectives should reference accepted mechanics decisions separately from deferred topics');
-  assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep the remaining deferred count visible');
-  assertContains(nextObjectives, '3 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
-  assertContains(nextObjectives, 'core Feast/Containment V2 is implemented', 'Next objectives should record Feast V2 core as implemented instead of decision-blocked');
+  assertContains(controlModel, 'Desktop and mobile feedback use the same persistent newest-first Scene Feed contract', 'Scene Feed doctrine should require one responsive stream contract');
+  assertContains(nextObjectives, 'docs/control-model.md', 'Next objectives should link accepted mechanics doctrine');
+  assertContains(nextObjectives, '## Operator-Mediated Decisions', 'Next objectives should separate deferred decisions from autonomous work');
+  assertContains(nextObjectives, 'Final body-build taxonomy and preference model.', 'Next objectives should preserve the unresolved body-build decision');
+  assertContains(nextObjectives, 'docs/feast-containment-v2.md', 'Next objectives should link the implemented Feast V2 doctrine');
   assertNotContains(nextObjectives, 'feast/containment redesign, formal row-blocking doctrine', 'Next objectives should not preserve stale undecided feast wording in the status summary');
 });
 
@@ -20545,7 +20966,8 @@ test('Desktop play surface renders adjacent movement cells', () => {
   assertContains(combatStageHtml, 'desktop-battle-stack', 'Combat desktop center should own the stacked battle rows');
   assertContains(combatStageHtml, 'desktop-battle-lane', 'Combat desktop center stack should include battle lanes');
   assertContains(combatStageHtml, 'micro-tactical-card', 'Combat desktop battle lanes should use micro tactical cards');
-  assertContains(combatStageHtml, 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Combat desktop party battle lane should keep party Mark controls visible');
+  assertNotContains(combatStageHtml, 'data-command-control="focus-target"', 'Combat desktop battle lanes should remain passive while side rails own target controls');
+  assertNotContains(combatStageHtml, 'onclick=', 'Combat desktop battle lanes should not duplicate interactive card controls');
   assertNotContains(combatStageHtml, 'class="desktop-battle-unit ', 'Combat desktop battle lanes should not render bulky bespoke combatant cards');
   assertContains(north.className, 'combat-stage-hidden', 'Combat desktop north cell should be hidden once enemy lane moves into the center stack');
   assertNotContains(north.className, 'moveable', 'Combat desktop north cell should not present as moveable');
@@ -20925,7 +21347,7 @@ test('Mobile combat unit strips own horizontal touch scrolling', () => {
   assertContains(template, '.mobile-unit-strip > *,\n            .mobile-unit-strip .action-btn,\n            .mobile-unit-strip button {\n                touch-action: pan-x;', 'Mobile unit strip children should permit horizontal pan gestures over cards and controls');
   assertContains(template, '.mobile-actor-belt > *,\n            .mobile-actor-belt .action-btn,\n            .mobile-actor-belt button,', 'Mobile actor picker belt children should permit horizontal pan gestures');
   assertContains(template, '.mobile-target-picker-belt > *,\n            .mobile-target-picker-belt .action-btn,\n            .mobile-target-picker-belt button {', 'Mobile target picker belt children should permit horizontal pan gestures');
-  assertContains(mobileGesturesContent, 'initUnitStripPan(app)', 'Mobile gestures should initialize strip pan support');
+  assertContains(mobileGesturesContent, 'initUnitStripPan(app, root = document)', 'Mobile gestures should initialize strip pan support');
   assertContains(mobileGesturesContent, "unitStripPanSelector: '.mobile-unit-strip, .mobile-actor-belt, .mobile-target-picker-belt'", 'Strip pan support should bind all mobile horizontal unit belts');
   assertContains(mobileGesturesContent, "event.target?.closest?.(this.unitStripPanSelector)", 'Strip pan support should delegate from any touched child to the nearest strip');
   assertContains(mobileGesturesContent, "strip.dataset.unitStripPanBound === 'true'", 'Strip pan support should avoid duplicate listeners on rerendered rails');

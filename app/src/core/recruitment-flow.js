@@ -35,7 +35,7 @@ const YAW_RECRUITMENT_FLOW = {
 
     byId(app, targetId) {
         const target = app.creatures.find(c => String(c.id || c.name) === String(targetId));
-        if (!this.canRecruit(app, app._getExplorationActor(), target)) return false;
+        if (!target) return false;
         return app.recruitCreature(target, app._getExplorationActor());
     },
 

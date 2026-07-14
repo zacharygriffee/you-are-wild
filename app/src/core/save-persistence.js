@@ -356,6 +356,7 @@ const YAW_SAVE_PERSISTENCE = {
             active: true,
             round: app.combatState.round || 1,
             currentTurn: app.combatState.currentTurn || 0,
+            sceneExchangeId: app.combatState.sceneExchangeId || null,
             xpEarned: app.combatState.xpEarned || 0,
             activeActorId: unitRef(app.activeActor),
             turnQueue: (app.combatState.turnQueue || []).map(entry => ({

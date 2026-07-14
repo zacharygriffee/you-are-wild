@@ -11,6 +11,7 @@ const MODULE_SYSTEM = {
     GAME_VERSION: '0.10.0',
     PACKAGE_TYPE: 'yaw-module',
     PACKAGE_VERSION: 1,
+    PUBLIC_CONTEXT_VERSION: 1,
     TRUST_BOUNDARY: 'trusted-local',
     CONTENT_RATINGS: ['safe', 'mature', 'adult'],
     KNOWN_PERMISSIONS: ['ui.read', 'world:add_biome', 'content:add_species', 'content:add_item'],
@@ -770,6 +771,116 @@ const MODULE_SYSTEM = {
         stack.delete(value);
     },
 
+    _publicUnitSummary(unit) {
+        if (!unit || typeof unit !== 'object') return null;
+        const finite = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+        return {
+            id: String(unit.id || unit.name || ''),
+            name: String(unit.name || ''),
+            species: String(unit.species || ''),
+            disposition: String(unit.disposition || ''),
+            role: String(unit.partyRole || unit.role || ''),
+            level: finite(unit.level),
+            punishment: { current: finite(unit.CPun), max: finite(unit.MPun) },
+            spirit: { current: finite(unit.CPle), max: finite(unit.MPle) },
+            hunger: finite(unit.hunger),
+            size: finite(unit.size),
+            combatRow: unit.combatRow === 'back' ? 'back' : (unit.combatRow === 'front' ? 'front' : null),
+            capabilities: ['flying', 'ranged', 'antiflying', 'swimming', 'darkvision'].filter(key => Boolean(unit[key])),
+            statuses: Object.keys(unit.status || {}).filter(key => Boolean(unit.status[key])).sort()
+        };
+    },
+
+    _publicSceneBeatSummary(event) {
+        if (!event || typeof event !== 'object') return null;
+        return {
+            id: event.id == null ? null : String(event.id),
+            mode: String(event.mode || ''),
+            action: String(event.action || ''),
+            subAction: event.subAction == null ? null : String(event.subAction),
+            shape: String(event.shape || ''),
+            resultKind: String(event.resultKind || ''),
+            summary: String(event.summary || ''),
+            passage: String(event.passage || ''),
+            actors: (event.actors || []).map(unit => this._publicUnitSummary(unit)).filter(Boolean),
+            targets: (event.targets || []).map(unit => this._publicUnitSummary(unit)).filter(Boolean),
+            deltas: this._serializableCopy(event.deltas || []),
+            tags: (event.tags || []).map(String),
+            importance: String(event.importance || 'normal'),
+            source: String(event.source || ''),
+            contentTier: Number.isFinite(Number(event.contentTier)) ? Number(event.contentTier) : 0,
+            subEvents: this._serializableCopy(event.subEvents || [])
+        };
+    },
+
+    _publicActivitySummary(entry) {
+        if (!entry || typeof entry !== 'object') return null;
+        return {
+            text: String(entry.text || ''),
+            type: String(entry.type || 'info'),
+            round: Number.isFinite(Number(entry.round)) ? Number(entry.round) : null,
+            turn: Number.isFinite(Number(entry.turn)) ? Number(entry.turn) : null,
+            actorId: entry.actorId == null ? null : String(entry.actorId),
+            timestamp: Number.isFinite(Number(entry.timestamp)) ? Number(entry.timestamp) : null
+        };
+    },
+
+    _publicQuestSummary(quest) {
+        if (!quest || typeof quest !== 'object') return null;
+        return {
+            id: String(quest.id || quest.title || ''),
+            title: String(quest.title || ''),
+            status: String(quest.status || ''),
+            type: String(quest.type || quest.objective?.type || ''),
+            progress: Number.isFinite(Number(quest.progress)) ? Number(quest.progress) : 0,
+            required: Number.isFinite(Number(quest.required)) ? Number(quest.required) : null,
+            giverId: quest.giverId == null ? null : String(quest.giverId),
+            completed: Boolean(quest.completed || quest.status === 'completed' || quest.status === 'turnIn'),
+            objective: this._serializableCopy(quest.objective || null)
+        };
+    },
+
+    _serializableCopy(value) {
+        try {
+            this._assertSerializableData(value, 'Public context');
+            return JSON.parse(JSON.stringify(value));
+        } catch (e) {
+            return Array.isArray(value) ? [] : null;
+        }
+    },
+
+    getPublicContext(options = {}) {
+        const requestedLimit = Number(options.limit ?? 20);
+        const limit = Math.max(1, Math.min(50, Number.isFinite(requestedLimit) ? Math.floor(requestedLimit) : 20));
+        const currentTile = App._currentExplorationTile?.()
+            || App.worldMap?.get?.(`${App.location?.x || 0},${App.location?.y || 0}`)
+            || null;
+        const tileSummary = App.getTileMapSummary?.(currentTile) || (currentTile ? {
+            x: Number(currentTile.x ?? App.location?.x ?? 0),
+            y: Number(currentTile.y ?? App.location?.y ?? 0),
+            biome: String(currentTile.biome || ''),
+            explored: Boolean(currentTile.explored)
+        } : null);
+        return {
+            version: this.PUBLIC_CONTEXT_VERSION,
+            mode: App.combatState?.active ? 'combat' : 'adventure',
+            content: {
+                maxTier: Number.isFinite(Number(CONTENT?.preferences?.maxTier)) ? Number(CONTENT.preferences.maxTier) : 0,
+                language: String(CONTENT?.preferences?.language || 'en')
+            },
+            location: {
+                x: Number(App.location?.x || 0),
+                y: Number(App.location?.y || 0),
+                tile: this._serializableCopy(tileSummary)
+            },
+            party: (App.party || []).map(unit => this._publicUnitSummary(unit)).filter(Boolean),
+            nearbyUnits: (App.creatures || []).map(unit => this._publicUnitSummary(unit)).filter(Boolean),
+            quests: (App.quests || []).slice(0, limit).map(quest => this._publicQuestSummary(quest)).filter(Boolean),
+            sceneBeats: (App.storyEvents || []).slice(-limit).map(event => this._publicSceneBeatSummary(event)).filter(Boolean),
+            activity: (App.log || []).slice(-limit).map(entry => this._publicActivitySummary(entry)).filter(Boolean)
+        };
+    },
+
     _addOwnedArrayEntry(moduleId, collectionName, value) {
         const labels = { species: 'Species', items: 'Item' };
         const entry = this._normalizeDataContribution(value, labels[collectionName] || collectionName);
@@ -858,6 +969,11 @@ const MODULE_SYSTEM = {
             addItem(itemDef) {
                 self._requirePermission(moduleId, manifest, 'content:add_item');
                 self._addOwnedArrayEntry(moduleId, 'items', itemDef);
+            },
+
+            getContext(options = {}) {
+                self._requirePermission(moduleId, manifest, 'ui.read');
+                return self.getPublicContext(options);
             },
             
             log(message) {

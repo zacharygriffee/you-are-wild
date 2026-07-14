@@ -65,8 +65,16 @@ const YAW_COMBAT_ENEMIES = {
     takeTurn(app, enemy) {
         const charmedTargets = app._charmedTargetsFor(enemy);
         const targets = charmedTargets || app.party.filter(p => p.CPun > 0);
-        if (targets.length === 0) return;
-        const target = app._selectEnemyTarget(enemy, targets);
+        if (targets.length === 0) {
+            const summary = app._label('combat.enemyNoTarget', '{name} hesitates with no valid target and loses their turn.', { name: enemy.name });
+            app._pushLog(summary, 'combat', { actor: enemy, phase: 'skip' });
+            YAW_COMBAT_TURNS.emitSkippedTurn(app, enemy, summary, ['no-target']);
+            app.renderLog();
+            app.nextTurn();
+            return;
+        }
+        const reachableTargets = targets.filter(target => app._canReachCombatTarget(enemy, target, 'fight'));
+        const target = app._selectEnemyTarget(enemy, reachableTargets.length > 0 ? reachableTargets : targets);
         if (enemy.menacing && target.CPun / target.MPun < 0.4
             && app._combatStateRoll('combat-menacing-fear', enemy, app._unitSelectionId(target)) < 0.3) {
             app.log.push({ text: `${enemy.name} is terrifying! ${target.name} cowers in fear.`, type: 'combat' });
@@ -95,7 +103,7 @@ const YAW_COMBAT_ENEMIES = {
             }
             return;
         }
-        if (!app._canReachCombatTarget(enemy, target, 'fight')) {
+        if (reachableTargets.length === 0) {
             app.log.push({ text: app._label('combat.enemyCannotReach', '{enemy} cannot reach {target}.', { enemy: enemy.name, target: target.name }), type: 'combat' });
             app.renderLog(); app.nextTurn(); return;
         }

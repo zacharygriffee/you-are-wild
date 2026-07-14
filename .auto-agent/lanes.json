@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "mapId": "you-are-wild-implementation-lanes",
+  "mapId": "you-are-wild-autonomous-lanes",
   "targetAdapterHint": "node-js",
   "profile": {
     "safeCommands": [
@@ -39,686 +39,188 @@
   },
   "operatorBoundaries": [
     {
+      "id": "product-decisions",
+      "title": "Balance and feature placement stay mediated",
+      "boundary": "product-direction",
+      "reason": "Agents may gather evidence and record options, but may not decide balance targets, body-build taxonomy, feature placement, or new row mechanics."
+    },
+    {
       "id": "explicit-content-boundary",
       "title": "No explicit content expansion",
       "boundary": "explicit-content-expansion",
-      "reason": "Lane work is limited to mechanics, UI, map metadata, safe labels, and architecture. Agents must not expand, rewrite, or generate explicit content."
+      "reason": "Autonomous work is limited to SFW mechanics, UI, accessibility, localization, documentation, tests, and content-tier-safe architecture."
     },
     {
-      "id": "legal-and-branding-claims",
-      "title": "No legal claims",
-      "boundary": "legal-claim",
-      "reason": "Agents may implement metadata and naming cleanup, but must not claim legal safety or licensing conclusions."
-    },
-    {
-      "id": "release-and-publish",
-      "title": "Release actions stay manual",
+      "id": "release-and-legal",
+      "title": "Release and legal actions stay mediated",
       "boundary": "release",
-      "reason": "Pushing, publishing, public network actions, proof promotion, and final repo acceptance remain operator-mediated."
+      "reason": "Commit, push, publishing, public network actions, final device acceptance, and legal or licensing conclusions require the operator."
     }
   ],
   "lanes": [
     {
-      "laneId": "interaction-eligibility-enforcement",
+      "laneId": "ui-accessibility-localization-regressions",
       "priority": 10,
-      "title": "Interaction Eligibility Enforcement",
-      "objective": "Enforce the sapient/person-like default creature canon in baseline interaction eligibility without expanding explicit content or breaking stable species IDs.",
+      "title": "UI Accessibility Localization Regressions",
+      "objective": "Fix demonstrated UI regressions and harden keyboard, ARIA, locale parity, overflow, and supported viewport behavior without redesigning the interaction model.",
       "statusBasis": {
         "mode": "terminal-checks",
         "terminalChecks": [
-          {
-            "checkType": "content",
-            "file": "app/src/core/app.js",
-            "containsAll": [
-              "DEFAULT_SPECIES_CANON",
-              "sapience",
-              "bodyPlan",
-              "baselineInteraction"
-            ]
-          },
-          {
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
+          { "checkType": "command-exit", "command": "npm run test" },
+          { "checkType": "command-exit", "command": "npm run test:viewport" }
         ]
       },
       "workOrder": {
         "likelyFiles": [
-          "app/src/core/app.js",
+          "app/template.html",
           "app/src/core/content-system.js",
+          "app/src/core/interaction-state.js",
+          "app/src/core/mobile-unit-strips.js",
           "app/test/test.js",
-          "docs/creature-canon.md",
-          "docs/next-objectives.md"
+          "app/test/viewport-check.js"
         ],
         "expectedChangedFiles": [
-          "app/src/core/app.js",
-          "app/test/test.js",
-          "dist/you-are-wild.html"
-        ],
-        "requiredCommands": [
-          "npm run build",
-          "npm run test",
-          "npm run lint",
-          "npm run check"
-        ],
-        "acceptanceCriteria": [
-          "Canon metadata exists for default species.",
-          "Interaction eligibility tests or helpers use canon metadata.",
-          "Build command passes.",
-          "Test command passes.",
-          "Lint command passes.",
-          "Check command passes."
-        ],
-        "criteriaChecks": [
-          {
-            "criterion": "Canon metadata exists for default species.",
-            "checkType": "content",
-            "file": "app/src/core/app.js",
-            "containsAll": [
-              "DEFAULT_SPECIES_CANON",
-              "speciesTraits",
-              "baselineInteraction"
-            ]
-          },
-          {
-            "criterion": "Interaction eligibility tests or helpers use canon metadata.",
-            "checkType": "content",
-            "file": "app/test/test.js",
-            "containsAny": [
-              "baselineInteraction",
-              "species canon",
-              "sapience"
-            ]
-          },
-          {
-            "criterion": "Build command passes.",
-            "checkType": "command-exit",
-            "command": "npm run build"
-          },
-          {
-            "criterion": "Test command passes.",
-            "checkType": "command-exit",
-            "command": "npm run test"
-          },
-          {
-            "criterion": "Lint command passes.",
-            "checkType": "command-exit",
-            "command": "npm run lint"
-          },
-          {
-            "criterion": "Check command passes.",
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
-        ],
-        "forbiddenPaths": [
-          "package-lock.json"
-        ],
-        "nonClaims": [
-          "Does not provide legal advice.",
-          "Does not expand explicit content.",
-          "Does not rename stable species IDs unless tests and compatibility are updated."
-        ]
-      }
-    },
-    {
-      "laneId": "center-tile-event-feed",
-      "priority": 20,
-      "title": "Center Tile Event Feed",
-      "objective": "Add a tile-scoped event feed in the play-surface center so immediate local events can be shown as presentation data while the existing combat log remains durable/debuggable.",
-      "statusBasis": {
-        "mode": "terminal-checks",
-        "terminalChecks": [
-          {
-            "checkType": "content",
-            "file": "app/src/core/app.js",
-            "containsAny": [
-              "tileEvents",
-              "tileEventFeed",
-              "centerTileEvents"
-            ]
-          },
-          {
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
-        ]
-      },
-      "workOrder": {
-        "likelyFiles": [
-          "app/src/core/app.js",
-          "app/template.html",
-          "app/test/test.js",
-          "docs/control-model.md",
-          "docs/next-objectives.md"
-        ],
-        "expectedChangedFiles": [
-          "app/src/core/app.js",
-          "app/template.html",
-          "app/test/test.js",
-          "dist/you-are-wild.html"
-        ],
-        "requiredCommands": [
-          "npm run build",
-          "npm run test",
-          "npm run lint",
-          "npm run check"
-        ],
-        "acceptanceCriteria": [
-          "A center tile event feed implementation is present.",
-          "Tests cover tile event feed behavior.",
-          "Build command passes.",
-          "Test command passes.",
-          "Lint command passes.",
-          "Check command passes."
-        ],
-        "criteriaChecks": [
-          {
-            "criterion": "A center tile event feed implementation is present.",
-            "checkType": "content",
-            "file": "app/src/core/app.js",
-            "containsAny": [
-              "tileEvents",
-              "tileEventFeed",
-              "centerTileEvents"
-            ]
-          },
-          {
-            "criterion": "Tests cover tile event feed behavior.",
-            "checkType": "content",
-            "file": "app/test/test.js",
-            "containsAny": [
-              "tile event",
-              "tileEvents",
-              "center tile event"
-            ]
-          },
-          {
-            "criterion": "Build command passes.",
-            "checkType": "command-exit",
-            "command": "npm run build"
-          },
-          {
-            "criterion": "Test command passes.",
-            "checkType": "command-exit",
-            "command": "npm run test"
-          },
-          {
-            "criterion": "Lint command passes.",
-            "checkType": "command-exit",
-            "command": "npm run lint"
-          },
-          {
-            "criterion": "Check command passes.",
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
-        ],
-        "forbiddenPaths": [
-          "package-lock.json"
-        ],
-        "nonClaims": [
-          "Does not add LLM integration.",
-          "Does not replace the combat log.",
-          "Does not expand explicit content."
-        ]
-      }
-    },
-    {
-      "laneId": "combat-toolbelt-prototype",
-      "priority": 30,
-      "title": "Combat Toolbelt Prototype",
-      "objective": "Prototype a combat-mode play surface/toolbelt that keeps party, enemies, current actor, target, and intent controls visible without constant panel switching, especially on mobile.",
-      "statusBasis": {
-        "mode": "terminal-checks",
-        "terminalChecks": [
-          {
-            "checkType": "content",
-            "file": "app/template.html",
-            "containsAny": [
-              "combat-toolbelt",
-              "battle-toolbelt",
-              "combat-surface"
-            ]
-          },
-          {
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
-        ]
-      },
-      "workOrder": {
-        "likelyFiles": [
-          "app/src/core/app.js",
-          "app/template.html",
-          "app/test/test.js",
-          "docs/control-model.md",
-          "docs/next-objectives.md"
-        ],
-        "expectedChangedFiles": [
-          "app/src/core/app.js",
-          "app/template.html",
-          "app/test/test.js",
-          "dist/you-are-wild.html"
-        ],
-        "requiredCommands": [
-          "npm run build",
-          "npm run test",
-          "npm run lint",
-          "npm run check"
-        ],
-        "acceptanceCriteria": [
-          "Combat toolbelt or battle surface hook exists.",
-          "Combat toolbelt tests or assertions exist.",
-          "Build command passes.",
-          "Test command passes.",
-          "Lint command passes.",
-          "Check command passes."
-        ],
-        "criteriaChecks": [
-          {
-            "criterion": "Combat toolbelt or battle surface hook exists.",
-            "checkType": "content",
-            "file": "app/template.html",
-            "containsAny": [
-              "combat-toolbelt",
-              "battle-toolbelt",
-              "combat-surface"
-            ]
-          },
-          {
-            "criterion": "Combat toolbelt tests or assertions exist.",
-            "checkType": "content",
-            "file": "app/test/test.js",
-            "containsAny": [
-              "combat toolbelt",
-              "battle surface",
-              "combat-surface"
-            ]
-          },
-          {
-            "criterion": "Build command passes.",
-            "checkType": "command-exit",
-            "command": "npm run build"
-          },
-          {
-            "criterion": "Test command passes.",
-            "checkType": "command-exit",
-            "command": "npm run test"
-          },
-          {
-            "criterion": "Lint command passes.",
-            "checkType": "command-exit",
-            "command": "npm run lint"
-          },
-          {
-            "criterion": "Check command passes.",
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
-        ],
-        "forbiddenPaths": [
-          "package-lock.json"
-        ],
-        "nonClaims": [
-          "Does not redesign all combat.",
-          "Does not remove existing panels.",
-          "Does not expand explicit content."
-        ]
-      }
-    },
-    {
-      "laneId": "play-surface-unification",
-      "priority": 40,
-      "title": "Play Surface Unification",
-      "objective": "Continue unifying routine traversal around the 3x3 play surface on desktop and mobile while keeping the display map as an expanded review/planning surface.",
-      "statusBasis": {
-        "mode": "terminal-checks",
-        "terminalChecks": [
-          {
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "play surface",
-              "display map"
-            ]
-          },
-          {
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
-        ]
-      },
-      "workOrder": {
-        "likelyFiles": [
-          "app/src/core/app.js",
-          "app/template.html",
-          "app/test/test.js",
-          "docs/control-model.md",
-          "docs/next-objectives.md"
-        ],
-        "expectedChangedFiles": [
-          "app/src/core/app.js",
-          "app/template.html",
-          "app/test/test.js",
-          "dist/you-are-wild.html"
-        ],
-        "requiredCommands": [
-          "npm run build",
-          "npm run test",
-          "npm run lint",
-          "npm run check"
-        ],
-        "acceptanceCriteria": [
-          "Play surface and display map terminology is present.",
-          "Play surface tests or assertions exist.",
-          "Build command passes.",
-          "Test command passes.",
-          "Lint command passes.",
-          "Check command passes."
-        ],
-        "criteriaChecks": [
-          {
-            "criterion": "Play surface and display map terminology is present.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "play surface",
-              "display map"
-            ]
-          },
-          {
-            "criterion": "Play surface tests or assertions exist.",
-            "checkType": "content",
-            "file": "app/test/test.js",
-            "containsAny": [
-              "play surface",
-              "display map",
-              "3x3"
-            ]
-          },
-          {
-            "criterion": "Build command passes.",
-            "checkType": "command-exit",
-            "command": "npm run build"
-          },
-          {
-            "criterion": "Test command passes.",
-            "checkType": "command-exit",
-            "command": "npm run test"
-          },
-          {
-            "criterion": "Lint command passes.",
-            "checkType": "command-exit",
-            "command": "npm run lint"
-          },
-          {
-            "criterion": "Check command passes.",
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
-        ],
-        "forbiddenPaths": [
-          "package-lock.json"
-        ],
-        "nonClaims": [
-          "Does not implement fast travel.",
-          "Does not remove the display map.",
-          "Does not expand explicit content."
-        ]
-      }
-    },
-    {
-      "laneId": "docs-objectives-trim",
-      "priority": 90,
-      "title": "Objectives Trim And Changelog Split",
-      "objective": "Reduce stale planning surface area by turning docs/next-objectives.md back into a short active-objectives handoff and moving completed/history material into changelog-style documentation.",
-      "statusBasis": {
-        "mode": "terminal-checks",
-        "terminalChecks": [
-          {
-            "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "Active Objectives",
-              "Mechanics/Core",
-              "UI",
-              "Features"
-            ]
-          },
-          {
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
-        ]
-      },
-      "workOrder": {
-        "likelyFiles": [
-          "docs/next-objectives.md",
-          "docs/changelog.md",
-          "docs/work-history.md"
-        ],
-        "expectedChangedFiles": [
-          "docs/next-objectives.md",
-          "docs/changelog.md"
-        ],
-        "requiredCommands": [
-          "npm run check"
-        ],
-        "acceptanceCriteria": [
-          "Active objective headings are present.",
-          "A history or changelog document exists.",
-          "Check command passes."
-        ],
-        "criteriaChecks": [
-          {
-            "criterion": "Active objective headings are present.",
-            "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "Active Objectives",
-              "Mechanics/Core",
-              "UI",
-              "Features"
-            ]
-          },
-          {
-            "criterion": "A history or changelog document exists.",
-            "checkType": "artifact-exists",
-            "file": "docs/changelog.md"
-          },
-          {
-            "criterion": "Check command passes.",
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
-        ],
-        "forbiddenPaths": [
-          "app/src/core/app.js",
-          "app/template.html",
-          "app/test/test.js",
-          "package-lock.json"
-        ],
-        "nonClaims": [
-          "Does not implement gameplay changes.",
-          "Does not delete unresolved active goals."
-        ]
-      }
-    },
-    {
-      "laneId": "asset-tileset-manifest",
-      "priority": 100,
-      "title": "Asset Tileset Manifest",
-      "objective": "Prepare flexible tileset/asset metadata for future relative image assets, including provenance such as AI-made assets, while keeping icon fallbacks and not replacing map art in this pass.",
-      "statusBasis": {
-        "mode": "terminal-checks",
-        "terminalChecks": [
-          {
-            "checkType": "content",
-            "file": "docs/asset-manifest.md",
-            "containsAll": [
-              "provenance",
-              "fallback",
-              "relative"
-            ]
-          },
-          {
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
-        ]
-      },
-      "workOrder": {
-        "likelyFiles": [
-          "docs/asset-manifest.md",
-          "docs/next-objectives.md",
-          "app/src/core/app.js",
+          "app/src/core/content-system.js",
           "app/test/test.js"
         ],
-        "expectedChangedFiles": [
-          "docs/asset-manifest.md",
-          "docs/next-objectives.md"
-        ],
         "requiredCommands": [
+          "npm run test",
+          "npm run test:viewport",
           "npm run check"
         ],
         "acceptanceCriteria": [
-          "Tileset metadata language exists.",
-          "Next objectives mention tileset fallback.",
-          "Check command passes."
+          "No new hardcoded high-traffic UI labels are introduced.",
+          "Interactive controls retain accessible names and focus behavior.",
+          "Supported viewport checks pass."
         ],
         "criteriaChecks": [
-          {
-            "criterion": "Tileset metadata language exists.",
-            "checkType": "content",
-            "file": "docs/asset-manifest.md",
-            "containsAll": [
-              "provenance",
-              "fallback",
-              "relative"
-            ]
-          },
-          {
-            "criterion": "Next objectives mention tileset fallback.",
-            "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "tileset",
-              "fallback"
-            ]
-          },
-          {
-            "criterion": "Check command passes.",
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
+          { "criterion": "Locale parity coverage exists.", "checkType": "content", "file": "app/test/test.js", "containsAll": ["Maintained locales expose matching translation keys"] },
+          { "criterion": "Tests pass.", "checkType": "command-exit", "command": "npm run test" },
+          { "criterion": "Viewport checks pass.", "checkType": "command-exit", "command": "npm run test:viewport" }
         ],
-        "forbiddenPaths": [
-          "package-lock.json"
-        ],
+        "forbiddenPaths": ["dist/you-are-wild.html", "package-lock.json"],
         "nonClaims": [
-          "Does not claim license safety.",
-          "Does not require assets to replace existing emoji/icon fallbacks."
+          "Does not substitute automated checks for final physical-device or human screen-reader acceptance.",
+          "Does not redesign controls without playtest evidence."
         ]
       }
     },
     {
-      "laneId": "quest-preview-before-accept",
-      "priority": 110,
-      "title": "Quest Preview Before Accept",
-      "objective": "Expose a safe quest preview before accepting a quest so the player can understand the offer before committing.",
+      "laneId": "mod-public-context-examples",
+      "priority": 20,
+      "title": "Mod Public Context Examples",
+      "objective": "Harden permission-gated public narrative context and trusted-local narrative/structural examples without adding an LLM or network dependency to core gameplay.",
       "statusBasis": {
         "mode": "terminal-checks",
         "terminalChecks": [
-          {
-            "checkType": "content",
-            "file": "app/src/core/app.js",
-            "containsAny": [
-              "Quest Preview",
-              "quest preview",
-              "previewQuest"
-            ]
-          },
-          {
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
+          { "checkType": "content", "file": "app/src/core/module-system.js", "containsAll": ["getPublicContext", "getContext", "ui.read"] },
+          { "checkType": "command-exit", "command": "npm run test" }
         ]
       },
       "workOrder": {
         "likelyFiles": [
-          "app/src/core/app.js",
-          "app/template.html",
+          "app/src/core/module-system.js",
           "app/test/test.js",
-          "docs/next-objectives.md"
+          "docs/modding.md",
+          "docs/scene-feed-dsl.md"
         ],
         "expectedChangedFiles": [
-          "app/src/core/app.js",
+          "app/src/core/module-system.js",
           "app/test/test.js",
-          "dist/you-are-wild.html"
+          "docs/modding.md"
         ],
-        "requiredCommands": [
-          "npm run build",
-          "npm run test",
-          "npm run lint",
-          "npm run check"
-        ],
+        "requiredCommands": ["npm run test", "npm run check"],
         "acceptanceCriteria": [
-          "Quest preview path exists.",
-          "Quest preview tests or assertions exist.",
-          "Build command passes.",
-          "Test command passes.",
-          "Lint command passes.",
-          "Check command passes."
+          "Public context is bounded, serializable, versioned, and permission-gated.",
+          "Public unit summaries omit compatibility anatomy and containment internals.",
+          "Core gameplay remains deterministic without a model or network call."
         ],
         "criteriaChecks": [
-          {
-            "criterion": "Quest preview path exists.",
-            "checkType": "content",
-            "file": "app/src/core/app.js",
-            "containsAny": [
-              "previewQuest",
-              "quest preview",
-              "Quest Preview"
-            ]
-          },
-          {
-            "criterion": "Quest preview tests or assertions exist.",
-            "checkType": "content",
-            "file": "app/test/test.js",
-            "containsAny": [
-              "previewQuest",
-              "quest preview",
-              "Quest Preview"
-            ]
-          },
-          {
-            "criterion": "Build command passes.",
-            "checkType": "command-exit",
-            "command": "npm run build"
-          },
-          {
-            "criterion": "Test command passes.",
-            "checkType": "command-exit",
-            "command": "npm run test"
-          },
-          {
-            "criterion": "Lint command passes.",
-            "checkType": "command-exit",
-            "command": "npm run lint"
-          },
-          {
-            "criterion": "Check command passes.",
-            "checkType": "command-exit",
-            "command": "npm run check"
-          }
+          { "criterion": "Public context contract exists.", "checkType": "content", "file": "app/src/core/module-system.js", "containsAll": ["PUBLIC_CONTEXT_VERSION", "getPublicContext", "_publicUnitSummary"] },
+          { "criterion": "Public context tests exist.", "checkType": "content", "file": "app/test/test.js", "containsAll": ["Narrative modules receive bounded serializable public context"] },
+          { "criterion": "Tests pass.", "checkType": "command-exit", "command": "npm run test" }
         ],
-        "forbiddenPaths": [
-          "package-lock.json"
-        ],
+        "forbiddenPaths": ["dist/you-are-wild.html", "package-lock.json"],
         "nonClaims": [
-          "Does not redesign the whole quest system.",
-          "Does not expand explicit content."
+          "Does not add a remote service or model dependency.",
+          "Does not expose raw saves, credentials, or hidden compatibility fields."
+        ]
+      }
+    },
+    {
+      "laneId": "multi-interaction-regression-hardening",
+      "priority": 30,
+      "title": "Multi Interaction Regression Hardening",
+      "objective": "Add focused coverage and fix demonstrated actor-target-intent regressions without inventing semantics for unresolved unequal group shapes.",
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          { "checkType": "command-exit", "command": "npm run test:interactions" },
+          { "checkType": "command-exit", "command": "npm run test" }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "app/src/core/combat-targeting.js",
+          "app/src/core/combat-planning.js",
+          "app/src/core/exploration-selection.js",
+          "app/src/core/interaction-dispatch.js",
+          "app/test/test.js",
+          "app/test/combat-interactions-check.js"
+        ],
+        "expectedChangedFiles": ["app/test/test.js"],
+        "requiredCommands": ["npm run test", "npm run test:interactions", "npm run check"],
+        "acceptanceCriteria": [
+          "Combat target picks follow the documented mark-and-confirm flow.",
+          "Selection cleanup remains correct across containment, defeat, movement, dismissal, and load.",
+          "Unresolved group semantics remain explicitly rejected."
+        ],
+        "criteriaChecks": [
+          { "criterion": "Interaction tests pass.", "checkType": "command-exit", "command": "npm run test:interactions" },
+          { "criterion": "Core tests pass.", "checkType": "command-exit", "command": "npm run test" }
+        ],
+        "forbiddenPaths": ["dist/you-are-wild.html", "package-lock.json"],
+        "nonClaims": [
+          "Does not define new many-to-many mechanics.",
+          "Does not rebalance action outcomes."
+        ]
+      }
+    },
+    {
+      "laneId": "deterministic-map-invariants",
+      "priority": 40,
+      "title": "Deterministic Map Invariants",
+      "objective": "Add tests and narrow helpers for start safety, traversal metadata, and deterministic overlays while preserving sparse world generation and save compatibility.",
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          { "checkType": "command-exit", "command": "npm run test" },
+          { "checkType": "command-exit", "command": "npm run check" }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "app/src/core/world-generation.js",
+          "app/src/core/world-state.js",
+          "app/src/core/world-random.js",
+          "app/test/test.js",
+          "docs/sparse-map-generation.md"
+        ],
+        "expectedChangedFiles": ["app/test/test.js"],
+        "requiredCommands": ["npm run test", "npm run check"],
+        "acceptanceCriteria": [
+          "New persistent world behavior is seeded and reproducible.",
+          "Mutable deltas do not alter deterministic base generation.",
+          "No gameplay code depends on materializing the full world."
+        ],
+        "criteriaChecks": [
+          { "criterion": "Tests pass.", "checkType": "command-exit", "command": "npm run test" },
+          { "criterion": "Build check passes.", "checkType": "command-exit", "command": "npm run check" }
+        ],
+        "forbiddenPaths": ["dist/you-are-wild.html", "package-lock.json"],
+        "nonClaims": [
+          "Does not choose new balance targets.",
+          "Does not replace the sparse coordinate architecture."
         ]
       }
     }

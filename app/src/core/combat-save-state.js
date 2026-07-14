@@ -78,6 +78,7 @@ const YAW_COMBAT_SAVE_STATE = {
             active: true,
             round: Math.max(1, savedCombat.round || 1),
             currentTurn: Math.min(Math.max(0, savedCombat.currentTurn || 0), maxTurn),
+            sceneExchangeId: savedCombat.sceneExchangeId || `combat-${(Number(app.storyEventSeq) || 0) + 1}`,
             turnQueue,
             syncActions: (savedCombat.syncActions || []).map(sync => {
                 const participants = (sync.participantIds || []).map(resolve).filter(Boolean);
@@ -128,26 +129,7 @@ const YAW_COMBAT_SAVE_STATE = {
     resumeLoadedCombat(app) {
         if (!app.combatState?.active) return false;
         app._clearTransientInteractionState();
-        const entry = app.combatState.turnQueue?.[app.combatState.currentTurn];
-        const unit = entry?.unit;
-        if (!unit || unit.CPun <= 0 || unit.knockedOut || unit.fledCombat) {
-            app.processTurn();
-            return true;
-        }
-        app.activeActor = unit;
-        const isPartyTurn = unit === app.player || app.party.includes(unit);
-        app.renderCombatSceneForTurn(unit);
-        app.renderParty();
-        app.renderCreatures();
-        app.renderMobileCombatToolbelt();
-        if (isPartyTurn) {
-            app.showActorActions(unit);
-        } else {
-            app.processTurn();
-            app.markAutoSaveDirty?.(['manifest', 'party', 'currentTile', 'combat', 'sceneFeed', 'activityLog'], 'combat-enemy-turn');
-            app.autoSave();
-        }
-        return true;
+        return app._recoverCombatProgress?.('loaded-combat') || false;
     }
 };
 

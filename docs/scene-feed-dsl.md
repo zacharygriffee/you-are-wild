@@ -21,7 +21,7 @@ A Scene Beat is structured data with rendered text. It should preserve:
 - `actors`: resolved actor unit references.
 - `targets`: resolved target unit references.
 - `resultKind`: `resolved`, `damage`, `recovery`, `social`, `failure`, `observation`, `decisive`, or a more specific future kind.
-- `summary`: short latest-beat text for compact Scene Feed surfaces.
+- `summary`: short beat text for compact Scene Feed streams.
 - `passage`: optional expanded prose for the Scene Sheet.
 - `deltas`: mechanical changes such as damage, healing, spirit, state, or resource changes.
 - `tags`: deterministic routing tags such as `cannot-reach`, `tile-entry`, `observation`, `creatures`, or `recruit-available`.
@@ -109,27 +109,18 @@ App.registerSceneTemplate({
 });
 ```
 
-Systemic JSON-like output for an optional LLM or continuity mod:
+Systemic JSON-like output for an optional LLM or continuity mod should use the permission-gated public context API rather than raw `App` state:
 
 ```js
-App.registerSceneTemplate({
-  id: 'mod.llm-bridge-json',
-  priority: -10,
-  render(app, ctx) {
-    return {
-      summary: ctx.outcome.summary || ctx.defaultSummary,
-      passage: JSON.stringify({
-        mode: ctx.mode,
-        action: ctx.action,
-        actors: ctx.actorNames,
-        targets: ctx.targetNames,
-        tags: ctx.tags,
-        deltas: ctx.outcome.deltas || []
-      })
-    };
-  }
+const context = MODS.getContext({ limit: 12 });
+const payload = JSON.stringify({
+  mode: context.mode,
+  location: context.location.tile,
+  recentBeats: context.sceneBeats
 });
 ```
+
+The module manifest must declare `ui.read`. Model output remains optional presentation data and must not mutate deterministic outcomes indirectly.
 
 ## Content-Tier Safety
 
@@ -137,13 +128,15 @@ Content-tier filtering happens before template text is rendered. Store neutral m
 
 ## Presentation Rules
 
-- Latest Scene Beat remains visible until replaced.
-- Latest beat may highlight briefly, but it must not disappear on a timer.
-- Expanded Scene Sheet opens intentionally.
-- Expanded Scene Sheet should show recent beats with summary first, optional passage, actor/target/intent, time/location, result metadata, tags, deltas, and sub-events.
-- Compact latest beat must not cover composer or action controls.
-- Desktop should prefer the in-context Scene Feed slot.
-- Mobile may use a compact latest-beat handle or sheet, but notification/toast behavior is still a deferred design decision.
+- The in-context Scene Feed is a readable newest-first exchange stream, not a latest-only notification.
+- New exchange groups render above older groups. Beats within an exchange remain chronological so dialogue and causal action sequences read in order.
+- Combat beats group by encounter and round by default. Mods may provide an explicit `metadata.exchangeId` and optional `metadata.exchangeLabel` for another deterministic grouping boundary.
+- The stream grows through the layout's existing primary scroll container. It must not create a nested feed scrollbar or cover composer and action controls.
+- When a player is reading older beats, rendering preserves the visible beat and exposes a Jump to newest control instead of moving the reader.
+- The latest beat may highlight briefly, but it must not disappear on a timer.
+- Desktop and mobile use the same ordering, grouping, and retention contract; responsive styling may only change density.
+- The expanded Scene Sheet opens intentionally and presents the same exchange order with summary first, optional passage, actor/target/intent, time/location, result metadata, tags, deltas, and sub-events.
+- The core retains up to 60 recent Scene Beats in saves and presentation. Longer durable technical history belongs to the Activity Log.
 
 ## Activity Log Separation
 

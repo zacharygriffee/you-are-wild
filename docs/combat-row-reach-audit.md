@@ -9,16 +9,16 @@ This note records the current front/back row and intent-owned reach behavior so 
 - Other units default to the front row.
 - Rows do not define every interaction. Each intent owns its own reach profile.
 - `fight` currently evaluates melee, ranged, or hybrid reach from actor traits and action metadata.
-- `feast` currently evaluates close/contact reach.
+- `feast` currently evaluates close/contact reach and requires front-row contact unless an explicit contact-reach profile says otherwise.
 - Talk and support intents can target across rows unless another explicit mechanic blocks them.
-- Play/Seduce currently uses a contact-social profile by default. It follows close/contact row access, while future variants may opt into cross-row social profiles.
+- Play/Seduce currently uses a contact-social profile by default and requires front-row contact. Future variants may opt into cross-row social profiles.
 - Known-impossible physical target selection is blocked before spending a turn and must explain the reach problem without generic invalid-command copy.
 - Front-row blockers protect same-side back-row units from ordinary melee/contact actions.
 - Exposed back-row units are reachable by ordinary melee/contact when their side has no living front-row blockers.
 - Back-row ordinary melee actors cannot successfully hit front-row targets. The target should be blocked during selection unless the actor has ranged/flying/reach/special access.
 - Back-row close/contact Feast attempts against front-row targets follow the same shape until the actor has front-row contact or a future special reach profile.
-- Flying actors can bypass row for Fight/aerial profiles. Flying does not automatically grant close/contact permission for Feast or Play/Seduce.
-- Ranged Fight is best/valid from the back row, can reach back-row and flying targets, and is not the default answer to front-row grounded targets.
+- Flying actors can bypass row for Fight/aerial profiles. Flying does not automatically grant close/contact permission or waive front-row contact requirements for Feast or Play/Seduce.
+- Ranged Fight can reach front-row grounded targets, protected back-row targets, and flying targets from either row. Back-row ranged attackers keep distance and may take small balance modifiers, but ranged is reach access rather than a restriction to back-row targets.
 - Anti-flying answers flying targets for relevant physical profiles, but does not by itself bypass front-row blockers.
 - Committed/delayed group plans can still fizzle if their target or participant reach becomes invalid before resolution. That fizzle consumes the committed plan through existing group timing and emits Scene Feed feedback.
 - Physical and contact-social group plans require every committed participant to have a valid contribution path by default. Talk/support group plans ignore rows unless another mechanic says otherwise.

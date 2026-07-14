@@ -163,16 +163,6 @@ const YAW_COMBAT_RULES = {
             return result;
         }
         if (profile === 'ranged') {
-            if (actor?.combatRow !== 'back') {
-                result.reason = 'ranged-needs-back-row';
-                result.counterplay = 'retreat';
-                return result;
-            }
-            if (target?.combatRow === 'front' && !target?.flying && !this.hasSpecialReachAccess(actor, base)) {
-                result.reason = 'ranged-front-row-limited';
-                result.counterplay = 'target-back-row-or-advance';
-                return result;
-            }
             result.canSucceed = true;
             return result;
         }
@@ -237,7 +227,14 @@ const YAW_COMBAT_RULES = {
         const targetName = target?.name || app._label('target.targetRole', 'Target');
         const actionLabel = app._uiLabel ? app._uiLabel(String(action || '').replace(/^sync_/, '')) : String(action || 'action');
         const reason = reach?.reason || 'cannot-reach';
-        if (reason === 'target-flying' || reason === 'target-flying-contact') {
+        if (reason === 'target-flying-contact') {
+            return app._label('combat.reachFail.flyingContact', '{actors} tries {action} on {target}, but close contact cannot reach {target} in the air. Use flying, anti-flying, or explicit contact reach.', {
+                actors: actorText,
+                action: actionLabel,
+                target: targetName
+            });
+        }
+        if (reason === 'target-flying') {
             return app._label('combat.reachFail.flying', '{actors} tries {action} on {target}, but {target} stays out of reach in the air. Use flying, ranged, or anti-flying reach.', {
                 actors: actorText,
                 action: actionLabel,
@@ -267,20 +264,6 @@ const YAW_COMBAT_RULES = {
         }
         if (reason === 'contact-needs-front-row') {
             return app._label('combat.reachFail.contactNeedsFront', '{actors} tries {action} on {target}, but close contact needs the front row. Advance first or try a social action.', {
-                actors: actorText,
-                action: actionLabel,
-                target: targetName
-            });
-        }
-        if (reason === 'ranged-needs-back-row') {
-            return app._label('combat.reachFail.rangedNeedsBack', '{actors} tries {action} on {target}, but needs back-row space to use ranged reach.', {
-                actors: actorText,
-                action: actionLabel,
-                target: targetName
-            });
-        }
-        if (reason === 'ranged-front-row-limited') {
-            return app._label('combat.reachFail.rangedFrontLimited', '{actors} tries {action} on {target}, but this ranged attack is meant for back-row or flying targets. Advance for close pressure, pick a back-row target, or try a social action.', {
                 actors: actorText,
                 action: actionLabel,
                 target: targetName

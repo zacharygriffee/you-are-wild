@@ -1852,6 +1852,63 @@ async function checkViewport(browser, name, width, height) {
       document.getElementById('mobile-activity-log').open = false;
     });
 
+    const toastLayout = await page.evaluate(() => {
+      App.clearToasts?.();
+      App.showToast?.({ text: 'Quest updated', type: 'quest', importance: 'major', dedupeKey: 'viewport-toast' });
+      const stack = document.getElementById('toast-stack');
+      const toast = stack?.querySelector('.toast');
+      const dock = document.querySelector('.mobile-panel-dock');
+      const log = document.querySelector('.panel-log');
+      const root = document.getElementById('app');
+      const beforeExpanded = root.classList.contains('log-expanded');
+      const rect = toast?.getBoundingClientRect();
+      const stackRect = stack?.getBoundingClientRect();
+      const dockRect = dock?.getBoundingClientRect();
+      const logRect = log?.getBoundingClientRect();
+      let expanded = null;
+      if (innerWidth >= 700) {
+        if (!beforeExpanded) App.toggleLogExpanded();
+        const stage = document.querySelector('.stage')?.getBoundingClientRect();
+        const expandedLog = document.querySelector('.panel-log')?.getBoundingClientRect();
+        const expandedToast = document.querySelector('#toast-stack .toast')?.getBoundingClientRect();
+        expanded = {
+          stageHeight: stage?.height || 0,
+          logHeight: expandedLog?.height || 0,
+          toastBottom: expandedToast?.bottom || 0,
+          logTop: expandedLog?.top || 0
+        };
+        if (!beforeExpanded) App.toggleLogExpanded();
+      }
+      App.clearToasts?.();
+      return {
+        exists: Boolean(toast),
+        hidden: Boolean(stack?.hidden),
+        left: rect?.left || 0,
+        right: rect?.right || 0,
+        top: rect?.top || 0,
+        bottom: rect?.bottom || 0,
+        stackPosition: stack ? getComputedStyle(stack).position : '',
+        viewportWidth: innerWidth,
+        viewportHeight: innerHeight,
+        dockTop: dockRect?.top || innerHeight,
+        logTop: logRect?.top || innerHeight,
+        stackWidth: stackRect?.width || 0,
+        expanded
+      };
+    });
+    assert.strictEqual(toastLayout.exists, true, `${name}: toast API should render a visible toast`);
+    assert.strictEqual(toastLayout.stackPosition, 'fixed', `${name}: toast stack should be fixed to the viewport`);
+    assert(toastLayout.left >= -1 && toastLayout.right <= toastLayout.viewportWidth + 1, `${name}: toast should stay inside viewport horizontally`);
+    assert(toastLayout.top >= -1 && toastLayout.bottom <= toastLayout.viewportHeight + 1, `${name}: toast should stay inside viewport vertically`);
+    if (width < 700) {
+      assert(toastLayout.bottom <= toastLayout.dockTop + 1, `${name}: mobile toast should stay above the fixed dock`);
+    } else {
+      assert(toastLayout.bottom <= toastLayout.logTop + 1, `${name}: desktop toast should stay above the Activity Log`);
+      assert(toastLayout.expanded.stageHeight >= 220, `${name}: expanded desktop log should leave a usable play surface`);
+      assert(toastLayout.expanded.logHeight <= Math.max(300, toastLayout.viewportHeight * 0.34), `${name}: expanded desktop log should stay bounded`);
+      assert(toastLayout.expanded.toastBottom <= toastLayout.expanded.logTop + 1, `${name}: toast should track expanded desktop log top`);
+    }
+
     const openStorySheet = await page.evaluate(() => {
       App.emitStoryResult({
         actors: [App.player],

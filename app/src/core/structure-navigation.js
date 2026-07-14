@@ -212,6 +212,7 @@ const YAW_STRUCTURE_NAVIGATION = {
             const unavailableText = app._label('log.restUnavailable', 'There is no safe place to rest here.');
             app.log.push({ text: unavailableText, type: 'discovery' });
             app._addTileEvent(unavailableText, 'discovery');
+            app.showToast?.({ text: unavailableText, type: 'blocked', importance: 'notable', dedupeKey: 'blocked:rest-unavailable' });
             app.renderLog();
             app.renderExplorationActions();
             return;

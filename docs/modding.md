@@ -60,6 +60,22 @@ Mutating runtime registries requires declared permissions:
 
 If a module calls one of these APIs without the matching permission, enablement fails, partial runtime contributions are cleaned up, and the module remains disabled in storage.
 
+## Narrative And Structural Mod Lanes
+
+Mod work should be classified before implementation:
+
+- **Narrative/presentation mods** consume existing structured gameplay data and render it differently. They may register content templates, Scene Feed templates, safe summaries, Activity Log exporters, or optional LLM bridge output. They should read `SceneBeat`, `InteractionPlan`, `ActionOutcome`, Activity Log entries, content preferences, and public unit/tile summaries rather than parsing rendered prose as state.
+- **Structural/gameplay mods** add or alter game data and mechanics. They may register species, biomes, items, quest templates, encounter hooks, combat/action hooks, or balance constants through explicit APIs and permissions. They must preserve save compatibility boundaries, content-tier policy, and sapient/person-like interaction eligibility gates.
+- **Asset/content-pack mods** provide images, sprites, tilesets, local content packs, or template bundles. They need manifest provenance, content rating, relative paths, fallbacks, and clear ownership/licensing metadata before they are treated as more than local trusted fixtures.
+
+Optional LLM-facing mods are narrative consumers, not core dependencies. Core gameplay must remain deterministic and readable without a model call, network request, or remote service. If a module prepares data for an LLM, it should emit bounded structured context from Scene Beats, Activity history, safe map summaries, quest state, and public unit metadata. It must not require hidden raw save internals, credentials, or unreviewed remote package behavior.
+
+Feature-expansion proposals should explicitly choose one of three destinations before coding:
+
+- **Core game:** mechanics or UI required for the baseline loop, save compatibility, accessibility, localization, or safety policy.
+- **First-party optional mod/content pack:** desirable expansion that should be installable or toggleable without increasing core complexity.
+- **Third-party mod seam:** documented API capability where the project supplies hooks and examples, but does not own the feature content or balance.
+
 ## Content Rating
 
 Content ratings are metadata for install and UI policy. Text rendering still goes through `CONTENT` preferences and tier checks. Adult or mature content should not be introduced into core-safe defaults, and templates that are unavailable at a selected tier should fall back rather than returning empty output.

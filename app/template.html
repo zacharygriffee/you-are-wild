@@ -143,7 +143,7 @@
         }
 
         #app.log-expanded {
-            grid-template-rows: 60px minmax(0, 0.7fr) minmax(260px, 0.3fr);
+            grid-template-rows: 60px minmax(0, 1fr) clamp(220px, 32dvh, 300px);
         }
 
         /* =============================================
@@ -3365,6 +3365,99 @@
 
         .log-entry.mod .log-category {
             color: var(--accent-info);
+        }
+
+        .toast-stack {
+            position: fixed;
+            right: 16px;
+            bottom: 152px;
+            z-index: 850;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: min(360px, calc(100vw - 32px));
+            pointer-events: none;
+        }
+
+        #app.log-collapsed .toast-stack {
+            bottom: 56px;
+        }
+
+        #app.log-expanded .toast-stack {
+            bottom: clamp(232px, calc(32dvh + 12px), 312px);
+        }
+
+        .toast-stack[hidden] {
+            display: none;
+        }
+
+        .toast {
+            pointer-events: auto;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: start;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--border-default);
+            border-left: 4px solid var(--accent-primary);
+            border-radius: var(--radius-sm);
+            background: rgba(27, 27, 39, 0.96);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-lg);
+            font-size: 12px;
+            line-height: 1.4;
+            animation: toast-in 140ms ease-out;
+        }
+
+        .toast-danger {
+            border-left-color: var(--accent-danger);
+        }
+
+        .toast-quest {
+            border-left-color: var(--accent-primary);
+        }
+
+        .toast-loot {
+            border-left-color: var(--accent-warning);
+        }
+
+        .toast-blocked {
+            border-left-color: var(--text-muted);
+        }
+
+        .toast-dismiss {
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            min-width: 28px;
+            min-height: 28px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .toast-dismiss:focus-visible {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        body.reduced-motion .toast {
+            animation: none;
+        }
+
+        @media (max-width: 700px) {
+            .toast-stack,
+            #app.log-collapsed .toast-stack,
+            #app.log-expanded .toast-stack {
+                right: max(8px, calc((100vw - 430px) / 2 + 8px));
+                bottom: calc(var(--mobile-dock-height, 58px) + env(safe-area-inset-bottom) + 12px);
+                width: min(414px, calc(100vw - 16px));
+            }
         }
 
         /* =============================================
@@ -8215,6 +8308,8 @@
                 </div>
             </div>
         </div>
+
+        <div class="toast-stack" id="toast-stack" aria-live="polite" aria-relevant="additions text" aria-label="Notifications" data-i18n-aria-label="ui.toast.notifications" hidden></div>
 
         <!-- Legacy mobile action bar shell; combat intents live in the mobile combat toolbelt. -->
         <div class="mobile-action-bar" id="mobile-actions" style="display: none;">

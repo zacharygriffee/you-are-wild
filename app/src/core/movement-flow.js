@@ -12,7 +12,9 @@ const YAW_MOVEMENT_FLOW = {
             return;
         }
         if (app.mode === app.GAME_MODE.COMBAT) {
-            app.log.push({ text: app._label('log.inCombatCannotMove', 'You are in combat! Use Flee to escape.'), type: 'combat' });
+            const text = app._label('log.inCombatCannotMove', 'You are in combat! Use Flee to escape.');
+            app.log.push({ text, type: 'combat' });
+            app.showToast?.({ text, type: 'blocked', importance: 'notable', dedupeKey: 'blocked:combat-move' });
             app.renderLog();
             return;
         }
@@ -28,6 +30,7 @@ const YAW_MOVEMENT_FLOW = {
         app._advanceTime(1);
         app._applyTravelCost?.(app.party, { action: 'move', source: 'travel' });
         app._clearTileEvents();
+        app.clearToasts?.({ reason: 'tile-change' });
         document.getElementById('coords').textContent = `${app.location.x}, ${app.location.y}`;
 
         const wasExplored = app.isExplored(app.location.x, app.location.y);
@@ -54,6 +57,7 @@ const YAW_MOVEMENT_FLOW = {
                 const encounterText = `You encounter ${enemies.map(e => e.name).join(', ')}!`;
                 app.log.push({ text: encounterText, type: 'combat' });
                 app._addTileEvent(encounterText, 'combat');
+                app.showToast?.({ text: encounterText, type: 'danger', importance: 'major', dedupeKey: `encounter:${tile.x},${tile.y}` });
                 app.startCombat(enemies);
             } else if (app.creatures.length > 0) {
                 app.updateScene(`${biome.name} - ${tile.hasLandmark ? tile.landmarkName : 'Wilderness'}`, `You return to the ${biome.name}. ${tile.description}`, false);
@@ -78,6 +82,7 @@ const YAW_MOVEMENT_FLOW = {
                 const encounterText = `You encounter ${restoredEnemies.map(e => e.name).join(', ')}!`;
                 app.log.push({ text: encounterText, type: 'combat' });
                 app._addTileEvent(encounterText, 'combat');
+                app.showToast?.({ text: encounterText, type: 'danger', importance: 'major', dedupeKey: `encounter:${tile.x},${tile.y}` });
                 app.startCombat(restoredEnemies);
             }
         }

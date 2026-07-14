@@ -773,6 +773,8 @@
             logSearch: '',
             logCollapsed: false,
             logExpanded: false,
+            toasts: [],
+            toastSeq: 0,
             inventoryFilter: 'all',
             inventorySort: 'name',
             tradeFilter: 'all',
@@ -2001,6 +2003,7 @@
                 }
                 this.updateScene(`${biome.name} - ${tile.hasLandmark ? tile.landmarkName : 'Wilderness'}`, biomeText + '\n\n' + encounterText, enemies.length > 0);
                 this.log.push({ text: encounterText, type: enemies.length > 0 ? 'combat' : 'discovery' });
+                if (enemies.length > 0) this.showToast({ text: encounterText, type: 'danger', importance: 'major', dedupeKey: `encounter:${tile.x},${tile.y}` });
                 if (enemies.length > 0) {
                     if (isBoss) { this.log.push({ text: `A powerful guardian guards the ${tile.landmarkName}!`, type: 'combat' }); }
                     this.startCombat(enemies);
@@ -2067,6 +2070,7 @@
                     const encounterText = `You found a ${struct.name}! ${structDesc} ${enemies.length} ${dispText} creature${enemies.length > 1 ? 's' : ''} ${disp === this.DISPOSITION.ENEMY ? 'blocks' : 'inhabits'} the area.`;
                     this.updateScene(`${struct.name} - ${biome.name}`, biomeText + '\n\n' + encounterText, disp === this.DISPOSITION.ENEMY);
                     this.log.push({ text: `Discovered ${struct.name}! ${encounterText}`, type: 'discovery' });
+                    if (livingEnemies.length > 0) this.showToast({ text: encounterText, type: 'danger', importance: 'major', dedupeKey: `structure-encounter:${tile.x},${tile.y}` });
                     if (livingEnemies.length > 0) {
                         this.log.push({ text: `Combat started with ${livingEnemies.map(e => e.name).join(', ')}!`, type: 'combat' });
                         this.startCombat(livingEnemies);
@@ -3775,6 +3779,7 @@
                     voreEnabled: this.settings.vore
                 });
                 this.log.push({ text, type: item || gold > 0 ? 'loot' : 'discovery' });
+                if (item || gold > 0) this.showToast({ text, type: 'loot', importance: 'notable', dedupeKey: `corpse-loot:${targetId}` });
                 this.emitStoryResult({ mode: 'adventure', actors: [this._getExplorationActor?.() || this.player].filter(Boolean), targets: [corpse], action: 'loot' }, text);
                 this.renderLog();
                 this.renderCreatures();
@@ -3825,6 +3830,7 @@
                     ? `${text} ${this._label('scene.remainsDepleted', "{target}'s remains are depleted.", { target: corpse.corpseName || corpse.name })}`
                     : text;
                 this.log.push({ text, type: 'discovery' });
+                this.showToast({ text, type: 'loot', importance: 'notable', dedupeKey: `corpse-scavenge:${targetId}:${corpse.edibleRemaining || 0}` });
                 this.emitStoryResult({
                     mode: 'adventure',
                     actors: consumedActors,
@@ -4697,6 +4703,15 @@
             },
             _pushLog(entry, type = 'discovery', meta = {}) {
                 return YAW_LOG_VIEW.push(this, entry, type, meta);
+            },
+            showToast(input = {}) {
+                return YAW_LOG_VIEW.showToast(this, input);
+            },
+            dismissToast(toastId) {
+                return YAW_LOG_VIEW.dismissToast(this, toastId);
+            },
+            clearToasts(options = {}) {
+                return YAW_LOG_VIEW.clearToasts(this, options);
             },
             _clearTileEvents() {
                 return YAW_TILE_EVENT_FEED.clear(this);

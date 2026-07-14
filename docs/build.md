@@ -2,6 +2,8 @@
 
 The app is built from `app/template.html` and the ordered JavaScript modules in `app/src/`.
 
+The source of truth is the modular source, template, tests, docs, and build scripts. The single-file HTML is generated output.
+
 ## Output
 
 The generated file is written to:
@@ -11,6 +13,8 @@ dist/you-are-wild.html
 ```
 
 The generated output includes a banner warning that it should not be edited directly.
+
+Keep `dist/` ignored and do not commit `dist/you-are-wild.html` to `main`. CI generates the playable HTML and uploads it as a workflow artifact. Future release builds may publish the generated file as a GitHub Release asset or GitHub Pages artifact.
 
 ## Scripts
 

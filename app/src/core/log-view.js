@@ -23,6 +23,7 @@ const YAW_LOG_VIEW = {
         const needsCombatMeta = next.type === 'combat' && app.combatState?.active;
         const full = needsCombatMeta ? { ...this.currentCombatMeta(app, meta), ...next, ...meta } : { ...next, ...meta };
         app.log.push(full);
+        if (meta?.toast) this.showToast(app, { text: full.text, type: full.type, ...meta.toast });
         return full;
     },
 
@@ -147,6 +148,7 @@ const YAW_LOG_VIEW = {
         const mobileVisible = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 700px)')?.matches);
         if (mobileVisible && mobileLog) {
             mobileLog.open = !mobileLog.open;
+            if (mobileLog.open && typeof mobileLog.focus === 'function') mobileLog.focus();
             return mobileLog.open;
         }
         this.toggleCollapsed(app);
@@ -221,11 +223,77 @@ const YAW_LOG_VIEW = {
             collapsedSummary.textContent = latest ? latest.text : app._label('ui.welcomeLog', 'Welcome to You Are Wild');
         }
         this.applyLayoutState(app);
+        this.renderToasts(app);
     },
 
     clear(app) {
         app.log = [];
         this.render(app);
+    },
+
+    normalizeToast(app, input = {}) {
+        const toast = input && typeof input === 'object' ? input : {};
+        const text = String(toast.text || '').trim();
+        if (!text) return null;
+        const allowedTypes = ['danger', 'quest', 'loot', 'blocked', 'system'];
+        const type = allowedTypes.includes(toast.type) ? toast.type : 'system';
+        const importance = toast.importance || 'normal';
+        const persistent = toast.persistent === true || importance === 'major';
+        return {
+            id: toast.id || `toast_${Date.now()}_${++app.toastSeq}`,
+            text,
+            type,
+            importance,
+            persistent,
+            dedupeKey: toast.dedupeKey || `${type}:${text}`,
+            createdAt: Date.now()
+        };
+    },
+
+    showToast(app, input = {}) {
+        const toast = this.normalizeToast(app, input);
+        if (!toast) return null;
+        app.toasts = Array.isArray(app.toasts) ? app.toasts : [];
+        const existingIndex = app.toasts.findIndex(entry => entry.dedupeKey === toast.dedupeKey);
+        if (existingIndex >= 0) app.toasts.splice(existingIndex, 1);
+        app.toasts.push(toast);
+        while (app.toasts.length > 2) {
+            const removable = app.toasts.findIndex(entry => !entry.persistent);
+            app.toasts.splice(removable >= 0 ? removable : 0, 1);
+        }
+        this.renderToasts(app);
+        if (!toast.persistent && typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+            window.setTimeout(() => this.dismissToast(app, toast.id), 6000);
+        }
+        return toast;
+    },
+
+    dismissToast(app, toastId) {
+        app.toasts = (app.toasts || []).filter(toast => String(toast.id) !== String(toastId));
+        this.renderToasts(app);
+        return app.toasts.length;
+    },
+
+    clearToasts(app, options = {}) {
+        const includePersistent = options.includePersistent !== false;
+        app.toasts = includePersistent ? [] : (app.toasts || []).filter(toast => toast.persistent);
+        this.renderToasts(app);
+        return app.toasts.length;
+    },
+
+    renderToasts(app) {
+        const container = document.getElementById('toast-stack');
+        if (!container) return '';
+        const closeLabel = app._escapeHtml(app._label('ui.toast.dismiss', 'Dismiss notification'));
+        const html = (app.toasts || []).map(toast => {
+            const type = app._escapeHtml(toast.type || 'system');
+            const text = app._escapeHtml(toast.text);
+            const id = app._escapeHtml(toast.id);
+            return `<div class="toast toast-${type}" role="status" data-toast-id="${id}"><span class="toast-text">${text}</span><button class="toast-dismiss" data-command-surface="toast" data-command-mode="system" data-command-control="dismiss-toast" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.dismissToast('${id}')">×</button></div>`;
+        }).join('');
+        container.innerHTML = html;
+        container.hidden = !html;
+        return html;
     }
 };
 

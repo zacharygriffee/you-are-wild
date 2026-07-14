@@ -67,6 +67,7 @@ const YAW_DIALOG_FLOW = {
 
     showSaveRecovery(app, slotName, saveData) {
         const message = app._label('save.recovery.prompt', 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:');
+        app.showToast?.({ text: message.split('\n')[0], type: 'system', importance: 'major', dedupeKey: 'save-recovery' });
         if (typeof document === 'undefined' || !document.body) {
             const choice = typeof prompt === 'function' ? prompt(message) : null;
             if (choice === '1') return app.resolveSaveRecoveryDialog('delete', slotName, saveData);
@@ -112,6 +113,7 @@ const YAW_DIALOG_FLOW = {
 
     showSaveRecoveryStatus(app, kind, message) {
         if (!app || typeof app.renderSaveManager !== 'function') return false;
+        app.showToast?.({ text: message, type: kind === 'success' ? 'system' : 'danger', importance: 'major', dedupeKey: `save-recovery:${kind}` });
         app.saveManagerMode = app.saveManagerMode || 'load';
         app.saveManagerStatus = { kind, message };
         if (typeof app.showScreen === 'function') app.showScreen('save-manager');

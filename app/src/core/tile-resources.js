@@ -47,6 +47,9 @@ const YAW_TILE_RESOURCES = {
         }
         app.log.push({ text: result, type: 'discovery' });
         app._addTileEvent(result, 'discovery');
+        if (result.startsWith('You found a ')) {
+            app.showToast?.({ text: result, type: 'loot', importance: 'notable', dedupeKey: `search-loot:${tileX},${tileY}:${searchDay}:${searchHour}` });
+        }
         app.renderLog();
         app.renderExplorationActions();
         app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'quests', 'sceneFeed', 'activityLog'], 'search');
@@ -107,6 +110,7 @@ const YAW_TILE_RESOURCES = {
         const tookText = app._label('log.tookTileItems', 'Picked up {items}.', { items: itemNames });
         app.log.push({ text: tookText, type: 'loot' });
         app._addTileEvent(tookText, 'loot');
+        app.showToast?.({ text: tookText, type: 'loot', importance: 'notable', dedupeKey: `tile-items:${tile.x},${tile.y}:${itemNames}` });
         if (tile.items.length > 0) {
             const fullText = app._label('inventory.full', 'Inventory is full.');
             app.log.push({ text: fullText, type: 'loot' });

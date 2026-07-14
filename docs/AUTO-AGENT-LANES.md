@@ -15,6 +15,13 @@ workspaces without turning broad product direction into unattended code changes.
 
 ## Current Lanes
 
+`docs/next-objectives.md` is the current backlog authority. The lane map still
+contains useful narrow work packages, but some terminal content checks may lag
+behind source refactors. Before dispatching unattended work, reconcile lane
+checks with the promoted backlog order: UI polish/accessibility/localization,
+docs hygiene, modding/optional LLM doctrine, core-vs-mod feature triage,
+mechanics balance, then later row/reach audit.
+
 1. `humanoid-creature-canon-doctrine`
    - Docs-first lane for default species framing and interaction eligibility.
    - Establishes that baseline interactable creatures should read as
@@ -48,8 +55,14 @@ workspaces without turning broad product direction into unattended code changes.
 
 7. `asset-tileset-manifest`
    - Feature lane for asset/tileset metadata, AI-generated provenance, relative
-     paths, and fallback behavior.
+   paths, and fallback behavior.
    - Does not import the tilesheet yet.
+
+New or revised lanes should distinguish narrative/presentation mods from
+structural/gameplay mods. Narrative or LLM-facing work should consume
+`SceneBeat`, Activity Log, safe map summaries, quest state, and public unit
+metadata without becoming a core dependency. Structural work should use explicit
+mod APIs, permissions, content ratings, and save-compatibility boundaries.
 
 ## Suggested Auto-Agent Workflow
 

@@ -197,6 +197,7 @@ const YAW_SETTINGS_FLOW = {
         app.renderExplorationActions();
         app.renderParty();
         app.renderCreatures();
+        app.renderLog();
     },
 
     syncLanguageControl() {

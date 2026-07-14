@@ -219,7 +219,9 @@ const YAW_QUEST_FLOW = {
             giver.questAccepted = true;
             if (giver.quest) giver.quest.status = 'active';
         }
-        app.log.push({ text: app._label('quest.accepted', 'Quest accepted: {title}.', { title: normalized.title }), type: 'discovery' });
+        const acceptedText = app._label('quest.accepted', 'Quest accepted: {title}.', { title: normalized.title });
+        app.log.push({ text: acceptedText, type: 'discovery' });
+        app.showToast?.({ text: acceptedText, type: 'quest', importance: 'notable', dedupeKey: `quest-accepted:${normalized.id}` });
         app.emitTransactionSceneBeat?.(giver, 'quest', 'accepted', {
             title: normalized.title,
             questTitle: normalized.title
@@ -285,10 +287,14 @@ const YAW_QUEST_FLOW = {
             if ((quest.objectives || []).length > 0 && quest.objectives.every(o => o.complete) && quest.status !== 'completed') {
                 quest.status = 'completed';
                 if (quest.turnInRequired) {
-                    app.log.push({ text: app._label('quest.completedTurnIn', 'Quest completed: {title}. Return to {giver} for your reward.', { title: quest.title, giver: quest.giverName || app._label('quest.defaultGiver', 'the quest giver') }), type: 'discovery' });
+                    const completedText = app._label('quest.completedTurnIn', 'Quest completed: {title}. Return to {giver} for your reward.', { title: quest.title, giver: quest.giverName || app._label('quest.defaultGiver', 'the quest giver') });
+                    app.log.push({ text: completedText, type: 'discovery' });
+                    app.showToast?.({ text: completedText, type: 'quest', importance: 'major', dedupeKey: `quest-completed:${quest.id}` });
                 } else {
                     this.grantReward(app, quest);
-                    app.log.push({ text: app._label('quest.completed', 'Quest completed: {title}.', { title: quest.title }), type: 'discovery' });
+                    const completedText = app._label('quest.completed', 'Quest completed: {title}.', { title: quest.title });
+                    app.log.push({ text: completedText, type: 'discovery' });
+                    app.showToast?.({ text: completedText, type: 'quest', importance: 'major', dedupeKey: `quest-completed:${quest.id}` });
                 }
             }
         }
@@ -343,7 +349,11 @@ const YAW_QUEST_FLOW = {
             return false;
         }
         const granted = this.grantReward(app, quest);
-        if (granted) app.log.push({ text: app._label('quest.turnedIn', 'Quest turned in: {title}.', { title: quest.title }), type: 'loot' });
+        if (granted) {
+            const turnedInText = app._label('quest.turnedIn', 'Quest turned in: {title}.', { title: quest.title });
+            app.log.push({ text: turnedInText, type: 'loot' });
+            app.showToast?.({ text: turnedInText, type: 'quest', importance: 'notable', dedupeKey: `quest-turned-in:${quest.id}` });
+        }
         if (granted) {
             app.emitTransactionSceneBeat?.({ name: quest.giverName || app._label('quest.defaultGiver', 'the quest giver') }, 'quest', 'turned-in', {
                 title: quest.title,

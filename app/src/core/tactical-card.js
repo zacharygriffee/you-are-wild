@@ -66,7 +66,7 @@ const YAW_TACTICAL_CARD = {
         const quickIntent = !isParty && app.combatState?.active && app.targetSelection?.source === 'combat' && app.targetSelection.action !== 'scavenge' && isTargetable
             ? app.targetSelection.action
             : null;
-        const passive = options.passive === true || options.stage === 'combat';
+        const passive = options.passive === true || (options.stage === 'combat' && !quickIntent);
         const click = passive
             ? ''
             : (quickIntent
@@ -155,7 +155,11 @@ const YAW_TACTICAL_CARD = {
         const actionRowScope = isParty
             ? (app.syncSelection?.active ? 'sync-participants' : (app.combatState?.active ? 'combat-plan-actors' : 'party-selection'))
             : (app.combatState.active ? 'combat-target-mark' : 'creature-selection');
-        const focusAttrs = passive ? '' : app._unitCardFocusAttrs(unit, false);
+        const focusAttrs = passive
+            ? ''
+            : (quickIntent
+                ? `role="button" tabindex="0" data-card-purpose="quick-intent" aria-label="${app._escapeHtml(app._combatTargetPickHint(unit, quickIntent, true))}"`
+                : app._unitCardFocusAttrs(unit, false));
         return `<div class="${cardClass}" data-card-role="compact-tactical" data-card-density="micro" data-unit-name="${unitLabel}" ${surfaceRoleAttrs} ${stageAttrs} ${rowAttr} ${syncRoleAttr} ${app._unitSelectionStateAttrs(unit, type)} ${focusAttrs}${interactionAttrs}${passive ? '' : pressHandlers} style="${isCorpse ? 'opacity:0.58;' : ''}">
                     ${app._srOnly(unitName)}
                     ${app._srOnly(app._combatStatusText(unit), 'role="status" aria-live="polite"')}

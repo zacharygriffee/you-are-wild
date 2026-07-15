@@ -7,6 +7,12 @@
 const CONTENT_SYSTEM = {
     STORAGE_KEY: 'yaw-content-prefs',
     LEGACY_STORAGE_KEY: 'fff-content-prefs',
+    POLICY_VERSION: 2,
+
+    POSTURES: {
+        SFW: 'sfw',
+        MATURE: 'mature'
+    },
 
     // Content rating tiers
     TIERS: {
@@ -17,12 +23,19 @@ const CONTENT_SYSTEM = {
     
     // Default preferences - SAFE by default
     preferences: {
+        policyVersion: 2,
+        posture: 'sfw',
         maxTier: 0,           // Default: SAFE (user must opt into mature/adult content)
-        voreEnabled: false,
+        voreEnabled: true,
         explicitDescriptions: false,
+        enabledCategories: [],
+        gameplayVariants: {},
         filterTags: [],       // User can block specific tags if desired
         language: 'en'
     },
+
+    policyProviders: new Map(),
+    creationOptions: new Map(),
 
     locales: {
         en: {
@@ -252,7 +265,7 @@ const CONTENT_SYSTEM = {
             'ui.tutorial.ready.title': 'Ready',
             'ui.tutorial.ready.content': 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.',
             'ui.menu.edition': 'Dark mode tactical edition',
-            'ui.menu.contentDefault': 'Safe content is enabled by default',
+            'ui.menu.contentDefault': 'SFW content is enabled by default',
             'ui.nav.mapTitle': 'Toggle map panel',
             'ui.nav.partyTitle': 'Toggle party panel',
             'ui.nav.creaturesTitle': 'Toggle creatures panel',
@@ -390,13 +403,40 @@ const CONTENT_SYSTEM = {
             'ui.toast.notifications': 'Notifications',
             'ui.toast.dismiss': 'Dismiss notification',
             'settings.title': 'Settings',
-            'settings.description': 'Safe content is the default. Select a higher content level to reveal additional settings.',
+            'settings.description': 'Choose a non-explicit content posture. Installed mods may provide additional opt-in categories and rules.',
             'settings.languageSection': 'Language',
             'settings.interfaceLanguage': 'Interface Language',
-            'settings.contentLevel': 'Content Level',
-            'settings.safe': 'Safe',
+            'settings.contentLevel': 'Content Posture',
+            'settings.safe': 'SFW',
             'settings.mature': 'Mature',
             'settings.adult': 'Adult',
+            'settings.optionalContent': 'Optional Content',
+            'settings.optionalContentEmpty': 'Installed mods have not registered additional content categories.',
+            'settings.gameplayVariants': 'Gameplay Variants',
+            'settings.variantProviders': 'Provided by {providers}',
+            'settings.categoryProviders': 'Required by {providers}',
+            'settings.variant.endo': 'Survivable containment',
+            'settings.variant.endoDesc': 'Contained creatures can survive digestion outcomes.',
+            'settings.variant.fatal': 'Fatal digestion',
+            'settings.variant.fatalDesc': 'Digestion can create permanent defeat outcomes.',
+            'settings.variant.slow': 'Slow digestion',
+            'settings.variant.slowDesc': 'Containment progress advances over a longer interval.',
+            'settings.variant.absorption': 'Stat absorption',
+            'settings.variant.absorptionDesc': 'Terminal digestion can transfer limited statistics.',
+            'settings.variant.chewing': 'Chewing actions',
+            'settings.variant.chewingDesc': 'Enable vital-damage chewing choices.',
+            'settings.variant.passthrough': 'Pass-through outcomes',
+            'settings.variant.passthroughDesc': 'Enable alternate completed-digestion routing.',
+            'settings.variant.power': 'Power dynamics',
+            'settings.variant.powerDesc': 'Enable nonsexual dominance and submission rules.',
+            'settings.variant.species': 'Same-species affinity',
+            'settings.variant.speciesDesc': 'Apply the existing same-species interaction modifier.',
+            'settings.variant.forcedFeeding': 'Forced feeding',
+            'settings.variant.forcedFeedingDesc': 'Allow coercive feeding outcomes with mature warnings.',
+            'settings.variant.boneDamage': 'Severe body damage',
+            'settings.variant.boneDamageDesc': 'Allow severe crushing consequences.',
+            'settings.variant.unwillingWarnings': 'Coercion warnings',
+            'settings.variant.unwillingWarningsDesc': 'Show additional warnings for unwilling interactions.',
             'create.contentLevelTitle': 'Open content level settings',
             'create.contentLevelChange': 'Change in Settings',
             'create.bodyOptions': 'Body Options',
@@ -442,10 +482,10 @@ const CONTENT_SYSTEM = {
             'anatomy.chestB': 'Chest Option B',
             'anatomy.lowerProfile': 'Lower profile',
             'anatomy.chestProfile': 'Chest profile',
-            'anatomy.adult.vulva': 'Vulva',
-            'anatomy.adult.penis': 'Penis',
-            'anatomy.adult.breasts': 'Breasts',
-            'anatomy.adult.pecs': 'Pecs',
+            'anatomy.adult.vulva': 'Lower Option A',
+            'anatomy.adult.penis': 'Lower Option B',
+            'anatomy.adult.breasts': 'Chest Option A',
+            'anatomy.adult.pecs': 'Chest Option B',
             'ui.showDetails': 'Show Details',
             'ui.hideDetails': 'Hide Details',
             'ui.details': 'Details',
@@ -1364,13 +1404,40 @@ const CONTENT_SYSTEM = {
             'ui.toast.notifications': 'Notificaciones',
             'ui.toast.dismiss': 'Descartar notificacion',
             'settings.title': 'Ajustes',
-            'settings.description': 'El contenido seguro es el predeterminado. Selecciona un nivel superior para mostrar ajustes adicionales.',
+            'settings.description': 'Elige una postura de contenido no explicito. Los mods instalados pueden ofrecer categorias y reglas opcionales.',
             'settings.languageSection': 'Idioma',
             'settings.interfaceLanguage': 'Idioma de interfaz',
-            'settings.contentLevel': 'Nivel de contenido',
-            'settings.safe': 'Seguro',
+            'settings.contentLevel': 'Postura de contenido',
+            'settings.safe': 'SFW',
             'settings.mature': 'Maduro',
             'settings.adult': 'Adulto',
+            'settings.optionalContent': 'Contenido opcional',
+            'settings.optionalContentEmpty': 'Los mods instalados no han registrado categorias de contenido adicionales.',
+            'settings.gameplayVariants': 'Variantes de juego',
+            'settings.variantProviders': 'Proporcionado por {providers}',
+            'settings.categoryProviders': 'Requerido por {providers}',
+            'settings.variant.endo': 'Contencion con supervivencia',
+            'settings.variant.endoDesc': 'Las criaturas contenidas pueden sobrevivir a resultados de digestion.',
+            'settings.variant.fatal': 'Digestion fatal',
+            'settings.variant.fatalDesc': 'La digestion puede crear resultados de derrota permanente.',
+            'settings.variant.slow': 'Digestion lenta',
+            'settings.variant.slowDesc': 'El progreso de contencion avanza durante un intervalo mayor.',
+            'settings.variant.absorption': 'Absorcion de atributos',
+            'settings.variant.absorptionDesc': 'La digestion terminal puede transferir atributos limitados.',
+            'settings.variant.chewing': 'Acciones de masticar',
+            'settings.variant.chewingDesc': 'Activa opciones de dano vital al masticar.',
+            'settings.variant.passthrough': 'Resultados de paso completo',
+            'settings.variant.passthroughDesc': 'Activa rutas alternativas al completar la digestion.',
+            'settings.variant.power': 'Dinamicas de poder',
+            'settings.variant.powerDesc': 'Activa reglas no sexuales de dominio y sumision.',
+            'settings.variant.species': 'Afinidad de la misma especie',
+            'settings.variant.speciesDesc': 'Aplica el modificador existente de interaccion entre la misma especie.',
+            'settings.variant.forcedFeeding': 'Alimentacion forzada',
+            'settings.variant.forcedFeedingDesc': 'Permite resultados coercitivos con advertencias maduras.',
+            'settings.variant.boneDamage': 'Dano corporal severo',
+            'settings.variant.boneDamageDesc': 'Permite consecuencias severas de aplastamiento.',
+            'settings.variant.unwillingWarnings': 'Advertencias de coercion',
+            'settings.variant.unwillingWarningsDesc': 'Muestra advertencias adicionales para interacciones no consentidas.',
             'create.contentLevelTitle': 'Abrir ajustes de nivel de contenido',
             'create.contentLevelChange': 'Cambiar en Ajustes',
             'create.bodyOptions': 'Opciones de cuerpo',
@@ -1416,10 +1483,10 @@ const CONTENT_SYSTEM = {
             'anatomy.chestB': 'Opcion de torso B',
             'anatomy.lowerProfile': 'Perfil inferior',
             'anatomy.chestProfile': 'Perfil de torso',
-            'anatomy.adult.vulva': 'Vulva',
-            'anatomy.adult.penis': 'Pene',
-            'anatomy.adult.breasts': 'Pechos',
-            'anatomy.adult.pecs': 'Pectorales',
+            'anatomy.adult.vulva': 'Opcion inferior A',
+            'anatomy.adult.penis': 'Opcion inferior B',
+            'anatomy.adult.breasts': 'Opcion de torso A',
+            'anatomy.adult.pecs': 'Opcion de torso B',
             'ui.showDetails': 'Mostrar detalles',
             'ui.hideDetails': 'Ocultar detalles',
             'ui.details': 'Detalles',
@@ -1987,77 +2054,77 @@ const CONTENT_SYSTEM = {
             forest: {
                 safe: (ctx) => `You enter a dense forest. Sunlight filters through the canopy.`,
                 mature: (ctx) => `The forest closes around you. Shadows dance between ancient trees. Something watches from the underbrush.`,
-                adult: (ctx) => `The forest presses close, humid and thick with the scent of lust and danger. You feel eyes upon you, hungry and wanting.`
+                adult: null
             },
             swamp: {
                 safe: (ctx) => `A murky swamp stretches before you.`,
                 mature: (ctx) => `The swamp waters are dark and still. Mist rises between cypress trees.`,
-                adult: (ctx) => `The swamp is warm and wet. Something in the water brushes your leg...`
+                adult: null
             },
             plains: {
                 safe: (ctx) => `Open grasslands stretch to the horizon.`,
                 mature: (ctx) => `Tall grasses sway in the breeze, hiding who knows what. The openness feels exposed.`,
-                adult: (ctx) => `The open plains offer no cover for the pleasures or predations that may find you here.`
+                adult: null
             },
             cave: {
                 safe: (ctx) => `A dark cave entrance yawns before you.`,
                 mature: (ctx) => `The cave mouth beckons, cool air washing over you. Distant drips echo in the darkness.`,
-                adult: (ctx) => `The cave beckons, darkness promising privacy for whatever desires await within.`
+                adult: null
             },
             jungle: {
                 safe: (ctx) => `Dense jungle vegetation blocks your path.`,
                 mature: (ctx) => `Vines hang like curtains in the humid air. The jungle is alive with unseen creatures.`,
-                adult: (ctx) => `The jungle presses against you with wet heat. Vines brush against your skin suggestively.`
+                adult: null
             },
             dungeon: {
                 safe: (ctx) => `Stone corridors stretch into darkness.`,
                 mature: (ctx) => `Iron-barred cells line the walls. The dungeon is cold and oppressive.`,
-                adult: (ctx) => `Chains hang from the walls. The dungeon holds captives of many kinds...`
+                adult: null
             },
             manor: {
                 safe: (ctx) => `A grand manor stands before you.`,
                 mature: (ctx) => `The manor's hallways echo with emptiness. Antique furniture gathers dust.`,
-                adult: (ctx) => `The manor's bedroom doors stand ajar. Silk sheets and velvet cushions await.`
+                adult: null
             },
             beach: {
                 safe: (ctx) => `White sand stretches to the ocean.`,
                 mature: (ctx) => `Waves lap against the shore. Palm trees sway overhead.`,
-                adult: (ctx) => `The warm sand invites you to rest. The water is crystal clear and inviting.`
+                adult: null
             },
             road: {
                 safe: (ctx) => `A dirt road winds through the landscape.`,
                 mature: (ctx) => `Wagon ruts mark the well-traveled path. A weathered signpost points onward.`,
-                adult: (ctx) => `The road is lonely. A traveler might stop to share warmth and companionship.`
+                adult: null
             },
             cliff: {
                 safe: (ctx) => `Rocky outcrops tower above.`,
                 mature: (ctx) => `The wind howls at your back. A narrow ledge skirts a dangerous drop.`,
-                adult: (ctx) => `The dizzying height makes your heart race. Adrenaline courses through your veins.`
+                adult: null
             },
             water: {
                 safe: (ctx) => `A river rushes past.`,
                 mature: (ctx) => `The water is cool and clear. Fish dart beneath the surface.`,
-                adult: (ctx) => `The current pulls at your clothes. The water is warm and inviting...`
+                adult: null
             },
             bridge: {
                 safe: (ctx) => `A wooden bridge spans the gap.`,
                 mature: (ctx) => `The bridge creaks beneath your feet. Rope rails sway in the wind.`,
-                adult: (ctx) => `The bridge is precarious. You might need to hold someone close for safety...`
+                adult: null
             },
             farm: {
                 safe: (ctx) => `Barns and fields stretch to the horizon.`,
                 mature: (ctx) => `A windmill turns lazily. Plowed earth shows recent work.`,
-                adult: (ctx) => `The hayloft is warm and soft. The stable is private and secluded.`
+                adult: null
             },
             indoors: {
                 safe: (ctx) => `You enter a cozy building.`,
                 mature: (ctx) => `Walls enclose the space. A hearth glows with dying embers.`,
-                adult: (ctx) => `The room is warm and intimate. Furniture is arranged for closeness.`
+                adult: null
             },
             entrance: {
                 safe: (ctx) => `A dark entrance beckons.`,
                 mature: (ctx) => `A cave mouth yawns in darkness. An ancient archway frames the way.`,
-                adult: (ctx) => `The entrance is tight and dark. You must squeeze through to explore deeper...`
+                adult: null
             }
         },
         
@@ -2066,17 +2133,17 @@ const CONTENT_SYSTEM = {
             generic: {
                 safe: (ctx) => `A ${ctx.species} stands before you.`,
                 mature: (ctx) => `A ${ctx.species} blocks your path, looking ${ctx.mood || 'curious'}.`,
-                adult: (ctx) => `A ${ctx.species} approaches, her intentions clear as she eyes you hungrily.`
+                adult: null
             },
             predatory: {
                 safe: (ctx) => `You sense danger nearby.`,
                 mature: (ctx) => `${ctx.species} eyes you with hunger.`,
-                adult: (ctx) => `${ctx.species} licks her lips, sizing you up as potential prey.`
+                adult: null
             },
             predatory: {
                 safe: (ctx) => `You sense danger nearby.`,
                 mature: (ctx) => `${ctx.species} eyes you with hunger.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.species} licks their lips, sizing you up.` : null
+                adult: null
             }
         },
         
@@ -2085,12 +2152,12 @@ const CONTENT_SYSTEM = {
             attack: {
                 safe: (ctx) => `${ctx.attacker} strikes ${ctx.defender} for ${ctx.damage} damage!`,
                 mature: (ctx) => `${ctx.attacker} ${ctx.verb || 'slams into'} ${ctx.defender}, dealing ${ctx.damage} damage!`,
-                adult: (ctx) => ctx.explicit ? `${ctx.attacker} ${ctx.verb} ${ctx.defender} with brutal force!` : null
+                adult: null
             },
             defeat: {
                 safe: (ctx) => `${ctx.defender} is defeated.`,
                 mature: (ctx) => `${ctx.defender} collapses, unable to continue fighting.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.defender} collapses, at your mercy.` : null
+                adult: null
             }
         },
         
@@ -2104,92 +2171,92 @@ const CONTENT_SYSTEM = {
             consume: {
                 safe: (ctx) => `You defeat ${ctx.target}.`,
                 mature: (ctx) => `${ctx.target} is consumed. You feel stronger.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} slides down your throat, settling in your belly.` : null
+                adult: null
             },
             seduce: {
                 safe: (ctx) => `${ctx.target} agrees to join you.`,
                 mature: (ctx) => `${ctx.target} is swayed by your charms and joins your party.`,
-                adult: (ctx) => ctx.explicit ? `${ctx.target} submits to your advances.` : null
+                adult: null
             },
             flirt: {
                 safe: (ctx) => `${ctx.actor} makes a friendly gesture toward ${ctx.target}.`,
                 mature: (ctx) => `${ctx.actor} flirts with ${ctx.target}, lowering their guard.`,
-                adult: (ctx) => ctx.explicit ? `${ctx.actor} sends a sultry gaze and a teasing touch toward ${ctx.target}, making them weak in the knees.` : null
+                adult: null
             },
             feed: {
                 safe: (ctx) => `${ctx.actor} tends to ${ctx.target}'s needs.`,
                 mature: (ctx) => `${ctx.actor} nourishes ${ctx.target}, restoring their strength.`,
-                adult: (ctx) => ctx.explicit ? `${ctx.actor} feeds ${ctx.target} intimately, their bodies pressed close as vitality flows between them.` : null
+                adult: null
             },
             swallow: {
                 safe: (ctx) => `${ctx.actor} consumes ${ctx.target}.`,
                 mature: (ctx) => `${ctx.target} is swallowed whole by ${ctx.actor}.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} slides down ${ctx.actor}'s throat, settling in their stomach with wet gulps.` : null
+                adult: null
             },
             chew: {
                 safe: (ctx) => `${ctx.target} is defeated by ${ctx.actor}.`,
                 mature: (ctx) => `${ctx.actor} breaks down ${ctx.target}'s vitality.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor} chews ${ctx.target} down, reducing their vitality.` : null
+                adult: null
             },
             cockVore: {
                 safe: (ctx) => `${ctx.target} is captured by ${ctx.actor}.`,
-                mature: (ctx) => `${ctx.target} is drawn into ${ctx.actor}'s shaft.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} is stuffed into ${ctx.actor}'s swollen cock, sliding down into heavy balls.` : null
+                mature: (ctx) => `${ctx.target} is drawn into ${ctx.actor}'s reserve containment.`,
+                adult: null
             },
             unbirth: {
                 safe: (ctx) => `${ctx.target} is enveloped by ${ctx.actor}.`,
-                mature: (ctx) => `${ctx.target} is drawn into ${ctx.actor}'s womb.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} is pulled deep into ${ctx.actor}'s warm womb, walls closing around them.` : null
+                mature: (ctx) => `${ctx.target} is drawn into ${ctx.actor}'s inner containment.`,
+                adult: null
             },
             digest: {
                 safe: (ctx) => `${ctx.target} is fully absorbed by ${ctx.actor}.`,
                 mature: (ctx) => `${ctx.target} is digested completely inside ${ctx.actor}.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.target}'s body is reduced to nutrients inside ${ctx.actor}'s stomach.` : null
+                adult: null
             },
             release: {
                 safe: (ctx) => `${ctx.target} is freed by ${ctx.actor}.`,
                 mature: (ctx) => `${ctx.actor} releases ${ctx.target} from their belly.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor} heaves, pushing ${ctx.target} out of their stomach, covered in slime and weakened.` : null
+                adult: null
             },
             heal: {
                 safe: (ctx) => `${ctx.actor} tends to ${ctx.target}.`,
                 mature: (ctx) => `${ctx.actor} nourishes ${ctx.target}, restoring their strength.`,
-                adult: (ctx) => ctx.explicit ? `${ctx.actor} feeds ${ctx.target}, their warmth spreading as vitality returns.` : null
+                adult: null
             },
             breastfeed: {
                 safe: (ctx) => `${ctx.actor} nurses ${ctx.target}.`,
                 mature: (ctx) => `${ctx.actor} offers milk to ${ctx.target}.`,
-                adult: (ctx) => ctx.explicit ? `${ctx.actor} presses ${ctx.target} to their breast, warm milk flowing as pleasure surges through both.` : null
+                adult: null
             },
             sacrifice: {
                 safe: (ctx) => `${ctx.target} offers themself to ${ctx.actor}.`,
                 mature: (ctx) => `${ctx.target} willingly feeds themself to ${ctx.actor}.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} slides themself into ${ctx.actor}'s mouth, surrendering to the warm darkness of their belly.` : null
+                adult: null
             },
             forceFeed: {
                 safe: (ctx) => `${ctx.target} is forced into ${ctx.actor}.`,
                 mature: (ctx) => `${ctx.target} is held down and forced into ${ctx.actor}'s stomach.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} struggles against restraints as they are shoved down ${ctx.actor}'s throat, forced into the belly.` : null
+                adult: null
             },
             slurp: {
                 safe: (ctx) => `${ctx.actor} draws essence from ${ctx.target}.`,
                 mature: (ctx) => `${ctx.actor} draws vitality from ${ctx.target}.`,
-                adult: (ctx) => ctx.explicit ? `${ctx.actor} drinks deeply from ${ctx.target}'s yielding form, savoring their essence.` : null
+                adult: null
             },
             fragment: {
                 safe: (ctx) => `${ctx.actor} reduces ${ctx.target}'s vitality.`,
                 mature: (ctx) => `${ctx.actor} weakens ${ctx.target}'s breakable body.`,
-                adult: (ctx) => ctx.explicit ? `${ctx.actor} bites into ${ctx.target}'s breakable body, drawing out nourishment.` : null
+                adult: null
             },
             corpseLoot: {
                 safe: (ctx) => ctx.item ? `You search the remains of ${ctx.target} and recover ${ctx.item}.` : `You search the remains of ${ctx.target}, but find nothing useful.`,
                 mature: (ctx) => ctx.item ? `You pick over ${ctx.target}'s remains and recover ${ctx.item}.` : `You pick over ${ctx.target}'s remains, but there is nothing worth taking.`,
-                adult: (ctx) => ctx.item ? `You pick over the remains of ${ctx.target}, recovering ${ctx.item}.` : `You pick over the remains of ${ctx.target}, finding nothing but cooling flesh.`
+                adult: null
             },
             corpseScavenge: {
                 safe: (ctx) => `${ctx.actor || 'You'} carefully ${ctx.scavengeVerb || 'scavenge'} ${ctx.portions || 1} portion(s) from the remains of ${ctx.target}.`,
                 mature: (ctx) => `${ctx.actor || 'You'} ${ctx.carveVerb || 'carve'} ${ctx.portions || 1} useful portion(s) from ${ctx.target}'s remains.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor || 'You'} ${ctx.feastVerb || 'feast'} from ${ctx.target}'s remains, taking ${ctx.portions || 1} portion(s) from what the battle left behind.` : null
+                adult: null
             }
         }
     },
@@ -2211,9 +2278,13 @@ const CONTENT_SYSTEM = {
 
     _defaultPreferences() {
         return {
+            policyVersion: this.POLICY_VERSION,
+            posture: this.POSTURES.SFW,
             maxTier: this.TIERS.SAFE,
-            voreEnabled: false,
+            voreEnabled: true,
             explicitDescriptions: false,
+            enabledCategories: [],
+            gameplayVariants: {},
             filterTags: [],
             language: 'en'
         };
@@ -2238,15 +2309,39 @@ const CONTENT_SYSTEM = {
         return normalized;
     },
 
+    _normalizePosture(value, legacyTier = this.TIERS.SAFE) {
+        const posture = String(value || '').trim().toLowerCase();
+        if (posture === this.POSTURES.SFW || posture === this.POSTURES.MATURE) return posture;
+        return this._normalizeTierValue(legacyTier) >= this.TIERS.MATURE
+            ? this.POSTURES.MATURE
+            : this.POSTURES.SFW;
+    },
+
+    _normalizeGameplayVariants(value) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+        const normalized = {};
+        for (const [key, enabled] of Object.entries(value)) {
+            const id = String(key || '').trim();
+            if (!id || id.length > 64 || !/^[a-zA-Z0-9_.:-]+$/.test(id)) continue;
+            normalized[id] = enabled === true;
+        }
+        return normalized;
+    },
+
     _normalizePreferences(input = {}, base = this.preferences) {
         const defaults = this._defaultPreferences();
         const basePrefs = base && typeof base === 'object' && !Array.isArray(base) ? base : {};
         const inputPrefs = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
         const source = { ...defaults, ...basePrefs, ...inputPrefs };
+        const maxTier = this._normalizeTierValue(source.maxTier);
         return {
-            maxTier: this._normalizeTierValue(source.maxTier),
+            policyVersion: this.POLICY_VERSION,
+            posture: this._normalizePosture(source.posture, maxTier),
+            maxTier,
             voreEnabled: source.voreEnabled === true,
             explicitDescriptions: source.explicitDescriptions === true,
+            enabledCategories: this._normalizeFilterTags(source.enabledCategories),
+            gameplayVariants: this._normalizeGameplayVariants(source.gameplayVariants),
             filterTags: this._normalizeFilterTags(source.filterTags),
             language: this.locales[source.language] ? source.language : defaults.language
         };
@@ -2266,7 +2361,148 @@ const CONTENT_SYSTEM = {
     
     // Set max content tier
     setMaxTier(tier) {
-        this.applyPreferences({ maxTier: tier }, { persist: true });
+        const maxTier = this._normalizeTierValue(tier);
+        this.applyPreferences({
+            maxTier,
+            posture: maxTier >= this.TIERS.MATURE ? this.POSTURES.MATURE : this.POSTURES.SFW
+        }, { persist: true });
+    },
+
+    setPosture(posture) {
+        const normalized = this._normalizePosture(posture, this.preferences.maxTier);
+        this.applyPreferences({
+            posture: normalized,
+            maxTier: normalized === this.POSTURES.MATURE ? this.TIERS.MATURE : this.TIERS.SAFE
+        }, { persist: true });
+        return normalized;
+    },
+
+    isCategoryEnabled(categoryId) {
+        return this.preferences.enabledCategories.includes(String(categoryId || '').trim());
+    },
+
+    setCategoryEnabled(categoryId, enabled) {
+        const id = this._normalizeFilterTags([categoryId])[0];
+        if (!id) return false;
+        const next = new Set(this.preferences.enabledCategories);
+        if (enabled === true) next.add(id);
+        else next.delete(id);
+        this.applyPreferences({ enabledCategories: [...next] }, { persist: true });
+        return this.isCategoryEnabled(id);
+    },
+
+    setGameplayVariant(variantId, enabled) {
+        const id = this._normalizeFilterTags([variantId])[0];
+        if (!id) return false;
+        this.applyPreferences({
+            gameplayVariants: {
+                ...this.preferences.gameplayVariants,
+                [id]: enabled === true
+            }
+        }, { persist: true });
+        return this.preferences.gameplayVariants[id] === true;
+    },
+
+    _normalizeProviderDeclaration(entry, kind) {
+        const source = typeof entry === 'string' ? { id: entry } : entry;
+        if (!source || typeof source !== 'object' || Array.isArray(source)) {
+            throw new Error(`${kind} declaration must be a string or object`);
+        }
+        const id = this._normalizeFilterTags([source.id])[0];
+        if (!id) throw new Error(`${kind} declaration id must be a token`);
+        const fallbackLabel = id.replace(/[-_.:]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+        const normalized = {
+            id,
+            label: String(source.label || fallbackLabel).trim().slice(0, 120),
+            description: String(source.description || '').trim().slice(0, 500),
+            labelKey: this._normalizeFilterTags([source.labelKey])[0] || '',
+            descriptionKey: this._normalizeFilterTags([source.descriptionKey])[0] || '',
+            required: kind === 'content category' ? source.required !== false : false
+        };
+        if (kind === 'gameplay variant') {
+            const settingKey = String(source.settingKey || '').trim();
+            normalized.default = source.default === true;
+            normalized.settingKey = /^[a-zA-Z0-9_.:-]+$/.test(settingKey) ? settingKey : '';
+            normalized.minPosture = this._normalizePosture(source.minPosture, this.TIERS.SAFE);
+            normalized.category = this._normalizeFilterTags([source.category])[0] || '';
+        }
+        return normalized;
+    },
+
+    registerPolicyProvider(providerId, manifest = {}, state = {}) {
+        const id = this._normalizeFilterTags([providerId])[0];
+        if (!id) throw new Error('Content provider id must be a token');
+        const categories = (manifest.contentCategories || []).map(entry => this._normalizeProviderDeclaration(entry, 'content category'));
+        const variants = (manifest.gameplayVariants || []).map(entry => this._normalizeProviderDeclaration(entry, 'gameplay variant'));
+        const dedupe = entries => [...new Map(entries.map(entry => [entry.id, entry])).values()];
+        const provider = {
+            id,
+            name: String(manifest.name || id).trim().slice(0, 120),
+            contentRating: String(manifest.contentRating || 'safe').trim().toLowerCase(),
+            installed: state.installed !== false,
+            enabled: state.enabled === true,
+            core: state.core === true,
+            categories: dedupe(categories),
+            variants: dedupe(variants)
+        };
+        this.policyProviders.set(id, provider);
+        return provider;
+    },
+
+    unregisterPolicyProvider(providerId) {
+        return this.policyProviders.delete(String(providerId || '').trim());
+    },
+
+    policyCatalog() {
+        const categories = new Map();
+        const variants = new Map();
+        for (const provider of this.policyProviders.values()) {
+            if (!provider.installed) continue;
+            for (const declaration of provider.categories) {
+                const current = categories.get(declaration.id) || { ...declaration, providers: [] };
+                current.providers.push({ id: provider.id, name: provider.name, enabled: provider.enabled, core: provider.core });
+                current.required = current.required || declaration.required;
+                categories.set(declaration.id, current);
+            }
+            for (const declaration of provider.variants) {
+                const current = variants.get(declaration.id) || { ...declaration, providers: [] };
+                current.providers.push({ id: provider.id, name: provider.name, enabled: provider.enabled, core: provider.core });
+                variants.set(declaration.id, current);
+            }
+        }
+        return {
+            categories: [...categories.values()].sort((a, b) => a.label.localeCompare(b.label)),
+            variants: [...variants.values()].sort((a, b) => a.label.localeCompare(b.label))
+        };
+    },
+
+    registerCreationOption(providerId, option) {
+        const provider = this._normalizeFilterTags([providerId])[0];
+        const source = option && typeof option === 'object' && !Array.isArray(option) ? option : null;
+        const id = source ? this._normalizeFilterTags([source.id])[0] : '';
+        if (!provider || !id) throw new Error('Creation option provider and id must be tokens');
+        const record = {
+            id,
+            provider,
+            group: this._normalizeFilterTags([source.group])[0] || 'optional',
+            label: String(source.label || id).trim().slice(0, 120),
+            description: String(source.description || '').trim().slice(0, 500),
+            value: String(source.value || id).trim().slice(0, 64),
+            icon: String(source.icon || '').trim().slice(0, 16)
+        };
+        this.creationOptions.set(`${provider}:${id}`, record);
+        return record;
+    },
+
+    unregisterCreationOptions(providerId) {
+        const provider = String(providerId || '').trim();
+        for (const [key, option] of this.creationOptions.entries()) {
+            if (option.provider === provider) this.creationOptions.delete(key);
+        }
+    },
+
+    getCreationOptions() {
+        return [...this.creationOptions.values()];
     },
 
     setLanguage(language) {
@@ -2296,11 +2532,13 @@ const CONTENT_SYSTEM = {
 
     _isTierAllowed(tierName, context = {}) {
         const tier = this.TIERS[tierName.toUpperCase()];
-        if (tier === undefined || tier > this.preferences.maxTier) return false;
+        if (tier === undefined) return false;
+        const explicitProviderAllowed = tier === this.TIERS.ADULT && this.isCategoryEnabled('explicit.sexual');
+        if (tier > this.preferences.maxTier && !explicitProviderAllowed) return false;
         if (context.voreEnabled && !this.preferences.voreEnabled) return false;
         if (tier === this.TIERS.ADULT) {
-            if (!this.preferences.explicitDescriptions) return false;
-            if (context.explicit && !this.preferences.explicitDescriptions) return false;
+            if (!this.preferences.explicitDescriptions && !explicitProviderAllowed) return false;
+            if (context.explicit && !this.preferences.explicitDescriptions && !explicitProviderAllowed) return false;
         }
         return true;
     },
@@ -2436,8 +2674,75 @@ const CONTENT_SYSTEM = {
             this.templates[normalizedCategory][normalizedType] = {};
         }
         this.templates[normalizedCategory][normalizedType][normalizedVariant] = normalizedTemplates;
+    },
+
+    templateTier(category, type, variant, tier) {
+        const normalizedCategory = this._normalizeTemplateKey(category, 'category');
+        const normalizedType = this._normalizeTemplateKey(type, 'type');
+        const normalizedVariant = this._normalizeTemplateKey(variant || 'default', 'variant');
+        const normalizedTier = String(tier || '').trim().toLowerCase();
+        if (!['safe', 'mature', 'adult'].includes(normalizedTier)) throw new Error('Template tier must be safe, mature, or adult');
+        return this.templates[normalizedCategory]?.[normalizedType]?.[normalizedVariant]?.[normalizedTier];
+    },
+
+    registerTemplateTier(category, type, variant, tier, renderer) {
+        if (renderer !== null && typeof renderer !== 'function') throw new Error('Template tier renderer must be a function or null');
+        const normalizedCategory = this._normalizeTemplateKey(category, 'category');
+        const normalizedType = this._normalizeTemplateKey(type, 'type');
+        const normalizedVariant = this._normalizeTemplateKey(variant || 'default', 'variant');
+        const normalizedTier = String(tier || '').trim().toLowerCase();
+        if (!['safe', 'mature', 'adult'].includes(normalizedTier)) throw new Error('Template tier must be safe, mature, or adult');
+        if (!this.templates[normalizedCategory]) this.templates[normalizedCategory] = {};
+        if (!this.templates[normalizedCategory][normalizedType]) this.templates[normalizedCategory][normalizedType] = {};
+        if (!this.templates[normalizedCategory][normalizedType][normalizedVariant]) {
+            this.templates[normalizedCategory][normalizedType][normalizedVariant] = { safe: null, mature: null, adult: null };
+        }
+        this.templates[normalizedCategory][normalizedType][normalizedVariant][normalizedTier] = renderer;
+    },
+
+    registerLocaleEntries(locale, entries) {
+        const localeId = String(locale || '').trim();
+        if (!this.locales[localeId]) throw new Error(`Unknown locale ${localeId}`);
+        if (!entries || typeof entries !== 'object' || Array.isArray(entries)) throw new Error('Locale entries must be an object');
+        const previous = {};
+        for (const [key, value] of Object.entries(entries)) {
+            const normalizedKey = String(key || '').trim();
+            if (!normalizedKey || normalizedKey.length > 120 || !/^[a-zA-Z0-9_.:-]+$/.test(normalizedKey)) throw new Error('Locale entry keys must be tokens');
+            if (typeof value !== 'string') throw new Error('Locale entry values must be strings');
+            previous[normalizedKey] = Object.prototype.hasOwnProperty.call(this.locales[localeId], normalizedKey)
+                ? this.locales[localeId][normalizedKey]
+                : undefined;
+            this.locales[localeId][normalizedKey] = value.slice(0, 1000);
+        }
+        return previous;
+    },
+
+    restoreLocaleEntries(locale, previous) {
+        if (!this.locales[locale] || !previous || typeof previous !== 'object') return;
+        for (const [key, value] of Object.entries(previous)) {
+            if (value === undefined) delete this.locales[locale][key];
+            else this.locales[locale][key] = value;
+        }
     }
 };
+
+CONTENT_SYSTEM.registerPolicyProvider('core', {
+    name: 'Core Game',
+    contentRating: 'safe',
+    gameplayVariants: [
+        { id: 'core.containment.survivable', settingKey: 'endoMode', labelKey: 'settings.variant.endo', descriptionKey: 'settings.variant.endoDesc', label: 'Survivable containment', minPosture: 'sfw' },
+        { id: 'core.digestion.fatal', settingKey: 'fatalVore', labelKey: 'settings.variant.fatal', descriptionKey: 'settings.variant.fatalDesc', label: 'Fatal digestion', minPosture: 'mature' },
+        { id: 'core.digestion.slow', settingKey: 'slowDigestion', labelKey: 'settings.variant.slow', descriptionKey: 'settings.variant.slowDesc', label: 'Slow digestion', minPosture: 'sfw' },
+        { id: 'core.digestion.absorption', settingKey: 'statAbsorption', labelKey: 'settings.variant.absorption', descriptionKey: 'settings.variant.absorptionDesc', label: 'Stat absorption', minPosture: 'mature' },
+        { id: 'core.consumption.chewing', settingKey: 'chewing', labelKey: 'settings.variant.chewing', descriptionKey: 'settings.variant.chewingDesc', label: 'Chewing actions', minPosture: 'mature' },
+        { id: 'core.digestion.pass-through', settingKey: 'allTheWayThrough', labelKey: 'settings.variant.passthrough', descriptionKey: 'settings.variant.passthroughDesc', label: 'Pass-through outcomes', minPosture: 'mature' },
+        { id: 'core.social.power-dynamics', settingKey: 'powerDynamics', labelKey: 'settings.variant.power', descriptionKey: 'settings.variant.powerDesc', label: 'Power dynamics', minPosture: 'mature' },
+        { id: 'core.social.same-species-affinity', settingKey: 'sameSpeciesBonus', labelKey: 'settings.variant.species', descriptionKey: 'settings.variant.speciesDesc', label: 'Same-species affinity', minPosture: 'sfw' },
+        { id: 'core.feeding.forced', settingKey: 'forcedFeeding', labelKey: 'settings.variant.forcedFeeding', descriptionKey: 'settings.variant.forcedFeedingDesc', label: 'Forced feeding', minPosture: 'mature' },
+        { id: 'core.damage.severe', settingKey: 'boneCrushing', labelKey: 'settings.variant.boneDamage', descriptionKey: 'settings.variant.boneDamageDesc', label: 'Severe body damage', minPosture: 'mature' },
+        { id: 'core.social.coercion-warnings', settingKey: 'unwillingWarnings', labelKey: 'settings.variant.unwillingWarnings', descriptionKey: 'settings.variant.unwillingWarningsDesc', label: 'Coercion warnings', minPosture: 'mature' }
+    ]
+}, { installed: true, enabled: true, core: true });
 
 // Initialize
 CONTENT_SYSTEM.init();

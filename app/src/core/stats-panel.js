@@ -10,10 +10,10 @@ const YAW_STATS_PANEL = {
 
     bodyTypeLabel(value, app = null) {
         const labels = {
-            clit: ['anatomy.adult.vulva', 'Vulva'],
-            cock: ['anatomy.adult.penis', 'Penis'],
-            tits: ['anatomy.adult.breasts', 'Breasts'],
-            pecs: ['anatomy.adult.pecs', 'Pecs']
+            clit: ['anatomy.adult.vulva', 'Lower Option A'],
+            cock: ['anatomy.adult.penis', 'Lower Option B'],
+            tits: ['anatomy.adult.breasts', 'Chest Option A'],
+            pecs: ['anatomy.adult.pecs', 'Chest Option B']
         };
         const label = labels[value];
         return label ? (app?._label?.(label[0], label[1]) || label[1]) : value;
@@ -64,7 +64,10 @@ const YAW_STATS_PANEL = {
         const parts = app._escapeHtml(this.bodyTypeLabel(p.parts, app) || app._label('party.none', 'None'));
         const chest = app._escapeHtml(this.bodyTypeLabel(p.chest, app) || app._label('party.none', 'None'));
         const bodyParts = (p.bodyParts || []).map(b => app._escapeHtml(app.BODY_PARTS[b]?.label || b)).join(', ') || noneText;
-        const safeTier = app._tierValue(CONTENT?.preferences?.maxTier ?? 0) < 2;
+        const legacyExplicit = app._tierValue(CONTENT?.preferences?.maxTier ?? 0) >= 2
+            && CONTENT?.preferences?.explicitDescriptions === true;
+        const explicitContent = CONTENT?.isCategoryEnabled?.('explicit.sexual') === true || legacyExplicit;
+        const safeTier = !explicitContent;
         const bodySummary = safeTier
             ? `${app._escapeHtml(app._label('character.size', 'Size'))}: ${p.size} | ${app._escapeHtml(app._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${app._escapeHtml(app._label('character.bodyParts', 'Body'))}: ${bodyParts}`
             : `${app._escapeHtml(app._label('character.size', 'Size'))}: ${p.size} | ${app._escapeHtml(app._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${app._escapeHtml(app._label('character.parts', 'Parts'))}: ${parts} | ${app._escapeHtml(app._label('character.chest', 'Chest'))}: ${chest}<br>${app._escapeHtml(app._label('character.bodyParts', 'Body'))}: ${bodyParts}`;

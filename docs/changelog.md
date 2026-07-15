@@ -13,6 +13,8 @@ This is a compact history of completed foundations. Git remains the authoritativ
 - Holdings separates Stats, Equipment, shared Pack, Containers, and Ground, with party-owner selection for owner-specific sections.
 - Sparse saves, deterministic persistent world rolls, deterministic combat rolls, quests, merchants, equipment, perks, party roles, and generated-world foundations are implemented.
 - Trusted-local modules support validated manifests, permissions, dependencies, content ratings, owned hooks/contributions, and versioned public narrative context.
+- Core now exposes SFW and Mature postures, while provider-declared categories, gameplay variants, localized labels, creation options, and explicit narrative stay in optional modules outside the generated HTML.
+- Provider-neutral narration now uses immutable post-commit hooks, an owned presentation-only store, focused context, declarative mod settings, session-only provider connections, and separately packaged SFW/Mature and explicit orchestrators.
 
 ## Recent Fixes
 
@@ -20,5 +22,6 @@ This is a compact history of completed foundations. Git remains the authoritativ
 - Releasing the last swallowed enemy reinstates combat when that hostile returns to the battlefield.
 - Contained and consumed creatures render in separate Holdings collections.
 - Enemy AI filters preferred attack targets through current reach before committing its turn.
+- Content-posture changes immediately rebuild the dynamic provider category and gameplay-variant settings.
 
 See the focused doctrine documents in `docs/` for current contracts and deferred design boundaries.

@@ -1,0 +1,29 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_narration_first_party",
+  "gameVersion": "0.10.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_narration_first_party",
+      "name": "You Are Wild: Optional Narration",
+      "version": "0.1.0",
+      "description": "Adds concise provider-generated narration after deterministic scene exchanges.",
+      "type": "presentation_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.10.0",
+      "trustBoundary": "trusted-local",
+      "permissions": ["scene:read_narrative", "scene:narrate", "ai:request"],
+      "settings": [
+        { "key": "enabled", "type": "boolean", "label": "Enable narration", "default": true },
+        { "key": "providerConnection", "type": "provider_connection", "label": "Provider connection", "description": "Connections are session-only and contain no provider credentials." },
+        { "key": "profile", "type": "select", "label": "Narration profile", "default": "storyteller", "options": [{ "value": "storyteller", "label": "Storyteller" }, { "value": "characters", "label": "Character reactions" }, { "value": "hybrid", "label": "Hybrid" }] },
+        { "key": "recentBeatLimit", "type": "number", "label": "Recent scene depth", "min": 1, "max": 12, "step": 1, "default": 6 },
+        { "key": "maxCharacters", "type": "number", "label": "Maximum characters", "min": 400, "max": 500, "step": 10, "default": 500 }
+      ]
+    },
+    "code": "const pending = new Map();\nconst profileVersion = '1';\nconst narrationId = targetId => `yaw_narration_first_party.v${profileVersion}.exchange.${targetId}`;\nconst setting = (key, fallback) => MODS.getSetting(key, fallback);\nMODS.registerHook('onSceneBeat', envelope => {\n  if (envelope?.exchangeId) pending.set(envelope.exchangeId, true);\n});\nMODS.registerHook('onSceneExchangeClosed', async envelope => {\n  const targetId = envelope?.exchangeId;\n  if (!targetId || !pending.delete(targetId) || !(await setting('enabled', true))) return;\n  const providerConnectionId = await setting('providerConnection', '');\n  if (!providerConnectionId) return;\n  const profileId = await setting('profile', 'storyteller');\n  const recentBeatLimit = await setting('recentBeatLimit', 6);\n  const maxCharacters = await setting('maxCharacters', 500);\n  const id = narrationId(targetId);\n  let record;\n  try {\n    record = MODS.publishNarration({ id, scope: 'exchange', targetId, status: 'pending', profileId, profileVersion, outputRating: envelope.policy?.posture === 'mature' ? 'mature' : 'safe' });\n  } catch (error) {\n    return;\n  }\n  try {\n    const context = MODS.getNarrationContext({ exchangeId: targetId, recentBeatLimit, activityLimit: 6 });\n    const result = await MODS.ai.generate({ capability: 'narration', providerConnectionId, profileId, maxCharacters, timeoutMs: 12000, input: { format: 'plain-text', posture: envelope.policy?.posture === 'mature' ? 'mature' : 'sfw', profile: profileId, context } });\n    MODS.updateNarration(record.id, { status: 'ready', text: result.text, providerId: result.providerId, modelId: result.modelId });\n  } catch (error) {\n    try { MODS.updateNarration(record.id, { status: error?.code === 'cancelled' ? 'cancelled' : 'failed', errorCode: error?.code || 'provider_error' }); } catch (ignored) {}\n  }\n});\nMODS.registerHook('onContentPolicyChanged', () => { pending.clear(); MODS.ai.cancelPending(); });",
+    "assets": {}
+  }
+}

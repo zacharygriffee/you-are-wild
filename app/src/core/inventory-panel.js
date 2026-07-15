@@ -376,12 +376,15 @@ const YAW_HOLDINGS = {
         const perks = (unit.perks || []).map(perk => app._escapeHtml(perk.name)).join(', ') || noneText;
         const bodyParts = (unit.bodyParts || []).map(part => app._escapeHtml(app.BODY_PARTS?.[part]?.label || part)).join(', ') || noneText;
         const bodyTypeLabel = value => ({
-            clit: app._label('anatomy.adult.vulva', 'Vulva'),
-            cock: app._label('anatomy.adult.penis', 'Penis'),
-            tits: app._label('anatomy.adult.breasts', 'Breasts'),
-            pecs: app._label('anatomy.adult.pecs', 'Pecs')
+            clit: app._label('anatomy.adult.vulva', 'Lower Option A'),
+            cock: app._label('anatomy.adult.penis', 'Lower Option B'),
+            tits: app._label('anatomy.adult.breasts', 'Chest Option A'),
+            pecs: app._label('anatomy.adult.pecs', 'Chest Option B')
         }[value] || value);
-        const safeTier = app._tierValue?.(CONTENT?.preferences?.maxTier ?? 0) < 2;
+        const legacyExplicit = app._tierValue?.(CONTENT?.preferences?.maxTier ?? 0) >= 2
+            && CONTENT?.preferences?.explicitDescriptions === true;
+        const explicitContent = CONTENT?.isCategoryEnabled?.('explicit.sexual') === true || legacyExplicit;
+        const safeTier = !explicitContent;
         const levelText = app._escapeHtml(app._label('party.levelSpecies', 'Level {level} {species}', { level: stats.level, species: unit.species }));
         const xpText = app._escapeHtml(app._label('character.xp', 'XP: {xp}/{xpToNext}', { xp: unit.xp || 0, xpToNext: unit.xpToNext || 0 }));
         const pendingCount = unit.pendingPerkChoices || 0;
@@ -600,10 +603,12 @@ const YAW_HOLDINGS = {
                     </div>
                     <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
                 </header>
-                <nav class="holdings-tabs" role="tablist" aria-label="${app._escapeHtml(app._label('holdings.tabs', 'Holdings sections'))}">
-                    ${tabButtons}
-                </nav>
-                ${this.renderOwnerSelector(app, owner)}
+                <div class="holdings-control-shelf" data-surface-role="holdings-controls">
+                    <nav class="holdings-tabs" role="tablist" aria-label="${app._escapeHtml(app._label('holdings.tabs', 'Holdings sections'))}">
+                        ${tabButtons}
+                    </nav>
+                    ${this.renderOwnerSelector(app, owner)}
+                </div>
                 <div class="holdings-window-body inventory-panel-detail holdings-panel-detail" data-command-surface="holdings-window" data-command-mode="exploration" data-command-grammar="holdings-management">
                     ${this.renderTabBody(app, owner, tab)}
                 </div>

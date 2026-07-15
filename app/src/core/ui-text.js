@@ -14,7 +14,8 @@ const YAW_UI_TEXT = {
     },
 
     primaryActionLabel(app, action) {
-        const isSFW = CONTENT.preferences.maxTier < 2;
+        const legacyExplicit = CONTENT.preferences.maxTier >= 2 && CONTENT.preferences.explicitDescriptions === true;
+        const isSFW = CONTENT?.isCategoryEnabled?.('explicit.sexual') !== true && !legacyExplicit;
         if (isSFW) {
             const safeKey = `action.${action}.sfw`;
             const safeLabel = app._t(safeKey);
@@ -26,7 +27,8 @@ const YAW_UI_TEXT = {
     },
 
     uiLabel(app, key) {
-        const isSFW = CONTENT.preferences.maxTier < 2;
+        const legacyExplicit = CONTENT.preferences.maxTier >= 2 && CONTENT.preferences.explicitDescriptions === true;
+        const isSFW = CONTENT?.isCategoryEnabled?.('explicit.sexual') !== true && !legacyExplicit;
         if (isSFW) {
             const safeKey = `action.${key}.sfw`;
             const safeLabel = app._t(safeKey);

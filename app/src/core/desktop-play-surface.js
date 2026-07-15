@@ -206,8 +206,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             presentation: 'desktop',
             density: 'micro',
             stage: 'combat',
-            suppressAgencyControl: true,
-            suppressTargetControl: true
+            suppressAgencyControl: true
         });
         return html.replace(
             'data-card-density="micro"',

@@ -113,6 +113,58 @@ const ModUI = {
         await MODULE_SYSTEM.deleteModule(moduleId);
         this.refreshModList();
     },
+
+    settingControl(moduleId, declaration, value) {
+        const id = this.escapeHtml(this.jsString(moduleId));
+        const key = this.escapeHtml(this.jsString(declaration.key));
+        const label = this.escapeHtml(declaration.label);
+        const description = declaration.description ? `<small>${this.escapeHtml(declaration.description)}</small>` : '';
+        let control = '';
+        if (declaration.type === 'boolean') {
+            control = `<input type="checkbox" ${value === true ? 'checked' : ''} onchange="ModUI.updateSetting('${id}','${key}',this.checked)">`;
+        } else if (declaration.type === 'select') {
+            control = `<select onchange="ModUI.updateSetting('${id}','${key}',this.value)">${declaration.options.map(option => `<option value="${this.escapeHtml(option.value)}" ${option.value === value ? 'selected' : ''}>${this.escapeHtml(option.label)}</option>`).join('')}</select>`;
+        } else if (declaration.type === 'number') {
+            control = `<input type="number" min="${declaration.min}" max="${declaration.max}" step="${declaration.step}" value="${this.escapeHtml(value)}" onchange="ModUI.updateSetting('${id}','${key}',this.value)">`;
+        } else if (declaration.type === 'string') {
+            control = `<input type="text" maxlength="${declaration.maxLength}" value="${this.escapeHtml(value)}" onchange="ModUI.updateSetting('${id}','${key}',this.value)">`;
+        } else if (declaration.type === 'provider_connection') {
+            const connections = YAW_AI_PROVIDER_MANAGER.listConnections();
+            control = `<select onchange="ModUI.updateSetting('${id}','${key}',this.value)"><option value="">No connection</option>${connections.map(connection => `<option value="${this.escapeHtml(connection.id)}" ${connection.id === value ? 'selected' : ''}>${this.escapeHtml(connection.providerName)}</option>`).join('')}</select>`;
+        } else if (declaration.type === 'action') {
+            const available = MODULE_SYSTEM.settingActions.has(`${moduleId}:${declaration.key}`);
+            control = `<button class="nav-btn" type="button" ${available ? '' : 'disabled'} onclick="ModUI.runSettingAction('${id}','${key}')">${label}</button>`;
+            return `<div class="mod-setting-row"><span>${description}</span>${control}</div>`;
+        }
+        return `<label class="mod-setting-row"><span><strong>${label}</strong>${description}</span>${control}</label>`;
+    },
+
+    async updateSetting(moduleId, key, value) {
+        const modules = await MODULE_SYSTEM.getAllModules();
+        const mod = modules.find(module => module.id === moduleId);
+        if (!mod) return false;
+        try {
+            await MODULE_SYSTEM.setDeclaredModuleSetting(moduleId, mod.manifest, key, value);
+            return true;
+        } catch (error) {
+            alert(error.message);
+            await this.refreshModList();
+            return false;
+        }
+    },
+
+    async runSettingAction(moduleId, key) {
+        const action = MODULE_SYSTEM.settingActions.get(`${moduleId}:${key}`);
+        if (!action) return false;
+        try {
+            await action();
+            await this.refreshModList();
+            return true;
+        } catch (error) {
+            alert(error.message || String(error));
+            return false;
+        }
+    },
     
     async refreshModList() {
         const container = document.getElementById('mod-list');
@@ -140,6 +192,11 @@ const ModUI = {
             return;
         }
         
+        const valuesByModule = Object.fromEntries(await Promise.all(modules.map(async mod => [
+            mod.id,
+            await MODULE_SYSTEM.getDeclaredModuleSettings(mod.id, mod.manifest || {})
+        ])));
+
         container.innerHTML = modules.map(mod => {
             const manifest = mod.manifest || {};
             const name = this.escapeHtml(manifest.name || mod.id || 'Module');
@@ -152,6 +209,9 @@ const ModUI = {
             const enableTitle = this.escapeHtml(this.label(mod.enabled ? 'mod.disableModule' : 'mod.enableModule', mod.enabled ? 'Disable {name}' : 'Enable {name}', { name: manifest.name || mod.id || 'Module' }));
             const deleteLabel = this.escapeHtml(this.label('mod.delete', 'Delete'));
             const deleteTitle = this.escapeHtml(this.label('mod.deleteModule', 'Delete {name}', { name: manifest.name || mod.id || 'Module' }));
+            const settings = (manifest.settings || []).length
+                ? `<details class="mod-settings"><summary>Settings</summary>${manifest.settings.map(setting => this.settingControl(mod.id, setting, valuesByModule[mod.id]?.[setting.key])).join('')}</details>`
+                : '';
             return `
             <div style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 
                         border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px;
@@ -170,6 +230,7 @@ const ModUI = {
                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
                         ${this.escapeHtml(this.label('mod.type', 'Type'))}: ${type} • ${this.escapeHtml(this.label('mod.installed', 'Installed'))}: ${installed}
                     </div>
+                    ${settings}
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="toggle-module" style="padding: 6px 12px; font-size: 12px;"

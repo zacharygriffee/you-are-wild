@@ -419,6 +419,7 @@ const YAW_SAVE_PERSISTENCE = {
             defeatState: this.serializableClone(app.defeatState || null, null),
             combatState: this.buildCombatDto(app),
             storyEvents: this.serializableClone(app.storyEvents || [], []),
+            sceneNarrations: this.serializableClone(typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedRecords(app) : [], []),
             latestStoryEvent: this.serializableClone(app.latestStoryEvent || null, null),
             storyEventSeq: app.storyEventSeq || 0
         };
@@ -465,6 +466,7 @@ const YAW_SAVE_PERSISTENCE = {
         if (domain === 'sceneFeed') {
             return {
                 storyEvents: this.serializableClone(app.storyEvents || [], []),
+                sceneNarrations: this.serializableClone(typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedRecords(app) : [], []),
                 latestStoryEvent: this.serializableClone(app.latestStoryEvent || null, null),
                 latestSceneBeat: this.serializableClone(app.latestSceneBeat || null, null),
                 storyEventSeq: app.storyEventSeq || 0
@@ -510,6 +512,7 @@ const YAW_SAVE_PERSISTENCE = {
                 combatState: combat,
                 logEntries: activityLog.logEntries || quests.logEntries || [],
                 storyEvents: sceneFeed.storyEvents || quests.storyEvents || [],
+                sceneNarrations: sceneFeed.sceneNarrations || quests.sceneNarrations || [],
                 latestStoryEvent: sceneFeed.latestStoryEvent || quests.latestStoryEvent || null,
                 storyEventSeq: sceneFeed.storyEventSeq || quests.storyEventSeq || 0
             },

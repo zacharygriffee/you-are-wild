@@ -1,0 +1,31 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_narration_explicit_first_party",
+  "gameVersion": "0.10.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_narration_explicit_first_party",
+      "name": "You Are Wild: Optional Explicit Narration",
+      "version": "0.1.0",
+      "description": "Adds separately gated explicit narration profiles for eligible adult characters.",
+      "type": "presentation_pack",
+      "contentRating": "mature",
+      "minGameVersion": "0.10.0",
+      "trustBoundary": "trusted-local",
+      "dependencies": ["yaw_narration_first_party", "yaw_explicit_first_party"],
+      "permissions": ["scene:read_narrative", "scene:narrate", "ai:request"],
+      "contentCategories": [{ "id": "explicit.sexual", "label": "Explicit sexual narration", "description": "Allows explicit provider-generated presentation for eligible adult characters.", "required": true }],
+      "settings": [
+        { "key": "enabled", "type": "boolean", "label": "Enable explicit narration", "default": false },
+        { "key": "providerConnection", "type": "provider_connection", "label": "Provider connection" },
+        { "key": "profile", "type": "select", "label": "Narration profile", "default": "storyteller", "options": [{ "value": "storyteller", "label": "Storyteller" }, { "value": "characters", "label": "Character reactions" }] },
+        { "key": "acknowledgeProviderPolicy", "type": "action", "label": "Confirm provider policy" },
+        { "key": "deleteNarration", "type": "action", "label": "Delete explicit narration data" }
+      ]
+    },
+    "code": "const pending = new Set();\nconst profileVersion = '1';\nconst setting = (key, fallback) => MODS.getSetting(key, fallback);\nMODS.registerSettingAction('acknowledgeProviderPolicy', async () => {\n  const connection = await setting('providerConnection', '');\n  const profile = await setting('profile', 'storyteller');\n  if (!connection) throw new Error('Choose a provider connection first.');\n  await MODS.setSetting('providerPolicyAcknowledgement', `${connection}:${profile}:${profileVersion}`);\n});\nMODS.registerSettingAction('deleteNarration', async () => { MODS.clearNarrations(); });\nMODS.registerHook('onSceneBeat', envelope => { if (envelope?.exchangeId) pending.add(envelope.exchangeId); });\nMODS.registerHook('onSceneExchangeClosed', async envelope => {\n  const targetId = envelope?.exchangeId;\n  if (!targetId || !pending.delete(targetId) || !(await setting('enabled', false))) return;\n  if (envelope.policy?.posture !== 'mature' || !envelope.policy?.enabledCategories?.includes('explicit.sexual')) return;\n  const providerConnectionId = await setting('providerConnection', '');\n  const profileId = await setting('profile', 'storyteller');\n  const acknowledged = await setting('providerPolicyAcknowledgement', '');\n  if (!providerConnectionId || acknowledged !== `${providerConnectionId}:${profileId}:${profileVersion}`) return;\n  const context = MODS.getNarrationContext({ exchangeId: targetId, recentBeatLimit: 6, activityLimit: 4 });\n  if (!context.characters.length || !context.characters.every(character => character.adultEligible === true)) return;\n  const id = `yaw_narration_explicit_first_party.v${profileVersion}.exchange.${targetId}`;\n  let record;\n  try { record = MODS.publishNarration({ id, scope: 'exchange', targetId, status: 'pending', profileId, profileVersion, outputRating: 'explicit', contentCategories: ['explicit.sexual'] }); } catch (error) { return; }\n  try {\n    const result = await MODS.ai.generate({ capability: 'narration', providerConnectionId, profileId: `explicit-${profileId}`, maxCharacters: 500, timeoutMs: 12000, input: { format: 'plain-text', category: 'explicit.sexual', eligibility: 'verified-adults', context } });\n    MODS.updateNarration(record.id, { status: 'ready', text: result.text, providerId: result.providerId, modelId: result.modelId });\n  } catch (error) {\n    try { MODS.updateNarration(record.id, { status: error?.code === 'cancelled' ? 'cancelled' : 'failed', errorCode: error?.code || 'provider_error' }); } catch (ignored) {}\n  }\n});\nMODS.registerHook('onContentPolicyChanged', () => { pending.clear(); MODS.ai.cancelPending(); });",
+    "assets": {}
+  }
+}

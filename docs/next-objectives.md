@@ -25,7 +25,7 @@ This is the short handoff for unfinished work. Completed implementation history 
 1. Gather playtest data before retuning hunger, Spirit, action costs, recovery, XP, reward pacing, creature size, containment capacity, and Fight/Play/Feed/Feast/Flee tradeoffs.
 2. Harden multi-creature interaction edge cases only where behavior contradicts current actor-target-intent doctrine.
 3. Later, audit equipment reach, reach traits, snare/grab/pull, area distribution, blockers, and back-row defensive value. Do not expand row mechanics without a design decision.
-4. Design gameplay-bearing SFW body builds separately from stat-oriented traits. Explicit anatomy remains content-tier gated and module-capable.
+4. Design gameplay-bearing SFW body builds separately from stat-oriented traits. Explicit anatomy remains optional-provider gated.
 
 ### Features
 
@@ -33,6 +33,7 @@ This is the short handoff for unfinished work. Completed implementation history 
 2. Continue public mod-context and example hardening for narrative, structural, and asset/content-pack lanes.
 3. Strengthen deterministic map playability: start-area invariants, traversal metadata, roads/bridges/coasts, POI budgets, routes, and encounter pressure.
 4. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
+5. Narration engine seams and optional first-party orchestrators now exist. A real provider remains deferred until its authorization and credential boundary is implemented and reviewed; remote MCP and localhost sidecars remain later work.
 
 ## Operator-Mediated Decisions
 
@@ -45,6 +46,11 @@ This is the short handoff for unfinished work. Completed implementation history 
 ## Autonomous Work Boundary
 
 Agents may fix demonstrated regressions, add tests, improve accessibility/localization coverage, maintain docs, harden safe mod APIs, and run local verification. Agents must not invent decision-heavy balance, expand explicit content, hand-edit generated dist, make legal claims, or publish without operator authorization.
+
+The content-boundary migration follows `docs/content-posture-and-providers.md`.
+Core owns SFW and Mature presentation; explicit presentation and sexually framed
+mechanics belong to optional providers and must not be added to the default
+generated artifact.
 
 ## References
 

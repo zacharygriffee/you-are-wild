@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
 const assert = require('assert');
+const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { chromium } = require('playwright');
 
 const distUrl = pathToFileURL(path.resolve(__dirname, '../../dist/you-are-wild.html')).href;
+const explicitProviderPackage = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../optional-mods/you-are-wild-explicit.yawmod.json'), 'utf8'));
 
 async function clearBrowserStorage(page) {
   await page.evaluate(async () => {
@@ -433,6 +435,14 @@ async function runCombatTargetFirstComposerFlow(page) {
       enemyLaneCount: stack?.querySelectorAll('.desktop-battle-lane.enemy').length || 0,
       partyLaneCount: stack?.querySelectorAll('.desktop-battle-lane.party').length || 0,
       stackMicroCount: stack?.querySelectorAll('.micro-tactical-card').length || 0,
+      stackPartyMarkCount: stack?.querySelectorAll('.desktop-battle-lane.party [data-command-control="focus-target"]').length || 0,
+      stackEnemyMarkCount: stack?.querySelectorAll('.desktop-battle-lane.enemy [data-command-control="mark-combat-target"]').length || 0,
+      interactiveCardRootCount: Array.from(stack?.querySelectorAll('.micro-tactical-card') || []).filter(card => (
+        card.hasAttribute('onclick')
+        || card.hasAttribute('onkeydown')
+        || card.getAttribute('role') === 'button'
+        || card.tabIndex >= 0
+      )).length,
       centerIntentCount: center?.querySelectorAll('[data-command-surface="combat-intents"], .unit-combat-actions').length || 0
     };
   });
@@ -452,6 +462,9 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(stageState.enemyLaneCount, 1, 'Desktop combat battle stack should include an enemy belt without requiring side rails');
   assert.strictEqual(stageState.partyLaneCount, 1, 'Desktop combat battle stack should include a party belt without requiring side rails');
   assert(stageState.stackMicroCount >= 2, 'Desktop combat battle stack should use micro combat cards for visible combatants');
+  assert(stageState.stackPartyMarkCount >= 1, 'Desktop combat party micro cards should expose compact target marks');
+  assert(stageState.stackEnemyMarkCount >= 1, 'Desktop combat enemy micro cards should expose compact combat marks');
+  assert.strictEqual(stageState.interactiveCardRootCount, 0, 'Desktop combat micro card bodies should remain passive while mark buttons stay interactive');
   assert.strictEqual(stageState.centerIntentCount, 0, 'Desktop combat center should stay free of duplicated intent/action grids');
   await page.locator('#enemies-content .compact-tactical-card').first().click();
   let state = await page.evaluate(() => ({
@@ -462,8 +475,31 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(state.enemyPun, 100, 'Desktop target card body without pending intent should not attack');
   assert.strictEqual(state.combatTargetId, null, 'Desktop target card body without pending intent should not mark');
   assert.strictEqual(state.targetSelection, null, 'Desktop target card body without pending intent should not arm target-pick');
-  const desktopMark = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
-  await assert.doesNotReject(() => desktopMark.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop combat enemy card should expose target-first Mark');
+
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  const quickTarget = page.locator('#scene-description .desktop-battle-lane.enemy .micro-tactical-card.targetable');
+  assert.strictEqual(await quickTarget.count(), 1, 'Pending one-to-one intent should make the eligible enemy micro card targetable');
+  const quickTargetState = await quickTarget.evaluate(card => ({
+    role: card.getAttribute('role') || '',
+    tabIndex: card.getAttribute('tabindex') || '',
+    click: card.getAttribute('onclick') || ''
+  }));
+  assert.strictEqual(quickTargetState.role, 'button', 'Pending one-to-one intent should give the enemy micro card button semantics');
+  assert.strictEqual(quickTargetState.tabIndex, '0', 'Pending one-to-one intent should make the enemy micro card keyboard reachable');
+  assert(quickTargetState.click.includes('executeQuickCombatIntentOnTarget'), 'Pending one-to-one intent should route the enemy micro card body through quick execution');
+  await quickTarget.click({ position: { x: 18, y: 18 } });
+  state = await page.evaluate(() => ({
+    enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
+    targetSelection: App.targetSelection,
+    commandSource: App.lastIntentCommand?.source || ''
+  }));
+  assert(state.enemyPun < 100, 'Clicking a targetable enemy micro card should resolve the pending one-to-one interaction');
+  assert.strictEqual(state.targetSelection, null, 'Quick micro-card execution should clear pending target selection');
+  assert.strictEqual(state.commandSource, 'combat-quick-target', 'Quick micro-card execution should preserve canonical command provenance');
+
+  await setupCombat(page);
+  const desktopMark = page.locator('#scene-description .desktop-battle-lane.enemy button[data-command-control="mark-combat-target"]').first();
+  await assert.doesNotReject(() => desktopMark.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop combat enemy micro card should expose target-first Mark');
   await desktopMark.click();
   state = await page.evaluate(() => ({
     markedTargetId: App.combatTargetId,
@@ -2062,13 +2098,17 @@ async function runAdventureMarkedTargetFlow(page) {
       combatButtons: document.querySelector('#desktop-context-belt')?.innerHTML.includes("executeCombatIntent('fight')") || false,
       creatureMarkButtons: document.querySelector('#enemies-content')?.innerHTML.includes("toggleExplorationTarget('creature'") || false,
       partyMarkInBattleStack: battleStackHtml.includes('data-command-surface="party-target-routing"'),
+      interactiveBattleCardRoots: Array.from(center?.querySelectorAll('.desktop-battle-stack .micro-tactical-card') || []).filter(card => (
+        card.hasAttribute('onclick') || card.hasAttribute('onkeydown') || card.getAttribute('role') === 'button' || card.tabIndex >= 0
+      )).length,
       centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.strictEqual(swapped.trayVisible, false, 'Switching into combat should hide adventure marked-target composer tray');
   assert.strictEqual(swapped.combatButtons, true, 'Switching into combat should render combat intent controls in the desktop composer');
   assert.strictEqual(swapped.creatureMarkButtons, false, 'Switching into combat should replace adventure target marks with combat target picks');
-  assert.strictEqual(swapped.partyMarkInBattleStack, false, 'Switching into combat should keep the battle stack passive while side rails own party controls');
+  assert.strictEqual(swapped.partyMarkInBattleStack, true, 'Switching into combat should retain compact party marks in the battle stack');
+  assert.strictEqual(swapped.interactiveBattleCardRoots, 0, 'Switching into combat should keep battle micro-card bodies passive');
   assert.strictEqual(swapped.centerHasActorControls, false, 'Center tile should stay free of actor controls after switching into combat');
 }
 
@@ -2133,12 +2173,18 @@ async function runDesktopCompactCardRoundTripFlow(page) {
     partyCards: document.querySelectorAll('#party-content .compact-tactical-card').length,
     targetCards: document.querySelectorAll('#enemies-content .compact-tactical-card').length,
     desktopPresence: document.querySelector('#desktop-presence-rail')?.innerText || '',
+    surfaceBottom: document.querySelector('#desktop-play-surface')?.getBoundingClientRect().bottom || 0,
+    presenceTop: document.querySelector('#desktop-presence-rail')?.getBoundingClientRect().top || 0,
+    presenceBottom: document.querySelector('#desktop-presence-rail')?.getBoundingClientRect().bottom || 0,
+    sceneFeedTop: document.querySelector('#desktop-scene-feed-slot')?.getBoundingClientRect().top || 0,
     centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack(),
     directIntentControls: /resolveExplorationTargetAction|showIntentMenu\('creature'|selectIntent\('creature'/.test(`${document.querySelector('#party-content')?.innerHTML || ''}${document.querySelector('#enemies-content')?.innerHTML || ''}`)
   }));
   assert(state.partyCards >= 3, 'Desktop compact flow should expose compact party cards for actor selection');
   assert(state.targetCards >= 3, 'Desktop compact flow should expose compact target cards for local creatures and remains');
   assert(state.desktopPresence.includes('Desktop Herb'), 'Desktop presence rail should expose tile items outside the center tile');
+  assert(state.presenceTop >= state.surfaceBottom, 'Desktop presence rail should render below the navigation map');
+  assert(state.presenceBottom <= state.sceneFeedTop, 'Desktop presence rail should render above Scene Feed');
   assert.strictEqual(state.centerHasActorControls, false, 'Desktop compact flow should start with center free of actor and target controls');
   assert.strictEqual(state.directIntentControls, false, 'Desktop compact cards should not expose direct primary intent controls');
 
@@ -3538,170 +3584,93 @@ async function runClearAllBrowserStorageFlow(page) {
 async function runContentSettingsBrowserFlow(page) {
   await clearBrowserStorage(page);
   await page.reload({ waitUntil: 'load' });
-  await page.waitForFunction(() => Boolean(window.App && window.CONTENT), null, { timeout: 5000 });
+  await page.waitForFunction(() => Boolean(window.App && window.CONTENT) && typeof MODULE_SYSTEM !== 'undefined', null, { timeout: 5000 });
 
-  let state = await page.evaluate(() => {
+  let state = await page.evaluate(async providerPackage => {
+    await MODULE_SYSTEM.init();
+    await MODULE_SYSTEM.installModule(providerPackage);
     App.showScreen('settings');
     App.showSettings();
-    const tierSafe = document.querySelector('#tier-safe');
-    const matureSection = document.querySelector('[data-setting-tier="mature"]');
-    const adultSection = document.querySelector('[data-setting-tier="adult"]');
+    await App.renderContentPolicySettings();
     const prefs = JSON.parse(localStorage.getItem('yaw-content-prefs') || '{}');
-    const settings = JSON.parse(localStorage.getItem('yaw-settings') || '{}');
     return {
+      posture: CONTENT.preferences.posture,
       maxTier: CONTENT.preferences.maxTier,
       prefsMaxTier: prefs.maxTier,
       voreEnabled: CONTENT.preferences.voreEnabled,
       explicitDescriptions: CONTENT.preferences.explicitDescriptions,
       fatalVore: App.settings.fatalVore,
-      cockVoreEnabled: App.settings.cockVoreEnabled,
       forcedFeeding: App.settings.forcedFeeding,
-      savedCockVore: settings.cockVoreEnabled,
-      safeSelected: tierSafe?.style.background.includes('accent-primary') || false,
-      matureVisible: getComputedStyle(matureSection).display !== 'none',
-      adultVisible: getComputedStyle(adultSection).display !== 'none',
-      voreDisabled: document.querySelector('#toggle-vore')?.disabled || false,
-      explicitDisabled: document.querySelector('#toggle-explicit')?.disabled || false,
-      adultToggleDisabled: document.querySelector('#toggle-cockVore')?.disabled || false
+      sfwSelected: document.querySelector('#tier-safe')?.getAttribute('aria-pressed'),
+      adultButtonPresent: Boolean(document.querySelector('#tier-adult')),
+      categoryPresent: Boolean(document.querySelector('[data-content-category="explicit.sexual"]')),
+      categoryChecked: document.querySelector('[data-content-category="explicit.sexual"]')?.checked || false,
+      sfwVariantPresent: Boolean(document.querySelector('[data-gameplay-variant="core.containment.survivable"]')),
+      matureVariantPresent: Boolean(document.querySelector('[data-gameplay-variant="core.digestion.fatal"]')),
+      providerEnabled: CONTENT.policyProviders.get(providerPackage.module.manifest.id)?.enabled || false
     };
-  });
+  }, explicitProviderPackage);
 
-  assert.strictEqual(state.maxTier, 0, 'Generated app should boot with safe content tier by default');
-  assert.strictEqual(state.prefsMaxTier, 0, 'Generated app should persist safe content tier under yaw-content-prefs');
-  assert.strictEqual(state.voreEnabled, false, 'Generated app should not enable mature content flags by default');
+  assert.strictEqual(state.posture, 'sfw', 'Generated app should boot with SFW content posture by default');
+  assert.strictEqual(state.maxTier, 0, 'SFW posture should preserve the safe legacy tier adapter');
+  assert.strictEqual(state.prefsMaxTier, 0, 'Generated app should persist the safe legacy tier adapter');
+  assert.strictEqual(state.voreEnabled, true, 'SFW posture should retain neutral consumption mechanics');
   assert.strictEqual(state.explicitDescriptions, false, 'Generated app should not enable explicit descriptions by default');
-  assert.strictEqual(state.fatalVore, false, 'Generated app should force mature app settings off at safe tier');
-  assert.strictEqual(state.cockVoreEnabled, false, 'Generated app should force adult app settings off at safe tier');
-  assert.strictEqual(state.forcedFeeding, false, 'Generated app should force adult interaction settings off at safe tier');
-  assert.strictEqual(state.savedCockVore, false, 'Generated app should persist sanitized safe-tier settings');
-  assert.strictEqual(state.safeSelected, true, 'Safe tier button should render selected on boot');
-  assert.strictEqual(state.matureVisible, false, 'Safe tier should hide mature settings in the generated app');
-  assert.strictEqual(state.adultVisible, false, 'Safe tier should hide adult settings in the generated app');
-  assert.strictEqual(state.voreDisabled, true, 'Hidden mature content toggle should be disabled at safe tier');
-  assert.strictEqual(state.explicitDisabled, true, 'Hidden explicit content toggle should be disabled at safe tier');
-  assert.strictEqual(state.adultToggleDisabled, true, 'Hidden adult interaction toggles should be disabled at safe tier');
+  assert.strictEqual(state.fatalVore, false, 'SFW posture should keep mature fatal outcomes disabled');
+  assert.strictEqual(state.forcedFeeding, false, 'SFW posture should keep mature forced-feeding rules disabled');
+  assert.strictEqual(state.sfwSelected, 'true', 'SFW posture button should expose selected state');
+  assert.strictEqual(state.adultButtonPresent, false, 'Default settings should not expose a built-in Adult posture');
+  assert.strictEqual(state.categoryPresent, true, 'Installed provider category should appear in Settings before module enablement');
+  assert.strictEqual(state.categoryChecked, false, 'Installed provider category should default off');
+  assert.strictEqual(state.sfwVariantPresent, true, 'SFW core gameplay variants should render dynamically');
+  assert.strictEqual(state.matureVariantPresent, false, 'Mature core gameplay variants should stay hidden under SFW posture');
+  assert.strictEqual(state.providerEnabled, false, 'Installed provider should remain disabled before policy opt-in');
 
-  await page.evaluate(() => {
-    localStorage.setItem('yaw-content-prefs', JSON.stringify({
-      maxTier: 'adult',
-      voreEnabled: 'true',
-      explicitDescriptions: 'true',
-      filterTags: ['safe_tag', 'bad tag'],
-      language: 'missing',
-      injected: true
-    }));
-    localStorage.setItem('yaw-settings', JSON.stringify({
-      fatalVore: 'true',
-      cockVoreEnabled: 'true',
-      forcedFeeding: 'true',
-      highContrast: true,
-      partyPlayFightMode: 'unsafe',
-      injected: true
-    }));
-  });
-  await page.reload({ waitUntil: 'load' });
-  await page.waitForFunction(() => Boolean(window.App && window.CONTENT), null, { timeout: 5000 });
+  await page.locator('#tier-mature').click();
+  await page.waitForSelector('[data-gameplay-variant="core.digestion.fatal"]');
+  await page.locator('[data-gameplay-variant="core.feeding.forced"]').click();
+  await page.locator('[data-content-category="explicit.sexual"]').click();
+  await page.evaluate(async providerId => MODULE_SYSTEM.setModuleEnabled(providerId, true), explicitProviderPackage.module.manifest.id);
+  await page.evaluate(() => App.renderContentPolicySettings());
 
-  state = await page.evaluate(() => {
-    App.showScreen('settings');
-    App.showSettings();
+  state = await page.evaluate(providerId => {
     const prefs = JSON.parse(localStorage.getItem('yaw-content-prefs') || '{}');
     const settings = JSON.parse(localStorage.getItem('yaw-settings') || '{}');
     return {
+      posture: CONTENT.preferences.posture,
       maxTier: CONTENT.preferences.maxTier,
-      prefs,
-      voreEnabled: CONTENT.preferences.voreEnabled,
+      categories: prefs.enabledCategories,
       explicitDescriptions: CONTENT.preferences.explicitDescriptions,
-      language: CONTENT.preferences.language,
-      fatalVore: App.settings.fatalVore,
-      cockVoreEnabled: App.settings.cockVoreEnabled,
       forcedFeeding: App.settings.forcedFeeding,
-      partyPlayFightMode: App.settings.partyPlayFightMode,
-      injectedSetting: App.settings.injected,
-      savedSettings: settings,
-      matureVisible: getComputedStyle(document.querySelector('[data-setting-tier="mature"]')).display !== 'none',
-      adultVisible: getComputedStyle(document.querySelector('[data-setting-tier="adult"]')).display !== 'none'
-    };
-  });
-
-  assert.strictEqual(state.maxTier, 0, 'Malformed stored content tier should fall back to safe in the generated app');
-  assert.strictEqual(state.prefs.maxTier, 0, 'Malformed content preferences should be rewritten under the YAW key');
-  assert.strictEqual(state.prefs.injected, undefined, 'Generated app should drop unknown content preference keys');
-  assert.deepStrictEqual(state.prefs.filterTags, ['safe_tag'], 'Generated app should sanitize persisted content filter tags');
-  assert.strictEqual(state.voreEnabled, false, 'String truthy stored mature flags should not enable content');
-  assert.strictEqual(state.explicitDescriptions, false, 'String truthy stored explicit flags should not enable content');
-  assert.strictEqual(state.language, 'en', 'Unknown stored language should normalize to English');
-  assert.strictEqual(state.fatalVore, false, 'String truthy stored mature setting should not enable runtime behavior');
-  assert.strictEqual(state.cockVoreEnabled, false, 'String truthy stored adult setting should not enable runtime behavior');
-  assert.strictEqual(state.forcedFeeding, false, 'String truthy stored adult interaction setting should not enable runtime behavior');
-  assert.strictEqual(state.partyPlayFightMode, 'nonlethal', 'Unknown stored interaction mode should normalize safely');
-  assert.strictEqual(state.injectedSetting, undefined, 'Generated app should drop unknown stored settings keys');
-  assert.strictEqual(state.savedSettings.injected, undefined, 'Generated app should rewrite settings without unknown keys');
-  assert.strictEqual(state.matureVisible, false, 'Generated app should keep mature settings hidden after malformed stored preferences');
-  assert.strictEqual(state.adultVisible, false, 'Generated app should keep adult settings hidden after malformed stored preferences');
-
-  await page.locator('#tier-adult').click();
-  await page.locator('#toggle-vore').click();
-  await page.locator('#toggle-explicit').click();
-  await page.locator('#toggle-cockVore').click();
-  await page.locator('#toggle-forcedFeed').click();
-
-  state = await page.evaluate(() => {
-    const prefs = JSON.parse(localStorage.getItem('yaw-content-prefs') || '{}');
-    const settings = JSON.parse(localStorage.getItem('yaw-settings') || '{}');
-    return {
-      maxTier: CONTENT.preferences.maxTier,
-      prefs,
-      voreEnabled: CONTENT.preferences.voreEnabled,
-      explicitDescriptions: CONTENT.preferences.explicitDescriptions,
-      cockVoreEnabled: App.settings.cockVoreEnabled,
-      forcedFeeding: App.settings.forcedFeeding,
-      savedCockVore: settings.cockVoreEnabled,
       savedForcedFeeding: settings.forcedFeeding,
-      matureVisible: getComputedStyle(document.querySelector('[data-setting-tier="mature"]')).display !== 'none',
-      adultVisible: getComputedStyle(document.querySelector('[data-setting-tier="adult"]')).display !== 'none'
+      providerEnabled: MODULE_SYSTEM.activeModules.has(providerId),
+      providerOptions: CONTENT.getCreationOptions().length,
+      providerVariantPresent: Boolean(document.querySelector('[data-gameplay-variant="explicit.physiology.fluids"]'))
     };
-  });
+  }, explicitProviderPackage.module.manifest.id);
 
-  assert.strictEqual(state.maxTier, 2, 'Adult content should require explicit tier selection in the generated app');
-  assert.strictEqual(state.prefs.maxTier, 2, 'Adult opt-in should persist under yaw-content-prefs');
-  assert.strictEqual(state.voreEnabled, true, 'Mature gated toggle should only enable after adult tier is selected');
-  assert.strictEqual(state.explicitDescriptions, true, 'Explicit descriptions should only enable after adult tier is selected');
-  assert.strictEqual(state.cockVoreEnabled, true, 'Adult interaction setting should only enable after adult tier is selected');
-  assert.strictEqual(state.forcedFeeding, true, 'Adult interaction toggle should persist through the generated app settings path');
-  assert.strictEqual(state.savedCockVore, true, 'Adult interaction setting should persist under yaw-settings');
-  assert.strictEqual(state.savedForcedFeeding, true, 'Adult interaction toggle should persist under yaw-settings');
-  assert.strictEqual(state.matureVisible, true, 'Adult tier should expose mature settings');
-  assert.strictEqual(state.adultVisible, true, 'Adult tier should expose adult settings');
+  assert.strictEqual(state.posture, 'mature', 'Mature posture should be active before enabling an explicit provider');
+  assert.strictEqual(state.maxTier, 1, 'Explicit provider should not require a third core tier');
+  assert.deepStrictEqual(state.categories, ['explicit.sexual'], 'Explicit category opt-in should persist');
+  assert.strictEqual(state.explicitDescriptions, false, 'Provider category should replace the legacy global explicit-description toggle');
+  assert.strictEqual(state.forcedFeeding, true, 'Mature core gameplay variant should persist through the dynamic settings path');
+  assert.strictEqual(state.savedForcedFeeding, true, 'Dynamic core variant should retain its legacy settings adapter');
+  assert.strictEqual(state.providerEnabled, true, 'Explicit provider should enable after posture and category opt-in');
+  assert(state.providerOptions > 0, 'Enabled provider should contribute optional character creation choices');
+  assert.strictEqual(state.providerVariantPresent, true, 'Enabled provider variants should render dynamically');
 
-  await page.locator('#tier-safe').click();
-  state = await page.evaluate(() => {
-    const prefs = JSON.parse(localStorage.getItem('yaw-content-prefs') || '{}');
-    const settings = JSON.parse(localStorage.getItem('yaw-settings') || '{}');
-    return {
-      maxTier: CONTENT.preferences.maxTier,
-      prefs,
-      voreEnabled: CONTENT.preferences.voreEnabled,
-      explicitDescriptions: CONTENT.preferences.explicitDescriptions,
-      cockVoreEnabled: App.settings.cockVoreEnabled,
-      forcedFeeding: App.settings.forcedFeeding,
-      savedCockVore: settings.cockVoreEnabled,
-      savedForcedFeeding: settings.forcedFeeding,
-      adultVisible: getComputedStyle(document.querySelector('[data-setting-tier="adult"]')).display !== 'none',
-      adultToggleDisabled: document.querySelector('#toggle-cockVore')?.disabled || false
-    };
-  });
-
-  assert.strictEqual(state.maxTier, 0, 'Returning to safe tier should update runtime content preferences');
-  assert.strictEqual(state.prefs.maxTier, 0, 'Returning to safe tier should persist under yaw-content-prefs');
-  assert.strictEqual(state.voreEnabled, false, 'Returning to safe tier should clear mature content flags');
-  assert.strictEqual(state.explicitDescriptions, false, 'Returning to safe tier should clear explicit content flags');
-  assert.strictEqual(state.cockVoreEnabled, false, 'Returning to safe tier should clear adult interaction settings');
-  assert.strictEqual(state.forcedFeeding, false, 'Returning to safe tier should clear adult interaction toggles');
-  assert.strictEqual(state.savedCockVore, false, 'Returning to safe tier should persist sanitized adult settings');
-  assert.strictEqual(state.savedForcedFeeding, false, 'Returning to safe tier should persist sanitized adult interaction settings');
-  assert.strictEqual(state.adultVisible, false, 'Returning to safe tier should hide adult settings');
-  assert.strictEqual(state.adultToggleDisabled, true, 'Returning to safe tier should disable adult controls');
+  await page.locator('[data-content-category="explicit.sexual"]').click();
+  await page.waitForFunction(providerId => !MODULE_SYSTEM.activeModules.has(providerId), explicitProviderPackage.module.manifest.id);
+  state = await page.evaluate(providerId => ({
+    categoryEnabled: CONTENT.isCategoryEnabled('explicit.sexual'),
+    providerEnabled: MODULE_SYSTEM.activeModules.has(providerId),
+    providerOptions: CONTENT.getCreationOptions().length,
+    explicitDescriptions: CONTENT.preferences.explicitDescriptions
+  }), explicitProviderPackage.module.manifest.id);
+  assert.strictEqual(state.categoryEnabled, false, 'Category opt-out should update active policy');
+  assert.strictEqual(state.providerEnabled, false, 'Category opt-out should unload the dependent provider');
+  assert.strictEqual(state.providerOptions, 0, 'Provider unload should remove optional creation choices');
+  assert.strictEqual(state.explicitDescriptions, false, 'Category opt-out should keep legacy explicit descriptions disabled');
 }
 
 async function runIndexedDbNamespaceBrowserFlow(page) {

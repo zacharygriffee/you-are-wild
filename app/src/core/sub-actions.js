@@ -8,14 +8,14 @@ const YAW_SUB_ACTIONS = {
         feast: {
             swallow: { label: 'Swallow', sfwLabel: 'Eat', icon: '🍽️', validate: (a, t) => App._canFitPrey(a, t, 'stomach') && (t.CPun <= t.MPun * 0.3 || (a.Feas > t.Flee && a.size >= t.size - 2)), execute: 'swallowWhole', setting: null },
             chew: { label: 'Chew', sfwLabel: 'Break Down', icon: '🦷', validate: () => App.settings.chewing, execute: 'chewPrey', setting: 'chewing' },
-            cockVore: { label: 'Cock Vore', sfwLabel: 'Capture', icon: '🍆', validate: (a, t) => App.settings.cockVoreEnabled && a.parts === 'cock' && App._canFitPrey(a, t, 'balls'), execute: 'cockVore', setting: 'cockVoreEnabled' },
-            unbirth: { label: 'Unbirth', sfwLabel: 'Engulf', icon: '🔮', validate: (a, t) => App.settings.unbirthEnabled && a.parts === 'clit' && App._canFitPrey(a, t, 'womb'), execute: 'unbirth', setting: 'unbirthEnabled' },
+            cockVore: { label: 'Capture', sfwLabel: 'Capture', icon: '📦', validate: (a, t) => App.settings.cockVoreEnabled && a.parts === 'cock' && App._canFitPrey(a, t, 'balls'), execute: 'cockVore', setting: 'cockVoreEnabled' },
+            unbirth: { label: 'Engulf', sfwLabel: 'Engulf', icon: '🔮', validate: (a, t) => App.settings.unbirthEnabled && a.parts === 'clit' && App._canFitPrey(a, t, 'womb'), execute: 'unbirth', setting: 'unbirthEnabled' },
             digest: { label: 'Digest', sfwLabel: 'Break Down', icon: '💀', validate: (a) => App._activeContainedPrey?.(a, 'stomach')?.length > 0, execute: 'digestPrey', setting: null },
             release: { label: 'Release', sfwLabel: 'Free', icon: '⬆️', validate: (a) => App._activeContainedPrey?.(a, 'stomach')?.some(p => p.releaseEligible), execute: 'releasePrey', setting: null }
         },
         feed: {
             heal: { label: 'Heal', sfwLabel: 'Tend', icon: '💚', validate: (a, t) => t.CPun < t.MPun, execute: 'healAlly', setting: null },
-            breastfeed: { label: 'Breastfeed', sfwLabel: 'Nurse', icon: '🥛', validate: (a) => a.lactating && !a.lactationCooldown, execute: 'breastfeed', setting: null },
+            breastfeed: { label: 'Nurse', sfwLabel: 'Nurse', icon: '🥛', validate: (a) => a.lactating && !a.lactationCooldown, execute: 'breastfeed', setting: null },
             sacrifice: { label: 'Sacrifice', sfwLabel: 'Offer', icon: '🐄', validate: (a, t) => (t.livestock || t.willingPrey) && a.size >= t.size - 2 && App._canFitPrey(a, t, 'stomach'), execute: 'sacrificeTo', setting: null },
             forceFeed: { label: 'Force Feed', sfwLabel: 'Force Feed', icon: '🔗', validate: (a, t, h) => App.settings.forcedFeeding && h && h.length > 0 && a.size >= t.size - 2 && App._canFitPrey(a, t, 'stomach'), execute: 'forceFeed', setting: 'forcedFeeding' },
             slurp: { label: 'Slurp', sfwLabel: 'Draw', icon: '💧', validate: (a, t) => t.slurpable, execute: 'slurpPortion', setting: null },
@@ -76,10 +76,12 @@ const YAW_SUB_ACTIONS = {
     },
 
     label(app, action, subAction) {
-        const isSFW = CONTENT.preferences.maxTier < 2;
+        const legacyExplicit = CONTENT.preferences.maxTier >= 2 && CONTENT.preferences.explicitDescriptions === true;
+        const isSFW = CONTENT?.isCategoryEnabled?.('explicit.sexual') !== true && !legacyExplicit;
         const subDefs = app.SUB_ACTIONS[action];
         if (!subDefs || !subDefs[subAction]) return subAction;
-        return isSFW ? (subDefs[subAction].sfwLabel || subDefs[subAction].label) : subDefs[subAction].label;
+        const fallback = isSFW ? (subDefs[subAction].sfwLabel || subDefs[subAction].label) : subDefs[subAction].label;
+        return isSFW ? fallback : app._label(`subaction.${action}.${subAction}`, fallback);
     }
 };
 

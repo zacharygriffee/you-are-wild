@@ -1070,6 +1070,8 @@ async function checkViewport(browser, name, width, height) {
     const close = root?.querySelector('.holdings-close[data-command-control="close-holdings"]');
     const tabs = Array.from(root?.querySelectorAll('[data-command-control="switch-holdings-tab"]') || []);
     const body = root?.querySelector('.holdings-window-body');
+    const controlShelf = root?.querySelector('.holdings-control-shelf');
+    const tabRow = root?.querySelector('.holdings-tabs');
     const ownerRow = root?.querySelector('.holdings-owner-row');
     const statsSummary = root?.querySelector('.holdings-character-summary');
     const app = document.getElementById('app');
@@ -1077,6 +1079,8 @@ async function checkViewport(browser, name, width, height) {
     const rect = dialog?.getBoundingClientRect();
     const closeRect = close?.getBoundingClientRect();
     const bodyRect = body?.getBoundingClientRect();
+    const controlShelfRect = controlShelf?.getBoundingClientRect();
+    const tabRowRect = tabRow?.getBoundingClientRect();
     const ownerRect = ownerRow?.getBoundingClientRect();
     const statsSummaryRect = statsSummary?.getBoundingClientRect();
     const ownerChips = Array.from(root?.querySelectorAll('[data-command-control="select-holdings-owner"]') || []);
@@ -1094,8 +1098,11 @@ async function checkViewport(browser, name, width, height) {
       ownerChipLabels: ownerChips.map(chip => chip.textContent.trim()),
       selectedOwner: ownerChips.find(chip => chip.getAttribute('aria-pressed') === 'true')?.textContent.trim() || '',
       bodyVisible: Boolean(bodyRect && bodyRect.width > 0 && bodyRect.height > 0),
+      controlShelfVisible: Boolean(controlShelfRect && controlShelfRect.width > 0 && controlShelfRect.height > 0),
       ownerAboveBody: Boolean(ownerRect && bodyRect && ownerRect.bottom <= bodyRect.top + 1),
       ownerAboveStatsSummary: Boolean(ownerRect && statsSummaryRect && ownerRect.bottom <= statsSummaryRect.top + 1),
+      controlsBelowBody: Boolean(controlShelfRect && bodyRect && bodyRect.bottom <= controlShelfRect.top + 1),
+      tabsNearDialogBottom: Boolean(tabRowRect && rect && rect.bottom - tabRowRect.bottom <= 2 + parseFloat(getComputedStyle(controlShelf).paddingBottom || '0')),
       appClass: app?.classList.contains('holdings-window-open') || false,
       stageInert: stage?.hasAttribute('inert') || false,
       focusTrapIsDialog: App._focusTrap?.container === dialog,
@@ -1115,8 +1122,14 @@ async function checkViewport(browser, name, width, height) {
   assert(holdingsWindow.ownerChipLabels.some(label => label.includes('Ally')), `${name}: Holdings owner selector should include companions`);
   assert(holdingsWindow.selectedOwner.includes('You'), `${name}: Holdings should default to the player owner`);
   assert.strictEqual(holdingsWindow.bodyVisible, true, `${name}: Holdings window body should be visible`);
-  assert.strictEqual(holdingsWindow.ownerAboveBody, true, `${name}: Holdings owner selector should not overlap the body`);
-  assert.strictEqual(holdingsWindow.ownerAboveStatsSummary, true, `${name}: Holdings owner selector should not overlap the stats summary`);
+  assert.strictEqual(holdingsWindow.controlShelfVisible, true, `${name}: Holdings controls should render in a visible shelf`);
+  if (width <= 1024) {
+    assert.strictEqual(holdingsWindow.controlsBelowBody, true, `${name}: mobile Holdings controls should sit below the scrollable body`);
+    assert.strictEqual(holdingsWindow.tabsNearDialogBottom, true, `${name}: mobile Holdings tabs should stay near the dialog bottom safe area`);
+  } else {
+    assert.strictEqual(holdingsWindow.ownerAboveBody, true, `${name}: desktop Holdings owner selector should stay above the body`);
+    assert.strictEqual(holdingsWindow.ownerAboveStatsSummary, true, `${name}: desktop Holdings owner selector should stay above the stats summary`);
+  }
   assert.strictEqual(holdingsWindow.appClass, true, `${name}: Holdings window should mark the app shell while open`);
   assert.strictEqual(holdingsWindow.stageInert, true, `${name}: Holdings window should make the stage inert`);
   assert.strictEqual(holdingsWindow.focusTrapIsDialog, true, `${name}: Holdings window should activate its dialog focus trap`);
@@ -1871,12 +1884,14 @@ async function checkViewport(browser, name, width, height) {
       const stack = document.getElementById('toast-stack');
       const toast = stack?.querySelector('.toast');
       const dock = document.querySelector('.mobile-panel-dock');
+      const header = document.querySelector('.app-header');
       const log = document.querySelector('.panel-log');
       const root = document.getElementById('app');
       const beforeExpanded = root.classList.contains('log-expanded');
       const rect = toast?.getBoundingClientRect();
       const stackRect = stack?.getBoundingClientRect();
       const dockRect = dock?.getBoundingClientRect();
+      const headerRect = header?.getBoundingClientRect();
       const logRect = log?.getBoundingClientRect();
       let expanded = null;
       if (innerWidth >= 700) {
@@ -1904,6 +1919,7 @@ async function checkViewport(browser, name, width, height) {
         viewportWidth: innerWidth,
         viewportHeight: innerHeight,
         dockTop: dockRect?.top || innerHeight,
+        headerBottom: headerRect?.bottom || 0,
         logTop: logRect?.top || innerHeight,
         stackWidth: stackRect?.width || 0,
         expanded
@@ -1913,8 +1929,10 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(toastLayout.stackPosition, 'fixed', `${name}: toast stack should be fixed to the viewport`);
     assert(toastLayout.left >= -1 && toastLayout.right <= toastLayout.viewportWidth + 1, `${name}: toast should stay inside viewport horizontally`);
     assert(toastLayout.top >= -1 && toastLayout.bottom <= toastLayout.viewportHeight + 1, `${name}: toast should stay inside viewport vertically`);
-    if (width < 700) {
-      assert(toastLayout.bottom <= toastLayout.dockTop + 1, `${name}: mobile toast should stay above the fixed dock`);
+    if (width <= 1024) {
+      assert(toastLayout.top >= toastLayout.headerBottom - 1, `${name}: mobile toast should appear below the app header`);
+      assert(toastLayout.top < toastLayout.viewportHeight / 3, `${name}: mobile toast should stay in the top notification region`);
+      assert(toastLayout.bottom < toastLayout.dockTop, `${name}: mobile toast should not cover the fixed interaction dock`);
     } else {
       assert(toastLayout.bottom <= toastLayout.logTop + 1, `${name}: desktop toast should stay above the Activity Log`);
       assert(toastLayout.expanded.stageHeight >= 220, `${name}: expanded desktop log should leave a usable play surface`);

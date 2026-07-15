@@ -138,6 +138,24 @@ Content-tier filtering happens before template text is rendered. Store neutral m
 - The expanded Scene Sheet opens intentionally and presents the same exchange order with summary first, optional passage, actor/target/intent, time/location, result metadata, tags, deltas, and sub-events.
 - The core retains up to 60 recent Scene Beats in saves and presentation. Longer durable technical history belongs to the Activity Log.
 
+## Asynchronous Narration Overlay
+
+Generated narration is not a Scene Beat field. Core stores it in the separate
+`App.sceneNarrations` presentation lane, keyed to a beat or exchange. The
+deterministic summary remains visible as mechanical truth, with ready narration
+rendered beneath it as escaped, provider-attributed secondary prose.
+
+Pending narration may show a quiet status. Failed or cancelled requests do not
+replace deterministic prose. Ready/failed/cancelled records may persist in a
+save; pending records never do. Disabling a provider or orchestrator removes
+its owned live records and aborts its requests. Policy downgrade immediately
+hides records whose rating or categories are no longer allowed.
+
+Core exchange boundaries are authoritative: combat closes at round/end
+boundaries and transactions close with their focused window. Standalone scene
+actions use a short fallback debounce. Rendering, opening the Scene Sheet, and
+loading saved beats never issue narration requests.
+
 ## Activity Log Separation
 
 Scene Feed is not a filtered view of the Activity Log. Both surfaces may receive related information, but they are separate outputs:

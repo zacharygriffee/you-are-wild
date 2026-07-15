@@ -71,6 +71,9 @@ const YAW_COMBAT_LIFECYCLE = {
 
     endCombat(app, result) {
         const outcome = result === true ? 'victory' : result === false ? 'defeat' : (result || 'victory');
+        if (app.combatState?.sceneExchangeId && app.combatState?.round > 0 && typeof YAW_NARRATION_SYSTEM !== 'undefined') {
+            YAW_NARRATION_SYSTEM.closeExchange(app, `${app.combatState.sceneExchangeId}-round-${app.combatState.round}`, { reason: 'combat-ended' });
+        }
         app.mode = app.GAME_MODE.NORMAL;
         app.combatState.active = false;
         app.combatState.processing = false;

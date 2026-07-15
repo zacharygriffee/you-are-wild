@@ -39,6 +39,7 @@ const YAW_TRANSACTION_WINDOW = {
         app.transactionWindow = {
             kind,
             targetId: nextTargetId,
+            exchangeId: sameWindow ? previous.exchangeId : `transaction-${kind}-${app.storyEventSeq + 1}`,
             openedAt: { x: app.location.x, y: app.location.y, interior: Boolean(app.inInterior) }
         };
         if (!sameWindow) app.emitTransactionSceneBeat?.(npc, kind, 'opened');
@@ -50,7 +51,9 @@ const YAW_TRANSACTION_WINDOW = {
 
     close(app) {
         const root = this.root();
+        const exchangeId = app.transactionWindow?.exchangeId;
         app.transactionWindow = null;
+        if (exchangeId && typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.closeExchange(app, exchangeId, { reason: 'transaction-closed' });
         app._restoreFocusTrap?.({ restoreFocus: false });
         if (root) {
             root.hidden = true;

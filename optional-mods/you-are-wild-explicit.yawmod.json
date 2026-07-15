@@ -1,0 +1,79 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_explicit_first_party",
+  "gameVersion": "0.10.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+    "id": "yaw_explicit_first_party",
+    "name": "You Are Wild: Explicit Content",
+    "version": "0.1.0",
+    "type": "content_pack",
+    "contentRating": "mature",
+    "minGameVersion": "0.10.0",
+    "trustBoundary": "trusted-local",
+    "permissions": [
+      "content:add_template",
+      "content:add_locale",
+      "content:add_creation_option"
+    ],
+    "contentCategories": [
+      {
+        "id": "explicit.sexual",
+        "label": "Explicit sexual content",
+        "description": "Adds explicit anatomy, sexual physiology, and sexually framed narrative.",
+        "required": true
+      }
+    ],
+    "gameplayVariants": [
+      {
+        "id": "explicit.physiology.refractory",
+        "label": "Refractory periods",
+        "description": "Enable explicit recovery timing after sexual actions.",
+        "settingKey": "refractoryPeriod",
+        "minPosture": "mature",
+        "category": "explicit.sexual"
+      },
+      {
+        "id": "explicit.physiology.fluids",
+        "label": "Fluid production",
+        "description": "Enable explicit fluid simulation.",
+        "settingKey": "fluidEnabled",
+        "minPosture": "mature",
+        "category": "explicit.sexual"
+      },
+      {
+        "id": "explicit.content.scat",
+        "label": "Scat content",
+        "settingKey": "scat",
+        "minPosture": "mature",
+        "category": "explicit.sexual"
+      },
+      {
+        "id": "explicit.content.watersports",
+        "label": "Watersports content",
+        "settingKey": "watersports",
+        "minPosture": "mature",
+        "category": "explicit.sexual"
+      },
+      {
+        "id": "explicit.containment.reserve",
+        "label": "Anatomy-specific reserve containment",
+        "settingKey": "cockVoreEnabled",
+        "minPosture": "mature",
+        "category": "explicit.sexual"
+      },
+      {
+        "id": "explicit.containment.unbirth",
+        "label": "Unbirth containment",
+        "settingKey": "unbirthEnabled",
+        "minPosture": "mature",
+        "category": "explicit.sexual"
+      }
+    ]
+    },
+    "code": "MODS.registerLocaleEntries('en', {\n  'provider.explicit.creation': 'Explicit Anatomy',\n  'anatomy.adult.vulva': 'Vulva',\n  'anatomy.adult.penis': 'Penis',\n  'anatomy.adult.breasts': 'Breasts',\n  'anatomy.adult.pecs': 'Pecs',\n  'subaction.feast.cockVore': 'Cock Vore',\n  'subaction.feast.unbirth': 'Unbirth',\n  'subaction.feed.breastfeed': 'Breastfeed'\n});\nMODS.registerLocaleEntries('es', {\n  'provider.explicit.creation': 'Anatomia explicita',\n  'anatomy.adult.vulva': 'Vulva',\n  'anatomy.adult.penis': 'Pene',\n  'anatomy.adult.breasts': 'Pechos',\n  'anatomy.adult.pecs': 'Pectorales',\n  'subaction.feast.cockVore': 'Vore de pene',\n  'subaction.feast.unbirth': 'Parto inverso',\n  'subaction.feed.breastfeed': 'Amamantar'\n});\nMODS.registerCreationOption({ id: 'vulva', group: 'lower-anatomy', value: 'clit', label: 'Vulva', description: 'Explicit lower anatomy option.' });\nMODS.registerCreationOption({ id: 'penis', group: 'lower-anatomy', value: 'cock', label: 'Penis', description: 'Explicit lower anatomy option.' });\nMODS.registerCreationOption({ id: 'breasts', group: 'chest-anatomy', value: 'tits', label: 'Breasts', description: 'Explicit chest anatomy option.' });\nMODS.registerCreationOption({ id: 'pecs', group: 'chest-anatomy', value: 'pecs', label: 'Pecs', description: 'Explicit chest anatomy option.' });\nMODS.registerContentTemplate('action', 'consume', 'detailed', 'adult', (ctx) => `${ctx.target} slips past ${ctx.actor || 'the predator'}'s jaws and settles inside with explicit detail.`);\nMODS.registerContentTemplate('action', 'seduce', 'detailed', 'adult', (ctx) => `${ctx.actor || 'You'} draws ${ctx.target} close with explicit intent.`);\nMODS.registerContentTemplate('action', 'cockVore', 'default', 'adult', (ctx) => `${ctx.actor || 'The predator'} pulls ${ctx.target} into their cock, settling them in swollen balls.`);\nMODS.registerContentTemplate('action', 'unbirth', 'default', 'adult', (ctx) => `${ctx.actor || 'The predator'} draws ${ctx.target} into their womb as warm walls close around them.`);\nMODS.log('Explicit content provider registered.');",
+    "assets": {}
+  }
+}

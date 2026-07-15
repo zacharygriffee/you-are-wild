@@ -767,6 +767,7 @@
             dayCount: 0,
             log: [],
             storyEvents: [],
+            sceneNarrations: [],
             sceneEvents: [],
             latestStoryEvent: null,
             latestSceneBeat: null,
@@ -2448,7 +2449,7 @@
                         break;
                     }
                     case 'feast.cockVore': {
-                        if (!actor.parts || actor.parts !== 'cock') { result = `${actorName} lack${actorVerb} the anatomy for that.`; break; }
+                        if (!actor.parts || actor.parts !== 'cock') { result = `${actorName} lack${actorVerb} the required option for that.`; break; }
                         const canCV = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
                         if (!canCV) { result = `${target.name} is too strong or too big!`; break; }
                         if (!this._canFitPrey(actor, target, 'balls')) { result = this._capacityFailureMessage(actor, target, 'balls'); break; }
@@ -2456,18 +2457,18 @@
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 15);
                         actor.cum = (actor.cum || 0) + 1;
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
-                        result = `${actorName} pull${actorVerb} ${target.name} into their cock, stuffing them into swollen balls.`;
+                        result = CONTENT.actionResult('cockVore', { actor: actorName, target: target.name });
                         break;
                     }
                     case 'feast.unbirth': {
-                        if (!actor.parts || actor.parts !== 'clit') { result = `${actorName} lack${actorVerb} the anatomy for that.`; break; }
+                        if (!actor.parts || actor.parts !== 'clit') { result = `${actorName} lack${actorVerb} the required option for that.`; break; }
                         const canUB = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
                         if (!canUB) { result = `${target.name} is too strong or too big!`; break; }
                         if (!this._canFitPrey(actor, target, 'womb')) { result = this._capacityFailureMessage(actor, target, 'womb'); break; }
                         this._containTargetIn(actor, target, 'womb', { inWomb: true });
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 15);
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
-                        result = `${actorName} draw${actorVerb} ${target.name} into their womb, warm walls closing around them.`;
+                        result = CONTENT.actionResult('unbirth', { actor: actorName, target: target.name });
                         break;
                     }
                     case 'feast.digest': {
@@ -3652,7 +3653,9 @@
                         break;
                     }
                     case 'inspect': {
-                        const safeTier = this._tierValue(CONTENT?.preferences?.maxTier ?? 0) < 2;
+                        const legacyExplicit = this._tierValue(CONTENT?.preferences?.maxTier ?? 0) >= 2
+                            && CONTENT?.preferences?.explicitDescriptions === true;
+                        const safeTier = CONTENT?.isCategoryEnabled?.('explicit.sexual') !== true && !legacyExplicit;
                         const labelBodyType = (value) => (typeof YAW_STATS_PANEL !== 'undefined' && YAW_STATS_PANEL?.bodyTypeLabel) ? YAW_STATS_PANEL.bodyTypeLabel(value, this) : value;
                         result = safeTier
                             ? this._label('inspect.summary.safe', '{name} [{species}]: Punishment {punishment}, Spirit {spirit}, Size {size}, Appetite {appetite}', {
@@ -5118,6 +5121,15 @@
             },
             setContentTier(tier) {
                 return YAW_SETTINGS_FLOW.setContentTier(this, tier);
+            },
+            setContentCategory(categoryId, enabled) {
+                return YAW_SETTINGS_FLOW.setContentCategory(this, categoryId, enabled);
+            },
+            setGameplayVariant(variantId, enabled) {
+                return YAW_SETTINGS_FLOW.setGameplayVariant(this, variantId, enabled);
+            },
+            renderContentPolicySettings() {
+                return YAW_SETTINGS_FLOW.renderContentPolicySettings(this);
             },
             enforceContentTierSettings() {
                 return YAW_SETTINGS_FLOW.enforceContentTierSettings(this);

@@ -1,5 +1,8 @@
 # Modding
 
+Content posture, optional provider ownership, and compatibility rules are
+defined in [Content Posture And Optional Providers](content-posture-and-providers.md).
+
 The current module system is a trusted-local mod lane. Installed module code runs in the same page context and should be treated as code the player deliberately chose to trust.
 
 ## Source Of Truth
@@ -23,6 +26,8 @@ Catalog entries should declare and display `contentRating` metadata so players c
 - `version`: required
 - `type`: optional, defaults to `feature_pack`
 - `contentRating`: optional, one of `safe`, `mature`, `adult`; defaults to `safe`
+- `contentCategories`: optional array of category IDs or declarations; required categories must be opted into before enablement
+- `gameplayVariants`: optional array of variant IDs or declarations shown dynamically in Settings
 - `permissions`: optional string array; entries must be token-like identifiers using letters, numbers, `_`, `-`, `.`, or `:`
 - `dependencies`: optional string array; entries use the same token rules as permissions
 - `minGameVersion` or `gameVersion`: optional minimum game version such as `0.10.0`; `gameVersion` is normalized into `minGameVersion`
@@ -58,6 +63,9 @@ Mutating runtime registries requires declared permissions:
 - `MODS.addBiome()` requires `world:add_biome`
 - `MODS.addSpecies()` requires `content:add_species`
 - `MODS.addItem()` requires `content:add_item`
+- `MODS.registerContentTemplate()` requires `content:add_template`
+- `MODS.registerLocaleEntries()` requires `content:add_locale`
+- `MODS.registerCreationOption()` requires `content:add_creation_option`
 
 If a module calls one of these APIs without the matching permission, enablement fails, partial runtime contributions are cleaned up, and the module remains disabled in storage.
 
@@ -65,7 +73,7 @@ If a module calls one of these APIs without the matching permission, enablement 
 
 Narrative and optional LLM-facing modules should call `MODS.getContext({ limit })` instead of reading `App`, save records, DOM text, or compatibility fields directly. The returned JSON-serializable contract is versioned through `context.version` and currently contains:
 
-- active mode and content policy
+- active mode and content policy, including `posture`, `enabledCategories`, and enabled `gameplayVariants`
 - safe location/tile summary
 - public party and nearby-unit summaries
 - bounded quest summaries
@@ -85,6 +93,33 @@ MODS.log(JSON.stringify({
 
 Core remains authoritative. A model response may provide presentation, continuity notes, or optional prose, but it cannot become the only record of a mechanical result.
 
+### Narration Events And API
+
+Narration modules declare `scene:read_narrative`, `scene:narrate`, and, when
+needed, `ai:request`. Core dispatches copied, deeply frozen envelopes through
+`onSceneBeat`, `onSceneExchangeClosed`, and `onContentPolicyChanged` only after
+the deterministic beat or policy update is committed. Hydrating a save does not
+replay these hooks.
+
+Use `MODS.getNarrationContext({ beatId, exchangeId, recentBeatLimit,
+activityLimit })` for bounded actors, consequences, policy, location, quests,
+and recent continuity. Publish generated prose separately with
+`MODS.publishNarration()`, then complete it through `MODS.updateNarration()`.
+Modules can modify only their own records. Ready records persist; pending
+requests do not. Current policy is reapplied whenever records render.
+
+`MODS.ai.generate()` accepts a capability, opaque session connection id,
+profile id, structured input, timeout, and character limit. It returns plain
+text and non-secret provider/model metadata. Provider modules declare
+`ai:provide`, register an adapter, and create session connections only after
+their own authorization flow. Credential-like fields are rejected from both
+manifest settings and connection metadata.
+
+Manifest `settings` declarations support `boolean`, `select`, bounded `number`,
+bounded `string`, `provider_connection`, and `action`. Only declared controls
+render in the Mod Manager. `provider_connection` stores an opaque connection id;
+there is deliberately no persistent secret setting type.
+
 ## Narrative And Structural Mod Lanes
 
 Mod work should be classified before implementation:
@@ -101,27 +136,27 @@ Feature-expansion proposals should explicitly choose one of three destinations b
 - **First-party optional mod/content pack:** desirable expansion that should be installable or toggleable without increasing core complexity.
 - **Third-party mod seam:** documented API capability where the project supplies hooks and examples, but does not own the feature content or balance.
 
-## Body Features And Adult Anatomy
+## Body Features And Optional Anatomy Providers
 
-The default/SFW game should describe player-facing creation choices as neutral body options, traits, builds, capacities, and visible features. Safe mode hides explicit anatomy controls and uses compatibility defaults only for saves and mechanics. Do not expose explicit anatomy words in the static creation UI or safe stats/inspection surfaces.
+The default/SFW game describes player-facing creation choices as traits, builds, capacities, and visible features. Core does not create hidden anatomy defaults. Optional providers may contribute body-option controls, but those choices remain optional unless a separate mechanic explicitly requires them. Do not expose explicit anatomy words in the static creation UI or SFW stats/inspection surfaces.
 
-Internal ids such as lower/chest anatomy values may remain stable for save compatibility and adult-capable mechanics, but rendered labels must pass through content-tier-aware localization. Core adult detail views may use adult-specific labels when the player has opted into the adult tier. Uncensored modules or agent-authored packs must declare an appropriate `contentRating`, use adult-specific labels/templates, and preserve the same content-tier gates.
+Internal lower/chest compatibility IDs remain stable so existing saves and mechanics continue to load. Rendered labels pass through category-aware localization. An explicit provider owns new explicit labels, creation options, and templates, and its module remains blocked until the player selects Mature posture and opts into its required category.
 
-When expanding build/body gameplay, prefer SFW mechanics in core first: capacity, appetite, size, mobility, intimidation, charm, visibility, equipment fit, and trait interactions. Explicit anatomy mechanics belong in adult-rated modules or clearly gated first-party optional packs unless a future doctrine change deliberately moves them into core adult content.
+When expanding build/body gameplay, prefer SFW mechanics in core first: capacity, appetite, size, mobility, intimidation, charm, visibility, equipment fit, and trait interactions. Explicit anatomy mechanics belong in category-gated optional providers unless a future doctrine change deliberately changes core posture.
 
 ## Content Rating
 
-Content ratings are metadata for install and UI policy. Text rendering still goes through `CONTENT` preferences and tier checks. Adult or mature content should not be introduced into core-safe defaults, and templates that are unavailable at a selected tier should fall back rather than returning empty output.
+Content ratings are compatibility metadata for install and broad posture policy. The core UI exposes `sfw` and `mature` postures. Optional categories and gameplay variants are declared by providers and rendered dynamically in Settings. Explicit material must not be introduced into core defaults, and templates unavailable under active policy must fall back rather than returning empty output.
 
 Stored content preferences are normalized on load and before save. Unknown keys are dropped, tiers are clamped to known values, booleans must be real booleans, filter tags are tokenized, and unknown languages fall back to English. Module/content policy checks should use the normalized `CONTENT.preferences` object instead of reading raw storage.
 
-Modules can be installed at any declared content rating, but they can only be enabled when the active content policy allows that rating. Safe modules can enable by default, mature modules require the mature tier, and adult modules require both the adult tier and explicit descriptions.
+Modules can be installed at any declared content rating so their policy declarations are discoverable. Safe modules can enable under either posture. Mature modules require Mature posture. Legacy `adult` manifests remain loadable as a deprecated alias that implicitly requires the `explicit.sexual` category; there is no built-in Adult posture button.
 
 When the player lowers content settings, already-enabled modules are rechecked against the active policy. Modules above the selected policy are disabled, unloaded, and have their owned hooks removed while allowed modules remain active.
 
-Built-in optional content-pack handles exposed through `window.CONTENT_PACKS` use the same policy shape before registering templates. The core pack is installed automatically as baseline content; optional mature or adult packs must pass the current content settings before their templates are registered.
+Built-in content-pack handles exposed through `window.CONTENT_PACKS` contain baseline and non-explicit examples only. Explicit first-party content is distributed as an optional module and is not included in the generated HTML.
 
-Content templates registered through `CONTENT.registerTemplate(category, type, variant, templates)` use tokenized category/type/variant keys. Template tiers are limited to `safe`, `mature`, and `adult`; each tier value must be a function or `null`, and at least one tier must be renderable. Malformed template registrations reject before mutating the registry.
+Content templates registered through `CONTENT.registerTemplate(category, type, variant, templates)` use tokenized category/type/variant keys. The internal `adult` template slot remains a compatibility/provider lane, not a third core posture. Provider modules normally contribute individual tiers through `MODS.registerContentTemplate()`. Malformed registrations reject before mutating the registry.
 
 ## Future Marketplace Requirements
 

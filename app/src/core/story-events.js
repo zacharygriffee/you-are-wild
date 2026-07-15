@@ -255,6 +255,30 @@ const YAW_STORY_EVENTS = {
         });
     },
 
+    sameTileObservationVisit(first, second) {
+        const isObservation = event => event?.source === 'tile-entry' || event?.tags?.includes?.('tile-entry');
+        if (!isObservation(first) || !isObservation(second)) return false;
+        const firstTile = first.metadata?.tile;
+        const secondTile = second.metadata?.tile;
+        const firstTime = String(first.time || '').trim();
+        const secondTime = String(second.time || '').trim();
+        return firstTile
+            && secondTile
+            && firstTime
+            && firstTime === secondTime
+            && Number(firstTile.x) === Number(secondTile.x)
+            && Number(firstTile.y) === Number(secondTile.y);
+    },
+
+    coalescedEvents(events = []) {
+        return events.reduce((result, event) => {
+            const previous = result[result.length - 1];
+            if (this.sameTileObservationVisit(previous, event)) result[result.length - 1] = event;
+            else result.push(event);
+            return result;
+        }, []);
+    },
+
     tileObservationData(app, tile = null, options = {}) {
         if (!tile) return null;
         const biome = app.biomes?.[tile.displayBiome || tile.biome] || app.biomes?.[tile.biome] || {};
@@ -348,7 +372,16 @@ const YAW_STORY_EVENTS = {
     emitTileObservation(app, tile = null, options = {}) {
         const observation = this.tileObservationData(app, tile, options);
         if (!observation) return null;
+        const previous = app.storyEvents?.[app.storyEvents.length - 1];
+        const visit = {
+            source: 'tile-entry',
+            tags: observation.tags,
+            time: app._timeLabel?.() || '',
+            metadata: observation.metadata
+        };
+        if (this.sameTileObservationVisit(previous, visit)) app.storyEvents.pop();
         return this.emitResult(app, {
+            exchangeId: app.transactionWindow?.exchangeId,
             mode: 'adventure',
             action: 'observe',
             shape: 'tile-entry',
@@ -407,6 +440,7 @@ const YAW_STORY_EVENTS = {
             source: 'transaction',
             metadata: { phase, itemName: detail.itemName || detail.name || null, questTitle: detail.title || detail.questTitle || null }
         }, text, {
+            exchangeId: app.transactionWindow?.exchangeId,
             mode: 'adventure',
             resultKind: phase === 'blocked' ? 'failure' : 'observation',
             importance: phase === 'opened' ? 'normal' : 'notable',
@@ -585,6 +619,7 @@ const YAW_STORY_EVENTS = {
             announcer.textContent = event.summary;
             announcer.setAttribute('data-scene-beat-id', event.id);
         }
+        if (typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.onBeatCommitted(app, event);
         return event;
     },
 
@@ -632,7 +667,7 @@ const YAW_STORY_EVENTS = {
     },
 
     streamHtml(app, { limit = this.maxEvents } = {}) {
-        const events = (app.storyEvents || []).slice(-Math.max(1, limit));
+        const events = this.coalescedEvents(app.storyEvents || []).slice(-Math.max(1, limit));
         if (!events.length) {
             return `<div class="scene-beat-stream-empty">${this.compactHtml(app, null)}</div>`;
         }
@@ -650,9 +685,11 @@ const YAW_STORY_EVENTS = {
                 if (event.id === latestId) itemClasses.push('latest');
                 return `<article class="${itemClasses.join(' ')}" data-scene-beat-id="${app._escapeHtml(attrs.id)}" data-scene-importance="${app._escapeHtml(attrs.importance)}" data-scene-result="${app._escapeHtml(attrs.result)}" data-has-scene-beat="true" aria-label="${app._escapeHtml(attrs.label)}">`
                     + this.compactHtml(app, event)
+                    + (typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.narrationHtml(app, 'beat', String(event.id)) : '')
                     + `</article>`;
             }).join('');
-            return `<section class="${classes.join(' ')}" data-scene-exchange-id="${app._escapeHtml(group.id)}">${header}<div class="scene-exchange-events">${items}</div></section>`;
+            const narration = typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.narrationHtml(app, 'exchange', group.id) : '';
+            return `<section class="${classes.join(' ')}" data-scene-exchange-id="${app._escapeHtml(group.id)}">${header}<div class="scene-exchange-events">${items}</div>${narration}</section>`;
         }).join('');
     },
 
@@ -830,11 +867,12 @@ const YAW_STORY_EVENTS = {
             + detailMetaHtml
             + deltas
             + subEvents
+            + (typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.narrationHtml(app, 'beat', String(event.id), { detailed: true }) : '')
             + `</article>`;
     },
 
     listHtml(app) {
-        const events = (app.storyEvents || []).slice(-this.maxEvents);
+        const events = this.coalescedEvents(app.storyEvents || []).slice(-this.maxEvents);
         if (!events.length) {
             return `<div class="story-empty">${app._escapeHtml(app._label('scene.noEvents', 'No scene beats yet. Resolve an interaction to begin the scene feed.'))}</div>`;
         }
@@ -842,7 +880,8 @@ const YAW_STORY_EVENTS = {
             const header = group.label
                 ? `<header class="story-event-group-header"><h3>${app._escapeHtml(group.label)}</h3><span>${app._escapeHtml(this.exchangeEventCountLabel(app, group.events.length))}</span></header>`
                 : '';
-            return `<section class="story-event-group${group.label ? '' : ' unlabeled'}" data-scene-exchange-id="${app._escapeHtml(group.id)}">${header}${group.events.map(event => this.eventHtml(app, event)).join('')}</section>`;
+            const narration = typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.narrationHtml(app, 'exchange', group.id, { detailed: true }) : '';
+            return `<section class="story-event-group${group.label ? '' : ' unlabeled'}" data-scene-exchange-id="${app._escapeHtml(group.id)}">${header}${group.events.map(event => this.eventHtml(app, event)).join('')}${narration}</section>`;
         }).join('');
     },
 

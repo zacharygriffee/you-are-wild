@@ -45,6 +45,11 @@ Unknown filters fail fast.
 
 The Node runner covers syntax, source ordering assumptions, core mechanics, save/load behavior, save-slot metadata normalization, content preferences, module storage and hook ownership, localization keys, template structure, and many UI behavior contracts. The runner is async-aware, so promise-returning tests are awaited sequentially.
 
+Narration coverage uses a deterministic in-memory fake provider and performs no
+network calls. It verifies immutable copied hook envelopes, optional-package
+exclusion, declared provider-connection settings, and rejection of
+credential-like fields. Real provider credentials must never be added to tests.
+
 The browser-style checks cover:
 
 - viewport layout regressions

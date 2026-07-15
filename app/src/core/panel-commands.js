@@ -9,7 +9,8 @@ const YAW_PANEL_COMMANDS = {
         app.renderLog();
         app.renderParty();
         app.renderCreatures();
-        app.renderExplorationActions();
+        app.showExplorationActions();
+        app.renderDesktopPlaySurface?.();
         return false;
     },
 

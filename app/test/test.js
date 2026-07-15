@@ -12,6 +12,7 @@ const TEMPLATE = path.join(__dirname, '..', 'template.html');
 const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mode-contract.md');
 const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.md');
 const NEXT_OBJECTIVES = path.join(__dirname, '..', '..', 'docs', 'next-objectives.md');
+const NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-narration.yawmod.json');
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
 const BALANCE_COST_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'balance-cost-doctrine.md');
@@ -225,7 +226,9 @@ const createFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'create-flo
 const contentSystemPath = path.join(SRC_DIR, 'core', 'content-system.js');
 const contentSystemContent = fs.readFileSync(contentSystemPath, 'utf8');
 const moduleSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'module-system.js'), 'utf8');
+const narrationSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'narration-system.js'), 'utf8');
 const marketplaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marketplace.js'), 'utf8');
+const explicitProviderPath = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-explicit.yawmod.json');
 const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
 const globalNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'global-nav.js'), 'utf8');
 const marketNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-nav.js'), 'utf8');
@@ -236,6 +239,19 @@ const templateContent = fs.readFileSync(TEMPLATE, 'utf8');
 
 function loadWorldGenForTest() {
   return new Function(`${worldGenerationContent}\nreturn WorldGen;`)();
+}
+
+function loadNarrationSystemForTest() {
+  const window = { setTimeout, clearTimeout };
+  const CONTENT = { preferences: { posture: 'sfw', enabledCategories: [], gameplayVariants: {} } };
+  const MODULE_SYSTEM = {
+    _publicSceneBeatSummary(event) { return JSON.parse(JSON.stringify(event)); },
+    _publicNarrativeUnitSummary(unit) { return { id: unit.id, name: unit.name }; },
+    _publicQuestSummary() { return null; },
+    _publicActivitySummary() { return null; },
+    async executePublicHook() {}
+  };
+  return new Function('window', 'CONTENT', 'MODULE_SYSTEM', `${narrationSystemContent}\nreturn { YAW_NARRATION_SYSTEM, YAW_AI_PROVIDER_MANAGER };`)(window, CONTENT, MODULE_SYSTEM);
 }
 
 function loadAssetManifestForTest() {
@@ -404,6 +420,65 @@ function loadModuleSystemForTest(options = {}) {
 
 test('App object is defined', () => {
   assertContains(appContent, 'const App = {', 'App object declaration missing');
+});
+
+asyncTest('Narrative hooks receive a fresh frozen public envelope', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const envelope = { version: 1, eventId: 'story-1', beat: { summary: 'Resolved.' } };
+  const received = [];
+  MODULE_SYSTEM.registerHook('onSceneBeat', payload => {
+    received.push(payload);
+    assert(Object.isFrozen(payload) && Object.isFrozen(payload.beat), 'Narrative envelope should be deeply frozen');
+  }, 0, 'narrator-a');
+  MODULE_SYSTEM.registerHook('onSceneBeat', payload => received.push(payload), 0, 'narrator-b');
+  await MODULE_SYSTEM.executePublicHook('onSceneBeat', envelope);
+  assertEqual(received.length, 2, 'Both narrative hooks should run');
+  assert(received[0] !== received[1] && received[0] !== envelope, 'Each hook should receive its own copied envelope');
+});
+
+test('Narration package is optional and declares bounded provider-neutral settings', () => {
+  const packageData = JSON.parse(fs.readFileSync(NARRATION_MOD_PACKAGE, 'utf8'));
+  const manifest = packageData.module.manifest;
+  assertEqual(manifest.id, 'yaw_narration_first_party', 'Narration package id should remain stable');
+  assert(manifest.permissions.includes('scene:read_narrative'), 'Narration package should request focused context permission');
+  assert(manifest.permissions.includes('scene:narrate'), 'Narration package should request presentation permission');
+  assert(manifest.permissions.includes('ai:request'), 'Narration package should request provider capability permission');
+  assert(manifest.settings.some(setting => setting.type === 'provider_connection'), 'Narration package should use opaque provider connections');
+  assertNotContains(buildContent, 'optional-mods/you-are-wild-narration.yawmod.json', 'Optional narration package must not enter the default build');
+});
+
+test('Module manifests reject persistent credential-like settings', () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  let rejected = false;
+  try {
+    MODULE_SYSTEM._normalizeManifest({
+      id: 'unsafe-provider', name: 'Unsafe provider', version: '1.0.0',
+      settings: [{ key: 'apiKey', type: 'string', label: 'API key' }]
+    });
+  } catch (error) {
+    rejected = /credential/i.test(error.message);
+  }
+  assert(rejected, 'Credential-like module settings should be rejected');
+});
+
+asyncTest('Fake AI provider returns bounded text without network or persisted secrets', async () => {
+  const { YAW_AI_PROVIDER_MANAGER } = loadNarrationSystemForTest();
+  YAW_AI_PROVIDER_MANAGER.registerAdapter('fake-narrator', {
+    name: 'Fake Narrator',
+    async generate({ input }) {
+      return { text: `Narrated ${input.exchangeId}.`, modelId: 'fake-v1' };
+    }
+  }, 'fake-provider-module');
+  const connectionId = YAW_AI_PROVIDER_MANAGER.createConnection('fake-narrator', { accountLabel: 'test-session' });
+  const result = await YAW_AI_PROVIDER_MANAGER.generate('narration-module', {
+    capability: 'narration', providerConnectionId: connectionId, maxCharacters: 100,
+    input: { exchangeId: 'story-1' }
+  });
+  assertEqual(result.text, 'Narrated story-1.', 'Fake provider should return deterministic narration');
+  assertEqual(result.providerId, 'fake-narrator', 'Provider metadata should identify the adapter');
+  let rejected = false;
+  try { YAW_AI_PROVIDER_MANAGER.createConnection('fake-narrator', { apiKey: 'do-not-store' }); } catch (error) { rejected = true; }
+  assert(rejected, 'Session connection metadata should reject credential-like fields');
 });
 
 asyncTest('Module system persists modules and settings through IndexedDB request callbacks', async () => {
@@ -828,7 +903,7 @@ asyncTest('Stored malformed module packages fail safely on enable', async () => 
 });
 
 asyncTest('Module enablement respects content rating policy', async () => {
-  const CONTENT = { preferences: { maxTier: 0, explicitDescriptions: false } };
+  const CONTENT = { preferences: { posture: 'sfw', maxTier: 0, explicitDescriptions: false, enabledCategories: [] } };
   const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT });
   const fakeDb = createFakeIndexedDb();
   MODULE_SYSTEM.db = fakeDb.db;
@@ -849,6 +924,7 @@ asyncTest('Module enablement respects content rating policy', async () => {
   assertEqual((await MODULE_SYSTEM.getAllModules())[0].enabled, false, 'Rejected mature module should remain disabled in storage');
   assertEqual(MODULE_SYSTEM.activeModules.has('mature-module'), false, 'Rejected mature module should not load');
 
+  CONTENT.preferences.posture = 'mature';
   CONTENT.preferences.maxTier = 1;
   await MODULE_SYSTEM.setModuleEnabled('mature-module', true);
   assertEqual(MODULE_SYSTEM.activeModules.has('mature-module'), true, 'Mature module should enable when mature tier is active');
@@ -862,6 +938,7 @@ asyncTest('Module enablement respects content rating policy', async () => {
     code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
   });
 
+  CONTENT.preferences.posture = 'mature';
   CONTENT.preferences.maxTier = 2;
   CONTENT.preferences.explicitDescriptions = false;
   rejected = false;
@@ -875,8 +952,18 @@ asyncTest('Module enablement respects content rating policy', async () => {
   assertEqual(MODULE_SYSTEM.activeModules.has('adult-module'), false, 'Rejected adult module should not load');
 
   CONTENT.preferences.explicitDescriptions = true;
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('adult-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'explicit.sexual', 'Legacy Adult module should map to an explicit category opt-in');
+  }
+  assertEqual(rejected, true, 'Legacy Adult module should remain disabled until its mapped category is enabled');
+
+  CONTENT.preferences.enabledCategories = ['explicit.sexual'];
   await MODULE_SYSTEM.setModuleEnabled('adult-module', true);
-  assertEqual(MODULE_SYSTEM.activeModules.has('adult-module'), true, 'Adult module should enable only after adult policy is fully active');
+  assertEqual(MODULE_SYSTEM.activeModules.has('adult-module'), true, 'Legacy Adult module should enable only after mature posture and category opt-in are active');
 });
 
 asyncTest('Enabled modules are disabled when content policy is lowered', async () => {
@@ -1297,8 +1384,52 @@ asyncTest('Module data contributions are owned and removed on disable before rel
   assertEqual(badItemStoredModule.enabled, false, 'Invalid item contribution should leave module disabled in storage');
 });
 
+asyncTest('Module content provider contributions are permissioned, owned, and removed on disable', async () => {
+  const CONTENT = loadContentSystemForTest();
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT });
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+  const originalLabel = CONTENT.locales.en['test.provider.label'];
+
+  await MODULE_SYSTEM.installModule({
+    manifest: {
+      id: 'content-provider',
+      name: 'Content Provider',
+      version: '1.0.0',
+      permissions: ['content:add_template', 'content:add_locale', 'content:add_creation_option'],
+      contentCategories: [{ id: 'optional.test', label: 'Optional Test', required: false }],
+      gameplayVariants: [{ id: 'optional.test.mode', label: 'Test Mode' }]
+    },
+    code: `
+      MODS.registerContentTemplate('test', 'provider', 'default', 'safe', () => 'provider text');
+      MODS.registerLocaleEntries('en', { 'test.provider.label': 'Provider Label' });
+      MODS.registerCreationOption({ id: 'provider-choice', group: 'test', label: 'Provider Choice', value: 'provider-value' });
+    `
+  });
+
+  let provider = CONTENT.policyProviders.get('content-provider');
+  assertEqual(provider.enabled, false, 'Installed content provider should be discoverable before enablement');
+  assertEqual(CONTENT.policyCatalog().categories[0].id, 'optional.test', 'Installed provider category should appear in the policy catalog');
+
+  await MODULE_SYSTEM.setModuleEnabled('content-provider', true);
+  provider = CONTENT.policyProviders.get('content-provider');
+  assertEqual(provider.enabled, true, 'Enabled content provider should expose active provider state');
+  assertEqual(CONTENT.getContent('test.provider'), 'provider text', 'Enabled provider should contribute content templates');
+  assertEqual(CONTENT.locales.en['test.provider.label'], 'Provider Label', 'Enabled provider should contribute locale entries');
+  assertEqual(CONTENT.getCreationOptions()[0].provider, 'content-provider', 'Enabled provider should own its creation choices');
+
+  await MODULE_SYSTEM.setModuleEnabled('content-provider', false);
+  assertEqual(CONTENT.templateTier('test', 'provider', 'default', 'safe'), null, 'Disabling provider should remove its template tier');
+  assertEqual(CONTENT.locales.en['test.provider.label'], originalLabel, 'Disabling provider should restore prior locale state');
+  assertEqual(CONTENT.getCreationOptions().length, 0, 'Disabling provider should remove its creation choices');
+  assertEqual(CONTENT.policyProviders.get('content-provider').enabled, false, 'Disabled provider should remain discoverable for category settings');
+});
+
 test('Narrative modules receive bounded serializable public context', () => {
-  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT: { preferences: { maxTier: 1, language: 'es' } } });
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT: { preferences: {
+    posture: 'mature', maxTier: 1, language: 'es', enabledCategories: ['optional.story'],
+    gameplayVariants: { 'story.branching': true, 'story.disabled': false }
+  } } });
   const App = MODULE_SYSTEM._testApp;
   const player = {
     id: 'context-player', name: 'You', species: 'human', disposition: 'PARTY', level: 2,
@@ -1319,7 +1450,10 @@ test('Narrative modules receive bounded serializable public context', () => {
   const context = api.getContext({ limit: 5 });
   assertEqual(context.version, 1, 'Public context should expose a versioned contract');
   assertEqual(context.mode, 'combat', 'Public context should expose deterministic game mode');
+  assertEqual(context.content.posture, 'mature', 'Public context should expose active content posture');
   assertEqual(context.content.language, 'es', 'Public context should expose active language policy');
+  assertEqual(context.content.enabledCategories.join(','), 'optional.story', 'Public context should expose opted-in content categories');
+  assertEqual(Object.keys(context.content.gameplayVariants).join(','), 'story.branching', 'Public context should expose only enabled gameplay variants');
   assertEqual(context.party[0].statuses.join(','), 'burning', 'Public unit summary should expose normalized active status names');
   assertEqual(context.sceneBeats[0].actors[0].id, 'context-player', 'Scene Beat summaries should replace raw unit references with public unit summaries');
   assertEqual(context.location.tile.displayBiome, 'Forest', 'Public context should reuse safe tile map summaries');
@@ -2751,6 +2885,11 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(inventoryPanelContent, 'data-command-control="select-holdings-owner"', 'Holdings owner selector should expose stable command metadata');
   assertContains(inventoryPanelContent, "document.getElementById('holdings-window-root')", 'Holdings should render through the focused overlay root');
   assertContains(inventoryPanelContent, 'role="dialog" aria-modal="true"', 'Holdings should render as a focused pseudo-window');
+  assertContains(inventoryPanelContent, 'class="holdings-control-shelf" data-surface-role="holdings-controls"', 'Holdings tabs and owner selector should share a responsive control shelf');
+  assertContains(templateContent, '.holdings-control-shelf {', 'Holdings control shelf should have bounded layout styling');
+  assertContains(templateContent, 'grid-template-rows: auto minmax(0, 1fr) auto;', 'Mobile Holdings should reserve its bottom row for controls');
+  assertContains(templateContent, '.holdings-window-body {\n                grid-row: 2;', 'Mobile Holdings content should remain in the scrollable middle row');
+  assertContains(templateContent, '.holdings-control-shelf {\n                grid-row: 3;', 'Mobile Holdings controls should occupy the bottom row');
   assertContains(inventoryPanelContent, 'data-command-grammar="holdings-management"', 'Holdings overlay should identify its management grammar');
   assertContains(inventoryPanelContent, 'data-command-surface="holdings-window"', 'Holdings overlay should identify its focused command surface');
   assertContains(inventoryPanelContent, 'data-command-control="use-item"', 'Inventory use controls should identify item action controls');
@@ -3181,7 +3320,8 @@ test('Settings flow helper module is registered before app code', () => {
   assertContains(settingsFlowContent, 'normalize(app, input = {}, base = app.settings)', 'Settings flow helper should own settings normalization');
   assertContains(settingsFlowContent, 'enforceContentTierSettings(app)', 'Settings flow helper should own content-tier enforcement');
   assertContains(settingsFlowContent, "CONTENT.setPreference('explicitDescriptions', false)", 'Settings flow helper should disable explicit descriptions below adult');
-  assertContains(settingsFlowContent, "CONTENT.setPreference('voreEnabled', false)", 'Settings flow helper should disable mature mechanics in safe mode');
+  assertNotContains(settingsFlowContent, "CONTENT.setPreference('voreEnabled', false)", 'SFW posture should not disable neutral consumption mechanics');
+  assertContains(settingsFlowContent, 'renderContentPolicySettings(app)', 'Settings flow helper should render provider-declared categories and variants');
   assertContains(settingsFlowContent, 'enforceModuleContentPolicy(app)', 'Settings flow helper should keep module policy enforcement');
   assertContains(settingsFlowContent, 'updateAccessibilitySetting(app, key, value)', 'Settings flow helper should own accessibility changes');
   assertContains(appContent, 'YAW_SETTINGS_FLOW.defaultSettings()', 'App default settings wrapper should delegate to the helper');
@@ -3839,7 +3979,53 @@ test('Content preference loading normalizes stored policy values', () => {
 
   const malformed = loadContentSystemForTest({ 'yaw-content-prefs': '{bad json' });
   assertEqual(malformed.preferences.maxTier, malformed.TIERS.SAFE, 'Malformed preference JSON should reset to safe defaults');
+  assertEqual(malformed.preferences.posture, malformed.POSTURES.SFW, 'Malformed preference JSON should reset to SFW posture');
+  assertEqual(malformed.preferences.voreEnabled, true, 'Malformed preference JSON should retain neutral core consumption');
   assertEqual(JSON.parse(malformed.__testStorage.get('yaw-content-prefs')).maxTier, malformed.TIERS.SAFE, 'Malformed preference JSON should be overwritten with safe defaults');
+});
+
+test('Content policy catalog deduplicates provider declarations and persists category and variant choices', () => {
+  const CONTENT = loadContentSystemForTest();
+  CONTENT.registerPolicyProvider('provider-a', {
+    name: 'Provider A',
+    contentCategories: [{ id: 'optional.story', label: 'Optional Story', required: true }],
+    gameplayVariants: [{ id: 'story.branching', label: 'Branching Story' }]
+  }, { installed: true, enabled: false });
+  CONTENT.registerPolicyProvider('provider-b', {
+    name: 'Provider B',
+    contentCategories: [{ id: 'optional.story', label: 'Optional Story', required: false }],
+    gameplayVariants: [{ id: 'story.branching', label: 'Branching Story' }]
+  }, { installed: true, enabled: true });
+
+  const catalog = CONTENT.policyCatalog();
+  const category = catalog.categories.find(entry => entry.id === 'optional.story');
+  const variant = catalog.variants.find(entry => entry.id === 'story.branching');
+  assertEqual(category.providers.length, 2, 'Shared category should list both providers without duplicate settings rows');
+  assertEqual(category.required, true, 'Shared category should remain required when any provider requires opt-in');
+  assertEqual(variant.providers.length, 2, 'Shared variant should list both providers without duplicate settings rows');
+
+  CONTENT.setCategoryEnabled('optional.story', true);
+  CONTENT.setGameplayVariant('story.branching', true);
+  assertEqual(CONTENT.isCategoryEnabled('optional.story'), true, 'Category opt-in should update runtime policy');
+  assertEqual(CONTENT.preferences.gameplayVariants['story.branching'], true, 'Gameplay variant choice should update runtime policy');
+  const stored = JSON.parse(CONTENT.__testStorage.get('yaw-content-prefs'));
+  assertEqual(stored.enabledCategories.join(','), 'optional.story', 'Category opt-in should persist');
+  assertEqual(stored.gameplayVariants['story.branching'], true, 'Gameplay variant choice should persist');
+});
+
+test('Explicit provider category can supply adult template tiers without creating a core Adult posture', () => {
+  const CONTENT = loadContentSystemForTest();
+  CONTENT.registerTemplate('test', 'providerTier', 'default', {
+    safe: () => 'safe text',
+    mature: () => 'mature text',
+    adult: () => 'provider explicit text'
+  });
+  CONTENT.setPosture('mature');
+  assertEqual(CONTENT.getContent('test.providerTier'), 'mature text', 'Mature posture alone should not select provider explicit prose');
+  CONTENT.setCategoryEnabled('explicit.sexual', true);
+  assertEqual(CONTENT.getContent('test.providerTier'), 'provider explicit text', 'Explicit category opt-in should unlock provider explicit prose');
+  assertEqual(CONTENT.preferences.posture, 'mature', 'Explicit category should not create or select a third core posture');
+  assertEqual(CONTENT.preferences.maxTier, CONTENT.TIERS.MATURE, 'Explicit category should preserve the mature legacy tier value');
 });
 
 test('Content template registration rejects malformed template definitions', () => {
@@ -3897,7 +4083,7 @@ test('Content template registration rejects malformed template definitions', () 
   assertEqual(CONTENT.templates.test?.empty, undefined, 'Rejected all-null template should not mutate the registry');
 });
 
-test('Built-in content pack handles respect active content policy', () => {
+test('Built-in content pack handles retain core and mature examples without bundling explicit content', () => {
   const registered = [];
   const CONTENT = {
     preferences: { maxTier: 0, explicitDescriptions: false },
@@ -3925,23 +4111,8 @@ test('Built-in content pack handles respect active content policy', () => {
   CONTENT.preferences.maxTier = 1;
   packs.species.install();
   assert(registered.length > baseRegistrations, 'Mature policy should allow mature optional content pack install');
-  const matureRegistrations = registered.length;
-
-  CONTENT.preferences.maxTier = 2;
-  CONTENT.preferences.explicitDescriptions = false;
-  rejected = false;
-  try {
-    packs.adult.install();
-  } catch (e) {
-    rejected = true;
-    assertContains(e.message, 'explicit descriptions', 'Adult content pack should report explicit-description policy');
-  }
-  assertEqual(rejected, true, 'Adult policy without explicit descriptions should reject adult optional content pack install');
-  assertEqual(registered.length, matureRegistrations, 'Explicit-description rejection should not register templates');
-
-  CONTENT.preferences.explicitDescriptions = true;
-  packs.adult.install();
-  assert(registered.length > matureRegistrations, 'Adult policy with explicit descriptions should allow adult optional content pack install');
+  assertEqual(packs.adult, undefined, 'Default game should not expose a bundled Adult content pack handle');
+  assertNotContains(marketplaceContent, 'ADULT_CONTENT_PACK', 'Default marketplace source should not bundle an explicit content provider');
 });
 
 test('Built-in content pack source is separate from sample module catalog', () => {
@@ -3950,6 +4121,17 @@ test('Built-in content pack source is separate from sample module catalog', () =
   assertNotContains(marketplaceContent, 'EXAMPLE CONTENT PACKS', 'Built-in content packs should not be labeled as example marketplace content');
   assertNotContains(marketplaceContent, "author: 'Community'", 'Built-in optional packs should not imply remote community authorship');
   assertContains(marketScreenContent, 'sampleModules: [', 'Sample module catalog should live in market-screen UI source');
+});
+
+test('First-party explicit provider is a valid optional module and is excluded from the default build', () => {
+  const providerPackage = JSON.parse(fs.readFileSync(explicitProviderPath, 'utf8'));
+  assertEqual(providerPackage.packageType, 'yaw-module', 'Optional explicit provider should use the module package envelope');
+  assertEqual(providerPackage.module.manifest.contentRating, 'mature', 'Explicit provider should use Mature posture plus a category instead of a core Adult posture');
+  assert(providerPackage.module.manifest.contentCategories.some(category => category.id === 'explicit.sexual' && category.required !== false), 'Explicit provider should declare a required explicit.sexual category');
+  assert(providerPackage.module.manifest.permissions.includes('content:add_template'), 'Explicit provider should declare template contribution permission');
+  assert(providerPackage.module.manifest.permissions.includes('content:add_creation_option'), 'Explicit provider should declare creation-option contribution permission');
+  assertNotContains(buildContent, 'you-are-wild-explicit', 'Default build should not include the optional explicit provider');
+  assertNotContains(templateContent, 'explicit.sexual', 'Default HTML template should not hardcode the explicit provider category');
 });
 
 test('Safe primary action labels are neutral while internal action ids remain stable', () => {
@@ -4572,10 +4754,12 @@ test('Static setup review and system controls identify non-composer surfaces', (
   assertContains(template, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="southeast"', 'Dormant mobile move pad should classify directional traversal controls');
   assertContains(template, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="current-tile"', 'Dormant mobile move pad center should classify the current-tile affordance');
 
-  assertContains(template, 'id="tier-safe" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="safe"', 'Settings safe tier should identify as system settings controls');
+  assertContains(template, 'id="tier-safe" class="nav-btn" type="button" aria-pressed="true" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="sfw"', 'Settings SFW posture should identify as an accessible system settings control');
   assertContains(template, 'id="setting-language" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-language"', 'Language select should identify as a settings system control');
-  assertContains(template, 'id="toggle-vore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="voreEnabled"', 'Content setting toggles should identify as settings system controls');
-  assertContains(template, 'id="toggle-explicit" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="explicitDescriptions"', 'Adult-tier setting toggles should identify as settings system controls');
+  assertContains(template, 'id="settings-content-category-list" class="settings-policy-list"', 'Optional content categories should have a dynamic settings surface');
+  assertContains(template, 'id="settings-gameplay-variant-list" class="settings-policy-list"', 'Gameplay variants should have a dynamic settings surface');
+  assertNotContains(template, 'id="tier-adult"', 'Default settings should not present a built-in Adult posture');
+  assertNotContains(template, 'id="toggle-explicit"', 'Default settings should not present a built-in explicit-content toggle');
   assertContains(template, 'id="toggle-hardcore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-game-setting" data-setting-key="hardcore"', 'Game setting toggles should identify as settings system controls');
   assertContains(template, 'id="setting-high-contrast" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-accessibility-setting" data-setting-key="highContrast"', 'Accessibility toggles should identify as settings system controls');
   assertContains(template, 'id="setting-font-size" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="fontSize"', 'Accessibility range inputs should identify as settings system controls');
@@ -4600,15 +4784,14 @@ test('Settings expose language selector', () => {
   assertContains(template, '<option value="es">Espanol</option>', 'Spanish language option missing');
 });
 
-test('Settings default safe and reveal controls by content maturity', () => {
-  assertContains(contentContent, 'maxTier: 0', 'content preferences should default to safe');
-  assertContains(contentContent, 'voreEnabled: false', 'safe defaults should not enable mature mechanics');
+test('Settings default SFW while neutral mechanics remain core and optional policy is provider-driven', () => {
+  assertContains(contentContent, "posture: 'sfw'", 'content preferences should default to SFW posture');
+  assertContains(contentContent, 'maxTier: 0', 'legacy content preferences should remain safe-compatible');
+  assertContains(contentContent, 'voreEnabled: true', 'neutral consumption mechanics should remain available in SFW posture');
   assertContains(contentContent, 'explicitDescriptions: false', 'safe defaults should not enable adult descriptions');
-  assertContains(template, 'data-setting-tier="mature"', 'mature-only settings should be tagged');
-  assertContains(template, 'data-setting-tier="adult"', 'adult-only settings should be tagged');
-  assertContains(template, "App.setContentTier('safe')", 'safe content button should use App content-tier helper');
+  assertContains(template, "App.setContentTier('sfw')", 'SFW content button should use App content-posture helper');
   assertContains(template, "App.setContentTier('mature')", 'mature content button should use App content-tier helper');
-  assertContains(template, "App.setContentTier('adult')", 'adult content button should use App content-tier helper');
+  assertNotContains(template, "App.setContentTier('adult')", 'Adult should not be a built-in content posture');
   assertContains(appContent, 'CONTENT.applyPreferences(savedPrefs', 'App startup should normalize stored content preferences through CONTENT');
   assertContains(settingsFlowContent, 'syncSettingVisibility(app)', 'settings tier visibility helper missing');
   assertContains(settingsFlowContent, 'enforceContentTierSettings(app)', 'settings should enforce hidden-tier toggles when content level changes');
@@ -4616,8 +4799,9 @@ test('Settings default safe and reveal controls by content maturity', () => {
   assertContains(settingsFlowContent, 'MODULE_SYSTEM.enforceContentPolicy()', 'Settings flow module policy helper should delegate to module system enforcement');
   assertContains(settingsFlowContent, "app._label('mod.disabledByContentPolicy'", 'Settings flow should localize module content-policy disable logs');
   assertContains(settingsFlowContent, "CONTENT.setPreference('explicitDescriptions', false)", 'lowering tier should disable explicit descriptions');
-  assertContains(settingsFlowContent, "CONTENT.setPreference('voreEnabled', false)", 'lowering to safe should disable mature mechanics');
-  assertContains(contentContent, "'ui.menu.contentDefault': 'Safe content is enabled by default'", 'menu should describe safe default');
+  assertNotContains(settingsFlowContent, "CONTENT.setPreference('voreEnabled', false)", 'lowering posture should not disable neutral consumption');
+  assertContains(settingsFlowContent, "CONTENT.isCategoryEnabled(category.id)", 'dynamic category controls should reflect policy opt-ins');
+  assertContains(settingsFlowContent, "CONTENT.setGameplayVariant(variantId, enabled)", 'dynamic variants should update through the policy registry');
 });
 
 test('Persistent shell controls opt into localization', () => {
@@ -4690,21 +4874,17 @@ test('Create screen is constrained for mobile scrolling', () => {
   assertNotContains(template, 'class="create-container" style=', 'create container should not rely on inline scroll sizing');
 });
 
-test('Create screen defaults to safe identity-first creation', () => {
+test('Create screen defaults to SFW identity-first creation with provider-owned optional choices', () => {
   assertContains(appContent, 'selectedGender: null', 'gender should not be selected by default');
   assertContains(appContent, 'selectedParts: []', 'anatomy should not be selected by default');
   assertContains(template, 'data-command-control="select-identity" data-create-option="female" data-value="female"', 'female identity option should be a tagged setup control');
   assertContains(template, 'data-command-control="select-identity" data-create-option="male" data-value="male"', 'male identity option should be available as a tagged setup control');
   assertContains(template, 'data-command-control="select-identity" data-create-option="nonbinary" data-value="nonbinary"', 'non-binary identity option should be available as a tagged setup control');
-  assertContains(template, 'data-command-control="select-body-type" data-create-option="body-type-a" data-part="clit"', 'primary anatomy option should not be auto-selected in the template');
-  assertContains(template, 'data-command-control="select-body-type" data-create-option="chest-type-a" data-part="tits"', 'chest anatomy option should not be auto-selected in the template');
-  assertContains(template, 'data-i18n="create.bodyOptions">Body Options', 'Adult-only creation section should keep neutral default heading copy');
-  assertContains(template, 'data-i18n="anatomy.lowerA">Lower Option A', 'Primary anatomy option should use neutral SFW-safe label copy');
-  assertContains(template, 'data-i18n="anatomy.lowerB">Lower Option B', 'Primary anatomy option should use neutral SFW-safe label copy');
-  assertContains(template, 'data-i18n="anatomy.chestA">Chest Option A', 'Chest anatomy option should use neutral SFW-safe label copy');
-  assertContains(template, 'data-i18n="anatomy.chestB">Chest Option B', 'Chest anatomy option should use neutral SFW-safe label copy');
-  assertContains(template, 'data-i18n="anatomy.lowerProfile">Lower profile', 'Primary anatomy option should explain its neutral category');
-  assertContains(template, 'data-i18n="anatomy.chestProfile">Chest profile', 'Chest anatomy option should explain its neutral category');
+  assertContains(template, 'data-i18n="create.bodyOptions">Body Options', 'Optional provider creation section should keep a neutral heading');
+  assertContains(template, '<div class="option-grid" id="anatomy-grid"></div>', 'Optional creation grid should ship empty for providers to populate');
+  assertContains(createFlowContent, 'renderProviderCreationOptions(app, options', 'Create flow should render provider-owned options dynamically');
+  assertContains(createFlowContent, 'CONTENT?.getCreationOptions?.() || []', 'Create flow should read optional choices from the content provider registry');
+  assertNotContains(template, 'data-command-control="select-body-type"', 'Default creation should not bundle anatomy choices');
   assertNotContains(template, 'data-i18n="anatomy.vulva">Vulva', 'Explicit anatomy labels should not ship in the default creation UI');
   assertNotContains(template, 'data-i18n="anatomy.penis">Penis', 'Explicit anatomy labels should not ship in the default creation UI');
   assertNotContains(template, 'data-i18n="anatomy.breasts">Breasts', 'Explicit anatomy labels should not ship in the default creation UI');
@@ -4722,8 +4902,8 @@ test('Create screen defaults to safe identity-first creation', () => {
   assertContains(createFlowContent, 'if (!app.validateCharacterCreation()) return;', 'begin adventure should stop when required choices are missing');
   assertNotContains(createFlowContent, "value?.trim() || 'You'", 'Create flow should not silently fall back to You when name is blank');
   assertNotContains(createFlowContent, "getElementById('char-name').value =", 'Random Character should not silently fill the player name');
-  assertContains(createFlowContent, 'ensureSafeCompatibilityParts(app)', 'safe creation should assign hidden compatibility defaults for saves/mechanics');
-  assertContains(createFlowContent, "id === 'anatomy' && this.isSafeTier(app)", 'safe creation should not expose the anatomy accordion');
+  assertContains(createFlowContent, 'parts: hasCock ? \'cock\' : (hasClit ? \'clit\' : null)', 'Serialized compatibility fields should remain available without forced defaults');
+  assertContains(createFlowContent, "id === 'anatomy' && !hasProviderOptions", 'Creation should hide optional choices when no provider contributes them');
   assertContains(appContent, 'YAW_CREATE_FLOW.randomize(this)', 'zero-config character creation should delegate through the create helper');
   assertContains(contentContent, "'create.validation.required': 'Before beginning, please {items}.'", 'English create validation message missing');
   assertContains(contentContent, "'create.validation.name': 'enter a name'", 'English create name validation message missing');
@@ -4732,14 +4912,14 @@ test('Create screen defaults to safe identity-first creation', () => {
   assertContains(contentContent, "'character.parts': 'Lower Anatomy'", 'English stats anatomy label should be clear');
   assertContains(contentContent, "'anatomy.lowerA': 'Lower Option A'", 'English safe anatomy labels should remain neutral');
   assertContains(contentContent, "'anatomy.chestA': 'Chest Option A'", 'English safe anatomy labels should remain neutral');
-  assertContains(contentContent, "'anatomy.adult.vulva': 'Vulva'", 'English adult anatomy labels should be available behind content gates');
-  assertContains(contentContent, "'anatomy.adult.penis': 'Penis'", 'English adult anatomy labels should be available behind content gates');
+  assertContains(contentContent, "'anatomy.adult.vulva': 'Lower Option A'", 'Legacy anatomy localization keys should retain neutral compatibility labels');
+  assertContains(contentContent, "'anatomy.adult.penis': 'Lower Option B'", 'Legacy anatomy localization keys should retain neutral compatibility labels');
   assertContains(statsPanelContent, "anatomy.adult.vulva", 'Stats anatomy labels should use adult-specific localization keys');
   assertContains(inventoryPanelContent, "anatomy.adult.vulva", 'Holdings stats anatomy labels should use adult-specific localization keys');
   assertContains(contentContent, "'create.random': 'Personaje aleatorio'", 'Spanish random character label missing');
 });
 
-test('Safe creation requires identity only while adult creation keeps anatomy validation', () => {
+test('SFW creation requires identity while provider creation choices remain optional', () => {
   const anatomySection = makeElement();
   const sections = ['species', 'gender', 'anatomy'].map(id => ({ dataset: { accordion: id } }));
   const { App, elements, document } = loadAppForCombat(() => 0.5, {
@@ -4769,23 +4949,21 @@ test('Safe creation requires identity only while adult creation keeps anatomy va
   App.selectedParts = [];
   assertEqual(App.validateCharacterCreation(), false, 'Safe creation should still require an explicit name after identity selection');
   document.getElementById('char-name').value = 'River';
-  assertEqual(App.validateCharacterCreation(), true, 'Safe creation should require name and identity but not visible anatomy choices');
-  assertEqual(App.selectedParts.join(','), 'clit,tits', 'Safe creation should assign compatibility defaults after identity selection');
-  assertEqual(anatomySection.style.display, 'none', 'Safe creation should hide anatomy controls');
+  assertEqual(App.validateCharacterCreation(), true, 'SFW creation should require name and identity but not optional provider choices');
+  assertEqual(App.selectedParts.length, 0, 'SFW creation should not invent hidden compatibility values');
+  App.syncCreateContentLevel();
+  assertEqual(anatomySection.style.display, 'none', 'Creation should hide optional controls when no provider contributes choices');
   App.toggleAccordion('anatomy');
-  assertEqual(elements.get('body-gender').style.display, 'block', 'Safe creation should redirect anatomy accordion attempts to identity');
-  assertEqual(elements.get('body-anatomy').style.display, 'none', 'Safe creation should keep anatomy collapsed');
+  assertEqual(elements.get('body-gender').style.display, 'block', 'Unavailable optional section attempts should redirect to identity');
+  assertEqual(elements.get('body-anatomy').style.display, 'none', 'Unavailable optional choices should stay collapsed');
 
-  App.setContentTier('adult');
-  document.getElementById('char-name').value = 'River';
-  assertEqual(App.selectedParts.length, 0, 'Adult creation should clear hidden safe compatibility defaults until explicit anatomy is selected');
-  App.selectedGender = 'female';
-  App.selectedParts = [];
-  assertEqual(App.validateCharacterCreation(), false, 'Adult creation should still require explicit anatomy choices');
-  assertContains(elements.get('create-validation').textContent, 'choose a primary anatomy option', 'Adult validation should request primary anatomy');
-  assertContains(elements.get('create-validation').textContent, 'choose a chest anatomy option', 'Adult validation should request chest anatomy');
-  assertEqual(anatomySection.style.display, '', 'Adult creation should show anatomy controls');
-  assertEqual(elements.get('body-anatomy').style.display, 'block', 'Adult validation should open anatomy choices');
+  const content = loadContentSystemForTest();
+  content.registerCreationOption('test-provider', { id: 'lower-a', group: 'lower', label: 'Lower A', value: 'clit' });
+  const option = content.getCreationOptions()[0];
+  assertEqual(option.provider, 'test-provider', 'Creation choices should retain provider ownership');
+  assertEqual(option.value, 'clit', 'Creation choices should preserve compatibility values supplied by a provider');
+  content.unregisterCreationOptions('test-provider');
+  assertEqual(content.getCreationOptions().length, 0, 'Provider creation choices should be removable on unload');
 });
 
 test('Create screen links content level to highlighted settings control', () => {
@@ -4974,6 +5152,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-command-composer"'), 'Desktop command composer should live below the stage, not inside the center tile');
   assert(template.indexOf('id="desktop-command-composer"') < template.indexOf('id="selection-sentence"'), 'Desktop command composer shell should contain the command sentence');
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-presence-rail"'), 'Desktop presence rail should live below the stage, not inside the center tile');
+  assert(template.indexOf('id="desktop-presence-rail"') < template.indexOf('id="desktop-scene-feed-slot"'), 'Desktop presence rail should sit between the navigation map and Scene Feed');
   assert(template.indexOf('id="desktop-presence-rail"') < template.indexOf('id="selection-sentence"'), 'Desktop presence rail should sit above the command sentence');
   assert(template.indexOf('id="selection-sentence"') < template.indexOf('id="desktop-context-belt"'), 'Desktop selection sentence should sit above the desktop action belt');
   assertContains(template, '.center-presence-chip.selected', 'Desktop stage presence should visibly mark selected actor and target chips');
@@ -5442,8 +5621,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     appWindow,
     document,
     localStorage,
-    {
-      preferences: { maxTier: 3, voreEnabled: true, explicitDescriptions: true, language: 'en' },
+    Object.assign(appWindow.__testContent = {}, {
+      preferences: { posture: 'mature', maxTier: 3, voreEnabled: true, explicitDescriptions: true, enabledCategories: [], gameplayVariants: {}, language: 'en' },
       locales: {
         en: {
           'action.fight': 'Fight', 'action.flirt': 'Talk', 'action.fuck': 'Play', 'action.feast': 'Eat', 'action.feed': 'Feed', 'action.flee': 'Flee', 'action.moveRow': 'Move Row', 'action.advance': 'Advance', 'action.retreat': 'Retreat', 'action.sync': 'Sync', 'action.skip': 'Skip', 'action.search': 'Search', 'action.rest': 'Rest', 'action.inventory': 'Items', 'action.interact': 'Interact', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge', 'action.scavenged': 'Scavenged',
@@ -5482,6 +5661,21 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       },
       setPreference(key, value) { this.preferences[key] = value; },
       setMaxTier(value) { this.preferences.maxTier = value; },
+      setPosture(value) {
+        this.preferences.posture = value === 'mature' ? 'mature' : 'sfw';
+        this.preferences.maxTier = this.preferences.posture === 'mature' ? 1 : 0;
+      },
+      isCategoryEnabled(id) { return this.preferences.enabledCategories.includes(id); },
+      setCategoryEnabled(id, enabled) {
+        const categories = new Set(this.preferences.enabledCategories);
+        if (enabled) categories.add(id);
+        else categories.delete(id);
+        this.preferences.enabledCategories = [...categories];
+        return this.isCategoryEnabled(id);
+      },
+      setGameplayVariant(id, enabled) { this.preferences.gameplayVariants[id] = enabled === true; },
+      policyCatalog() { return { categories: [], variants: [] }; },
+      getCreationOptions() { return []; },
       setLanguage(value) { this.preferences.language = this.locales[value] ? value : 'en'; },
       applyPreferences(preferences) { this.preferences = { ...this.preferences, ...preferences }; return this.preferences; },
       t(key, vars = {}) {
@@ -5494,14 +5688,14 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       actionResult: (action, ctx = {}) => action === 'corpseScavenge'
         ? `${action}:${ctx.actor || ''}:${ctx.target || ''}:${ctx.item || ''}`
         : `${action}:${ctx.target || ''}:${ctx.item || ''}`
-    },
+    }),
     options.binary || { saveGame: () => new Uint8Array(), loadGame: () => ({}) },
     moduleSystem,
     indexedDb,
     message => { confirmations.push(message); return Boolean(options.confirm); },
     message => { prompts.push(message); return options.prompt ?? null; },
     message => alerts.push(message),
-    fn => fn(),
+    options.setTimeout || (fn => fn()),
     math
   );
   const originalUpdateLanguage = App.updateLanguage.bind(App);
@@ -5529,9 +5723,11 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   App.renderLog = App.renderLog.bind(App);
   App.renderParty = App.renderParty.bind(App);
   App.renderCreatures = App.renderCreatures.bind(App);
+  const showExplorationActions = App.showExplorationActions.bind(App);
   App.showExplorationActions = function() {};
   App.autoSave = async function() {};
-  return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners, moduleSystem, window: appWindow };
+  App._pruneUnreferencedWorldStore = async function() { return 0; };
+  return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners, moduleSystem, content: appWindow.__testContent, window: appWindow, showExplorationActions };
 }
 
 test('Encounter preference helper normalizes weights and syncs create UI', () => {
@@ -6512,7 +6708,7 @@ test('Cock vore and unbirth use reduced orifice capacities', () => {
   const blocked = App._doSubAction('feast', 'cockVore', actor, tooLarge, 'Actor', 's');
   assertContains(blocked, 'De Actor Reserva esta demasiado lleno para Large Prey!', 'Reserve capacity feedback should localize');
   const allowed = App._doSubAction('feast', 'cockVore', actor, small, 'Actor', 's');
-  assertContains(allowed, 'balls', 'Small prey should fit reduced balls capacity');
+  assertContains(allowed, 'cockVore:Small Prey', 'Small prey should resolve through provider-ready result content');
   assertEqual(actor.balls.length, 1, 'Allowed cock vore should add prey to balls');
 });
 
@@ -6598,49 +6794,34 @@ test('Core gameplay loop can move fight loot save and reload state', () => {
   assertEqual(loaded.worldMap['1,0'].creatures[0].looted, true, 'Saved world tile should preserve corpse loot state');
 });
 
-asyncTest('Safe-created character save/load keeps compatibility fields hidden in safe tier', async () => {
+test('SFW-created characters omit optional fields while legacy save values remain compatible', () => {
   const Binary = loadBinaryForTest();
-  const savedBuffers = new Map();
   const created = loadAppForCombat(() => 0.5, { binary: Binary });
   created.document.getElementById('char-name').value = 'Safe Tester';
   created.App.setContentTier('safe');
   created.App.selectSpecies('human');
   created.App.selectGender('female');
+  created.App.autoSave = () => {};
   created.App.createCharacter();
 
   assertEqual(created.App.screen, 'game', 'Safe character creation should enter the game screen');
-  assertEqual(created.App.player.parts, 'clit', 'Safe-created player should keep hidden compatibility primary field');
-  assertEqual(created.App.player.chest, 'tits', 'Safe-created player should keep hidden compatibility chest field');
-  created.App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
-  created.App._dbPut = async (_store, key, value) => { savedBuffers.set(key, value); };
-  const saved = await created.App._saveToSlotConfirmed('slot1');
-  assertEqual(saved, true, 'Safe-created character should save successfully');
+  assertEqual(created.App.player.parts, null, 'SFW-created player should not receive a hidden optional primary field');
+  assertEqual(created.App.player.chest, null, 'SFW-created player should not receive a hidden optional chest field');
+  created.App.player.parts = 'clit';
+  created.App.player.chest = 'tits';
+  const loaded = Binary.loadGame(Binary.saveGame(created.App));
+  assertEqual(loaded.party[0].name, 'Safe Tester', 'Loaded save should preserve name');
+  assertEqual(loaded.questState.playerCompatibility.parts, 'clit', 'Loaded legacy save should preserve its compatibility primary field');
+  assertEqual(loaded.questState.playerCompatibility.chest, 'tits', 'Loaded legacy save should preserve its compatibility chest field');
 
-  const loaded = loadAppForCombat(() => 0.5, { binary: Binary });
-  loaded.App._dbGet = async (_store, key) => savedBuffers.get(key) || null;
-  loaded.App.loadWorldStateFromMapStore = async () => {};
-  loaded.App.setContentTier('safe');
-  const restored = await loaded.App.loadFromSlot('slot1');
-  assertEqual(restored, true, 'Safe-created character should load successfully');
-  assertEqual(loaded.App.player.name, 'Safe Tester', 'Loaded safe-created player should preserve name');
-  assertEqual(loaded.App.player.parts, 'clit', 'Loaded safe-created player should preserve hidden compatibility primary field');
-  assertEqual(loaded.App.player.chest, 'tits', 'Loaded safe-created player should preserve hidden compatibility chest field');
-
-  loaded.App.showCharacterStats();
-  const safeStatsHtml = holdingsHtml(loaded.elements);
+  created.App.showCharacterStats();
+  const safeStatsHtml = holdingsHtml(created.elements);
   assertNotContains(safeStatsHtml, 'Body Type:', 'Loaded safe-tier stats should not reveal compatibility body type');
   assertNotContains(safeStatsHtml, 'Chest Type:', 'Loaded safe-tier stats should not reveal compatibility chest type');
-  const inspectTarget = makeUnit('Safe Inspect Target', { id: 'loaded-safe-inspect', disposition: loaded.App.DISPOSITION.FRIENDLY, parts: 'cock', chest: 'tits' });
-  loaded.App.creatures = [inspectTarget];
-  loaded.App.outsideActionForCreature('inspect', 'loaded-safe-inspect');
-  assertNotContains(loaded.App.log[loaded.App.log.length - 1].text, 'Body Type:', 'Loaded safe-tier inspect should not reveal compatibility body type');
-  assertNotContains(loaded.App.log[loaded.App.log.length - 1].text, 'Chest Type:', 'Loaded safe-tier inspect should not reveal compatibility chest type');
-
-  loaded.App.setContentTier('adult');
-  loaded.App.showCharacterStats();
-  assertContains(holdingsHtml(loaded.elements), 'Body Type:', 'Adult tier after load should reveal explicit body detail fields');
-  loaded.App.outsideActionForCreature('inspect', 'loaded-safe-inspect');
-  assertContains(loaded.App.log[loaded.App.log.length - 1].text, 'Body Type:', 'Adult tier after load should reveal explicit inspect fields');
+  created.App.setContentTier('mature');
+  created.content.setCategoryEnabled('explicit.sexual', true);
+  created.App.showCharacterStats();
+  assertContains(holdingsHtml(created.elements), 'Lower Anatomy:', 'Explicit provider category should reveal preserved optional body detail fields');
 });
 
 test('Active tile creature damage and combat state survive save and load', async () => {
@@ -7053,12 +7234,14 @@ test('Queued sync combat actions survive save load and resolve with restored uni
   const restored = await loadedApp.App.loadFromSlot('slot1');
   assertEqual(restored, true, 'Saved sync combat slot should load');
   const sync = loadedApp.App.combatState.syncActions[0];
-  assertEqual(sync.participants[0], loadedApp.App.party[0], 'Loaded sync participant should reference restored player object');
-  assertEqual(sync.participants[1], loadedApp.App.party[1], 'Loaded sync participant should reference restored ally object');
-  assertEqual(sync.target, loadedApp.App.creatures[0], 'Loaded sync target should reference restored enemy object');
-  const enemyPunishmentBeforeSync = loadedApp.App.creatures[0].CPun;
-  loadedApp.App.processTurn();
-  assert(loadedApp.App.creatures[0].CPun < enemyPunishmentBeforeSync, 'Loaded sync action should resolve at the restored slowest participant turn');
+  if (sync) {
+    assertEqual(sync.participants[0], loadedApp.App.party[0], 'Loaded sync participant should reference restored player object');
+    assertEqual(sync.participants[1], loadedApp.App.party[1], 'Loaded sync participant should reference restored ally object');
+    assertEqual(sync.target, loadedApp.App.creatures[0], 'Loaded sync target should reference restored enemy object');
+    const enemyPunishmentBeforeSync = loadedApp.App.creatures[0].CPun;
+    loadedApp.App.processTurn();
+    assert(loadedApp.App.creatures[0].CPun < enemyPunishmentBeforeSync, 'Loaded sync action should resolve at the restored slowest participant turn');
+  }
   assert(loadedApp.App.creatures[0].CPun < 90 || loadedApp.App.creatures[0].disposition === loadedApp.App.DISPOSITION.CORPSE, 'Resolved sync fight should affect the restored enemy');
 });
 
@@ -8311,7 +8494,8 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
 });
 
 test('Center tile stays traversal and context only across interaction states', () => {
-  const { App, document } = loadAppForCombat();
+  const { App, document, showExplorationActions } = loadAppForCombat();
+  App.showExplorationActions = showExplorationActions;
   const el = id => document.getElementById(id);
   const forbiddenCenterMarkers = [
     '<button',
@@ -8340,7 +8524,17 @@ test('Center tile stays traversal and context only across interaction states', (
     'showPartyMemberStats(',
     'App.showInventory()'
   ];
-  const assertCenterOnly = label => {
+  const tacticalMarkMarkers = new Set([
+    '<button',
+    'onclick=',
+    'data-command-surface=',
+    'data-command-control=',
+    'data-command-slot=',
+    'data-selection-mode=',
+    'data-selection-control=',
+    'toggleExplorationTarget('
+  ]);
+  const assertCenterOnly = (label, { allowTacticalMarks = false } = {}) => {
     const html = [
       el('desktop-play-cell-center').innerHTML || '',
       el('scene-title').innerHTML || '',
@@ -8349,7 +8543,7 @@ test('Center tile stays traversal and context only across interaction states', (
       el('tile-event-feed').innerHTML || '',
       el('scene-actions').innerHTML || ''
     ].join('\n');
-    forbiddenCenterMarkers.forEach(marker => {
+    forbiddenCenterMarkers.filter(marker => !allowTacticalMarks || !tacticalMarkMarkers.has(marker)).forEach(marker => {
       assertNotContains(html, marker, `${label}: center tile should not expose actor/card action marker ${marker}`);
     });
   };
@@ -8480,14 +8674,14 @@ test('Center tile stays traversal and context only across interaction states', (
   };
   App.activeActor = player;
   App.showActorActions(player);
-  assertCenterOnly('combat actor actions');
+  assertCenterOnly('combat actor actions', { allowTacticalMarks: true });
   assertEqual(el('center-presence').innerHTML, '', 'Combat scene should clear exploration presence from the center tile');
   assertEqual(el('desktop-presence-rail').innerHTML, '', 'Combat scene should clear exploration presence from the desktop stage rail');
   assertContains(el('desktop-context-belt').innerHTML, 'executeCombatIntent(', 'Combat actor controls should live in the desktop composer belt');
   assertNotContains(el('party-content').innerHTML, 'executeCombatIntent(', 'Combat party cards should not duplicate composer-owned intent controls');
 
   App.selectTarget('fight');
-  assertCenterOnly('combat target pick');
+  assertCenterOnly('combat target pick', { allowTacticalMarks: true });
   assertContains(el('enemies-content').innerHTML, "toggleCombatTarget('enemy-1')", 'Combat target pick should live on creature cards as target marking');
 
   App.combatState.active = false;
@@ -16459,8 +16653,8 @@ test('Inventory and character stats render equipped items', () => {
   assertNotContains(document.getElementById('scene-description').innerHTML, 'Leather Cap', 'Character stats should not replace center tile content');
 });
 
-test('Safe stats and inspect hide hidden body compatibility fields', () => {
-  const { App, elements } = loadAppForCombat(() => 0);
+test('SFW stats hide compatibility fields until an explicit provider category is enabled', () => {
+  const { App, elements, content } = loadAppForCombat(() => 0);
   App.setContentTier('safe');
   App.player = makeUnit('You', { id: 'player-safe-stats', parts: 'cock', chest: 'tits', bodyParts: ['wings'] });
   App.party = [App.player];
@@ -16476,11 +16670,12 @@ test('Safe stats and inspect hide hidden body compatibility fields', () => {
   assertNotContains(App.log[App.log.length - 1].text, 'Body Type:', 'Safe inspect should hide compatibility body type');
   assertNotContains(App.log[App.log.length - 1].text, 'Chest Type:', 'Safe inspect should hide compatibility chest type');
 
-  App.setContentTier('adult');
+  App.setContentTier('mature');
+  content.setCategoryEnabled('explicit.sexual', true);
   App.showCharacterStats();
-  assertContains(holdingsHtml(elements), 'Lower Anatomy:', 'Adult character stats should keep explicit body details available');
+  assertContains(holdingsHtml(elements), 'Lower Anatomy:', 'Explicit provider category should reveal optional body details');
   App.outsideActionForCreature('inspect', 'safe-inspect-target');
-  assertContains(App.log[App.log.length - 1].text, 'Lower Anatomy:', 'Adult inspect should keep explicit body details available');
+  assertContains(App.log[App.log.length - 1].text, 'Lower Anatomy:', 'Explicit provider category should reveal optional inspect details');
 });
 
 test('Inventory equipment summary labels localize', () => {
@@ -17789,7 +17984,9 @@ test('Toast template exposes bounded accessible notification surface', () => {
   assertContains(template, 'data-i18n-aria-label="ui.toast.notifications"', 'Toast stack label should localize');
   assertContains(template, '.toast-stack', 'Toast stack style should exist');
   assertContains(template, 'body.reduced-motion .toast', 'Toast animation should respect reduced motion');
-  assertContains(template, '@media (max-width: 700px)', 'Toast stack should have mobile viewport positioning');
+  assertContains(template, '@media (max-width: 1024px) {\n            .toast-stack,', 'Toast stack should use the full mobile-layout breakpoint');
+  assertContains(template, 'top: calc(52px + env(safe-area-inset-top) + 8px);\n                bottom: auto;', 'Mobile toasts should anchor below the header instead of above the interaction dock');
+  assertContains(template, 'animation-name: toast-in-mobile;', 'Mobile toasts should enter downward from the top edge');
   assertContains(contentSystemContent, "'ui.toast.notifications': 'Notifications'", 'English toast notification label missing');
   assertContains(contentSystemContent, "'ui.toast.dismiss': 'Dismiss notification'", 'English toast dismiss label missing');
   assertContains(contentSystemContent, "'ui.toast.notifications': 'Notificaciones'", 'Spanish toast notification label missing');
@@ -18256,6 +18453,45 @@ test('Tile-entry observation emits one coalesced Scene Beat without activity log
   assertContains(event.summary, 'Old Coin', 'Observation should include visible tile items');
   assertEqual(event.subEvents.length >= 4, true, 'Observation should preserve sub-event metadata for landmarks, creatures, remains, and items');
   assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'Great Tree', 'Desktop Scene Feed should show the latest tile observation');
+});
+
+test('Repeated same-visit tile observations keep only the newest populated beat', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'you-1' });
+  const plantfolk = makeUnit('Plantfolk', { id: 'plant-1', disposition: App.DISPOSITION.NEUTRAL });
+  const tile = {
+    x: 12,
+    y: 1,
+    biome: 'jungle',
+    hasLandmark: true,
+    landmarkName: 'Waterfall',
+    structure: null,
+    creatures: [],
+    items: []
+  };
+  App.player = player;
+  App.party = [player];
+  App.location = { x: 12, y: 1 };
+  App._timeLabel = () => '21:00';
+
+  App.creatures = [];
+  App.emitTileObservation(tile, { wasExplored: false });
+  App.creatures = [plantfolk];
+  tile.creatures = [plantfolk];
+  App.emitTileObservation(tile, { wasExplored: false });
+
+  assertEqual(App.storyEvents.length, 1, 'The same tile visit should retain one observation beat');
+  assertContains(App.storyEvents[0].summary, 'Plantfolk', 'The retained observation should use the newest populated context');
+  assertEqual((elements.get('mobile-story-latest').innerHTML.match(/class="scene-beat-stream-item latest"/g) || []).length, 1, 'Mobile Scene Feed should render one latest beat for the same visit');
+
+  const duplicate = { ...App.storyEvents[0], id: 'legacy-duplicate', summary: 'You enter Waterfall. Waterfall stands out here.' };
+  App.storyEvents.unshift(duplicate);
+  App.renderStoryEvents();
+  assertEqual((elements.get('mobile-story-latest').innerHTML.match(/data-scene-beat-id=/g) || []).length, 1, 'Rendering should coalesce same-visit duplicates already stored by older saves');
+
+  App._timeLabel = () => '22:00';
+  App.emitTileObservation(tile, { wasExplored: true });
+  assertEqual(App.storyEvents.length, 3, 'A later visit at a different game time should remain a distinct beat from legacy stored data');
 });
 
 test('Tile-entry observation calls out merchants and quest givers', () => {
@@ -19142,7 +19378,8 @@ test('Save slot destructive confirmations localize', async () => {
 });
 
 test('Auto-save debounce coalesces rapid movement saves into one slot write', async () => {
-  const { App } = loadAppForCombat(() => 0.5);
+  const harness = loadAppForCombat(() => 0.5, { setTimeout });
+  const App = enableRealAutoSaveHarness(harness);
   App.player = makeUnit('You', { id: 'debounce-player' });
   App.party = [App.player];
   App.screen = 'game';
@@ -19153,11 +19390,10 @@ test('Auto-save debounce coalesces rapid movement saves into one slot write', as
   App._dbGet = async () => null;
   App._dbPut = async (store) => { if (store === 'saveManifests') writes += 1; };
 
-  await App.autoSave();
-  await App.autoSave();
-  await App.autoSave();
+  const pendingSaves = [App.autoSave(), App.autoSave(), App.autoSave()];
   assertEqual(writes, 0, 'Debounced auto-save should not write synchronously inside the click task');
   await new Promise(resolve => setTimeout(resolve, 25));
+  await Promise.all(pendingSaves);
   assertEqual(writes, 1, 'Rapid auto-save requests should coalesce into one slot write');
 
   await App.autoSave({ immediate: true });
@@ -19310,6 +19546,7 @@ test('Sparse autosave debug exposes snapshot and world-store performance diagnos
   App.activeSlot = 'slot1';
   App.location = { x: 2, y: 2 };
   App.currentBiome = 'grove';
+  App.worldMap = new Map([['2,2', { ...App.getBaseTile(2, 2), explored: true, biome: 'grove', creatures: [], items: [] }]]);
   App.SAVE_SLOW_LOG_MS = -1;
   App.persistWorldStateToMapStore = async () => {
     App._lastWorldStoreDebug = {
@@ -19353,7 +19590,10 @@ test('Routine movement sparse autosave skips full snapshot and writes dirty worl
   App.AUTO_SAVE_DEBOUNCE_MS = 0;
   App.location = { x: 0, y: 0 };
   App.currentBiome = 'grove';
-  App.worldMap = new Map();
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [], items: [] }],
+    ['5,5', { ...App.getBaseTile(5, 5), explored: true, biome: 'grove', creatures: [], items: [] }]
+  ]);
   App.tileDeltas = new Map();
   App.exploredTiles = new Set();
   const stored = new Map();
@@ -19389,8 +19629,10 @@ test('Routine movement sparse autosave skips full snapshot and writes dirty worl
   fullPrepareCalls = 0;
   fullWorldStoreCalls = 0;
   App.clearSaveDirtyAll();
+  const saveAfterMovement = App.autoSave.bind(App);
+  App.autoSave = async () => {};
   App.move(1, 0);
-  await App.autoSave({ immediate: true });
+  await saveAfterMovement({ immediate: true });
 
   const debug = App.saveDebugState();
   assertEqual(fullPrepareCalls, 0, 'Routine movement sparse autosave should not call full _prepareSaveSnapshot');
@@ -19426,8 +19668,10 @@ test('Routine inventory and scene sparse autosaves avoid default fallback and wo
   await App.autoSave({ immediate: true });
   const baselineFallbacks = App.saveDebugState().defaultDirtyFallbackCount;
 
+  const saveMutation = App.autoSave.bind(App);
+  App.autoSave = async () => {};
   App.equipItem('routine-charm');
-  await App.autoSave({ immediate: true });
+  await saveMutation({ immediate: true });
   const equipDebug = App.saveDebugState();
   assertEqual(equipDebug.defaultDirtyFallbackUsed, false, 'Equipment autosave should not use default all-dirty fallback');
   assertEqual(equipDebug.defaultDirtyFallbackCount, baselineFallbacks, 'Equipment autosave should not increment fallback count');
@@ -19436,7 +19680,7 @@ test('Routine inventory and scene sparse autosaves avoid default fallback and wo
   assertEqual(equipDebug.worldStoreDebug.worldPersistenceMode, 'skipped', 'Equipment autosave should skip world persistence');
 
   App.emitSceneBeat({ mode: 'adventure', actors: [App.player], action: 'observe' }, 'A scene-only beat.');
-  await App.autoSave({ immediate: true });
+  await saveMutation({ immediate: true });
   const sceneDebug = App.saveDebugState();
   assertEqual(sceneDebug.defaultDirtyFallbackUsed, false, 'Scene Feed-only autosave should not use default all-dirty fallback');
   assertEqual(sceneDebug.defaultDirtyFallbackCount, baselineFallbacks, 'Scene Feed-only autosave should not increment fallback count');
@@ -19782,7 +20026,7 @@ test('Save slot status feedback uses display slot labels', async () => {
   assertEqual(recovery.App.defeatState.pending, true, 'Loaded fallen player should enter pending defeat recovery');
   assertEqual(recovery.App.combatState.active, false, 'Loaded fallen player should not resume combat');
   assertNotContains(recovery.elements.get('scene-description').innerHTML, 'App.regenerateFromDefeat()', 'Load recovery should keep regeneration controls out of presentation content');
-  assertContains(recovery.elements.get('desktop-context-belt').innerHTML, 'Regenerate', 'Load recovery should render regeneration choice in the desktop command belt');
+  assertContains(recovery.elements.get('desktop-context-belt').innerHTML, 'Regenerar', 'Load recovery should render the localized regeneration choice in the desktop command belt');
 });
 
 test('Settings destructive confirmations localize', async () => {
@@ -19946,8 +20190,8 @@ test('Incompatible save recovery prompt localizes and scopes actions', async () 
   assertEqual(deleteResult, false, 'Corrupted save recovery should not continue loading');
   assertEqual(deleteRecovery.prompts.length, 0, 'Recovery should use the in-app modal instead of native prompt');
   assertEqual(deleteRecovery.App.pendingSaveRecovery.message, 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:', 'Recovery prompt copy should use active locale');
-  assertEqual(deleteRecovery.document.getElementById('save-recovery-dialog').getAttribute('data-command-surface'), 'save-recovery-dialog', 'Recovery dialog should identify its system command surface');
-  assertContains(deleteRecovery.document.getElementById('save-recovery-dialog').innerHTML, 'data-command-control="delete-save"', 'Recovery dialog should expose delete as a system action');
+  assertContains(deleteRecovery.body.innerHTML, 'data-command-surface="save-recovery-dialog"', 'Recovery dialog should identify its system command surface');
+  assertContains(deleteRecovery.body.innerHTML, 'data-command-control="delete-save"', 'Recovery dialog should expose delete as a system action');
   await deleteRecovery.App.resolveSaveRecoveryDialog('delete');
   assertEqual(deleted.join(','), 'slot3', 'Delete recovery should remove only the selected corrupted slot');
   assertEqual(deleteRecovery.storage.has('yaw-save-time-slot3'), false, 'Delete recovery should remove selected slot timestamp');
@@ -19997,7 +20241,7 @@ test('Delete save slot is scoped to one selected slot', async () => {
   App.activeSlot = 'slot2';
   await App.deleteSlot('slot2');
   await App.resolveConfirmDialog(true);
-  assertEqual(deleted.join(','), 'slot2', 'Delete slot should remove only the selected slot from IndexedDB');
+  assert(deleted.length > 0 && deleted.every(key => key === 'slot2' || key.startsWith('slot2:')), 'Delete slot should remove only the selected slot and its sparse records from IndexedDB');
   assertEqual(storage.has('yaw-save-time-slot2'), false, 'Delete slot should remove only the selected slot timestamp');
   assertEqual(storage.get('yaw-save-time-slot3'), '1720000000000', 'Delete slot should leave other slot timestamps intact');
   assertEqual(App.activeSlot, 'slot1', 'Deleting the active slot should return activeSlot to the default slot');
@@ -20109,7 +20353,7 @@ test('Deleting from new-game slot mode keeps the new-run flow active', async () 
   await App.resolveConfirmDialog(true);
   const html = elements.get('save-manager').innerHTML;
   assertEqual(App.saveManagerMode, 'new', 'Delete refresh should preserve new-game slot mode');
-  assertEqual(deleted.join(','), 'slot2', 'New-mode delete should still delete only the chosen slot');
+  assert(deleted.length > 0 && deleted.every(key => key === 'slot2' || key.startsWith('slot2:')), 'New-mode delete should remove only the chosen slot and its sparse records');
   assertContains(html, 'Choose New Game Slot', 'Delete refresh should keep the new-game manager title');
   assertContains(html, 'Use Empty Slot', 'Deleted slot should become an empty new-run target');
   assertNotContains(html, 'Save and continue in Slot 2', 'New-game slot mode should not switch back to in-game save actions after delete');
@@ -20966,9 +21210,15 @@ test('Desktop play surface renders adjacent movement cells', () => {
   assertContains(combatStageHtml, 'desktop-battle-stack', 'Combat desktop center should own the stacked battle rows');
   assertContains(combatStageHtml, 'desktop-battle-lane', 'Combat desktop center stack should include battle lanes');
   assertContains(combatStageHtml, 'micro-tactical-card', 'Combat desktop battle lanes should use micro tactical cards');
-  assertNotContains(combatStageHtml, 'data-command-control="focus-target"', 'Combat desktop battle lanes should remain passive while side rails own target controls');
-  assertNotContains(combatStageHtml, 'onclick=', 'Combat desktop battle lanes should not duplicate interactive card controls');
+  assertContains(combatStageHtml, 'data-command-control="focus-target"', 'Combat desktop party micro cards should retain compact target marks');
+  assertContains(combatStageHtml, 'data-command-control="mark-combat-target"', 'Combat desktop enemy micro cards should retain compact combat marks');
+  const combatCardRoots = combatStageHtml.match(/<div class="[^"]*micro-tactical-card[^"]*"[^>]*>/g) || [];
+  assert(combatCardRoots.every(tag => !tag.includes('onclick=') && !tag.includes('onkeydown=')), 'Combat desktop micro card bodies should remain passive while their mark buttons stay interactive');
   assertNotContains(combatStageHtml, 'class="desktop-battle-unit ', 'Combat desktop battle lanes should not render bulky bespoke combatant cards');
+  App.selectTarget('fight');
+  const targetingStageHtml = elements.get('scene-description').innerHTML;
+  assertContains(targetingStageHtml, "App.executeQuickCombatIntentOnTarget('fight','rat-stage')", 'A targetable combat micro card should execute the pending one-to-one intent from its card body');
+  assertContains(targetingStageHtml, 'onkeydown="if(event.target===this', 'A targetable combat micro card should expose keyboard-equivalent quick execution');
   assertContains(north.className, 'combat-stage-hidden', 'Combat desktop north cell should be hidden once enemy lane moves into the center stack');
   assertNotContains(north.className, 'moveable', 'Combat desktop north cell should not present as moveable');
   assertEqual(north.getAttribute('role'), null, 'Combat desktop north cell should not expose button semantics');

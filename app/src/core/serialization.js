@@ -341,6 +341,10 @@
       timeHour: appState.timeHour || 0,
       questState: {
         quests: appState.quests || [],
+        storyEvents: appState.storyEvents || [],
+        sceneNarrations: typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedRecords(appState) : [],
+        latestStoryEvent: appState.latestStoryEvent || null,
+        storyEventSeq: appState.storyEventSeq || 0,
         playerGold: appState.player?.gold || 0,
         dayCount: appState.dayCount || 0,
         playerEquipment: appState.player?.equipment || {},

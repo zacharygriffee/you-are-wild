@@ -5,14 +5,15 @@
 
 const YAW_SETTINGS_FLOW = {
     updateTierButtons(app) {
-        const btns = { safe: 'tier-safe', mature: 'tier-mature', adult: 'tier-adult' };
-        const tiers = { safe: 0, mature: 1, adult: 2 };
+        const btns = { sfw: 'tier-safe', mature: 'tier-mature' };
+        const posture = CONTENT?.preferences?.posture || (CONTENT?.preferences?.maxTier >= 1 ? 'mature' : 'sfw');
         for (const [tier, id] of Object.entries(btns)) {
             const el = document.getElementById(id);
             if (el) {
-                const selected = CONTENT.preferences.maxTier === tiers[tier];
+                const selected = posture === tier;
                 el.style.background = selected ? 'var(--accent-primary)' : 'var(--bg-tertiary)';
                 el.style.color = selected ? 'var(--bg-primary)' : 'var(--text-secondary)';
+                el.setAttribute('aria-pressed', selected ? 'true' : 'false');
             }
         }
         app.syncCreateContentLevel();
@@ -80,25 +81,31 @@ const YAW_SETTINGS_FLOW = {
     },
 
     setContentTier(app, tier) {
-        const nextTier = app._tierValue(tier);
-        CONTENT.setMaxTier(nextTier);
+        const normalized = String(tier || '').toLowerCase();
+        if ((normalized === 'safe' || normalized === 'sfw' || normalized === 'mature') && CONTENT?.setPosture) {
+            CONTENT.setPosture(normalized === 'mature' ? 'mature' : 'sfw');
+        } else {
+            CONTENT.setMaxTier(app._tierValue(tier));
+        }
         app.enforceContentTierSettings();
         app.enforceModuleContentPolicy();
         app.syncSettingVisibility();
         app.syncCreateContentLevel();
         app.saveSettings();
+        if (typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.notifyPolicyChanged(app, 'posture');
+        return app.renderContentPolicySettings();
     },
 
     enforceContentTierSettings(app) {
-        const tier = app._tierValue(CONTENT?.preferences?.maxTier);
-        const matureSettings = ['endoMode', 'fatalVore', 'slowDigestion', 'statAbsorption', 'chewing', 'allTheWayThrough', 'powerDynamics', 'refractoryPeriod', 'sameSpeciesBonus'];
-        const adultSettings = ['fluidEnabled', 'scat', 'watersports', 'cockVoreEnabled', 'unbirthEnabled', 'forcedFeeding', 'boneCrushing', 'unwillingWarnings'];
-        if (tier < 2) {
+        const posture = CONTENT?.preferences?.posture || (app._tierValue(CONTENT?.preferences?.maxTier) >= 1 ? 'mature' : 'sfw');
+        const matureSettings = ['fatalVore', 'statAbsorption', 'chewing', 'allTheWayThrough', 'powerDynamics', 'forcedFeeding', 'boneCrushing', 'unwillingWarnings'];
+        const explicitSettings = ['fluidEnabled', 'scat', 'watersports', 'cockVoreEnabled', 'unbirthEnabled', 'refractoryPeriod'];
+        const explicitAllowed = CONTENT?.isCategoryEnabled?.('explicit.sexual') === true;
+        if (!explicitAllowed) {
             CONTENT.setPreference('explicitDescriptions', false);
-            adultSettings.forEach(key => { app.settings[key] = false; });
+            explicitSettings.forEach(key => { app.settings[key] = false; });
         }
-        if (tier < 1) {
-            CONTENT.setPreference('voreEnabled', false);
+        if (posture !== 'mature') {
             matureSettings.forEach(key => { app.settings[key] = false; });
         }
     },
@@ -119,10 +126,10 @@ const YAW_SETTINGS_FLOW = {
     },
 
     syncSettingVisibility(app) {
-        const current = app._tierValue(CONTENT?.preferences?.maxTier);
+        const posture = CONTENT?.preferences?.posture || (app._tierValue(CONTENT?.preferences?.maxTier) >= 1 ? 'mature' : 'sfw');
         document.querySelectorAll('[data-setting-tier]').forEach(el => {
-            const required = app._tierValue(el.dataset.settingTier);
-            const visible = required <= current;
+            const required = String(el.dataset.settingTier || 'safe').toLowerCase();
+            const visible = required === 'safe' || required === 'sfw' || posture === 'mature';
             el.style.display = visible ? '' : 'none';
             if (!visible) {
                 el.querySelectorAll('input, select, button, textarea').forEach(control => {
@@ -142,10 +149,78 @@ const YAW_SETTINGS_FLOW = {
         }
         const label = document.getElementById('create-content-level-label');
         if (!label) return;
-        const tierName = app._tierName();
-        const labelKey = `settings.${tierName}`;
-        const fallback = tierName.charAt(0).toUpperCase() + tierName.slice(1);
+        const tierName = CONTENT?.preferences?.posture || (app._tierValue(CONTENT?.preferences?.maxTier) >= 1 ? 'mature' : 'sfw');
+        const labelKey = tierName === 'sfw' ? 'settings.safe' : 'settings.mature';
+        const fallback = tierName === 'sfw' ? 'SFW' : 'Mature';
         label.textContent = app._label(labelKey, fallback);
+    },
+
+    async renderContentPolicySettings(app) {
+        if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM?.syncContentPolicyProviders) {
+            await MODULE_SYSTEM.syncContentPolicyProviders();
+        }
+        const catalog = CONTENT?.policyCatalog?.() || { categories: [], variants: [] };
+        const categorySection = document.getElementById('settings-content-categories');
+        const categoryList = document.getElementById('settings-content-category-list');
+        const variantSection = document.getElementById('settings-gameplay-variants');
+        const variantList = document.getElementById('settings-gameplay-variant-list');
+        const escape = value => app._escapeHtml(String(value ?? ''));
+        const posture = CONTENT?.preferences?.posture || 'sfw';
+
+        if (categorySection && categoryList) {
+            categorySection.hidden = catalog.categories.length === 0;
+            categoryList.innerHTML = catalog.categories.map(category => {
+                const providers = category.providers.map(provider => provider.name).join(', ');
+                const label = category.labelKey ? app._label(category.labelKey, category.label) : category.label;
+                const description = category.descriptionKey ? app._label(category.descriptionKey, category.description) : category.description;
+                const providerText = app._label('settings.categoryProviders', 'Required by {providers}', { providers });
+                return `<label class="settings-policy-row">
+                    <span class="settings-policy-copy"><strong>${escape(label)}</strong>${description ? `<span>${escape(description)}</span>` : ''}<small>${escape(providerText)}</small></span>
+                    <input type="checkbox" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-category" data-content-category="${escape(category.id)}" ${CONTENT.isCategoryEnabled(category.id) ? 'checked' : ''} onchange="App.setContentCategory('${escape(category.id)}',this.checked)">
+                </label>`;
+            }).join('');
+        }
+
+        if (variantSection && variantList) {
+            const visibleVariants = catalog.variants.filter(variant => (
+                variant.minPosture !== 'mature' || posture === 'mature'
+            ) && variant.providers.some(provider => provider.core || provider.enabled));
+            variantSection.hidden = visibleVariants.length === 0;
+            variantList.innerHTML = visibleVariants.map(variant => {
+                const providers = variant.providers.map(provider => provider.name).join(', ');
+                const label = variant.labelKey ? app._label(variant.labelKey, variant.label) : variant.label;
+                const description = variant.descriptionKey ? app._label(variant.descriptionKey, variant.description) : variant.description;
+                const providerText = app._label('settings.variantProviders', 'Provided by {providers}', { providers });
+                const checked = variant.settingKey
+                    ? app.settings[variant.settingKey] === true
+                    : CONTENT.preferences.gameplayVariants[variant.id] === true;
+                return `<label class="settings-policy-row">
+                    <span class="settings-policy-copy"><strong>${escape(label)}</strong>${description ? `<span>${escape(description)}</span>` : ''}<small>${escape(providerText)}</small></span>
+                    <input type="checkbox" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-gameplay-variant" data-gameplay-variant="${escape(variant.id)}" ${checked ? 'checked' : ''} onchange="App.setGameplayVariant('${escape(variant.id)}',this.checked)">
+                </label>`;
+            }).join('');
+        }
+    },
+
+    setContentCategory(app, categoryId, enabled) {
+        CONTENT.setCategoryEnabled(categoryId, enabled);
+        app.enforceContentTierSettings();
+        app.enforceModuleContentPolicy();
+        app.saveSettings();
+        if (typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.notifyPolicyChanged(app, 'content-category');
+        return this.renderContentPolicySettings(app);
+    },
+
+    setGameplayVariant(app, variantId, enabled) {
+        const variant = CONTENT.policyCatalog().variants.find(entry => entry.id === variantId);
+        if (!variant) return false;
+        CONTENT.setGameplayVariant(variantId, enabled);
+        if (variant.settingKey && Object.prototype.hasOwnProperty.call(app.settings, variant.settingKey)) {
+            app.settings[variant.settingKey] = enabled === true;
+        }
+        app.saveSettings();
+        if (typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.notifyPolicyChanged(app, 'gameplay-variant');
+        return true;
     },
 
     openContentSettingsFromCreate(app) {
@@ -247,27 +322,10 @@ const YAW_SETTINGS_FLOW = {
 
     show(app) {
         document.getElementById('screen-settings').style.display = 'block';
-        document.getElementById('toggle-vore').checked = CONTENT.preferences.voreEnabled;
-        document.getElementById('toggle-explicit').checked = CONTENT.preferences.explicitDescriptions;
-        document.getElementById('toggle-endo').checked = app.settings.endoMode;
-        document.getElementById('toggle-fatal').checked = app.settings.fatalVore;
-        document.getElementById('toggle-slow').checked = app.settings.slowDigestion;
-        document.getElementById('toggle-absorb').checked = app.settings.statAbsorption;
-        document.getElementById('toggle-chew').checked = app.settings.chewing;
-        document.getElementById('toggle-attw').checked = app.settings.allTheWayThrough;
-        document.getElementById('toggle-power').checked = app.settings.powerDynamics;
-        document.getElementById('toggle-refractory').checked = app.settings.refractoryPeriod;
-        document.getElementById('toggle-same').checked = app.settings.sameSpeciesBonus;
-        document.getElementById('toggle-fluids').checked = app.settings.fluidEnabled;
-        document.getElementById('toggle-scat').checked = app.settings.scat;
-        document.getElementById('toggle-ws').checked = app.settings.watersports;
-        document.getElementById('toggle-cockVore').checked = app.settings.cockVoreEnabled;
-        document.getElementById('toggle-unbirth').checked = app.settings.unbirthEnabled;
-        document.getElementById('toggle-forcedFeed').checked = app.settings.forcedFeeding;
-        document.getElementById('toggle-bones').checked = app.settings.boneCrushing;
-        document.getElementById('toggle-warn').checked = app.settings.unwillingWarnings;
-        document.getElementById('toggle-hardcore').checked = app.settings.hardcore;
+        const hardcore = document.getElementById('toggle-hardcore');
+        if (hardcore) hardcore.checked = app.settings.hardcore;
         app.updateTierButtons();
+        void this.renderContentPolicySettings(app);
         app.updateCheatButtons();
         app.applyAccessibilitySettings();
         app.syncAccessibilityControls();

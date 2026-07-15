@@ -321,6 +321,45 @@
             box-shadow: 0 0 0 2px var(--accent-primary), var(--shadow-glow);
         }
 
+        .settings-section-title {
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+
+        .settings-policy-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .settings-policy-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 12px;
+            min-height: 48px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+
+        .settings-policy-copy {
+            display: grid;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .settings-policy-copy span,
+        .settings-policy-copy small {
+            color: var(--text-muted);
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
         .panel-header {
             display: flex;
             align-items: center;
@@ -2061,6 +2100,67 @@
             line-height: 1.45;
         }
 
+        .scene-narration {
+            margin: 6px 10px 8px;
+            padding: 8px 10px;
+            border-inline-start: 2px solid var(--accent-secondary);
+            background: color-mix(in srgb, var(--bg-tertiary) 82%, transparent);
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .scene-narration p {
+            margin: 0;
+            color: inherit;
+        }
+
+        .scene-narration small,
+        .scene-narration > span {
+            display: block;
+            margin-top: 4px;
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+
+        .scene-narration.pending {
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        .mod-settings {
+            margin-top: 10px;
+            border-top: 1px solid var(--border-default);
+            padding-top: 8px;
+        }
+
+        .mod-settings summary {
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .mod-setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 8px;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .mod-setting-row span,
+        .mod-setting-row small {
+            display: block;
+        }
+
+        .mod-setting-row small {
+            margin-top: 2px;
+            color: var(--text-muted);
+        }
+
         .story-deltas {
             margin: 8px 0 0;
             padding-left: 18px;
@@ -3674,17 +3774,27 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes toast-in-mobile {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         body.reduced-motion .toast {
             animation: none;
         }
 
-        @media (max-width: 700px) {
+        @media (max-width: 1024px) {
             .toast-stack,
             #app.log-collapsed .toast-stack,
             #app.log-expanded .toast-stack {
                 right: max(8px, calc((100vw - 430px) / 2 + 8px));
-                bottom: calc(var(--mobile-dock-height, 58px) + env(safe-area-inset-bottom) + 12px);
+                top: calc(52px + env(safe-area-inset-top) + 8px);
+                bottom: auto;
                 width: min(414px, calc(100vw - 16px));
+            }
+
+            .toast {
+                animation-name: toast-in-mobile;
             }
         }
 
@@ -4165,7 +4275,13 @@
 
         .holdings-window {
             width: min(1080px, 100%);
-            grid-template-rows: auto auto auto minmax(0, 1fr);
+            grid-template-rows: auto auto minmax(0, 1fr);
+        }
+
+        .holdings-control-shelf {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         .transaction-header,
@@ -4506,6 +4622,26 @@
                 border-radius: var(--radius-md);
             }
 
+            .holdings-window {
+                grid-template-rows: auto minmax(0, 1fr) auto;
+            }
+
+            .holdings-window-header {
+                grid-row: 1;
+            }
+
+            .holdings-window-body {
+                grid-row: 2;
+            }
+
+            .holdings-control-shelf {
+                grid-row: 3;
+                padding-bottom: env(safe-area-inset-bottom);
+                border-top: 1px solid var(--border-default);
+                background: rgba(18, 18, 34, 0.98);
+                box-shadow: 0 -8px 18px rgba(4, 4, 14, 0.22);
+            }
+
             .transaction-header,
             .holdings-window-header {
                 padding: 12px;
@@ -4533,10 +4669,13 @@
             }
 
             .holdings-tabs {
+                order: 2;
                 padding: 8px 12px;
+                border-bottom: 0;
             }
 
             .holdings-owner-row {
+                order: 1;
                 flex-wrap: nowrap;
                 overflow-x: auto;
                 padding: 8px 12px;
@@ -8043,35 +8182,14 @@
                 </div>
             </div>
 
-            <!-- Anatomy Selection -->
-            <div class="accordion-section" data-accordion="anatomy">
+            <!-- Optional provider creation choices -->
+            <div class="accordion-section" data-accordion="anatomy" style="display:none;">
                 <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="anatomy" aria-controls="body-anatomy" aria-expanded="false" onclick="App.toggleAccordion('anatomy')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('anatomy')}">
                     <span data-i18n="create.bodyOptions">Body Options</span>
                     <span class="accordion-arrow" id="arrow-anatomy">▶</span>
                 </div>
                 <div class="accordion-body" id="body-anatomy" style="display:none;">
-                    <div class="option-grid" id="anatomy-grid">
-                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="body-type-a" data-part="clit" onclick="App.selectPart('clit');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
-                            <div class="option-icon">◇</div>
-                            <div class="option-label" data-i18n="anatomy.lowerA">Lower Option A</div>
-                            <div class="option-desc" data-i18n="anatomy.lowerProfile">Lower profile</div>
-                        </div>
-                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="body-type-b" data-part="cock" onclick="App.selectPart('cock');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
-                            <div class="option-icon">◆</div>
-                            <div class="option-label" data-i18n="anatomy.lowerB">Lower Option B</div>
-                            <div class="option-desc" data-i18n="anatomy.lowerProfile">Lower profile</div>
-                        </div>
-                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="chest-type-a" data-part="tits" onclick="App.selectPart('tits');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
-                            <div class="option-icon">△</div>
-                            <div class="option-label" data-i18n="anatomy.chestA">Chest Option A</div>
-                            <div class="option-desc" data-i18n="anatomy.chestProfile">Chest profile</div>
-                        </div>
-                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="chest-type-b" data-part="pecs" onclick="App.selectPart('pecs');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
-                            <div class="option-icon">💪</div>
-                            <div class="option-label" data-i18n="anatomy.chestB">Chest Option B</div>
-                            <div class="option-desc" data-i18n="anatomy.chestProfile">Chest profile</div>
-                        </div>
-                    </div>
+                    <div class="option-grid" id="anatomy-grid"></div>
                 </div>
             </div>
 
@@ -8339,6 +8457,7 @@
                                 <div class="desktop-play-cell" id="desktop-play-cell-s"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-se"></div>
                             </div>
+                            <div class="desktop-presence-rail" id="desktop-presence-rail" data-surface-role="presence-rail" aria-live="polite"></div>
                             <div class="desktop-scene-feed-slot" id="desktop-scene-feed-slot" data-surface-role="scene-feed">
                                 <div class="scene-feed-header">
                                     <span class="desktop-story-kicker">Scene</span>
@@ -8349,7 +8468,6 @@
                                 </div>
                                 <div class="story-latest scene-beat-stream" id="desktop-scene-feed-latest" data-surface-role="scene-feed-latest" data-scene-indicator-id="desktop-new-beat-indicator" role="log" aria-live="off" aria-relevant="additions" aria-label="Scene feed, newest exchanges first"></div>
                             </div>
-                            <div class="desktop-presence-rail" id="desktop-presence-rail" data-surface-role="presence-rail" aria-live="polite"></div>
                             </div>
                             <div class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden>
                                 <div class="selection-sentence" id="selection-sentence" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -8462,111 +8580,23 @@
                 </label>
             </div>
 
-            <!-- Content Tiers -->
+            <!-- Content posture -->
             <div id="settings-content-level" style="margin-bottom: 24px;">
-                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.contentLevel">Content Level</h3>
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.contentLevel">Content Posture</h3>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button id="tier-safe" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="safe" data-i18n="settings.safe" onclick="App.setContentTier('safe')">Safe</button>
+                    <button id="tier-safe" class="nav-btn" type="button" aria-pressed="true" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="sfw" data-i18n="settings.safe" onclick="App.setContentTier('sfw')">SFW</button>
                     <button id="tier-mature" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="mature" data-i18n="settings.mature" onclick="App.setContentTier('mature')">Mature</button>
-                    <button id="tier-adult" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="adult" data-i18n="settings.adult" onclick="App.setContentTier('adult')">Adult</button>
                 </div>
             </div>
 
-            <!-- Vore & Feeding -->
-            <div data-setting-tier="mature" style="margin-bottom: 24px;">
-                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Vore &amp; Feeding</h3>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Enable Vore</span>
-                        <input type="checkbox" id="toggle-vore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="voreEnabled" onchange="CONTENT.setPreference('voreEnabled', this.checked); App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Fatal Vore (prey dies)</span>
-                        <input type="checkbox" id="toggle-fatal" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="fatalVore" onchange="App.settings.fatalVore = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Endo Mode (prey survives)</span>
-                        <input type="checkbox" id="toggle-endo" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="endoMode" onchange="App.settings.endoMode = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Slow Digestion</span>
-                        <input type="checkbox" id="toggle-slow" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="slowDigestion" onchange="App.settings.slowDigestion = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Stat Absorption</span>
-                        <input type="checkbox" id="toggle-absorb" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="statAbsorption" onchange="App.settings.statAbsorption = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Chewing Option</span>
-                        <input type="checkbox" id="toggle-chew" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="chewing" onchange="App.settings.chewing = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>All-the-Way-Through</span>
-                        <input type="checkbox" id="toggle-attw" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="allTheWayThrough" onchange="App.settings.allTheWayThrough = this.checked; App.saveSettings()">
-                    </label>
-                </div>
+            <div id="settings-content-categories" style="margin-bottom: 24px;" hidden>
+                <h3 class="settings-section-title" data-i18n="settings.optionalContent">Optional Content</h3>
+                <div id="settings-content-category-list" class="settings-policy-list"></div>
             </div>
 
-            <!-- Sex & Interaction -->
-            <div data-setting-tier="mature" style="margin-bottom: 24px;">
-                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Sex &amp; Interaction</h3>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <label data-setting-tier="adult" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Explicit Descriptions</span>
-                        <input type="checkbox" id="toggle-explicit" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="explicitDescriptions" onchange="CONTENT.setPreference('explicitDescriptions', this.checked); App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Power Dynamics (Dom/Sub)</span>
-                        <input type="checkbox" id="toggle-power" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="powerDynamics" onchange="App.settings.powerDynamics = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Refractory Period</span>
-                        <input type="checkbox" id="toggle-refractory" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="refractoryPeriod" onchange="App.settings.refractoryPeriod = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Same-Species Bonus</span>
-                        <input type="checkbox" id="toggle-same" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="sameSpeciesBonus" onchange="App.settings.sameSpeciesBonus = this.checked; App.saveSettings()">
-                    </label>
-                </div>
-            </div>
-
-            <!-- Fluids & Extremes -->
-            <div data-setting-tier="adult" style="margin-bottom: 24px;">
-                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Fluids &amp; Extremes</h3>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Fluid Production</span>
-                        <input type="checkbox" id="toggle-fluids" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="fluidEnabled" onchange="App.settings.fluidEnabled = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Scat Content</span>
-                        <input type="checkbox" id="toggle-scat" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="scat" onchange="App.settings.scat = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Watersports</span>
-                        <input type="checkbox" id="toggle-ws" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="watersports" onchange="App.settings.watersports = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Reserve Capture</span>
-                        <input type="checkbox" id="toggle-cockVore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="cockVoreEnabled" onchange="App.settings.cockVoreEnabled = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Unbirth</span>
-                        <input type="checkbox" id="toggle-unbirth" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="unbirthEnabled" onchange="App.settings.unbirthEnabled = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Forced Feeding (CNC)</span>
-                        <input type="checkbox" id="toggle-forcedFeed" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="forcedFeeding" onchange="App.settings.forcedFeeding = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Bone Crushing</span>
-                        <input type="checkbox" id="toggle-bones" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="boneCrushing" onchange="App.settings.boneCrushing = this.checked; App.saveSettings()">
-                    </label>
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Unwilling Prey Warnings</span>
-                        <input type="checkbox" id="toggle-warn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="unwillingWarnings" onchange="App.settings.unwillingWarnings = this.checked; App.saveSettings()">
-                    </label>
-                </div>
+            <div id="settings-gameplay-variants" style="margin-bottom: 24px;" hidden>
+                <h3 class="settings-section-title" data-i18n="settings.gameplayVariants">Gameplay Variants</h3>
+                <div id="settings-gameplay-variant-list" class="settings-policy-list"></div>
             </div>
 
             <!-- Game Mode -->

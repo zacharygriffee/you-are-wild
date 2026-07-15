@@ -103,6 +103,9 @@ const YAW_COMBAT_TURNS = {
     },
 
     newRound(app) {
+        if (app.combatState?.round > 0 && typeof YAW_NARRATION_SYSTEM !== 'undefined') {
+            YAW_NARRATION_SYSTEM.closeExchange(app, `${app.combatState.sceneExchangeId}-round-${app.combatState.round}`, { reason: 'combat-round-closed' });
+        }
         const living = [...app.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat), ...app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0)];
         app._assignCombatRows(living);
         app.combatState.turnQueue = living.map(c => ({ unit: c, initiative: app._calcInitiative(c), actedThisRound: false })).sort((a, b) => b.initiative - a.initiative);

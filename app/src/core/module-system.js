@@ -14,7 +14,7 @@ const MODULE_SYSTEM = {
     PUBLIC_CONTEXT_VERSION: 1,
     TRUST_BOUNDARY: 'trusted-local',
     CONTENT_RATINGS: ['safe', 'mature', 'adult'],
-    KNOWN_PERMISSIONS: ['ui.read', 'world:add_biome', 'content:add_species', 'content:add_item'],
+    KNOWN_PERMISSIONS: ['ui.read', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option'],
     db: null,
     
     // Hooks registry
@@ -29,12 +29,16 @@ const MODULE_SYSTEM = {
         onPlayerMove: [],
         onGameLoad: [],
         onGameSave: [],
-        onTick: []
+        onTick: [],
+        onSceneBeat: [],
+        onSceneExchangeClosed: [],
+        onContentPolicyChanged: []
     },
     
     // Active modules
     activeModules: new Map(),
     ownedContributions: new Map(),
+    settingActions: new Map(),
     loadingModuleId: null,
 
     _request(request) {
@@ -89,6 +93,40 @@ const MODULE_SYSTEM = {
         return permissions;
     },
 
+    _normalizePolicyDeclarations(value, fieldName, kind) {
+        if (value === undefined) return [];
+        if (!Array.isArray(value)) throw new Error(`Module manifest ${fieldName} must be an array`);
+        const normalized = [];
+        const seen = new Set();
+        for (const entry of value) {
+            const source = typeof entry === 'string' ? { id: entry } : entry;
+            if (!source || typeof source !== 'object' || Array.isArray(source)) {
+                throw new Error(`Module manifest ${fieldName} entries must be strings or objects`);
+            }
+            const id = String(source.id || '').trim();
+            if (!id || id.length > 64 || !/^[a-zA-Z0-9_.:-]+$/.test(id)) {
+                throw new Error(`Module manifest ${fieldName} ids must be token strings`);
+            }
+            if (seen.has(id)) continue;
+            seen.add(id);
+            const declaration = {
+                id,
+                label: String(source.label || id.replace(/[-_.:]+/g, ' ')).trim().slice(0, 120),
+                description: String(source.description || '').trim().slice(0, 500)
+            };
+            if (kind === 'category') {
+                declaration.required = source.required !== false;
+            } else {
+                declaration.default = source.default === true;
+                declaration.settingKey = /^[a-zA-Z0-9_.:-]+$/.test(String(source.settingKey || '').trim()) ? String(source.settingKey).trim() : '';
+                declaration.minPosture = String(source.minPosture || 'sfw').trim().toLowerCase() === 'mature' ? 'mature' : 'sfw';
+                declaration.category = /^[a-zA-Z0-9_.:-]+$/.test(String(source.category || '').trim()) ? String(source.category).trim() : '';
+            }
+            normalized.push(declaration);
+        }
+        return normalized;
+    },
+
     _normalizeGameVersion(value, fieldName = 'minGameVersion') {
         const text = String(value || '').trim();
         if (!text) return '';
@@ -97,6 +135,50 @@ const MODULE_SYSTEM = {
             throw new Error(`Module manifest ${fieldName} must be a numeric version like 0.10.0`);
         }
         return normalized;
+    },
+
+    _normalizeSettingsDeclarations(value) {
+        if (value === undefined) return [];
+        if (!Array.isArray(value)) throw new Error('Module manifest settings must be an array');
+        const allowed = new Set(['boolean', 'select', 'number', 'string', 'provider_connection', 'action']);
+        const seen = new Set();
+        return value.map(entry => {
+            if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('Module setting declarations must be objects');
+            const key = this._normalizeSettingKey(entry.key);
+            if (seen.has(key)) throw new Error(`Duplicate module setting declaration: ${key}`);
+            seen.add(key);
+            const type = String(entry.type || '').trim();
+            if (!allowed.has(type)) throw new Error(`Unsupported module setting type: ${type || 'missing'}`);
+            if (/secret|password|api[_-]?key|authorization|bearer|token/i.test(key)) throw new Error('Module settings cannot declare credential fields');
+            const setting = {
+                key,
+                type,
+                label: String(entry.label || key.replace(/[-_.:]+/g, ' ')).trim().slice(0, 120),
+                description: String(entry.description || '').trim().slice(0, 300)
+            };
+            if (type === 'boolean') setting.default = entry.default === true;
+            if (type === 'select') {
+                setting.options = (Array.isArray(entry.options) ? entry.options : []).slice(0, 30).map(option => {
+                    const source = typeof option === 'string' ? { value: option, label: option } : option;
+                    return { value: this._normalizeSettingKey(source?.value), label: String(source?.label || source?.value).slice(0, 120) };
+                });
+                if (!setting.options.length) throw new Error(`Select setting ${key} requires options`);
+                setting.default = setting.options.some(option => option.value === entry.default) ? entry.default : setting.options[0].value;
+            }
+            if (type === 'number') {
+                setting.min = Number.isFinite(Number(entry.min)) ? Number(entry.min) : 0;
+                setting.max = Number.isFinite(Number(entry.max)) ? Number(entry.max) : setting.min + 100;
+                if (setting.max < setting.min) throw new Error(`Number setting ${key} has an invalid range`);
+                setting.step = Math.max(0.01, Number(entry.step) || 1);
+                setting.default = Math.max(setting.min, Math.min(setting.max, Number(entry.default) || setting.min));
+            }
+            if (type === 'string') {
+                setting.maxLength = Math.max(1, Math.min(500, Number(entry.maxLength) || 120));
+                setting.default = String(entry.default || '').slice(0, setting.maxLength);
+            }
+            if (type === 'provider_connection') setting.default = '';
+            return setting;
+        });
     },
 
     _versionParts(version) {
@@ -145,6 +227,17 @@ const MODULE_SYSTEM = {
             throw new Error('Module manifest dependencies cannot include the module id');
         }
         const minGameVersion = this._normalizeGameVersion(manifest.minGameVersion || manifest.gameVersion || '', manifest.minGameVersion ? 'minGameVersion' : 'gameVersion');
+        const contentCategories = this._normalizePolicyDeclarations(manifest.contentCategories, 'contentCategories', 'category');
+        if (contentRating === 'adult' && !contentCategories.some(category => category.id === 'explicit.sexual')) {
+            contentCategories.push({
+                id: 'explicit.sexual',
+                label: 'Explicit sexual content',
+                description: 'Legacy adult-rated module content.',
+                required: true,
+                legacyAdultAlias: true
+            });
+        }
+        const gameplayVariants = this._normalizePolicyDeclarations(manifest.gameplayVariants, 'gameplayVariants', 'variant');
 
         return {
             ...manifest,
@@ -156,7 +249,10 @@ const MODULE_SYSTEM = {
             trustBoundary,
             permissions: this._normalizePermissions(manifest.permissions),
             dependencies,
-            minGameVersion
+            minGameVersion,
+            contentCategories,
+            gameplayVariants,
+            settings: this._normalizeSettingsDeclarations(manifest.settings)
         };
     },
 
@@ -303,6 +399,50 @@ const MODULE_SYSTEM = {
         }
     },
 
+    _declaredSetting(manifest, key) {
+        const normalized = this._normalizeSettingKey(key);
+        return (manifest?.settings || []).find(setting => setting.key === normalized) || null;
+    },
+
+    _normalizeDeclaredSettingValue(declaration, value) {
+        if (!declaration || declaration.type === 'action') throw new Error('Module setting is not value-backed');
+        if (declaration.type === 'boolean') return value === true || value === 'true';
+        if (declaration.type === 'select') {
+            const normalized = String(value);
+            if (!declaration.options.some(option => option.value === normalized)) throw new Error('Module setting selection is invalid');
+            return normalized;
+        }
+        if (declaration.type === 'number') {
+            const number = Number(value);
+            if (!Number.isFinite(number)) throw new Error('Module setting must be a number');
+            return Math.max(declaration.min, Math.min(declaration.max, number));
+        }
+        if (declaration.type === 'string') return String(value || '').slice(0, declaration.maxLength);
+        if (declaration.type === 'provider_connection') {
+            const id = String(value || '');
+            if (id && !YAW_AI_PROVIDER_MANAGER.connections.has(id)) throw new Error('Provider connection is unavailable');
+            return id;
+        }
+        throw new Error('Unsupported module setting type');
+    },
+
+    async getDeclaredModuleSettings(moduleId, manifest) {
+        const result = {};
+        for (const declaration of manifest?.settings || []) {
+            if (declaration.type === 'action') continue;
+            result[declaration.key] = await this.getModuleSetting(moduleId, declaration.key, declaration.default ?? null);
+        }
+        return result;
+    },
+
+    async setDeclaredModuleSetting(moduleId, manifest, key, value) {
+        const declaration = this._declaredSetting(manifest, key);
+        if (!declaration) throw new Error('Module setting is not declared');
+        const normalized = this._normalizeDeclaredSettingValue(declaration, value);
+        await this.setModuleSetting(moduleId, declaration.key, normalized);
+        return normalized;
+    },
+
     _gameVersionBlockReason(manifest) {
         const minGameVersion = String(manifest?.minGameVersion || '').trim();
         if (!minGameVersion) return null;
@@ -324,25 +464,53 @@ const MODULE_SYSTEM = {
 
     _currentContentPolicy() {
         if (typeof CONTENT === 'undefined' || !CONTENT?.preferences) {
-            return { maxTier: 0, explicitDescriptions: false };
+            return { posture: 'sfw', maxTier: 0, explicitDescriptions: false, enabledCategories: [] };
         }
         return {
+            posture: CONTENT.preferences.posture || (Number(CONTENT.preferences.maxTier) >= 1 ? 'mature' : 'sfw'),
             maxTier: Math.max(0, Math.min(2, Number(CONTENT.preferences.maxTier) || 0)),
-            explicitDescriptions: !!CONTENT.preferences.explicitDescriptions
+            explicitDescriptions: !!CONTENT.preferences.explicitDescriptions,
+            enabledCategories: Array.isArray(CONTENT.preferences.enabledCategories) ? [...CONTENT.preferences.enabledCategories] : []
         };
     },
 
     _contentRatingBlockReason(manifest) {
         const rating = String(manifest?.contentRating || 'safe').trim().toLowerCase();
-        const requiredTier = this._contentRatingTier(rating);
         const policy = this._currentContentPolicy();
-        if (requiredTier > policy.maxTier) {
+        if ((rating === 'mature' || rating === 'adult') && policy.posture !== 'mature') {
             return `Module contentRating ${rating} requires a higher content tier`;
         }
-        if (rating === 'adult' && !policy.explicitDescriptions) {
+        if (rating === 'adult' && !policy.explicitDescriptions && !policy.enabledCategories.includes('explicit.sexual')) {
             return 'Module contentRating adult requires explicit descriptions to be enabled';
         }
+        for (const category of manifest?.contentCategories || []) {
+            if (category.required !== false && !policy.enabledCategories.includes(category.id)) {
+                return `Module content category ${category.id} requires player opt-in`;
+            }
+        }
         return null;
+    },
+
+    _syncContentPolicyProvider(module) {
+        if (typeof CONTENT === 'undefined' || !CONTENT?.registerPolicyProvider || !module?.manifest) return null;
+        return CONTENT.registerPolicyProvider(module.id, module.manifest, {
+            installed: true,
+            enabled: module.enabled === true
+        });
+    },
+
+    async syncContentPolicyProviders() {
+        if (typeof CONTENT === 'undefined' || !CONTENT?.registerPolicyProvider) return [];
+        const modules = await this.getAllModules();
+        const installedIds = new Set(modules.map(module => module.id));
+        for (const provider of CONTENT.policyProviders?.values?.() || []) {
+            if (!provider.core && !installedIds.has(provider.id)) CONTENT.unregisterPolicyProvider(provider.id);
+        }
+        for (const module of modules) {
+            module.manifest = this._normalizeManifest(module.manifest);
+            this._syncContentPolicyProvider(module);
+        }
+        return modules;
     },
 
     _assertContentRatingEnabled(manifest) {
@@ -482,6 +650,26 @@ const MODULE_SYSTEM = {
             }
         }
     },
+
+    _deepFreeze(value) {
+        if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+        Object.freeze(value);
+        Object.values(value).forEach(child => this._deepFreeze(child));
+        return value;
+    },
+
+    async executePublicHook(event, envelope) {
+        this._assertKnownHookEvent(event);
+        const hooks = [...(this.hooks[event] || [])];
+        await Promise.all(hooks.map(async hook => {
+            try {
+                const payload = this._serializableCopy(envelope);
+                await hook.callback(this._deepFreeze(payload));
+            } catch (e) {
+                console.error(`Public hook error (${event}):`, e);
+            }
+        }));
+    },
     
     // Install module from file
     async installModule(moduleData) {
@@ -517,6 +705,7 @@ const MODULE_SYSTEM = {
             this.unloadModule(module.id);
             module.disabledDependents = await this._disableDependentsOf(module.id);
         }
+        this._syncContentPolicyProvider(module);
         
         console.log(`Module installed: ${module.manifest.name}`);
         return module;
@@ -550,6 +739,7 @@ const MODULE_SYSTEM = {
                 } catch (storeError) {
                     console.error(`Failed to persist disabled state for ${moduleId}:`, storeError);
                 }
+                this._syncContentPolicyProvider(module);
                 throw e;
             }
 
@@ -560,6 +750,7 @@ const MODULE_SYSTEM = {
                 this.unloadModule(moduleId);
                 throw e;
             }
+            this._syncContentPolicyProvider(module);
             return module;
         }
 
@@ -569,6 +760,7 @@ const MODULE_SYSTEM = {
 
         this.unloadModule(moduleId);
         module.disabledDependents = await this._disableDependentsOf(moduleId);
+        this._syncContentPolicyProvider(module);
         
         return module;
     },
@@ -707,7 +899,9 @@ const MODULE_SYSTEM = {
             this.ownedContributions.set(moduleId, {
                 biomes: new Map(),
                 species: new Set(),
-                items: new Set()
+                items: new Set(),
+                templates: [],
+                locales: []
             });
         }
         return this.ownedContributions.get(moduleId);
@@ -795,6 +989,7 @@ const MODULE_SYSTEM = {
         if (!event || typeof event !== 'object') return null;
         return {
             id: event.id == null ? null : String(event.id),
+            exchangeId: String(event.exchangeId || event.metadata?.exchangeId || event.id || ''),
             mode: String(event.mode || ''),
             action: String(event.action || ''),
             subAction: event.subAction == null ? null : String(event.subAction),
@@ -810,6 +1005,22 @@ const MODULE_SYSTEM = {
             source: String(event.source || ''),
             contentTier: Number.isFinite(Number(event.contentTier)) ? Number(event.contentTier) : 0,
             subEvents: this._serializableCopy(event.subEvents || [])
+        };
+    },
+
+    _publicNarrativeUnitSummary(unit) {
+        const summary = this._publicUnitSummary(unit);
+        if (!summary) return null;
+        const strings = (value, limit = 8) => (Array.isArray(value) ? value : []).slice(0, limit).map(item => String(item).slice(0, 120));
+        return {
+            ...summary,
+            pronouns: String(unit.pronouns || '').slice(0, 80),
+            voice: String(unit.voice || '').slice(0, 160),
+            traits: strings(unit.narrativeTraits || unit.traits),
+            goals: strings(unit.goals, 5),
+            relationshipSummary: String(unit.relationshipSummary || '').slice(0, 240),
+            currentDisposition: String(unit.disposition || '').slice(0, 80),
+            adultEligible: unit.adultEligible === true
         };
     },
 
@@ -865,8 +1076,15 @@ const MODULE_SYSTEM = {
             version: this.PUBLIC_CONTEXT_VERSION,
             mode: App.combatState?.active ? 'combat' : 'adventure',
             content: {
+                posture: String(CONTENT?.preferences?.posture || (Number(CONTENT?.preferences?.maxTier) >= 1 ? 'mature' : 'sfw')),
                 maxTier: Number.isFinite(Number(CONTENT?.preferences?.maxTier)) ? Number(CONTENT.preferences.maxTier) : 0,
-                language: String(CONTENT?.preferences?.language || 'en')
+                language: String(CONTENT?.preferences?.language || 'en'),
+                enabledCategories: Array.isArray(CONTENT?.preferences?.enabledCategories)
+                    ? CONTENT.preferences.enabledCategories.map(String)
+                    : [],
+                gameplayVariants: Object.fromEntries(Object.entries(CONTENT?.preferences?.gameplayVariants || {})
+                    .filter(([, enabled]) => enabled === true)
+                    .map(([id]) => [String(id), true]))
             },
             location: {
                 x: Number(App.location?.x || 0),
@@ -889,6 +1107,19 @@ const MODULE_SYSTEM = {
         this._contributionRecord(moduleId)[collectionName].add(entry);
     },
 
+    _addOwnedTemplate(moduleId, category, type, variant, tier, renderer) {
+        if (typeof CONTENT === 'undefined' || !CONTENT?.registerTemplateTier) throw new Error('Content template registry is unavailable');
+        const previous = CONTENT.templateTier(category, type, variant, tier);
+        CONTENT.registerTemplateTier(category, type, variant, tier, renderer);
+        this._contributionRecord(moduleId).templates.push({ category, type, variant, tier, previous });
+    },
+
+    _addOwnedLocaleEntries(moduleId, locale, entries) {
+        if (typeof CONTENT === 'undefined' || !CONTENT?.registerLocaleEntries) throw new Error('Content locale registry is unavailable');
+        const previous = CONTENT.registerLocaleEntries(locale, entries);
+        this._contributionRecord(moduleId).locales.push({ locale, previous });
+    },
+
     _removeModuleContributions(moduleId) {
         const record = this.ownedContributions.get(moduleId);
         if (!record) return;
@@ -906,6 +1137,13 @@ const MODULE_SYSTEM = {
         if (Array.isArray(App.items)) {
             App.items = App.items.filter(entry => !record.items.has(entry));
         }
+        for (const contribution of [...record.templates].reverse()) {
+            CONTENT?.registerTemplateTier?.(contribution.category, contribution.type, contribution.variant, contribution.tier, contribution.previous ?? null);
+        }
+        for (const contribution of [...record.locales].reverse()) {
+            CONTENT?.restoreLocaleEntries?.(contribution.locale, contribution.previous);
+        }
+        CONTENT?.unregisterCreationOptions?.(moduleId);
 
         this.ownedContributions.delete(moduleId);
     },
@@ -941,6 +1179,14 @@ const MODULE_SYSTEM = {
             );
         }
         this._removeModuleContributions(moduleId);
+        if (typeof YAW_AI_PROVIDER_MANAGER !== 'undefined') YAW_AI_PROVIDER_MANAGER.unregisterOwner(moduleId);
+        if (typeof YAW_NARRATION_SYSTEM !== 'undefined') {
+            YAW_NARRATION_SYSTEM.removeContextExtensions(moduleId);
+            YAW_NARRATION_SYSTEM.removeOwner(App, moduleId);
+        }
+        for (const key of [...this.settingActions.keys()]) {
+            if (key.startsWith(`${moduleId}:`)) this.settingActions.delete(key);
+        }
         
         this.activeModules.delete(moduleId);
         console.log(`Module unloaded: ${moduleId}`);
@@ -971,9 +1217,92 @@ const MODULE_SYSTEM = {
                 self._addOwnedArrayEntry(moduleId, 'items', itemDef);
             },
 
+            registerContentTemplate(category, type, variant, tier, renderer) {
+                self._requirePermission(moduleId, manifest, 'content:add_template');
+                self._addOwnedTemplate(moduleId, category, type, variant, tier, renderer);
+            },
+
+            registerLocaleEntries(locale, entries) {
+                self._requirePermission(moduleId, manifest, 'content:add_locale');
+                self._addOwnedLocaleEntries(moduleId, locale, entries);
+            },
+
+            registerCreationOption(option) {
+                self._requirePermission(moduleId, manifest, 'content:add_creation_option');
+                if (typeof CONTENT === 'undefined' || !CONTENT?.registerCreationOption) throw new Error('Creation option registry is unavailable');
+                self._contributionRecord(moduleId);
+                return CONTENT.registerCreationOption(moduleId, option);
+            },
+
             getContext(options = {}) {
                 self._requirePermission(moduleId, manifest, 'ui.read');
                 return self.getPublicContext(options);
+            },
+
+            getNarrationContext(options = {}) {
+                self._requirePermission(moduleId, manifest, 'scene:read_narrative');
+                return YAW_NARRATION_SYSTEM.context(App, options);
+            },
+
+            publishNarration(record) {
+                self._requirePermission(moduleId, manifest, 'scene:narrate');
+                return YAW_NARRATION_SYSTEM.publish(App, moduleId, record);
+            },
+
+            updateNarration(id, patch) {
+                self._requirePermission(moduleId, manifest, 'scene:narrate');
+                return YAW_NARRATION_SYSTEM.update(App, moduleId, id, patch);
+            },
+
+            removeNarration(id) {
+                self._requirePermission(moduleId, manifest, 'scene:narrate');
+                return YAW_NARRATION_SYSTEM.remove(App, moduleId, id);
+            },
+
+            clearNarrations() {
+                self._requirePermission(moduleId, manifest, 'scene:narrate');
+                return YAW_NARRATION_SYSTEM.clearOwner(App, moduleId);
+            },
+
+            registerSettingAction(key, callback) {
+                const declaration = self._declaredSetting(manifest, key);
+                if (declaration?.type !== 'action' || typeof callback !== 'function') throw new Error('Setting action must match a declared action');
+                self.settingActions.set(`${moduleId}:${declaration.key}`, callback);
+            },
+
+            registerNarrationContextExtension(extension) {
+                self._requirePermission(moduleId, manifest, 'scene:read_narrative');
+                return YAW_NARRATION_SYSTEM.registerContextExtension(moduleId, extension);
+            },
+
+            registerAIProvider(providerId, adapter) {
+                self._requirePermission(moduleId, manifest, 'ai:provide');
+                return YAW_AI_PROVIDER_MANAGER.registerAdapter(providerId, adapter, moduleId);
+            },
+
+            createAIProviderConnection(providerId, metadata = {}) {
+                self._requirePermission(moduleId, manifest, 'ai:provide');
+                return YAW_AI_PROVIDER_MANAGER.createConnection(providerId, metadata);
+            },
+
+            removeAIProviderConnection(connectionId) {
+                self._requirePermission(moduleId, manifest, 'ai:provide');
+                return YAW_AI_PROVIDER_MANAGER.removeOwnedConnection(moduleId, connectionId);
+            },
+
+            ai: {
+                generate(request) {
+                    self._requirePermission(moduleId, manifest, 'ai:request');
+                    return YAW_AI_PROVIDER_MANAGER.generate(moduleId, request);
+                },
+                listConnections() {
+                    self._requirePermission(moduleId, manifest, 'ai:request');
+                    return YAW_AI_PROVIDER_MANAGER.listConnections();
+                },
+                cancelPending() {
+                    self._requirePermission(moduleId, manifest, 'ai:request');
+                    YAW_AI_PROVIDER_MANAGER.abortModule(moduleId);
+                }
             },
             
             log(message) {
@@ -1056,6 +1385,9 @@ const MODULE_SYSTEM = {
             }
         }
         await this._transactionDone(tx);
+        if (typeof CONTENT !== 'undefined' && CONTENT?.unregisterPolicyProvider) {
+            CONTENT.unregisterPolicyProvider(moduleId);
+        }
         
         console.log(`Module deleted: ${moduleId}`);
     }

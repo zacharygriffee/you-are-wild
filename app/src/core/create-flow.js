@@ -38,7 +38,7 @@ const YAW_CREATE_FLOW = {
     },
 
     isSafeTier(app) {
-        return app._tierValue(CONTENT?.preferences?.maxTier ?? 0) < 2;
+        return CONTENT?.isCategoryEnabled?.('explicit.sexual') !== true;
     },
 
     compatibilityPartsForGender(gender) {
@@ -49,10 +49,7 @@ const YAW_CREATE_FLOW = {
 
     ensureSafeCompatibilityParts(app) {
         if (!this.isSafeTier(app) || !app.selectedGender) return;
-        const defaults = this.compatibilityPartsForGender(app.selectedGender);
-        app.selectedParts = [...defaults];
-        app._safeCompatibilityPartsApplied = true;
-        app.updateAnatomyUI();
+        app._safeCompatibilityPartsApplied = false;
     },
 
     selectGender(app, gender) {
@@ -84,42 +81,28 @@ const YAW_CREATE_FLOW = {
         const name = document.getElementById('char-name')?.value?.trim() || '';
         const hasGender = Boolean(app.selectedGender);
         const hasName = Boolean(name);
-        if (hasName && hasGender && this.isSafeTier(app)) {
-            this.ensureSafeCompatibilityParts(app);
-            app._setCreateValidation('');
-            return true;
-        }
-        const safeTier = this.isSafeTier(app);
-        const hasPrimaryAnatomy = app.selectedParts.includes('clit') || app.selectedParts.includes('cock');
-        const hasChestAnatomy = app.selectedParts.includes('tits') || app.selectedParts.includes('pecs');
-        if (hasName && hasGender && hasPrimaryAnatomy && hasChestAnatomy) {
+        if (hasName && hasGender) {
             app._setCreateValidation('');
             return true;
         }
         const missing = [];
         if (!hasName) missing.push(app._label('create.validation.name', 'enter a name'));
         if (!hasGender) missing.push(app._label('create.validation.gender', 'choose a gender'));
-        if (!safeTier && !hasPrimaryAnatomy) missing.push(app._label('create.validation.primaryAnatomy', 'choose a primary anatomy option'));
-        if (!safeTier && !hasChestAnatomy) missing.push(app._label('create.validation.chestAnatomy', 'choose a chest anatomy option'));
         const message = app._label('create.validation.required', 'Before beginning, please {items}.', { items: missing.join(', ') });
         app._setCreateValidation(message);
-        app.toggleAccordion(!hasGender ? 'gender' : 'anatomy');
+        app.toggleAccordion('gender');
         return false;
     },
 
     randomize(app) {
         const genders = ['female', 'male', 'nonbinary'];
-        const anatomyPresets = [
-            ['clit', 'tits'],
-            ['cock', 'pecs'],
-            ['cock', 'tits'],
-            ['clit', 'pecs'],
-            ['cock', 'clit', 'pecs'],
-            ['cock', 'clit', 'tits']
-        ];
+        const providerOptions = CONTENT?.getCreationOptions?.() || [];
         const species = app.species[Math.floor(Math.random() * app.species.length)]?.id || 'human';
         const gender = genders[Math.floor(Math.random() * genders.length)];
-        const parts = anatomyPresets[Math.floor(Math.random() * anatomyPresets.length)];
+        const groupedOptions = [...new Set(providerOptions.map(option => option.group))].map(group => (
+            providerOptions.filter(option => option.group === group)
+        ));
+        const parts = groupedOptions.map(options => options[Math.floor(Math.random() * options.length)]?.value).filter(Boolean);
         app.selectSpecies(species);
         app.selectedGender = gender;
         app.selectedParts = [...parts];
@@ -134,27 +117,24 @@ const YAW_CREATE_FLOW = {
         const anatomySection = document.querySelector('[data-accordion="anatomy"]');
         const anatomyBody = document.getElementById('body-anatomy');
         const anatomyArrow = document.getElementById('arrow-anatomy');
-        const safeTier = this.isSafeTier(app);
-        if (anatomySection) anatomySection.style.display = safeTier ? 'none' : '';
-        if (anatomyBody && safeTier) anatomyBody.style.display = 'none';
-        if (anatomyArrow && safeTier) anatomyArrow.textContent = '▶';
-        if (safeTier) this.ensureSafeCompatibilityParts(app);
-        if (!safeTier && app._safeCompatibilityPartsApplied) {
-            app.selectedParts = [];
-            app._safeCompatibilityPartsApplied = false;
-            app.updateAnatomyUI();
-        }
+        const options = CONTENT?.getCreationOptions?.() || [];
+        const hasProviderOptions = options.length > 0;
+        if (anatomySection) anatomySection.style.display = hasProviderOptions ? '' : 'none';
+        if (anatomyBody && !hasProviderOptions) anatomyBody.style.display = 'none';
+        if (anatomyArrow && !hasProviderOptions) anatomyArrow.textContent = '▶';
+        this.renderProviderCreationOptions(app, options);
     },
 
     toggleAccordion(app, id) {
-        const targetId = id === 'anatomy' && this.isSafeTier(app) ? 'gender' : id;
+        const hasProviderOptions = (CONTENT?.getCreationOptions?.() || []).length > 0;
+        const targetId = id === 'anatomy' && !hasProviderOptions ? 'gender' : id;
         document.querySelectorAll('.accordion-section').forEach(section => {
             const sectionId = section.dataset.accordion;
             const body = document.getElementById('body-' + sectionId);
             const arrow = document.getElementById('arrow-' + sectionId);
             const header = section.querySelector?.('.accordion-header');
             if (!body || !arrow) return;
-            if (sectionId === 'anatomy' && this.isSafeTier(app)) {
+            if (sectionId === 'anatomy' && !hasProviderOptions) {
                 body.style.display = 'none';
                 arrow.textContent = '▶';
                 if (header) header.setAttribute('aria-expanded', 'false');
@@ -178,6 +158,19 @@ const YAW_CREATE_FLOW = {
         ).join('');
     },
 
+    renderProviderCreationOptions(app, options = CONTENT?.getCreationOptions?.() || []) {
+        const grid = document.getElementById('anatomy-grid');
+        if (!grid) return;
+        grid.innerHTML = options.map(option => {
+            const selected = app.selectedParts.includes(option.value) ? ' selected' : '';
+            const icon = option.icon ? `<div class="create-option-icon" aria-hidden="true">${app._escapeHtml(option.icon)}</div>` : '';
+            return `<div class="option-card${selected}" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-provider-option" data-create-option="${app._escapeHtml(option.id)}" data-part="${app._escapeHtml(option.value)}" onclick="App.selectPart('${app._escapeJsString(option.value)}');App.updateAnatomyUI()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                ${icon}<div style="font-weight:600;color:var(--text-primary)">${app._escapeHtml(option.label)}</div>
+                ${option.description ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">${app._escapeHtml(option.description)}</div>` : ''}
+            </div>`;
+        }).join('');
+    },
+
     createCharacter(app) {
         if (!app.validateCharacterCreation()) return;
         this.ensureSafeCompatibilityParts(app);
@@ -190,6 +183,7 @@ const YAW_CREATE_FLOW = {
         const hasCock = parts.includes('cock');
         const hasClit = parts.includes('clit');
         const hasTits = parts.includes('tits');
+        const hasPecs = parts.includes('pecs');
         const maxPun = baseStats.MPun;
         const maxPle = baseStats.MPle;
         app.encounterPreference = app.selectedEncounterPreference || 'any';
@@ -198,7 +192,7 @@ const YAW_CREATE_FLOW = {
             id: 'player_' + Date.now(), name: name, species: app.selectedSpecies,
             icon: species.icon, gender: app.selectedGender,
             identity: app.selectedGender, parts: hasCock ? 'cock' : (hasClit ? 'clit' : null),
-            chest: hasTits ? 'tits' : 'pecs', bothParts: hasCock && hasClit,
+            chest: hasTits ? 'tits' : (hasPecs ? 'pecs' : null), bothParts: hasCock && hasClit,
             bodyParts: bodyParts, size: 4, appetite: 4,
             level: 1, xp: 0, xpToNext: 100, gold: 0,
             MPun: maxPun, CPun: maxPun, MPle: maxPle, CPle: Math.floor(maxPle * 0.5),

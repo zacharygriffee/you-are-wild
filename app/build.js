@@ -35,6 +35,7 @@ const SCRIPT_ORDER = [
   'src/core/log-view.js',
   'src/core/story-events.js',
   'src/core/narration-system.js',
+  'src/core/puter-provider.js',
   'src/core/balance-system.js',
   'src/core/tile-event-feed.js',
   'src/core/structure-navigation.js',

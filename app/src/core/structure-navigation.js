@@ -223,10 +223,16 @@ const YAW_STRUCTURE_NAVIGATION = {
             p.CPun = Math.min(p.MPun, p.CPun + healAmount);
             app._applyHungerRelief?.(p, app.BALANCE_V1?.relief?.rest ?? 10, { action: 'rest', source: 'rest' });
         });
+        const cured = YAW_COMBAT_STATUS.curePersistentAilments([...healed]);
         app._advanceTime(8);
         const restedText = app._label('log.rested', 'Rested and recovered.');
         app.log.push({ text: restedText, type: 'heal' });
         app._addTileEvent(restedText, 'heal');
+        if (cured.length > 0) {
+            const curedText = app._label('log.restCuredAilments', 'Safe rest clears lingering poison, bleeding, and burns.');
+            app.log.push({ text: curedText, type: 'heal' });
+            app._addTileEvent(curedText, 'heal');
+        }
         app.renderLog();
         app.renderParty();
         app.renderExplorationActions();

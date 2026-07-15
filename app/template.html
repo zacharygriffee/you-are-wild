@@ -2156,6 +2156,61 @@
             display: block;
         }
 
+        .provider-connection-tool {
+            border-block: 1px solid var(--border-default);
+            padding-block: 16px;
+            margin-bottom: 20px;
+        }
+
+        .provider-connection-tool h2 {
+            margin: 0 0 4px;
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        .provider-connection-fields {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin-top: 12px;
+        }
+
+        .provider-connection-fields label,
+        .provider-connection-fields small {
+            display: block;
+        }
+
+        .provider-connection-fields input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px 10px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .provider-connection-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .provider-connection-status {
+            min-height: 18px;
+            margin: 10px 0 0;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .provider-connection-status[data-kind="success"] { color: var(--accent-primary); }
+        .provider-connection-status[data-kind="error"] { color: var(--accent-danger); }
+
+        @media (max-width: 620px) {
+            .provider-connection-fields { grid-template-columns: 1fr; }
+        }
+
         .mod-setting-row small {
             margin-top: 2px;
             color: var(--text-muted);
@@ -8658,6 +8713,24 @@
                 <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" data-command-slot="exit" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button>
             </div>
             <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="mod.subtitle">Install, enable, and manage game modules.</p>
+
+            <section class="provider-connection-tool" aria-labelledby="puter-provider-title">
+                <h2 id="puter-provider-title" data-i18n="provider.puter.title">Puter AI Provider</h2>
+                <small data-i18n="provider.puter.description">Optional user-pays AI. Puter handles sign-in; the game receives no API key. The connection lasts only for this browser session.</small>
+                <div class="provider-connection-fields">
+                    <label for="puter-provider-model">
+                        <span data-i18n="provider.puter.model">Model</span>
+                        <small data-i18n="provider.puter.modelHelp">Optional free-form Puter model identifier. Leave blank for the provider default.</small>
+                        <input id="puter-provider-model" type="text" maxlength="160" autocomplete="off" placeholder="Provider default" data-i18n-placeholder="provider.puter.modelPlaceholder">
+                    </label>
+                    <div class="provider-connection-actions" role="group" aria-label="Puter provider actions" data-i18n-aria-label="provider.puter.actions">
+                        <button id="puter-provider-connect" class="nav-btn primary" type="button" onclick="ModUI.runPuterAction('connect')" data-i18n="provider.connect">Connect</button>
+                        <button id="puter-provider-test" class="nav-btn" type="button" onclick="ModUI.runPuterAction('test')" data-i18n="provider.test">Test</button>
+                        <button id="puter-provider-disconnect" class="nav-btn" type="button" onclick="ModUI.runPuterAction('disconnect')" data-i18n="provider.disconnect">Disconnect</button>
+                    </div>
+                </div>
+                <p id="puter-provider-status" class="provider-connection-status" role="status" aria-live="polite" data-kind="info" data-i18n="provider.puter.disconnected">Not connected.</p>
+            </section>
 
             <!-- Install -->
             <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">

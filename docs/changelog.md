@@ -15,9 +15,11 @@ This is a compact history of completed foundations. Git remains the authoritativ
 - Trusted-local modules support validated manifests, permissions, dependencies, content ratings, owned hooks/contributions, and versioned public narrative context.
 - Core now exposes SFW and Mature postures, while provider-declared categories, gameplay variants, localized labels, creation options, and explicit narrative stay in optional modules outside the generated HTML.
 - Provider-neutral narration now uses immutable post-commit hooks, an owned presentation-only store, focused context, declarative mod settings, session-only provider connections, and separately packaged SFW/Mature and explicit orchestrators.
+- Narration prerequisites now include credential-safe module settings, new/load runtime cancellation, exclusive orchestrator ownership, authoritative adult eligibility, target-exchange context snapshots, packaged integration coverage, and a keyless Puter Connect/Test/Disconnect path.
 
 ## Recent Fixes
 
+- Combat-only control effects such as restraint, envelopment, terrain entrapment, stun, freeze, charm, fear, combat sleep, and refractory recovery now clear when an encounter ends. Old noncombat saves are sanitized on load; poison, bleeding, and burns persist until safe rest or defeat regeneration cures them.
 - Toasts self-expire, pause on pointer hover, reset expiration on tap, and retain an explicit close control.
 - Releasing the last swallowed enemy reinstates combat when that hostile returns to the battlefield.
 - Contained and consumed creatures render in separate Holdings collections.

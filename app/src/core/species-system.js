@@ -4,11 +4,24 @@
  */
 
 const YAW_SPECIES_SYSTEM = {
+    adultEligibilityStatus(value) {
+        const status = typeof value === 'object' ? value?.status : value;
+        return ['eligible', 'ineligible', 'unknown'].includes(String(status || '').toLowerCase())
+            ? String(status).toLowerCase()
+            : 'unknown';
+    },
+
     canon(app, sid) {
         const override = app.SPECIES_CANON[sid] || {};
+        const species = (app.species || []).find(entry => entry.id === sid) || {};
+        const authoredCanon = Object.prototype.hasOwnProperty.call(app.SPECIES_CANON, sid);
+        const adultEligibility = this.adultEligibilityStatus(
+            species.adultEligibility ?? override.adultEligibility ?? (authoredCanon ? 'eligible' : 'unknown')
+        );
         return {
             ...app.DEFAULT_SPECIES_CANON,
             ...override,
+            adultEligibility,
             interactionEligibility: {
                 ...(app.DEFAULT_SPECIES_CANON.interactionEligibility || {}),
                 ...(override.interactionEligibility || {})
@@ -29,6 +42,35 @@ const YAW_SPECIES_SYSTEM = {
         };
         unit.modOnlyAnimal = unit.modOnlyAnimal ?? canon.modOnlyAnimal;
         unit.speciesTraits = [...new Set([...(unit.speciesTraits || []), ...(canon.traits || [])])];
+        this.applyAdultEligibility(app, unit, canon);
+        return unit;
+    },
+
+    applyAdultEligibility(app, unit, canon = this.canon(app, unit?.species || 'human')) {
+        if (!unit) return unit;
+        const lifeStage = String(unit.lifeStage || unit.ageCategory || '').trim().toLowerCase();
+        const explicitlyIneligibleStage = ['minor', 'child', 'juvenile', 'adolescent', 'underage'].includes(lifeStage);
+        let status = 'unknown';
+        let authority = 'unknown';
+        const current = unit.adultEligibility;
+        if (explicitlyIneligibleStage) {
+            status = 'ineligible';
+            authority = 'unit-life-stage';
+        } else if (current) {
+            status = this.adultEligibilityStatus(current);
+            authority = typeof current === 'object' && current.authority
+                ? String(current.authority).slice(0, 80)
+                : 'unit-metadata';
+        } else if (typeof unit.adultEligible === 'boolean') {
+            status = unit.adultEligible ? 'eligible' : 'ineligible';
+            authority = 'legacy-unit-migration';
+        } else {
+            status = this.adultEligibilityStatus(canon.adultEligibility);
+            authority = status === 'unknown' ? 'unknown' : 'species-canon';
+        }
+        unit.lifeStage = lifeStage || (status === 'eligible' ? 'adult' : 'unknown');
+        unit.adultEligibility = { version: 1, status, authority };
+        unit.adultEligible = status === 'eligible';
         return unit;
     },
 

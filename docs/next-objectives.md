@@ -33,7 +33,7 @@ This is the short handoff for unfinished work. Completed implementation history 
 2. Continue public mod-context and example hardening for narrative, structural, and asset/content-pack lanes.
 3. Strengthen deterministic map playability: start-area invariants, traversal metadata, roads/bridges/coasts, POI budgets, routes, and encounter pressure.
 4. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
-5. Narration engine seams and optional first-party orchestrators now exist. A real provider remains deferred until its authorization and credential boundary is implemented and reviewed; remote MCP and localhost sidecars remain later work.
+5. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, and a session-only Puter provider now exist. The next provider target is the documented OpenAI-compatible connection with a dedicated credential boundary; remote MCP and localhost sidecars remain later work.
 
 ## Operator-Mediated Decisions
 

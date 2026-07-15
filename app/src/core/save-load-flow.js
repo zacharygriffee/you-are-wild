@@ -36,6 +36,9 @@ const YAW_SAVE_LOAD_FLOW = {
                     return false;
                 }
             }
+            if (typeof YAW_NARRATION_SYSTEM !== 'undefined') {
+                YAW_NARRATION_SYSTEM.resetRuntime(app, { clearRecords: true, reason: 'game-load' });
+            }
             app._clearTransientInteractionState();
             app._clearTileEvents();
             const fallbackCompatibilityForIdentity = (identity) => {
@@ -55,6 +58,11 @@ const YAW_SAVE_LOAD_FLOW = {
                 if (compatible.parts) unit.parts = compatible.parts;
                 if (compatible.chest) unit.chest = compatible.chest;
                 if (Object.prototype.hasOwnProperty.call(compatible, 'bothParts')) unit.bothParts = Boolean(compatible.bothParts);
+                if (compatible.lifeStage) unit.lifeStage = compatible.lifeStage;
+                if (compatible.adultEligibility && typeof compatible.adultEligibility === 'object') {
+                    unit.adultEligibility = { ...compatible.adultEligibility };
+                }
+                if (typeof compatible.adultEligible === 'boolean') unit.adultEligible = compatible.adultEligible;
                 if ((!unit.parts || !unit.chest) && identity) {
                     const fallback = fallbackCompatibilityForIdentity(identity);
                     unit.parts = unit.parts || fallback.parts;
@@ -93,14 +101,16 @@ const YAW_SAVE_LOAD_FLOW = {
             app.largeMapRadius = app.largeMapRadius || 8;
             const loadedParty = loaded.party && loaded.party.length ? loaded.party : [app.player];
             const partyCompatibility = Array.isArray(loaded.questState?.partyCompatibility) ? loaded.questState.partyCompatibility : [];
-            app.party = loadedParty.map((unit, index) => app._normalizeUnit(unit, {
-                disposition: app.DISPOSITION.PARTY,
-                hero: index === 0,
-                ally: index !== 0,
-                mc: index === 0,
-                obedient: true
-            }));
-            app.party.forEach((unit, index) => applyCompatibility(unit, partyCompatibility[index] || (index === 0 ? playerCompatibility : null)));
+            app.party = loadedParty.map((unit, index) => {
+                applyCompatibility(unit, partyCompatibility[index] || (index === 0 ? playerCompatibility : null));
+                return app._normalizeUnit(unit, {
+                    disposition: app.DISPOSITION.PARTY,
+                    hero: index === 0,
+                    ally: index !== 0,
+                    mc: index === 0,
+                    obedient: true
+                });
+            });
             const partyUnitRefs = Array.isArray(loaded.questState?.partyUnitRefs) ? loaded.questState.partyUnitRefs : [];
             for (let index = 0; index < app.party.length; index++) {
                 const ref = partyUnitRefs[index];
@@ -184,6 +194,7 @@ const YAW_SAVE_LOAD_FLOW = {
             }
             const loadedDefeated = app._sanitizeLoadedDefeatState(loaded);
             if (!loadedDefeated) app._restoreCombatState(loaded.questState?.combatState);
+            if (!app.combatState?.active) YAW_COMBAT_STATUS.clearCombatOnlyStatuses([app.player, ...app.party, ...app.creatures]);
             app._normalizeExplorationSelections();
             app._setStoredValue('lastSlot', slotName);
             const saveTime = app._getSaveTime(slotName);

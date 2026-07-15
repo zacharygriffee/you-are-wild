@@ -4,6 +4,48 @@
  */
 
 const YAW_COMBAT_STATUS = {
+    combatOnlyStatusKeys: [
+        'restrained', 'enveloped', 'stuck', 'stun', 'freeze', 'charm', 'fear', 'frightened',
+        'restrainedSkip', 'snared', 'grabbed', 'stunned', 'frozen', 'asleep', 'recovering'
+    ],
+    persistentAilmentKeys: ['poisoned', 'bleed', 'burn'],
+
+    clearCombatOnlyStatuses(units = []) {
+        let changed = 0;
+        for (const unit of new Set((units || []).filter(Boolean))) {
+            unit.status = unit.status || {};
+            for (const key of this.combatOnlyStatusKeys) {
+                if (!unit.status[key]) continue;
+                delete unit.status[key];
+                changed++;
+            }
+            if (unit.status.sleep?.source === 'combat') {
+                delete unit.status.sleep;
+                changed++;
+            }
+            if (unit.refractory) {
+                unit.refractory = false;
+                changed++;
+            }
+        }
+        return changed;
+    },
+
+    curePersistentAilments(units = []) {
+        const curedUnits = [];
+        for (const unit of new Set((units || []).filter(Boolean))) {
+            unit.status = unit.status || {};
+            let cured = false;
+            for (const key of this.persistentAilmentKeys) {
+                if (!unit.status[key]) continue;
+                delete unit.status[key];
+                cured = true;
+            }
+            if (cured) curedUnits.push(unit);
+        }
+        return curedUnits;
+    },
+
     wakeOnDamage(app, unit) {
         if (unit?.status?.sleep) {
             delete unit.status.sleep;
@@ -54,11 +96,11 @@ const YAW_COMBAT_STATUS = {
             target.status.bleed = bleed;
         }
         if (actor?.burnAttack) target.status.burn = { dmg: 3, turns: 2 };
-        if (actor?.freezeAttack) target.status.freeze = { skip: true, slowTurns: 2 };
-        if (actor?.stunAttack) target.status.stun = { turns: 1 };
-        if (actor?.sleepAttack) target.status.sleep = { turns: 3 };
-        if (actor?.charmAttack) target.status.charm = { turns: 2, by: actor.name };
-        if (actor?.fearAttack || actor?.menacing) target.status.fear = { turns: 2, by: actor.name };
+        if (actor?.freezeAttack) target.status.freeze = { skip: true, slowTurns: 2, source: 'combat' };
+        if (actor?.stunAttack) target.status.stun = { turns: 1, source: 'combat' };
+        if (actor?.sleepAttack) target.status.sleep = { turns: 3, source: 'combat' };
+        if (actor?.charmAttack) target.status.charm = { turns: 2, by: actor.name, source: 'combat' };
+        if (actor?.fearAttack || actor?.menacing) target.status.fear = { turns: 2, by: actor.name, source: 'combat' };
     },
 
     charmedTargetsFor(app, unit) {

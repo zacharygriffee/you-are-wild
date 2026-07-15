@@ -134,13 +134,13 @@ const YAW_COMBAT_ALLIES = {
         app._wakeOnDamage(target);
         app._applyAttackStatus(ally, target, dmg);
         if (ally.constrictor && target.size <= 4 && !target.status.restrained) {
-            target.status.restrained = { turns: 2, by: ally.name };
+            target.status.restrained = { turns: 2, by: ally.name, source: 'combat' };
         }
         if (ally.poisonous || ally.venom) {
-            target.status.poisoned = { dmg: 3, turns: 3 };
+            target.status.poisoned = { dmg: 3, turns: 3, source: 'combat' };
         }
         if (ally.enveloped && target.size <= ally.size + 2) {
-            target.status.enveloped = { turns: 2, by: ally.name };
+            target.status.enveloped = { turns: 2, by: ally.name, source: 'combat' };
         }
         let result = `${ally.name} attacks ${target.name} for ${dmg} punishment!`;
         if (ally.bloodsuck) result += ` ${ally.name} heals!`;

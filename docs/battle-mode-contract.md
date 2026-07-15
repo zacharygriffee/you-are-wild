@@ -1,5 +1,17 @@
 # Battle Mode Contract
 
+## Status Lifetime
+
+Combat control effects are encounter-scoped. Restraint, envelopment, terrain
+entrapment, stun, freeze, combat-applied sleep, charm, fear, and refractory
+recovery must not disable a unit after combat ends. Noncombat save loading also
+removes these effects to repair older saves that captured stale combat state.
+
+Poison, bleeding, and burns are persistent ailments rather than control locks.
+They may survive combat and affect a later encounter, but safe rest and defeat
+regeneration cure them. Natural nighttime sleep and unrelated conditions such
+as containment Vital Weakness are outside this cleanup policy.
+
 Battle mode is not a separate action model. It is the normal actor, target, and intent flow with tactical constraints layered on top.
 
 ## Control Surface

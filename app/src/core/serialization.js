@@ -124,7 +124,10 @@
       identity: unit.identity || unit.gender || null,
       parts: unit.parts || null,
       chest: unit.chest || null,
-      bothParts: Boolean(unit.bothParts)
+      bothParts: Boolean(unit.bothParts),
+      lifeStage: unit.lifeStage || unit.ageCategory || null,
+      adultEligibility: unit.adultEligibility || null,
+      adultEligible: typeof unit.adultEligible === 'boolean' ? unit.adultEligible : null
     };
   };
   const logEntry = entry => {

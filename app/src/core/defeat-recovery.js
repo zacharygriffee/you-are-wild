@@ -211,6 +211,9 @@ const YAW_DEFEAT_RECOVERY = {
             unit.knockedOut = false;
             unit.fledCombat = false;
         }
+        const recoveringParty = [app.player, ...(app.party || [])];
+        YAW_COMBAT_STATUS.clearCombatOnlyStatuses(recoveringParty);
+        YAW_COMBAT_STATUS.curePersistentAilments(recoveringParty);
         if (app.player) {
             app.player.CPun = Math.max(1, app.player.CPun || 0);
             app.player.knockedOut = false;

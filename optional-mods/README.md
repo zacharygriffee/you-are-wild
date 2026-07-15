@@ -10,6 +10,13 @@ deterministic Scene Beats.
 orchestrator. It remains disabled by default, requires explicit provider-policy
 acknowledgement for the selected connection/profile, and blocks generation
 unless all involved characters carry trusted adult-eligibility metadata.
+When it is ready and allowed it exclusively owns the exchange; otherwise the
+standard orchestrator remains available.
+
+The default game exposes an optional Puter user-pays connection in the Mod
+Manager. Puter handles browser sign-in and no API key enters module settings or
+save data. Its opaque connection lasts for the current browser session and can
+be selected by either narration package.
 
 `you-are-wild-explicit.yawmod.json` is the first-party provider for explicit
 creation options, settings, and narrative. Install it through the local Mod

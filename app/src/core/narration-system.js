@@ -11,8 +11,11 @@ const YAW_NARRATION_SYSTEM = {
     statuses: new Set(['pending', 'ready', 'failed', 'cancelled']),
     ratings: new Set(['safe', 'mature', 'explicit']),
     contextExtensions: new Map(),
+    orchestrators: new Map(),
     fallbackTimers: new Map(),
+    hookTimers: new Set(),
     closedExchanges: new Set(),
+    runtimeGeneration: 0,
 
     copy(value, fallback = null) {
         try {
@@ -71,7 +74,10 @@ const YAW_NARRATION_SYSTEM = {
             deltas: event.deltas || [],
             tags: event.tags || [],
             importance: event.importance || 'normal',
-            source: event.source || ''
+            source: event.source || '',
+            location: event.location || '',
+            time: event.time || '',
+            contextSnapshot: event.metadata?.contextSnapshot || null
         }, null);
     },
 
@@ -87,11 +93,28 @@ const YAW_NARRATION_SYSTEM = {
 
     scheduleHook(eventName, envelope) {
         if (!envelope || typeof MODULE_SYSTEM === 'undefined' || !MODULE_SYSTEM?.executePublicHook) return;
-        window.setTimeout(() => {
+        const generation = this.runtimeGeneration;
+        let timer = null;
+        timer = window.setTimeout(() => {
+            this.hookTimers.delete(timer);
+            if (generation !== this.runtimeGeneration) return;
             MODULE_SYSTEM.executePublicHook(eventName, envelope).catch(error => {
                 console.error(`Narrative hook delivery failed (${eventName}):`, error);
             });
         }, 0);
+        this.hookTimers.add(timer);
+    },
+
+    resetRuntime(app, { clearRecords = false, reason = 'run-switch' } = {}) {
+        this.runtimeGeneration++;
+        for (const timer of this.fallbackTimers.values()) window.clearTimeout(timer);
+        for (const timer of this.hookTimers) window.clearTimeout(timer);
+        this.fallbackTimers.clear();
+        this.hookTimers.clear();
+        this.closedExchanges.clear();
+        if (typeof YAW_AI_PROVIDER_MANAGER !== 'undefined') YAW_AI_PROVIDER_MANAGER.resetRuntime(reason);
+        if (clearRecords && app) app.sceneNarrations = [];
+        return this.runtimeGeneration;
     },
 
     onBeatCommitted(app, event) {
@@ -308,6 +331,69 @@ const YAW_NARRATION_SYSTEM = {
         }
     },
 
+    registerOrchestrator(ownerModuleId, input = {}) {
+        const owner = this.token(ownerModuleId, 'Orchestrator owner');
+        const id = this.token(input.id || owner, 'Orchestrator id');
+        const requiredCategories = [...new Set((input.requiredCategories || []).map(category => this.token(category, 'Orchestrator category')))];
+        const record = {
+            ownerModuleId: owner,
+            id,
+            priority: Number.isFinite(Number(input.priority)) ? Number(input.priority) : 0,
+            minPosture: input.minPosture === 'mature' ? 'mature' : 'sfw',
+            requiredCategories,
+            isActive: typeof input.isActive === 'function' ? input.isActive : null
+        };
+        this.orchestrators.set(`${owner}:${id}`, record);
+        return this.copy({ ...record, isActive: undefined });
+    },
+
+    removeOrchestrators(ownerModuleId) {
+        for (const [key, orchestrator] of this.orchestrators.entries()) {
+            if (orchestrator.ownerModuleId === ownerModuleId) this.orchestrators.delete(key);
+        }
+    },
+
+    async orchestrationOwner(policy = this.policySnapshot()) {
+        const candidates = [...this.orchestrators.values()]
+            .filter(orchestrator => orchestrator.minPosture !== 'mature' || policy.posture === 'mature')
+            .filter(orchestrator => orchestrator.requiredCategories.every(category => policy.enabledCategories.includes(category)))
+            .sort((left, right) => (right.priority - left.priority)
+                || left.ownerModuleId.localeCompare(right.ownerModuleId)
+                || left.id.localeCompare(right.id));
+        for (const orchestrator of candidates) {
+            if (!orchestrator.isActive) return orchestrator;
+            try {
+                if (await orchestrator.isActive(this.copy(policy, {}))) return orchestrator;
+            } catch (error) {
+                console.error(`Narration orchestrator readiness failed (${orchestrator.id}):`, error);
+            }
+        }
+        return null;
+    },
+
+    async ownsOrchestration(ownerModuleId, policy = this.policySnapshot()) {
+        return (await this.orchestrationOwner(policy))?.ownerModuleId === String(ownerModuleId);
+    },
+
+    targetContextSnapshot(targets = []) {
+        const target = targets[targets.length - 1] || {};
+        const recorded = target.metadata?.contextSnapshot || {};
+        const location = recorded.location || {};
+        const time = recorded.time || {};
+        return {
+            mode: String(recorded.mode || target.mode || 'adventure'),
+            location: {
+                x: Number.isFinite(Number(location.x)) ? Number(location.x) : null,
+                y: Number.isFinite(Number(location.y)) ? Number(location.y) : null,
+                biome: String(location.biome || ''),
+                label: String(location.label || target.location || ''),
+                time: String(time.label || target.time || ''),
+                hour: Number.isFinite(Number(time.hour)) ? Number(time.hour) : null,
+                day: Number.isFinite(Number(time.day)) ? Number(time.day) : null
+            }
+        };
+    },
+
     context(app, options = {}) {
         const beatLimit = Math.max(1, Math.min(this.MAX_CONTEXT_BEATS, Number(options.recentBeatLimit) || 6));
         const activityLimit = Math.max(0, Math.min(this.MAX_ACTIVITY, Number(options.activityLimit) || 6));
@@ -320,6 +406,8 @@ const YAW_NARRATION_SYSTEM = {
                 ? allBeats.filter(beat => String(beat.exchangeId || beat.metadata?.exchangeId || beat.id) === exchangeId)
                 : [];
         if (!targets.length) throw new Error('Narration context target not found');
+        const targetEndIndex = Math.max(...targets.map(target => allBeats.indexOf(target)));
+        const targetSnapshot = this.targetContextSnapshot(targets);
         const publicUnit = unit => typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM?._publicNarrativeUnitSummary
             ? MODULE_SYSTEM._publicNarrativeUnitSummary(unit)
             : null;
@@ -333,15 +421,10 @@ const YAW_NARRATION_SYSTEM = {
             version: this.VERSION,
             target: { beatId: beatId || null, exchangeId: exchangeId || targets[0]?.exchangeId || null },
             policy: this.policySnapshot(),
-            mode: app.combatState?.active ? 'combat' : 'adventure',
-            location: {
-                x: Number(app.location?.x || 0),
-                y: Number(app.location?.y || 0),
-                biome: String(app.currentBiome || ''),
-                time: String(app._timeLabel?.() || '')
-            },
+            mode: targetSnapshot.mode,
+            location: targetSnapshot.location,
             beats: targets.map(beat => this.publicBeat(beat)).filter(Boolean),
-            recentBeats: allBeats.slice(-beatLimit).map(beat => this.publicBeat(beat)).filter(Boolean),
+            recentBeats: allBeats.slice(0, targetEndIndex + 1).slice(-beatLimit).map(beat => this.publicBeat(beat)).filter(Boolean),
             characters: units,
             quests: (app.quests || []).slice(0, 6).map(quest => typeof MODULE_SYSTEM !== 'undefined' ? MODULE_SYSTEM._publicQuestSummary(quest) : null).filter(Boolean),
             activity: (app.log || []).slice(-activityLimit).map(entry => typeof MODULE_SYSTEM !== 'undefined' ? MODULE_SYSTEM._publicActivitySummary(entry) : null).filter(Boolean),
@@ -481,6 +564,7 @@ const YAW_AI_PROVIDER_MANAGER = {
             window.clearTimeout(timeout);
             externalSignal?.removeEventListener?.('abort', abortExternal);
             this.requestsByModule.get(ownerModuleId)?.delete(controller);
+            if (this.requestsByModule.get(ownerModuleId)?.size === 0) this.requestsByModule.delete(ownerModuleId);
             this.requestsByConnection.get(connection.id)?.delete(controller);
             if (this.requestsByConnection.get(connection.id)?.size === 0) this.requestsByConnection.delete(connection.id);
         }
@@ -489,6 +573,20 @@ const YAW_AI_PROVIDER_MANAGER = {
     abortModule(ownerModuleId) {
         for (const controller of this.requestsByModule.get(ownerModuleId) || []) controller.abort('module-unload');
         this.requestsByModule.delete(ownerModuleId);
+    },
+
+    resetRuntime(reason = 'run-switch') {
+        const controllers = new Set();
+        for (const requests of this.requestsByModule.values()) {
+            for (const controller of requests) controllers.add(controller);
+        }
+        for (const requests of this.requestsByConnection.values()) {
+            for (const controller of requests) controllers.add(controller);
+        }
+        for (const controller of controllers) controller.abort(reason);
+        this.requestsByModule.clear();
+        this.requestsByConnection.clear();
+        return controllers.size;
     }
 };
 

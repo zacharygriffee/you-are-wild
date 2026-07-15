@@ -125,18 +125,18 @@ const YAW_COMBAT_ENEMIES = {
         app._wakeOnDamage(target);
         app._applyAttackStatus(enemy, target, dmg);
         if (enemy.poisonous || enemy.venom) {
-            target.status.poisoned = { dmg: 3, turns: 3 };
+            target.status.poisoned = { dmg: 3, turns: 3, source: 'combat' };
             app.log.push({ text: app._label('combat.status.poisoned', '{name} is poisoned!', { name: target.name }), type: 'combat' });
         }
         if (enemy.constrictor && target.size <= 4 && !target.status.restrained) {
-            target.status.restrained = { turns: 2, by: enemy.name };
+            target.status.restrained = { turns: 2, by: enemy.name, source: 'combat' };
             app.log.push({ text: app._label('combat.status.constricted', '{actor} constricts {target}! They are restrained.', {
                 actor: enemy.name,
                 target: target.name
             }), type: 'combat' });
         }
         if (enemy.enveloped && target.size <= enemy.size + 2) {
-            target.status.enveloped = { turns: 2, by: enemy.name };
+            target.status.enveloped = { turns: 2, by: enemy.name, source: 'combat' };
             app.log.push({ text: app._label('combat.status.enveloped', '{actor} envelops {target}!', {
                 actor: enemy.name,
                 target: target.name

@@ -549,6 +549,8 @@ const YAW_STORY_EVENTS = {
         app.storyEventSeq = (Number(app.storyEventSeq) || 0) + 1;
         const id = `story-${app.storyEventSeq}`;
         const metadata = { ...(input.metadata || {}) };
+        const locationLabel = String(input.location || this.locationLabel(app));
+        const timeLabel = String(input.time || app._timeLabel?.() || '');
         const combatRound = Number.isFinite(metadata.combatRound)
             ? metadata.combatRound
             : (mode === 'combat' && Number.isFinite(app.combatState?.round) ? app.combatState.round : null);
@@ -564,6 +566,24 @@ const YAW_STORY_EVENTS = {
         if (combatTurn !== null) metadata.combatTurn = combatTurn;
         if (combatEncounter) metadata.combatEncounter = combatEncounter;
         metadata.exchangeId = exchangeId;
+        const suppliedSnapshot = metadata.contextSnapshot && typeof metadata.contextSnapshot === 'object'
+            ? metadata.contextSnapshot
+            : {};
+        metadata.contextSnapshot = {
+            version: 1,
+            mode: String(suppliedSnapshot.mode || mode),
+            location: {
+                x: Number.isFinite(Number(suppliedSnapshot.location?.x)) ? Number(suppliedSnapshot.location.x) : Number(app.location?.x || 0),
+                y: Number.isFinite(Number(suppliedSnapshot.location?.y)) ? Number(suppliedSnapshot.location.y) : Number(app.location?.y || 0),
+                biome: String(suppliedSnapshot.location?.biome || app.currentBiome || ''),
+                label: String(suppliedSnapshot.location?.label || locationLabel)
+            },
+            time: {
+                hour: Number.isFinite(Number(suppliedSnapshot.time?.hour)) ? Number(suppliedSnapshot.time.hour) : Number(app.timeHour || 0),
+                day: Number.isFinite(Number(suppliedSnapshot.time?.day)) ? Number(suppliedSnapshot.time.day) : Number(app.dayCount || 0),
+                label: String(suppliedSnapshot.time?.label || timeLabel)
+            }
+        };
         return {
             id,
             type: input.type || 'scene-beat',
@@ -588,8 +608,8 @@ const YAW_STORY_EVENTS = {
             subEvents: Array.isArray(input.subEvents) ? input.subEvents : [],
             exchangeId,
             metadata,
-            location: input.location || this.locationLabel(app),
-            time: input.time || app._timeLabel?.() || '',
+            location: locationLabel,
+            time: timeLabel,
             createdAt: app.storyEventSeq
         };
     },

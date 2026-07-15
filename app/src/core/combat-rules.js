@@ -308,7 +308,7 @@ const YAW_COMBAT_RULES = {
             if (!unit || unit.CPun <= 0 || unit.flying || unit.status?.stuck) continue;
             if (app._combatStateRoll('combat-terrain-stuck', unit, 'round-effect') < 0.2) {
                 unit.status = unit.status || {};
-                unit.status.stuck = { turns: 1 };
+                unit.status.stuck = { turns: 1, source: 'combat' };
             }
         }
     },

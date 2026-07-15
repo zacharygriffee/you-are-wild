@@ -74,6 +74,7 @@ const YAW_COMBAT_LIFECYCLE = {
         if (app.combatState?.sceneExchangeId && app.combatState?.round > 0 && typeof YAW_NARRATION_SYSTEM !== 'undefined') {
             YAW_NARRATION_SYSTEM.closeExchange(app, `${app.combatState.sceneExchangeId}-round-${app.combatState.round}`, { reason: 'combat-ended' });
         }
+        YAW_COMBAT_STATUS.clearCombatOnlyStatuses([app.player, ...app.party, ...app.creatures]);
         app.mode = app.GAME_MODE.NORMAL;
         app.combatState.active = false;
         app.combatState.processing = false;

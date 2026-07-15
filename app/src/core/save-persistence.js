@@ -386,7 +386,10 @@ const YAW_SAVE_PERSISTENCE = {
             gender: unit.gender || unit.identity || null,
             parts: unit.parts || null,
             chest: unit.chest || null,
-            bothParts: Boolean(unit.bothParts)
+            bothParts: Boolean(unit.bothParts),
+            lifeStage: unit.lifeStage || unit.ageCategory || null,
+            adultEligibility: this.serializableClone(unit.adultEligibility || null, null),
+            adultEligible: typeof unit.adultEligible === 'boolean' ? unit.adultEligible : null
         } : null;
         const partyRoles = {};
         const partyAIOrders = {};

@@ -37,7 +37,7 @@ Malformed modules should fail before they are written to IndexedDB. Repeated per
 
 Module package code must be a string and must pass syntax validation against the same trusted-local wrapper used at runtime before the package is stored or enabled. Package `assets` metadata must be a JSON-style serializable object; executable fields, circular references, symbols, `undefined`, `bigint`, non-finite numbers, arrays as the root asset payload, and other unsupported values are rejected before storage. Already-stored malformed packages are revalidated on enable and remain disabled if validation fails.
 
-Module settings use namespaced keys under the module ID. Setting keys must be non-empty token strings using letters, numbers, underscores, hyphens, dots, or colons. Setting values must be JSON-style serializable data and are copied before storage so later in-memory mutation does not change persisted settings.
+Module settings use namespaced keys under the module ID. Setting keys must be non-empty token strings using letters, numbers, underscores, hyphens, dots, or colons. Setting values must be JSON-style serializable data and are copied before storage so later in-memory mutation does not change persisted settings. Every write path, including direct `MODS.setSetting()`, rejects credential-like names, nested credential fields, bearer/private-key material, and common API-key shapes. Startup removes legacy setting records that violate this rule. Ordinary module settings and game saves are never credential stores.
 
 Dependencies are module IDs. A module cannot depend on itself, and a module can only be enabled when every declared dependency is installed and enabled. Disabling or deleting a module disables enabled dependents so stored enabled state and runtime hooks/contributions do not drift.
 
@@ -49,13 +49,15 @@ Game-version compatibility is enforced at install and enable time. A module that
 
 Hooks registered through `MODS.registerHook()` are tagged with the loading module ID. Disabling, deleting, or reloading a module removes that module's owned hooks so behavior does not duplicate during the same session.
 
-Supported hook events are `onMapGenerate`, `onEncounterStart`, `onCombatAction`, `onPlayerMove`, `onGameLoad`, `onGameSave`, and `onTick`. Unknown hook event names and non-finite priorities fail module enablement before the hook is registered.
+Supported hook events include `onMapGenerate`, `onEncounterStart`, `onCombatAction`, `onPlayerMove`, `onGameStart`, `onGameLoad`, `onGameSave`, `onTick`, `onSceneBeat`, `onSceneExchangeClosed`, and `onContentPolicyChanged`. Unknown hook event names and non-finite priorities fail module enablement before the hook is registered. Narration modules must clear private pending queues and cancel requests on both `onGameStart` and `onGameLoad`.
 
 Runtime data added through `MODS.addBiome()`, `MODS.addSpecies()`, and `MODS.addItem()` is also owned by the loading module. Disabling, deleting, or reloading a module removes those owned additions. If a module temporarily replaces an existing biome ID, unloading the module restores the previous biome definition.
 
 Biome, species, and item contributions must be object data with a non-empty `id`. Species and item contributions are copied as JSON-style serializable data before they enter the live registries, so circular references, function-backed fields, symbols, `undefined`, `bigint`, and non-finite numbers reject enablement and leave the module disabled.
 
 Species that should participate in baseline party, recruit, social, quest, merchant, feed, eat, or mature-capable interaction systems must declare person-like canon metadata such as `sapience: 'person'` or `baselineInteraction: 'sapient'`, a non-`animal` `bodyPlan`, and appropriate `interactionEligibility` flags. Species explicitly classified as ordinary animals with `sapience: 'animal'`, `bodyPlan: 'animal'`, `baselineInteraction: 'animal'`, or `modOnlyAnimal: true` do not inherit those baseline person-like interaction lanes even if a mod sets individual eligibility flags. They can still exist as authored/modded creatures, but interactions must be added deliberately by the mod rather than leaking through core defaults.
+
+Explicit narration additionally requires structured `adultEligibility` metadata with status `eligible` and a non-unknown authority. Core-authored species migrate to species-canon eligibility. Explicitly ineligible life stages override every legacy flag. Mod species remain `unknown` unless trusted species/unit metadata opts them in. The legacy `adultEligible` boolean migrates into the structured record for save compatibility but should not be authored in new content.
 
 Mutating runtime registries requires declared permissions:
 
@@ -107,13 +109,23 @@ and recent continuity. Publish generated prose separately with
 `MODS.publishNarration()`, then complete it through `MODS.updateNarration()`.
 Modules can modify only their own records. Ready records persist; pending
 requests do not. Current policy is reapplied whenever records render.
+Mode, location, and time are taken from the recorded target exchange rather
+than current play state. Recent beats are also bounded at the target, so a
+delayed request cannot see events that happened later.
+
+Orchestration packages register through `MODS.registerNarrationOrchestrator()`
+and check `await MODS.ownsNarrationExchange(envelope)` before publishing. Core
+selects one ready owner by policy and priority. This prevents standard and
+category-specific packages from narrating the same exchange.
 
 `MODS.ai.generate()` accepts a capability, opaque session connection id,
 profile id, structured input, timeout, and character limit. It returns plain
 text and non-secret provider/model metadata. Provider modules declare
 `ai:provide`, register an adapter, and create session connections only after
 their own authorization flow. Credential-like fields are rejected from both
-manifest settings and connection metadata.
+manifest settings, public setting writes, and connection metadata. The built-in
+Puter adapter is keyless from the game's perspective: its SDK owns user sign-in,
+and core retains only an opaque session connection plus non-secret model choice.
 
 Manifest `settings` declarations support `boolean`, `select`, bounded `number`,
 bounded `string`, `provider_connection`, and `action`. Only declared controls

@@ -2,17 +2,21 @@
 
 ## Implementation Status
 
-Phases 1-4 are implemented for the provider-neutral first release: immutable
+Phases 1-5 are implemented for the provider-neutral first release: immutable
 narrative hooks, explicit exchange boundaries, the owned narration store,
 focused context, declarative settings, session-only provider connections, fake
-provider coverage, and the optional SFW/Mature orchestrator. The separately
-packaged explicit orchestrator is also present with category, adult-eligibility,
-and provider-policy acknowledgement gates.
+provider coverage, exclusive orchestration ownership, and the optional
+SFW/Mature orchestrator. The separately packaged explicit orchestrator is also
+present with category, authoritative adult-eligibility, and provider-policy
+acknowledgement gates. New/load lifecycle reset, credential-setting rejection,
+and target-exchange context snapshots are covered by integration tests.
 
-No real remote provider or MCP adapter is enabled. Those remain intentionally
-deferred until an authorization and credential boundary is selected. The core
-game remains deterministic and fully functional with all narration packages
-absent or disabled.
+A keyless Puter user-pays adapter is available through explicit
+Connect/Test/Disconnect controls. Puter owns browser authentication; the game
+stores only an opaque session connection and non-secret model metadata. Manual
+OpenAI-compatible credentials and MCP remain deferred. The core game remains
+deterministic and fully functional with all narration packages absent, disabled,
+offline, or disconnected.
 
 ## Agent Brief
 

@@ -13,6 +13,7 @@ const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mo
 const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.md');
 const NEXT_OBJECTIVES = path.join(__dirname, '..', '..', 'docs', 'next-objectives.md');
 const NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-narration.yawmod.json');
+const EXPLICIT_NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-explicit-narration.yawmod.json');
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
 const BALANCE_COST_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'balance-cost-doctrine.md');
@@ -227,6 +228,7 @@ const contentSystemPath = path.join(SRC_DIR, 'core', 'content-system.js');
 const contentSystemContent = fs.readFileSync(contentSystemPath, 'utf8');
 const moduleSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'module-system.js'), 'utf8');
 const narrationSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'narration-system.js'), 'utf8');
+const puterProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'puter-provider.js'), 'utf8');
 const marketplaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marketplace.js'), 'utf8');
 const explicitProviderPath = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-explicit.yawmod.json');
 const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
@@ -252,6 +254,79 @@ function loadNarrationSystemForTest() {
     async executePublicHook() {}
   };
   return new Function('window', 'CONTENT', 'MODULE_SYSTEM', `${narrationSystemContent}\nreturn { YAW_NARRATION_SYSTEM, YAW_AI_PROVIDER_MANAGER };`)(window, CONTENT, MODULE_SYSTEM);
+}
+
+function createPackagedNarrationHarness(packagePaths, initialSettings = {}, contextForExchange = () => ({ characters: [] })) {
+  const hooks = new Map();
+  const orchestrators = [];
+  const narrations = [];
+  const requests = [];
+  const actions = new Map();
+  const settings = new Map(Object.entries(initialSettings));
+  const connections = [{ id: 'connection-1', providerId: 'fake' }];
+  let cancelCount = 0;
+
+  for (const packagePath of packagePaths) {
+    const packageData = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    const moduleId = packageData.module.manifest.id;
+    const key = name => `${moduleId}:${name}`;
+    const MODS = {
+      id: moduleId,
+      registerHook(event, callback) {
+        if (!hooks.has(event)) hooks.set(event, []);
+        hooks.get(event).push({ moduleId, callback });
+      },
+      registerNarrationOrchestrator(config) { orchestrators.push({ moduleId, ...config }); },
+      async ownsNarrationExchange(envelope) {
+        const policy = envelope?.policy || { posture: 'sfw', enabledCategories: [] };
+        const candidates = orchestrators
+          .filter(item => item.minPosture !== 'mature' || policy.posture === 'mature')
+          .filter(item => (item.requiredCategories || []).every(category => policy.enabledCategories.includes(category)))
+          .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+        for (const candidate of candidates) {
+          if (!candidate.isActive || await candidate.isActive(policy)) return candidate.moduleId === moduleId;
+        }
+        return false;
+      },
+      registerSettingAction(name, callback) { actions.set(key(name), callback); },
+      getSetting(name, fallback) { return Promise.resolve(settings.has(key(name)) ? settings.get(key(name)) : fallback); },
+      setSetting(name, value) { settings.set(key(name), value); return Promise.resolve(); },
+      publishNarration(record) {
+        const stored = { ...record, ownerModuleId: moduleId };
+        narrations.push(stored);
+        return stored;
+      },
+      updateNarration(id, patch) {
+        const record = narrations.find(item => item.id === id && item.ownerModuleId === moduleId);
+        if (!record) throw new Error('Narration not found');
+        Object.assign(record, patch);
+        return record;
+      },
+      clearNarrations() {
+        for (let index = narrations.length - 1; index >= 0; index--) {
+          if (narrations[index].ownerModuleId === moduleId) narrations.splice(index, 1);
+        }
+      },
+      getNarrationContext({ exchangeId }) { return contextForExchange(exchangeId); },
+      ai: {
+        listConnections() { return connections.map(connection => ({ ...connection })); },
+        async generate(request) {
+          requests.push({ moduleId, request: JSON.parse(JSON.stringify(request)) });
+          return { text: `Narrated by ${moduleId}.`, providerId: 'fake', modelId: 'fake-v1' };
+        },
+        cancelPending() { cancelCount++; }
+      }
+    };
+    new Function('MODS', packageData.module.code)(MODS);
+  }
+
+  return {
+    hooks, narrations, requests, settings, actions,
+    get cancelCount() { return cancelCount; },
+    async fire(event, envelope) {
+      await Promise.all((hooks.get(event) || []).map(hook => hook.callback(JSON.parse(JSON.stringify(envelope)))));
+    }
+  };
 }
 
 function loadAssetManifestForTest() {
@@ -479,6 +554,186 @@ asyncTest('Fake AI provider returns bounded text without network or persisted se
   let rejected = false;
   try { YAW_AI_PROVIDER_MANAGER.createConnection('fake-narrator', { apiKey: 'do-not-store' }); } catch (error) { rejected = true; }
   assert(rejected, 'Session connection metadata should reject credential-like fields');
+});
+
+asyncTest('Every public module setting path rejects credential names and values', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+  const manifest = MODULE_SYSTEM._normalizeManifest({ id: 'setting-guard', name: 'Setting Guard', version: '1.0.0' });
+  const MODS = MODULE_SYSTEM.createModAPI('setting-guard', manifest);
+  const attempts = [
+    () => MODULE_SYSTEM.setModuleSetting('setting-guard', 'apiKey', 'ordinary'),
+    () => MODULE_SYSTEM.setModuleSetting('setting-guard', 'notes', 'Bearer abc123'),
+    () => MODULE_SYSTEM.setModuleSetting('setting-guard', 'nested', { transport: { authorization: 'abc123' } }),
+    () => MODS.setSetting('harmless', 'sk-testvalue123456')
+  ];
+  for (const attempt of attempts) {
+    let rejected = false;
+    try { await attempt(); } catch (error) { rejected = /credential/i.test(error.message); }
+    assert(rejected, 'Credential-shaped setting writes should reject through all public paths');
+  }
+  assertEqual(fakeDb.data.settings.size, 0, 'Rejected credential settings must never reach IndexedDB');
+
+  fakeDb.data.settings.set('legacy:apiToken', { key: 'legacy:apiToken', value: 'old-value' });
+  fakeDb.data.settings.set('legacy:theme', { key: 'legacy:theme', value: 'dark' });
+  fakeDb.data.settings.set('legacy:notes', { key: 'legacy:notes', value: { authorization: 'old-value' } });
+  assertEqual(await MODULE_SYSTEM.purgeCredentialSettings(), 2, 'Credential migration should remove legacy secret-shaped records');
+  assertEqual(fakeDb.data.settings.size, 1, 'Credential migration should preserve unrelated module settings');
+});
+
+asyncTest('Narration runtime reset cancels stale work while retaining session connections', async () => {
+  const { YAW_NARRATION_SYSTEM, YAW_AI_PROVIDER_MANAGER } = loadNarrationSystemForTest();
+  YAW_AI_PROVIDER_MANAGER.registerAdapter('abortable', {
+    name: 'Abortable',
+    generate({ signal }) {
+      return new Promise((resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      });
+    }
+  }, 'provider');
+  const connectionId = YAW_AI_PROVIDER_MANAGER.createConnection('abortable', { model: 'fake' });
+  const app = { sceneNarrations: [{ id: 'old' }] };
+  const pending = YAW_AI_PROVIDER_MANAGER.generate('narrator', {
+    capability: 'narration', providerConnectionId: connectionId, input: { exchangeId: 'old' }
+  }).then(() => null, error => error);
+  YAW_NARRATION_SYSTEM.closedExchanges.add('old:final');
+  YAW_NARRATION_SYSTEM.resetRuntime(app, { clearRecords: true, reason: 'game-load' });
+  const error = await pending;
+  assertEqual(error.code, 'cancelled', 'Run-switch cancellation should return a sanitized cancellation code');
+  assertEqual(app.sceneNarrations.length, 0, 'Run-switch reset should clear presentation records before restore');
+  assertEqual(YAW_NARRATION_SYSTEM.closedExchanges.size, 0, 'Run-switch reset should clear exchange dedupe state');
+  assert(YAW_AI_PROVIDER_MANAGER.connections.has(connectionId), 'Run-switch reset should retain session provider connections');
+});
+
+asyncTest('Narration ownership selects one ready orchestrator deterministically', async () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  let explicitReady = false;
+  YAW_NARRATION_SYSTEM.registerOrchestrator('standard', { id: 'standard', priority: 10, isActive: async () => true });
+  YAW_NARRATION_SYSTEM.registerOrchestrator('explicit', {
+    id: 'explicit', priority: 100, minPosture: 'mature', requiredCategories: ['explicit.sexual'], isActive: async () => explicitReady
+  });
+  const policy = { posture: 'mature', enabledCategories: ['explicit.sexual'], gameplayVariants: {} };
+  assertEqual((await YAW_NARRATION_SYSTEM.orchestrationOwner(policy)).ownerModuleId, 'standard', 'Standard narration should own exchanges until explicit narration is ready');
+  explicitReady = true;
+  assertEqual((await YAW_NARRATION_SYSTEM.orchestrationOwner(policy)).ownerModuleId, 'explicit', 'Ready explicit narration should supersede standard narration');
+});
+
+test('Narration context mode, time, location, and history come from the target exchange', () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const beat = (id, mode, label, time, hour) => ({
+    id, exchangeId: id, mode, location: label, time, actors: [], targets: [],
+    metadata: { contextSnapshot: { mode, location: { x: hour, y: 2, biome: 'forest', label }, time: { hour, day: 3, label: time } } }
+  });
+  const app = {
+    storyEvents: [beat('story-1', 'adventure', 'Forest (1, 2)', '08:00 Day', 8), beat('story-2', 'combat', 'Cave (4, 2)', '21:00 Night', 21), beat('story-3', 'adventure', 'Camp (9, 9)', '09:00 Day', 9)],
+    combatState: { active: false }, location: { x: 99, y: 99 }, currentBiome: 'desert', quests: [], log: []
+  };
+  const context = YAW_NARRATION_SYSTEM.context(app, { beatId: 'story-2', recentBeatLimit: 6, activityLimit: 0 });
+  assertEqual(context.mode, 'combat', 'Context mode should come from the target beat');
+  assertEqual(context.location.label, 'Cave (4, 2)', 'Context location should come from the target beat');
+  assertEqual(context.location.time, '21:00 Night', 'Context time should come from the target beat');
+  assertEqual(context.recentBeats.map(item => item.id).join(','), 'story-1,story-2', 'Recent context should not include beats that occurred after the target');
+});
+
+test('Adult eligibility migrates from trusted canon and legacy unit metadata', () => {
+  const system = new Function(`${speciesSystemContent}\nreturn YAW_SPECIES_SYSTEM;`)();
+  const app = {
+    DEFAULT_SPECIES_CANON: { adultEligibility: 'unknown', interactionEligibility: {}, traits: [] },
+    SPECIES_CANON: { human: { bodyPlan: 'humanoid' } },
+    species: [{ id: 'human' }, { id: 'modfolk' }]
+  };
+  const coreAdult = { species: 'human' };
+  system.applyCanon(app, coreAdult);
+  assertEqual(coreAdult.adultEligibility.status, 'eligible', 'Core-authored species should migrate to authoritative adult eligibility');
+  assertEqual(coreAdult.adultEligibility.authority, 'species-canon', 'Core eligibility should identify its authority');
+
+  const minor = { species: 'human', lifeStage: 'minor', adultEligible: true };
+  system.applyCanon(app, minor);
+  assertEqual(minor.adultEligibility.status, 'ineligible', 'Ineligible life stages should override legacy eligibility flags');
+
+  const unknownMod = { species: 'modfolk' };
+  system.applyCanon(app, unknownMod);
+  assertEqual(unknownMod.adultEligibility.status, 'unknown', 'Mod species should remain unknown without trusted eligibility metadata');
+
+  const legacyAdult = { species: 'modfolk', adultEligible: true };
+  system.applyCanon(app, legacyAdult);
+  assertEqual(legacyAdult.adultEligibility.authority, 'legacy-unit-migration', 'Legacy explicit eligibility should migrate with a recorded authority');
+});
+
+asyncTest('Packaged orchestrators enforce ownership, adult metadata, and lifecycle reset', async () => {
+  const settings = {
+    'yaw_narration_first_party:enabled': true,
+    'yaw_narration_first_party:providerConnection': 'connection-1',
+    'yaw_narration_explicit_first_party:enabled': true,
+    'yaw_narration_explicit_first_party:providerConnection': 'connection-1',
+    'yaw_narration_explicit_first_party:profile': 'storyteller',
+    'yaw_narration_explicit_first_party:providerPolicyAcknowledgement': 'connection-1:storyteller:2'
+  };
+  const harness = createPackagedNarrationHarness(
+    [NARRATION_MOD_PACKAGE, EXPLICIT_NARRATION_MOD_PACKAGE],
+    settings,
+    exchangeId => ({
+      target: { exchangeId },
+      characters: [{ id: 'adult-1', adultEligibility: { version: 1, status: 'eligible', authority: 'species-canon' } }]
+    })
+  );
+  const explicitPolicy = { posture: 'mature', enabledCategories: ['explicit.sexual'], gameplayVariants: {} };
+  await harness.fire('onSceneBeat', { exchangeId: 'exchange-1', policy: explicitPolicy });
+  await harness.fire('onSceneExchangeClosed', { exchangeId: 'exchange-1', policy: explicitPolicy });
+  assertEqual(harness.requests.length, 1, 'One exchange should produce exactly one provider request');
+  assertEqual(harness.requests[0].moduleId, 'yaw_narration_explicit_first_party', 'Ready explicit orchestration should exclusively own explicit exchanges');
+  assertEqual(harness.narrations[0].status, 'ready', 'Packaged orchestration should complete its presentation record');
+
+  harness.settings.set('yaw_narration_explicit_first_party:enabled', false);
+  await harness.fire('onSceneBeat', { exchangeId: 'exchange-2', policy: explicitPolicy });
+  await harness.fire('onSceneExchangeClosed', { exchangeId: 'exchange-2', policy: explicitPolicy });
+  assertEqual(harness.requests.length, 2, 'A second exchange should still produce only one request');
+  assertEqual(harness.requests[1].moduleId, 'yaw_narration_first_party', 'Standard orchestration should own the exchange when explicit orchestration is not ready');
+
+  await harness.fire('onSceneBeat', { exchangeId: 'stale-exchange', policy: explicitPolicy });
+  await harness.fire('onGameLoad', { slotName: 'slot2' });
+  await harness.fire('onSceneExchangeClosed', { exchangeId: 'stale-exchange', policy: explicitPolicy });
+  assertEqual(harness.requests.length, 2, 'Loading another run should clear packaged pending exchange queues');
+  assert(harness.cancelCount >= 2, 'Lifecycle reset should ask each packaged orchestrator to cancel pending requests');
+});
+
+asyncTest('Puter provider connects, maps narration, tests, and disconnects without game-owned credentials', async () => {
+  const chatCalls = [];
+  let signIns = 0;
+  const window = {
+    puter: {
+      auth: { isSignedIn: () => signIns > 0, async signIn() { signIns++; } },
+      ai: { async chat(messages, options) { chatCalls.push({ messages, options }); return { message: { content: 'Connected.' }, model: options.model }; } }
+    }
+  };
+  const document = {};
+  const manager = {
+    adapters: new Map(), connections: new Map(), sequence: 0,
+    registerAdapter(id, adapter, ownerModuleId) { this.adapters.set(id, { ...adapter, ownerModuleId }); return id; },
+    createConnection(providerId, metadata) {
+      const id = `connection-${++this.sequence}`;
+      this.connections.set(id, { id, providerId, metadata, ownerModuleId: 'core-puter-provider' });
+      return id;
+    },
+    removeConnection(id) { return this.connections.delete(id); },
+    async generate(ownerModuleId, request) {
+      const connection = this.connections.get(request.providerConnectionId);
+      const adapter = this.adapters.get(connection.providerId);
+      return adapter.generate({ ...request, connection, signal: new AbortController().signal, ownerModuleId });
+    }
+  };
+  const provider = new Function('window', 'document', 'YAW_AI_PROVIDER_MANAGER', `${puterProviderContent}\nreturn YAW_PUTER_PROVIDER;`)(window, document, manager);
+  const connected = await provider.connect('openai/test-model');
+  assertEqual(signIns, 1, 'Connect should use the provider-owned sign-in flow');
+  assert(connected.connectionId && manager.connections.has(connected.connectionId), 'Connect should create an opaque session connection');
+  assertNotContains(JSON.stringify(manager.connections.get(connected.connectionId)), 'apiKey', 'Puter connection metadata should contain no game-owned credential');
+  const tested = await provider.test();
+  assertEqual(tested.tested, true, 'Test should exercise the provider through the manager');
+  assert(Array.isArray(chatCalls[0].messages), 'Provider adapter should map narration input to structured chat messages');
+  assertEqual(chatCalls[0].options.model, 'openai/test-model', 'Provider adapter should pass through the player-supplied free-form model id');
+  provider.disconnect();
+  assertEqual(manager.connections.size, 0, 'Disconnect should remove the opaque session connection');
 });
 
 asyncTest('Module system persists modules and settings through IndexedDB request callbacks', async () => {
@@ -2490,6 +2745,8 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatStatusContent, 'applyAttackStatus(_app, actor, target, _dmg)', 'Combat status helper should own attack status application');
   assertContains(combatStatusContent, 'charmedTargetsFor(app, unit)', 'Combat status helper should own charm targeting');
   assertContains(combatStatusContent, 'processStatusEffects(app)', 'Combat status helper should own round status processing');
+  assertContains(combatStatusContent, 'clearCombatOnlyStatuses(units = [])', 'Combat status helper should own encounter-scoped cleanup');
+  assertContains(combatStatusContent, 'curePersistentAilments(units = [])', 'Combat status helper should own persistent ailment recovery');
   assertNotContains(combatStatusContent, 'Math.random', 'Combat status helper should not use ambient randomness');
   assertContains(appContent, 'YAW_COMBAT_STATUS.skipTurnFromStatus(this, unit)', 'App status skip wrapper should delegate to combat status');
   assertContains(appContent, 'YAW_COMBAT_STATUS.processStatusEffects(this)', 'App status processing wrapper should delegate to combat status');
@@ -2515,6 +2772,8 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatLifecycleContent, "app._emitModuleHook('onEncounterStart'", 'Combat lifecycle should emit encounter start hooks');
   assertContains(combatLifecycleContent, "app._combatStateRoll('combat-victory-scene'", 'Combat victory scene selection should use deterministic combat rolls');
   assertContains(combatLifecycleContent, 'app._clearCombatRefreshSnapshot(app.activeSlot)', 'Combat lifecycle should clear combat refresh snapshots when combat ends');
+  assertContains(combatLifecycleContent, 'YAW_COMBAT_STATUS.clearCombatOnlyStatuses', 'Combat lifecycle should clear control effects when an encounter ends');
+  assertContains(saveLoadFlowContent, "if (!app.combatState?.active) YAW_COMBAT_STATUS.clearCombatOnlyStatuses", 'Noncombat save load should repair stale combat control effects');
   assertContains(combatLifecycleContent, 'app._runPostCombatScavengers()', 'Combat lifecycle should preserve post-combat ally cleanup');
   assertContains(combatLifecycleContent, 'app.showConfirmDialog({', 'Combat lifecycle should use the in-app confirmation flow for defeat');
   assertContains(combatLifecycleContent, 'app.autoSave()', 'Combat lifecycle should preserve autosave after combat ends');
@@ -6487,6 +6746,46 @@ test('Status effects apply damage and expire during processing', () => {
   assertEqual(Boolean(unit.status.enveloped), false, 'Enveloped should expire');
 });
 
+test('Combat exit clears control effects while preserving recoverable ailments', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', {
+    id: 'status-exit-player',
+    refractory: true,
+    status: {
+      restrained: { turns: 2, by: 'Naga' },
+      enveloped: { turns: 2, by: 'Slime' },
+      stuck: { turns: 1 },
+      stun: { turns: 1 },
+      freeze: { skip: true, slowTurns: 2 },
+      sleep: { turns: 2, source: 'combat' },
+      charm: { turns: 2, by: 'Siren' },
+      fear: { turns: 2, by: 'Wolfkin' },
+      poisoned: { turns: 3, dmg: 3 },
+      bleed: { turns: 2, dmg: 2, stacks: 1 },
+      burn: { turns: 2, dmg: 3 },
+      vitalWeakness: { amount: 2 }
+    }
+  });
+  const ally = makeUnit('Night Sleeper', { id: 'status-exit-ally', status: { sleep: { turns: 2 } } });
+  const enemy = makeUnit('Naga', { id: 'status-exit-enemy', disposition: App.DISPOSITION.ENEMY, status: { restrained: { turns: 1, by: 'Ally' } } });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = { active: true, round: 2, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [], syncActions: [] };
+  App.autoSave = () => {};
+
+  App.endCombat('flee');
+
+  for (const key of ['restrained', 'enveloped', 'stuck', 'stun', 'freeze', 'sleep', 'charm', 'fear']) {
+    assertEqual(Boolean(player.status[key]), false, `${key} should not survive combat exit`);
+  }
+  assertEqual(player.refractory, false, 'Combat recovery skip should not survive combat exit');
+  assert(player.status.poisoned && player.status.bleed && player.status.burn, 'Recoverable ailments should persist until treated');
+  assert(player.status.vitalWeakness, 'Noncombat containment weakness should remain intact');
+  assert(ally.status.sleep, 'Natural sleep without a combat source should remain intact');
+  assertEqual(Boolean(enemy.status.restrained), false, 'Physical restraints should clear from every combatant');
+});
+
 test('Bleed and burn apply damage, stack, and burn can spread in row', () => {
   const { App } = loadAppForCombat(() => 0.99);
   App.worldMeta = { seed: 'burn-spread-1', generatorVersion: 2 };
@@ -6807,12 +7106,16 @@ test('SFW-created characters omit optional fields while legacy save values remai
   assertEqual(created.App.screen, 'game', 'Safe character creation should enter the game screen');
   assertEqual(created.App.player.parts, null, 'SFW-created player should not receive a hidden optional primary field');
   assertEqual(created.App.player.chest, null, 'SFW-created player should not receive a hidden optional chest field');
+  assertEqual(created.App.player.adultEligibility.status, 'eligible', 'Core character creation should assign authoritative adult eligibility');
   created.App.player.parts = 'clit';
   created.App.player.chest = 'tits';
   const loaded = Binary.loadGame(Binary.saveGame(created.App));
   assertEqual(loaded.party[0].name, 'Safe Tester', 'Loaded save should preserve name');
   assertEqual(loaded.questState.playerCompatibility.parts, 'clit', 'Loaded legacy save should preserve its compatibility primary field');
   assertEqual(loaded.questState.playerCompatibility.chest, 'tits', 'Loaded legacy save should preserve its compatibility chest field');
+  assertEqual(loaded.questState.playerCompatibility.lifeStage, 'adult', 'Binary compatibility data should preserve life stage without changing the unit codec');
+  assertEqual(loaded.questState.playerCompatibility.adultEligibility.status, 'eligible', 'Binary compatibility data should preserve structured adult eligibility');
+  assertEqual(loaded.questState.playerCompatibility.adultEligibility.authority, 'species-canon', 'Binary compatibility data should preserve eligibility authority');
 
   created.App.showCharacterStats();
   const safeStatsHtml = holdingsHtml(created.elements);
@@ -7077,7 +7380,10 @@ test('Defeat ends combat into a durable recovery state', () => {
 
 test('Defeat regeneration restores the safe anchor without clearing defeated tile enemies', () => {
   const { App, hooks } = loadAppForCombat(() => 0.5);
-  const player = makeUnit('You', { id: 'player-regenerate', CPun: 0, MPun: 100, knockedOut: true });
+  const player = makeUnit('You', {
+    id: 'player-regenerate', CPun: 0, MPun: 100, knockedOut: true,
+    status: { restrained: { turns: 2, by: 'Enemy' }, poisoned: { turns: 3, dmg: 3 }, vitalWeakness: { amount: 1 } }
+  });
   const enemy = makeUnit('Plantfolk', { id: 'enemy-regenerate', disposition: App.DISPOSITION.ENEMY, CPun: 20, MPun: 20 });
   App.player = player;
   App.party = [player];
@@ -7103,6 +7409,9 @@ test('Defeat regeneration restores the safe anchor without clearing defeated til
   assertEqual(App.location.y, 0, 'Regenerate should move to safe anchor y');
   assertEqual(App.player.CPun, 1, 'Regenerate should revive player to minimal recovery baseline');
   assertEqual(App.player.knockedOut, false, 'Regenerate should clear knocked-out state');
+  assertEqual(Boolean(App.player.status.restrained), false, 'Regenerate should clear combat-only control effects');
+  assertEqual(Boolean(App.player.status.poisoned), false, 'Regenerate should cure persistent combat ailments');
+  assert(App.player.status.vitalWeakness, 'Regenerate should preserve unrelated noncombat status');
   assertEqual(App.worldMap.get('7,-2').creatures[0].id, 'enemy-regenerate', 'Regenerate should not clear enemies from the defeat tile');
   assertEqual(autoSaveCalls, 1, 'Regenerate should autosave resumed exploration state');
   assert(hooks.some(hook => hook.event === 'onRegenerate'), 'Regenerate should emit an onRegenerate module hook');
@@ -11592,6 +11901,31 @@ test('Support party role improves safe rest recovery', () => {
   App.rest();
   assertEqual(player.CPun, 80, 'Support role should increase player rest healing');
   assertEqual(support.CPun, 60, 'Support role should also benefit resting allies');
+});
+
+test('Safe rest cures persistent combat ailments without clearing unrelated conditions', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You', {
+    status: {
+      poisoned: { turns: 3, dmg: 3 },
+      bleed: { turns: 2, dmg: 2, stacks: 1 },
+      burn: { turns: 2, dmg: 3 },
+      vitalWeakness: { amount: 2 }
+    }
+  });
+  App.player = player;
+  App.party = [player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: 'cabin' }]]);
+  App.autoSave = () => {};
+
+  App.rest();
+
+  assertEqual(Boolean(player.status.poisoned), false, 'Safe rest should cure poison');
+  assertEqual(Boolean(player.status.bleed), false, 'Safe rest should stop bleeding');
+  assertEqual(Boolean(player.status.burn), false, 'Safe rest should treat burns');
+  assert(player.status.vitalWeakness, 'Safe rest should preserve unrelated noncombat conditions');
+  assertContains(App.log[App.log.length - 1].text, 'clears lingering poison', 'Safe rest should explain ailment recovery');
 });
 
 test('Structures hide core enter action by default and explicit enterable structures preserve interiors', () => {

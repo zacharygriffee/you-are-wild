@@ -173,6 +173,14 @@ const YAW_CREATE_FLOW = {
 
     createCharacter(app) {
         if (!app.validateCharacterCreation()) return;
+        if (typeof YAW_NARRATION_SYSTEM !== 'undefined') {
+            YAW_NARRATION_SYSTEM.resetRuntime(app, { clearRecords: true, reason: 'new-game' });
+        }
+        app.storyEvents = [];
+        app.sceneEvents = app.storyEvents;
+        app.latestStoryEvent = null;
+        app.latestSceneBeat = null;
+        app.storyEventSeq = 0;
         this.ensureSafeCompatibilityParts(app);
         const name = document.getElementById('char-name')?.value?.trim();
         app.playerName = name;
@@ -238,6 +246,10 @@ const YAW_CREATE_FLOW = {
         app.interiorLocation = { x: 0, y: 0 };
         app.safeAnchor = app._ensureSafeAnchor();
         app.defeatState = null;
+        app._emitModuleHook('onGameStart', {
+            slotName: app.activeSlot,
+            location: { ...app.location }
+        });
         app.exploreTile(0, 0);
         app.revealVisibleTiles(0, 0, app._mapVisibilityRadius());
         app.showScreen('game');

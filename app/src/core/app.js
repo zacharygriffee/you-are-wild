@@ -492,6 +492,7 @@
                 sapience: 'person',
                 bodyPlan: 'beastfolk',
                 baselineInteraction: 'sapient',
+                adultEligibility: 'unknown',
                 interactionEligibility: {
                     social: true,
                     party: true,

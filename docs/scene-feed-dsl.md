@@ -156,6 +156,13 @@ boundaries and transactions close with their focused window. Standalone scene
 actions use a short fallback debounce. Rendering, opening the Scene Sheet, and
 loading saved beats never issue narration requests.
 
+Each committed beat records a versioned context snapshot containing its mode,
+location coordinates/label/biome, and day/hour label. Narration context for an
+older beat or exchange uses that recorded snapshot and stops recent history at
+the target. New game and load boundaries invalidate scheduled narrative hooks,
+exchange-close dedupe, fallback timers, and in-flight provider requests before
+new or restored records become active.
+
 ## Activity Log Separation
 
 Scene Feed is not a filtered view of the Activity Log. Both surfaces may receive related information, but they are separate outputs:

@@ -27,6 +27,7 @@ const MODULE_SYSTEM = {
         onDefeat: [],
         onRegenerate: [],
         onPlayerMove: [],
+        onGameStart: [],
         onGameLoad: [],
         onGameSave: [],
         onTick: [],
@@ -40,6 +41,33 @@ const MODULE_SYSTEM = {
     ownedContributions: new Map(),
     settingActions: new Map(),
     loadingModuleId: null,
+
+    _credentialLikeName(value) {
+        const compact = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return [
+            'apikey', 'accesskey', 'accesstoken', 'refreshtoken', 'authtoken', 'authorization',
+            'bearertoken', 'token', 'password', 'passwd', 'secret', 'clientsecret', 'privatekey', 'credential'
+        ].some(token => compact === token || compact.endsWith(token));
+    },
+
+    _credentialLikeValue(value, seen = new Set()) {
+        if (typeof value === 'string') {
+            const text = value.trim();
+            return /^(?:bearer|basic)\s+\S+/i.test(text)
+                || /^sk-(?:or-v1-)?[a-z0-9_-]{8,}$/i.test(text)
+                || /^-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(text);
+        }
+        if (!value || typeof value !== 'object' || seen.has(value)) return false;
+        seen.add(value);
+        if (Array.isArray(value)) return value.some(item => this._credentialLikeValue(item, seen));
+        return Object.entries(value).some(([key, child]) => this._credentialLikeName(key) || this._credentialLikeValue(child, seen));
+    },
+
+    _assertSettingContainsNoCredentials(key, value) {
+        if (this._credentialLikeName(key) || this._credentialLikeValue(value)) {
+            throw new Error('Module settings cannot store credentials');
+        }
+    },
 
     _request(request) {
         return new Promise((resolve, reject) => {
@@ -149,7 +177,7 @@ const MODULE_SYSTEM = {
             seen.add(key);
             const type = String(entry.type || '').trim();
             if (!allowed.has(type)) throw new Error(`Unsupported module setting type: ${type || 'missing'}`);
-            if (/secret|password|api[_-]?key|authorization|bearer|token/i.test(key)) throw new Error('Module settings cannot declare credential fields');
+            if (this._credentialLikeName(key)) throw new Error('Module settings cannot declare credential fields');
             const setting = {
                 key,
                 type,
@@ -175,6 +203,7 @@ const MODULE_SYSTEM = {
             if (type === 'string') {
                 setting.maxLength = Math.max(1, Math.min(500, Number(entry.maxLength) || 120));
                 setting.default = String(entry.default || '').slice(0, setting.maxLength);
+                this._assertSettingContainsNoCredentials(key, setting.default);
             }
             if (type === 'provider_connection') setting.default = '';
             return setting;
@@ -390,7 +419,8 @@ const MODULE_SYSTEM = {
         return normalized;
     },
 
-    _normalizeSettingValue(value) {
+    _normalizeSettingValue(value, key = '') {
+        this._assertSettingContainsNoCredentials(key, value);
         try {
             this._assertSerializableData(value, 'Module setting value');
             return JSON.parse(JSON.stringify(value));
@@ -586,10 +616,15 @@ const MODULE_SYSTEM = {
             const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
             
             request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
+            request.onsuccess = async () => {
                 this.db = request.result;
                 console.log('Module DB initialized');
-                resolve();
+                try {
+                    await this.purgeCredentialSettings();
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
             };
             
             request.onupgradeneeded = (event) => {
@@ -1020,7 +1055,12 @@ const MODULE_SYSTEM = {
             goals: strings(unit.goals, 5),
             relationshipSummary: String(unit.relationshipSummary || '').slice(0, 240),
             currentDisposition: String(unit.disposition || '').slice(0, 80),
-            adultEligible: unit.adultEligible === true
+            adultEligibility: this._serializableCopy(unit.adultEligibility || {
+                version: 1,
+                status: unit.adultEligible === true ? 'eligible' : 'unknown',
+                authority: unit.adultEligible === true ? 'legacy-unit-migration' : 'unknown'
+            }),
+            adultEligible: unit.adultEligibility?.status === 'eligible'
         };
     },
 
@@ -1182,6 +1222,7 @@ const MODULE_SYSTEM = {
         if (typeof YAW_AI_PROVIDER_MANAGER !== 'undefined') YAW_AI_PROVIDER_MANAGER.unregisterOwner(moduleId);
         if (typeof YAW_NARRATION_SYSTEM !== 'undefined') {
             YAW_NARRATION_SYSTEM.removeContextExtensions(moduleId);
+            YAW_NARRATION_SYSTEM.removeOrchestrators(moduleId);
             YAW_NARRATION_SYSTEM.removeOwner(App, moduleId);
         }
         for (const key of [...this.settingActions.keys()]) {
@@ -1275,6 +1316,16 @@ const MODULE_SYSTEM = {
                 return YAW_NARRATION_SYSTEM.registerContextExtension(moduleId, extension);
             },
 
+            registerNarrationOrchestrator(orchestrator) {
+                self._requirePermission(moduleId, manifest, 'scene:narrate');
+                return YAW_NARRATION_SYSTEM.registerOrchestrator(moduleId, orchestrator);
+            },
+
+            ownsNarrationExchange(envelope = {}) {
+                self._requirePermission(moduleId, manifest, 'scene:narrate');
+                return YAW_NARRATION_SYSTEM.ownsOrchestration(moduleId, envelope.policy || undefined);
+            },
+
             registerAIProvider(providerId, adapter) {
                 self._requirePermission(moduleId, manifest, 'ai:provide');
                 return YAW_AI_PROVIDER_MANAGER.registerAdapter(providerId, adapter, moduleId);
@@ -1344,11 +1395,28 @@ const MODULE_SYSTEM = {
         await this._transactionDone(tx);
         return setting ? setting.value : defaultValue;
     },
+
+    async purgeCredentialSettings() {
+        const db = this._requireDb();
+        const tx = db.transaction(['settings'], 'readwrite');
+        const store = tx.objectStore('settings');
+        const settings = await this._request(store.getAll());
+        let removed = 0;
+        for (const setting of settings) {
+            const namespacedKey = String(setting?.key || '');
+            const settingKey = namespacedKey.includes(':') ? namespacedKey.slice(namespacedKey.indexOf(':') + 1) : namespacedKey;
+            if (!this._credentialLikeName(settingKey) && !this._credentialLikeValue(setting?.value)) continue;
+            await this._request(store.delete(namespacedKey));
+            removed++;
+        }
+        await this._transactionDone(tx);
+        return removed;
+    },
     
     // Set module setting
     async setModuleSetting(moduleId, key, value) {
         const settingKey = this._normalizeSettingKey(key);
-        const settingValue = this._normalizeSettingValue(value);
+        const settingValue = this._normalizeSettingValue(value, settingKey);
         const db = this._requireDb();
         const tx = db.transaction(['settings'], 'readwrite');
         const store = tx.objectStore('settings');

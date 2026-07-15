@@ -8,6 +8,7 @@ This is the short handoff for unfinished work. Completed implementation history 
 - `dist/you-are-wild.html` is generated, ignored on `main`, and uploaded by CI.
 - Current row/reach work is Row-Blocking V2: ranged Fight reaches front, protected back, and flying targets from either row; grounded close-contact Feast and Play/Seduce require front-row access; flying does not waive contact requirements.
 - Core gameplay is deterministic and does not depend on an LLM or remote service.
+- Startup navigation keeps play actions primary, nests AI Providers under Settings and Module Samples under Mods, and preserves origin-aware returns. Vertical scrolling is an accessibility fallback rather than the normal layout.
 - Future implementation slices must run `npm run full-build`, `npm run audit:branding`, and `git diff --check`. Layout changes also require browser smoke at `412x915` and `1365x768`.
 
 ## Active Objectives
@@ -33,7 +34,7 @@ This is the short handoff for unfinished work. Completed implementation history 
 2. Continue public mod-context and example hardening for narrative, structural, and asset/content-pack lanes.
 3. Strengthen deterministic map playability: start-area invariants, traversal metadata, roads/bridges/coasts, POI budgets, routes, and encounter pressure.
 4. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
-5. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, and a session-only Puter provider now exist. The next provider target is the documented OpenAI-compatible connection with a dedicated credential boundary; remote MCP and localhost sidecars remain later work.
+5. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, the dedicated AI Providers panel, Puter, and session-only browser-direct OpenAI-Compatible text connections now exist. Gather playtest feedback on that lifecycle before adding OAuth, relays, MCP, image/video/audio providers, or localhost sidecars.
 
 ## Operator-Mediated Decisions
 
@@ -58,6 +59,7 @@ generated artifact.
 - `docs/control-model.md`
 - `docs/combat-row-reach-audit.md`
 - `docs/modding.md`
+- `docs/ai-providers.md`
 - `docs/scene-feed-dsl.md`
 - `docs/holdings-model.md`
 - `docs/balance-cost-doctrine.md`

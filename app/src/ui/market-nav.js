@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
         marketBtn.setAttribute('data-i18n-title', 'ui.menu.marketTitle');
         marketBtn.setAttribute('aria-label', 'Open market');
         marketBtn.setAttribute('data-i18n-aria-label', 'ui.menu.marketTitle');
-        marketBtn.onclick = () => App.showScreen('market');
+        marketBtn.onclick = () => App.showMarketScreen();
         nav.insertBefore(marketBtn, nav.lastChild);
         App.applyStaticLocalization?.(nav);
     }

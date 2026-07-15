@@ -2,6 +2,8 @@
 
 Content posture, optional provider ownership, and compatibility rules are
 defined in [Content Posture And Optional Providers](content-posture-and-providers.md).
+AI transport profiles, capabilities, and credential boundaries are defined in
+[AI Providers](ai-providers.md).
 
 The current module system is a trusted-local mod lane. Installed module code runs in the same page context and should be treated as code the player deliberately chose to trust.
 
@@ -123,14 +125,18 @@ profile id, structured input, timeout, and character limit. It returns plain
 text and non-secret provider/model metadata. Provider modules declare
 `ai:provide`, register an adapter, and create session connections only after
 their own authorization flow. Credential-like fields are rejected from both
-manifest settings, public setting writes, and connection metadata. The built-in
-Puter adapter is keyless from the game's perspective: its SDK owns user sign-in,
-and core retains only an opaque session connection plus non-secret model choice.
+manifest settings, public setting writes, and connection metadata. The dedicated
+AI Providers panel owns profile setup. Puter is keyless from the game's
+perspective; the OpenAI-Compatible adapter holds API keys and additional header
+values only in its private in-memory session vault. Saved profiles contain
+non-secret endpoint/model/protocol metadata and restore disconnected.
 
 Manifest `settings` declarations support `boolean`, `select`, bounded `number`,
 bounded `string`, `provider_connection`, and `action`. Only declared controls
-render in the Mod Manager. `provider_connection` stores an opaque connection id;
-there is deliberately no persistent secret setting type.
+render in the Mod Manager. `provider_connection` declares a capability such as
+`text.generate`, stores an opaque profile id, lists compatible connected or
+reconnectable profiles, and links to AI Providers. There is deliberately no
+persistent secret setting type.
 
 ## Narrative And Structural Mod Lanes
 

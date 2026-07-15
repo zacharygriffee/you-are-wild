@@ -11,12 +11,14 @@ present with category, authoritative adult-eligibility, and provider-policy
 acknowledgement gates. New/load lifecycle reset, credential-setting rejection,
 and target-exchange context snapshots are covered by integration tests.
 
-A keyless Puter user-pays adapter is available through explicit
-Connect/Test/Disconnect controls. Puter owns browser authentication; the game
-stores only an opaque session connection and non-secret model metadata. Manual
-OpenAI-compatible credentials and MCP remain deferred. The core game remains
-deterministic and fully functional with all narration packages absent, disabled,
-offline, or disconnected.
+A dedicated capability-based AI Providers panel now owns provider profiles and
+connection lifecycle. Puter owns its browser authentication. The built-in
+OpenAI-Compatible adapter supports browser-direct Responses and Chat
+Completions for Direct OpenAI, OpenRouter-style, generic compatible, and no-auth
+local endpoints. API keys and additional header values remain session-only;
+persisted profiles contain non-secret metadata and reload disconnected. MCP
+remains deferred. The core game remains deterministic and fully functional with
+all narration packages absent, disabled, offline, or disconnected.
 
 ## Agent Brief
 
@@ -49,10 +51,10 @@ playable HTML.
 - `MODS.getContext()` already provides bounded, JSON-serializable content
   policy, location, public units, quests, recent Scene Beats, and Activity Log
   entries behind `ui.read`.
-- The hook system does not yet expose `onSceneBeat` or an exchange-completion
-  event.
-- Modules can read and write namespaced setting values, but cannot yet declare a
-  typed settings UI.
+- The hook system exposes copied `onSceneBeat`, `onSceneExchangeClosed`, and
+  `onContentPolicyChanged` envelopes after deterministic state commits.
+- Modules declare typed settings, including capability-filtered
+  `provider_connection` selectors that store opaque profile IDs.
 - Optional explicit presentation already lives in
   `optional-mods/you-are-wild-explicit.yawmod.json` and is gated by the
   `explicit.sexual` category.
@@ -208,11 +210,11 @@ history.
 
 ### 4. Introduce a core AI provider manager
 
-Mods should request a capability; they should not receive API keys:
+Mods request a capability; they do not receive API keys:
 
 ```js
 const result = await MODS.ai.generate({
-  capability: "narration",
+  capability: "text.generate",
   providerConnectionId,
   profileId,
   input: narrationContext,
@@ -225,12 +227,15 @@ Recommended permission: `ai:request`. The provider manager owns connection
 status, request transport, timeouts, rate limits, usage metadata, and sanitized
 errors. It returns text and non-secret provider/model/usage metadata only.
 
-Provider adapters should be replaceable behind one contract. Initial candidates:
+Provider adapters are replaceable behind one contract. Current implementations:
 
-1. OpenRouter OAuth/PKCE, using a user-controlled and revocable app key.
-2. Puter user-pays authentication, if selected after a small integration spike.
-3. Manual BYOK through a server-side encrypted vault or future local sidecar.
-4. A remote MCP narration provider over Streamable HTTP.
+1. Puter user-pays browser authentication.
+2. Session-only browser-direct OpenAI-Compatible Responses and Chat
+   Completions, including Direct OpenAI, OpenRouter-style, generic, and no-auth
+   localhost profiles.
+
+Future candidates include OpenRouter OAuth/PKCE, a server-side encrypted vault
+or local sidecar, and remote MCP over Streamable HTTP.
 
 Never store a raw provider key in a manifest, ordinary module setting, game save,
 Activity Log, public context, error, URL, or exported package. If the first

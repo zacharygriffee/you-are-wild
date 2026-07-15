@@ -9,6 +9,16 @@ This document defines the UI-safe control model for traversal, actor selection, 
 - Preserve existing party, creature, combat, quest, trade, recruit, loot, scavenge, and modded action routing.
 - Keep all controls reversible until a normal gameplay command is explicitly dispatched.
 
+## System Navigation
+
+The startup screen prioritizes entering or resuming play. Continue, New Game, and Load Game are the primary vertical actions. Settings, Mods, and Tutorial form a compact utility group. AI Providers is an integration destination inside Settings, while local Module Samples is a modding destination inside Mods. These advanced destinations should not grow the startup screen into a system-management dashboard.
+
+Nested system screens preserve their origin. Closing AI Providers opened from Settings returns to Settings; closing Module Samples opened from Mods returns to Mods; closing that parent then returns to the startup screen or live game that opened it. Switching from Module Samples to My Modules preserves the underlying origin rather than adding a duplicate navigation layer. Focus returns to the invoking control when practical, with the destination screen or live-game app-menu toggle as fallback.
+
+The live-game app menu keeps direct shortcuts to frequently needed system destinations, including Mods, Module Samples, and AI Providers. This is deliberate: the startup hierarchy optimizes for starting play, while the in-game menu optimizes for quick interruption and return.
+
+The normal startup layout should fit supported desktop and mobile viewports without scrolling. The startup screen remains vertically scrollable as an accessibility fallback for short displays, browser zoom, large text, safe-area insets, or translated labels. Utility controls may wrap or grow, but must remain at least 44px tall, preserve reading order, and never introduce horizontal page overflow.
+
 ## Control Modes
 
 ## Interaction Plan

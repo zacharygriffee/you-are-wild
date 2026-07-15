@@ -3,8 +3,6 @@
  * Module Manager UI Controller
  */
 const ModUI = {
-    providerBusy: false,
-
     label(key, fallback, vars = {}) {
         if (typeof App !== 'undefined' && App._label) return App._label(key, fallback, vars);
         if (typeof CONTENT !== 'undefined' && CONTENT.t) {
@@ -131,8 +129,16 @@ const ModUI = {
         } else if (declaration.type === 'string') {
             control = `<input type="text" maxlength="${declaration.maxLength}" value="${this.escapeHtml(value)}" onchange="ModUI.updateSetting('${id}','${key}',this.value)">`;
         } else if (declaration.type === 'provider_connection') {
-            const connections = YAW_AI_PROVIDER_MANAGER.listConnections();
-            control = `<select onchange="ModUI.updateSetting('${id}','${key}',this.value)"><option value="">No connection</option>${connections.map(connection => `<option value="${this.escapeHtml(connection.id)}" ${connection.id === value ? 'selected' : ''}>${this.escapeHtml(connection.providerName)}</option>`).join('')}</select>`;
+            const capability = declaration.capability || 'text.generate';
+            const profiles = YAW_AI_PROVIDER_MANAGER.listProfiles()
+                .filter(profile => profile.capabilities.includes(capability));
+            const options = profiles.map(profile => {
+                const state = profile.connected
+                    ? this.label('provider.state.connectedShort', 'connected')
+                    : this.label('provider.state.reconnectShort', 'reconnect required');
+                return `<option value="${this.escapeHtml(profile.id)}" ${profile.id === value ? 'selected' : ''}>${this.escapeHtml(profile.name)} - ${this.escapeHtml(state)}</option>`;
+            }).join('');
+            control = `<span class="mod-provider-setting"><select onchange="ModUI.updateSetting('${id}','${key}',this.value)"><option value="">${this.escapeHtml(this.label('provider.none', 'No connection'))}</option>${options}</select><button class="nav-btn" type="button" onclick="App.showAIProviderScreen()">${this.escapeHtml(this.label('provider.manage', 'Manage Providers'))}</button></span>`;
         } else if (declaration.type === 'action') {
             const available = MODULE_SYSTEM.settingActions.has(`${moduleId}:${declaration.key}`);
             control = `<button class="nav-btn" type="button" ${available ? '' : 'disabled'} onclick="ModUI.runSettingAction('${id}','${key}')">${label}</button>`;
@@ -169,7 +175,6 @@ const ModUI = {
     },
     
     async refreshModList() {
-        this.refreshProviderConnections();
         const container = document.getElementById('mod-list');
         if (!container) return;
         
@@ -252,66 +257,6 @@ const ModUI = {
         }).join('');
     },
 
-    refreshProviderConnections(message = '', kind = 'info') {
-        const provider = typeof YAW_PUTER_PROVIDER !== 'undefined' ? YAW_PUTER_PROVIDER : null;
-        const snapshot = provider?.snapshot?.() || { connected: false, model: '' };
-        const model = document.getElementById('puter-provider-model');
-        const connect = document.getElementById('puter-provider-connect');
-        const test = document.getElementById('puter-provider-test');
-        const disconnect = document.getElementById('puter-provider-disconnect');
-        const status = document.getElementById('puter-provider-status');
-        if (model && snapshot.connected) model.value = snapshot.model || '';
-        if (model) model.disabled = this.providerBusy || snapshot.connected;
-        if (connect) connect.disabled = this.providerBusy || snapshot.connected;
-        if (test) test.disabled = this.providerBusy || !snapshot.connected;
-        if (disconnect) disconnect.disabled = this.providerBusy || !snapshot.connected;
-        if (status) {
-            const fallback = snapshot.connected
-                ? this.label('provider.puter.connected', 'Connected for this browser session.')
-                : this.label('provider.puter.disconnected', 'Not connected.');
-            status.textContent = message || fallback;
-            status.dataset.kind = kind;
-        }
-    },
-
-    providerErrorMessage(error) {
-        const code = String(error?.error || error?.code || '');
-        if (code === 'popup_blocked') return this.label('provider.puter.popupBlocked', 'The sign-in popup was blocked. Allow popups and try again.');
-        if (code === 'auth_window_closed') return this.label('provider.puter.authCancelled', 'Puter sign-in was cancelled.');
-        if (code === 'timeout') return this.label('provider.puter.timeout', 'The provider test timed out.');
-        return this.label('provider.puter.failed', 'The provider operation failed. Check your connection and try again.');
-    },
-
-    async runPuterAction(action) {
-        if (this.providerBusy || typeof YAW_PUTER_PROVIDER === 'undefined') return false;
-        this.providerBusy = true;
-        this.refreshProviderConnections(this.label('provider.puter.working', 'Working...'));
-        try {
-            let message = '';
-            if (action === 'connect') {
-                const model = document.getElementById('puter-provider-model')?.value || '';
-                await YAW_PUTER_PROVIDER.connect(model);
-                message = this.label('provider.puter.connectSuccess', 'Connected. Choose Puter in a narration mod provider setting.');
-            } else if (action === 'test') {
-                const result = await YAW_PUTER_PROVIDER.test();
-                message = this.label('provider.puter.testSuccess', 'Connection test passed{model}.', {
-                    model: result.modelId ? ` (${result.modelId})` : ''
-                });
-            } else if (action === 'disconnect') {
-                YAW_PUTER_PROVIDER.disconnect();
-                message = this.label('provider.puter.disconnectSuccess', 'Disconnected. Pending requests were cancelled.');
-            }
-            this.providerBusy = false;
-            await this.refreshModList();
-            this.refreshProviderConnections(message, 'success');
-            return true;
-        } catch (error) {
-            this.providerBusy = false;
-            this.refreshProviderConnections(this.providerErrorMessage(error), 'error');
-            return false;
-        }
-    },
-    
     async createExampleMod() {
         const exampleMod = {
             manifest: {
@@ -363,8 +308,8 @@ const ModUI = {
     },
     
     showModScreen() {
-        if (typeof App !== 'undefined' && typeof App.showScreen === 'function') {
-            return App.showScreen('mods');
+        if (typeof App !== 'undefined' && typeof App.showModScreen === 'function') {
+            return App.showModScreen();
         }
         document.querySelectorAll('.screen').forEach(s => {
             s.classList.remove('active');

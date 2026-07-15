@@ -205,7 +205,10 @@ const MODULE_SYSTEM = {
                 setting.default = String(entry.default || '').slice(0, setting.maxLength);
                 this._assertSettingContainsNoCredentials(key, setting.default);
             }
-            if (type === 'provider_connection') setting.default = '';
+            if (type === 'provider_connection') {
+                setting.default = '';
+                setting.capability = YAW_AI_PROVIDER_MANAGER.normalizeCapability(entry.capability || 'text.generate');
+            }
             return setting;
         });
     },
@@ -450,7 +453,10 @@ const MODULE_SYSTEM = {
         if (declaration.type === 'string') return String(value || '').slice(0, declaration.maxLength);
         if (declaration.type === 'provider_connection') {
             const id = String(value || '');
-            if (id && !YAW_AI_PROVIDER_MANAGER.connections.has(id)) throw new Error('Provider connection is unavailable');
+            const profile = id ? YAW_AI_PROVIDER_MANAGER.profiles.get(id) : null;
+            if (id && (!profile || !profile.capabilities.includes(declaration.capability || 'text.generate'))) {
+                throw new Error('Provider connection is unavailable');
+            }
             return id;
         }
         throw new Error('Unsupported module setting type');
@@ -1346,9 +1352,9 @@ const MODULE_SYSTEM = {
                     self._requirePermission(moduleId, manifest, 'ai:request');
                     return YAW_AI_PROVIDER_MANAGER.generate(moduleId, request);
                 },
-                listConnections() {
+                listConnections(capability = 'text.generate') {
                     self._requirePermission(moduleId, manifest, 'ai:request');
-                    return YAW_AI_PROVIDER_MANAGER.listConnections();
+                    return YAW_AI_PROVIDER_MANAGER.listConnections(capability);
                 },
                 cancelPending() {
                     self._requirePermission(moduleId, manifest, 'ai:request');

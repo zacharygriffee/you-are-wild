@@ -444,151 +444,397 @@ const YAW_NARRATION_SYSTEM = {
     }
 };
 
-const YAW_AI_PROVIDER_MANAGER = {
-    adapters: new Map(),
-    connections: new Map(),
-    requestsByModule: new Map(),
-    requestsByConnection: new Map(),
-    connectionSeq: 0,
+const YAW_AI_PROVIDER_MANAGER = (() => {
+    const credentialVault = new Map();
+    const PROFILE_STORAGE_KEY = 'yaw.ai.providerProfiles.v1';
+    const capabilityAliases = new Map([
+        ['narration', 'text.generate'],
+        ['text', 'text.generate']
+    ]);
 
-    token(value, label) {
-        return YAW_NARRATION_SYSTEM.token(value, label);
-    },
+    const manager = {
+        adapters: new Map(),
+        profiles: new Map(),
+        connections: new Map(),
+        requestsByModule: new Map(),
+        requestsByConnection: new Map(),
+        connectionSeq: 0,
+        profilesRestored: false,
 
-    registerAdapter(providerId, adapter, ownerModuleId = 'core') {
-        const id = this.token(providerId, 'AI provider id');
-        if (!adapter || typeof adapter.generate !== 'function') throw new Error('AI provider adapter requires generate()');
-        this.adapters.set(id, { id, ownerModuleId, name: String(adapter.name || id).slice(0, 120), generate: adapter.generate });
-        return id;
-    },
+        token(value, label) {
+            return YAW_NARRATION_SYSTEM.token(value, label);
+        },
 
-    unregisterOwner(ownerModuleId) {
-        for (const [id, adapter] of this.adapters.entries()) {
-            if (adapter.ownerModuleId === ownerModuleId) this.adapters.delete(id);
-        }
-        for (const [id, connection] of this.connections.entries()) {
-            if (connection.ownerModuleId === ownerModuleId) this.removeConnection(id);
-        }
-        this.abortModule(ownerModuleId);
-    },
+        normalizeCapability(value = 'text.generate') {
+            const aliased = capabilityAliases.get(String(value || '').trim()) || String(value || '').trim();
+            if (!/^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/.test(aliased)) throw new Error('Invalid AI capability');
+            return aliased;
+        },
 
-    createConnection(providerId, metadata = {}) {
-        const provider = this.adapters.get(String(providerId));
-        if (!provider) throw new Error('AI provider is not registered');
-        const copied = YAW_NARRATION_SYSTEM.copy(metadata, {});
-        const serialized = JSON.stringify(copied).toLowerCase();
-        if (/api[_-]?key|secret|authorization|bearer|password|token/.test(serialized)) {
-            throw new Error('Provider connection metadata cannot contain credentials');
-        }
-        const id = `connection-${++this.connectionSeq}-${Date.now()}`;
-        this.connections.set(id, { id, providerId: provider.id, ownerModuleId: provider.ownerModuleId, metadata: copied, createdAt: Date.now() });
-        return id;
-    },
+        credentialLikeName(value) {
+            const compact = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            return [
+                'apikey', 'accesskey', 'accesstoken', 'refreshtoken', 'authtoken', 'authorization',
+                'bearertoken', 'token', 'password', 'passwd', 'secret', 'clientsecret', 'privatekey', 'credential'
+            ].some(token => compact === token || compact.endsWith(token));
+        },
 
-    removeConnection(connectionId) {
-        const id = String(connectionId);
-        for (const controller of this.requestsByConnection.get(id) || []) controller.abort('provider-disconnect');
-        this.requestsByConnection.delete(id);
-        return this.connections.delete(id);
-    },
+        credentialLikeValue(value, seen = new Set()) {
+            if (typeof value === 'string') {
+                const text = value.trim();
+                return /^(?:bearer|basic)\s+\S+/i.test(text)
+                    || /^sk-(?:or-v1-)?[a-z0-9_-]{8,}$/i.test(text)
+                    || /^-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(text);
+            }
+            if (!value || typeof value !== 'object' || seen.has(value)) return false;
+            seen.add(value);
+            if (Array.isArray(value)) return value.some(item => this.credentialLikeValue(item, seen));
+            return Object.entries(value).some(([key, child]) => this.credentialLikeName(key) || this.credentialLikeValue(child, seen));
+        },
 
-    removeOwnedConnection(ownerModuleId, connectionId) {
-        const connection = this.connections.get(String(connectionId));
-        if (!connection || connection.ownerModuleId !== ownerModuleId) return false;
-        return this.removeConnection(connection.id);
-    },
+        safeMetadata(value = {}) {
+            const copied = YAW_NARRATION_SYSTEM.copy(value, null);
+            if (!copied || typeof copied !== 'object' || Array.isArray(copied)) throw new Error('Provider metadata must be serializable data');
+            if (this.credentialLikeValue(copied)) throw new Error('Provider connection metadata cannot contain credentials');
+            return copied;
+        },
 
-    listConnections() {
-        return [...this.connections.values()].map(connection => ({
-            id: connection.id,
-            providerId: connection.providerId,
-            providerName: this.adapters.get(connection.providerId)?.name || connection.providerId
-        }));
-    },
+        storage() {
+            try { return window.localStorage || null; } catch (error) { return null; }
+        },
 
-    async generate(ownerModuleId, request = {}) {
-        if (request.capability !== 'narration') throw new Error('Unsupported AI capability');
-        const connection = this.connections.get(String(request.providerConnectionId || ''));
-        if (!connection) throw new Error('AI provider connection is unavailable');
-        const adapter = this.adapters.get(connection.providerId);
-        if (!adapter) throw new Error('AI provider adapter is unavailable');
-        const input = YAW_NARRATION_SYSTEM.copy(request.input, null);
-        if (!input) throw new Error('AI request input must be serializable');
-        const maxCharacters = Math.max(80, Math.min(YAW_NARRATION_SYSTEM.MAX_TEXT_LENGTH, Number(request.maxCharacters) || YAW_NARRATION_SYSTEM.MAX_TEXT_LENGTH));
-        const controller = new AbortController();
-        const externalSignal = request.signal;
-        const abortExternal = () => controller.abort(externalSignal?.reason || 'cancelled');
-        if (externalSignal?.aborted) abortExternal();
-        else externalSignal?.addEventListener?.('abort', abortExternal, { once: true });
-        const timeoutMs = Math.max(1000, Math.min(30000, Number(request.timeoutMs) || 12000));
-        const timeout = window.setTimeout(() => controller.abort('timeout'), timeoutMs);
-        if (!this.requestsByModule.has(ownerModuleId)) this.requestsByModule.set(ownerModuleId, new Set());
-        this.requestsByModule.get(ownerModuleId).add(controller);
-        if (!this.requestsByConnection.has(connection.id)) this.requestsByConnection.set(connection.id, new Set());
-        this.requestsByConnection.get(connection.id).add(controller);
-        try {
-            const result = await adapter.generate({
-                capability: 'narration',
-                profileId: String(request.profileId || ''),
-                input,
-                maxCharacters,
-                connection: { id: connection.id, metadata: YAW_NARRATION_SYSTEM.copy(connection.metadata, {}) },
-                signal: controller.signal
+        restoreProfiles() {
+            if (this.profilesRestored) return this.profiles.size;
+            this.profilesRestored = true;
+            const storage = this.storage();
+            if (!storage) return 0;
+            try {
+                const records = JSON.parse(storage.getItem(PROFILE_STORAGE_KEY) || '[]');
+                for (const record of Array.isArray(records) ? records : []) {
+                    const providerId = String(record?.providerId || '');
+                    const id = String(record?.id || '');
+                    if (!providerId || !id || record?.persisted !== true) continue;
+                    const metadata = this.safeMetadata(record.metadata || {});
+                    const capabilities = (record.capabilities || ['text.generate']).map(value => this.normalizeCapability(value));
+                    this.profiles.set(id, {
+                        id,
+                        providerId,
+                        ownerModuleId: String(record.ownerModuleId || 'core'),
+                        name: String(record.name || providerId).slice(0, 120),
+                        capabilities: [...new Set(capabilities)],
+                        metadata,
+                        persisted: true,
+                        createdAt: Number(record.createdAt) || Date.now(),
+                        updatedAt: Number(record.updatedAt) || Date.now()
+                    });
+                }
+            } catch (error) {
+                console.warn('Provider profiles could not be restored');
+            }
+            return this.profiles.size;
+        },
+
+        persistProfiles() {
+            const storage = this.storage();
+            if (!storage) return false;
+            const records = [...this.profiles.values()]
+                .filter(profile => profile.persisted)
+                .map(profile => ({
+                    id: profile.id,
+                    providerId: profile.providerId,
+                    ownerModuleId: profile.ownerModuleId,
+                    name: profile.name,
+                    capabilities: [...profile.capabilities],
+                    metadata: YAW_NARRATION_SYSTEM.copy(profile.metadata, {}),
+                    persisted: true,
+                    createdAt: profile.createdAt,
+                    updatedAt: profile.updatedAt
+                }));
+            try {
+                storage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(records));
+                return true;
+            } catch (error) {
+                console.warn('Provider profiles could not be persisted');
+                return false;
+            }
+        },
+
+        registerAdapter(providerId, adapter, ownerModuleId = 'core') {
+            this.restoreProfiles();
+            const id = this.token(providerId, 'AI provider id');
+            const invoke = adapter?.invoke || adapter?.generate;
+            if (typeof invoke !== 'function') throw new Error('AI provider adapter requires invoke() or generate()');
+            const existing = this.adapters.get(id);
+            if (existing && existing.ownerModuleId !== ownerModuleId) throw new Error('AI provider id is already registered');
+            const capabilities = [...new Set((adapter.capabilities || ['text.generate']).map(value => this.normalizeCapability(value)))];
+            this.adapters.set(id, {
+                id,
+                ownerModuleId,
+                name: String(adapter.name || id).slice(0, 120),
+                description: String(adapter.description || '').slice(0, 300),
+                capabilities,
+                invoke
             });
-            let text = String(result?.text || '').replace(/\s+/g, ' ').trim();
-            if (!text) throw new Error('AI provider returned empty narration');
-            if (text.length > maxCharacters) {
-                const candidate = text.slice(0, maxCharacters + 1);
-                const sentenceEnd = Math.max(candidate.lastIndexOf('. '), candidate.lastIndexOf('! '), candidate.lastIndexOf('? '));
-                const wordEnd = candidate.lastIndexOf(' ');
-                const cut = sentenceEnd >= Math.floor(maxCharacters * 0.6) ? sentenceEnd + 1 : wordEnd;
-                text = candidate.slice(0, cut > 0 ? cut : maxCharacters).trim();
+            return id;
+        },
+
+        listProviders() {
+            this.restoreProfiles();
+            return [...this.adapters.values()].map(adapter => ({
+                id: adapter.id,
+                name: adapter.name,
+                description: adapter.description,
+                capabilities: [...adapter.capabilities]
+            }));
+        },
+
+        unregisterOwner(ownerModuleId) {
+            for (const [id, adapter] of this.adapters.entries()) {
+                if (adapter.ownerModuleId === ownerModuleId) this.adapters.delete(id);
             }
-            return {
-                text,
-                providerId: connection.providerId,
-                modelId: String(result?.modelId || '').slice(0, 120),
-                usage: YAW_NARRATION_SYSTEM.copy(result?.usage || null, null)
+            for (const profile of [...this.profiles.values()]) {
+                if (profile.ownerModuleId === ownerModuleId) this.removeProfile(profile.id);
+            }
+            this.abortModule(ownerModuleId);
+        },
+
+        profileId() {
+            return `connection-${++this.connectionSeq}-${Date.now()}`;
+        },
+
+        upsertProfile(input = {}) {
+            this.restoreProfiles();
+            const provider = this.adapters.get(String(input.providerId || ''));
+            if (!provider) throw new Error('AI provider is not registered');
+            const id = input.id ? this.token(input.id, 'AI provider profile id') : this.profileId();
+            const existing = this.profiles.get(id);
+            if (existing && existing.providerId !== provider.id) throw new Error('Provider profile cannot change providers');
+            const now = Date.now();
+            const profile = {
+                id,
+                providerId: provider.id,
+                ownerModuleId: provider.ownerModuleId,
+                name: String(input.name || existing?.name || provider.name).trim().slice(0, 120) || provider.name,
+                capabilities: [...provider.capabilities],
+                metadata: this.safeMetadata(input.metadata ?? existing?.metadata ?? {}),
+                persisted: input.persisted ?? existing?.persisted ?? true,
+                createdAt: existing?.createdAt || now,
+                updatedAt: now
             };
-        } catch (error) {
-            if (controller.signal.aborted) {
-                const code = controller.signal.reason === 'timeout' ? 'timeout' : 'cancelled';
-                const sanitized = new Error(code === 'timeout' ? 'Narration request timed out' : 'Narration request cancelled');
-                sanitized.code = code;
-                throw sanitized;
+            this.profiles.set(id, profile);
+            this.persistProfiles();
+            if (this.connections.has(id)) {
+                const connection = this.connections.get(id);
+                connection.name = profile.name;
+                connection.metadata = YAW_NARRATION_SYSTEM.copy(profile.metadata, {});
+                connection.capabilities = [...profile.capabilities];
             }
-            const sanitized = new Error('Narration provider request failed');
-            sanitized.code = String(error?.code || 'provider_error').slice(0, 80);
-            throw sanitized;
-        } finally {
-            window.clearTimeout(timeout);
-            externalSignal?.removeEventListener?.('abort', abortExternal);
-            this.requestsByModule.get(ownerModuleId)?.delete(controller);
-            if (this.requestsByModule.get(ownerModuleId)?.size === 0) this.requestsByModule.delete(ownerModuleId);
-            this.requestsByConnection.get(connection.id)?.delete(controller);
-            if (this.requestsByConnection.get(connection.id)?.size === 0) this.requestsByConnection.delete(connection.id);
-        }
-    },
+            return id;
+        },
 
-    abortModule(ownerModuleId) {
-        for (const controller of this.requestsByModule.get(ownerModuleId) || []) controller.abort('module-unload');
-        this.requestsByModule.delete(ownerModuleId);
-    },
+        updateProfileMetadata(profileId, patch = {}) {
+            const profile = this.profiles.get(String(profileId));
+            if (!profile) throw new Error('AI provider profile is unavailable');
+            return this.upsertProfile({
+                ...profile,
+                metadata: { ...profile.metadata, ...this.safeMetadata(patch) }
+            });
+        },
 
-    resetRuntime(reason = 'run-switch') {
-        const controllers = new Set();
-        for (const requests of this.requestsByModule.values()) {
-            for (const controller of requests) controllers.add(controller);
+        connectProfile(profileId, credential = undefined) {
+            const id = String(profileId);
+            const profile = this.profiles.get(id);
+            if (!profile || !this.adapters.has(profile.providerId)) throw new Error('AI provider profile is unavailable');
+            if (credential !== undefined) credentialVault.set(id, credential);
+            this.connections.set(id, {
+                id,
+                providerId: profile.providerId,
+                ownerModuleId: profile.ownerModuleId,
+                name: profile.name,
+                capabilities: [...profile.capabilities],
+                metadata: YAW_NARRATION_SYSTEM.copy(profile.metadata, {}),
+                createdAt: Date.now()
+            });
+            return id;
+        },
+
+        createConnection(providerId, metadata = {}) {
+            const id = this.upsertProfile({ providerId, metadata, persisted: false });
+            return this.connectProfile(id);
+        },
+
+        abortConnection(connectionId, reason = 'provider-disconnect') {
+            const id = String(connectionId);
+            for (const controller of this.requestsByConnection.get(id) || []) controller.abort(reason);
+            this.requestsByConnection.delete(id);
+        },
+
+        disconnectProfile(profileId, { clearCredential = true } = {}) {
+            const id = String(profileId);
+            this.abortConnection(id);
+            if (clearCredential) credentialVault.delete(id);
+            return this.connections.delete(id);
+        },
+
+        removeConnection(connectionId) {
+            const id = String(connectionId);
+            const profile = this.profiles.get(id);
+            const removed = this.disconnectProfile(id);
+            if (profile && !profile.persisted) this.profiles.delete(id);
+            return removed;
+        },
+
+        removeProfile(profileId) {
+            const id = String(profileId);
+            this.disconnectProfile(id);
+            const removed = this.profiles.delete(id);
+            this.persistProfiles();
+            return removed;
+        },
+
+        removeOwnedConnection(ownerModuleId, connectionId) {
+            const connection = this.connections.get(String(connectionId));
+            if (!connection || connection.ownerModuleId !== ownerModuleId) return false;
+            return this.removeConnection(connection.id);
+        },
+
+        profileSnapshot(profile) {
+            const adapter = this.adapters.get(profile.providerId);
+            return {
+                id: profile.id,
+                providerId: profile.providerId,
+                providerName: adapter?.name || profile.providerId,
+                name: profile.name,
+                capabilities: [...profile.capabilities],
+                metadata: YAW_NARRATION_SYSTEM.copy(profile.metadata, {}),
+                connected: this.connections.has(profile.id),
+                credentialPresent: credentialVault.has(profile.id),
+                persisted: profile.persisted
+            };
+        },
+
+        listProfiles(providerId = '') {
+            this.restoreProfiles();
+            return [...this.profiles.values()]
+                .filter(profile => !providerId || profile.providerId === providerId)
+                .map(profile => this.profileSnapshot(profile));
+        },
+
+        listConnections(capability = '') {
+            const required = capability ? this.normalizeCapability(capability) : '';
+            return [...this.connections.values()]
+                .filter(connection => !required || connection.capabilities.includes(required))
+                .map(connection => ({
+                    id: connection.id,
+                    providerId: connection.providerId,
+                    providerName: this.adapters.get(connection.providerId)?.name || connection.providerId,
+                    name: connection.name,
+                    capabilities: [...connection.capabilities]
+                }));
+        },
+
+        async invoke(ownerModuleId, request = {}) {
+            const capability = this.normalizeCapability(request.capability || 'text.generate');
+            const connection = this.connections.get(String(request.providerConnectionId || request.connectionId || ''));
+            if (!connection) throw new Error('AI provider connection is unavailable');
+            const adapter = this.adapters.get(connection.providerId);
+            if (!adapter || !connection.capabilities.includes(capability)) throw new Error('AI provider capability is unavailable');
+            const input = YAW_NARRATION_SYSTEM.copy(request.input, null);
+            if (!input) throw new Error('AI request input must be serializable');
+            const maxCharacters = Math.max(80, Math.min(YAW_NARRATION_SYSTEM.MAX_TEXT_LENGTH, Number(request.maxCharacters) || YAW_NARRATION_SYSTEM.MAX_TEXT_LENGTH));
+            const controller = new AbortController();
+            const externalSignal = request.signal;
+            const abortExternal = () => controller.abort(externalSignal?.reason || 'cancelled');
+            if (externalSignal?.aborted) abortExternal();
+            else externalSignal?.addEventListener?.('abort', abortExternal, { once: true });
+            const profileTimeout = Number(connection.metadata?.timeoutMs) || 12000;
+            const timeoutMs = Math.max(1000, Math.min(30000, Number(request.timeoutMs) || profileTimeout || 12000));
+            const timeout = window.setTimeout(() => controller.abort('timeout'), timeoutMs);
+            if (!this.requestsByModule.has(ownerModuleId)) this.requestsByModule.set(ownerModuleId, new Set());
+            this.requestsByModule.get(ownerModuleId).add(controller);
+            if (!this.requestsByConnection.has(connection.id)) this.requestsByConnection.set(connection.id, new Set());
+            this.requestsByConnection.get(connection.id).add(controller);
+            try {
+                const result = await adapter.invoke({
+                    capability,
+                    profileId: String(request.profileId || ''),
+                    input,
+                    maxCharacters,
+                    credential: credentialVault.get(connection.id),
+                    connection: { id: connection.id, metadata: YAW_NARRATION_SYSTEM.copy(connection.metadata, {}) },
+                    signal: controller.signal
+                });
+                if (capability !== 'text.generate') return YAW_NARRATION_SYSTEM.copy(result, {});
+                let text = String(result?.text || '').replace(/\s+/g, ' ').trim();
+                if (!text) throw new Error('AI provider returned empty text');
+                if (text.length > maxCharacters) {
+                    const candidate = text.slice(0, maxCharacters + 1);
+                    const sentenceEnd = Math.max(candidate.lastIndexOf('. '), candidate.lastIndexOf('! '), candidate.lastIndexOf('? '));
+                    const wordEnd = candidate.lastIndexOf(' ');
+                    const cut = sentenceEnd >= Math.floor(maxCharacters * 0.6) ? sentenceEnd + 1 : wordEnd;
+                    text = candidate.slice(0, cut > 0 ? cut : maxCharacters).trim();
+                }
+                return {
+                    text,
+                    providerId: connection.providerId,
+                    modelId: String(result?.modelId || '').slice(0, 120),
+                    protocol: String(result?.protocol || '').slice(0, 40),
+                    endpoint: String(result?.endpoint || '').slice(0, 500),
+                    endpointReached: result?.endpointReached === true,
+                    authenticationAccepted: result?.authenticationAccepted === true,
+                    modelAccepted: result?.modelAccepted === true,
+                    usage: YAW_NARRATION_SYSTEM.copy(result?.usage || null, null)
+                };
+            } catch (error) {
+                if (controller.signal.aborted) {
+                    const code = controller.signal.reason === 'timeout' ? 'timeout' : 'cancelled';
+                    const sanitized = new Error(code === 'timeout' ? 'AI provider request timed out' : 'AI provider request cancelled');
+                    sanitized.code = code;
+                    throw sanitized;
+                }
+                const sanitized = new Error('AI provider request failed');
+                sanitized.code = String(error?.code || 'provider_error').slice(0, 80);
+                sanitized.status = Number(error?.status) || 0;
+                throw sanitized;
+            } finally {
+                window.clearTimeout(timeout);
+                externalSignal?.removeEventListener?.('abort', abortExternal);
+                this.requestsByModule.get(ownerModuleId)?.delete(controller);
+                if (this.requestsByModule.get(ownerModuleId)?.size === 0) this.requestsByModule.delete(ownerModuleId);
+                this.requestsByConnection.get(connection.id)?.delete(controller);
+                if (this.requestsByConnection.get(connection.id)?.size === 0) this.requestsByConnection.delete(connection.id);
+            }
+        },
+
+        generate(ownerModuleId, request = {}) {
+            return this.invoke(ownerModuleId, {
+                ...request,
+                capability: request.capability === 'narration' ? 'text.generate' : request.capability
+            });
+        },
+
+        abortModule(ownerModuleId) {
+            for (const controller of this.requestsByModule.get(ownerModuleId) || []) controller.abort('module-unload');
+            this.requestsByModule.delete(ownerModuleId);
+        },
+
+        resetRuntime(reason = 'run-switch') {
+            const controllers = new Set();
+            for (const requests of this.requestsByModule.values()) {
+                for (const controller of requests) controllers.add(controller);
+            }
+            for (const requests of this.requestsByConnection.values()) {
+                for (const controller of requests) controllers.add(controller);
+            }
+            for (const controller of controllers) controller.abort(reason);
+            this.requestsByModule.clear();
+            this.requestsByConnection.clear();
+            return controllers.size;
         }
-        for (const requests of this.requestsByConnection.values()) {
-            for (const controller of requests) controllers.add(controller);
-        }
-        for (const controller of controllers) controller.abort(reason);
-        this.requestsByModule.clear();
-        this.requestsByConnection.clear();
-        return controllers.size;
-    }
-};
+    };
+
+    return manager;
+})();
 
 if (typeof window !== 'undefined') {
     window.YAW_NARRATION_SYSTEM = YAW_NARRATION_SYSTEM;

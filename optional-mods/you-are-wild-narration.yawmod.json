@@ -17,7 +17,7 @@
       "permissions": ["scene:read_narrative", "scene:narrate", "ai:request"],
       "settings": [
         { "key": "enabled", "type": "boolean", "label": "Enable narration", "default": true },
-        { "key": "providerConnection", "type": "provider_connection", "label": "Provider connection", "description": "Connections are session-only and contain no provider credentials." },
+        { "key": "providerConnection", "type": "provider_connection", "capability": "text.generate", "label": "Provider connection", "description": "Choose a text-generation profile managed in AI Providers. Credentials remain session-only." },
         { "key": "profile", "type": "select", "label": "Narration profile", "default": "storyteller", "options": [{ "value": "storyteller", "label": "Storyteller" }, { "value": "characters", "label": "Character reactions" }, { "value": "hybrid", "label": "Hybrid" }] },
         { "key": "recentBeatLimit", "type": "number", "label": "Recent scene depth", "min": 1, "max": 12, "step": 1, "default": 6 },
         { "key": "maxCharacters", "type": "number", "label": "Maximum characters", "min": 400, "max": 500, "step": 10, "default": 500 }

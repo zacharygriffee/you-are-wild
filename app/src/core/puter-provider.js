@@ -5,6 +5,7 @@
 
 const YAW_PUTER_PROVIDER = {
     PROVIDER_ID: 'puter',
+    PROFILE_ID: 'connection-puter-default',
     SDK_URL: 'https://js.puter.com/v2/',
     connectionId: '',
     sdkPromise: null,
@@ -14,11 +15,22 @@ const YAW_PUTER_PROVIDER = {
     },
 
     register() {
-        if (YAW_AI_PROVIDER_MANAGER.adapters.has(this.PROVIDER_ID)) return this.PROVIDER_ID;
-        return YAW_AI_PROVIDER_MANAGER.registerAdapter(this.PROVIDER_ID, {
-            name: 'Puter (User Pays)',
-            generate: request => this.generate(request)
-        }, 'core-puter-provider');
+        if (!YAW_AI_PROVIDER_MANAGER.adapters.has(this.PROVIDER_ID)) {
+            YAW_AI_PROVIDER_MANAGER.registerAdapter(this.PROVIDER_ID, {
+                name: 'Puter (User Pays)',
+                description: 'Browser sign-in with user-paid model access. No API key is stored by the game.',
+                capabilities: ['text.generate'],
+                generate: request => this.generate(request)
+            }, 'core-puter-provider');
+        }
+        YAW_AI_PROVIDER_MANAGER.upsertProfile({
+            id: this.PROFILE_ID,
+            providerId: this.PROVIDER_ID,
+            name: 'Puter',
+            metadata: { model: '', transport: 'puter-user-pays' },
+            persisted: false
+        });
+        return this.PROVIDER_ID;
     },
 
     loadSdk() {
@@ -48,11 +60,14 @@ const YAW_PUTER_PROVIDER = {
         this.register();
         const puter = await this.loadSdk();
         if (!puter.auth.isSignedIn()) await puter.auth.signIn();
-        if (this.connectionId) YAW_AI_PROVIDER_MANAGER.removeConnection(this.connectionId);
-        this.connectionId = YAW_AI_PROVIDER_MANAGER.createConnection(this.PROVIDER_ID, {
-            model: this.normalizeModel(model),
-            transport: 'puter-user-pays'
+        YAW_AI_PROVIDER_MANAGER.upsertProfile({
+            id: this.PROFILE_ID,
+            providerId: this.PROVIDER_ID,
+            name: 'Puter',
+            metadata: { model: this.normalizeModel(model), transport: 'puter-user-pays' },
+            persisted: false
         });
+        this.connectionId = YAW_AI_PROVIDER_MANAGER.connectProfile(this.PROFILE_ID, null);
         return this.snapshot();
     },
 
@@ -76,19 +91,20 @@ const YAW_PUTER_PROVIDER = {
     },
 
     disconnect() {
-        if (this.connectionId) YAW_AI_PROVIDER_MANAGER.removeConnection(this.connectionId);
+        YAW_AI_PROVIDER_MANAGER.disconnectProfile(this.PROFILE_ID);
         this.connectionId = '';
         return this.snapshot();
     },
 
     snapshot() {
-        const connection = YAW_AI_PROVIDER_MANAGER.connections.get(this.connectionId);
+        const profile = YAW_AI_PROVIDER_MANAGER.listProfiles(this.PROVIDER_ID)
+            .find(item => item.id === this.PROFILE_ID);
         return {
-            connected: Boolean(connection),
-            connectionId: connection?.id || '',
+            connected: Boolean(profile?.connected),
+            connectionId: profile?.connected ? profile.id : '',
             providerId: this.PROVIDER_ID,
             providerName: 'Puter (User Pays)',
-            model: String(connection?.metadata?.model || '')
+            model: String(profile?.metadata?.model || '')
         };
     },
 

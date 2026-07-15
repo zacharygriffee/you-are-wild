@@ -73,6 +73,29 @@ async function checkViewport(browser, name, width, height) {
   assert(shell.largeMapControlsLocalized, `${name}: large-map control group should expose localization hook`);
   assert(shell.zoomTitle.length > 0, `${name}: large-map zoom control should have a title`);
 
+  const menuHierarchy = await page.evaluate(() => {
+    const menu = document.getElementById('screen-menu');
+    const primary = menu?.querySelector('.menu-primary-actions');
+    const utility = menu?.querySelector('.menu-utility-actions');
+    const commands = root => Array.from(root?.querySelectorAll('[data-command-control]') || [])
+      .filter(control => getComputedStyle(control).display !== 'none')
+      .map(control => control.getAttribute('data-command-control'));
+    return {
+      primary: commands(primary),
+      utility: commands(utility),
+      hasDirectProviders: Boolean(menu?.querySelector('[data-command-control="open-ai-providers"]')),
+      hasDirectMarket: Boolean(menu?.querySelector('[data-command-control="open-market"]')),
+      overflowY: getComputedStyle(menu).overflowY,
+      horizontalOverflow: menu.scrollWidth > menu.clientWidth + 1
+    };
+  });
+  assert.deepStrictEqual(menuHierarchy.primary, ['start-new-game', 'open-load-slots'], `${name}: visible primary menu actions should be New and Load before a save exists`);
+  assert.deepStrictEqual(menuHierarchy.utility, ['open-settings', 'open-mods', 'open-help'], `${name}: utility menu actions should be Settings, Mods, and Tutorial`);
+  assert.strictEqual(menuHierarchy.hasDirectProviders, false, `${name}: AI Providers should be nested under Settings`);
+  assert.strictEqual(menuHierarchy.hasDirectMarket, false, `${name}: Module Samples should be nested under Mods`);
+  assert(menuHierarchy.overflowY === 'auto' || menuHierarchy.overflowY === 'scroll', `${name}: main menu should retain a vertical scroll fallback`);
+  assert.strictEqual(menuHierarchy.horizontalOverflow, false, `${name}: compact main menu should not overflow horizontally`);
+
   await page.evaluate(() => App.closeTutorial?.());
   await page.waitForTimeout(50);
   await page.locator('#screen-menu [data-command-control="open-settings"]').click();
@@ -109,6 +132,42 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(openedSettings.closeVisible, true, `${name}: Settings overlay should expose a visible close/back exit`);
   assert.strictEqual(openedSettings.closeControl, 'close-settings', `${name}: Settings close should expose its command control`);
   assert.strictEqual(openedSettings.closeSlot, 'exit', `${name}: Settings close should identify the exit slot`);
+
+  await page.locator('#screen-settings [data-command-control="open-ai-providers"]').click();
+  await page.waitForTimeout(50);
+  const openedProviders = await page.evaluate(() => ({
+    appScreen: App.screen,
+    returnStack: [...App.overlayReturnStack],
+    providersDisplay: getComputedStyle(document.getElementById('screen-providers')).display,
+    settingsDisplay: getComputedStyle(document.getElementById('screen-settings')).display,
+    focusTrapId: App._focusTrap?.container?.id || '',
+    pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  }));
+  assert.strictEqual(openedProviders.appScreen, 'providers', `${name}: Settings should open AI Providers`);
+  assert.deepStrictEqual(openedProviders.returnStack, ['settings'], `${name}: AI Providers should retain Settings as its parent`);
+  assert.notStrictEqual(openedProviders.providersDisplay, 'none', `${name}: AI Providers should be visible`);
+  assert.strictEqual(openedProviders.settingsDisplay, 'none', `${name}: Settings should hide behind AI Providers`);
+  assert.strictEqual(openedProviders.focusTrapId, 'screen-providers', `${name}: AI Providers should own the focus trap`);
+  assert.strictEqual(openedProviders.pageOverflow, false, `${name}: AI Providers should not create horizontal overflow`);
+
+  await page.locator('#screen-providers [data-command-control="close-ai-providers"]').click();
+  await page.waitForTimeout(50);
+  const returnedSettings = await page.evaluate(() => ({
+    appScreen: App.screen,
+    returnScreen: App.settingsReturnScreen,
+    returnStack: [...App.overlayReturnStack],
+    providersDisplay: getComputedStyle(document.getElementById('screen-providers')).display,
+    settingsDisplay: getComputedStyle(document.getElementById('screen-settings')).display,
+    settingsActive: document.getElementById('screen-settings').classList.contains('active'),
+    focusTrapId: App._focusTrap?.container?.id || ''
+  }));
+  assert.strictEqual(returnedSettings.appScreen, 'settings', `${name}: closing AI Providers should return to Settings`);
+  assert.strictEqual(returnedSettings.returnScreen, 'menu', `${name}: returned Settings should retain its main-menu origin`);
+  assert.deepStrictEqual(returnedSettings.returnStack, [], `${name}: returning to Settings should consume its nested return entry`);
+  assert.strictEqual(returnedSettings.providersDisplay, 'none', `${name}: AI Providers should hide after close`);
+  assert.notStrictEqual(returnedSettings.settingsDisplay, 'none', `${name}: Settings should be visible after AI Providers closes`);
+  assert.strictEqual(returnedSettings.settingsActive, true, `${name}: Settings should regain active state after AI Providers closes`);
+  assert.strictEqual(returnedSettings.focusTrapId, 'screen-settings', `${name}: returned Settings should regain the focus trap`);
 
   await page.locator('#screen-settings [data-command-control="close-settings"]').click();
   await page.waitForTimeout(50);
@@ -653,7 +712,46 @@ async function checkViewport(browser, name, width, height) {
   };
 
   await checkMenuOverlayReturn({ control: 'open-mods', screenName: 'mods', closeControl: 'close-modules', label: 'Mods' });
-  await checkMenuOverlayReturn({ control: 'open-market', screenName: 'market', closeControl: 'close-marketplace', label: 'Market' });
+
+  await page.evaluate(() => App.showScreen('menu'));
+  await page.locator('#screen-menu [data-command-control="open-mods"]').click();
+  await page.locator('#screen-mods [data-command-control="open-market"]').click();
+  await page.waitForTimeout(50);
+  const openedModuleSamples = await page.evaluate(() => ({
+    appScreen: App.screen,
+    returnStack: [...App.overlayReturnStack],
+    marketDisplay: getComputedStyle(document.getElementById('screen-market')).display,
+    modsDisplay: getComputedStyle(document.getElementById('screen-mods')).display,
+    focusTrapId: App._focusTrap?.container?.id || '',
+    pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  }));
+  assert.strictEqual(openedModuleSamples.appScreen, 'market', `${name}: Mods should open Module Samples`);
+  assert.deepStrictEqual(openedModuleSamples.returnStack, ['menu', 'mods'], `${name}: Module Samples should retain Mods and menu origins`);
+  assert.notStrictEqual(openedModuleSamples.marketDisplay, 'none', `${name}: Module Samples should be visible`);
+  assert.strictEqual(openedModuleSamples.modsDisplay, 'none', `${name}: Mods should hide behind Module Samples`);
+  assert.strictEqual(openedModuleSamples.focusTrapId, 'screen-market', `${name}: Module Samples should own the focus trap`);
+  assert.strictEqual(openedModuleSamples.pageOverflow, false, `${name}: Module Samples should not create horizontal overflow`);
+
+  await page.locator('#screen-market [data-command-control="close-marketplace"]').first().click();
+  await page.waitForTimeout(50);
+  const returnedMods = await page.evaluate(() => ({
+    appScreen: App.screen,
+    returnStack: [...App.overlayReturnStack],
+    marketDisplay: getComputedStyle(document.getElementById('screen-market')).display,
+    modsDisplay: getComputedStyle(document.getElementById('screen-mods')).display,
+    modsActive: document.getElementById('screen-mods').classList.contains('active'),
+    focusTrapId: App._focusTrap?.container?.id || ''
+  }));
+  assert.strictEqual(returnedMods.appScreen, 'mods', `${name}: closing Module Samples should return to Mods`);
+  assert.deepStrictEqual(returnedMods.returnStack, ['menu'], `${name}: returned Mods should retain the menu origin`);
+  assert.strictEqual(returnedMods.marketDisplay, 'none', `${name}: Module Samples should hide after close`);
+  assert.notStrictEqual(returnedMods.modsDisplay, 'none', `${name}: Mods should be visible after Module Samples closes`);
+  assert.strictEqual(returnedMods.modsActive, true, `${name}: Mods should regain active state after Module Samples closes`);
+  assert.strictEqual(returnedMods.focusTrapId, 'screen-mods', `${name}: returned Mods should regain the focus trap`);
+
+  await page.locator('#screen-mods [data-command-control="close-modules"]').click();
+  await page.waitForTimeout(50);
+  assert.strictEqual(await page.evaluate(() => App.screen), 'menu', `${name}: closing returned Mods should restore the main menu`);
 
   await page.evaluate(makeUnitScript());
   await page.waitForTimeout(50);
@@ -3243,9 +3341,57 @@ async function checkViewport(browser, name, width, height) {
   await page.close();
 }
 
+async function checkShortMenuScrollFallback(browser) {
+  const page = await browser.newPage({ viewport: { width: 320, height: 360 }, isMobile: true });
+  await page.goto(distUrl, { waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+  await clearBrowserStorage(page);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+  await page.evaluate(() => {
+    App.closeTutorial?.();
+    document.documentElement.style.setProperty('--base-font-size', '20px');
+  });
+  await page.waitForTimeout(50);
+
+  const before = await page.evaluate(() => {
+    const menu = document.getElementById('screen-menu');
+    const footer = menu.querySelector('.menu-footer');
+    return {
+      scrollable: menu.scrollHeight > menu.clientHeight + 1,
+      overflowY: getComputedStyle(menu).overflowY,
+      horizontalOverflow: menu.scrollWidth > menu.clientWidth + 1,
+      footerBottom: footer.getBoundingClientRect().bottom,
+      viewportHeight: innerHeight
+    };
+  });
+  assert.strictEqual(before.scrollable, true, 'short large-text menu: content should use the vertical scroll fallback');
+  assert(before.overflowY === 'auto' || before.overflowY === 'scroll', 'short large-text menu: vertical overflow should remain scrollable');
+  assert.strictEqual(before.horizontalOverflow, false, 'short large-text menu: content should not overflow horizontally');
+  assert(before.footerBottom > before.viewportHeight, 'short large-text menu: overflow fixture should extend below the initial viewport');
+
+  await page.evaluate(() => {
+    const menu = document.getElementById('screen-menu');
+    menu.scrollTop = menu.scrollHeight;
+  });
+  await page.waitForTimeout(50);
+  const after = await page.evaluate(() => {
+    const menu = document.getElementById('screen-menu');
+    const footerRect = menu.querySelector('.menu-footer').getBoundingClientRect();
+    return {
+      reachedBottom: menu.scrollTop > 0 && menu.scrollTop + menu.clientHeight >= menu.scrollHeight - 1,
+      footerVisible: footerRect.top >= -1 && footerRect.bottom <= innerHeight + 1
+    };
+  });
+  assert.strictEqual(after.reachedBottom, true, 'short large-text menu: the scroll fallback should reach the end of the menu');
+  assert.strictEqual(after.footerVisible, true, 'short large-text menu: footer should remain reachable after scrolling');
+  await page.close();
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
+    await checkShortMenuScrollFallback(browser);
     await checkViewport(browser, 'reported mobile', 412, 915);
     await checkViewport(browser, 'handoff mobile 390', 390, 844);
     await checkViewport(browser, 'narrow mobile 360', 360, 780);

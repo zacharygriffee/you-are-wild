@@ -753,6 +753,7 @@
             // === STATE ===
             mode: 'normal',
             screen: 'create',
+            overlayReturnStack: [],
             tutorialStep: 0,
             player: null,
             party: [],
@@ -4914,9 +4915,44 @@
             closeAppMenu() {
                 return this.setAppMenuOpen(false);
             },
+            isOverlayScreen(name) {
+                return ['settings', 'providers', 'mods', 'market'].includes(String(name || ''));
+            },
+            openOverlayScreen(name) {
+                const target = String(name || '');
+                const origin = String(this.screen || '');
+                if (!this.isOverlayScreen(target)) return this.showScreen(target);
+                if (!Array.isArray(this.overlayReturnStack)) this.overlayReturnStack = [];
+                if (origin && origin !== target) {
+                    const previous = this.overlayReturnStack[this.overlayReturnStack.length - 1];
+                    if (previous !== origin) this.overlayReturnStack.push(origin);
+                }
+                return this.showScreen(target);
+            },
+            switchOverlayScreen(name) {
+                const target = String(name || '');
+                if (!Array.isArray(this.overlayReturnStack)) this.overlayReturnStack = [];
+                if (this.overlayReturnStack[this.overlayReturnStack.length - 1] === target) {
+                    this.overlayReturnStack.pop();
+                }
+                return this.showScreen(target);
+            },
+            restoreOverlayReturnFocus(previous, targetScreen) {
+                setTimeout(() => {
+                    const visible = previous && previous.isConnected !== false && previous.offsetParent !== null;
+                    const fallback = targetScreen === 'game'
+                        ? document.getElementById('app-menu-toggle')
+                        : document.getElementById(`screen-${targetScreen}`);
+                    const target = visible ? previous : fallback;
+                    if (target && typeof target.focus === 'function') {
+                        try { target.focus(); } catch (e) {}
+                    }
+                }, 0);
+            },
             showScreen(name) {
                 this.closeAppMenu();
                 this.screen = name;
+                if (!this.isOverlayScreen(name) && name !== 'save-manager') this.overlayReturnStack = [];
                 this._restoreFocusTrap({ restoreFocus: false });
                 document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; s.classList.remove('active'); });
                 const el = document.getElementById('screen-' + name);
@@ -4940,6 +4976,9 @@
                 } else if (name === 'mods') {
                     document.getElementById('app').style.display = 'none';
                     if (typeof ModUI !== 'undefined' && ModUI.refreshModList) { try { ModUI.refreshModList(); } catch(e) {} }
+                } else if (name === 'providers') {
+                    document.getElementById('app').style.display = 'none';
+                    if (typeof AIProviderUI !== 'undefined' && AIProviderUI.refresh) { try { AIProviderUI.refresh(); } catch(e) {} }
                 } else if (name === 'market') {
                     document.getElementById('app').style.display = 'none';
                     if (typeof MODULE_MARKETPLACE !== 'undefined' && MODULE_MARKETPLACE.ui && MODULE_MARKETPLACE.ui.showMarketplace) { try { MODULE_MARKETPLACE.ui.showMarketplace(); } catch(e) {} }
@@ -4948,14 +4987,22 @@
                     document.getElementById('save-manager').classList.add('active');
                     this.renderSaveManager();
                 }
-                const overlayId = name === 'save-manager' ? 'save-manager' : ['settings', 'mods', 'market'].includes(name) ? `screen-${name}` : '';
+                const overlayId = name === 'save-manager' ? 'save-manager' : ['settings', 'providers', 'mods', 'market'].includes(name) ? `screen-${name}` : '';
                 if (overlayId) this._activateFocusTrap(document.getElementById(overlayId), { close: () => this.returnToGame() });
             },
             returnToGame() {
+                if (this.isOverlayScreen(this.screen) && Array.isArray(this.overlayReturnStack) && this.overlayReturnStack.length) {
+                    const returnFocus = this._focusTrap?.previous || null;
+                    const targetScreen = this.overlayReturnStack.pop();
+                    this._restoreFocusTrap({ restoreFocus: false });
+                    this.showScreen(targetScreen);
+                    this.restoreOverlayReturnFocus(returnFocus, targetScreen);
+                    return;
+                }
                 this._restoreFocusTrap();
                 const returnScreen = this.settingsReturnScreen;
                 this.settingsReturnScreen = null;
-                ['screen-settings', 'screen-mods', 'screen-market', 'save-manager'].forEach(id => {
+                ['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'save-manager'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) { el.style.display = 'none'; el.classList.remove('active'); }
                 });
@@ -5190,8 +5237,13 @@
             renderSaveManager(mode = this.saveManagerMode || 'load') {
                 return YAW_SAVE_MANAGER.render(this, mode);
             },
-            showModScreen() { this.showScreen('mods'); },
-            showMarketScreen() { this.showScreen('market'); },
+            showModScreen() {
+                return this.screen === 'market'
+                    ? this.switchOverlayScreen('mods')
+                    : this.openOverlayScreen('mods');
+            },
+            showAIProviderScreen() { return this.openOverlayScreen('providers'); },
+            showMarketScreen() { return this.openOverlayScreen('market'); },
             showTutorial() {
                 this.tutorialStep = 0;
                 const overlay = document.getElementById('tutorial-overlay');

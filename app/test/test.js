@@ -229,6 +229,7 @@ const contentSystemContent = fs.readFileSync(contentSystemPath, 'utf8');
 const moduleSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'module-system.js'), 'utf8');
 const narrationSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'narration-system.js'), 'utf8');
 const puterProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'puter-provider.js'), 'utf8');
+const openAICompatibleProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'openai-compatible-provider.js'), 'utf8');
 const marketplaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marketplace.js'), 'utf8');
 const explicitProviderPath = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-explicit.yawmod.json');
 const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
@@ -236,6 +237,7 @@ const globalNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'global-nav.js
 const marketNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-nav.js'), 'utf8');
 const marketScreenContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-screen.js'), 'utf8');
 const modUiContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'mod-ui.js'), 'utf8');
+const providerUiContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'provider-ui.js'), 'utf8');
 const buildContent = fs.readFileSync(path.join(__dirname, '..', 'build.js'), 'utf8');
 const templateContent = fs.readFileSync(TEMPLATE, 'utf8');
 
@@ -254,6 +256,46 @@ function loadNarrationSystemForTest() {
     async executePublicHook() {}
   };
   return new Function('window', 'CONTENT', 'MODULE_SYSTEM', `${narrationSystemContent}\nreturn { YAW_NARRATION_SYSTEM, YAW_AI_PROVIDER_MANAGER };`)(window, CONTENT, MODULE_SYSTEM);
+}
+
+function createMemoryStorage() {
+  const records = new Map();
+  return {
+    getItem(key) { return records.has(key) ? records.get(key) : null; },
+    setItem(key, value) { records.set(key, String(value)); },
+    removeItem(key) { records.delete(key); },
+    serialized() { return JSON.stringify([...records.entries()]); }
+  };
+}
+
+function providerResponse(status, payload, type = 'basic') {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    type,
+    async text() { return JSON.stringify(payload); }
+  };
+}
+
+function loadOpenAIProviderForTest(fetchImpl, storage = createMemoryStorage()) {
+  const window = { setTimeout, clearTimeout, localStorage: storage, fetch: fetchImpl };
+  const CONTENT = { preferences: { posture: 'sfw', enabledCategories: [], gameplayVariants: {} } };
+  const MODULE_SYSTEM = {
+    _publicSceneBeatSummary(event) { return JSON.parse(JSON.stringify(event)); },
+    _publicNarrativeUnitSummary(unit) { return { id: unit.id, name: unit.name }; },
+    _publicQuestSummary() { return null; },
+    _publicActivitySummary() { return null; },
+    async executePublicHook() {}
+  };
+  const runtime = new Function(
+    'window', 'CONTENT', 'MODULE_SYSTEM',
+    `${narrationSystemContent}\nreturn { YAW_NARRATION_SYSTEM, YAW_AI_PROVIDER_MANAGER };`
+  )(window, CONTENT, MODULE_SYSTEM);
+  const provider = new Function(
+    'window', 'YAW_AI_PROVIDER_MANAGER',
+    `${openAICompatibleProviderContent}\nreturn YAW_OPENAI_COMPATIBLE_PROVIDER;`
+  )(window, runtime.YAW_AI_PROVIDER_MANAGER);
+  return { ...runtime, provider, storage, window };
 }
 
 function createPackagedNarrationHarness(packagePaths, initialSettings = {}, contextForExchange = () => ({ characters: [] })) {
@@ -556,6 +598,207 @@ asyncTest('Fake AI provider returns bounded text without network or persisted se
   assert(rejected, 'Session connection metadata should reject credential-like fields');
 });
 
+asyncTest('Provider manager filters capabilities and keeps credentials out of profiles and persistence', async () => {
+  const secret = 'sk-session-only-test-value';
+  const { YAW_AI_PROVIDER_MANAGER, storage } = loadOpenAIProviderForTest(async () => providerResponse(200, {}));
+  YAW_AI_PROVIDER_MANAGER.registerAdapter('multi-capability-test', {
+    name: 'Multi Capability',
+    capabilities: ['text.generate', 'image.generate'],
+    async invoke({ capability, credential }) {
+      assertEqual(credential.apiKey, secret, 'Only the adapter invocation should receive the session credential');
+      return capability === 'image.generate' ? { assetId: 'image-1' } : { text: 'Provider text.' };
+    }
+  }, 'provider-test-owner');
+  const profileId = YAW_AI_PROVIDER_MANAGER.upsertProfile({
+    id: 'connection-multi-test', providerId: 'multi-capability-test', name: 'Test profile',
+    metadata: { endpoint: 'https://provider.example/v1', model: 'test-model' }, persisted: true
+  });
+  YAW_AI_PROVIDER_MANAGER.connectProfile(profileId, { apiKey: secret });
+  assertEqual(YAW_AI_PROVIDER_MANAGER.listConnections('image.generate').length, 1, 'Capability-filtered connections should include compatible providers');
+  assertEqual(YAW_AI_PROVIDER_MANAGER.listConnections('audio.speech').length, 0, 'Capability-filtered connections should exclude incompatible providers');
+  const image = await YAW_AI_PROVIDER_MANAGER.invoke('image-module', {
+    capability: 'image.generate', providerConnectionId: profileId, input: { prompt: 'test' }
+  });
+  assertEqual(image.assetId, 'image-1', 'Non-text capabilities should return structured adapter output');
+  assertNotContains(JSON.stringify(YAW_AI_PROVIDER_MANAGER.listProfiles()), secret, 'Profile snapshots must not expose credentials');
+  assertNotContains(JSON.stringify(YAW_AI_PROVIDER_MANAGER.listConnections()), secret, 'Connection snapshots must not expose credentials');
+  assertNotContains(storage.serialized(), secret, 'Persistent provider metadata must not contain credentials');
+
+  let collisionRejected = false;
+  try {
+    YAW_AI_PROVIDER_MANAGER.registerAdapter('multi-capability-test', { async invoke() {} }, 'different-owner');
+  } catch (error) { collisionRejected = /already registered/i.test(error.message); }
+  assert(collisionRejected, 'A second owner must not replace a registered provider adapter');
+  YAW_AI_PROVIDER_MANAGER.disconnectProfile(profileId);
+  assertEqual(YAW_AI_PROVIDER_MANAGER.listProfiles('multi-capability-test')[0].connected, false, 'Disconnect should retain non-secret profile metadata');
+});
+
+test('OpenAI-compatible profiles enforce fixed-origin endpoint and header policy', () => {
+  const { provider } = loadOpenAIProviderForTest(async () => providerResponse(200, {}));
+  assertEqual(provider.normalizeBaseUrl('https://api.example.test/v1///'), 'https://api.example.test/v1', 'Base URL should normalize trailing slashes');
+  assertEqual(provider.endpointFor('https://api.example.test/v1', 'responses'), 'https://api.example.test/v1/responses', 'Responses route should append to the approved base URL');
+  assertEqual(provider.endpointFor('http://127.0.0.1:11434/v1', 'chat'), 'http://127.0.0.1:11434/v1/chat/completions', 'No-auth local HTTP endpoints should be supported');
+  for (const endpoint of ['ftp://api.example.test/v1', 'http://api.example.test/v1', 'https://user:pass@api.example.test/v1', 'https://api.example.test/v1?q=secret', 'https://api.example.test/v1#fragment']) {
+    let rejected = false;
+    try { provider.normalizeBaseUrl(endpoint); } catch (error) { rejected = error.code === 'invalid_endpoint'; }
+    assert(rejected, `Unsafe endpoint should be rejected: ${endpoint}`);
+  }
+  for (const name of ['Authorization', 'Content-Type', 'OpenAI-Organization']) {
+    let rejected = false;
+    try { provider.normalizeHeaders([{ name, value: 'override' }]); } catch (error) { rejected = error.code === 'reserved_header'; }
+    assert(rejected, `Reserved header should be rejected: ${name}`);
+  }
+});
+
+asyncTest('OpenAI Responses requests use the exact approved origin and return bounded text', async () => {
+  const calls = [];
+  const secret = 'sk-direct-openai-session-value';
+  const storage = createMemoryStorage();
+  const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest(async (url, options) => {
+    calls.push({ url, options });
+    return providerResponse(200, { output_text: 'A '.repeat(200), model: 'gpt-test', usage: { output_tokens: 10 } });
+  }, storage);
+  const profile = provider.connect({
+    name: 'Direct OpenAI', endpoint: 'https://api.openai.com/v1', model: 'gpt-test', protocol: 'responses',
+    apiKey: secret, organization: 'org-test', project: 'project-test', additionalHeaders: [{ name: 'X-Trace', value: 'session-trace' }]
+  });
+  const result = await YAW_AI_PROVIDER_MANAGER.generate('narration-test', {
+    capability: 'text.generate', providerConnectionId: profile.id, profileId: 'storyteller',
+    maxCharacters: 120, input: { exchangeId: 'exchange-openai' }
+  });
+  assertEqual(calls.length, 1, 'Explicit Responses mode should issue one request');
+  assertEqual(calls[0].url, 'https://api.openai.com/v1/responses', 'Request must use the exact derived Responses URL');
+  assertEqual(calls[0].options.redirect, 'manual', 'Provider redirects must be blocked');
+  assertEqual(calls[0].options.referrerPolicy, 'no-referrer', 'Provider requests should not disclose a referrer');
+  assertEqual(calls[0].options.headers.Authorization, `Bearer ${secret}`, 'Session credential should be sent only in the provider request');
+  assertEqual(calls[0].options.headers['X-Trace'], 'session-trace', 'Session-only additional headers should reach the approved endpoint');
+  const body = JSON.parse(calls[0].options.body);
+  assertEqual(body.model, 'gpt-test', 'Responses mapping should include the configured model');
+  assert(body.instructions && body.input.includes('exchange-openai'), 'Responses mapping should include bounded instructions and serialized input');
+  assert(result.text.length <= 120, 'Manager should bound provider text to the requested character limit');
+  assertEqual(result.protocol, 'responses', 'Result should identify the successful protocol');
+  assertEqual(result.endpointReached, true, 'Successful test metadata should confirm endpoint reachability');
+
+  provider.connect({
+    id: profile.id, name: 'Renamed profile', endpoint: 'https://api.openai.com/v1', model: 'gpt-test',
+    protocol: 'responses', apiKey: '', additionalHeaders: []
+  });
+  await YAW_AI_PROVIDER_MANAGER.generate('metadata-edit-test', {
+    providerConnectionId: profile.id, input: { exchangeId: 'metadata-edit' }
+  });
+  assertEqual(calls[1].options.headers.Authorization, `Bearer ${secret}`, 'Ordinary metadata edits should preserve the active session credential');
+  assertEqual(calls[1].options.headers['X-Trace'], 'session-trace', 'Ordinary metadata edits should preserve session header values');
+
+  const replacement = 'sk-replaced-session-value';
+  provider.connect({
+    id: profile.id, name: 'Renamed profile', endpoint: 'https://api.openai.com/v1', model: 'gpt-test',
+    protocol: 'responses', apiKey: replacement, additionalHeaders: [], replaceCredential: true
+  });
+  await YAW_AI_PROVIDER_MANAGER.generate('credential-replace-test', {
+    providerConnectionId: profile.id, input: { exchangeId: 'credential-replace' }
+  });
+  assertEqual(calls[2].options.headers.Authorization, `Bearer ${replacement}`, 'Explicit replacement should activate the new session credential');
+  assert(!Object.prototype.hasOwnProperty.call(calls[2].options.headers, 'X-Trace'), 'Explicit replacement should remove omitted session headers');
+  assertNotContains(storage.serialized(), secret, 'API keys must not enter localStorage');
+  assertNotContains(storage.serialized(), replacement, 'Replacement API keys must not enter localStorage');
+  assertNotContains(storage.serialized(), 'session-trace', 'Additional header values must not enter localStorage');
+
+  const restored = loadOpenAIProviderForTest(async () => providerResponse(200, {}), storage);
+  const restoredProfile = restored.YAW_AI_PROVIDER_MANAGER.listProfiles('openai-compatible')[0];
+  assert(restoredProfile && !restoredProfile.connected, 'Saved provider metadata should restore without restoring a credential or live connection');
+  assertEqual(restoredProfile.metadata.model, 'gpt-test', 'Non-secret provider metadata should survive reload');
+});
+
+asyncTest('OpenAI-compatible Chat mode supports OpenRouter-style and no-auth local endpoints', async () => {
+  const calls = [];
+  const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest(async (url, options) => {
+    calls.push({ url, options });
+    return providerResponse(200, { choices: [{ message: { content: [{ type: 'text', text: 'Connected.' }] } }], model: 'openai/test-model' });
+  });
+  const openRouter = provider.connect({
+    name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1', model: 'openai/test-model', protocol: 'chat', apiKey: 'sk-or-v1-session-test'
+  });
+  const first = await YAW_AI_PROVIDER_MANAGER.generate('chat-test', {
+    providerConnectionId: openRouter.id, input: { exchangeId: 'chat-1' }, maxCharacters: 80
+  });
+  assertEqual(calls[0].url, 'https://openrouter.ai/api/v1/chat/completions', 'Chat route should append to an OpenRouter-style base URL');
+  assert(Array.isArray(JSON.parse(calls[0].options.body).messages), 'Chat mapping should use structured messages');
+  assertEqual(first.text, 'Connected.', 'Chat content arrays should normalize to plain text');
+
+  const local = provider.connect({ name: 'Local', endpoint: 'http://127.0.0.1:11434/v1', model: 'local-model', protocol: 'chat', apiKey: '' });
+  await YAW_AI_PROVIDER_MANAGER.generate('local-test', { providerConnectionId: local.id, input: { exchangeId: 'local-1' } });
+  assertEqual(calls[1].url, 'http://127.0.0.1:11434/v1/chat/completions', 'Local compatible endpoints should use their configured base path');
+  assert(!Object.prototype.hasOwnProperty.call(calls[1].options.headers, 'Authorization'), 'No-auth profiles should omit Authorization');
+});
+
+asyncTest('OpenAI-compatible auto mode falls back only for unsupported protocol shapes', async () => {
+  const calls = [];
+  const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest(async url => {
+    calls.push(url);
+    if (url.endsWith('/responses')) return providerResponse(404, { error: { code: 'not_found' } });
+    return providerResponse(200, { choices: [{ message: { content: 'Fallback connected.' } }], model: 'fallback-model' });
+  });
+  const profile = provider.connect({ endpoint: 'https://compatible.example/v1', model: 'fallback-model', protocol: 'auto', apiKey: 'sk-session-fallback' });
+  const result = await YAW_AI_PROVIDER_MANAGER.generate('fallback-test', { providerConnectionId: profile.id, input: { exchangeId: 'fallback-1' } });
+  assertEqual(calls.join(','), 'https://compatible.example/v1/responses,https://compatible.example/v1/chat/completions', 'Unsupported Responses routes should fall back once to Chat');
+  assertEqual(result.protocol, 'chat', 'Fallback result should report the successful protocol');
+
+  const failures = [
+    [401, { error: { code: 'invalid_api_key', message: 'sk-secret-from-provider' } }, 'auth_invalid'],
+    [403, { error: { code: 'policy_rejected' } }, 'forbidden'],
+    [429, { error: { code: 'rate_limit' } }, 'rate_limited'],
+    [400, { error: { code: 'model_not_found' } }, 'invalid_model']
+  ];
+  for (const [status, payload, code] of failures) {
+    let requestCount = 0;
+    const harness = loadOpenAIProviderForTest(async () => { requestCount++; return providerResponse(status, payload); });
+    const failedProfile = harness.provider.connect({ endpoint: 'https://fail.example/v1', model: 'test', protocol: 'auto', apiKey: 'sk-session-error' });
+    let caught;
+    try {
+      await harness.YAW_AI_PROVIDER_MANAGER.generate('failure-test', { providerConnectionId: failedProfile.id, input: { exchangeId: 'failure' } });
+    } catch (error) { caught = error; }
+    assertEqual(caught.code, code, `Status ${status} should preserve its sanitized failure category`);
+    assertEqual(requestCount, 1, `Status ${status} must not trigger protocol fallback`);
+    assertNotContains(caught.message, 'sk-secret-from-provider', 'Provider error messages must not expose response bodies');
+  }
+});
+
+asyncTest('OpenAI-compatible requests surface sanitized network errors and honor cancellation', async () => {
+  const failed = loadOpenAIProviderForTest(async () => { throw new TypeError('CORS failed with sk-leaked-detail'); });
+  const failedProfile = failed.provider.connect({ endpoint: 'https://cors.example/v1', model: 'test', protocol: 'chat', apiKey: 'sk-session-network' });
+  let networkError;
+  try {
+    await failed.YAW_AI_PROVIDER_MANAGER.generate('network-test', { providerConnectionId: failedProfile.id, input: { exchangeId: 'network' } });
+  } catch (error) { networkError = error; }
+  assertEqual(networkError.code, 'cors_or_network', 'Fetch failures should return a useful sanitized category');
+  assertNotContains(networkError.message, 'sk-', 'Fetch failure details should not escape the provider boundary');
+
+  const cancelled = loadOpenAIProviderForTest((url, options) => new Promise((resolve, reject) => {
+    if (options.signal.aborted) return reject(new Error('aborted'));
+    options.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+  }));
+  const cancelledProfile = cancelled.provider.connect({ endpoint: 'https://slow.example/v1', model: 'test', protocol: 'responses', apiKey: '' });
+  const controller = new AbortController();
+  const pending = cancelled.YAW_AI_PROVIDER_MANAGER.generate('cancel-test', {
+    providerConnectionId: cancelledProfile.id, input: { exchangeId: 'cancel' }, signal: controller.signal
+  }).then(() => null, error => error);
+  controller.abort('test-cancel');
+  const cancellationError = await pending;
+  assertEqual(cancellationError.code, 'cancelled', 'External request cancellation should stop the provider request');
+});
+
+test('AI Providers has a dedicated credential-safe UI and provider-backed settings link to it', () => {
+  assertContains(templateContent, 'id="screen-providers"', 'Template should include the dedicated AI Providers screen');
+  assertContains(templateContent, 'App.showAIProviderScreen()', 'Global navigation should expose AI Providers');
+  assertContains(providerUiContent, 'type="password"', 'Provider credentials should use password controls');
+  assertContains(providerUiContent, "'image.generate'", 'Provider UI should be ready to label future image capabilities');
+  assertNotContains(modUiContent, 'puter-provider-title', 'Mod Manager should no longer own provider connection controls');
+  assertContains(modUiContent, 'Manage Providers', 'Provider-backed module settings should route users to provider management');
+  const narrationPackage = JSON.parse(fs.readFileSync(NARRATION_MOD_PACKAGE, 'utf8'));
+  const providerSetting = narrationPackage.module.manifest.settings.find(setting => setting.type === 'provider_connection');
+  assertEqual(providerSetting.capability, 'text.generate', 'Narration package should request the text generation capability explicitly');
+});
+
 asyncTest('Every public module setting path rejects credential names and values', async () => {
   const MODULE_SYSTEM = loadModuleSystemForTest();
   const fakeDb = createFakeIndexedDb();
@@ -709,14 +952,25 @@ asyncTest('Puter provider connects, maps narration, tests, and disconnects witho
   };
   const document = {};
   const manager = {
-    adapters: new Map(), connections: new Map(), sequence: 0,
+    adapters: new Map(), profiles: new Map(), connections: new Map(), sequence: 0,
     registerAdapter(id, adapter, ownerModuleId) { this.adapters.set(id, { ...adapter, ownerModuleId }); return id; },
-    createConnection(providerId, metadata) {
-      const id = `connection-${++this.sequence}`;
-      this.connections.set(id, { id, providerId, metadata, ownerModuleId: 'core-puter-provider' });
+    upsertProfile(input) {
+      const current = this.profiles.get(input.id) || {};
+      const id = input.id || `connection-${++this.sequence}`;
+      this.profiles.set(id, { ...current, ...input, id, capabilities: ['text.generate'] });
       return id;
     },
-    removeConnection(id) { return this.connections.delete(id); },
+    connectProfile(id) {
+      const profile = this.profiles.get(id);
+      this.connections.set(id, { ...profile, ownerModuleId: 'core-puter-provider' });
+      return id;
+    },
+    disconnectProfile(id) { return this.connections.delete(id); },
+    listProfiles(providerId) {
+      return [...this.profiles.values()].filter(profile => !providerId || profile.providerId === providerId).map(profile => ({
+        ...profile, connected: this.connections.has(profile.id)
+      }));
+    },
     async generate(ownerModuleId, request) {
       const connection = this.connections.get(request.providerConnectionId);
       const adapter = this.adapters.get(connection.providerId);
@@ -4727,9 +4981,9 @@ test('Overlay close controls clear active overlay state', () => {
   assertContains(template, 'onclick="returnToGame()"', 'overlay close buttons should use shared close helper');
   assertContains(template, 'class="menu-shell"', 'Main menu should have a stable centered shell class');
   assertContains(template, 'class="menu-actions"', 'Main menu actions should have a stable width-bounded container class');
-  assertContains(template, '.menu-actions .action-btn', 'Main menu buttons should have a stable scoped sizing rule');
+  assertContains(template, '.menu-primary-actions .action-btn', 'Main menu play buttons should have a stable scoped sizing rule');
   assertContains(globalNavContent, 'return App.returnToGame();', 'global return helper should preserve App-level return context');
-  assertContains(appContent, "['screen-settings', 'screen-mods', 'screen-market', 'save-manager'].forEach", 'App returnToGame should close all overlay surfaces together');
+  assertContains(appContent, "['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'save-manager'].forEach", 'App returnToGame should close all overlay surfaces together');
   assertContains(appContent, "el) { el.style.display = 'none'; el.classList.remove('active'); }", 'App returnToGame should clear active class from closed overlays');
   assertContains(template, 'onclick="App.openSettingsFromMenu()"', 'Main menu Settings should preserve menu return context');
   assertContains(settingsFlowContent, "settingsReturnScreen = 'menu'", 'Settings opened from the main menu should store an explicit menu return context');
@@ -4825,6 +5079,74 @@ test('Settings overlay returns to live game from the app menu route', () => {
   assertEqual(settings.classList.contains('active'), false, 'Settings overlay active class should clear on game return');
   assertEqual(appMenu.classList.contains('open'), false, 'App menu should remain closed after returning to game');
   assertEqual(App.settingsReturnScreen, null, 'Game settings return target should clear after closing');
+});
+
+test('Nested system screens return through Settings and Mods origins', () => {
+  const screenIds = ['screen-menu', 'screen-settings', 'screen-providers', 'screen-game', 'screen-create', 'screen-mods', 'screen-market', 'save-manager'];
+  const { App, document } = loadAppForCombat(() => 0.5, {
+    querySelectorAll(selector, elements) {
+      if (selector !== '.screen') return [];
+      return screenIds.map(id => {
+        if (!elements.has(id)) elements.set(id, makeElement());
+        return elements.get(id);
+      });
+    }
+  });
+
+  App.screen = 'menu';
+  document.getElementById('screen-menu').style.display = 'flex';
+  App.openSettingsFromMenu();
+  App.showAIProviderScreen();
+  assertEqual(App.screen, 'providers', 'Settings should open the AI Providers screen');
+  assertEqual(App.overlayReturnStack.join(','), 'settings', 'AI Providers should remember Settings as its immediate origin');
+
+  App.returnToGame();
+  assertEqual(App.screen, 'settings', 'Closing AI Providers should return to Settings');
+  assertEqual(App.settingsReturnScreen, 'menu', 'Returning to Settings should preserve its original menu return route');
+  App.returnToGame();
+  assertEqual(App.screen, 'menu', 'Closing returned Settings should restore the main menu');
+
+  App.showModScreen();
+  App.showMarketScreen();
+  assertEqual(App.screen, 'market', 'Mods should open Module Samples');
+  assertEqual(App.overlayReturnStack.join(','), 'menu,mods', 'Module Samples should remember Mods and the underlying menu origin');
+  App.returnToGame();
+  assertEqual(App.screen, 'mods', 'Closing Module Samples should return to Mods');
+  assertEqual(App.overlayReturnStack.join(','), 'menu', 'Returning to Mods should retain its menu origin');
+  App.returnToGame();
+  assertEqual(App.screen, 'menu', 'Closing returned Mods should restore the main menu');
+
+  App.player = makeUnit('Existing Player', { CPun: 80, MPun: 100 });
+  App.party = [App.player];
+  App.showScreen('game');
+  App.showMarketScreen();
+  App.showModScreen();
+  assertEqual(App.screen, 'mods', 'My Modules should switch directly from Module Samples to Mods');
+  assertEqual(App.overlayReturnStack.join(','), 'game', 'Switching between sibling module screens should preserve the live-game origin');
+  App.returnToGame();
+  assertEqual(App.screen, 'game', 'Closing switched Mods should restore the live game');
+});
+
+test('Main menu keeps play primary and nests advanced system destinations', () => {
+  const menuStart = template.indexOf('<div id="screen-menu"');
+  const menuEnd = template.indexOf('<!-- CHARACTER CREATION SCREEN -->', menuStart);
+  const menuHtml = template.slice(menuStart, menuEnd);
+  assertContains(menuHtml, 'class="menu-primary-actions"', 'Main menu should group Continue, New, and Load as primary play actions');
+  assertContains(menuHtml, 'class="menu-utility-actions"', 'Main menu should group Settings, Mods, and Tutorial as compact utility actions');
+  assertContains(menuHtml, 'data-command-control="continue-game"', 'Main menu should retain Continue');
+  assertContains(menuHtml, 'data-command-control="start-new-game"', 'Main menu should retain New Game');
+  assertContains(menuHtml, 'data-command-control="open-load-slots"', 'Main menu should retain Load Game');
+  assertContains(menuHtml, 'data-command-control="open-settings"', 'Main menu should retain Settings');
+  assertContains(menuHtml, 'data-command-control="open-mods"', 'Main menu should retain Mods');
+  assertContains(menuHtml, 'data-command-control="open-help"', 'Main menu should retain Tutorial');
+  assertNotContains(menuHtml, 'data-command-control="open-ai-providers"', 'AI Providers should not remain a top-level main-menu action');
+  assertNotContains(menuHtml, 'data-command-control="open-market"', 'Module Samples should not remain a top-level main-menu action');
+  assertContains(template, 'data-command-control="open-ai-providers"', 'Settings should expose AI Providers');
+  assertContains(template, 'data-i18n="settings.aiProvidersDescription"', 'Settings should explain the AI Providers destination');
+  assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="open-market"', 'Mods should expose Module Samples');
+  assertContains(template, '.screen-menu {', 'Main menu should have a dedicated responsive screen rule');
+  assertContains(template, 'overflow-y: auto;', 'Main menu should provide a vertical scrolling fallback');
+  assertContains(template, '@media (max-height: 700px)', 'Short viewports should receive compact main-menu spacing');
 });
 
 test('New game flow is slot-aware and warns before destructive slot changes', () => {
@@ -4964,7 +5286,7 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertNotContains(navHtml, 'data-i18n="ui.menu.market"', 'Visible header nav should not include Market');
   assertNotContains(navHtml, 'data-i18n="ui.menu.mods"', 'Visible header nav should not include Mods');
   assertNotContains(navHtml, 'data-i18n="ui.help"', 'Visible header nav should not include Help');
-  assertContains(appContent, "showMarketScreen() { this.showScreen('market'); }", 'Market helper should open the overlay screen, not only render hidden content');
+  assertContains(appContent, "showMarketScreen() { return this.openOverlayScreen('market'); }", 'Market helper should preserve overlay return context');
   assertContains(appContent, 'initAppMenu()', 'App should install app-menu dismissal handlers');
   assertContains(appContent, "event?.key === 'Escape'", 'App menu should close on Escape');
   assertContains(appContent, 'closeAppMenu()', 'App should expose app-menu close behavior');
@@ -4978,7 +5300,7 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(marketNavContent, "if (document.getElementById('app-menu')) return;", 'Injected market nav should be fallback-only when the app menu exists');
   assertContains(marketNavContent, "setAttribute('data-i18n-aria-label', 'ui.menu.marketTitle')", 'Injected market nav button should localize accessible label');
   assertContains(marketNavContent, "setAttribute('data-i18n-title', 'ui.menu.marketTitle')", 'Injected market nav button should localize title');
-  assertContains(marketNavContent, "marketBtn.onclick = () => App.showScreen('market')", 'Injected market nav should use the shared overlay route');
+  assertContains(marketNavContent, "marketBtn.onclick = () => App.showMarketScreen()", 'Injected market nav should use the shared overlay route');
   assertContains(modUiContent, "if (document.getElementById('app-menu')) return;", 'Injected mods nav should be fallback-only when the app menu exists');
   assertContains(modUiContent, "setAttribute('data-i18n-aria-label', 'ui.menu.modsTitle')", 'Injected mods nav button should localize accessible label');
   assertContains(modUiContent, "setAttribute('data-i18n-title', 'ui.menu.modsTitle')", 'Injected mods nav button should localize title');

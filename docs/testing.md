@@ -45,12 +45,15 @@ Unknown filters fail fast.
 
 The Node runner covers syntax, source ordering assumptions, core mechanics, save/load behavior, save-slot metadata normalization, content preferences, module storage and hook ownership, localization keys, template structure, and many UI behavior contracts. The runner is async-aware, so promise-returning tests are awaited sequentially.
 
-Narration coverage uses deterministic in-memory providers and performs no
-network calls. It verifies immutable copied hook envelopes, lifecycle resets,
+Narration and provider coverage uses deterministic mocked transports and makes
+no network calls. It verifies immutable copied hook envelopes, lifecycle resets,
 exclusive packaged-orchestrator ownership, target-exchange context snapshots,
-adult-eligibility gates, the mocked Puter Connect/Test/Disconnect lifecycle,
-optional-package exclusion, and rejection of credential-like fields. Real
-provider credentials must never be added to tests.
+adult-eligibility gates, Puter lifecycle, capability filtering, stable profile
+reload, cancellation, output bounds, fixed-origin URL derivation, redirect and
+reserved-header blocking, Direct OpenAI Responses mapping, OpenRouter-style Chat
+mapping, no-auth localhost profiles, conservative protocol fallback, sanitized
+errors, and credential absence from public snapshots and persistent storage.
+Real provider credentials must never be added to tests.
 
 The browser-style checks cover:
 

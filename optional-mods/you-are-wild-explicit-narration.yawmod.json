@@ -19,7 +19,7 @@
       "contentCategories": [{ "id": "explicit.sexual", "label": "Explicit sexual narration", "description": "Allows explicit provider-generated presentation for eligible adult characters.", "required": true }],
       "settings": [
         { "key": "enabled", "type": "boolean", "label": "Enable explicit narration", "default": false },
-        { "key": "providerConnection", "type": "provider_connection", "label": "Provider connection" },
+        { "key": "providerConnection", "type": "provider_connection", "capability": "text.generate", "label": "Provider connection" },
         { "key": "profile", "type": "select", "label": "Narration profile", "default": "storyteller", "options": [{ "value": "storyteller", "label": "Storyteller" }, { "value": "characters", "label": "Character reactions" }] },
         { "key": "acknowledgeProviderPolicy", "type": "action", "label": "Confirm provider policy" },
         { "key": "deleteNarration", "type": "action", "label": "Delete explicit narration data" }

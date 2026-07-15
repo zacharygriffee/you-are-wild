@@ -16,6 +16,8 @@ This is a compact history of completed foundations. Git remains the authoritativ
 - Core now exposes SFW and Mature postures, while provider-declared categories, gameplay variants, localized labels, creation options, and explicit narrative stay in optional modules outside the generated HTML.
 - Provider-neutral narration now uses immutable post-commit hooks, an owned presentation-only store, focused context, declarative mod settings, session-only provider connections, and separately packaged SFW/Mature and explicit orchestrators.
 - Narration prerequisites now include credential-safe module settings, new/load runtime cancellation, exclusive orchestrator ownership, authoritative adult eligibility, target-exchange context snapshots, packaged integration coverage, and a keyless Puter Connect/Test/Disconnect path.
+- A dedicated capability-based AI Providers panel now manages stable profiles separately from mods. The built-in OpenAI-Compatible text adapter supports browser-direct Responses and Chat Completions with fixed-origin requests, blocked redirects, conservative fallback, session-only credentials, and mocked Direct OpenAI/OpenRouter/generic/local coverage.
+- Startup navigation now keeps Continue/New/Load primary and Settings/Mods/Tutorial compact. AI Providers lives under Settings, Module Samples lives under Mods, nested screens return through their origin, and short or enlarged-text layouts retain a scroll fallback.
 
 ## Recent Fixes
 
@@ -25,5 +27,6 @@ This is a compact history of completed foundations. Git remains the authoritativ
 - Contained and consumed creatures render in separate Holdings collections.
 - Enemy AI filters preferred attack targets through current reach before committing its turn.
 - Content-posture changes immediately rebuild the dynamic provider category and gameplay-variant settings.
+- System overlay navigation now preserves parent and live-game origins across Settings, AI Providers, Mods, and Module Samples.
 
 See the focused doctrine documents in `docs/` for current contracts and deferred design boundaries.

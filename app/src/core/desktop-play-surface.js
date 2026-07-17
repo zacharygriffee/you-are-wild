@@ -48,30 +48,14 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             KeyS: [0, 1],
             KeyA: [-1, 0],
             KeyD: [1, 0],
-            KeyQ: [-1, -1],
-            KeyE: [1, -1],
-            KeyZ: [-1, 1],
-            KeyC: [1, 1],
             Numpad8: [0, -1],
             Numpad2: [0, 1],
             Numpad4: [-1, 0],
             Numpad6: [1, 0],
-            Numpad7: [-1, -1],
-            Numpad9: [1, -1],
-            Numpad1: [-1, 1],
-            Numpad3: [1, 1],
-            Home: [-1, -1],
-            PageUp: [1, -1],
-            End: [-1, 1],
-            PageDown: [1, 1],
             w: [0, -1],
             s: [0, 1],
             a: [-1, 0],
-            d: [1, 0],
-            q: [-1, -1],
-            e: [1, -1],
-            z: [-1, 1],
-            c: [1, 1]
+            d: [1, 0]
         };
         for (const candidate of candidates) {
             if (directions[candidate]) return directions[candidate];
@@ -297,8 +281,11 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             const room = app.activeInterior.tiles[`${tx},${ty}`];
             const visual = app._interiorTileVisual(room);
             const direction = this.directionLabel(app, cell.dx, cell.dy);
-            const label = `${direction}: ${visual.label} (${tx}, ${ty})`;
-            this.updateCell(app, el, visual, label, cell.dx, cell.dy, Boolean(room) && !inCombat);
+            const traversal = app._traversalDecision(cell.dx, cell.dy);
+            const moveable = Boolean(room) && traversal.allowed && !inCombat;
+            const blocked = traversal.allowed ? '' : ` — ${app._traversalMessage(traversal)}`;
+            const label = `${direction}: ${visual.label} (${tx}, ${ty})${blocked}`;
+            this.updateCell(app, el, visual, label, cell.dx, cell.dy, moveable);
         });
         const currentRoom = app.activeInterior.tiles[`${cx},${cy}`];
         const currentVisual = app._interiorTileVisual(currentRoom);
@@ -319,8 +306,11 @@ const YAW_DESKTOP_PLAY_SURFACE = {
                 neighborResolver: (nx, ny) => app.getTile(nx, ny)
             });
             const direction = this.directionLabel(app, cell.dx, cell.dy);
-            const label = `${direction}: ${visual.label} (${tx}, ${ty})`;
-            this.updateCell(app, el, visual, label, cell.dx, cell.dy, !inCombat);
+            const traversal = app._traversalDecision(cell.dx, cell.dy);
+            const moveable = traversal.allowed && !inCombat;
+            const blocked = traversal.allowed ? '' : ` — ${app._traversalMessage(traversal)}`;
+            const label = `${direction}: ${visual.label} (${tx}, ${ty})${blocked}`;
+            this.updateCell(app, el, visual, label, cell.dx, cell.dy, moveable);
         });
         const currentTile = app.getTile(cx, cy);
         const currentVisual = app._mapTileVisual(currentTile, {

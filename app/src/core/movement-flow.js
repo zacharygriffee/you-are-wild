@@ -18,6 +18,14 @@ const YAW_MOVEMENT_FLOW = {
             app.renderLog();
             return;
         }
+        const traversal = app._traversalDecision(dx, dy);
+        if (!traversal.allowed) {
+            const text = app._traversalMessage(traversal);
+            app.log.push({ text, type: 'move' });
+            app.showToast?.({ text, type: 'blocked', importance: 'notable', dedupeKey: `blocked:travel:${traversal.reasonCode}` });
+            app.renderLog();
+            return false;
+        }
         const from = { x: app.location.x, y: app.location.y, interior: false };
         const oldKey = `${app.location.x},${app.location.y}`;
         const oldTile = app.worldMap.get(oldKey);
@@ -26,8 +34,8 @@ const YAW_MOVEMENT_FLOW = {
             app.persistTileDelta(oldTile.x, oldTile.y, oldTile);
         }
         app.clearTileBoundExplorationTargets();
-        app.location.x += dx; app.location.y += dy;
-        app._advanceTime(1);
+        app.location.x = traversal.to.x; app.location.y = traversal.to.y;
+        app._advanceTime(traversal.cost);
         app._applyTravelCost?.(app.party, { action: 'move', source: 'travel' });
         app._clearTileEvents();
         app.clearToasts?.({ reason: 'tile-change' });
@@ -100,6 +108,7 @@ const YAW_MOVEMENT_FLOW = {
         });
         app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'quests', 'sceneFeed', 'activityLog'], 'movement');
         app.autoSave();
+        return true;
     }
 };
 

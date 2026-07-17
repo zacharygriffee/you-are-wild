@@ -22,42 +22,178 @@ const YAW_STRUCTURE_NAVIGATION = {
     },
 
     interiorBiomeForStructure(structureId) {
-        return structureId === 'cave' || structureId === 'burrow' || structureId === 'web' || structureId === 'ruins' ? 'cave' : 'indoors';
+        return structureId === 'cave' || structureId === 'burrow' || structureId === 'web' || structureId === 'dungeon' ? 'cave' : 'indoors';
+    },
+
+    layoutDirections() {
+        return [
+            { id: 'north', opposite: 'south', dx: 0, dy: -1 },
+            { id: 'east', opposite: 'west', dx: 1, dy: 0 },
+            { id: 'south', opposite: 'north', dx: 0, dy: 1 },
+            { id: 'west', opposite: 'east', dx: -1, dy: 0 }
+        ];
+    },
+
+    interiorProfile(app, structureId) {
+        const configured = app.STRUCTURES?.[structureId]?.interior?.profile || '';
+        const profiles = {
+            'small-building': { budget: 6, radius: 2, kind: 'building' },
+            'large-building': { budget: 12, radius: 3, kind: 'building' },
+            manor: { budget: 14, radius: 3, kind: 'building' },
+            dungeon: { budget: 16, radius: 3, kind: 'building' },
+            burrow: { budget: 10, radius: 3, kind: 'burrow' },
+            'cave-network': { budget: 13, radius: 3, kind: 'cave-network' }
+        };
+        return profiles[configured] || profiles['small-building'];
+    },
+
+    interiorRoom(app, tile, struct, biomeId, x, y, options = {}) {
+        const originBiome = app.biomes[tile.biome] || app.biomes.forest;
+        const featureTable = originBiome.structureTable || [];
+        const roll = typeof WorldGen !== 'undefined'
+            ? WorldGen.hash01(app._mapSeed(), app.worldMeta?.generatorVersion || 3, 'interior-feature', tile.x, tile.y, tile.structure, x, y)
+            : 0;
+        const feature = featureTable.length ? featureTable[Math.floor(roll * featureTable.length) % featureTable.length] : null;
+        return {
+            x,
+            y,
+            biome: biomeId,
+            explored: Boolean(options.exit),
+            description: options.description || `${struct.name} ${options.archetype || 'chamber'}.`,
+            archetype: options.archetype || 'chamber',
+            hasLandmark: false,
+            landmarkName: '',
+            structure: options.exit ? null : feature,
+            structureSpawned: false,
+            creatures: [],
+            items: [],
+            exit: Boolean(options.exit),
+            surfaceExit: options.surfaceExit || null,
+            connections: []
+        };
+    },
+
+    linkInteriorRooms(tiles) {
+        const directions = this.layoutDirections();
+        Object.values(tiles).forEach(room => {
+            room.connections = directions
+                .filter(direction => Boolean(tiles[`${room.x + direction.dx},${room.y + direction.dy}`]))
+                .map(direction => direction.id);
+        });
+        return tiles;
+    },
+
+    generateSparseBuilding(app, tile, struct, profile) {
+        const biomeId = this.interiorBiomeForStructure(tile.structure);
+        const tiles = {
+            '0,0': this.interiorRoom(app, tile, struct, biomeId, 0, 0, {
+                exit: true,
+                archetype: 'entry',
+                surfaceExit: { x: tile.x, y: tile.y }
+            })
+        };
+        const directions = this.layoutDirections();
+        for (let index = 1; index < profile.budget; index++) {
+            const frontier = [];
+            Object.values(tiles).forEach(room => directions.forEach(direction => {
+                const x = room.x + direction.dx;
+                const y = room.y + direction.dy;
+                if (Math.abs(x) > profile.radius || Math.abs(y) > profile.radius || tiles[`${x},${y}`]) return;
+                frontier.push({ x, y });
+            }));
+            const unique = Array.from(new Map(frontier.map(entry => [`${entry.x},${entry.y}`, entry])).values());
+            if (!unique.length) break;
+            const roll = typeof WorldGen !== 'undefined'
+                ? WorldGen.hash01(app._mapSeed(), app.worldMeta?.generatorVersion || 3, 'interior-layout', tile.x, tile.y, tile.structure, index)
+                : 0;
+            const point = unique[Math.floor(roll * unique.length) % unique.length];
+            const archetype = index % 4 === 0 ? 'chamber' : (index % 3 === 0 ? 'junction' : 'corridor');
+            tiles[`${point.x},${point.y}`] = this.interiorRoom(app, tile, struct, biomeId, point.x, point.y, { archetype });
+        }
+        this.linkInteriorRooms(tiles);
+        const xs = Object.values(tiles).map(room => room.x);
+        const ys = Object.values(tiles).map(room => room.y);
+        return {
+            id: `interior_${tile.x}_${tile.y}_${tile.structure}`,
+            generatorVersion: 1,
+            kind: profile.kind,
+            structure: tile.structure,
+            structureName: struct.name,
+            origin: { x: tile.x, y: tile.y },
+            width: Math.max(...xs) - Math.min(...xs) + 1,
+            height: Math.max(...ys) - Math.min(...ys) + 1,
+            tiles,
+            entryRooms: { default: '0,0' }
+        };
+    },
+
+    generateCaveNetwork(app, tile, struct, site) {
+        const axis = site.axis || 'east-west';
+        const tiles = {};
+        const portals = site.portals || [{ id: site.portalId || 'entry', x: tile.x, y: tile.y, index: 0 }];
+        const start = axis === 'north-south' ? { x: 0, y: -3 } : { x: -3, y: 0 };
+        const end = axis === 'north-south' ? { x: 0, y: 3 } : { x: 3, y: 0 };
+        for (let step = -3; step <= 3; step++) {
+            const x = axis === 'north-south' ? 0 : step;
+            const y = axis === 'north-south' ? step : 0;
+            const portal = step === -3 ? portals[0] : (step === 3 ? portals[1] : null);
+            tiles[`${x},${y}`] = this.interiorRoom(app, tile, struct, 'cave', x, y, {
+                exit: Boolean(portal),
+                archetype: portal ? 'cave-mouth' : (step === 0 ? 'cavern' : 'tunnel'),
+                surfaceExit: portal ? { x: portal.x, y: portal.y, portalId: portal.id } : null,
+                description: portal ? 'A cave mouth opens toward the surface.' : (step === 0 ? 'A broad underground chamber joins several passages.' : 'A natural tunnel winds through the rock.')
+            });
+        }
+        const directions = this.layoutDirections();
+        const budget = this.interiorProfile(app, 'cave').budget;
+        for (let index = Object.keys(tiles).length; index < budget; index++) {
+            const frontier = [];
+            Object.values(tiles).forEach(room => directions.forEach(direction => {
+                const x = room.x + direction.dx;
+                const y = room.y + direction.dy;
+                if (Math.abs(x) > 3 || Math.abs(y) > 3 || tiles[`${x},${y}`]) return;
+                frontier.push({ x, y });
+            }));
+            const unique = Array.from(new Map(frontier.map(entry => [`${entry.x},${entry.y}`, entry])).values());
+            const roll = WorldGen.hash01(app._mapSeed(), app.worldMeta?.generatorVersion || 3, 'cave-branch', site.networkId, index);
+            const point = unique[Math.floor(roll * unique.length) % unique.length];
+            tiles[`${point.x},${point.y}`] = this.interiorRoom(app, tile, struct, 'cave', point.x, point.y, {
+                archetype: index % 2 ? 'side-passage' : 'cavern',
+                description: index % 2 ? 'A narrow side passage cuts through the stone.' : 'A hidden cavern opens beyond the tunnel.'
+            });
+        }
+        this.linkInteriorRooms(tiles);
+        const entryRooms = {};
+        if (portals[0]) entryRooms[portals[0].id] = `${start.x},${start.y}`;
+        if (portals[1]) entryRooms[portals[1].id] = `${end.x},${end.y}`;
+        return {
+            id: `interior_${site.networkId}`,
+            generatorVersion: 1,
+            kind: 'cave-network',
+            networkId: site.networkId,
+            structure: 'cave',
+            structureName: struct.name,
+            origin: { ...site.canonicalOrigin },
+            width: 7,
+            height: 7,
+            portals: portals.map(portal => ({ ...portal })),
+            entryRooms,
+            tiles
+        };
     },
 
     ensureInterior(app, tile) {
         if (!tile || !tile.structure) return null;
-        if (tile.interior && tile.interior.tiles) return tile.interior;
         const struct = app.STRUCTURES[tile.structure] || { name: tile.structure, icon: '🚪' };
-        const biomeId = this.interiorBiomeForStructure(tile.structure);
-        const originBiome = app.biomes[tile.biome] || app.biomes.forest;
-        const featureTable = originBiome.structureTable || [];
-        const tiles = {};
-        for (let y = -2; y <= 2; y++) {
-            for (let x = -2; x <= 2; x++) {
-                const key = `${x},${y}`;
-                const feature = x === 0 && y === 0 ? 'exit' : featureTable[Math.abs((tile.x + x) * 17 + (tile.y + y) * 31) % Math.max(1, featureTable.length)];
-                tiles[key] = {
-                    x, y, biome: biomeId, explored: x === 0 && y === 0,
-                    description: `${struct.name} interior chamber.`,
-                    hasLandmark: false, landmarkName: '',
-                    structure: feature === 'exit' ? null : feature,
-                    structureSpawned: false,
-                    creatures: [], items: [], exit: x === 0 && y === 0
-                };
-            }
-        }
-        tile.interior = {
-            id: `interior_${tile.x}_${tile.y}_${tile.structure}`,
-            structure: tile.structure,
-            structureName: struct.name,
-            origin: { x: tile.x, y: tile.y },
-            width: 5,
-            height: 5,
-            tiles
-        };
-        app.persistTileDelta(tile.x, tile.y, tile);
-        return tile.interior;
+        const site = tile.site?.kind === 'cave-portal' ? tile.site : null;
+        const canonicalTile = site ? app.getTile(site.canonicalOrigin.x, site.canonicalOrigin.y) : tile;
+        if (canonicalTile.interior?.tiles) return canonicalTile.interior;
+        const profile = this.interiorProfile(app, tile.structure);
+        canonicalTile.interior = site
+            ? this.generateCaveNetwork(app, canonicalTile, struct, site)
+            : this.generateSparseBuilding(app, tile, struct, profile);
+        app.persistTileDelta(canonicalTile.x, canonicalTile.y, canonicalTile);
+        return canonicalTile.interior;
     },
 
     persistCurrentExplorationTile(app, tile = this.currentExplorationTile(app)) {
@@ -113,7 +249,10 @@ const YAW_STRUCTURE_NAVIGATION = {
         app.persistTileDelta(tile.x, tile.y, tile);
         app.clearTileBoundExplorationTargets();
         app.inInterior = true;
-        app.interiorLocation = { x: 0, y: 0 };
+        const entryKey = app.activeInterior.entryRooms?.[tile.site?.portalId] || app.activeInterior.entryRooms?.default || '0,0';
+        const [entryX, entryY] = entryKey.split(',').map(Number);
+        app.interiorLocation = { x: entryX, y: entryY };
+        app.interiorEntrySurface = { x: tile.x, y: tile.y };
         const room = this.currentInteriorTile(app);
         room.explored = true;
         app.creatures = app._tileCreatures(room.creatures || []);
@@ -135,11 +274,13 @@ const YAW_STRUCTURE_NAVIGATION = {
         const room = this.currentInteriorTile(app);
         if (room) room.creatures = app._tileCreatures(app.creatures);
         const origin = app.activeInterior.origin;
-        const tile = app.getTile(origin.x, origin.y);
+        const surfaceExit = room?.surfaceExit || app.interiorEntrySurface || origin;
+        const tile = app.getTile(surfaceExit.x, surfaceExit.y);
         app.clearTileBoundExplorationTargets();
-        app.location = { x: origin.x, y: origin.y };
+        app.location = { x: surfaceExit.x, y: surfaceExit.y };
         app.inInterior = false;
         app.activeInterior = null;
+        app.interiorEntrySurface = null;
         app.interiorLocation = { x: 0, y: 0 };
         app.creatures = app._tileCreatures(tile.creatures || []);
         app.currentBiome = tile.biome;
@@ -160,19 +301,22 @@ const YAW_STRUCTURE_NAVIGATION = {
     moveInterior(app, dx, dy) {
         if (app.transactionWindow || app.holdingsWindow) return false;
         if (!app.activeInterior) return;
-        const from = { x: app.interiorLocation.x, y: app.interiorLocation.y, interior: true };
-        const nx = app.interiorLocation.x + dx;
-        const ny = app.interiorLocation.y + dy;
-        if (Math.abs(nx) > 2 || Math.abs(ny) > 2) {
-            app.log.push({ text: app._label('structure.wallBlocked', 'A wall blocks the way.'), type: 'move' });
+        const traversal = app._traversalDecision(dx, dy);
+        if (!traversal.allowed) {
+            const text = app._traversalMessage(traversal);
+            app.log.push({ text, type: 'move' });
+            app.showToast?.({ text, type: 'blocked', importance: 'notable', dedupeKey: `blocked:interior:${traversal.reasonCode}` });
             app.renderLog();
-            return;
+            return false;
         }
+        const from = { x: app.interiorLocation.x, y: app.interiorLocation.y, interior: true };
+        const nx = traversal.to.x;
+        const ny = traversal.to.y;
         const oldRoom = this.currentInteriorTile(app);
         if (oldRoom) oldRoom.creatures = app._tileCreatures(app.creatures);
         app.clearTileBoundExplorationTargets();
         app.interiorLocation = { x: nx, y: ny };
-        app._advanceTime(1);
+        app._advanceTime(traversal.cost);
         const room = this.currentInteriorTile(app);
         const wasExplored = room.explored;
         room.explored = true;
@@ -205,6 +349,7 @@ const YAW_STRUCTURE_NAVIGATION = {
         });
         app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'structure-move');
         app.autoSave();
+        return true;
     },
 
     rest(app) {

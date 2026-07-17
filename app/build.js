@@ -53,6 +53,7 @@ function loadRelease() {
 const SCRIPT_ORDER = [
   'src/core/serialization.js',
   'src/core/world-generation.js',
+  'src/core/traversal-system.js',
   'src/core/asset-manifest.js',
   'src/core/storage-system.js',
   'src/core/world-state.js',

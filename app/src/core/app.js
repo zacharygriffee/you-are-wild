@@ -798,7 +798,7 @@
             tileDeltas: new Map(),
             exploredTiles: new Set(),
             superPatchMap: new Map(),
-            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 2, mapModsHash: 'core' },
+            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 3, mapModsHash: 'core' },
             PATCH_SIZE: 10,
             SUPER_PATCH_SIZE: 3, // 3x3 patches = 30x30 tiles per biome region
             currentBiome: 'forest',
@@ -900,7 +900,7 @@
                     ], friendlyTable: [
                         { id: 'bunny', weight: 30 }, { id: 'deer', weight: 25 }, { id: 'human', weight: 15 },
                         { id: 'fox', weight: 15 }, { id: 'cat', weight: 10 }, { id: 'horse', weight: 5 }
-                    ], structureTable: ['cabin', 'hut', 'camp', 'tree', 'burrow', 'nest'],
+                    ], structureTable: ['cabin', 'hut', 'camp', 'tree', 'burrow', 'nest', 'manor'],
                     descriptions: ['Ancient trees tower overhead.','The forest is dense and humid.','Sunlight filters through leaves.','A clearing opens before you.','Fallen logs and twisted roots make travel slow.'] },
                 swamp: { name: 'Swamp', role: 'region', icon: '🐊', color: '#3d4a1e', bgColor: '#2a3310', danger: 4, encounterChance: 0.20, friendlyChance: 0.03, structureChance: 0.06,
                     encounterTable: [
@@ -908,7 +908,7 @@
                         { id: 'naga', weight: 15 }, { id: 'plant', weight: 20 }
                     ], friendlyTable: [
                         { id: 'frog', weight: 40 }, { id: 'otter', weight: 20 }, { id: 'human', weight: 10 }
-                    ], structureTable: ['hut', 'ruins', 'pond', 'burrow', 'spring'],
+                    ], structureTable: ['hut', 'ruins', 'pond', 'burrow', 'spring', 'dungeon'],
                     descriptions: ['Murky waters stretch through twisted cypress trees.','The ground squelches beneath your feet.','Fireflies drift through the fog.','A sunken log bridges a channel.','Gnarled roots form natural archways.'] },
                 plains: { name: 'Plains', role: 'region', icon: '🌾', color: '#6b5b1e', bgColor: '#4a4010', danger: 2, encounterChance: 0.12, friendlyChance: 0.08, structureChance: 0.06,
                     encounterTable: [
@@ -917,9 +917,9 @@
                     ], friendlyTable: [
                         { id: 'bunny', weight: 30 }, { id: 'deer', weight: 25 }, { id: 'horse', weight: 20 },
                         { id: 'human', weight: 15 }, { id: 'cow', weight: 10 }
-                    ], structureTable: ['cabin', 'camp', 'ruins', 'tree', 'pond'],
+                    ], structureTable: ['cabin', 'camp', 'ruins', 'tree', 'pond', 'manor', 'dungeon'],
                     descriptions: ['Tall grasses sway in the warm breeze.','Open grasslands stretch to the horizon.','The plains are peaceful.','A stream cuts through the prairie.','Wind rustles the grass in waves.'] },
-                cave: { name: 'Cave', role: 'region', icon: '🦇', color: '#2a2a3a', bgColor: '#1a1a2e', danger: 5, encounterChance: 0.25, friendlyChance: 0.02, structureChance: 0.10,
+                cave: { name: 'Cave', role: 'interior-theme', icon: '🦇', color: '#2a2a3a', bgColor: '#1a1a2e', danger: 5, encounterChance: 0.25, friendlyChance: 0.02, structureChance: 0.10,
                     encounterTable: [
                         { id: 'bat', weight: 25 }, { id: 'goblin', weight: 20 }, { id: 'rat', weight: 20 },
                         { id: 'slime', weight: 20 }, { id: 'naga', weight: 10 }, { id: 'dragon', weight: 5 }
@@ -933,9 +933,9 @@
                         { id: 'tiger', weight: 20 }, { id: 'naga', weight: 15 }, { id: 'slime', weight: 5 }
                     ], friendlyTable: [
                         { id: 'frog', weight: 30 }, { id: 'human', weight: 10 }, { id: 'horse', weight: 10 }
-                    ], structureTable: ['ruins', 'hut', 'spring', 'nest', 'pond', 'tree'],
+                    ], structureTable: ['ruins', 'hut', 'spring', 'nest', 'pond', 'tree', 'dungeon'],
                     descriptions: ['Vines hang like curtains.','The jungle is alive with sound.','Humidity presses down like a weight.','A waterfall crashes into a hidden pool.','Thick vegetation forces you to hack forward.'] },
-                dungeon: { name: 'Dungeon', role: 'region', icon: '⛓️', color: '#3a2a3a', bgColor: '#1e0a1e', danger: 5, encounterChance: 0.30, friendlyChance: 0.01, structureChance: 0.12,
+                dungeon: { name: 'Dungeon', role: 'interior-theme', icon: '⛓️', color: '#3a2a3a', bgColor: '#1e0a1e', danger: 5, encounterChance: 0.30, friendlyChance: 0.01, structureChance: 0.12,
                     encounterTable: [
                         { id: 'rat', weight: 25 }, { id: 'goblin', weight: 25 }, { id: 'skeleton', weight: 20 },
                         { id: 'spider', weight: 20 }, { id: 'drow', weight: 10 }
@@ -943,7 +943,7 @@
                         { id: 'goblin', weight: 20 }, { id: 'human', weight: 5 }
                     ], structureTable: ['cave', 'ruins', 'camp', 'web', 'burrow', 'hut'],
                     descriptions: ['Stone corridors stretch endlessly.','Iron-barred cells line the walls.','The air is stale and cold.','A brazier smolders with dying coals.','Chains rattle in the darkness.'] },
-                manor: { name: 'Manor', role: 'region', icon: '🏰', color: '#4a3a2a', bgColor: '#2e2010', danger: 3, encounterChance: 0.15, friendlyChance: 0.05, structureChance: 0.15,
+                manor: { name: 'Manor', role: 'interior-theme', icon: '🏰', color: '#4a3a2a', bgColor: '#2e2010', danger: 3, encounterChance: 0.15, friendlyChance: 0.05, structureChance: 0.15,
                     encounterTable: [
                         { id: 'human', weight: 30 }, { id: 'cat', weight: 25 }, { id: 'rat', weight: 20 },
                         { id: 'mouse', weight: 15 }, { id: 'spider', weight: 10 }
@@ -975,7 +975,7 @@
                         { id: 'wolf', weight: 20 }, { id: 'harpy', weight: 15 }
                     ], friendlyTable: [
                         { id: 'goat', weight: 40 }, { id: 'eagle', weight: 20 }, { id: 'horse', weight: 15 }
-                    ], structureTable: ['cave', 'ruins', 'nest', 'hut', 'camp'],
+                    ], structureTable: ['cave', 'ruins', 'nest', 'hut', 'camp', 'dungeon'],
                     descriptions: ['Rocky outcrops offer treacherous footing.','The wind howls at your back.','A narrow ledge skirts a drop.','A goat path winds upward.','The view from the edge is dizzying.'] },
                 water: { name: 'Water', role: 'region', icon: '💧', color: '#1a3a5a', bgColor: '#0f1e3a', danger: 3, encounterChance: 0.20, friendlyChance: 0.05, structureChance: 0.05,
                     encounterTable: [
@@ -1020,21 +1020,21 @@
 
             // ===== STRUCTURES (tile features) =====
             STRUCTURES: {
-                cabin: { name: 'Cabin', icon: '🏠', encounterChance: 0.25, disposition: 'neutral', threat: 1,
+                cabin: { name: 'Cabin', icon: '🏠', enterable: true, interior: { enabled: true, profile: 'small-building' }, encounterChance: 0.25, disposition: 'neutral', threat: 1,
                     merchant: { chance: 0.25, stockTable: 'general', species: ['human', 'cat'] }, quest: { chance: 0.35, templates: ['cabin_supplies'], species: ['human', 'cat'] }, lootTable: 'basicGear',
                     descriptions: ['A small wooden cabin stands before you.','A lone cabin, smoke curling from its chimney.','A weathered cabin with a welcoming glow.'] },
-                hut: { name: 'Hut', icon: '🛖', encounterChance: 0.20, disposition: 'neutral', threat: 1,
+                hut: { name: 'Hut', icon: '🛖', enterable: true, interior: { enabled: true, profile: 'small-building' }, encounterChance: 0.20, disposition: 'neutral', threat: 1,
                     merchant: { chance: 0.20, stockTable: 'herbalist', species: ['human', 'shroom'] }, quest: { chance: 0.25, templates: ['cabin_supplies'], species: ['human', 'shroom'] },
                     descriptions: ['A rustic hut built from sticks and mud.','A simple hut with a thatched roof.','A travelers hut, abandoned or inhabited.'] },
-                cave: { name: 'Cave Mouth', icon: '🕳️', encounterChance: 0.35, disposition: 'enemy', threat: 3,
+                cave: { name: 'Cave Mouth', icon: '🕳️', enterable: true, interior: { enabled: true, profile: 'cave-network' }, encounterChance: 0.35, disposition: 'enemy', threat: 3,
                     descriptions: ['A dark cave mouth yawns before you.','A shallow cave, something stirs within.','A narrow cave, the air is cold and damp.'] },
-                ruins: { name: 'Ruins', icon: '🏛️', encounterChance: 0.30, disposition: 'enemy', threat: 3,
+                ruins: { name: 'Ruins', icon: '🏛️', enterable: true, interior: { enabled: true, profile: 'large-building' }, encounterChance: 0.30, disposition: 'enemy', threat: 3,
                     quest: { chance: 0.20, templates: ['ruins_cleanup', 'shrine_relic'], species: ['human', 'drow'] }, lootTable: 'relicGear',
                     descriptions: ['Ancient ruins crumble around you.','A collapsed structure, something lurks.','A forgotten ruin, treasures and dangers.'] },
                 camp: { name: 'Camp', icon: '⛺', encounterChance: 0.15, disposition: 'neutral', threat: 1,
                     merchant: { chance: 0.45, stockTable: 'traveler', species: ['human', 'horse', 'fox'] }, quest: { chance: 0.30, templates: ['camp_safety'], species: ['human', 'horse', 'fox'] }, lootTable: 'armory',
                     descriptions: ['A small campsite, recently used.','A bandit camp, abandoned or occupied.','A makeshift camp, signs of recent travelers.'] },
-                shrine: { name: 'Shrine', icon: '⛩️', encounterChance: 0.10, disposition: 'neutral', threat: 0,
+                shrine: { name: 'Shrine', icon: '⛩️', enterable: true, interior: { enabled: true, profile: 'small-building' }, encounterChance: 0.10, disposition: 'neutral', threat: 0,
                     merchant: { chance: 0.25, stockTable: 'relic', species: ['human', 'drow'] }, quest: { chance: 0.45, templates: ['shrine_relic'], species: ['human', 'drow'] }, lootTable: 'relicGear',
                     descriptions: ['A tiny shrine to a forgotten deity.','A weathered shrine, offerings still fresh.','A serene shrine, peaceful energy radiates.'] },
                 pond: { name: 'Pond', icon: '🏞️', encounterChance: 0.15, disposition: 'neutral', threat: 1,
@@ -1044,12 +1044,16 @@
                 spring: { name: 'Hot Spring', icon: '♨️', encounterChance: 0.20, disposition: 'friendly', threat: 0,
                     merchant: { chance: 0.30, stockTable: 'herbalist', species: ['human', 'otter', 'frog'] },
                     descriptions: ['A natural hot spring, steam rises lazily.','A warm spring, perfect for a soak.','A hidden spring, the water is inviting.'] },
-                burrow: { name: 'Burrow', icon: '🕳️', encounterChance: 0.25, disposition: 'enemy', threat: 2,
+                burrow: { name: 'Burrow', icon: '🕳️', enterable: true, interior: { enabled: true, profile: 'burrow' }, encounterChance: 0.25, disposition: 'enemy', threat: 2,
                     descriptions: ['A small burrow in the earth.','A network of burrows, something lives here.','A freshly dug burrow, tracks lead inside.'] },
                 nest: { name: 'Nest', icon: '🪹', encounterChance: 0.20, disposition: 'enemy', threat: 2,
                     descriptions: ['A large nest built high in the trees.','A ground nest, something broods within.','An abandoned nest, or is it?'] },
-                web: { name: 'Web', icon: '🕸️', encounterChance: 0.30, disposition: 'enemy', threat: 3,
-                    descriptions: ['Thick webs cover everything.','A massive web spans the clearing.','Gossamer threads, something waits.'] }
+                web: { name: 'Web', icon: '🕸️', enterable: true, interior: { enabled: true, profile: 'burrow' }, encounterChance: 0.30, disposition: 'enemy', threat: 3,
+                    descriptions: ['Thick webs cover everything.','A massive web spans the clearing.','Gossamer threads, something waits.'] },
+                manor: { name: 'Manor', icon: '🏰', enterable: true, interior: { enabled: true, profile: 'manor' }, encounterChance: 0.25, disposition: 'neutral', threat: 3,
+                    descriptions: ['An old manor rises above the surrounding land.','A walled estate waits beyond an iron gate.'] },
+                dungeon: { name: 'Dungeon Entrance', icon: '⛓️', enterable: true, interior: { enabled: true, profile: 'dungeon' }, encounterChance: 0.35, disposition: 'enemy', threat: 5,
+                    descriptions: ['Stone steps descend behind a reinforced door.','A sealed dungeon entrance opens into darkness.'] }
             },
 
             // ===== CHARACTER CREATION =====
@@ -1912,6 +1916,14 @@
 
             moveInterior(dx, dy) {
                 return YAW_STRUCTURE_NAVIGATION.moveInterior(this, dx, dy);
+            },
+
+            _traversalDecision(dx, dy) {
+                return YAW_TRAVERSAL.resolve(this, dx, dy);
+            },
+
+            _traversalMessage(decision) {
+                return YAW_TRAVERSAL.message(this, decision);
             },
 
             // ===== MOVEMENT =====

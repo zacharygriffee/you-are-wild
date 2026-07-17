@@ -10,6 +10,31 @@ const YAW_MAP_VISUALS = {
 
     routeVisualShape(app, tile, resolver = null) {
         const fallback = tile?.overlays?.bridge?.direction || tile?.overlays?.road?.direction || 'east-west';
+        const explicit = tile?.overlays?.bridge?.connections || tile?.overlays?.road?.connections;
+        if (Array.isArray(explicit)) {
+            const north = explicit.includes('north');
+            const east = explicit.includes('east');
+            const south = explicit.includes('south');
+            const west = explicit.includes('west');
+            const count = [north, east, south, west].filter(Boolean).length;
+            if (count >= 4) return 'intersection';
+            if (count === 3) {
+                if (!north) return 't-s';
+                if (!east) return 't-w';
+                if (!south) return 't-n';
+                return 't-e';
+            }
+            if (count === 2) {
+                if (east && west) return 'east-west';
+                if (north && south) return 'north-south';
+                if (north && east) return 'corner-ne';
+                if (east && south) return 'corner-es';
+                if (south && west) return 'corner-sw';
+                if (west && north) return 'corner-wn';
+            }
+            if (count === 1) return 'end';
+            return 'end';
+        }
         if (!tile || typeof resolver !== 'function' || !Number.isFinite(Number(tile.x)) || !Number.isFinite(Number(tile.y))) return fallback;
         const x = Number(tile.x);
         const y = Number(tile.y);

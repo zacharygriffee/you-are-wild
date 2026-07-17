@@ -2,6 +2,7 @@ const WorldGen = (() => {
     const clamp01 = value => Math.max(0, Math.min(1, value));
     const fade = t => t * t * (3 - 2 * t);
     const lerp = (a, b, t) => a + (b - a) * t;
+    const caveNetworkCache = new Map();
 
     function hash01(seed, version, purpose, ...parts) {
         const input = `${String(seed || 'default')}|v${version || 1}|${purpose}|${parts.join('|')}`;
@@ -154,6 +155,7 @@ const WorldGen = (() => {
         if (biome === 'cliff') tags.push('rocky');
         if (overlays.road) tags.push('road');
         if (overlays.bridge) tags.push('bridge');
+        if (overlays.barriers?.length) tags.push('barrier-edge');
         return tags;
     }
 
@@ -588,11 +590,12 @@ const WorldGen = (() => {
         return segments;
     }
 
-    function getRoadOverlay(seed, version, x, y, fields) {
+    function getRoadOverlayRaw(seed, version, x, y, fields = null) {
         if ((version || 1) >= 2 && y === 0 && Math.abs(x) <= 6) {
             return { id: 'road_start_axis', direction: 'east-west', startArea: true };
         }
-        if (fields.roughness > 0.86) return null;
+        const terrainFields = fields || getTerrainFields(seed, version, x, y);
+        if (terrainFields.roughness > 0.86) return null;
         let best = null;
         for (const segment of routeSegmentsForTile(seed, version, x, y)) {
             const dist = distanceToSegment(x, y, segment.from.x, segment.from.y, segment.to.x, segment.to.y);
@@ -602,6 +605,17 @@ const WorldGen = (() => {
             }
         }
         return best ? { id: best.id, direction: best.direction } : null;
+    }
+
+    function getRoadOverlay(seed, version, x, y, fields) {
+        const road = getRoadOverlayRaw(seed, version, x, y, fields);
+        if (!road) return null;
+        const connections = [];
+        for (const [direction, dx, dy] of [['north', 0, -1], ['east', 1, 0], ['south', 0, 1], ['west', -1, 0]]) {
+            const neighbor = getRoadOverlayRaw(seed, version, x + dx, y + dy);
+            if (neighbor?.id === road.id) connections.push(direction);
+        }
+        return { ...road, connections };
     }
 
     function bridgeSpan(seed, version, x, y, direction) {
@@ -631,7 +645,100 @@ const WorldGen = (() => {
             direction: road.direction,
             roadId: road.id,
             spanIndex: 0,
-            spanLength: span.spanLength
+            spanLength: span.spanLength,
+            connections: road.direction === 'north-south' ? ['north', 'south'] : ['east', 'west']
+        };
+    }
+
+    function getBarrierEdges(seed, version, x, y, fields, road) {
+        const barriers = [];
+        const directions = [['north', 0, -1], ['east', 1, 0], ['south', 0, 1], ['west', -1, 0]];
+        for (const [direction, dx, dy] of directions) {
+            if (road?.connections?.includes(direction)) continue;
+            const neighbor = getTerrainFields(seed, version, x + dx, y + dy);
+            if (fields.water || neighbor.water) continue;
+            const elevationStep = Math.abs(fields.elevation - neighbor.elevation);
+            const ruggedness = Math.max(fields.roughness, neighbor.roughness);
+            if (elevationStep > 0.075 && ruggedness > 0.72) barriers.push(direction);
+        }
+        return barriers;
+    }
+
+    function cellularFeaturePoint(seed, version, purpose, cellX, cellY, cellSize = 36) {
+        const safeSize = Math.max(4, cellSize);
+        const jitterX = hash01(seed, version, `${purpose}:jx`, cellX, cellY);
+        const jitterY = hash01(seed, version, `${purpose}:jy`, cellX, cellY);
+        return {
+            x: Math.floor((cellX + 0.18 + jitterX * 0.64) * safeSize),
+            y: Math.floor((cellY + 0.18 + jitterY * 0.64) * safeSize)
+        };
+    }
+
+    function nearestCavePortalLand(seed, version, cellX, cellY, target, salt) {
+        const cellSize = 36;
+        const minX = cellX * cellSize + 2;
+        const maxX = (cellX + 1) * cellSize - 3;
+        const minY = cellY * cellSize + 2;
+        const maxY = (cellY + 1) * cellSize - 3;
+        const candidates = [];
+        for (let radius = 0; radius <= 14; radius++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+                    const x = Math.max(minX, Math.min(maxX, target.x + dx));
+                    const y = Math.max(minY, Math.min(maxY, target.y + dy));
+                    const region = cellular2D(seed, version, 'macro-region', x, y, 36);
+                    if (!isWater(seed, version, x, y) && region.cellX === cellX && region.cellY === cellY) {
+                        candidates.push({ x, y, rank: hash01(seed, version, 'cave-portal-land', cellX, cellY, salt, x, y) });
+                    }
+                }
+            }
+            if (candidates.length) break;
+        }
+        candidates.sort((a, b) => a.rank - b.rank);
+        return candidates[0] || target;
+    }
+
+    function getCavePortalsForCell(seed, version, cellX, cellY) {
+        const cacheKey = `${seed}|${version}|${cellX}|${cellY}`;
+        if (caveNetworkCache.has(cacheKey)) return caveNetworkCache.get(cacheKey);
+        const center = cellularFeaturePoint(seed, version, 'macro-region', cellX, cellY, 36);
+        const horizontal = hash01(seed, version, 'cave-network-axis', cellX, cellY) >= 0.5;
+        const spread = 8 + Math.floor(hash01(seed, version, 'cave-network-spread', cellX, cellY) * 5);
+        const targets = horizontal
+            ? [{ x: center.x - spread, y: center.y }, { x: center.x + spread, y: center.y }]
+            : [{ x: center.x, y: center.y - spread }, { x: center.x, y: center.y + spread }];
+        const networkId = `cave_${cellX}_${cellY}`;
+        const portals = targets.map((target, index) => {
+            const point = nearestCavePortalLand(seed, version, cellX, cellY, target, index);
+            return { id: `${networkId}_portal_${index + 1}`, x: point.x, y: point.y, index };
+        });
+        if (portals[0].x === portals[1].x && portals[0].y === portals[1].y) portals[1].x += horizontal ? 1 : 0;
+        const network = { id: networkId, cellX, cellY, axis: horizontal ? 'east-west' : 'north-south', portals };
+        caveNetworkCache.set(cacheKey, network);
+        if (caveNetworkCache.size > 512) caveNetworkCache.delete(caveNetworkCache.keys().next().value);
+        return network;
+    }
+
+    function getCavePortalForTile(worldMeta, x, y) {
+        const seed = worldMeta?.seed || 'default';
+        const version = worldMeta?.generatorVersion || 1;
+        if (version < 3) return null;
+        const squareX = Math.floor(x / 36);
+        const squareY = Math.floor(y / 36);
+        const network = getCavePortalsForCell(seed, version, squareX, squareY);
+        const portal = network.portals.find(candidate => candidate.x === x && candidate.y === y);
+        if (!portal) return null;
+        return {
+            kind: 'cave-portal',
+            networkId: network.id,
+            portalId: portal.id,
+            portalIndex: portal.index,
+            cellX: network.cellX,
+            cellY: network.cellY,
+            axis: network.axis,
+            portals: network.portals.map(entry => ({ ...entry })),
+            canonicalOrigin: { x: network.portals[0].x, y: network.portals[0].y }
         };
     }
 
@@ -653,8 +760,10 @@ const WorldGen = (() => {
         }
         const road = getRoadOverlay(seed, version, x, y, fields);
         const bridge = getBridgeOverlay(seed, version, x, y, fields, road);
+        const barriers = getBarrierEdges(seed, version, x, y, fields, road);
         const poi = getPoiForTile(seed, version, x, y, regionCell);
-        const overlays = { road, bridge, poi, structure: null };
+        const cavePortal = getCavePortalForTile(worldMeta, x, y);
+        const overlays = { road, bridge, barriers, poi, structure: cavePortal ? { id: 'cave', site: cavePortal } : null };
         const traversal = getTraversal({ biome: derivedBiome, baseBiome: derivedBiome, derivedBiome, water: fields.water, overlays });
         const encounterPressure = getEncounterPressure({ biome: derivedBiome, baseBiome: derivedBiome, derivedBiome, water: fields.water, dangerPressure: fields.dangerPressure, overlays });
         return {
@@ -709,6 +818,8 @@ const WorldGen = (() => {
                 explored: false
             }),
             overlays,
+            site: cavePortal,
+            structure: cavePortal ? 'cave' : null,
             regionCell: {
                 id: regionCell.id,
                 x: regionCell.cellX,
@@ -734,6 +845,10 @@ const WorldGen = (() => {
         getRouteAnchorsForRegion,
         getRoadOverlay,
         getBridgeOverlay,
+        getBarrierEdges,
+        cellularFeaturePoint,
+        getCavePortalsForCell,
+        getCavePortalForTile,
         getBiomeTraits,
         getTraversal,
         getEncounterPressure,

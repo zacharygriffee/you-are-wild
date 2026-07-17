@@ -60,7 +60,7 @@ const YAW_WORLD_STATE = {
     },
 
     defaultWorldMeta() {
-        return { worldId: 'world_legacy', seed: 'default', generatorVersion: 1, mapModsHash: 'legacy' };
+        return { worldId: 'world_v3', seed: 'default', generatorVersion: 3, mapModsHash: 'core' };
     },
 
     normalizeWorldMeta(app, meta, fallback = null) {
@@ -93,8 +93,10 @@ const YAW_WORLD_STATE = {
     },
 
     regionBiomeKeys(app) {
+        const legacyInteriorRegions = new Set(['cave', 'dungeon', 'manor']);
+        const legacyWorld = Number(app.worldMeta?.generatorVersion || 1) < 3;
         return Object.entries(app.biomes)
-            .filter(([, biome]) => (biome.role || 'region') === 'region')
+            .filter(([id, biome]) => (biome.role || 'region') === 'region' || (legacyWorld && legacyInteriorRegions.has(id)))
             .map(([id]) => id);
     },
 
@@ -126,7 +128,7 @@ const YAW_WORLD_STATE = {
         const generated = typeof WorldGen !== 'undefined'
             ? WorldGen.generateBaseTile(app.worldMeta, x, y, app._regionBiomeKeys())
             : { biome: 'plains', baseBiome: 'plains', macroBiome: 'plains', elevation: 0.5, moisture: 0.5, heat: 0.5, fertility: 0.5, dangerPressure: 0.3, regionCell: null, terrainTags: [] };
-        return { x, y, ...generated, explored: false, seen: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], items: [], structure: null, structureSpawned: false };
+        return { x, y, ...generated, explored: false, seen: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], items: [], structure: generated.structure || null, structureSpawned: false };
     },
 
     getTileDelta(app, x, y) {
@@ -153,7 +155,7 @@ const YAW_WORLD_STATE = {
         if (!tile) return null;
         const base = app.getBaseTile(tile.x, tile.y);
         const delta = {};
-        const fields = ['biome', 'explored', 'seen', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'structure', 'structureSpawned', 'structureLooted', 'resourceSearched', 'interior', 'tag', 'name', 'color'];
+        const fields = ['biome', 'explored', 'seen', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'structure', 'structureSpawned', 'structureLooted', 'resourceSearched', 'interior', 'site', 'tag', 'name', 'color'];
         for (const field of fields) {
             const value = tile[field];
             const baseValue = base[field];

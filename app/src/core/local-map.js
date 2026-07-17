@@ -128,17 +128,20 @@ const YAW_LOCAL_MAP = {
             const ty = cy + cell.dy;
             const room = app.activeInterior.tiles[`${tx},${ty}`];
             const isCenter = cell.key === 'center';
+            const traversal = isCenter ? null : app._traversalDecision(cell.dx, cell.dy);
+            const moveable = Boolean(room) && Boolean(traversal?.allowed);
             const visual = app._interiorTileVisual(room);
             let classes = 'map-tile mobile-play-cell';
             if (isCenter) classes += ' center';
-            else if (room?.explored) classes += ' explored moveable';
-            else if (room) classes += ' moveable';
+            else if (room?.explored) classes += ` explored${moveable ? ' moveable' : ' blocked'}`;
+            else if (room) classes += moveable ? ' moveable' : ' blocked';
             else classes += ' far';
             if (visual.classes) classes += ` ${visual.classes}`;
-            const title = isCenter
+            let title = isCenter
                 ? `${visual.label} (${tx}, ${ty})`
                 : `${app._directionLabel(cell.dx, cell.dy)}: ${visual.label} (${tx}, ${ty})`;
-            html += this.cellHtml(app, { classes, visual, title, dx: cell.dx, dy: cell.dy, key: cell.key, moveable: Boolean(room) && !isCenter });
+            if (!isCenter && traversal && !traversal.allowed) title += ` — ${app._traversalMessage(traversal)}`;
+            html += this.cellHtml(app, { classes, visual, title, dx: cell.dx, dy: cell.dy, key: cell.key, moveable });
         });
         this.writeMobileMap(html);
         const coords = document.getElementById('coords');
@@ -160,8 +163,10 @@ const YAW_LOCAL_MAP = {
             const tx = cx + cell.dx;
             const ty = cy + cell.dy;
             const isCenter = cell.key === 'center';
+            const traversal = isCenter ? null : app._traversalDecision(cell.dx, cell.dy);
             const isExplored = app.isExplored(tx, ty);
             const isVisible = Math.abs(cell.dx) <= visibilityRadius && Math.abs(cell.dy) <= visibilityRadius;
+            const moveable = Boolean(traversal?.allowed) && isVisible;
             const tile = (isVisible && (isExplored || !isCenter)) || isCenter ? app.getTile(tx, ty) : null;
             const visual = app._mapTileVisual(tile, {
                 isCurrent: isCenter,
@@ -177,14 +182,15 @@ const YAW_LOCAL_MAP = {
             let classes = 'map-tile mobile-play-cell';
             if (isCenter) classes += ' center';
             else if (!isVisible) classes += ' far';
-            else if (isExplored) classes += ' explored moveable';
-            else classes += ' moveable';
+            else if (isExplored) classes += ` explored${moveable ? ' moveable' : ' blocked'}`;
+            else classes += moveable ? ' moveable' : ' blocked';
             if (visual.classes) classes += ` ${visual.classes}`;
             if (hasCreatures) classes += ' has-enemy';
-            const title = tile
+            let title = tile
                 ? (isCenter ? `${visual.label} (${tx}, ${ty})` : `${app._directionLabel(cell.dx, cell.dy)}: ${visual.label} (${tx}, ${ty})`)
                 : `${tx}, ${ty}`;
-            html += this.cellHtml(app, { classes, visual, title, dx: cell.dx, dy: cell.dy, key: cell.key, moveable: !isCenter && isVisible });
+            if (!isCenter && traversal && !traversal.allowed) title += ` — ${app._traversalMessage(traversal)}`;
+            html += this.cellHtml(app, { classes, visual, title, dx: cell.dx, dy: cell.dy, key: cell.key, moveable });
         });
         this.writeMobileMap(html);
         const mobileCoords = document.getElementById('mobile-coords');

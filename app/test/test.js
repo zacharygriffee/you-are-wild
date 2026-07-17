@@ -220,7 +220,8 @@ const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-sc
 const sceneShellContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'scene-shell.js'), 'utf8');
 const combatSaveStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-save-state.js'), 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
-const worldGenerationContent = fs.readFileSync(worldGenerationPath, 'utf8');
+const traversalSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'traversal-system.js'), 'utf8');
+const worldGenerationContent = `${fs.readFileSync(worldGenerationPath, 'utf8')}\n${traversalSystemContent}`;
 const assetManifestPath = path.join(SRC_DIR, 'core', 'asset-manifest.js');
 const assetManifestContent = fs.readFileSync(assetManifestPath, 'utf8');
 const worldStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-state.js'), 'utf8');
@@ -3481,6 +3482,14 @@ test('World state helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_WORLD_STATE.getTile(this, x, y)', 'App tile cache wrapper should delegate to the helper');
 });
 
+test('Traversal helper is registered before world and map consumers', () => {
+  assertContains(buildContent, "'src/core/traversal-system.js'", 'Traversal helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/traversal-system.js'") < buildContent.indexOf("'src/core/world-state.js'"), 'Traversal helper should load before world state and map consumers');
+  assertContains(traversalSystemContent, 'const YAW_TRAVERSAL =', 'Traversal helper should expose one authoritative movement service');
+  assertContains(movementFlowContent, 'app._traversalDecision(dx, dy)', 'Overworld movement should resolve traversal before mutation');
+  assertContains(structureNavigationContent, 'app._traversalDecision(dx, dy)', 'Interior movement should use the same traversal resolver');
+});
+
 test('World store helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/world-store.js'", 'World store helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/world-store.js'") < buildContent.indexOf("'src/core/app.js'"), 'World store helper should load before app.js');
@@ -6398,7 +6407,7 @@ test('Static setup review and system controls identify non-composer surfaces', (
   assertContains(template, 'data-command-surface="review-map" data-command-mode="navigation" data-command-control="recenter-map"', 'Large map recenter should identify review-map navigation');
   assertContains(template, 'data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-review-map" data-command-slot="exit"', 'Review map close should identify the canonical exit slot');
   assertContains(template, 'id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad"', 'Dormant mobile move toggle should identify as traversal controls');
-  assertContains(template, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="southeast"', 'Dormant mobile move pad should classify directional traversal controls');
+  assertContains(template, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="east"', 'Dormant mobile move pad should classify cardinal traversal controls');
   assertContains(template, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="current-tile"', 'Dormant mobile move pad center should classify the current-tile affordance');
 
   assertContains(template, 'id="tier-safe" class="nav-btn" type="button" aria-pressed="true" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="sfw"', 'Settings SFW posture should identify as an accessible system settings control');
@@ -6473,7 +6482,7 @@ test('Persistent shell controls opt into localization', () => {
   assertContains(template, 'data-i18n-aria-label="ui.mobilePanels"', 'Mobile panel dock label should opt into localization');
   assertContains(template, 'data-i18n-title="ui.movePadToggle"', 'Mobile move-pad toggle title should opt into localization');
   assertContains(template, 'data-i18n-aria-label="ui.movePad"', 'Mobile move-pad group label should opt into localization');
-  assertContains(template, 'data-i18n-aria-label="direction.moveNorthwest"', 'Mobile move-pad directional labels should opt into localization');
+  assertContains(template, 'data-i18n-aria-label="direction.moveNorth"', 'Mobile move-pad cardinal labels should opt into localization');
   assertContains(template, 'data-i18n-aria-label="ui.currentTile"', 'Mobile move-pad current-tile label should opt into localization');
   assertContains(template, 'id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions" data-i18n-aria-label="ui.locationActions"', 'Mobile location-action row should opt into localization');
   assertContains(template, 'data-i18n-title="target.actors" data-i18n-aria-label="target.actors"', 'Mobile actor toggle should opt into actor-label localization');
@@ -6888,8 +6897,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-move-pad {\n                display: none;', 'mobile movement pad should collapse by default');
   assertContains(template, '.mobile-move-pad.expanded {\n                display: grid;', 'dormant mobile movement pad should still be restorable without rebuilding the controls');
   assertContains(mobileUnitStripsContent, 'moveToggle.hidden = true;', 'mobile render refresh should keep the dormant move toggle hidden');
-  assertContains(template, "onclick=\"App.move(-1,-1)\"", 'mobile movement pad should mirror northwest traversal');
-  assertContains(template, "onclick=\"App.move(1,1)\"", 'mobile movement pad should mirror southeast traversal');
+  assertContains(template, "onclick=\"App.move(0,-1)\"", 'mobile movement pad should mirror north traversal');
+  assertContains(template, "onclick=\"App.move(0,1)\"", 'mobile movement pad should mirror south traversal');
   assert(template.indexOf('id="mobile-tile-info"') < template.indexOf('id="mobile-mini-map"'), 'Mobile current tile info should render above the navigation map');
   assertContains(template, '.mobile-control-belt {\n                order: 4;', 'mobile exploration controls should sit below the inline Scene Feed');
   assertContains(template, 'position: fixed;\n                left: max(8px, calc((100vw - 430px) / 2 + 8px));', 'mobile context belt should stay viewport-anchored above the fixed dock');
@@ -6975,7 +6984,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(appContent, 'renderMobileCombatToolbelt()', 'mobile combat toolbelt renderer missing');
   assertContains(localMapContent, "document.getElementById('mobile-mini-map')", 'local map renderer should target mobile map');
   assertContains(localMapContent, "data-mobile-play-cell=\"${key}\"", 'local map renderer should emit stable mobile play-cell metadata');
-  assertContains(localMapContent, 'moveable: !isCenter && isVisible', 'mobile 3x3 movement cells should dispatch through normal movement');
+  assertContains(localMapContent, 'const moveable = Boolean(traversal?.allowed) && isVisible;', 'mobile 3x3 cells should dispatch only through resolved cardinal traversal');
 });
 
 test('Battle mode contract keeps combat composer-first', () => {
@@ -7029,7 +7038,7 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'width: min(100%, 640px);', 'desktop target action row should have a compact maximum width');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(54px, 70px));', 'desktop target actions should use compact grid tracks');
   assertContains(template, 'text-overflow: ellipsis;', 'desktop target action captions should clip instead of pushing horizontal scroll');
-  assertContains(template, 'grid-template-columns: minmax(80px, 0.58fr) minmax(280px, 2.5fr) minmax(80px, 0.58fr);', 'desktop play surface should reserve usable diagonal movement cells');
+  assertContains(template, 'grid-template-columns: minmax(80px, 0.58fr) minmax(280px, 2.5fr) minmax(80px, 0.58fr);', 'desktop play surface should reserve diagonal context cells around cardinal movement');
   assertContains(template, 'scroll-padding-block: clamp(16px, 3vw, 32px);', 'desktop center tile should keep scroll starts clear of cell padding');
   assertContains(template, '.desktop-play-cell-content::before', 'desktop center content should use spacer centering instead of clipping-prone vertical centering');
   assertContains(template, 'justify-content: flex-start;', 'desktop center content should start tall content at the top for predictable scrolling');
@@ -9458,6 +9467,7 @@ test('Marked corpse utility actions expose localized accessible labels', () => {
 
 test('Looting a corpse can grant an item without starting combat', () => {
   const { App } = loadAppForCombat(() => 0);
+  App.worldMeta = { seed: 'default', generatorVersion: 2 };
   const player = makeUnit('You', { hunger: 50, gold: 0 });
   const corpse = makeUnit('Fallen', { id: 'loot-corpse', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
   App.player = player;
@@ -9513,6 +9523,7 @@ test('Corpse loot rewards are deterministic by world seed and corpse identity', 
 
 test('Authored loot tables can place equipment on corpses and structures', () => {
   const { App } = loadAppForCombat(() => 0);
+  App.worldMeta = { seed: 'default', generatorVersion: 2 };
   App.player = makeUnit('You');
   App.party = [App.player];
   App.inventory = [];
@@ -9576,6 +9587,7 @@ test('Resource-site search is deterministic visible and one-time', () => {
 
 test('Gatherer party role improves search find chance', () => {
   const { App } = loadAppForCombat(() => 0.35);
+  App.worldMeta = { seed: 'default', generatorVersion: 2 };
   const player = makeUnit('You');
   const gatherer = makeUnit('Forager', { id: 'gatherer-1', partyRole: 'gatherer' });
   App.player = player;
@@ -13331,14 +13343,14 @@ test('Structures hide core enter action by default and explicit enterable struct
   App.enterStructure();
   assertEqual(App.log[App.log.length - 1].text, 'No hay una estructura para entrar aqui.', 'Missing-structure feedback should localize');
   App.inventory = [{ id: 'pack-coin', name: 'Old Coin' }];
-  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], items: [{ id: 'ground-herb', name: 'Healing Herb' }], structure: 'cabin', structureSpawned: true }]]);
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], items: [{ id: 'ground-herb', name: 'Healing Herb' }], structure: 'tree', structureSpawned: true }]]);
   const context = App._centerTileContext();
-  assertContains(context.title, 'Cabin', `Structure center context should include structure title. Got ${context.title}`);
+  assertContains(context.title, 'Great Tree', `Structure center context should include structure title. Got ${context.title}`);
   assertNotContains(App._contextActionKeys().join(','), 'enter', 'Structure center context should not include enter by default');
   assertNotContains(App._renderContextActions(), 'App.enterStructure()', 'Structure center context should not generate enter action by default');
   assertEqual(App.enterStructure(), false, 'Direct enter should reject non-enterable structures');
   assertEqual(App.log[App.log.length - 1].text, 'No hay un interior para entrar aqui.', 'Non-enterable structure feedback should localize');
-  App.STRUCTURES.cabin.enterable = true;
+  App.worldMap.get('0,0').structure = 'cabin';
   assertContains(App._contextActionKeys().join(','), 'enter', 'Structure center context should include enter action key');
   assertContains(App._renderContextActions(), 'App.enterStructure()', 'Structure center context should generate enter action');
   App.showExplorationActions();
@@ -13346,7 +13358,7 @@ test('Structures hide core enter action by default and explicit enterable struct
   App.enterStructure();
   assertEqual(App.inInterior, true, 'Entering structure should switch to interior mode');
   assertEqual(App.log[App.log.length - 1].text, 'Entraste en Cabin.', 'Enter structure feedback should localize');
-  assertEqual(Object.keys(App.activeInterior.tiles).length, 25, 'Structure interior should be a persistent 5x5 map');
+  assertEqual(Object.keys(App.activeInterior.tiles).length, 6, 'Small structures should use a persistent bounded connected room graph');
   assert(App.worldMap.get('0,0').interior, 'Interior should be stored on overworld tile for persistence');
   assertEqual(App.worldMap.get('0,0').items[0].name, 'Healing Herb', 'Entering a structure should preserve ground items instead of copying carried inventory');
   assertContains(App._contextActionKeys().join(','), 'exit', 'Interior center context should include exit action key');
@@ -13493,12 +13505,17 @@ test('Interior movement persists room creatures and exits to overworld', () => {
   App.updateLanguage('es');
   App.enterStructure();
   App.creatures = [roomCreature];
-  App.move(1, 0);
+  const directionById = { north: [0, -1], east: [1, 0], south: [0, 1], west: [-1, 0] };
+  const firstDirection = App.activeInterior.tiles['0,0'].connections[0];
+  const [moveX, moveY] = directionById[firstDirection];
+  App.move(moveX, moveY);
   assertEqual(App.activeInterior.tiles['0,0'].creatures.includes(roomCreature), true, 'Leaving an interior room should persist its creatures');
-  assertEqual(App.interiorLocation.x, 1, 'Interior move should update interior x coordinate');
-  assertEqual(App.log[App.log.length - 1].text, 'Movimiento dentro de Cabin a 1, 0.', 'Interior movement feedback should localize');
-  App.interiorLocation = { x: 2, y: 0 };
-  App.move(1, 0);
+  assertEqual(`${App.interiorLocation.x},${App.interiorLocation.y}`, `${moveX},${moveY}`, 'Interior move should follow a connected cardinal room');
+  assertEqual(App.log[App.log.length - 1].text, `Movimiento dentro de Cabin a ${moveX}, ${moveY}.`, 'Interior movement feedback should localize');
+  const room = Object.values(App.activeInterior.tiles).sort((a, b) => a.connections.length - b.connections.length)[0];
+  App.interiorLocation = { x: room.x, y: room.y };
+  const blockedDirection = Object.keys(directionById).find(direction => !room.connections.includes(direction));
+  App.move(...directionById[blockedDirection]);
   assertEqual(App.log[App.log.length - 1].text, 'Una pared bloquea el camino.', 'Interior wall feedback should localize');
   App.exitStructure();
   assertEqual(App.inInterior, false, 'Exit should return to overworld mode');
@@ -13692,6 +13709,7 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   assertEqual(campVisual.tilesetKey, 'structure-camp', 'Known structures should expose structure tileset keys');
   assertEqual(App._mapTileVisual(null).tilesetKey, 'unknown', 'Unknown tiles should expose a stable unknown key');
 
+  forestRoad.overlays.road.connections = ['east'];
   App.player = makeUnit('You');
   App.party = [App.player];
   App.location = { x: 0, y: 0 };
@@ -13950,6 +13968,82 @@ test('Terrain traversal metadata defines conservative passability and route cost
   assertEqual(beach.passable, true, 'Beach/coast should be passable');
   assert(cliff.traversalCost > plain.traversalCost, 'Cliff should cost more to traverse than plain terrain');
   assert(forestRoad.traversalCost < forest.traversalCost, 'Road overlay should lower traversal cost without replacing the forest biome');
+});
+
+test('Traversal resolver enforces cardinal terrain and bridge topology', () => {
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([
+    ['0,0', { x: 0, y: 0, biome: 'plains', traversal: { passable: true, traversalCost: 1 }, overlays: {} }],
+    ['1,0', { x: 1, y: 0, biome: 'water', water: true, traversal: { passable: false, traversalCost: 5, requiredCapability: 'swim' }, overlays: {} }],
+    ['0,-1', { x: 0, y: -1, biome: 'forest', traversal: { passable: true, traversalCost: 2 }, overlays: {} }]
+  ]);
+  assertEqual(App._traversalDecision(1, 1).reasonCode, 'cardinal-only', 'Diagonal travel should be rejected by the shared resolver');
+  assertEqual(App._traversalDecision(1, 0).reasonCode, 'capability', 'Deep water should require declared traversal capability');
+  assertEqual(App._traversalDecision(0, -1).cost, 2, 'Traversal should return target terrain time cost');
+
+  App.worldMap.set('1,0', {
+    x: 1, y: 0, biome: 'water', water: true,
+    traversal: { passable: true, traversalCost: 1 },
+    overlays: { bridge: { direction: 'north-south', connections: ['north', 'south'] } }
+  });
+  assertEqual(App._traversalDecision(1, 0).reasonCode, 'bridge-direction', 'A north-south bridge should block east-west entry');
+  App.worldMap.get('1,0').overlays.bridge = { direction: 'east-west', connections: ['east', 'west'] };
+  assertEqual(App._traversalDecision(1, 0).allowed, true, 'An east-west bridge should permit east-west entry');
+});
+
+test('Generator v3 separates interior themes and creates reciprocal route topology', () => {
+  const { App } = loadAppForCombat();
+  App.worldMeta = { worldId: 'world-v3-topology', seed: 'topology-seed', generatorVersion: 3, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  const regionKeys = App._regionBiomeKeys();
+  assert(!regionKeys.includes('cave'), 'Cave should be an interior theme instead of an overworld region');
+  assert(!regionKeys.includes('dungeon'), 'Dungeon should be a structure interior instead of an overworld region');
+  assert(!regionKeys.includes('manor'), 'Manor should be a structure interior instead of an overworld region');
+  let checked = 0;
+  for (let x = -80; x <= 80 && checked < 10; x++) {
+    for (let y = -80; y <= 80 && checked < 10; y++) {
+      const tile = App.getBaseTile(x, y);
+      const connections = tile.overlays?.road?.connections || [];
+      for (const direction of connections) {
+        const delta = { north: [0, -1, 'south'], east: [1, 0, 'west'], south: [0, 1, 'north'], west: [-1, 0, 'east'] }[direction];
+        const neighbor = App.getBaseTile(x + delta[0], y + delta[1]);
+        assertEqual(neighbor.overlays?.road?.id, tile.overlays.road.id, 'Explicit road connection should reference the same route on both tiles');
+        assert(neighbor.overlays.road.connections.includes(delta[2]), 'Explicit road connection should be reciprocal');
+        checked += 1;
+      }
+    }
+  }
+  assert(checked > 0, 'Generator v3 should expose explicit road connections in the sampled area');
+});
+
+test('Generator v3 cave cells expose two mouths into one bounded underground network', () => {
+  const WorldGen = loadWorldGenForTest();
+  const { App } = loadAppForCombat();
+  App.worldMeta = { worldId: 'world-v3-caves', seed: 'cave-cell-seed', generatorVersion: 3, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  const network = WorldGen.getCavePortalsForCell(App.worldMeta.seed, 3, 2, -1);
+  assertEqual(network.portals.length, 2, 'Each initial cave cell should expose two surface portals');
+  assert(network.portals[0].x !== network.portals[1].x || network.portals[0].y !== network.portals[1].y, 'Cave portals should occupy different surface tiles');
+  const first = App.getTile(network.portals[0].x, network.portals[0].y);
+  const second = App.getTile(network.portals[1].x, network.portals[1].y);
+  assertEqual(first.structure, 'cave', 'First portal should materialize as a cave structure');
+  assertEqual(second.site.networkId, first.site.networkId, 'Both surface mouths should reference one cave network');
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.creatures = [];
+  App.location = { x: first.x, y: first.y };
+  App.enterStructure();
+  assertEqual(App.activeInterior.kind, 'cave-network', 'Cellular cave portals should generate a cave-network interior');
+  assertEqual(Object.keys(App.activeInterior.tiles).length, 13, 'Initial cave networks should stay bounded');
+  const secondEntry = App.activeInterior.entryRooms[second.site.portalId].split(',').map(Number);
+  App.interiorLocation = { x: secondEntry[0], y: secondEntry[1] };
+  App.exitStructure();
+  assertEqual(`${App.location.x},${App.location.y}`, `${second.x},${second.y}`, 'The second underground exit should emerge from the other surface portal');
 });
 
 test('Versioned start area validation guarantees early route and rest access', () => {
@@ -18336,6 +18430,7 @@ test('Equipment recalculation infers legacy baselines without stat drift', () =>
 
 test('Accessory equipment can apply non-numeric special effects', () => {
   const lucky = loadAppForCombat(() => 0.35);
+  lucky.App.worldMeta = { seed: 'default', generatorVersion: 2 };
   lucky.App.player = makeUnit('You', { Flee: 10, wis: 10 });
   lucky.App.party = [lucky.App.player];
   lucky.App.inventory = [{ id: 'charm-1', name: 'Lucky Charm' }];
@@ -19475,6 +19570,7 @@ test('Perk choices apply bonuses and enforce tree prerequisites', () => {
 
 test('Non-numeric perk effects can modify exploration and combat status behavior', () => {
   const searchCase = loadAppForCombat(() => 0.35);
+  searchCase.App.worldMeta = { seed: 'default', generatorVersion: 2 };
   searchCase.App.player = makeUnit('You', { perks: [{ id: 'predator_instinct', perkEffect: 'predatorScent' }] });
   searchCase.App.party = [searchCase.App.player];
   searchCase.App.inventory = [];
@@ -23054,11 +23150,12 @@ test('Desktop traversal hotkeys dispatch through the stage movement command', ()
 
   const southeast = keyEvent({ code: 'Numpad3', key: '3' });
   listeners.get('keydown')(southeast);
-  assertEqual(JSON.stringify(moves.pop()), JSON.stringify([1, 1]), 'Numpad3 should move southeast through App.move');
+  assertEqual(southeast.prevented, undefined, 'Numpad3 should remain available to the browser when diagonal travel is disabled');
+  assertEqual(moves.length, 0, 'Numpad3 should not dispatch diagonal travel');
 
   const northwest = keyEvent({ key: 'Home' });
-  assertEqual(App._handleTraversalHotkey(northwest), true, 'Home should be accepted as a diagonal traversal hotkey');
-  assertEqual(JSON.stringify(moves.pop()), JSON.stringify([-1, -1]), 'Home should move northwest through App.move');
+  assertEqual(App._handleTraversalHotkey(northwest), false, 'Home should not be accepted as a traversal hotkey');
+  assertEqual(moves.length, 0, 'Home should not dispatch diagonal travel');
 });
 
 test('Desktop traversal hotkeys ignore editing overlay and non-exploration states', () => {

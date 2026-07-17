@@ -1689,7 +1689,7 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.latestBeatTop < mobileControls.beltTop - 1, `${name}: mobile latest Scene Beat preview should stay above the sticky command belt`);
     assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 6, `${name}: mobile tile metadata should not overlap the traversal grid`);
     assert(mobileControls.miniMapHeight >= Math.min(204, mobileControls.viewportHeight * 0.3), `${name}: mobile traversal grid should keep a usable minimum height`);
-    assert.strictEqual(mobileControls.movementCellCount, 8, `${name}: mobile traversal grid should expose eight movement cells`);
+    assert.strictEqual(mobileControls.movementCellCount, 4, `${name}: mobile traversal grid should expose four cardinal movement cells`);
     assert(mobileControls.minMovementCellWidth >= 44 && mobileControls.minMovementCellHeight >= 44, `${name}: mobile movement cells should keep finger-sized tap targets`);
     assert.strictEqual(mobileControls.movementCellsInsideMap, true, `${name}: mobile movement cells should stay inside the traversal grid`);
     assert(mobileControls.centerTileWidth >= 176, `${name}: mobile current tile should keep a broad target column for stage presence`);

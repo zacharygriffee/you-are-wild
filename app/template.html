@@ -503,6 +503,18 @@
             box-shadow: 0 0 12px rgba(0, 212, 170, 0.4);
         }
 
+        .map-tile.blocked:not(.center) {
+            cursor: not-allowed;
+            opacity: 0.72;
+            border-style: solid;
+        }
+
+        .map-tile.blocked:not(.center):hover {
+            transform: none;
+            border-color: var(--border-default);
+            box-shadow: none;
+        }
+
         .map-tile.explored {
             background: var(--bg-tertiary);
             border: 1px solid var(--border-default);
@@ -738,6 +750,11 @@
             background: var(--accent-primary);
             color: var(--bg-primary);
             box-shadow: 0 0 12px rgba(0, 212, 170, 0.3);
+        }
+
+        .desktop-play-cell[data-stage-surface="traversal-cell"]:not(.moveable) {
+            cursor: not-allowed;
+            opacity: 0.72;
         }
 
         .desktop-play-surface.combat-active .desktop-play-cell:not(.center) {
@@ -8877,15 +8894,15 @@
 	                                    <div class="mobile-target-action-tray" id="mobile-target-action-tray" aria-live="polite"></div>
 	                                </div>
 	                                <div class="mobile-move-pad" id="mobile-move-pad" aria-label="Movement pad" data-i18n-aria-label="ui.movePad">
-	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="northwest" title="Northwest" aria-label="Move northwest" data-i18n-title="direction.northwest" data-i18n-aria-label="direction.moveNorthwest" onclick="App.move(-1,-1)">↖</button>
+	                                    <button class="nav-btn" title="Northwest travel is unavailable" aria-label="Northwest travel is unavailable" hidden disabled>↖</button>
 	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="north" title="North" aria-label="Move north" data-i18n-title="direction.north" data-i18n-aria-label="direction.moveNorth" onclick="App.move(0,-1)">↑</button>
-	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="northeast" title="Northeast" aria-label="Move northeast" data-i18n-title="direction.northeast" data-i18n-aria-label="direction.moveNortheast" onclick="App.move(1,-1)">↗</button>
+	                                    <button class="nav-btn" title="Northeast travel is unavailable" aria-label="Northeast travel is unavailable" hidden disabled>↗</button>
 	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="west" title="West" aria-label="Move west" data-i18n-title="direction.west" data-i18n-aria-label="direction.moveWest" onclick="App.move(-1,0)">←</button>
 	                                    <button class="nav-btn mobile-move-pad-center" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="current-tile" title="Current tile" aria-label="Current tile" data-i18n-title="ui.currentTile" data-i18n-aria-label="ui.currentTile" disabled>⌾</button>
 	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="east" title="East" aria-label="Move east" data-i18n-title="direction.east" data-i18n-aria-label="direction.moveEast" onclick="App.move(1,0)">→</button>
-	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="southwest" title="Southwest" aria-label="Move southwest" data-i18n-title="direction.southwest" data-i18n-aria-label="direction.moveSouthwest" onclick="App.move(-1,1)">↙</button>
+	                                    <button class="nav-btn" title="Southwest travel is unavailable" aria-label="Southwest travel is unavailable" hidden disabled>↙</button>
 	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="south" title="South" aria-label="Move south" data-i18n-title="direction.south" data-i18n-aria-label="direction.moveSouth" onclick="App.move(0,1)">↓</button>
-	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="southeast" title="Southeast" aria-label="Move southeast" data-i18n-title="direction.southeast" data-i18n-aria-label="direction.moveSoutheast" onclick="App.move(1,1)">↘</button>
+	                                    <button class="nav-btn" title="Southeast travel is unavailable" aria-label="Southeast travel is unavailable" hidden disabled>↘</button>
 	                                </div>
 	                                <div class="mobile-actor-belt" id="mobile-actor-belt" aria-label="Party actor controls" data-i18n-aria-label="ui.partyActorControls"></div>
 	                                <div class="mobile-target-picker-belt" id="mobile-target-picker-belt" aria-label="Target controls" data-i18n-aria-label="ui.targetControls"></div>

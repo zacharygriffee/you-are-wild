@@ -36,6 +36,9 @@ const YAW_SAVE_LOAD_FLOW = {
                     return false;
                 }
             }
+            if (typeof MODULE_SYSTEM !== 'undefined' && typeof MODULE_SYSTEM.assertContentProfile === 'function') {
+                await MODULE_SYSTEM.assertContentProfile(loaded.questState?.contentProfile || null);
+            }
             if (typeof YAW_NARRATION_SYSTEM !== 'undefined') {
                 YAW_NARRATION_SYSTEM.resetRuntime(app, { clearRecords: true, reason: 'game-load' });
             }
@@ -166,7 +169,9 @@ const YAW_SAVE_LOAD_FLOW = {
             app.latestStoryEvent = loaded.questState?.latestStoryEvent || app.storyEvents[app.storyEvents.length - 1] || null;
             app.latestSceneBeat = app.latestStoryEvent;
             app.storyEventSeq = Number.isFinite(loaded.questState?.storyEventSeq) ? loaded.questState.storyEventSeq : app.storyEvents.length;
-            if (typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.restore(app, loaded.questState?.sceneNarrations || []);
+            if (typeof YAW_NARRATION_SYSTEM !== 'undefined') {
+                YAW_NARRATION_SYSTEM.restore(app, loaded.questState?.sceneNarrations || [], loaded.questState?.tileNarrationCache || []);
+            }
             app.creatures = [];
             app.inventory = loaded.inventory || [];
             app.quests = loaded.questState?.quests || [];

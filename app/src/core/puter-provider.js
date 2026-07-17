@@ -108,11 +108,12 @@ const YAW_PUTER_PROVIDER = {
         };
     },
 
-    prompt(profileId, input, maxCharacters) {
+    prompt(profileId, instructions, input, maxCharacters) {
+        const engineContract = `Write one plain-text game narration passage no longer than ${maxCharacters} characters. Preserve every deterministic fact. Do not add mechanics, choices, Markdown, or HTML. Profile: ${String(profileId || 'storyteller')}.`;
         return [
             {
                 role: 'system',
-                content: `Write one plain-text game narration passage no longer than ${maxCharacters} characters. Preserve every deterministic fact. Do not add mechanics, choices, Markdown, or HTML. Profile: ${String(profileId || 'storyteller')}.`
+                content: [engineContract, instructions ? `Narration mod instructions:\n${instructions}` : ''].filter(Boolean).join('\n\n')
             },
             {
                 role: 'user',
@@ -129,7 +130,7 @@ const YAW_PUTER_PROVIDER = {
         return String(content || '');
     },
 
-    async generate({ profileId, input, maxCharacters, connection, signal }) {
+    async generate({ profileId, instructions, input, maxCharacters, connection, signal }) {
         const puter = await this.loadSdk();
         if (signal?.aborted) {
             const error = new Error('Puter request cancelled');
@@ -151,7 +152,7 @@ const YAW_PUTER_PROVIDER = {
         });
         try {
             const response = await Promise.race([
-                puter.ai.chat(this.prompt(profileId, input, maxCharacters), options),
+                puter.ai.chat(this.prompt(profileId, instructions, input, maxCharacters), options),
                 aborted
             ]);
             return {

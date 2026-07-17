@@ -418,11 +418,13 @@ const YAW_SAVE_PERSISTENCE = {
             explorationActorIds: this.serializableClone(app.explorationActorIds || [], []),
             explorationPartyTargetIds: this.serializableClone(app.explorationTargetIds || [], []),
             encounterWeights: this.serializableClone(app.encounterWeights || app.selectedEncounterWeights || null, null),
+            contentProfile: this.serializableClone(typeof MODULE_SYSTEM !== 'undefined' && typeof MODULE_SYSTEM.contentProfileSnapshot === 'function' ? MODULE_SYSTEM.contentProfileSnapshot() : null, null),
             safeAnchor: this.serializableClone(app.safeAnchor || null, null),
             defeatState: this.serializableClone(app.defeatState || null, null),
             combatState: this.buildCombatDto(app),
             storyEvents: this.serializableClone(app.storyEvents || [], []),
             sceneNarrations: this.serializableClone(typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedRecords(app) : [], []),
+            tileNarrationCache: this.serializableClone(typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedTileCache(app) : [], []),
             latestStoryEvent: this.serializableClone(app.latestStoryEvent || null, null),
             storyEventSeq: app.storyEventSeq || 0
         };
@@ -470,6 +472,7 @@ const YAW_SAVE_PERSISTENCE = {
             return {
                 storyEvents: this.serializableClone(app.storyEvents || [], []),
                 sceneNarrations: this.serializableClone(typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedRecords(app) : [], []),
+                tileNarrationCache: this.serializableClone(typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedTileCache(app) : [], []),
                 latestStoryEvent: this.serializableClone(app.latestStoryEvent || null, null),
                 latestSceneBeat: this.serializableClone(app.latestSceneBeat || null, null),
                 storyEventSeq: app.storyEventSeq || 0
@@ -491,7 +494,8 @@ const YAW_SAVE_PERSISTENCE = {
         const activityLog = records.activityLog || {};
         const settings = records.settings || {};
         return {
-            version: 11,
+            version: window.YAW_RELEASE?.saveSchema || 11,
+            gameVersion: manifest.gameVersion || 'legacy',
             playerName: player.playerName || 'You',
             playerSpecies: player.playerSpecies || 'human',
             playerGender: player.playerGender || quests.playerCompatibility?.gender || quests.playerCompatibility?.identity || 'female',
@@ -516,6 +520,7 @@ const YAW_SAVE_PERSISTENCE = {
                 logEntries: activityLog.logEntries || quests.logEntries || [],
                 storyEvents: sceneFeed.storyEvents || quests.storyEvents || [],
                 sceneNarrations: sceneFeed.sceneNarrations || quests.sceneNarrations || [],
+                tileNarrationCache: sceneFeed.tileNarrationCache || quests.tileNarrationCache || [],
                 latestStoryEvent: sceneFeed.latestStoryEvent || quests.latestStoryEvent || null,
                 storyEventSeq: sceneFeed.storyEventSeq || quests.storyEventSeq || 0
             },
@@ -595,6 +600,9 @@ const YAW_SAVE_PERSISTENCE = {
         const revision = Math.max(Number(previousManifest?.revision || 0), sparse.revision || 0) + 1;
         const manifest = {
             schema: 'yaw-sparse-save-v1',
+            gameVersion: window.YAW_RELEASE?.version || '0.0.0',
+            saveSchema: window.YAW_RELEASE?.saveSchema || 11,
+            moduleApi: window.YAW_RELEASE?.moduleApi || 1,
             slotName,
             revision,
             savedAt,

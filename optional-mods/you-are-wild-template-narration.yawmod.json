@@ -1,0 +1,28 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_narration_template_first_party",
+  "gameVersion": "0.11.1",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_narration_template_first_party",
+      "name": "You Are Wild: Template Narrator",
+      "version": "0.1.0",
+      "description": "Demonstrates offline deterministic exchange narration without an AI provider.",
+      "type": "presentation_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.10.0",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": { "origins": ["file", "https", "localhost", "http"], "hotToggleSafe": true },
+      "permissions": ["scene:read_narrative", "scene:narrate"],
+      "settings": [
+        { "key": "enabled", "type": "boolean", "label": "Enable template narration", "default": true },
+        { "key": "includeLocation", "type": "boolean", "label": "Include location", "default": true },
+        { "key": "maxCharacters", "type": "number", "label": "Maximum characters", "min": 160, "max": 500, "step": 10, "default": 400 }
+      ]
+    },
+    "code": "const pending = new Set();\nconst profileVersion = '1';\nconst setting = (key, fallback) => MODS.getSetting(key, fallback);\nconst trim = (text, limit) => { const clean = String(text || '').replace(/\\s+/g, ' ').trim(); if (clean.length <= limit) return clean; const room = Math.max(1, limit - 1); const cut = clean.slice(0, room + 1); const word = cut.lastIndexOf(' '); return `${cut.slice(0, word > 0 ? word : room).trim().replace(/[.!?]+$/, '')}.`; };\nconst resetRuntime = () => pending.clear();\nMODS.registerNarrationOrchestrator({ id: 'template-exchange', priority: 5, isActive: async () => setting('enabled', true) });\nMODS.registerHook('onSceneBeat', envelope => { if (envelope?.exchangeId) pending.add(envelope.exchangeId); });\nMODS.registerHook('onSceneExchangeClosed', async envelope => {\n  const targetId = envelope?.exchangeId;\n  if (!targetId || !pending.delete(targetId) || !(await MODS.ownsNarrationExchange(envelope))) return;\n  const context = MODS.getNarrationContext({ exchangeId: targetId, recentBeatLimit: 1, activityLimit: 0 });\n  const summaries = (envelope.beats || []).map(beat => beat?.summary).filter(Boolean);\n  if (!summaries.length) return;\n  const includeLocation = await setting('includeLocation', true);\n  const location = includeLocation ? String(context.location?.label || '').trim() : '';\n  const maximum = await setting('maxCharacters', 400);\n  const text = trim([location ? `${location}:` : '', summaries.join(' ')].filter(Boolean).join(' '), maximum);\n  MODS.publishNarration({ id: `yaw_narration_template_first_party.v${profileVersion}.exchange.${targetId}`, scope: 'exchange', targetId, status: 'ready', text, profileId: 'deterministic-template', profileVersion, providerId: 'offline-template', outputRating: envelope.policy?.posture === 'mature' ? 'mature' : 'safe' });\n});\nMODS.registerHook('onContentPolicyChanged', resetRuntime);\nMODS.registerHook('onGameStart', resetRuntime);\nMODS.registerHook('onGameLoad', resetRuntime);",
+    "assets": {}
+  }
+}

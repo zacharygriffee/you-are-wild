@@ -10,10 +10,45 @@ const path = require('path');
 const ROOT_DIR = path.join(__dirname, '..');
 const SRC_DIR = path.join(__dirname, 'src');
 const TEMPLATE = path.join(__dirname, 'template.html');
+const RELEASE_FILE = path.join(__dirname, 'release.json');
 const DIST_DIR = path.join(ROOT_DIR, 'dist');
 const OUTPUT = path.join(DIST_DIR, 'you-are-wild.html');
 const PLACEHOLDER = '<!-- SCRIPTS_PLACEHOLDER -->';
 const GENERATED_BANNER = '<!-- GENERATED FILE. Do not edit directly. Edit app/src and run npm run build. -->';
+
+function loadRelease() {
+  let release;
+  try {
+    release = JSON.parse(fs.readFileSync(RELEASE_FILE, 'utf8'));
+  } catch (error) {
+    throw new Error(`release.json is missing or invalid: ${error.message}`);
+  }
+  if (!/^\d+\.\d+\.\d+$/.test(String(release.version || ''))) throw new Error('release.json version must use numeric semver');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(release.releasedAt || ''))) throw new Error('release.json releasedAt must use YYYY-MM-DD');
+  if (!Number.isInteger(release.saveSchema) || release.saveSchema < 1) throw new Error('release.json saveSchema must be a positive integer');
+  if (!Number.isInteger(release.moduleApi) || release.moduleApi < 1) throw new Error('release.json moduleApi must be a positive integer');
+  const packageMirrors = [
+    path.join(__dirname, 'package.json'),
+    path.join(ROOT_DIR, 'site', 'package.json')
+  ].filter(fs.existsSync);
+  for (const file of packageMirrors) {
+    const mirrored = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (mirrored.version !== release.version) {
+      throw new Error(`${path.relative(ROOT_DIR, file)} version must mirror release.json (${release.version})`);
+    }
+  }
+  const optionalDir = path.join(ROOT_DIR, 'optional-mods');
+  if (fs.existsSync(optionalDir)) {
+    for (const name of fs.readdirSync(optionalDir).filter(name => name.endsWith('.yawmod.json'))) {
+      const file = path.join(optionalDir, name);
+      const packageData = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (packageData.gameVersion && packageData.gameVersion !== release.version) {
+        throw new Error(`${path.relative(ROOT_DIR, file)} gameVersion must mirror release.json (${release.version})`);
+      }
+    }
+  }
+  return release;
+}
 
 const SCRIPT_ORDER = [
   'src/core/serialization.js',
@@ -189,7 +224,8 @@ function renderHtml() {
     process.exit(1);
   }
 
-  const scripts = [];
+  const release = loadRelease();
+  const scripts = [`<script>\nwindow.YAW_RELEASE = Object.freeze(${JSON.stringify(release)});\n</script>`];
   let totalLines = 0;
 
   for (const relPath of SCRIPT_ORDER) {
@@ -240,7 +276,7 @@ function check() {
 
 function watch() {
   console.log('Watching for changes... (Ctrl+C to stop)\n');
-  const watchedFiles = [TEMPLATE, ...SCRIPT_ORDER.map(p => path.join(__dirname, p))];
+  const watchedFiles = [TEMPLATE, RELEASE_FILE, ...SCRIPT_ORDER.map(p => path.join(__dirname, p))];
 
   let building = false;
 

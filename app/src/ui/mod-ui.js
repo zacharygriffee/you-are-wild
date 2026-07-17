@@ -27,6 +27,16 @@ const ModUI = {
         return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     },
 
+    syncCatalogControls() {
+        const available = typeof MODULE_SYSTEM !== 'undefined'
+            && typeof MODULE_SYSTEM.getHostCatalog === 'function'
+            && MODULE_SYSTEM.getHostCatalog().length > 0;
+        document.querySelectorAll('[data-host-catalog-entry]').forEach(control => {
+            control.hidden = !available;
+        });
+        return available;
+    },
+
     async handleFileSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -88,6 +98,7 @@ const ModUI = {
         try {
             await MODULE_SYSTEM.setModuleEnabled(moduleId, newState);
             await this.refreshModList();
+            App.markAutoSaveDirty?.(['manifest', 'quests'], 'module-toggle');
 
             App.log.push({
                 text: this.label(newState ? 'mod.enabledLog' : 'mod.disabledLog', newState ? 'Enabled module: {name}' : 'Disabled module: {name}', { name }),
@@ -109,9 +120,14 @@ const ModUI = {
     
     async deleteModule(moduleId) {
         if (!confirm(this.label('mod.confirmDelete', 'Delete this module? This cannot be undone.'))) return;
-        
-        await MODULE_SYSTEM.deleteModule(moduleId);
-        this.refreshModList();
+        try {
+            await MODULE_SYSTEM.deleteModule(moduleId);
+            App.markAutoSaveDirty?.(['manifest', 'quests'], 'module-delete');
+            await this.refreshModList();
+        } catch (error) {
+            alert(error.message || String(error));
+            await this.refreshModList();
+        }
     },
 
     settingControl(moduleId, declaration, value) {
@@ -127,24 +143,33 @@ const ModUI = {
         } else if (declaration.type === 'number') {
             control = `<input type="number" min="${declaration.min}" max="${declaration.max}" step="${declaration.step}" value="${this.escapeHtml(value)}" onchange="ModUI.updateSetting('${id}','${key}',this.value)">`;
         } else if (declaration.type === 'string') {
-            control = `<input type="text" maxlength="${declaration.maxLength}" value="${this.escapeHtml(value)}" onchange="ModUI.updateSetting('${id}','${key}',this.value)">`;
+            control = declaration.multiline
+                ? `<textarea rows="${declaration.rows}" maxlength="${declaration.maxLength}" onchange="ModUI.updateSetting('${id}','${key}',this.value)">${this.escapeHtml(value)}</textarea>`
+                : `<input type="text" maxlength="${declaration.maxLength}" value="${this.escapeHtml(value)}" onchange="ModUI.updateSetting('${id}','${key}',this.value)">`;
         } else if (declaration.type === 'provider_connection') {
+            const localOnly = typeof App !== 'undefined' && App.isFileOrigin();
             const capability = declaration.capability || 'text.generate';
             const profiles = YAW_AI_PROVIDER_MANAGER.listProfiles()
-                .filter(profile => profile.capabilities.includes(capability));
+                .filter(profile => profile.capabilities.includes(capability))
+                .filter(profile => !localOnly || (profile.providerId === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID
+                    && YAW_OPENAI_COMPATIBLE_PROVIDER.isLoopbackEndpoint(profile.metadata?.endpoint)));
             const options = profiles.map(profile => {
                 const state = profile.connected
                     ? this.label('provider.state.connectedShort', 'connected')
                     : this.label('provider.state.reconnectShort', 'reconnect required');
                 return `<option value="${this.escapeHtml(profile.id)}" ${profile.id === value ? 'selected' : ''}>${this.escapeHtml(profile.name)} - ${this.escapeHtml(state)}</option>`;
             }).join('');
-            control = `<span class="mod-provider-setting"><select onchange="ModUI.updateSetting('${id}','${key}',this.value)"><option value="">${this.escapeHtml(this.label('provider.none', 'No connection'))}</option>${options}</select><button class="nav-btn" type="button" onclick="App.showAIProviderScreen()">${this.escapeHtml(this.label('provider.manage', 'Manage Providers'))}</button></span>`;
+            const localNotice = localOnly
+                ? `<small class="mod-provider-unavailable">${this.escapeHtml(this.label('provider.fileOriginLocalOnly', 'File mode supports local loopback providers such as Ollama; remote and credentialed providers are unavailable.'))}</small>`
+                : '';
+            control = `<span class="mod-provider-setting">${localNotice}<select onchange="ModUI.updateSetting('${id}','${key}',this.value)"><option value="">${this.escapeHtml(this.label('provider.none', 'No connection'))}</option>${options}</select><button class="nav-btn" type="button" onclick="App.showAIProviderScreen()">${this.escapeHtml(this.label('provider.manage', 'Manage Providers'))}</button></span>`;
         } else if (declaration.type === 'action') {
             const available = MODULE_SYSTEM.settingActions.has(`${moduleId}:${declaration.key}`);
             control = `<button class="nav-btn" type="button" ${available ? '' : 'disabled'} onclick="ModUI.runSettingAction('${id}','${key}')">${label}</button>`;
             return `<div class="mod-setting-row"><span>${description}</span>${control}</div>`;
         }
-        return `<label class="mod-setting-row"><span><strong>${label}</strong>${description}</span>${control}</label>`;
+        const rowClass = declaration.type === 'string' && declaration.multiline ? 'mod-setting-row multiline' : 'mod-setting-row';
+        return `<label class="${rowClass}"><span><strong>${label}</strong>${description}</span>${control}</label>`;
     },
 
     async updateSetting(moduleId, key, value) {
@@ -175,6 +200,7 @@ const ModUI = {
     },
     
     async refreshModList() {
+        this.syncCatalogControls();
         const container = document.getElementById('mod-list');
         if (!container) return;
         
@@ -217,6 +243,16 @@ const ModUI = {
             const enableTitle = this.escapeHtml(this.label(mod.enabled ? 'mod.disableModule' : 'mod.enableModule', mod.enabled ? 'Disable {name}' : 'Enable {name}', { name: manifest.name || mod.id || 'Module' }));
             const deleteLabel = this.escapeHtml(this.label('mod.delete', 'Delete'));
             const deleteTitle = this.escapeHtml(this.label('mod.deleteModule', 'Delete {name}', { name: manifest.name || mod.id || 'Module' }));
+            const controlState = MODULE_SYSTEM.moduleControlState(mod);
+            const provenanceLabel = this.escapeHtml({ host: 'Host supplied', 'built-in': 'Built in', user: 'Player installed' }[controlState.provenance] || controlState.provenance);
+            const policyLabel = controlState.policyState
+                ? `<span style="font-size:10px;color:var(--accent-primary);text-transform:uppercase;">${this.escapeHtml(controlState.policyState)}</span>`
+                : '';
+            const availabilityReason = controlState.reason
+                ? `<div style="font-size:11px;color:${controlState.compatibilityReason ? 'var(--accent-danger)' : 'var(--text-muted)'};margin-top:4px;">${this.escapeHtml(controlState.reason)}</div>`
+                : '';
+            const toggleAllowed = mod.enabled ? controlState.canDisable : controlState.canEnable;
+            const toggleTitle = toggleAllowed ? enableTitle : this.escapeHtml(controlState.reason || 'Controlled by this host');
             const settings = (manifest.settings || []).length
                 ? `<details class="mod-settings"><summary>Settings</summary>${manifest.settings.map(setting => this.settingControl(mod.id, setting, valuesByModule[mod.id]?.[setting.key])).join('')}</details>`
                 : '';
@@ -236,21 +272,22 @@ const ModUI = {
                         ${description}
                     </div>
                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-                        ${this.escapeHtml(this.label('mod.type', 'Type'))}: ${type} • ${this.escapeHtml(this.label('mod.installed', 'Installed'))}: ${installed}
+                        ${this.escapeHtml(this.label('mod.type', 'Type'))}: ${type} • ${provenanceLabel} • ${this.escapeHtml(this.label('mod.installed', 'Installed'))}: ${installed} ${policyLabel}
                     </div>
+                    ${availabilityReason}
                     ${settings}
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="toggle-module" style="padding: 6px 12px; font-size: 12px;"
-                            title="${enableTitle}" aria-label="${enableTitle}"
+                            title="${toggleTitle}" aria-label="${enableTitle}" ${toggleAllowed ? '' : 'disabled'}
                             onclick="ModUI.toggleModule('${id}')">
                         ${mod.enabled ? '✓' : '○'} ${statusLabel}
                     </button>
-                    <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="delete-module" style="padding: 6px 12px; font-size: 12px; color: var(--accent-danger);"
+                    ${controlState.canDelete ? `<button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="delete-module" style="padding: 6px 12px; font-size: 12px; color: var(--accent-danger);"
                             title="${deleteTitle}" aria-label="${deleteTitle}"
                             onclick="ModUI.deleteModule('${id}')">
                         🗑️ ${deleteLabel}
-                    </button>
+                    </button>` : ''}
                 </div>
             </div>
         `;

@@ -9,11 +9,15 @@ const path = require('path');
 
 const SRC_DIR = path.join(__dirname, '..', 'src');
 const TEMPLATE = path.join(__dirname, '..', 'template.html');
+const RELEASE_FILE = path.join(__dirname, '..', 'release.json');
+const releaseInfo = JSON.parse(fs.readFileSync(RELEASE_FILE, 'utf8'));
 const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mode-contract.md');
 const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.md');
 const NEXT_OBJECTIVES = path.join(__dirname, '..', '..', 'docs', 'next-objectives.md');
 const NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-narration.yawmod.json');
 const EXPLICIT_NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-explicit-narration.yawmod.json');
+const TEMPLATE_NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-template-narration.yawmod.json');
+const NARRATION_DIAGNOSTICS_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-narration-diagnostics.yawmod.json');
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
 const BALANCE_COST_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'balance-cost-doctrine.md');
@@ -245,8 +249,8 @@ function loadWorldGenForTest() {
   return new Function(`${worldGenerationContent}\nreturn WorldGen;`)();
 }
 
-function loadNarrationSystemForTest() {
-  const window = { setTimeout, clearTimeout };
+function loadNarrationSystemForTest(windowOverrides = {}) {
+  const window = { setTimeout, clearTimeout, ...windowOverrides };
   const CONTENT = { preferences: { posture: 'sfw', enabledCategories: [], gameplayVariants: {} } };
   const MODULE_SYSTEM = {
     _publicSceneBeatSummary(event) { return JSON.parse(JSON.stringify(event)); },
@@ -277,8 +281,8 @@ function providerResponse(status, payload, type = 'basic') {
   };
 }
 
-function loadOpenAIProviderForTest(fetchImpl, storage = createMemoryStorage()) {
-  const window = { setTimeout, clearTimeout, localStorage: storage, fetch: fetchImpl };
+function loadOpenAIProviderForTest(fetchImpl, storage = createMemoryStorage(), windowOverrides = {}) {
+  const window = { setTimeout, clearTimeout, localStorage: storage, fetch: fetchImpl, ...windowOverrides };
   const CONTENT = { preferences: { posture: 'sfw', enabledCategories: [], gameplayVariants: {} } };
   const MODULE_SYSTEM = {
     _publicSceneBeatSummary(event) { return JSON.parse(JSON.stringify(event)); },
@@ -304,6 +308,7 @@ function createPackagedNarrationHarness(packagePaths, initialSettings = {}, cont
   const narrations = [];
   const requests = [];
   const actions = new Map();
+  const tileNarrationCache = new Map();
   const settings = new Map(Object.entries(initialSettings));
   const connections = [{ id: 'connection-1', providerId: 'fake' }];
   let cancelCount = 0;
@@ -349,6 +354,18 @@ function createPackagedNarrationHarness(packagePaths, initialSettings = {}, cont
           if (narrations[index].ownerModuleId === moduleId) narrations.splice(index, 1);
         }
       },
+      getCachedTileNarration({ targetId, variant }) {
+        const cached = tileNarrationCache.get(`${moduleId}:${targetId}:${variant}`);
+        return cached ? JSON.parse(JSON.stringify(cached)) : null;
+      },
+      cacheTileNarration(narrationId, { variant }) {
+        const record = narrations.find(item => item.id === narrationId && item.ownerModuleId === moduleId);
+        if (!record || record.status !== 'ready') return null;
+        const cached = { ...record };
+        tileNarrationCache.set(`${moduleId}:${record.targetId}:${variant}`, cached);
+        return JSON.parse(JSON.stringify(cached));
+      },
+      log(message) { requests.push({ moduleId, diagnostic: String(message) }); },
       getNarrationContext({ exchangeId }) { return contextForExchange(exchangeId); },
       ai: {
         listConnections() { return connections.map(connection => ({ ...connection })); },
@@ -363,7 +380,7 @@ function createPackagedNarrationHarness(packagePaths, initialSettings = {}, cont
   }
 
   return {
-    hooks, narrations, requests, settings, actions,
+    hooks, narrations, requests, settings, actions, tileNarrationCache,
     get cancelCount() { return cancelCount; },
     async fire(event, envelope) {
       await Promise.all((hooks.get(event) || []).map(hook => hook.callback(JSON.parse(JSON.stringify(envelope)))));
@@ -519,8 +536,13 @@ function loadModuleSystemForTest(options = {}) {
     Array,
     String,
     Number,
-    Boolean
+    Boolean,
+    location: windowOverrides.location || { protocol: 'http:', hostname: 'localhost', href: 'http://localhost/game/you-are-wild.html', origin: 'http://localhost' },
+    fetch: windowOverrides.fetch,
+    crypto: windowOverrides.crypto,
+    btoa: windowOverrides.btoa
   };
+  window.YAW_RELEASE = releaseInfo;
   const indexedDB = { open() { return {}; } };
   const App = {
     biomes: {},
@@ -537,6 +559,15 @@ function loadModuleSystemForTest(options = {}) {
 
 test('App object is defined', () => {
   assertContains(appContent, 'const App = {', 'App object declaration missing');
+});
+
+test('Release manifest is the authoritative public version and compatibility source', () => {
+  assertEqual(releaseInfo.version, '0.11.1', 'Release manifest should identify the planned public version');
+  assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
+  assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
+  assertContains(buildContent, 'window.YAW_RELEASE = Object.freeze', 'Build should inject release metadata into the generated artifact');
+  assertContains(moduleSystemContent, "GAME_VERSION: window.YAW_RELEASE?.version", 'Module compatibility should consume release metadata');
+  assertContains(savePersistenceContent, "gameVersion: window.YAW_RELEASE?.version", 'Sparse save metadata should consume release metadata');
 });
 
 asyncTest('Narrative hooks receive a fresh frozen public envelope', async () => {
@@ -561,7 +592,96 @@ test('Narration package is optional and declares bounded provider-neutral settin
   assert(manifest.permissions.includes('scene:narrate'), 'Narration package should request presentation permission');
   assert(manifest.permissions.includes('ai:request'), 'Narration package should request provider capability permission');
   assert(manifest.settings.some(setting => setting.type === 'provider_connection'), 'Narration package should use opaque provider connections');
+  const prompt = manifest.settings.find(setting => setting.key === 'systemPrompt');
+  assert(prompt?.type === 'string' && prompt.multiline === true, 'Narration package should expose bounded multiline mod instructions');
+  assert(prompt.maxLength <= 2000, 'Narration instructions should stay within the manager hard limit');
+  assertEqual(manifest.version, '0.6.0', 'Profile-aware player-viewpoint narration should use the versioned package contract');
+  const profiles = manifest.settings.find(setting => setting.key === 'profile');
+  assertEqual(profiles?.options?.length, 3, 'Simple Narrator should expose three narration profiles');
+  assertContains(profiles.description, 'Character reactions', 'Narration profile help should explain the character-focused mode');
+  assertContains(prompt.description, 'cannot override viewpoint', 'Narration settings should explain that style guidance cannot replace the viewpoint contract');
   assertNotContains(buildContent, 'optional-mods/you-are-wild-narration.yawmod.json', 'Optional narration package must not enter the default build');
+});
+
+asyncTest('Simple Narrator applies distinct profile contracts across player-viewpoint cases', async () => {
+  const packageData = JSON.parse(fs.readFileSync(NARRATION_MOD_PACKAGE, 'utf8'));
+  const run = async ({ profile, viewpoint, characters = [] }) => {
+    const hooks = {};
+    const calls = [];
+    const cacheLookups = [];
+    const publications = [];
+    const context = {
+      target: { exchangeId: `exchange-${profile}-${viewpoint.participation}` },
+      viewpoint,
+      characters,
+      beats: [{ id: 'beat-1', summary: 'The exchange resolves.' }],
+      recentBeats: [],
+      activity: []
+    };
+    const MODS = {
+      async getSetting(key, fallback) {
+        if (key === 'profile') return profile;
+        if (key === 'providerConnection') return 'provider-1';
+        if (key === 'systemPrompt') return 'Use a spare, immediate voice.';
+        return fallback;
+      },
+      registerNarrationOrchestrator() {},
+      registerHook(event, callback) { hooks[event] = callback; },
+      async ownsNarrationExchange() { return true; },
+      getNarrationContext() { return context; },
+      getCachedTileNarration(query) { cacheLookups.push(query); return null; },
+      publishNarration(record) { publications.push(record); return record; },
+      updateNarration() {},
+      cacheTileNarration() {},
+      ai: {
+        listConnections() { return [{ id: 'provider-1' }]; },
+        cancelPending() {},
+        async generate(request) { calls.push(request); return { text: 'Narrated.', providerId: 'fake', modelId: 'fake-v1' }; }
+      }
+    };
+    new Function('MODS', packageData.module.code)(MODS);
+    hooks.onSceneBeat({ exchangeId: context.target.exchangeId });
+    await hooks.onSceneExchangeClosed({ exchangeId: context.target.exchangeId, policy: { posture: 'sfw' } });
+    return { request: calls[0], cacheLookup: cacheLookups[0], publication: publications[0], context };
+  };
+
+  const cases = [
+    { profile: 'storyteller', viewpoint: { mode: 'player', player: { id: 'player-1' }, participation: 'actor', beatRoles: [{ beatId: 'beat-1', participation: 'actor' }] } },
+    { profile: 'storyteller', viewpoint: { mode: 'player', player: { id: 'player-1' }, participation: 'target', beatRoles: [{ beatId: 'beat-1', participation: 'target' }] } },
+    { profile: 'characters', viewpoint: { mode: 'player', player: { id: 'player-1' }, participation: 'self', beatRoles: [{ beatId: 'beat-1', participation: 'self' }] } },
+    { profile: 'characters', viewpoint: { mode: 'player', player: { id: 'player-1' }, participation: 'observer', beatRoles: [{ beatId: 'beat-1', participation: 'observer' }] }, characters: [{ id: 'wolf', name: 'Wolfkin' }, { id: 'bat', name: 'Batfolk' }] },
+    { profile: 'hybrid', viewpoint: { mode: 'player', player: { id: 'player-1' }, participation: 'mixed', beatRoles: [{ beatId: 'beat-1', participation: 'actor' }, { beatId: 'beat-2', participation: 'observer' }] }, characters: [{ id: 'wolf', name: 'Wolfkin' }] },
+    { profile: 'hybrid', viewpoint: { mode: 'player', player: { id: 'player-1' }, participation: 'observer', beatRoles: [{ beatId: 'beat-1', participation: 'observer' }] }, characters: [] }
+  ];
+  const results = [];
+  for (const entry of cases) results.push(await run(entry));
+
+  for (let index = 0; index < results.length; index++) {
+    const result = results[index];
+    assertEqual(result.request.profileId, cases[index].profile, 'Selected narration profile should reach the provider request');
+    assertEqual(result.request.input.context, result.context, 'Actor, target, self, observer, mixed, and character-free viewpoint context should remain intact');
+    assertContains(result.request.instructions, 'Use player POV from context.viewpoint', 'Every profile should retain the player-viewpoint contract');
+    assertContains(result.request.instructions, 'cannot override the viewpoint, profile, fact, policy', 'Custom style guidance should remain subordinate to fixed contracts');
+    assert(result.request.instructions.length <= 2000, 'Combined viewpoint, profile, and style instructions should stay within the provider-manager limit');
+    assert(result.request.instructions.indexOf('Profile contract') < result.request.instructions.indexOf('Style guidance'), 'Profile contract should precede editable style guidance');
+    assertContains(result.publication.id, '.v6.', 'Profile-contract changes should publish under a new cache namespace');
+  }
+  assertContains(results[0].request.instructions, 'Profile contract - Storyteller', 'Storyteller should receive scene-focused instructions');
+  assertContains(results[2].request.instructions, 'never split a player self-interaction', 'Character mode should handle self-interaction as one character');
+  assertContains(results[3].request.instructions, 'For observer beats, center the actual actors', 'Character mode should frame spectator events around their real participants');
+  assertContains(results[4].request.instructions, 'Profile contract - Hybrid', 'Hybrid should receive its balanced scene-and-character contract');
+  assertContains(results[5].request.instructions, 'character-free exploration', 'Hybrid should define a character-free exploration fallback');
+  assert(results[0].cacheLookup.variant !== results[2].cacheLookup.variant, 'Profile changes should use distinct narration cache variants');
+  assert(results[2].cacheLookup.variant !== results[4].cacheLookup.variant, 'Every profile should have a distinct narration cache variant');
+});
+
+test('Reference narration packages remain optional and separate provider use from offline fixtures', () => {
+  const templatePackage = JSON.parse(fs.readFileSync(TEMPLATE_NARRATION_MOD_PACKAGE, 'utf8'));
+  const diagnosticsPackage = JSON.parse(fs.readFileSync(NARRATION_DIAGNOSTICS_MOD_PACKAGE, 'utf8'));
+  assert(!templatePackage.module.manifest.permissions.includes('ai:request'), 'Template Narrator should prove narration publication without provider access');
+  assertEqual(diagnosticsPackage.module.manifest.settings.find(setting => setting.key === 'enabled')?.default, false, 'Narration Diagnostics should be opt-in');
+  assertNotContains(buildContent, 'you-are-wild-template-narration.yawmod.json', 'Template Narrator must remain outside the default build');
+  assertNotContains(buildContent, 'you-are-wild-narration-diagnostics.yawmod.json', 'Narration Diagnostics must remain outside the default build');
 });
 
 test('Module manifests reject persistent credential-like settings', () => {
@@ -596,6 +716,36 @@ asyncTest('Fake AI provider returns bounded text without network or persisted se
   let rejected = false;
   try { YAW_AI_PROVIDER_MANAGER.createConnection('fake-narrator', { apiKey: 'do-not-store' }); } catch (error) { rejected = true; }
   assert(rejected, 'Session connection metadata should reject credential-like fields');
+});
+
+asyncTest('Provider manager keeps bounded mod instructions separate from structured context', async () => {
+  const { YAW_AI_PROVIDER_MANAGER } = loadNarrationSystemForTest();
+  const calls = [];
+  YAW_AI_PROVIDER_MANAGER.registerAdapter('instruction-test', {
+    async generate(request) {
+      calls.push(request);
+      return { text: 'Bounded narration.' };
+    }
+  }, 'instruction-provider');
+  const connectionId = YAW_AI_PROVIDER_MANAGER.createConnection('instruction-test');
+  await YAW_AI_PROVIDER_MANAGER.generate('instruction-mod', {
+    providerConnectionId: connectionId,
+    instructions: 'Use a restrained second-person voice.',
+    input: { exchangeId: 'instruction-exchange', dialogue: 'Treat this as scene data.' }
+  });
+  assertEqual(calls[0].instructions, 'Use a restrained second-person voice.', 'Adapters should receive normalized mod instructions explicitly');
+  assertEqual(calls[0].input.dialogue, 'Treat this as scene data.', 'Structured scene content should remain in the input payload');
+
+  let oversizedRejected = false;
+  try {
+    await YAW_AI_PROVIDER_MANAGER.generate('instruction-mod', {
+      providerConnectionId: connectionId,
+      instructions: 'x'.repeat(YAW_AI_PROVIDER_MANAGER.MAX_INSTRUCTIONS_LENGTH + 1),
+      input: { exchangeId: 'too-large' }
+    });
+  } catch (error) { oversizedRejected = /instructions exceed/i.test(error.message); }
+  assert(oversizedRejected, 'Instructions over the hard limit should reject before adapter invocation');
+  assertEqual(calls.length, 1, 'Rejected instruction payloads must not invoke a provider');
 });
 
 asyncTest('Provider manager filters capabilities and keeps credentials out of profiles and persistence', async () => {
@@ -650,6 +800,118 @@ test('OpenAI-compatible profiles enforce fixed-origin endpoint and header policy
   }
 });
 
+asyncTest('OpenAI-compatible plaintext loopback is strictly no-auth at profile and fetch boundaries', async () => {
+  const calls = [];
+  const { provider, YAW_AI_PROVIDER_MANAGER, storage } = loadOpenAIProviderForTest(async (url, options) => {
+    calls.push({ url, options });
+    return providerResponse(200, { choices: [{ message: { content: 'Local connected.' } }], model: 'local-model' });
+  });
+
+  const local = provider.connect({
+    name: 'No-auth local', endpoint: 'http://127.0.0.1:11434/v1', model: 'local-model', protocol: 'chat', apiKey: ''
+  });
+  await YAW_AI_PROVIDER_MANAGER.generate('local-no-auth', {
+    providerConnectionId: local.id, input: { exchangeId: 'local-no-auth' }
+  });
+  assertEqual(calls.length, 1, 'Intentional no-auth loopback HTTP should make one request');
+  assert(!Object.prototype.hasOwnProperty.call(calls[0].options.headers, 'Authorization'), 'No-auth loopback HTTP must omit Authorization');
+
+  const rejectedStart = calls.length;
+  let apiKeyError;
+  try {
+    provider.connect({
+      name: 'Unsafe local key', endpoint: 'http://localhost:11434/v1', model: 'local-model', protocol: 'chat', apiKey: 'local-secret-value'
+    });
+  } catch (error) { apiKeyError = error; }
+  assertEqual(apiKeyError?.code, 'plaintext_credentials_forbidden', 'A new plaintext loopback profile must reject an API key');
+  assertEqual(calls.length, rejectedStart, 'Rejected plaintext API keys must not reach fetch');
+
+  let sessionHeaderError;
+  try {
+    provider.connect({
+      name: 'Unsafe local header', endpoint: 'http://127.0.0.1:11434/v1', model: 'local-model', protocol: 'chat', apiKey: '',
+      additionalHeaders: [{ name: 'X-Local-Token', value: 'header-secret-value' }]
+    });
+  } catch (error) { sessionHeaderError = error; }
+  assertEqual(sessionHeaderError?.code, 'plaintext_credentials_forbidden', 'Plaintext loopback must reject additional session-header values');
+  assertEqual(calls.length, rejectedStart, 'Rejected plaintext session headers must not reach fetch');
+
+  const secure = provider.connect({
+    name: 'Secure before edit', endpoint: 'https://secure.example/v1', model: 'secure-model', protocol: 'chat',
+    apiKey: 'https-session-secret', additionalHeaders: [{ name: 'X-Trace', value: 'https-header-secret' }]
+  });
+  const edited = provider.connect({
+    id: secure.id, name: 'Edited to local', endpoint: 'http://127.0.0.1:11434/v1', model: 'local-model',
+    protocol: 'chat', apiKey: '', additionalHeaders: []
+  });
+  assertEqual(edited.metadata.endpoint, 'http://127.0.0.1:11434/v1', 'Connected HTTPS metadata should be editable to a no-auth loopback endpoint');
+  await YAW_AI_PROVIDER_MANAGER.generate('local-after-https', {
+    providerConnectionId: secure.id, input: { exchangeId: 'local-after-https' }
+  });
+  const editedCall = calls[calls.length - 1];
+  assert(!Object.prototype.hasOwnProperty.call(editedCall.options.headers, 'Authorization'), 'HTTPS-to-HTTP edits must not inherit the old API key');
+  assert(!Object.prototype.hasOwnProperty.call(editedCall.options.headers, 'X-Trace'), 'HTTPS-to-HTTP edits must not inherit old session headers');
+
+  YAW_AI_PROVIDER_MANAGER.connectProfile(secure.id, {
+    apiKey: 'defense-in-depth-secret', additionalHeaders: [{ name: 'X-Injected', value: 'injected-secret' }]
+  });
+  const beforeDefenseRequest = calls.length;
+  let defenseError;
+  try {
+    await YAW_AI_PROVIDER_MANAGER.generate('plaintext-defense', {
+      providerConnectionId: secure.id, input: { exchangeId: 'plaintext-defense' }
+    });
+  } catch (error) { defenseError = error; }
+  assertEqual(defenseError?.code, 'plaintext_credentials_forbidden', 'The final request boundary must reject credentials attached outside the provider UI');
+  assertEqual(calls.length, beforeDefenseRequest, 'Final plaintext credential rejection must occur before fetch');
+
+  const unaffected = provider.connect({
+    name: 'HTTPS unaffected', endpoint: 'https://api.example/v1', model: 'secure-model', protocol: 'chat', apiKey: 'https-still-allowed'
+  });
+  await YAW_AI_PROVIDER_MANAGER.generate('https-unaffected', {
+    providerConnectionId: unaffected.id, input: { exchangeId: 'https-unaffected' }
+  });
+  assertEqual(calls[calls.length - 1].options.headers.Authorization, 'Bearer https-still-allowed', 'HTTPS profiles should continue to send their session credential');
+});
+
+asyncTest('File origin permits no-auth loopback Ollama-style providers and rejects remote providers', async () => {
+  const calls = [];
+  const storage = createMemoryStorage();
+  const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest(async (url, options) => {
+    calls.push({ url, options });
+    return providerResponse(200, { choices: [{ message: { content: 'Local file-origin narration.' } }], model: 'qwen-local' });
+  }, storage, { location: { protocol: 'file:', origin: 'null' } });
+
+  assert(provider.isLoopbackEndpoint('http://localhost:11434/v1'), 'Ollama loopback endpoint should be recognized');
+  const local = provider.connect({
+    name: 'Local Ollama', endpoint: 'http://localhost:11434/v1', model: 'qwen-local', protocol: 'chat', apiKey: ''
+  });
+  const result = await YAW_AI_PROVIDER_MANAGER.generate('file-local', {
+    providerConnectionId: local.id, input: { exchangeId: 'file-local' }
+  });
+  assertEqual(result.text, 'Local file-origin narration.', 'File mode should allow a local no-auth OpenAI-compatible response');
+  assertEqual(calls[0].url, 'http://localhost:11434/v1/chat/completions', 'File mode should call the local OpenAI-compatible route');
+  assert(!Object.prototype.hasOwnProperty.call(calls[0].options.headers, 'Authorization'), 'File-origin local requests must not carry credentials');
+
+  const beforeRejected = calls.length;
+  let remoteError;
+  try {
+    provider.connect({ endpoint: 'https://api.example.test/v1', model: 'remote', protocol: 'chat', apiKey: 'secret' });
+  } catch (error) { remoteError = error; }
+  assertEqual(remoteError?.code, 'file_origin_local_only', 'File mode should reject remote credentialed providers with actionable guidance');
+  assertEqual(calls.length, beforeRejected, 'Rejected file-origin remote providers must not reach fetch');
+
+  assertEqual(provider.setFileOriginRemoteOverride(true), true, 'File mode should allow an explicit session-only remote override');
+  const remote = provider.connect({ endpoint: 'https://api.example.test/v1', model: 'remote', protocol: 'chat', apiKey: 'session-only-secret' });
+  await YAW_AI_PROVIDER_MANAGER.generate('file-remote-override', {
+    providerConnectionId: remote.id, input: { exchangeId: 'file-remote-override' }
+  });
+  assertEqual(calls[calls.length - 1].url, 'https://api.example.test/v1/chat/completions', 'Session override should permit a browser attempt to the approved remote endpoint');
+  assertEqual(calls[calls.length - 1].options.headers.Authorization, 'Bearer session-only-secret', 'Remote override should retain session credential transport');
+  assertNotContains(storage.serialized(), 'session-only-secret', 'Remote override credentials must remain session-only');
+  assertEqual(provider.setFileOriginRemoteOverride(false), false, 'Remote override should be revocable without persistence');
+});
+
 asyncTest('OpenAI Responses requests use the exact approved origin and return bounded text', async () => {
   const calls = [];
   const secret = 'sk-direct-openai-session-value';
@@ -660,7 +922,8 @@ asyncTest('OpenAI Responses requests use the exact approved origin and return bo
   }, storage);
   const profile = provider.connect({
     name: 'Direct OpenAI', endpoint: 'https://api.openai.com/v1', model: 'gpt-test', protocol: 'responses',
-    apiKey: secret, organization: 'org-test', project: 'project-test', additionalHeaders: [{ name: 'X-Trace', value: 'session-trace' }]
+    apiKey: secret, organization: 'org-test', project: 'project-test', maxCompletionTokens: 2048, reasoningEffort: 'high',
+    additionalHeaders: [{ name: 'X-Trace', value: 'session-trace' }]
   });
   const result = await YAW_AI_PROVIDER_MANAGER.generate('narration-test', {
     capability: 'text.generate', providerConnectionId: profile.id, profileId: 'storyteller',
@@ -674,6 +937,8 @@ asyncTest('OpenAI Responses requests use the exact approved origin and return bo
   assertEqual(calls[0].options.headers['X-Trace'], 'session-trace', 'Session-only additional headers should reach the approved endpoint');
   const body = JSON.parse(calls[0].options.body);
   assertEqual(body.model, 'gpt-test', 'Responses mapping should include the configured model');
+  assertEqual(body.max_output_tokens, 2048, 'Responses requests should include the profile-configured completion-token ceiling');
+  assertEqual(body.reasoning?.effort, 'high', 'Responses requests should map configured reasoning effort into the request body');
   assert(body.instructions && body.input.includes('exchange-openai'), 'Responses mapping should include bounded instructions and serialized input');
   assert(result.text.length <= 120, 'Manager should bound provider text to the requested character limit');
   assertEqual(result.protocol, 'responses', 'Result should identify the successful protocol');
@@ -707,6 +972,30 @@ asyncTest('OpenAI Responses requests use the exact approved origin and return bo
   const restoredProfile = restored.YAW_AI_PROVIDER_MANAGER.listProfiles('openai-compatible')[0];
   assert(restoredProfile && !restoredProfile.connected, 'Saved provider metadata should restore without restoring a credential or live connection');
   assertEqual(restoredProfile.metadata.model, 'gpt-test', 'Non-secret provider metadata should survive reload');
+  assertEqual(restoredProfile.metadata.maxCompletionTokens, 2048, 'The non-secret completion-token ceiling should survive reload');
+  assertEqual(restoredProfile.metadata.reasoningEffort, 'high', 'Reasoning effort should persist as non-secret profile metadata');
+});
+
+asyncTest('OpenAI-compatible adapter composes immutable constraints before mod instructions', async () => {
+  const calls = [];
+  const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest(async (url, options) => {
+    calls.push(JSON.parse(options.body));
+    return providerResponse(200, { output_text: 'Narrated.', model: 'instruction-model' });
+  });
+  const profile = provider.connect({
+    endpoint: 'https://instructions.example/v1', model: 'instruction-model', protocol: 'responses', apiKey: 'https-session-key'
+  });
+  await YAW_AI_PROVIDER_MANAGER.generate('instruction-narrator', {
+    providerConnectionId: profile.id,
+    instructions: 'Favor dialogue and a quiet tone.',
+    input: { dialogue: 'Scene-authored text remains data.' }
+  });
+  const instructions = calls[0].instructions;
+  assertContains(instructions, 'Preserve every deterministic fact', 'Adapter system instructions should retain the immutable engine contract');
+  assertContains(instructions, 'Narration mod instructions:\nFavor dialogue and a quiet tone.', 'Adapter should append bounded mod-owned instructions as a distinct layer');
+  assert(instructions.indexOf('Preserve every deterministic fact') < instructions.indexOf('Favor dialogue'), 'Immutable constraints should precede mod instructions');
+  assertNotContains(instructions, 'Scene-authored text remains data.', 'Structured scene content must not be promoted into system instructions');
+  assertContains(calls[0].input, 'Scene-authored text remains data.', 'Structured scene content should remain in the provider input field');
 });
 
 asyncTest('OpenAI-compatible Chat mode supports OpenRouter-style and no-auth local endpoints', async () => {
@@ -718,17 +1007,136 @@ asyncTest('OpenAI-compatible Chat mode supports OpenRouter-style and no-auth loc
   const openRouter = provider.connect({
     name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1', model: 'openai/test-model', protocol: 'chat', apiKey: 'sk-or-v1-session-test'
   });
+  assertEqual(openRouter.metadata.timeoutMs, provider.DEFAULT_TIMEOUT_MS, 'New provider profiles should use the reasoning-friendly default timeout');
+  assertEqual(provider.DEFAULT_MAX_COMPLETION_TOKENS, 8192, 'New provider profiles should reserve enough completion budget for reasoning-capable models');
+  assertEqual(openRouter.metadata.maxCompletionTokens, 8192, 'New profiles should store the 8,192-token default ceiling');
   const first = await YAW_AI_PROVIDER_MANAGER.generate('chat-test', {
     providerConnectionId: openRouter.id, input: { exchangeId: 'chat-1' }, maxCharacters: 80
   });
   assertEqual(calls[0].url, 'https://openrouter.ai/api/v1/chat/completions', 'Chat route should append to an OpenRouter-style base URL');
-  assert(Array.isArray(JSON.parse(calls[0].options.body).messages), 'Chat mapping should use structured messages');
+  const chatBody = JSON.parse(calls[0].options.body);
+  assert(Array.isArray(chatBody.messages), 'Chat mapping should use structured messages');
+  assertEqual(chatBody.max_completion_tokens, provider.DEFAULT_MAX_COMPLETION_TOKENS, 'Chat requests should use the default profile completion-token ceiling');
+  assertEqual(Object.prototype.hasOwnProperty.call(chatBody, 'reasoning_effort'), false, 'Provider-managed reasoning should omit the chat reasoning parameter');
   assertEqual(first.text, 'Connected.', 'Chat content arrays should normalize to plain text');
 
-  const local = provider.connect({ name: 'Local', endpoint: 'http://127.0.0.1:11434/v1', model: 'local-model', protocol: 'chat', apiKey: '' });
+  const local = provider.connect({ name: 'Local', endpoint: 'http://127.0.0.1:11434/v1', model: 'local-model', protocol: 'chat', apiKey: '', reasoningEffort: 'low' });
   await YAW_AI_PROVIDER_MANAGER.generate('local-test', { providerConnectionId: local.id, input: { exchangeId: 'local-1' } });
   assertEqual(calls[1].url, 'http://127.0.0.1:11434/v1/chat/completions', 'Local compatible endpoints should use their configured base path');
   assert(!Object.prototype.hasOwnProperty.call(calls[1].options.headers, 'Authorization'), 'No-auth profiles should omit Authorization');
+  assertEqual(JSON.parse(calls[1].options.body).reasoning_effort, 'low', 'Chat requests should map an explicit reasoning effort into the request body');
+});
+
+asyncTest('Unsupported reasoning effort produces an actionable provider diagnostic', async () => {
+  const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest(async () => providerResponse(400, {
+    error: { code: 'invalid_request_error', param: 'reasoning_effort', message: 'reasoning_effort is not supported' }
+  }));
+  const profile = provider.connect({
+    endpoint: 'https://reasoning.example/v1', model: 'plain-model', protocol: 'chat', apiKey: 'session-key', reasoningEffort: 'high'
+  });
+  let error;
+  try {
+    await YAW_AI_PROVIDER_MANAGER.generate('reasoning-unsupported', {
+      providerConnectionId: profile.id, input: { exchangeId: 'reasoning-unsupported' }
+    });
+  } catch (caught) { error = caught; }
+  assertEqual(error?.code, 'unsupported_reasoning_effort', 'Unsupported reasoning parameters should retain a specific diagnostic code');
+});
+
+asyncTest('OpenAI-compatible completion-token ceilings are configurable per profile', async () => {
+  const calls = [];
+  const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest(async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    return providerResponse(200, { output_text: 'Generated narration sentence. '.repeat(80), model: 'bounded-model' });
+  });
+  const profile = provider.connect({
+    endpoint: 'https://bounded.example/v1', model: 'bounded-model', protocol: 'responses', apiKey: 'https-session-key',
+    maxCompletionTokens: 2048
+  });
+
+  await YAW_AI_PROVIDER_MANAGER.generate('small-output', {
+    providerConnectionId: profile.id, maxCharacters: 80, input: { exchangeId: 'small-output' }
+  });
+  const capped = await YAW_AI_PROVIDER_MANAGER.generate('capped-output', {
+    providerConnectionId: profile.id, maxCharacters: 5000, input: { exchangeId: 'capped-output' }
+  });
+  await provider.test(profile.id);
+
+  const [smallBody, cappedBody, testBody] = calls.map(call => call.body);
+  assertEqual(smallBody.max_output_tokens, 2048, 'Small visible outputs should retain the reasoning-inclusive profile ceiling');
+  assertEqual(cappedBody.max_output_tokens, 2048, 'Large visible outputs should retain the same profile ceiling');
+  assertEqual(testBody.max_output_tokens, 2048, 'Narration compatibility tests should retain the configured reasoning-inclusive ceiling');
+  assertContains(testBody.instructions, 'Use player POV from context.viewpoint', 'Provider tests should exercise the player-POV narration instruction shape');
+  assertContains(testBody.input, 'Wolfkin strikes Batfolk for 4 punishment', 'Provider tests should use structured narration context instead of a one-word health check');
+  assert(capped.text.length <= 500, 'The manager must retain the final 500-character output enforcement');
+
+  const edited = provider.connect({
+    id: profile.id, endpoint: 'https://bounded.example/v1', model: 'bounded-model', protocol: 'responses',
+    maxCompletionTokens: 4096, apiKey: '', additionalHeaders: []
+  });
+  await YAW_AI_PROVIDER_MANAGER.generate('edited-budget', {
+    providerConnectionId: profile.id, maxCharacters: 120, input: { exchangeId: 'edited-budget' }
+  });
+  assertEqual(edited.metadata.maxCompletionTokens, 4096, 'Metadata edits should persist the new completion-token ceiling');
+  assertEqual(calls[3].body.max_output_tokens, 4096, 'Later requests should use the edited completion-token ceiling');
+
+  for (const invalid of [63, 32769, 100.5]) {
+    let error;
+    try {
+      provider.connect({ endpoint: 'https://invalid-budget.example/v1', model: 'test', protocol: 'chat', maxCompletionTokens: invalid });
+    } catch (caught) { error = caught; }
+    assertEqual(error?.code, 'invalid_token_budget', `Invalid completion-token ceiling ${invalid} should be rejected`);
+  }
+});
+
+asyncTest('Chat token-parameter fallback is one-shot and only follows a clear unsupported-parameter response', async () => {
+  const calls = [];
+  let successfulGenerations = 0;
+  const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest(async (url, options) => {
+    const body = JSON.parse(options.body);
+    calls.push(body);
+    if (Object.prototype.hasOwnProperty.call(body, 'max_completion_tokens')) {
+      return providerResponse(400, {
+        error: { code: 'unknown_parameter', param: 'max_completion_tokens', message: 'Unsupported parameter max_completion_tokens' }
+      });
+    }
+    successfulGenerations++;
+    return providerResponse(200, { choices: [{ message: { content: 'Compatible response.' } }], model: 'legacy-chat-model' });
+  });
+  const profile = provider.connect({
+    endpoint: 'https://legacy-chat.example/v1', model: 'legacy-chat-model', protocol: 'chat', apiKey: 'https-chat-key'
+  });
+  await YAW_AI_PROVIDER_MANAGER.generate('chat-parameter-fallback', {
+    providerConnectionId: profile.id, maxCharacters: 120, input: { exchangeId: 'chat-parameter-fallback' }
+  });
+  assertEqual(calls.length, 2, 'A clearly unsupported Chat token parameter should cause exactly one compatibility retry');
+  assert(Object.prototype.hasOwnProperty.call(calls[0], 'max_completion_tokens'), 'Chat should try max_completion_tokens first');
+  assert(Object.prototype.hasOwnProperty.call(calls[1], 'max_tokens'), 'The one compatibility retry should use max_tokens');
+  assertEqual(successfulGenerations, 1, 'Token-parameter fallback must produce at most one successful paid generation');
+
+  await YAW_AI_PROVIDER_MANAGER.generate('chat-remembered-parameter', {
+    providerConnectionId: profile.id, maxCharacters: 120, input: { exchangeId: 'chat-remembered-parameter' }
+  });
+  assertEqual(calls.length, 3, 'The successful Chat token parameter should be remembered for later requests');
+  assert(Object.prototype.hasOwnProperty.call(calls[2], 'max_tokens'), 'Later Chat requests should reuse the known compatible token parameter');
+  assertEqual(successfulGenerations, 2, 'Each caller request should still produce only one successful generation');
+
+  let ambiguousCalls = 0;
+  const ambiguous = loadOpenAIProviderForTest(async () => {
+    ambiguousCalls++;
+    return providerResponse(400, { error: { code: 'unknown_parameter', message: 'Unknown request option' } });
+  });
+  const ambiguousProfile = ambiguous.provider.connect({
+    endpoint: 'https://ambiguous.example/v1', model: 'chat-model', protocol: 'chat', apiKey: 'https-chat-key'
+  });
+  let ambiguousError;
+  try {
+    await ambiguous.YAW_AI_PROVIDER_MANAGER.generate('ambiguous-parameter', {
+      providerConnectionId: ambiguousProfile.id, input: { exchangeId: 'ambiguous-parameter' }
+    });
+  } catch (error) { ambiguousError = error; }
+  assertEqual(ambiguousCalls, 1, 'An ambiguous request failure must not trigger a paid compatibility retry');
+  assertEqual(ambiguousError?.code, 'unsupported_request_shape', 'Ambiguous provider failures should retain their sanitized request-shape category');
 });
 
 asyncTest('OpenAI-compatible auto mode falls back only for unsupported protocol shapes', async () => {
@@ -763,6 +1171,26 @@ asyncTest('OpenAI-compatible auto mode falls back only for unsupported protocol 
   }
 });
 
+asyncTest('OpenAI-compatible empty output preserves only safe response diagnostics', async () => {
+  const secretReasoning = 'internal reasoning with sk-provider-secret';
+  const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest(async () => providerResponse(200, {
+    choices: [{ finish_reason: 'length', message: { content: '', reasoning_content: secretReasoning } }],
+    model: 'reasoning-model'
+  }));
+  const profile = provider.connect({ endpoint: 'https://reasoning.example/v1', model: 'reasoning-model', protocol: 'chat', apiKey: 'sk-session-reasoning' });
+  let caught;
+  try {
+    await YAW_AI_PROVIDER_MANAGER.generate('reasoning-empty-test', { providerConnectionId: profile.id, input: { exchangeId: 'reasoning-empty' } });
+  } catch (error) { caught = error; }
+  assertEqual(caught?.code, 'invalid_response', 'Empty visible output should retain the sanitized invalid-response category');
+  assertEqual(caught?.status, 200, 'Empty visible output should retain its non-secret HTTP status');
+  assertEqual(caught?.diagnostic?.finishReason, 'length', 'Empty output should retain the bounded finish reason');
+  assertEqual(caught?.diagnostic?.reasoningPresent, true, 'Empty output should report whether hidden reasoning was present');
+  assertEqual(caught?.diagnostic?.choiceCount, 1, 'Empty output should report the bounded choice count');
+  assertNotContains(JSON.stringify(caught), secretReasoning, 'Safe diagnostics must not preserve raw reasoning text');
+  assertNotContains(JSON.stringify(caught), 'sk-session-reasoning', 'Safe diagnostics must not preserve credentials');
+});
+
 asyncTest('OpenAI-compatible requests surface sanitized network errors and honor cancellation', async () => {
   const failed = loadOpenAIProviderForTest(async () => { throw new TypeError('CORS failed with sk-leaked-detail'); });
   const failedProfile = failed.provider.connect({ endpoint: 'https://cors.example/v1', model: 'test', protocol: 'chat', apiKey: 'sk-session-network' });
@@ -787,16 +1215,113 @@ asyncTest('OpenAI-compatible requests surface sanitized network errors and honor
   assertEqual(cancellationError.code, 'cancelled', 'External request cancellation should stop the provider request');
 });
 
+asyncTest('Provider timeout aborts fetch, sanitizes failure, cleans tracking, and permits reuse', async () => {
+  const timers = new Map();
+  let nextTimerId = 0;
+  const controlledTimers = {
+    setTimeout(callback, delay) {
+      const id = `provider-timeout-${++nextTimerId}`;
+      timers.set(id, { callback, delay });
+      return id;
+    },
+    clearTimeout(id) { timers.delete(id); }
+  };
+  const secret = 'sk-timeout-session-secret';
+  let fetchCount = 0;
+  let fetchAborted = false;
+  const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest((url, options) => {
+    fetchCount++;
+    if (fetchCount > 1) {
+      return Promise.resolve(providerResponse(200, { output_text: 'Recovered request.', model: 'timeout-model' }));
+    }
+    return new Promise((resolve, reject) => {
+      options.signal.addEventListener('abort', () => {
+        fetchAborted = true;
+        reject(new Error(`Underlying timeout exposed ${secret}`));
+      }, { once: true });
+    });
+  }, createMemoryStorage(), controlledTimers);
+  const profile = provider.connect({
+    endpoint: 'https://timeout.example/v1', model: 'timeout-model', protocol: 'responses', apiKey: secret, timeoutMs: 1700
+  });
+  const pending = YAW_AI_PROVIDER_MANAGER.generate('timeout-module', {
+    providerConnectionId: profile.id, input: { exchangeId: 'timeout-request' }
+  }).then(() => null, error => error);
+
+  assertEqual(YAW_AI_PROVIDER_MANAGER.requestsByModule.get('timeout-module')?.size, 1, 'Timed request should be tracked by module');
+  assertEqual(YAW_AI_PROVIDER_MANAGER.requestsByConnection.get(profile.id)?.size, 1, 'Timed request should be tracked by connection');
+  const timeoutEntry = [...timers.entries()].find(([, timer]) => timer.delay === 1700);
+  assert(timeoutEntry, 'The profile-configured timeout should schedule the abort');
+  timers.delete(timeoutEntry[0]);
+  timeoutEntry[1].callback();
+  const timeoutError = await pending;
+
+  assertEqual(fetchAborted, true, 'Configured timeout should abort the underlying fetch signal');
+  assertEqual(timeoutError?.code, 'timeout', 'Timeout caller should receive the sanitized timeout code');
+  assertNotContains(timeoutError?.message || '', secret, 'Timeout errors must not expose credentials');
+  assertNotContains(timeoutError?.message || '', 'Underlying timeout', 'Timeout errors must not expose underlying fetch details');
+  assertEqual(YAW_AI_PROVIDER_MANAGER.requestsByModule.has('timeout-module'), false, 'Timeout cleanup should remove module request tracking');
+  assertEqual(YAW_AI_PROVIDER_MANAGER.requestsByConnection.has(profile.id), false, 'Timeout cleanup should remove connection request tracking');
+
+  const recovered = await YAW_AI_PROVIDER_MANAGER.generate('timeout-module', {
+    providerConnectionId: profile.id, input: { exchangeId: 'recovered-request' }
+  });
+  assertEqual(recovered.text, 'Recovered request.', 'The same connection should remain usable after timeout cleanup');
+  assertEqual(fetchCount, 2, 'Connection reuse should issue one subsequent fetch');
+  assertEqual(YAW_AI_PROVIDER_MANAGER.requestsByModule.has('timeout-module'), false, 'Successful reuse should also clean module tracking');
+  assertEqual(YAW_AI_PROVIDER_MANAGER.requestsByConnection.has(profile.id), false, 'Successful reuse should also clean connection tracking');
+  assertEqual(timers.size, 0, 'All controlled timeout handles should be cleared after request completion');
+});
+
 test('AI Providers has a dedicated credential-safe UI and provider-backed settings link to it', () => {
   assertContains(templateContent, 'id="screen-providers"', 'Template should include the dedicated AI Providers screen');
   assertContains(templateContent, 'App.showAIProviderScreen()', 'Global navigation should expose AI Providers');
   assertContains(providerUiContent, 'type="password"', 'Provider credentials should use password controls');
+  assertContains(providerUiContent, 'plaintext_credentials_forbidden', 'Provider UI should map plaintext credential rejection to actionable localized guidance');
+  assertContains(providerUiContent, 'file_origin_local_only', 'Provider UI should distinguish file-origin local-only mode');
+  assertContains(providerUiContent, 'http://localhost:11434/v1', 'File-origin provider UI should offer the Ollama-compatible local endpoint');
+  assertContains(providerUiContent, 'id="openai-provider-max-completion-tokens"', 'Provider editor should expose a per-profile completion-token ceiling');
+  assertContains(providerUiContent, 'New profiles default to 8,192; high reasoning may need 16,384 or more', 'Provider editor should explain the reasoning-budget tradeoff');
+  assertContains(providerUiContent, 'maxCompletionTokens:', 'Provider form submission should retain the configured completion-token ceiling');
+  assertContains(providerUiContent, 'The 30-second default gives reasoning-heavy models time to finish', 'Provider editor should explain the reasoning-friendly timeout default');
+  assertContains(providerUiContent, 'Diagnostic: {code}{status}.', 'Provider failures should expose a sanitized code and HTTP status');
+  assertContains(providerUiContent, "this.logError(error, action, 'OpenAI-compatible API')", 'OpenAI-compatible provider failures should enter the Activity Log');
+  assertContains(providerUiContent, "App._pushLog(entry, 'error')", 'Provider failures should use the Activity Log error category');
+  assertContains(contentSystemContent, "'provider.error.plaintextCredentials'", 'Plaintext credential guidance should be localized');
+  assertContains(contentSystemContent, "'provider.error.reasoningBudgetExhausted'", 'Reasoning-budget exhaustion guidance should be localized');
+  assertContains(contentSystemContent, "'scene.narration.reasoningBudgetExhausted'", 'Narration reasoning-budget guidance should be localized');
+  assertContains(contentSystemContent, "'provider.error.activityLog'", 'Provider Activity Log failures should be localized');
+  assertContains(contentSystemContent, "'provider.maxCompletionTokensHelp'", 'Completion-token reasoning guidance should be localized');
+  assertContains(contentSystemContent, "'provider.timeoutHelp'", 'Provider timeout guidance should be localized');
+  assertContains(contentSystemContent, "'provider.fileOriginLocalOnly'", 'File-origin local-only guidance should be localized');
   assertContains(providerUiContent, "'image.generate'", 'Provider UI should be ready to label future image capabilities');
   assertNotContains(modUiContent, 'puter-provider-title', 'Mod Manager should no longer own provider connection controls');
   assertContains(modUiContent, 'Manage Providers', 'Provider-backed module settings should route users to provider management');
+  assertContains(modUiContent, 'YAW_OPENAI_COMPATIBLE_PROVIDER.isLoopbackEndpoint', 'File-origin module settings should expose only loopback OpenAI-compatible profiles');
+  assertContains(appContent, "runtimeLocation?.protocol === 'file:'", 'App should detect direct file origins before presenting AI integration choices');
+  assertContains(templateContent, 'data-ai-file-origin-notice', 'Settings should explain file-origin local-only provider support');
   const narrationPackage = JSON.parse(fs.readFileSync(NARRATION_MOD_PACKAGE, 'utf8'));
   const providerSetting = narrationPackage.module.manifest.settings.find(setting => setting.type === 'provider_connection');
   assertEqual(providerSetting.capability, 'text.generate', 'Narration package should request the text generation capability explicitly');
+});
+
+asyncTest('Multiline module settings are bounded, credential-safe, and render as textareas', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+  const manifest = MODULE_SYSTEM._normalizeManifest({
+    id: 'multiline-settings', name: 'Multiline Settings', version: '1.0.0',
+    settings: [{ key: 'instructions', type: 'string', multiline: true, rows: 99, maxLength: 9999, default: 'Default guidance.' }]
+  });
+  const declaration = manifest.settings[0];
+  assertEqual(declaration.multiline, true, 'Manifest normalization should retain multiline presentation metadata');
+  assertEqual(declaration.rows, 12, 'Textarea rows should be clamped');
+  assertEqual(declaration.maxLength, 2000, 'Multiline values should use the bounded hard limit');
+  const normalized = await MODULE_SYSTEM.setDeclaredModuleSetting('multiline-settings', manifest, 'instructions', `Line one\r\n${'x'.repeat(2200)}`);
+  assertEqual(normalized.length, 2000, 'Persisted multiline settings should be clamped to the declared limit');
+  assertNotContains(normalized, '\r', 'Multiline settings should normalize line endings');
+  assertContains(modUiContent, '<textarea rows=', 'The Mod Manager should render multiline declarations as textareas');
+  assertContains(templateContent, '.mod-setting-row.multiline', 'Multiline controls should have responsive layout styling');
 });
 
 asyncTest('Every public module setting path rejects credential names and values', async () => {
@@ -825,6 +1350,114 @@ asyncTest('Every public module setting path rejects credential names and values'
   assertEqual(fakeDb.data.settings.size, 1, 'Credential migration should preserve unrelated module settings');
 });
 
+test('Failed narration writes one sanitized Activity Log error', () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const app = {
+    storyEvents: [{ id: 'beat-1', exchangeId: 'exchange-1' }],
+    sceneNarrations: [],
+    log: [],
+    _label(key, fallback, vars = {}) {
+      return fallback.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
+    },
+    _pushLog(entry) { this.log.push({ ...entry }); },
+    renderLog() {},
+    renderStoryEvents() {},
+    markAutoSaveDirty() {}
+  };
+  const record = YAW_NARRATION_SYSTEM.publish(app, 'narrator', {
+    id: 'narrator.exchange-1', scope: 'exchange', targetId: 'exchange-1', status: 'pending'
+  });
+  YAW_NARRATION_SYSTEM.update(app, 'narrator', record.id, {
+    status: 'failed', errorCode: 'invalid_response', errorStatus: 200,
+    errorDiagnostic: { protocol: 'chat', finishReason: 'length', reasoningPresent: true, choiceCount: 1, injected: 'secret' }
+  });
+  const errors = app.log.filter(entry => entry.type === 'error');
+  assertEqual(app.log.filter(entry => entry.type === 'narration').length, 1, 'Publishing pending narration should log its queued lifecycle stage');
+  assertEqual(errors.length, 1, 'A failed narration transition should create one Activity Log error');
+  assertContains(errors[0].text, 'invalid_response', 'Narration failure should expose the sanitized provider error code');
+  assertContains(errors[0].text, 'HTTP 200', 'Narration failure should expose its safe HTTP status');
+  assertContains(errors[0].text, 'finish=length', 'Narration failure should expose its bounded finish reason');
+  assertContains(errors[0].text, 'reasoning=yes', 'Narration failure should identify hidden reasoning without logging it');
+  assertContains(errors[0].text, 'exhausted its completion budget in reasoning', 'Reasoning-budget failures should include an actionable correction');
+  assertEqual(errors[0].providerDiagnostic.injected, undefined, 'Narration failure diagnostics should drop unknown fields');
+  assertNotContains(errors[0].text, 'https://', 'Narration failure should not expose endpoint details');
+  YAW_NARRATION_SYSTEM.update(app, 'narrator', record.id, { status: 'failed' });
+  assertEqual(app.log.filter(entry => entry.type === 'error').length, 1, 'Repeated failed-state updates should not duplicate the Activity Log error');
+});
+
+asyncTest('Narration lifecycle logs each stage from queue through scene attachment', async () => {
+  const app = {
+    storyEvents: [{ id: 'beat-life', exchangeId: 'exchange-life' }],
+    sceneNarrations: [],
+    log: [],
+    _label(key, fallback, vars = {}) { return fallback.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? ''); },
+    _pushLog(entry) { this.log.push({ ...entry }); },
+    renderLog() {},
+    renderStoryEvents() {},
+    markAutoSaveDirty() {}
+  };
+  const { YAW_NARRATION_SYSTEM, YAW_AI_PROVIDER_MANAGER } = loadNarrationSystemForTest({ App: app });
+  YAW_AI_PROVIDER_MANAGER.registerAdapter('lifecycle-provider', {
+    generate() { return { text: 'The clearing settles into watchful silence.', modelId: 'life-v1' }; }
+  }, 'provider');
+  const connectionId = YAW_AI_PROVIDER_MANAGER.createConnection('lifecycle-provider');
+  const record = YAW_NARRATION_SYSTEM.publish(app, 'narrator', {
+    id: 'narrator.exchange-life', scope: 'exchange', targetId: 'exchange-life', status: 'pending'
+  });
+  const result = await YAW_AI_PROVIDER_MANAGER.generate('narrator', {
+    capability: 'narration',
+    providerConnectionId: connectionId,
+    input: { context: { target: { exchangeId: 'exchange-life' } } }
+  });
+  YAW_NARRATION_SYSTEM.update(app, 'narrator', record.id, { status: 'ready', text: result.text });
+  assertEqual(
+    app.log.filter(entry => entry.type === 'narration').map(entry => entry.narrationStage).join(','),
+    'queued,request_sent,response_received,attached',
+    'Activity Log should expose the complete narration lifecycle in order'
+  );
+  assert(app.log.every(entry => entry.targetId === 'exchange-life'), 'Each lifecycle entry should identify the sanitized target exchange');
+});
+
+test('Narration publication failures are no longer silent', () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const app = {
+    storyEvents: [], sceneNarrations: [], log: [],
+    _label(key, fallback) { return fallback; },
+    _pushLog(entry) { this.log.push({ ...entry }); },
+    renderLog() {}, markAutoSaveDirty() {}
+  };
+  let rejected = false;
+  try {
+    YAW_NARRATION_SYSTEM.publish(app, 'narrator', {
+      id: 'narrator.missing', scope: 'exchange', targetId: 'missing-exchange', status: 'pending'
+    });
+  } catch (error) {
+    rejected = true;
+  }
+  assert(rejected, 'Invalid narration targets should still reject publication');
+  assertEqual(app.log.length, 1, 'Rejected narration publication should produce one visible Activity Log error');
+  assertEqual(app.log[0].errorCode, 'narration_publish_failed', 'Publication errors should use a stable sanitized error code');
+});
+
+test('Narration configuration errors are actionable and deduplicated', () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const app = {
+    log: [],
+    _label(key, fallback) { return fallback; },
+    _pushLog(entry) { this.log.push({ ...entry }); },
+    renderLog() {},
+    markAutoSaveDirty() {}
+  };
+  YAW_NARRATION_SYSTEM.logOperationalError(app, 'narrator', 'provider_connection_not_selected');
+  YAW_NARRATION_SYSTEM.logOperationalError(app, 'narrator', 'provider_connection_not_selected');
+  assertEqual(app.log.length, 1, 'Repeated missing-provider exchanges should create only one Activity Log error');
+  assertContains(app.log[0].text, 'no provider connection is selected', 'Missing-provider guidance should point to narrator settings');
+  YAW_NARRATION_SYSTEM.clearOperationalErrors('narrator');
+  YAW_NARRATION_SYSTEM.logOperationalError(app, 'narrator', 'provider_connection_unavailable');
+  assertEqual(app.log.length, 2, 'A later disconnected-provider state should create a new Activity Log error');
+  assertContains(app.log[1].text, 'Reconnect it in AI Providers', 'Disconnected-provider guidance should identify the recovery surface');
+});
+
 asyncTest('Narration runtime reset cancels stale work while retaining session connections', async () => {
   const { YAW_NARRATION_SYSTEM, YAW_AI_PROVIDER_MANAGER } = loadNarrationSystemForTest();
   YAW_AI_PROVIDER_MANAGER.registerAdapter('abortable', {
@@ -845,6 +1478,7 @@ asyncTest('Narration runtime reset cancels stale work while retaining session co
   const error = await pending;
   assertEqual(error.code, 'cancelled', 'Run-switch cancellation should return a sanitized cancellation code');
   assertEqual(app.sceneNarrations.length, 0, 'Run-switch reset should clear presentation records before restore');
+  assertEqual(app.tileNarrationCache.length, 0, 'Run-switch reset should clear cached tile prose before another run is restored');
   assertEqual(YAW_NARRATION_SYSTEM.closedExchanges.size, 0, 'Run-switch reset should clear exchange dedupe state');
   assert(YAW_AI_PROVIDER_MANAGER.connections.has(connectionId), 'Run-switch reset should retain session provider connections');
 });
@@ -879,6 +1513,146 @@ test('Narration context mode, time, location, and history come from the target e
   assertEqual(context.recentBeats.map(item => item.id).join(','), 'story-1,story-2', 'Recent context should not include beats that occurred after the target');
 });
 
+test('Scene Beats snapshot the player viewpoint at commit time', () => {
+  const story = new Function(`${storyEventsContent}\nreturn YAW_STORY_EVENTS;`)();
+  const player = { id: 'player-1', name: 'Zx' };
+  const app = {
+    player,
+    storyEventSeq: 0,
+    combatState: { active: false },
+    location: { x: 2, y: 3 },
+    currentBiome: 'forest',
+    timeHour: 9,
+    dayCount: 4,
+    _label(key, fallback) { return fallback; },
+    _uiLabel(value) { return value; }
+  };
+  const event = story.normalize(app, {
+    actors: [player], targets: [], action: 'observe', summary: 'You look around.',
+    location: 'Forest (2, 3)', time: '09:00 Day 4'
+  });
+  assertEqual(event.metadata.contextSnapshot.viewpoint.mode, 'player', 'Scene Beat snapshots should declare the current viewpoint mode');
+  assertEqual(event.metadata.contextSnapshot.viewpoint.playerId, 'player-1', 'Scene Beat snapshots should retain the stable player id');
+  assertEqual(event.metadata.contextSnapshot.viewpoint.playerName, 'Zx', 'Scene Beat snapshots should retain the bounded player name');
+});
+
+test('Narration context resolves player actor, target, self, observer, mixed, and unknown roles', () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const player = { id: 'player-1', name: 'Zx' };
+  const wolf = { id: 'wolf-1', name: 'Wolfkin' };
+  const bat = { id: 'bat-1', name: 'Batfolk' };
+  const beat = (id, actors, targets) => ({
+    id,
+    exchangeId: 'exchange-pov',
+    mode: 'combat',
+    actors,
+    targets,
+    metadata: {
+      contextSnapshot: {
+        mode: 'combat',
+        location: { label: 'Forest' },
+        time: { label: 'Night' },
+        viewpoint: { mode: 'player', playerId: player.id, playerName: player.name }
+      }
+    }
+  });
+  const app = {
+    player,
+    storyEvents: [
+      beat('actor-beat', [player], [bat]),
+      beat('target-beat', [wolf], [player]),
+      beat('self-beat', [player], [player]),
+      beat('observer-beat', [wolf], [bat])
+    ],
+    quests: [],
+    log: []
+  };
+  const roleFor = beatId => YAW_NARRATION_SYSTEM.context(app, { beatId, activityLimit: 0 }).viewpoint.participation;
+  assertEqual(roleFor('actor-beat'), 'actor', 'Player actions should be marked for second-person narration');
+  assertEqual(roleFor('target-beat'), 'target', 'Actions against the player should mark the player as target');
+  assertEqual(roleFor('self-beat'), 'self', 'Player self-interactions should use the reflexive role');
+  const observer = YAW_NARRATION_SYSTEM.context(app, { beatId: 'observer-beat', activityLimit: 0 });
+  assertEqual(observer.viewpoint.participation, 'observer', 'Non-player actions should remain observed from player POV');
+  assertEqual(observer.viewpoint.player.id, player.id, 'Observer context should still identify the viewpoint player');
+  assertEqual(observer.characters.some(character => character.id === player.id), false, 'A spectating player must not be inserted into the event character list');
+  const mixed = YAW_NARRATION_SYSTEM.context(app, { exchangeId: 'exchange-pov', activityLimit: 0 });
+  assertEqual(mixed.viewpoint.participation, 'mixed', 'Exchanges with changing player roles should be marked mixed');
+  assertEqual(mixed.viewpoint.beatRoles.map(item => item.participation).join(','), 'actor,target,self,observer', 'Mixed exchanges should retain a role for each deterministic beat');
+  assertEqual(JSON.parse(JSON.stringify(mixed)).viewpoint.player.name, 'Zx', 'Viewpoint context should remain bounded serializable data');
+
+  const unknown = YAW_NARRATION_SYSTEM.context({
+    storyEvents: [{ id: 'unknown-beat', exchangeId: 'unknown-beat', actors: [wolf], targets: [bat], metadata: {} }],
+    quests: [], log: []
+  }, { beatId: 'unknown-beat', activityLimit: 0 });
+  assertEqual(unknown.viewpoint.player, null, 'Missing player identity should not be guessed');
+  assertEqual(unknown.viewpoint.participation, 'unknown', 'Missing player identity should request factual third-person fallback');
+});
+
+test('Tile narration cache fingerprints visible state, restores bounded entries, and rejects stale center prose', () => {
+  const window = { setTimeout, clearTimeout };
+  const CONTENT = { preferences: { posture: 'sfw', enabledCategories: [], gameplayVariants: {}, language: 'en' } };
+  const MODULE_SYSTEM = {
+    _publicSceneBeatSummary(event) { return JSON.parse(JSON.stringify(event)); },
+    _publicNarrativeUnitSummary(unit) { return { id: unit.id, name: unit.name }; },
+    _publicQuestSummary() { return null; },
+    _publicActivitySummary() { return null; },
+    async executePublicHook() {}
+  };
+  const runtime = new Function(
+    'window', 'CONTENT', 'MODULE_SYSTEM',
+    `${narrationSystemContent}\n${storyEventsContent}\nreturn { YAW_NARRATION_SYSTEM, YAW_STORY_EVENTS };`
+  )(window, CONTENT, MODULE_SYSTEM);
+  const { YAW_NARRATION_SYSTEM: narration, YAW_STORY_EVENTS: story } = runtime;
+  const player = { id: 'player-cache', name: 'Zx' };
+  const wolf = { id: 'wolf-cache', name: 'Wolfkin', species: 'wolf', disposition: 'neutral', CPun: 20, MPun: 20, hunger: 10 };
+  const tile = { x: 4, y: 7, biome: 'grove', description: 'A stream crosses the road.', creatures: [wolf], items: [{ id: 'coin', name: 'Old Coin' }] };
+  const app = {
+    player, party: [player], creatures: [wolf], location: { x: 4, y: 7 }, worldMeta: { worldId: 'world-cache' },
+    storyEvents: [], sceneNarrations: [], tileNarrationCache: [], quests: [], log: [], combatState: { active: false },
+    _currentExplorationTile() { return tile; },
+    getTile() { return tile; },
+    _tileCreatures(value) { return value || []; },
+    _isCorpse(unit) { return unit?.disposition === 'corpse'; },
+    _isNight() { return false; },
+    _label(key, fallback) { return fallback; },
+    _uiLabel(value) { return value; },
+    renderStoryEvents() {}, renderLog() {}, markAutoSaveDirty() {}
+  };
+  const first = story.tileNarrativeDescriptor(app, tile, { wasExplored: true });
+  app.creatures = [wolf];
+  tile.items = [{ id: 'coin', name: 'Old Coin' }];
+  const reordered = story.tileNarrativeDescriptor(app, tile, { wasExplored: true });
+  assertEqual(reordered.fingerprint, first.fingerprint, 'Equivalent visible state should have a stable fingerprint');
+
+  const beat = {
+    id: 'tile-beat-1', exchangeId: 'tile-exchange-1', source: 'tile-entry', tags: ['tile-entry', 'observation'],
+    actors: [player], targets: [wolf], metadata: { tile: { x: 4, y: 7 }, wasExplored: true, tileNarrativeState: first }
+  };
+  app.storyEvents = [beat];
+  const record = narration.publish(app, 'narrator-cache', {
+    id: 'narrator-cache.ready-1', scope: 'exchange', targetId: beat.exchangeId, status: 'ready', text: 'You hear water threading through the grove.'
+  });
+  narration.cacheTileNarration(app, 'narrator-cache', record.id, { variant: 'player-pov-v1' });
+  assertEqual(narration.getCachedTileNarration(app, 'narrator-cache', { targetId: beat.exchangeId, variant: 'player-pov-v1' }).text, record.text, 'Matching tile state and narration variant should reuse cached prose');
+  assertEqual(narration.currentTileNarration(app).text, record.text, 'Ready narration for the live tile observation should be eligible for center rendering');
+  app.biomes = { grove: { name: 'Grove', icon: 'tree' } };
+  app.STRUCTURES = {};
+  const center = new Function('window', 'YAW_NARRATION_SYSTEM', `${centerContextContent}\nreturn YAW_CENTER_CONTEXT;`)(window, narration);
+  assertEqual(center.context(app).description, record.text, 'The center tile passage should promote ready narration over deterministic fallback text');
+
+  tile.items.push({ id: 'berry', name: 'Berry' });
+  assert(narration.currentTileNarration(app) === null, 'A changed visible tile state must invalidate center narration immediately');
+  assertEqual(center.context(app).description, tile.description, 'The center tile should return to deterministic text while changed state awaits narration');
+  assert(narration.getCachedTileNarration(app, 'narrator-cache', { targetId: beat.exchangeId, variant: 'different-style' }) === null, 'A different narration style must not reuse cached prose');
+
+  const oversized = Array.from({ length: 40 }, (_, index) => ({
+    ...app.tileNarrationCache[0], tileKey: `world-cache:${index}:0`, fingerprint: `fnv1a-${String(index).padStart(8, '0')}`, lastUsedAt: index
+  }));
+  narration.restoreTileCache(app, oversized);
+  assertEqual(app.tileNarrationCache.length, 32, 'Persisted tile narration cache should remain bounded');
+  assertEqual(app.tileNarrationCache[0].tileKey, 'world-cache:8:0', 'Bounded restore should retain the most recently used cache entries');
+});
+
 test('Adult eligibility migrates from trusted canon and legacy unit metadata', () => {
   const system = new Function(`${speciesSystemContent}\nreturn YAW_SPECIES_SYSTEM;`)();
   const app = {
@@ -911,7 +1685,7 @@ asyncTest('Packaged orchestrators enforce ownership, adult metadata, and lifecyc
     'yaw_narration_explicit_first_party:enabled': true,
     'yaw_narration_explicit_first_party:providerConnection': 'connection-1',
     'yaw_narration_explicit_first_party:profile': 'storyteller',
-    'yaw_narration_explicit_first_party:providerPolicyAcknowledgement': 'connection-1:storyteller:2'
+    'yaw_narration_explicit_first_party:providerPolicyAcknowledgement': 'connection-1:storyteller:3'
   };
   const harness = createPackagedNarrationHarness(
     [NARRATION_MOD_PACKAGE, EXPLICIT_NARRATION_MOD_PACKAGE],
@@ -926,6 +1700,7 @@ asyncTest('Packaged orchestrators enforce ownership, adult metadata, and lifecyc
   await harness.fire('onSceneExchangeClosed', { exchangeId: 'exchange-1', policy: explicitPolicy });
   assertEqual(harness.requests.length, 1, 'One exchange should produce exactly one provider request');
   assertEqual(harness.requests[0].moduleId, 'yaw_narration_explicit_first_party', 'Ready explicit orchestration should exclusively own explicit exchanges');
+  assertContains(harness.requests[0].request.instructions, 'verified adult characters', 'Explicit narration should use its isolated mod-owned instructions');
   assertEqual(harness.narrations[0].status, 'ready', 'Packaged orchestration should complete its presentation record');
 
   harness.settings.set('yaw_narration_explicit_first_party:enabled', false);
@@ -933,12 +1708,87 @@ asyncTest('Packaged orchestrators enforce ownership, adult metadata, and lifecyc
   await harness.fire('onSceneExchangeClosed', { exchangeId: 'exchange-2', policy: explicitPolicy });
   assertEqual(harness.requests.length, 2, 'A second exchange should still produce only one request');
   assertEqual(harness.requests[1].moduleId, 'yaw_narration_first_party', 'Standard orchestration should own the exchange when explicit orchestration is not ready');
+  assertContains(harness.requests[1].request.instructions, 'concise, vivid narration', 'Standard narration should pass its exposed prompt setting through the provider-neutral API');
 
   await harness.fire('onSceneBeat', { exchangeId: 'stale-exchange', policy: explicitPolicy });
   await harness.fire('onGameLoad', { slotName: 'slot2' });
   await harness.fire('onSceneExchangeClosed', { exchangeId: 'stale-exchange', policy: explicitPolicy });
   assertEqual(harness.requests.length, 2, 'Loading another run should clear packaged pending exchange queues');
   assert(harness.cancelCount >= 2, 'Lifecycle reset should ask each packaged orchestrator to cancel pending requests');
+});
+
+asyncTest('Simple Narrator sends a versioned player-POV contract and inherits provider timeout', async () => {
+  const viewpoint = {
+    mode: 'player',
+    player: { id: 'player-1', name: 'Zx' },
+    participation: 'observer',
+    beatRoles: [{ beatId: 'observer-beat', participation: 'observer' }]
+  };
+  const harness = createPackagedNarrationHarness(
+    [NARRATION_MOD_PACKAGE],
+    {
+      'yaw_narration_first_party:providerConnection': 'connection-1',
+      'yaw_narration_first_party:systemPrompt': 'Keep the prose spare.'
+    },
+    exchangeId => ({ target: { exchangeId }, viewpoint, characters: [{ id: 'wolf-1' }, { id: 'bat-1' }] })
+  );
+  const policy = { posture: 'sfw', enabledCategories: [], gameplayVariants: {} };
+  await harness.fire('onSceneBeat', { exchangeId: 'observer-exchange', policy });
+  await harness.fire('onSceneExchangeClosed', { exchangeId: 'observer-exchange', policy });
+  const request = harness.requests.find(item => item.request)?.request;
+  assert(request, 'Simple Narrator should issue one provider request');
+  assertContains(request.instructions, "Address viewpoint.player as 'you'", 'Narrator instructions should identify the player as second person');
+  assertContains(request.instructions, "self = use reflexive language such as 'yourself'", 'Narrator instructions should cover self-interaction explicitly');
+  assertContains(request.instructions, 'observer = describe the other characters in third person', 'Narrator instructions should preserve spectator POV');
+  assertContains(request.instructions, 'Keep the prose spare.', 'Editable style guidance should remain layered into the request');
+  assertEqual(request.input.viewpointMode, 'player', 'Structured input should declare the current viewpoint mode');
+  assertEqual(request.input.context.viewpoint.participation, 'observer', 'Structured input should retain the derived player role');
+  assertEqual(Object.prototype.hasOwnProperty.call(request, 'timeoutMs'), false, 'Narrator requests should inherit the selected provider profile timeout');
+  assertContains(request.instructions, 'For a tile-entry observation, describe the current place and visible state', 'Narrator instructions should isolate tile observations from unrelated recent history');
+  assertContains(request.instructions, 'Profile contract - Storyteller', 'Default narration should apply the explicit Storyteller contract');
+  assertEqual(harness.narrations[0].profileVersion, '6', 'Narration records should identify the profile-contract version');
+  assertContains(harness.narrations[0].id, '.v6.exchange.', 'Profile-aware narration ids should not collide with older generated records');
+});
+
+asyncTest('Simple Narrator reuses matching tile prose without another provider request', async () => {
+  const harness = createPackagedNarrationHarness(
+    [NARRATION_MOD_PACKAGE],
+    { 'yaw_narration_first_party:providerConnection': 'connection-1' },
+    exchangeId => ({ target: { exchangeId }, recentBeats: [{ id: exchangeId, tags: ['tile-entry'] }], characters: [] })
+  );
+  const policy = { posture: 'sfw', enabledCategories: [], gameplayVariants: {} };
+  const envelope = { exchangeId: 'cached-tile-exchange', policy };
+  await harness.fire('onSceneBeat', envelope);
+  await harness.fire('onSceneExchangeClosed', envelope);
+  assertEqual(harness.requests.filter(item => item.request).length, 1, 'The first matching tile observation should request narration');
+  harness.narrations.splice(0);
+  await harness.fire('onSceneBeat', envelope);
+  await harness.fire('onSceneExchangeClosed', envelope);
+  assertEqual(harness.requests.filter(item => item.request).length, 1, 'A cached tile observation should not make another provider request');
+  assertEqual(harness.narrations[0].status, 'ready', 'A cache hit should attach ready narration directly to the current exchange');
+  assertContains(harness.narrations[0].text, 'Narrated by yaw_narration_first_party', 'A cache hit should preserve the generated prose');
+});
+
+asyncTest('Offline narration fixtures exercise fallback ownership without provider requests', async () => {
+  const policy = { posture: 'sfw', enabledCategories: [], gameplayVariants: {} };
+  const harness = createPackagedNarrationHarness(
+    [TEMPLATE_NARRATION_MOD_PACKAGE, NARRATION_DIAGNOSTICS_MOD_PACKAGE],
+    { 'yaw_narration_diagnostics_first_party:enabled': false },
+    exchangeId => ({ mode: 'adventure', location: { label: 'Forest' }, recentBeats: [{ id: exchangeId }], characters: [] })
+  );
+  const envelope = { exchangeId: 'offline-1', policy, beats: [{ summary: 'You cross the clearing.' }] };
+  await harness.fire('onSceneBeat', envelope);
+  await harness.fire('onSceneExchangeClosed', envelope);
+  assertEqual(harness.narrations.length, 1, 'Offline template orchestration should publish one narration record');
+  assertEqual(harness.narrations[0].providerId, 'offline-template', 'Offline narration should identify deterministic attribution');
+  assertContains(harness.narrations[0].text, 'Forest: You cross the clearing.', 'Template narration should derive prose only from bounded public context and beats');
+  assertEqual(harness.requests.filter(item => item.request).length, 0, 'Offline narration fixtures should not issue provider requests');
+
+  harness.settings.set('yaw_narration_template_first_party:maxCharacters', 160);
+  const longEnvelope = { exchangeId: 'offline-2', policy, beats: [{ summary: 'A deliberately long deterministic exchange summary '.repeat(12) }] };
+  await harness.fire('onSceneBeat', longEnvelope);
+  await harness.fire('onSceneExchangeClosed', longEnvelope);
+  assert(harness.narrations[1].text.length <= 160, 'Template narration should include terminal punctuation without crossing its selected limit');
 });
 
 asyncTest('Puter provider connects, maps narration, tests, and disconnects without game-owned credentials', async () => {
@@ -986,6 +1836,16 @@ asyncTest('Puter provider connects, maps narration, tests, and disconnects witho
   assertEqual(tested.tested, true, 'Test should exercise the provider through the manager');
   assert(Array.isArray(chatCalls[0].messages), 'Provider adapter should map narration input to structured chat messages');
   assertEqual(chatCalls[0].options.model, 'openai/test-model', 'Provider adapter should pass through the player-supplied free-form model id');
+  await manager.generate('puter-instruction-test', {
+    providerConnectionId: connected.connectionId,
+    profileId: 'storyteller',
+    instructions: 'Use clipped sentences.',
+    input: { exchangeId: 'puter-instructions' },
+    maxCharacters: 120
+  });
+  assertContains(chatCalls[1].messages[0].content, 'Preserve every deterministic fact', 'Puter should retain immutable engine instructions');
+  assertContains(chatCalls[1].messages[0].content, 'Narration mod instructions:\nUse clipped sentences.', 'Puter should map mod instructions into its system message');
+  assertContains(chatCalls[1].messages[1].content, 'puter-instructions', 'Puter should retain structured context in its user message');
   provider.disconnect();
   assertEqual(manager.connections.size, 0, 'Disconnect should remove the opaque session connection');
 });
@@ -1200,6 +2060,159 @@ asyncTest('Module system imports and exports versioned module package envelopes'
   }
   assertEqual(rejected, true, 'Malformed package game versions should reject');
   assertEqual((await MODULE_SYSTEM.getAllModules()).length, 1, 'Rejected package envelopes should not add stored modules');
+});
+
+asyncTest('Host manifest preloads curated modules and enforces provenance policy', async () => {
+  const manifestPayload = {
+    schema: 'yaw-host-modules-v1',
+    hostId: 'test-host',
+    catalog: [
+      {
+        id: 'host-rules',
+        name: 'Host Rules',
+        version: '1.0.0',
+        preload: true,
+        package: {
+          manifest: {
+            id: 'host-rules',
+            name: 'Host Rules',
+            version: '1.0.0',
+            runtimeRequirements: { origins: ['https', 'localhost'], hotToggleSafe: false }
+          },
+          code: ''
+        }
+      },
+      {
+        id: 'host-optional',
+        name: 'Host Optional',
+        version: '1.0.0',
+        package: {
+          manifest: { id: 'host-optional', name: 'Host Optional', version: '1.0.0' },
+          code: ''
+        }
+      }
+    ],
+    policy: {
+      allowUserModules: false,
+      required: ['host-rules'],
+      optional: ['host-optional']
+    }
+  };
+  const MODULE_SYSTEM = loadModuleSystemForTest({
+    window: {
+      location: { protocol: 'http:', hostname: 'localhost', href: 'http://localhost/game/you-are-wild.html', origin: 'http://localhost' }
+    }
+  });
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  const state = await MODULE_SYSTEM.initializeHostCatalog({
+    url: 'http://localhost/game/yaw-host.json',
+    fetch: async () => ({ ok: true, status: 200, async json() { return manifestPayload; } })
+  });
+  assertEqual(state.status, 'loaded', 'Same-origin host manifest should load');
+  const modules = await MODULE_SYSTEM.getAllModules();
+  const required = modules.find(module => module.id === 'host-rules');
+  assert(required && required.enabled, 'Required host module should preload and enable');
+  assertEqual(required.provenance, 'host', 'Preloaded module should retain host provenance');
+  assertEqual(MODULE_SYSTEM.moduleControlState(required).lockedEnabled, true, 'Required host module should be locked enabled');
+  assertEqual(MODULE_SYSTEM.getHostCatalog().find(module => module.id === 'host-optional').installed, false, 'Optional host module should remain installable from the catalog');
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('host-rules', false, { bypassLifecycle: true });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'Required by this host', 'Required module disable should explain the host lock');
+  }
+  assertEqual(rejected, true, 'Required host module should not be player-disableable');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.deleteModule('host-rules');
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'cannot be deleted', 'Host module deletion should explain ownership');
+  }
+  assertEqual(rejected, true, 'Host modules should not be player-deletable');
+
+  await MODULE_SYSTEM.installModule({ manifest: { id: 'player-addon', name: 'Player Addon', version: '1.0.0' }, code: '' });
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('player-addon', true, { bypassLifecycle: true });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'User-installed modules are disabled', 'Hosted user-module policy should be actionable');
+  }
+  assertEqual(rejected, true, 'Host policy should prevent user module execution without deleting the package');
+});
+
+asyncTest('Module runtime requirements preserve file play and gate secure server modules', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest({
+    window: {
+      location: { protocol: 'file:', hostname: '', href: 'file:///tmp/you-are-wild.html', origin: 'null' }
+    }
+  });
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  const offline = await MODULE_SYSTEM.initializeHostCatalog({
+    fetch: async () => { throw new Error('File mode must not fetch'); }
+  });
+  assertEqual(offline.status, 'offline-file', 'File mode should skip host discovery entirely');
+  const ordinary = MODULE_SYSTEM._normalizeManifest({ id: 'offline-safe', name: 'Offline Safe', version: '1.0.0' });
+  assertEqual(MODULE_SYSTEM._runtimeCompatibilityBlockReason(ordinary), null, 'Legacy modules should remain compatible with file mode');
+  const hosted = MODULE_SYSTEM._normalizeManifest({
+    id: 'server-only',
+    name: 'Server Only',
+    version: '1.0.0',
+    runtimeRequirements: { origins: ['https', 'localhost'], secureContext: true, network: true }
+  });
+  assertContains(MODULE_SYSTEM._runtimeCompatibilityBlockReason(hosted), 'runtime origins', 'Server-only modules should explain file incompatibility');
+});
+
+asyncTest('Host package integrity and same-origin catalog boundaries are enforced', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest({
+    window: { crypto: globalThis.crypto, btoa: globalThis.btoa }
+  });
+  const expected = '950cda88cb5c595b619ee2d2c059ecf524d4c8d26057fc6a82f2c98042565c1c';
+  assertEqual(await MODULE_SYSTEM._sha256Matches('host package', expected), true, 'Matching host package bytes should satisfy the integrity pin');
+  assertEqual(await MODULE_SYSTEM._sha256Matches('changed package', expected), false, 'Changed host package bytes should fail the integrity pin');
+
+  let rejected = false;
+  try {
+    MODULE_SYSTEM.normalizeHostManifest({
+      schema: 'yaw-host-modules-v1',
+      hostId: 'test-host',
+      catalog: [{ id: 'remote-mod', version: '1.0.0', url: 'https://untrusted.example/mod.yawmod.json' }]
+    }, 'http://localhost/game/yaw-host.json');
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'game origin', 'Cross-origin host packages should explain the catalog boundary');
+  }
+  assertEqual(rejected, true, 'Host catalog package URLs should remain same-origin');
+});
+
+asyncTest('Save module content profiles detect missing and mismatched module builds', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  const installed = await MODULE_SYSTEM.installModule({
+    manifest: { id: 'world-rules', name: 'World Rules', version: '1.0.0' },
+    code: ''
+  });
+  await MODULE_SYSTEM.setModuleEnabled(installed.id, true, { bypassLifecycle: true });
+  const profile = MODULE_SYSTEM.contentProfileSnapshot();
+  assertEqual(profile.schema, 'yaw-content-profile-v1', 'Save profile should use the versioned content schema');
+  assertEqual(profile.modules[0].id, 'world-rules', 'Save profile should lock enabled module ids');
+  await MODULE_SYSTEM.assertContentProfile(profile);
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.assertContentProfile({
+      ...profile,
+      modules: [{ ...profile.modules[0], version: '2.0.0' }]
+    });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'version 2.0.0', 'Version mismatch should name the required module version');
+  }
+  assertEqual(rejected, true, 'Save profile should reject a mismatched module version');
 });
 
 asyncTest('Module system rejects malformed manifests before storage', async () => {
@@ -1932,6 +2945,28 @@ asyncTest('Module content provider contributions are permissioned, owned, and re
   assertEqual(CONTENT.locales.en['test.provider.label'], originalLabel, 'Disabling provider should restore prior locale state');
   assertEqual(CONTENT.getCreationOptions().length, 0, 'Disabling provider should remove its creation choices');
   assertEqual(CONTENT.policyProviders.get('content-provider').enabled, false, 'Disabled provider should remain discoverable for category settings');
+});
+
+asyncTest('Persisted enabled modules restore their runtime hooks after refresh', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'restore-module', name: 'Restore Module', version: '1.0.0' },
+    code: `MODS.registerHook('onTick', payload => payload.calls.push('restored'));`
+  });
+  await MODULE_SYSTEM.setModuleEnabled('restore-module', true);
+  MODULE_SYSTEM.unloadModule('restore-module');
+  assert(!MODULE_SYSTEM.activeModules.has('restore-module'), 'Refresh simulation should begin without the persisted module runtime');
+  const before = { calls: [] };
+  await MODULE_SYSTEM.executeHook('onTick', before);
+  assertEqual(before.calls.length, 0, 'Unloaded runtime hooks should not run before restoration');
+  const restored = await MODULE_SYSTEM.loadEnabledModules();
+  assertEqual(restored.join(','), 'restore-module', 'Startup restoration should load the persisted enabled module');
+  const after = { calls: [] };
+  await MODULE_SYSTEM.executeHook('onTick', after);
+  assertEqual(after.calls.join(','), 'restored', 'Restored module hooks should receive new gameplay events');
+  assertContains(appContent, 'MODULE_SYSTEM.loadEnabledModules()', 'App startup should restore enabled modules after content preferences load');
+  assertContains(contentSystemContent, "'mod.restoreFailed': 'Enabled modules could not be restored", 'Enabled-module restore failures should have Activity Log guidance');
 });
 
 test('Narrative modules receive bounded serializable public context', () => {
@@ -4735,8 +5770,8 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'mod.title': 'Gestor de modulos'", 'Spanish mod manager title missing');
   assertContains(contentContent, "'mod.importTitle': 'Import mod file'", 'English mod import title missing');
   assertContains(contentContent, "'mod.importTitle': 'Importar archivo de modulo'", 'Spanish mod import title missing');
-  assertContains(contentContent, "'mod.noneInstalled': 'No modules installed. Install one above or create an example.'", 'English mod manager empty-state label missing');
-  assertContains(contentContent, "'mod.noneInstalled': 'No hay modulos instalados. Instala uno arriba o crea un ejemplo.'", 'Spanish mod manager empty-state label missing');
+  assertContains(contentContent, "'mod.noneInstalled': 'No modules installed. Import a trusted mod file above.'", 'English mod manager empty-state label missing');
+  assertContains(contentContent, "'mod.noneInstalled': 'No hay modulos instalados. Importa arriba un archivo de modulo de confianza.'", 'Spanish mod manager empty-state label missing');
   assertContains(contentContent, "'mod.confirmDelete': 'Delete this module? This cannot be undone.'", 'English mod manager delete warning missing');
   assertContains(contentContent, "'mod.confirmDelete': 'Borrar este modulo? Esta accion no se puede deshacer.'", 'Spanish mod manager delete warning missing');
   assertContains(contentContent, "'mod.enableFailed': 'Could not enable {name}: {message}'", 'English mod enable failure label missing');
@@ -4753,7 +5788,10 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'combat.enemyReinforces': '{enemy} pide ayuda! {reinforcement} se une al combate.'", 'Spanish reinforcement log missing');
   assertContains(contentContent, "'market.title': 'Module Samples'", 'English marketplace sample title missing');
   assertContains(contentContent, "'market.title': 'Ejemplos de modulos'", 'Spanish marketplace sample title missing');
-  assertContains(contentContent, "'market.subtitle': 'Preview local sample module fixtures and modding workflows'", 'English marketplace fixture subtitle missing');
+  assertContains(contentContent, "'market.hostCatalog': 'Host Catalog'", 'English host-catalog label missing');
+  assertContains(contentContent, "'market.hostCatalog': 'Catalogo del host'", 'Spanish host-catalog label missing');
+  assertContains(contentContent, "'market.subtitle': 'Modules supplied and governed by this game host.'", 'English host-catalog subtitle missing');
+  assertContains(contentContent, "'market.subtitle': 'Modulos suministrados y administrados por el servidor de este juego.'", 'Spanish host-catalog subtitle missing');
   assertContains(contentContent, "'market.sampleCatalog': 'Sample Catalog'", 'English marketplace sample-catalog label missing');
   assertContains(contentContent, "'market.installSampleModule': 'Install fixture {name}'", 'English marketplace fixture install action missing');
   assertContains(contentContent, "'market.installSampleModule': 'Instalar fixture {name}'", 'Spanish marketplace fixture install action missing');
@@ -4861,12 +5899,13 @@ test('Settings clear saves button is wired to an implemented handler', () => {
 test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertContains(template, 'data-i18n="mod.title"', 'Mod manager fallback title should opt into static localization');
   assertContains(template, 'data-i18n="mod.subtitle"', 'Mod manager fallback subtitle should opt into static localization');
-  assertContains(template, '<h1 style="color: var(--accent-primary); margin: 0;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>', 'Mod manager header should leave room for a persistent close button');
+  assertContains(template, '<h1 id="mod-manager-title" style="color: var(--accent-primary); margin: 0;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>', 'Mod manager header should expose a persistent accessible heading');
   assertContains(template, 'title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle"', 'Mod manager should expose a persistent localized close button');
   assertContains(template, 'data-i18n="mod.import"', 'Mod import label should opt into static localization');
   assertContains(template, 'data-i18n-title="mod.importTitle"', 'Mod import title should opt into static localization');
-  assertContains(template, 'data-i18n="mod.createExample"', 'Mod create-example label should opt into static localization');
-  assertContains(template, 'data-i18n-title="mod.createExampleTitle"', 'Mod create-example title should opt into static localization');
+  assertNotContains(template, 'data-command-control="create-example-module"', 'Developer example generation should not be exposed in the player-facing Mod Manager');
+  assertContains(template, 'data-host-catalog-entry hidden', 'Host Catalog should remain hidden until a real host catalog is loaded');
+  assertContains(template, 'data-i18n="market.hostCatalog"', 'Host Catalog entry should opt into static localization');
   assertContains(template, 'data-i18n-title="mod.closeTitle"', 'Mod close title should opt into static localization');
   assertContains(modUiContent, "label(key, fallback, vars = {})", 'ModUI localization helper missing');
   assertContains(modUiContent, "escapeHtml(value)", 'ModUI HTML escaping helper missing');
@@ -4897,29 +5936,41 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertNotContains(modUiContent, "${mod.manifest.description || 'No description'}", 'Mod descriptions should not be inserted directly into HTML');
 });
 
-test('Marketplace UI uses localized safe rendering for catalog metadata', () => {
-  assertContains(template, 'data-i18n="market.title"', 'Marketplace fallback title should opt into static localization');
-  assertContains(template, 'data-i18n="market.subtitle"', 'Marketplace fallback subtitle should opt into static localization');
-  assertContains(template, 'Preview local sample module fixtures and modding workflows', 'Marketplace fallback subtitle should clarify entries are local fixtures');
-  assertContains(template, '<h1 style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.title">Module Samples</span></h1>', 'Marketplace header should describe sample fixtures and leave room for a persistent close button');
-  assertContains(template, 'title="Close module samples" aria-label="Close module samples" data-i18n="ui.close" data-i18n-title="market.closeTitle"', 'Marketplace should expose a persistent localized close button');
-  assertContains(template, 'data-i18n="market.browse"', 'Marketplace fallback browse button should localize');
+test('Public release notes and run-independent diagnostics are reachable from system navigation', () => {
+  assertContains(template, 'id="screen-release"', 'Release notes should have a dedicated overlay');
+  assertContains(template, 'id="screen-activity"', 'Run-independent Activity Log should have a dedicated overlay');
+  assertContains(template, 'id="screen-release" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="release-notes-title"', 'Release notes should expose labelled modal semantics');
+  assertContains(template, 'id="screen-activity" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="system-activity-title"', 'Activity Log should expose labelled modal semantics');
+  assertContains(template, 'id="screen-providers" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="ai-provider-title"', 'AI Providers should expose labelled modal semantics');
+  assertContains(template, 'data-command-control="open-release-notes"', 'Main and in-game navigation should expose release notes');
+  assertContains(template, 'data-command-control="open-activity-log"', 'Startup and system navigation should expose the Activity Log');
+  assertContains(template, 'id="system-log-content"', 'System Activity Log should expose a dedicated live log region');
+  assertContains(appContent, 'showActivityLogScreen()', 'App should expose origin-aware Activity Log navigation');
+  assertContains(appContent, 'showReleaseNotes()', 'App should expose origin-aware release-note navigation');
+  assertContains(appContent, "this._getStoredValue('releaseSeen') === release.version", 'Update notice should be once per release version');
+  assertContains(logViewContent, "containerId: 'system-log-content'", 'Shared Activity Log renderer should update the run-independent surface');
+});
+
+test('Host Catalog UI uses localized safe rendering while samples remain internal fixtures', () => {
+  assertContains(template, '<h1 id="host-catalog-title" style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></h1>', 'Host Catalog fallback should expose an accessible server-supplied catalog heading');
+  assertContains(template, 'data-i18n="market.subtitle">Modules supplied and governed by this game host.</p>', 'Host Catalog fallback description should opt into localization');
+  assertContains(template, 'title="Close host catalog" aria-label="Close host catalog" data-i18n="ui.close" data-i18n-title="market.closeTitle"', 'Host Catalog should expose a persistent localized close button');
+  assertNotContains(template, 'data-command-control="browse-marketplace-samples"', 'Player UI should not expose the development sample browser');
   assertContains(template, 'id="market-content" data-command-surface="marketplace" data-command-mode="system"', 'Marketplace fallback should identify itself as a system surface');
-  assertContains(template, 'data-command-control="browse-marketplace-samples"', 'Marketplace fallback browse control should be classified');
   assertContains(template, 'data-command-control="open-installed-modules"', 'Marketplace fallback installed-modules control should be classified');
   assertContains(template, 'data-command-control="close-marketplace"', 'Marketplace fallback close controls should be classified');
   assertContains(template, 'data-command-control="close-marketplace" data-command-slot="exit"', 'Marketplace fallback close controls should identify the canonical exit slot');
   assertContains(marketScreenContent, "label(key, fallback, vars = {})", 'Marketplace localization helper missing');
   assertContains(marketScreenContent, "escapeHtml(value)", 'Marketplace HTML escaping helper missing');
-  assertContains(marketScreenContent, "this.label('market.title'", 'Marketplace title should localize');
-  assertContains(marketScreenContent, "this.label('market.title', 'Module Samples')", 'Marketplace dynamic title should describe sample fixtures');
-  assertContains(marketScreenContent, "this.label('market.subtitle', 'Preview local sample module fixtures and modding workflows')", 'Marketplace dynamic subtitle should clarify sample fixture catalog status');
+  assertContains(marketScreenContent, "this.label('market.hostCatalog', 'Host Catalog')", 'Hosted catalog title should localize');
+  assertContains(marketScreenContent, "this.label('market.subtitle', 'Modules supplied and governed by this game host.')", 'Hosted catalog subtitle should localize');
+  assertContains(marketScreenContent, 'if (!hasHostCatalog)', 'Catalog rendering should reject no-host fixture access');
+  assertContains(marketScreenContent, 'ModUI.showModScreen();', 'No-host catalog access should return to the local Mod Manager');
+  assertNotContains(marketScreenContent, 'return hosted.length ? hosted : MODULE_MARKETPLACE.sampleModules;', 'Catalog queries should never fall back to development fixtures');
   assertContains(marketScreenContent, "sampleModules: [", 'Marketplace should name its in-code entries as samples');
   assertContains(marketScreenContent, 'Sample local catalog fixtures. This is not a remote marketplace feed.', 'Marketplace should document that catalog data is sample-only fixtures');
   assertContains(marketScreenContent, "name: 'Safe Biome Fixture'", 'Marketplace sample entries should use explicit fixture names');
   assertContains(marketScreenContent, "description: 'Fixture stub for the safe biome-pack install path'", 'Marketplace sample entries should use explicit fixture descriptions');
-  assertContains(marketScreenContent, "this.label('market.sampleCatalog', 'Sample Catalog')", 'Marketplace section should be labeled as a sample catalog');
-  assertContains(marketScreenContent, 'Local fixture entry for testing install, enable, filter, and sorting flows. Installed samples are stubs, not full gameplay packs.', 'Marketplace sample fallback should describe fixtures and stubs instead of real staff picks');
   assertContains(marketScreenContent, "this.label('market.search'", 'Marketplace search placeholder should localize');
   assertContains(marketScreenContent, "this.label('market.installSampleModule'", 'Marketplace sample install button title should localize');
   assertContains(marketScreenContent, "this.label('market.closeTitle'", 'Marketplace dynamic close title should localize');
@@ -4954,7 +6005,6 @@ test('Marketplace UI uses localized safe rendering for catalog metadata', () => 
   assertContains(marketScreenContent, 'data-command-control="install-sample-module"', 'Marketplace dynamic install controls should be classified');
   assertNotContains(marketScreenContent, "console.log('Filter:", 'Marketplace filter should not be a console-only placeholder');
   assertNotContains(marketScreenContent, "console.log('Sort by:", 'Marketplace sort should not be a console-only placeholder');
-  assertContains(marketScreenContent, 'const sample = MODULE_MARKETPLACE.sampleModules[0] || {}', 'Marketplace sample callout should read root sample module data');
   assertContains(marketScreenContent, 'MODULE_MARKETPLACE.sampleModules.find', 'Marketplace install should read root sample module data');
   assertContains(marketScreenContent, "this.escapeHtml(mod.name)", 'Marketplace module names should be escaped before rendering');
   assertContains(marketScreenContent, "this.escapeHtml(mod.description)", 'Marketplace descriptions should be escaped before rendering');
@@ -4983,7 +6033,7 @@ test('Overlay close controls clear active overlay state', () => {
   assertContains(template, 'class="menu-actions"', 'Main menu actions should have a stable width-bounded container class');
   assertContains(template, '.menu-primary-actions .action-btn', 'Main menu play buttons should have a stable scoped sizing rule');
   assertContains(globalNavContent, 'return App.returnToGame();', 'global return helper should preserve App-level return context');
-  assertContains(appContent, "['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'save-manager'].forEach", 'App returnToGame should close all overlay surfaces together');
+  assertContains(appContent, "['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'screen-release', 'screen-activity', 'save-manager'].forEach", 'App returnToGame should close all overlay surfaces together');
   assertContains(appContent, "el) { el.style.display = 'none'; el.classList.remove('active'); }", 'App returnToGame should clear active class from closed overlays');
   assertContains(template, 'onclick="App.openSettingsFromMenu()"', 'Main menu Settings should preserve menu return context');
   assertContains(settingsFlowContent, "settingsReturnScreen = 'menu'", 'Settings opened from the main menu should store an explicit menu return context');
@@ -5084,6 +6134,7 @@ test('Settings overlay returns to live game from the app menu route', () => {
 test('Nested system screens return through Settings and Mods origins', () => {
   const screenIds = ['screen-menu', 'screen-settings', 'screen-providers', 'screen-game', 'screen-create', 'screen-mods', 'screen-market', 'save-manager'];
   const { App, document } = loadAppForCombat(() => 0.5, {
+    hostCatalog: [{ id: 'host-fixture' }],
     querySelectorAll(selector, elements) {
       if (selector !== '.screen') return [];
       return screenIds.map(id => {
@@ -5108,10 +6159,10 @@ test('Nested system screens return through Settings and Mods origins', () => {
 
   App.showModScreen();
   App.showMarketScreen();
-  assertEqual(App.screen, 'market', 'Mods should open Module Samples');
-  assertEqual(App.overlayReturnStack.join(','), 'menu,mods', 'Module Samples should remember Mods and the underlying menu origin');
+  assertEqual(App.screen, 'market', 'Mods should open the Host Catalog when supplied');
+  assertEqual(App.overlayReturnStack.join(','), 'menu,mods', 'Host Catalog should remember Mods and the underlying menu origin');
   App.returnToGame();
-  assertEqual(App.screen, 'mods', 'Closing Module Samples should return to Mods');
+  assertEqual(App.screen, 'mods', 'Closing Host Catalog should return to Mods');
   assertEqual(App.overlayReturnStack.join(','), 'menu', 'Returning to Mods should retain its menu origin');
   App.returnToGame();
   assertEqual(App.screen, 'menu', 'Closing returned Mods should restore the main menu');
@@ -5121,10 +6172,18 @@ test('Nested system screens return through Settings and Mods origins', () => {
   App.showScreen('game');
   App.showMarketScreen();
   App.showModScreen();
-  assertEqual(App.screen, 'mods', 'My Modules should switch directly from Module Samples to Mods');
+  assertEqual(App.screen, 'mods', 'My Modules should switch directly from Host Catalog to Mods');
   assertEqual(App.overlayReturnStack.join(','), 'game', 'Switching between sibling module screens should preserve the live-game origin');
   App.returnToGame();
   assertEqual(App.screen, 'game', 'Closing switched Mods should restore the live game');
+});
+
+test('No-host builds keep development catalogs out of player navigation', () => {
+  const { App } = loadAppForCombat();
+  App.screen = 'menu';
+  App.showModScreen();
+  App.showMarketScreen();
+  assertEqual(App.screen, 'mods', 'No-host catalog route should remain in the Mod Manager');
 });
 
 test('Main menu keeps play primary and nests advanced system destinations', () => {
@@ -5140,10 +6199,10 @@ test('Main menu keeps play primary and nests advanced system destinations', () =
   assertContains(menuHtml, 'data-command-control="open-mods"', 'Main menu should retain Mods');
   assertContains(menuHtml, 'data-command-control="open-help"', 'Main menu should retain Tutorial');
   assertNotContains(menuHtml, 'data-command-control="open-ai-providers"', 'AI Providers should not remain a top-level main-menu action');
-  assertNotContains(menuHtml, 'data-command-control="open-market"', 'Module Samples should not remain a top-level main-menu action');
+  assertNotContains(menuHtml, 'data-command-control="open-market"', 'Host Catalog should not become a top-level main-menu action');
   assertContains(template, 'data-command-control="open-ai-providers"', 'Settings should expose AI Providers');
   assertContains(template, 'data-i18n="settings.aiProvidersDescription"', 'Settings should explain the AI Providers destination');
-  assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="open-market"', 'Mods should expose Module Samples');
+  assertContains(template, 'data-host-catalog-entry hidden data-command-surface="module-manager" data-command-mode="system" data-command-control="open-market"', 'Mods should conditionally expose the Host Catalog');
   assertContains(template, '.screen-menu {', 'Main menu should have a dedicated responsive screen rule');
   assertContains(template, 'overflow-y: auto;', 'Main menu should provide a vertical scrolling fallback');
   assertContains(template, '@media (max-height: 700px)', 'Short viewports should receive compact main-menu spacing');
@@ -5257,13 +6316,13 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, "App.closeAppMenu(); App.showSaveManager('save')", 'App menu should expose Save without a top-level nav button');
   assertContains(template, "App.closeAppMenu(); App.showSaveManager('load')", 'App menu should expose Load without a top-level nav button');
   assertContains(template, 'App.openSettingsFromGame()', 'App menu should expose Settings through the live-game return route');
-  assertContains(template, 'App.closeAppMenu(); App.showMarketScreen()', 'App menu should expose Market');
+  assertContains(template, 'App.closeAppMenu(); App.showMarketScreen()', 'App menu should expose the Host Catalog when available');
   assertContains(template, 'App.closeAppMenu(); App.showModScreen()', 'App menu should expose Mods');
   assertContains(template, 'App.closeAppMenu(); App.showTutorial()', 'App menu should expose Help');
   assertContains(template, 'role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-save-slots"', 'App menu Save should identify its system route');
   assertContains(template, 'role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-load-slots"', 'App menu Load should identify its system route');
   assertContains(template, 'role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-settings"', 'App menu Settings should identify its system route');
-  assertContains(template, 'role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-market"', 'App menu Market should identify its system route');
+  assertContains(template, 'role="menuitem" data-host-catalog-entry hidden data-command-surface="app-system" data-command-mode="system" data-command-control="open-market"', 'App menu Host Catalog should be gated and identify its system route');
   assertContains(template, 'role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-mods"', 'App menu Mods should identify its system route');
   assertContains(template, 'role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-help"', 'App menu Help should identify its system route');
   assertContains(template, 'aria-label="Toggle map panel"', 'Map nav button should expose accessible label');
@@ -5286,7 +6345,8 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertNotContains(navHtml, 'data-i18n="ui.menu.market"', 'Visible header nav should not include Market');
   assertNotContains(navHtml, 'data-i18n="ui.menu.mods"', 'Visible header nav should not include Mods');
   assertNotContains(navHtml, 'data-i18n="ui.help"', 'Visible header nav should not include Help');
-  assertContains(appContent, "showMarketScreen() { return this.openOverlayScreen('market'); }", 'Market helper should preserve overlay return context');
+  assertContains(appContent, 'if (!this.hasHostCatalog()) return this.showModScreen();', 'Host Catalog route should fall back to Mods when no catalog is supplied');
+  assertContains(appContent, "return this.openOverlayScreen('market');", 'Host Catalog helper should preserve overlay return context');
   assertContains(appContent, 'initAppMenu()', 'App should install app-menu dismissal handlers');
   assertContains(appContent, "event?.key === 'Escape'", 'App menu should close on Escape');
   assertContains(appContent, 'closeAppMenu()', 'App should expose app-menu close behavior');
@@ -5351,7 +6411,7 @@ test('Static setup review and system controls identify non-composer surfaces', (
   assertContains(template, 'data-command-surface="settings-detail" data-command-mode="system" data-command-control="close-settings" data-command-slot="exit"', 'Settings close should identify the canonical exit slot');
 
   assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="import-module"', 'Module import should identify as a module-manager system control');
-  assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="create-example-module"', 'Create example module should identify as a module-manager system control');
+  assertNotContains(template, 'data-command-control="create-example-module"', 'Create example module should remain a developer-only utility');
   assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules"', 'Module manager close should identify as a module-manager system exit');
   assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" data-command-slot="exit"', 'Module manager close should identify the canonical exit slot');
   assertContains(modUiContent, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="toggle-module"', 'Dynamic module toggle buttons should identify as module-manager controls');
@@ -5742,7 +6802,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-map-card {\n                order: 1;\n                grid-row: 1;\n                align-self: end;', 'mobile traversal stage should anchor to the fixed hinge above the composer');
   assertContains(template, '.mobile-scene-sheet {\n                order: 2;', 'mobile Scene Feed should sit below the mode-specific stage area');
   assertContains(template, '.mobile-story-latest {\n                margin-top: 4px;\n                overflow: visible;', 'mobile Scene Feed should stay in the main stage flow instead of becoming a clipped nested scroll box');
-  assertContains(template, '.mobile-play-surface:not(.combat-active) .mobile-scene-header', 'mobile exploration Scene Feed should keep review access without consuming a full feedback row');
+  assertContains(template, '.mobile-play-surface:not(.combat-active) .mobile-scene-header', 'mobile exploration Scene Feed should keep compact review access');
+  assertContains(template, 'position: static;\n                justify-content: flex-end;\n                min-height: 30px;', 'mobile exploration Scene Feed control should reserve its own header row instead of overlapping narration');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet:not(.rich-content)', 'mobile combat scene should split context and feed ordering without creating a nested feed box');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-story-latest {\n                order: 3;', 'mobile combat Scene Feed should render after enemy and party belts');
   assertContains(template, '.mobile-story-latest', 'mobile Scene Feed should expose the latest beat inline in the stage');
@@ -6089,7 +7150,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const elements = new Map();
   const body = makeElement();
   const listeners = new Map();
-  const appWindow = options.window || {};
+  const appWindow = { YAW_RELEASE: releaseInfo, ...(options.window || {}) };
   const document = {
     body,
     activeElement: body,
@@ -6176,6 +7237,9 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const moduleSystem = {
     DB_NAME: 'YAW_Modules',
     LEGACY_DB_NAME: 'FFFme_Modules',
+    getHostCatalog() {
+      return Array.isArray(options.hostCatalog) ? options.hostCatalog : [];
+    },
     executeHook(event, ...args) {
       hooks.push({ event, payload: args[0], args });
       return Promise.resolve();
@@ -18601,7 +19665,7 @@ test('Activity log template exposes filters search export and mobile controls', 
   assertContains(template, 'id="mobile-activity-log"', 'Mobile should expose a collapsible activity log');
   assertContains(template, 'id="mobile-activity-log" data-surface-role="history-drawer"', 'Mobile activity log should identify as a secondary history drawer');
   assertContains(template, 'data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-mobile-history"', 'Mobile activity log summary should identify its history toggle control');
-  assertContains(template, 'data-command-control="toggle-history"', 'App menu should expose Activity Log as an explicit history toggle');
+  assertContains(template, 'data-command-control="open-activity-log"', 'System navigation should expose Activity Log as a dedicated overlay route');
   assertContains(template, 'id="mobile-log-list"', 'Mobile activity log should expose recent entries');
   assertContains(template, 'class="log-header-actions" data-command-surface="history-controls" data-command-mode="history"', 'Desktop log header actions should identify as history controls');
   assertContains(template, 'id="log-toggle-collapse" data-command-surface="history-controls" data-command-mode="history" data-command-control="minimize-history"', 'Log minimize button should identify as a history control');
@@ -18613,6 +19677,8 @@ test('Activity log template exposes filters search export and mobile controls', 
   assertContains(template, 'id="log-search" type="search" data-command-surface="history-filter" data-command-mode="history" data-command-control="search-history"', 'Search should identify as a history search control');
   assertContains(template, 'data-log-filter="all"', 'Log should expose All filter');
   assertContains(template, 'data-log-filter="combat"', 'Log should expose Combat filter');
+  assertContains(template, 'data-log-filter="narration"', 'Log should expose a Narration filter');
+  assertContains(template, 'data-log-filter="error"', 'Log should expose an Errors filter');
   assertContains(template, 'id="log-search"', 'Log should expose search input');
   assertContains(template, 'id="log-toggle-collapse"', 'Log should expose minimize control');
   assertContains(template, 'id="log-toggle-expand"', 'Log should expose expand control');
@@ -18626,6 +19692,19 @@ test('Activity log template exposes filters search export and mobile controls', 
   assertContains(appContent, 'yaw-log-view', 'Log view preferences should persist separately');
   assertContains(appContent, 'loadLogViewPreferences()', 'Log view preferences should load during init');
   assertContains(appContent, 'LOG_CATEGORIES:', 'Log category registry should exist');
+  assertContains(appContent, "error: { label: 'Error'", 'Log category registry should identify narration failures as errors');
+  assertContains(appContent, "narration: { label: 'Narration'", 'Log category registry should identify narration lifecycle entries');
+  assertContains(contentSystemContent, "'ui.log.narration': 'Narration'", 'English Activity Log narration filter label missing');
+  assertContains(contentSystemContent, "'ui.log.narration': 'Narracion'", 'Spanish Activity Log narration filter label missing');
+  assertContains(contentSystemContent, "'ui.log.errors': 'Errors'", 'English Activity Log error filter label missing');
+  assertContains(contentSystemContent, "'ui.log.errors': 'Errores'", 'Spanish Activity Log error filter label missing');
+  assertContains(contentSystemContent, "'scene.narration.failed': 'Narration failed", 'English narration failure guidance missing');
+  assertContains(contentSystemContent, "'scene.narration.failed': 'La narracion fallo", 'Spanish narration failure guidance missing');
+  assertContains(contentSystemContent, "'scene.narration.providerNotSelected': 'Narration is enabled", 'English missing-provider guidance missing');
+  assertContains(contentSystemContent, "'scene.narration.providerUnavailable': 'The selected narration provider is unavailable", 'English disconnected-provider guidance missing');
+  assertContains(moduleSystemContent, "logOperationalError(App, moduleId, 'provider_connection_not_selected')", 'Narration modules should report missing provider selections');
+  assertContains(moduleSystemContent, "logOperationalError(App, moduleId, 'provider_connection_unavailable')", 'Narration modules should report disconnected providers');
+  assertContains(narrationSystemContent, ".filter(entry => !['narration', 'error', 'mod'].includes", 'Narration diagnostics should not feed back into provider story context');
   assertContains(template, '.log-category', 'Log category badge style should exist');
   assertContains(template, '.mobile-activity-log', 'Mobile activity log style should exist');
   assertContains(template, '.mobile-activity-log:not([open])', 'Closed mobile Activity Log should stay out of the normal play stack');
@@ -18682,6 +19761,9 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, '.story-meta-line', 'Story capsule should support result-first metadata layout');
   assertContains(template, '.scene-beat-stream', 'Scene Feed should style inline newest-first beat streams');
   assertContains(storyEventsContent, 'streamHtml(app, { limit = this.maxEvents } = {})', 'Scene Feed renderer should provide the retained beat stream');
+  assertContains(storyEventsContent, 'hasReadyNarration(app, \'exchange\', group.id)', 'Scene Feed should detect ready exchange narration through the shared narration system');
+  assertContains(storyEventsContent, 'scene-exchange-source-events', 'Ready narration should retain deterministic source events in an expandable disclosure');
+  assertContains(contentSystemContent, "'scene.narration.sourceEvents'", 'Source-event disclosure labels should be localized');
   assertContains(storyEventsContent, 'exchangeGroups(app, events = [])', 'Scene Feed renderer should group causal exchanges consistently');
   assertContains(storyEventsContent, 'applyStreamElement(app, element, event, html', 'Scene Feed renderer should apply stream metadata to canonical slots');
   assertContains(template, '.story-event-detail-meta', 'Expanded Scene Feed should style structured beat metadata');
@@ -18708,6 +19790,37 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(storyEventsContent, 'emitRecruitmentBeat(app, target, actor = app.player, kind = \'blocked\', reason = \'\')', 'Scene Feed helper should own recruitment beat emission');
   assertContains(movementFlowContent, 'app.emitTileObservation?.(tile, { wasExplored })', 'Movement should emit coalesced tile-entry observation beats after tile state settles');
   assertNotContains(storyEventsContent, 'setTimeout', 'Latest Scene Beat should not disappear on a timer');
+});
+
+test('Ready narration becomes primary while deterministic Scene Beats remain accessible', () => {
+  let ready = true;
+  const narration = {
+    hasReadyNarration() { return ready; },
+    narrationHtml(app, scope) {
+      if (scope !== 'exchange') return '';
+      return ready
+        ? '<aside class="scene-narration ready">Narrated passage.</aside>'
+        : '<aside class="scene-narration pending">Narration pending.</aside>';
+    }
+  };
+  const story = new Function('YAW_NARRATION_SYSTEM', `${storyEventsContent}\nreturn YAW_STORY_EVENTS;`)(narration);
+  const app = {
+    storyEvents: [{
+      id: 'beat-1', exchangeId: 'exchange-1', summary: 'Deterministic fact.',
+      actorNames: ['You'], targetNames: ['Wolfkin'], intentLabel: 'Fight', metadata: {}
+    }],
+    _escapeHtml: value => String(value),
+    _label: (key, fallback, vars = {}) => fallback.replace('{count}', vars.count ?? '')
+  };
+  const narrated = story.streamHtml(app);
+  assert(narrated.indexOf('Narrated passage.') < narrated.indexOf('Deterministic fact.'), 'Ready narration should render before source beats');
+  assertContains(narrated, '<details class="scene-exchange-source-events">', 'Ready narration should retain source beats in a native disclosure');
+  assertContains(narrated, '<summary>Events (1)</summary>', 'Source disclosure should identify its event count');
+
+  ready = false;
+  const pending = story.streamHtml(app);
+  assert(pending.indexOf('Deterministic fact.') < pending.indexOf('Narration pending.'), 'Pending narration should leave the deterministic summary primary');
+  assertNotContains(pending, 'scene-exchange-source-events', 'Fallback source beats should remain directly visible');
 });
 
 test('Scene Feed DSL contract documents deterministic template and log boundaries', () => {
@@ -19109,6 +20222,23 @@ test('Tile-entry observation emits one coalesced Scene Beat without activity log
   assertContains(event.summary, 'Old Coin', 'Observation should include visible tile items');
   assertEqual(event.subEvents.length >= 4, true, 'Observation should preserve sub-event metadata for landmarks, creatures, remains, and items');
   assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'Great Tree', 'Desktop Scene Feed should show the latest tile observation');
+});
+
+test('Plain exploration tiles emit narratable observations from their authored description', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'you-plain-tile' });
+  const tile = {
+    x: 6, y: 2, biome: 'road', description: 'A gentle stream bubbles nearby.',
+    hasLandmark: false, structure: null, creatures: [], items: []
+  };
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.location = { x: 6, y: 2 };
+  const event = App.emitTileObservation(tile, { wasExplored: false });
+  assert(event, 'An ordinary described tile should produce a tile-entry observation');
+  assertContains(event.summary, 'A gentle stream bubbles nearby.', 'Plain tile observations should carry authored setting text to narration');
+  assert(event.metadata.tileNarrativeState?.fingerprint, 'Tile observations should snapshot a stable narrative-state fingerprint');
 });
 
 test('Repeated same-visit tile observations keep only the newest populated beat', () => {
@@ -19687,7 +20817,7 @@ test('Activity log renders relative timestamps list roles and mobile recent entr
   });
   const { App, elements } = loadAppForCombat(() => 0.5, {
     querySelectorAll(selector) {
-      return selector === '.log-filter-btn' ? filterButtons : [];
+      return selector.includes('.log-filter-btn') ? filterButtons : [];
     }
   });
   App.updateLanguage('es');

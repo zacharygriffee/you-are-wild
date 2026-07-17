@@ -142,8 +142,11 @@ Content-tier filtering happens before template text is rendered. Store neutral m
 
 Generated narration is not a Scene Beat field. Core stores it in the separate
 `App.sceneNarrations` presentation lane, keyed to a beat or exchange. The
-deterministic summary remains visible as mechanical truth, with ready narration
-rendered beneath it as escaped, provider-attributed secondary prose.
+deterministic summary remains mechanical truth. Until narration is ready it
+stays directly visible. When exchange narration becomes ready, escaped and
+provider-attributed narration becomes the primary passage while the source
+Scene Beats remain available through a native **Events (n)** disclosure. The
+Activity Log remains unchanged as durable technical history.
 
 Pending narration may show a quiet status. Failed or cancelled requests do not
 replace deterministic prose. Ready/failed/cancelled records may persist in a
@@ -156,12 +159,25 @@ boundaries and transactions close with their focused window. Standalone scene
 actions use a short fallback debounce. Rendering, opening the Scene Sheet, and
 loading saved beats never issue narration requests.
 
+Desktop, mobile, and the expanded Scene Feed use this same fallback and source-
+event disclosure contract. Scroll anchoring targets visible exchange groups so
+closing the source-event disclosure cannot strand navigation on hidden beats.
+
 Each committed beat records a versioned context snapshot containing its mode,
 location coordinates/label/biome, and day/hour label. Narration context for an
 older beat or exchange uses that recorded snapshot and stops recent history at
 the target. New game and load boundaries invalidate scheduled narrative hooks,
 exchange-close dedupe, fallback timers, and in-flight provider requests before
 new or restored records become active.
+
+Every narratable `tile-entry` beat also carries a core-owned
+`metadata.tileNarrativeState` descriptor. Ready narration for the latest live
+descriptor may replace the center tile's authored description, but never its
+mechanical state or title. A mismatch caused by movement, visible creature
+state, loose items, place metadata, visit kind, day/night, language, or policy
+restores deterministic center text and commits a fresh observation. Matching
+prose may be reused from the bounded persisted tile-presentation cache without
+replaying the provider request.
 
 ## Activity Log Separation
 

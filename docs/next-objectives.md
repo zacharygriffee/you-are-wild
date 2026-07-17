@@ -8,8 +8,10 @@ This is the short handoff for unfinished work. Completed implementation history 
 - `dist/you-are-wild.html` is generated, ignored on `main`, and uploaded by CI.
 - Current row/reach work is Row-Blocking V2: ranged Fight reaches front, protected back, and flying targets from either row; grounded close-contact Feast and Play/Seduce require front-row access; flying does not waive contact requirements.
 - Core gameplay is deterministic and does not depend on an LLM or remote service.
-- Startup navigation keeps play actions primary, nests AI Providers under Settings and Module Samples under Mods, and preserves origin-aware returns. Vertical scrolling is an accessibility fallback rather than the normal layout.
+- Startup navigation keeps play actions primary, nests AI Providers under Settings, shows Host Catalog only when a real host catalog is loaded, and preserves origin-aware returns. Development fixtures are not exposed as player features. Vertical scrolling is an accessibility fallback rather than the normal layout.
 - Future implementation slices must run `npm run full-build`, `npm run audit:branding`, and `git diff --check`. Layout changes also require browser smoke at `412x915` and `1365x768`.
+- First-party narration references now include provider-backed Simple Narrator, offline Template Narrator, and opt-in Narration Diagnostics. Simple Narrator's Storyteller, Character reactions, and Hybrid profiles have explicit contracts, while mod instructions remain bounded and cannot override viewpoint, profile, deterministic, policy, plain-text, or output-length constraints.
+- Simple Narrator promotes ready tile observations into the center passage and reuses a bounded state-fingerprinted cache for unchanged revisits. Changed visible tile state restores deterministic text and produces a fresh observation before narration is requested again.
 
 ## Active Objectives
 
@@ -35,6 +37,15 @@ This is the short handoff for unfinished work. Completed implementation history 
 3. Strengthen deterministic map playability: start-area invariants, traversal metadata, roads/bridges/coasts, POI budgets, routes, and encounter pressure.
 4. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
 5. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, the dedicated AI Providers panel, Puter, and session-only browser-direct OpenAI-Compatible text connections now exist. Gather playtest feedback on that lifecycle before adding OAuth, relays, MCP, image/video/audio providers, or localhost sidecars.
+6. After player-POV narration has enough playtest coverage, consider a narrator perspective setting with explicit player, first-person, third-person-limited, and cinematic modes. Keep player POV as the default and preserve the structured viewpoint-role contract across modes.
+7. Establish a lightweight default graphics layer: small local 2D tiles, sprites, icons, and restrained animation with text/emoji fallbacks, reduced-motion support, low-bandwidth operation, and no dependency on WebGL. Keep terrain and gameplay semantics independent from the selected art.
+8. Extend asset/content-pack mod seams so optional packs can provide richer tilesets, animated 2D media, and eventually capability-gated 3D models or scenes. Define performance budgets, fallback assets, provenance/licensing metadata, accessibility behavior, runtime capability checks, and cleanup/storage limits before treating heavyweight packs as supported.
+9. Design explicit user-initiated remote mod import from an HTTPS or permitted localhost package URI. Download and validate the package once, then install its package and owned assets into IndexedDB so play never hotlinks runtime media. Require CORS, bounded download and unpacked sizes, redirect/origin policy, integrity or signature metadata, manifest and game-version validation, permission/content-rating review, atomic installation, and explicit update/removal flows. Remote URIs must never auto-install, auto-update, or execute before the player confirms trust.
+
+### Release / Distribution
+
+1. Preserve immutable, rollback-ready hosted artifacts when the publishing workflow is formalized; publishing remains operator-mediated.
+2. Add a browsable archive when more than one player-facing release record exists. The bundled offline surface may continue to prioritize the current release.
 
 ## Operator-Mediated Decisions
 

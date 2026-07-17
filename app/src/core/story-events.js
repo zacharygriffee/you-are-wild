@@ -270,6 +270,90 @@ const YAW_STORY_EVENTS = {
             && Number(firstTile.y) === Number(secondTile.y);
     },
 
+    canonicalNarrativeValue(value) {
+        if (Array.isArray(value)) return value.map(item => this.canonicalNarrativeValue(item));
+        if (!value || typeof value !== 'object') return value;
+        return Object.keys(value).sort().reduce((result, key) => {
+            const next = this.canonicalNarrativeValue(value[key]);
+            if (next !== undefined) result[key] = next;
+            return result;
+        }, {});
+    },
+
+    narrativeFingerprint(value) {
+        const text = JSON.stringify(this.canonicalNarrativeValue(value));
+        let hash = 2166136261;
+        for (let index = 0; index < text.length; index++) {
+            hash ^= text.charCodeAt(index);
+            hash = Math.imul(hash, 16777619);
+        }
+        return `fnv1a-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+    },
+
+    tileNarrativeDescriptor(app, tile = null, options = {}) {
+        if (!tile || app.inInterior) return null;
+        const creatures = app._tileCreatures?.(app.creatures?.length ? app.creatures : tile.creatures || []) || [];
+        const normalizedCreatures = creatures.map(unit => ({
+            id: String(unit?.id || unit?.name || ''),
+            name: String(unit?.name || ''),
+            species: String(unit?.species || ''),
+            disposition: String(unit?.disposition || ''),
+            corpse: Boolean(app._isCorpse?.(unit)),
+            punishment: Number(unit?.CPun ?? 0),
+            maxPunishment: Number(unit?.MPun ?? 0),
+            hungerBand: Math.max(0, Math.min(4, Math.floor(Number(unit?.hunger || 0) / 25))),
+            restrained: Boolean(unit?.restrained || unit?.isRestrained),
+            questAvailable: Boolean(unit?.quest)
+        })).sort((first, second) => `${first.id}:${first.name}`.localeCompare(`${second.id}:${second.name}`));
+        const normalizedItems = (Array.isArray(tile.items) ? tile.items : []).map(item => ({
+            id: String(item?.id || ''),
+            name: String(item?.name || item || ''),
+            quantity: Math.max(1, Number(item?.quantity || item?.qty || 1))
+        })).sort((first, second) => `${first.id}:${first.name}:${first.quantity}`.localeCompare(`${second.id}:${second.name}:${second.quantity}`));
+        const policy = typeof CONTENT !== 'undefined' ? CONTENT.preferences || {} : {};
+        const state = {
+            version: 1,
+            worldId: String(app.worldMeta?.worldId || 'world_default'),
+            tile: {
+                x: Number(tile.x ?? app.location?.x ?? 0),
+                y: Number(tile.y ?? app.location?.y ?? 0),
+                biome: String(tile.biome || ''),
+                displayBiome: String(tile.displayBiome || ''),
+                description: String(tile.description || ''),
+                structure: String(tile.structure || ''),
+                structureLooted: Boolean(tile.structureLooted),
+                landmark: tile.hasLandmark ? String(tile.landmarkName || '') : '',
+                resourceSearched: Boolean(tile.resourceSearched)
+            },
+            visitKind: options.wasExplored ? 'return' : 'arrival',
+            dayPhase: app._isNight?.() ? 'night' : 'day',
+            language: String(policy.language || 'en'),
+            posture: policy.posture === 'mature' ? 'mature' : 'sfw',
+            enabledCategories: Array.isArray(policy.enabledCategories) ? policy.enabledCategories.map(String).sort() : [],
+            creatures: normalizedCreatures,
+            items: normalizedItems
+        };
+        const tileKey = `${state.worldId}:${state.tile.x}:${state.tile.y}`;
+        return { version: 1, tileKey, fingerprint: this.narrativeFingerprint(state), state };
+    },
+
+    ensureCurrentTileObservation(app) {
+        if (!app || app.inInterior || app.combatState?.active) return null;
+        const tile = app._currentExplorationTile?.() || app.getTile?.(app.location?.x || 0, app.location?.y || 0);
+        if (!tile) return null;
+        const latest = [...(app.storyEvents || [])].reverse().find(event => {
+            const eventTile = event?.metadata?.tile;
+            return (event?.source === 'tile-entry' || event?.tags?.includes?.('tile-entry'))
+                && Number(eventTile?.x) === Number(tile.x)
+                && Number(eventTile?.y) === Number(tile.y);
+        });
+        if (!latest) return null;
+        const wasExplored = latest.metadata?.wasExplored !== false;
+        const descriptor = this.tileNarrativeDescriptor(app, tile, { wasExplored });
+        if (descriptor?.fingerprint === latest.metadata?.tileNarrativeState?.fingerprint) return null;
+        return this.emitTileObservation(app, tile, { wasExplored, reason: 'tile-state-changed' });
+    },
+
     coalescedEvents(events = []) {
         return events.reduce((result, event) => {
             const previous = result[result.length - 1];
@@ -292,6 +376,10 @@ const YAW_STORY_EVENTS = {
         const items = Array.isArray(tile.items) ? tile.items : [];
         const details = [];
         const subEvents = [];
+        if (tile.description) {
+            details.push(String(tile.description));
+            subEvents.push({ type: 'setting', summary: String(tile.description) });
+        }
         if (tile.hasLandmark && tile.landmarkName) {
             details.push(app._label('scene.observe.landmark', '{name} stands out here.', { name: tile.landmarkName }));
             subEvents.push({ type: 'landmark', summary: tile.landmarkName });
@@ -345,6 +433,7 @@ const YAW_STORY_EVENTS = {
         const intro = options.wasExplored
             ? app._label('scene.observe.return', 'You return to {place}.', { place })
             : app._label('scene.observe.enter', 'You enter {place}.', { place });
+        const tileNarrativeState = this.tileNarrativeDescriptor(app, tile, options);
         return {
             place,
             summary: `${intro} ${details.join(' ')}`.trim(),
@@ -364,7 +453,8 @@ const YAW_STORY_EVENTS = {
             ],
             metadata: {
                 tile: { x: tile.x, y: tile.y, biome: tile.biome, place },
-                wasExplored: Boolean(options.wasExplored)
+                wasExplored: Boolean(options.wasExplored),
+                tileNarrativeState
             }
         };
     },
@@ -379,7 +469,10 @@ const YAW_STORY_EVENTS = {
             time: app._timeLabel?.() || '',
             metadata: observation.metadata
         };
-        if (this.sameTileObservationVisit(previous, visit)) app.storyEvents.pop();
+        if (this.sameTileObservationVisit(previous, visit)) {
+            const removed = app.storyEvents.pop();
+            if (typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.discardTarget?.(app, removed);
+        }
         return this.emitResult(app, {
             exchangeId: app.transactionWindow?.exchangeId,
             mode: 'adventure',
@@ -569,6 +662,11 @@ const YAW_STORY_EVENTS = {
         const suppliedSnapshot = metadata.contextSnapshot && typeof metadata.contextSnapshot === 'object'
             ? metadata.contextSnapshot
             : {};
+        const suppliedViewpoint = suppliedSnapshot.viewpoint && typeof suppliedSnapshot.viewpoint === 'object'
+            ? suppliedSnapshot.viewpoint
+            : {};
+        const playerId = String(suppliedViewpoint.playerId || app.player?.id || app.player?.name || '').slice(0, 160);
+        const playerName = String(suppliedViewpoint.playerName || app.player?.name || '').slice(0, 160);
         metadata.contextSnapshot = {
             version: 1,
             mode: String(suppliedSnapshot.mode || mode),
@@ -582,6 +680,11 @@ const YAW_STORY_EVENTS = {
                 hour: Number.isFinite(Number(suppliedSnapshot.time?.hour)) ? Number(suppliedSnapshot.time.hour) : Number(app.timeHour || 0),
                 day: Number.isFinite(Number(suppliedSnapshot.time?.day)) ? Number(suppliedSnapshot.time.day) : Number(app.dayCount || 0),
                 label: String(suppliedSnapshot.time?.label || timeLabel)
+            },
+            viewpoint: {
+                mode: 'player',
+                playerId,
+                playerName
             }
         };
         return {
@@ -709,7 +812,13 @@ const YAW_STORY_EVENTS = {
                     + `</article>`;
             }).join('');
             const narration = typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.narrationHtml(app, 'exchange', group.id) : '';
-            return `<section class="${classes.join(' ')}" data-scene-exchange-id="${app._escapeHtml(group.id)}">${header}<div class="scene-exchange-events">${items}</div>${narration}</section>`;
+            const narrationReady = typeof YAW_NARRATION_SYSTEM !== 'undefined'
+                && YAW_NARRATION_SYSTEM.hasReadyNarration(app, 'exchange', group.id);
+            const sourceEvents = narrationReady
+                ? `<details class="scene-exchange-source-events"><summary>${app._escapeHtml(app._label('scene.narration.sourceEvents', 'Events ({count})', { count: group.events.length }))}</summary><div class="scene-exchange-events">${items}</div></details>`
+                : `<div class="scene-exchange-events">${items}</div>`;
+            const content = narrationReady ? `${narration}${sourceEvents}` : `${sourceEvents}${narration}`;
+            return `<section class="${classes.join(' ')}" data-scene-exchange-id="${app._escapeHtml(group.id)}">${header}${content}</section>`;
         }).join('');
     },
 
@@ -776,15 +885,15 @@ const YAW_STORY_EVENTS = {
     captureScrollAnchor(element) {
         const scroller = this.streamScroller(element);
         if (!scroller?.getBoundingClientRect || !element?.querySelectorAll) return null;
-        const beats = Array.from(element.querySelectorAll('[data-scene-beat-id]'));
-        if (!beats.length) return null;
+        const groups = Array.from(element.querySelectorAll('[data-scene-exchange-id]'));
+        if (!groups.length) return null;
         const viewport = scroller.getBoundingClientRect();
-        const firstRect = beats[0].getBoundingClientRect();
+        const firstRect = groups[0].getBoundingClientRect();
         if (firstRect.top >= viewport.top - 4) return null;
-        const anchor = beats.find(beat => beat.getBoundingClientRect().bottom > viewport.top + 4);
+        const anchor = groups.find(group => group.getBoundingClientRect().bottom > viewport.top + 4);
         if (!anchor) return null;
         return {
-            id: anchor.getAttribute('data-scene-beat-id'),
+            id: anchor.getAttribute('data-scene-exchange-id'),
             offset: anchor.getBoundingClientRect().top - viewport.top
         };
     },
@@ -792,8 +901,8 @@ const YAW_STORY_EVENTS = {
     restoreScrollAnchor(element, anchor) {
         const scroller = this.streamScroller(element);
         if (!anchor || !scroller?.getBoundingClientRect || !element?.querySelectorAll) return;
-        const match = Array.from(element.querySelectorAll('[data-scene-beat-id]'))
-            .find(beat => beat.getAttribute('data-scene-beat-id') === anchor.id);
+        const match = Array.from(element.querySelectorAll('[data-scene-exchange-id]'))
+            .find(group => group.getAttribute('data-scene-exchange-id') === anchor.id);
         if (!match) return;
         const viewport = scroller.getBoundingClientRect();
         const nextOffset = match.getBoundingClientRect().top - viewport.top;
@@ -802,7 +911,7 @@ const YAW_STORY_EVENTS = {
 
     latestBeatVisible(element) {
         const scroller = this.streamScroller(element);
-        const latest = element?.querySelector?.('.scene-beat-stream-item.latest');
+        const latest = element?.querySelector?.('.scene-exchange-group.latest');
         if (!scroller?.getBoundingClientRect || !latest?.getBoundingClientRect) return true;
         const viewport = scroller.getBoundingClientRect();
         const rect = latest.getBoundingClientRect();
@@ -831,7 +940,7 @@ const YAW_STORY_EVENTS = {
         if (!indicator || !scroller || indicator.dataset.bound === 'true') return;
         indicator.dataset.bound = 'true';
         indicator.addEventListener('click', () => {
-            const latest = element.querySelector?.('.scene-beat-stream-item.latest');
+            const latest = element.querySelector?.('.scene-exchange-group.latest');
             latest?.scrollIntoView?.({
                 block: 'nearest',
                 behavior: document.body.classList.contains('reduced-motion') ? 'auto' : 'smooth'
@@ -901,7 +1010,14 @@ const YAW_STORY_EVENTS = {
                 ? `<header class="story-event-group-header"><h3>${app._escapeHtml(group.label)}</h3><span>${app._escapeHtml(this.exchangeEventCountLabel(app, group.events.length))}</span></header>`
                 : '';
             const narration = typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.narrationHtml(app, 'exchange', group.id, { detailed: true }) : '';
-            return `<section class="story-event-group${group.label ? '' : ' unlabeled'}" data-scene-exchange-id="${app._escapeHtml(group.id)}">${header}${group.events.map(event => this.eventHtml(app, event)).join('')}${narration}</section>`;
+            const narrationReady = typeof YAW_NARRATION_SYSTEM !== 'undefined'
+                && YAW_NARRATION_SYSTEM.hasReadyNarration(app, 'exchange', group.id);
+            const items = group.events.map(event => this.eventHtml(app, event)).join('');
+            const sourceEvents = narrationReady
+                ? `<details class="scene-exchange-source-events detailed"><summary>${app._escapeHtml(app._label('scene.narration.sourceEvents', 'Events ({count})', { count: group.events.length }))}</summary>${items}</details>`
+                : items;
+            const content = narrationReady ? `${narration}${sourceEvents}` : `${sourceEvents}${narration}`;
+            return `<section class="story-event-group${group.label ? '' : ' unlabeled'}" data-scene-exchange-id="${app._escapeHtml(group.id)}">${header}${content}</section>`;
         }).join('');
     },
 

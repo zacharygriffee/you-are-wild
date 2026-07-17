@@ -4,8 +4,15 @@ Content posture, optional provider ownership, and compatibility rules are
 defined in [Content Posture And Optional Providers](content-posture-and-providers.md).
 AI transport profiles, capabilities, and credential boundaries are defined in
 [AI Providers](ai-providers.md).
+The narration-specific lifecycle, prompt hierarchy, and reference packages are
+defined in [Narration Mods](narration-mods.md).
 
 The current module system is a trusted-local mod lane. Installed module code runs in the same page context and should be treated as code the player deliberately chose to trust.
+
+Curated same-origin hosting, module provenance, host policy, runtime-origin
+requirements, and save content locks are defined in
+[Host-Supplied Modules](host-modules.md). That host lane does not change the
+trust boundary for public community packages.
 
 ## Source Of Truth
 
@@ -15,7 +22,13 @@ Maintained module code lives in:
 - `app/src/ui/mod-ui.js`
 - `app/src/ui/market-screen.js`
 
-The marketplace screen currently uses local sample catalog fixtures. It is not a remote community marketplace and should not be presented as one until a stronger package, permissions, and sandbox model exists. Sample entries must use explicit fixture names/descriptions and must not use fake social-proof metadata such as downloads, ratings, package sizes, or community/staff-pick claims. Installing a sample creates a local stub module for workflow testing; it is not a real content download. The module-tools action should route to the local Mod Manager rather than placeholder remote publishing or creator flows.
+Without a host manifest, the player-facing Mod Manager exposes trusted local
+file import and installed modules only. Development sample fixtures and the
+example-module generator remain internal test utilities rather than public
+controls. With a same-origin host manifest, a **Host Catalog** entry appears for
+the curated packages described in [Host-Supplied Modules](host-modules.md). It
+is not an arbitrary remote community marketplace and should not be presented as
+one until a stronger package, permissions, signature, and sandbox model exists.
 
 Catalog entries should declare and display `contentRating` metadata so players can see whether a pack is safe or requires a higher content tier before install or enablement.
 
@@ -115,13 +128,30 @@ Mode, location, and time are taken from the recorded target exchange rather
 than current play state. Recent beats are also bounded at the target, so a
 delayed request cannot see events that happened later.
 
+Tile-aware narrators may call
+`MODS.getCachedTileNarration({ scope, targetId, variant })` before publishing a
+request and `MODS.cacheTileNarration(narrationId, { variant })` after their own
+record becomes ready. These methods only resolve targets carrying a core
+`tileNarrativeState` fingerprint. Core bounds the cache to 32 policy-eligible
+presentation entries; the module supplies a stable variant token whenever its
+voice, profile, instructions, or output contract changes. Arbitrary action
+narration is never placed in the tile cache.
+
+Focused narration context also exposes `viewpoint`. Its `player` field is a
+bounded public narrative-unit summary, `participation` is `actor`, `target`,
+`self`, `observer`, `mixed`, or `unknown`, and `beatRoles` retains the derived
+role for each target beat. A spectating player is deliberately not added to
+`characters`; that collection continues to mean actual actors and targets.
+Player identity is captured in the target Scene Beat context snapshot so
+provider latency cannot shift the viewpoint to later game state.
+
 Orchestration packages register through `MODS.registerNarrationOrchestrator()`
 and check `await MODS.ownsNarrationExchange(envelope)` before publishing. Core
 selects one ready owner by policy and priority. This prevents standard and
 category-specific packages from narrating the same exchange.
 
 `MODS.ai.generate()` accepts a capability, opaque session connection id,
-profile id, structured input, timeout, and character limit. It returns plain
+profile id, bounded `instructions`, structured input, timeout, and character limit. It returns plain
 text and non-secret provider/model metadata. Provider modules declare
 `ai:provide`, register an adapter, and create session connections only after
 their own authorization flow. Credential-like fields are rejected from both
@@ -137,6 +167,12 @@ render in the Mod Manager. `provider_connection` declares a capability such as
 `text.generate`, stores an opaque profile id, lists compatible connected or
 reconnectable profiles, and links to AI Providers. There is deliberately no
 persistent secret setting type.
+
+A bounded string declaration may set `multiline: true` and `rows` to render an
+accessible textarea. Multiline values are normalized to LF line endings and
+are limited to 2,000 characters. Use this for mod-authored instructions or
+other prose configuration, never credentials. AI instructions are validated
+again by the provider manager before any adapter is invoked.
 
 ## Narrative And Structural Mod Lanes
 
@@ -177,6 +213,12 @@ Built-in content-pack handles exposed through `window.CONTENT_PACKS` contain bas
 Content templates registered through `CONTENT.registerTemplate(category, type, variant, templates)` use tokenized category/type/variant keys. The internal `adult` template slot remains a compatibility/provider lane, not a third core posture. Provider modules normally contribute individual tiers through `MODS.registerContentTemplate()`. Malformed registrations reject before mutating the registry.
 
 ## Future Marketplace Requirements
+
+Development-only sample fixtures and example generators are not player-facing
+marketplace entries. Local builds expose trusted file import and installed
+module management. A Host Catalog control exists only after a valid host
+catalog loads; initialization failures are recorded in the run-independent
+Activity Log while local modules remain usable.
 
 Before enabling remote/community packages, add:
 

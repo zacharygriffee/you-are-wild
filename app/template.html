@@ -271,6 +271,10 @@
             color: var(--text-primary);
         }
 
+        [data-host-catalog-entry][hidden] {
+            display: none !important;
+        }
+
         .nav-btn.active {
             background: var(--accent-primary);
             border-color: var(--accent-primary);
@@ -1939,6 +1943,32 @@
             min-width: 0;
         }
 
+        .scene-exchange-source-events {
+            min-width: 0;
+            margin: 0 8px 7px;
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .scene-exchange-source-events summary {
+            width: fit-content;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .scene-exchange-source-events[open] summary {
+            margin-bottom: 4px;
+        }
+
+        .scene-exchange-source-events .scene-exchange-events {
+            border-inline-start: 1px solid var(--border-default);
+        }
+
+        .scene-exchange-source-events.detailed {
+            margin-top: 8px;
+        }
+
         .scene-beat-stream-item {
             display: block;
             min-width: 0;
@@ -2195,6 +2225,18 @@
             display: block;
         }
 
+        .mod-setting-row.multiline {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .mod-setting-row textarea {
+            width: 100%;
+            min-height: 88px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+
         .ai-provider-shell {
             width: 100%;
             max-width: 920px;
@@ -2203,6 +2245,92 @@
             box-sizing: border-box;
             margin: 0 auto;
             padding: 24px;
+        }
+
+        .system-screen-shell {
+            width: min(960px, 100%);
+            box-sizing: border-box;
+            margin: 0 auto;
+            padding: 24px;
+            max-height: 100dvh;
+            overflow-y: auto;
+        }
+
+        .system-screen-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .release-version-badge {
+            display: inline-flex;
+            padding: 3px 8px;
+            border: 1px solid var(--accent-primary);
+            border-radius: 999px;
+            color: var(--accent-primary);
+            font: 700 11px var(--font-mono);
+        }
+
+        .release-update-notice {
+            display: grid;
+            gap: 10px;
+            width: min(460px, 100%);
+            box-sizing: border-box;
+            padding: 12px;
+            margin: 4px auto 14px;
+            border: 1px solid var(--accent-primary);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            text-align: left;
+        }
+
+        .release-update-notice[hidden] { display: none; }
+        .release-update-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .release-notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+        }
+
+        .release-note-card,
+        .release-compatibility {
+            padding: 16px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+        }
+
+        .release-note-card h2,
+        .release-compatibility h2 { margin: 0 0 10px; font-size: 16px; color: var(--text-primary); }
+        .release-note-card ul { margin: 0; padding-left: 20px; color: var(--text-secondary); line-height: 1.55; }
+        .release-compatibility { margin-top: 14px; color: var(--text-secondary); }
+
+        .system-log-toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 10px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            background: var(--bg-secondary);
+        }
+
+        .system-log-content {
+            min-height: 280px;
+            max-height: 58dvh;
+            overflow-y: auto;
+            border: 1px solid var(--border-default);
+            border-top: 0;
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            background: var(--bg-primary);
+            padding: 12px;
+            font: 12px/1.6 var(--font-mono);
         }
 
         .ai-provider-header,
@@ -2366,6 +2494,20 @@
             justify-content: flex-end;
             gap: 8px;
             flex-wrap: wrap;
+        }
+
+        .settings-origin-notice,
+        .mod-provider-unavailable {
+            color: var(--accent-warning);
+        }
+
+        .settings-origin-notice {
+            margin: 0;
+            padding: 12px;
+            border: 1px solid var(--accent-warning);
+            border-radius: var(--radius-sm);
+            background: rgba(255, 209, 102, 0.06);
+            line-height: 1.45;
         }
 
         @media (max-width: 620px) {
@@ -3895,6 +4037,24 @@
 
         .log-entry.heal .log-category {
             color: var(--accent-primary);
+        }
+
+        .log-entry.narration {
+            border-left-color: var(--accent-info);
+            background: rgba(76, 201, 240, 0.05);
+        }
+
+        .log-entry.narration .log-category {
+            color: var(--accent-info);
+        }
+
+        .log-entry.error {
+            border-left-color: var(--accent-danger);
+            background: rgba(239, 71, 111, 0.08);
+        }
+
+        .log-entry.error .log-category {
+            color: var(--accent-danger);
         }
 
         .log-entry.mod {
@@ -5858,7 +6018,7 @@
                 :root {
                     --mobile-scene-height: 56px;
                     --mobile-map-height: 256px;
-                    --mobile-hinge-y: clamp(300px, 48dvh, 340px);
+                    --mobile-hinge-y: clamp(260px, 46dvh, 280px);
                 }
 
                 .mobile-play-surface.combat-active .mobile-unit-strips {
@@ -7692,12 +7852,10 @@
             }
 
             .mobile-play-surface:not(.combat-active) .mobile-scene-header {
-                position: absolute;
-                top: 8px;
-                right: 10px;
-                z-index: 2;
+                position: static;
                 justify-content: flex-end;
-                margin-bottom: 0;
+                min-height: 30px;
+                margin-bottom: 4px;
             }
 
             .mobile-play-surface:not(.combat-active) .mobile-scene-title,
@@ -7707,11 +7865,6 @@
 
             .mobile-play-surface:not(.combat-active) .mobile-story-latest {
                 margin-top: 0;
-            }
-
-            .mobile-play-surface:not(.combat-active) .mobile-story-latest .scene-beat-stream-empty,
-            .mobile-play-surface:not(.combat-active) .mobile-story-latest .scene-beat-stream-item:first-child {
-                padding-right: 72px;
             }
 
             .mobile-story-expand-btn {
@@ -8406,12 +8559,28 @@
                     <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-help" title="Open tutorial" aria-label="Open tutorial" data-i18n-title="ui.menu.tutorialTitle" data-i18n-aria-label="ui.menu.tutorialTitle" onclick="App.showTutorial()">
                         📖 <span data-i18n="ui.menu.tutorial">Tutorial</span>
                     </button>
+                    <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-activity-log" title="Open activity log" aria-label="Open activity log" data-i18n-title="ui.activityLog.open" data-i18n-aria-label="ui.activityLog.open" onclick="App.showActivityLogScreen()">
+                        📜 <span data-i18n="ui.activityLog">Activity Log</span>
+                    </button>
+                    <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-release-notes" title="Open what's new" aria-label="Open what's new" data-i18n-title="release.openTitle" data-i18n-aria-label="release.openTitle" onclick="App.showReleaseNotes()">
+                        ✨ <span data-i18n="release.whatsNew">What's New</span>
+                    </button>
                 </div>
             </div>
+
+            <aside id="release-update-notice" class="release-update-notice" role="status" aria-live="polite" hidden>
+                <strong><span data-i18n="release.updated">Updated to</span> <span data-release-version></span></strong>
+                <span data-i18n="release.notice">See what changed in this version.</span>
+                <span class="release-update-actions">
+                    <button class="nav-btn primary" type="button" data-command-control="open-release-update-notes" data-i18n="release.viewNotes" onclick="App.showReleaseNotes()">View notes</button>
+                    <button class="nav-btn" type="button" data-command-control="dismiss-release-notice" data-i18n="release.dismiss" onclick="App.dismissReleaseNotice()">Dismiss</button>
+                </span>
+            </aside>
 
             <div class="menu-footer">
                 <p data-i18n="ui.menu.edition">Dark mode tactical edition</p>
                 <p data-i18n="ui.menu.contentDefault">Safe content is enabled by default</p>
+                <p><span data-i18n="release.version">Version</span> <span data-release-version>0.11.1</span></p>
             </div>
         </div>
     </div>
@@ -8590,10 +8759,11 @@
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-save-slots" title="Open save slots" aria-label="Open save slots" data-i18n-title="ui.nav.saveTitle" data-i18n-aria-label="ui.nav.saveTitle" onclick="App.closeAppMenu(); App.showSaveManager('save')">💾 <span data-i18n="save.save">Save</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-load-slots" title="Open load slots" aria-label="Open load slots" data-i18n-title="ui.nav.loadTitle" data-i18n-aria-label="ui.nav.loadTitle" onclick="App.closeAppMenu(); App.showSaveManager('load')">📂 <span data-i18n="save.load">Load</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-settings" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.openSettingsFromGame()">⚙️ <span data-i18n="ui.menu.settings">Settings</span></button>
-                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-ai-providers" title="Open AI providers" aria-label="Open AI providers" data-i18n-title="provider.openTitle" data-i18n-aria-label="provider.openTitle" onclick="App.closeAppMenu(); App.showAIProviderScreen()">✦ <span data-i18n="provider.title">AI Providers</span></button>
+                        <button class="nav-btn" role="menuitem" data-ai-integration-entry data-command-surface="app-system" data-command-mode="system" data-command-control="open-ai-providers" title="Open AI providers" aria-label="Open AI providers" data-i18n-title="provider.openTitle" data-i18n-aria-label="provider.openTitle" onclick="App.closeAppMenu(); App.showAIProviderScreen()">✦ <span data-i18n="provider.title">AI Providers</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-holdings" title="Open holdings" aria-label="Open holdings" onclick="App.closeAppMenu(); App.showCharacterStats()">📊 <span>Holdings</span></button>
-                        <button class="nav-btn" role="menuitem" data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-history" title="Toggle Activity Log" aria-label="Toggle Activity Log" data-i18n-title="ui.activityLog" data-i18n-aria-label="ui.activityLog" onclick="App.closeAppMenu(); App.toggleActivityLog()">📜 <span data-i18n="ui.activityLog">Activity Log</span></button>
-                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-market" title="Open market" aria-label="Open market" data-i18n-title="ui.menu.marketTitle" data-i18n-aria-label="ui.menu.marketTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="ui.menu.market">Market</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-activity-log" title="Open activity log" aria-label="Open activity log" data-i18n-title="ui.activityLog.open" data-i18n-aria-label="ui.activityLog.open" onclick="App.closeAppMenu(); App.showActivityLogScreen()">📜 <span data-i18n="ui.activityLog">Activity Log</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-release-notes" title="Open what's new" aria-label="Open what's new" data-i18n-title="release.openTitle" data-i18n-aria-label="release.openTitle" onclick="App.closeAppMenu(); App.showReleaseNotes()">✨ <span data-i18n="release.whatsNew">What's New</span></button>
+                        <button class="nav-btn" role="menuitem" data-host-catalog-entry hidden data-command-surface="app-system" data-command-mode="system" data-command-control="open-market" title="Open host catalog" aria-label="Open host catalog" data-i18n-title="market.openHostCatalogTitle" data-i18n-aria-label="market.openHostCatalogTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-mods" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-help" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="App.closeAppMenu(); App.showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>
                     </div>
@@ -8831,6 +9001,8 @@
                     <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="discovery" aria-pressed="false" title="Show discovery log entries" aria-label="Show discovery log entries" data-i18n-title="ui.log.discovery" data-i18n-aria-label="ui.log.discovery" data-i18n="ui.log.discovery" onclick="App.setLogFilter('discovery')">Discovery</button>
                     <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="loot" aria-pressed="false" title="Show loot log entries" aria-label="Show loot log entries" data-i18n-title="ui.log.loot" data-i18n-aria-label="ui.log.loot" data-i18n="ui.log.loot" onclick="App.setLogFilter('loot')">Loot</button>
                     <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="heal" aria-pressed="false" title="Show healing log entries" aria-label="Show healing log entries" data-i18n-title="ui.log.heal" data-i18n-aria-label="ui.log.heal" data-i18n="ui.log.heal" onclick="App.setLogFilter('heal')">Heal</button>
+                    <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="narration" aria-pressed="false" title="Show narration log entries" aria-label="Show narration log entries" data-i18n-title="ui.log.narration" data-i18n-aria-label="ui.log.narration" data-i18n="ui.log.narration" onclick="App.setLogFilter('narration')">Narration</button>
+                    <button class="nav-btn log-filter-btn" data-command-surface="history-filter" data-command-mode="history" data-command-control="filter-history" data-log-filter="error" aria-pressed="false" title="Show error log entries" aria-label="Show error log entries" data-i18n-title="ui.log.errors" data-i18n-aria-label="ui.log.errors" data-i18n="ui.log.errors" onclick="App.setLogFilter('error')">Errors</button>
                     <input class="log-search" id="log-search" type="search" data-command-surface="history-filter" data-command-mode="history" data-command-control="search-history" placeholder="Search log" aria-label="Search log" data-i18n-placeholder="ui.log.search" data-i18n-aria-label="ui.log.search" oninput="App.setLogSearch(this.value)">
                 </div>
                 <div class="log-content" id="log-content" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Activity log entries" data-i18n-aria-label="ui.log.entries">
@@ -8855,9 +9027,9 @@
 
 
     <!-- SETTINGS OVERLAY -->
-    <div id="screen-settings" class="screen screen-overlay">
+    <div id="screen-settings" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <div style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
-            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ <span data-i18n="settings.title">Settings</span></h1>
+            <h1 id="settings-title" style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ <span data-i18n="settings.title">Settings</span></h1>
             <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="settings.description">Safe content is the default. Select a higher content level to reveal additional settings.</p>
 
             <!-- Language -->
@@ -8924,11 +9096,17 @@
             <!-- AI and integrations -->
             <div style="margin-bottom: 24px;">
                 <h3 class="settings-section-title" data-i18n="settings.aiIntegrations">AI &amp; Integrations</h3>
-                <button class="settings-link-row" type="button" data-command-surface="settings-detail" data-command-mode="system" data-command-control="open-ai-providers" title="Open AI providers" aria-label="Open AI providers" data-i18n-title="provider.openTitle" data-i18n-aria-label="provider.openTitle" onclick="App.showAIProviderScreen()">
+                <button class="settings-link-row" type="button" data-ai-integration-entry data-command-surface="settings-detail" data-command-mode="system" data-command-control="open-ai-providers" title="Open AI providers" aria-label="Open AI providers" data-i18n-title="provider.openTitle" data-i18n-aria-label="provider.openTitle" onclick="App.showAIProviderScreen()">
                     <span class="settings-link-icon" aria-hidden="true">✦</span>
                     <span class="settings-link-copy"><strong data-i18n="provider.title">AI Providers</strong><small data-i18n="settings.aiProvidersDescription">Manage optional AI services and session credentials.</small></span>
                     <span class="settings-link-arrow" aria-hidden="true">›</span>
                 </button>
+                <button class="settings-link-row" type="button" data-command-surface="settings-detail" data-command-mode="system" data-command-control="open-activity-log" title="Open activity log" aria-label="Open activity log" data-i18n-title="ui.activityLog.open" data-i18n-aria-label="ui.activityLog.open" onclick="App.showActivityLogScreen()">
+                    <span class="settings-link-icon" aria-hidden="true">📜</span>
+                    <span class="settings-link-copy"><strong data-i18n="ui.activityLog">Activity Log</strong><small data-i18n="settings.activityLogDescription">Review provider, module, narration, and gameplay diagnostics.</small></span>
+                    <span class="settings-link-arrow" aria-hidden="true">›</span>
+                </button>
+                <p class="settings-origin-notice" data-ai-file-origin-notice hidden data-i18n="settings.aiProvidersFileOrigin">File mode supports local, unauthenticated loopback providers such as Ollama. Remote and credentialed AI providers require HTTPS or http://localhost.</p>
             </div>
 
             <!-- Cheats -->
@@ -8953,26 +9131,59 @@
     </div>
 
     <!-- AI PROVIDERS OVERLAY -->
-    <div id="screen-providers" class="screen screen-overlay">
+    <div id="screen-providers" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="ai-provider-title">
         <main class="ai-provider-shell" aria-labelledby="ai-provider-title">
             <div class="ai-provider-header">
                 <div>
                     <h1 id="ai-provider-title" style="color: var(--accent-primary);" data-i18n="provider.title">AI Providers</h1>
                     <p style="color: var(--text-muted);" data-i18n="provider.subtitle">Manage AI services and session credentials used by optional game features.</p>
                 </div>
-                <button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="close-ai-providers" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
+                <div class="provider-actions"><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="close-ai-providers" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button></div>
             </div>
             <p id="ai-provider-status" class="provider-connection-status" role="status" aria-live="polite" data-kind="info"></p>
             <div id="ai-provider-list"></div>
         </main>
     </div>
 
+    <!-- RELEASE NOTES OVERLAY -->
+    <div id="screen-release" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="release-notes-title">
+        <main class="system-screen-shell" aria-labelledby="release-notes-title">
+            <div class="system-screen-header">
+                <div><h1 id="release-notes-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="release.whatsNew">What's New</h1><span class="release-version-badge" id="release-notes-version">v0.11.1</span></div>
+                <button class="nav-btn" type="button" data-command-control="close-release-notes" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
+            </div>
+            <div id="release-notes-content"></div>
+        </main>
+    </div>
+
+    <!-- RUN-INDEPENDENT ACTIVITY LOG OVERLAY -->
+    <div id="screen-activity" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="system-activity-title">
+        <main class="system-screen-shell" aria-labelledby="system-activity-title">
+            <div class="system-screen-header">
+                <div><h1 id="system-activity-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="ui.activityLog">Activity Log</h1><p style="color:var(--text-muted);margin:0;" data-i18n="log.systemDescription">Diagnostics are available before, during, and after a run.</p></div>
+                <button class="nav-btn" type="button" data-command-control="close-activity-log" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
+            </div>
+            <div class="system-log-toolbar" role="toolbar" aria-label="Activity log controls" data-i18n-aria-label="ui.log.controls">
+                <button class="nav-btn system-log-filter-btn" type="button" data-log-filter="all" data-i18n="ui.log.all" onclick="App.setLogFilter('all')">All</button>
+                <button class="nav-btn system-log-filter-btn" type="button" data-log-filter="combat" data-i18n="ui.log.combat" onclick="App.setLogFilter('combat')">Combat</button>
+                <button class="nav-btn system-log-filter-btn" type="button" data-log-filter="discovery" data-i18n="ui.log.discovery" onclick="App.setLogFilter('discovery')">Discovery</button>
+                <button class="nav-btn system-log-filter-btn" type="button" data-log-filter="narration" data-i18n="ui.log.narration" onclick="App.setLogFilter('narration')">Narration</button>
+                <button class="nav-btn system-log-filter-btn" type="button" data-log-filter="error" data-i18n="ui.log.errors" onclick="App.setLogFilter('error')">Errors</button>
+                <input id="system-log-search" class="log-search" type="search" maxlength="120" placeholder="Search log" aria-label="Search activity log" data-i18n-placeholder="ui.log.search" data-i18n-aria-label="ui.log.search" oninput="App.setLogSearch(this.value)">
+                <button class="nav-btn" type="button" data-i18n="ui.log.export" onclick="App.exportLog()">Export</button>
+                <button class="nav-btn" type="button" data-i18n="ui.log.clear" onclick="App.clearLog()">Clear</button>
+            </div>
+            <p id="system-log-status" class="sr-only" role="status" aria-live="polite"></p>
+            <div id="system-log-content" class="system-log-content" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Activity log entries" data-i18n-aria-label="ui.log.entries"></div>
+        </main>
+    </div>
+
     <!-- MODS OVERLAY -->
-    <div id="screen-mods" class="screen screen-overlay">
+    <div id="screen-mods" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="mod-manager-title">
         <div style="width:100%;max-width: 800px; box-sizing:border-box; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
-                <h1 style="color: var(--accent-primary); margin: 0;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>
-                <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" data-command-slot="exit" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button>
+                <h1 id="mod-manager-title" style="color: var(--accent-primary); margin: 0;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" data-command-slot="exit" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button></div>
             </div>
             <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="mod.subtitle">Install, enable, and manage game modules.</p>
 
@@ -8982,8 +9193,7 @@
                     📁 <span data-i18n="mod.import">Import Mod</span>
                     <input type="file" accept=".json,.js" style="display: none;" onchange="ModUI.handleFileSelect(event)">
                 </label>
-                <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="create-example-module" title="Create example module" aria-label="Create example module" data-i18n-title="mod.createExampleTitle" data-i18n-aria-label="mod.createExampleTitle" onclick="ModUI.createExampleMod()">✨ <span data-i18n="mod.createExample">Create Example</span></button>
-                <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="open-market" title="Open module samples" aria-label="Open module samples" data-i18n-title="market.openFromModsTitle" data-i18n-aria-label="market.openFromModsTitle" onclick="App.showMarketScreen()">🏪 <span data-i18n="market.openFromMods">Module Samples</span></button>
+                <button class="nav-btn" data-host-catalog-entry hidden data-command-surface="module-manager" data-command-mode="system" data-command-control="open-market" title="Open host catalog" aria-label="Open host catalog" data-i18n-title="market.openHostCatalogTitle" data-i18n-aria-label="market.openHostCatalogTitle" onclick="App.showMarketScreen()">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></button>
             </div>
 
             <!-- Mod List -->
@@ -8994,17 +9204,16 @@
     </div>
 
     <!-- MARKETPLACE OVERLAY -->
-    <div id="screen-market" class="screen screen-overlay">
+    <div id="screen-market" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="host-catalog-title">
         <div id="market-content" data-command-surface="marketplace" data-command-mode="system" style="width:100%;max-width: 1200px; box-sizing:border-box; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
-                <h1 style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.title">Module Samples</span></h1>
-                <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close module samples" aria-label="Close module samples" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
+                <h1 id="host-catalog-title" style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></h1>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="nav-btn" type="button" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close host catalog" aria-label="Close host catalog" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button></div>
             </div>
-            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="market.subtitle">Preview local sample module fixtures and modding workflows</p>
+            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="market.subtitle">Modules supplied and governed by this game host.</p>
             <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap;">
-                <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="browse-marketplace-samples" title="Browse sample catalog" aria-label="Browse sample catalog" data-i18n="market.browse" data-i18n-title="market.browseTitle" data-i18n-aria-label="market.browseTitle" onclick="MODULE_MARKETPLACE.ui.showMarketplace()">Browse</button>
                 <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-installed-modules" title="Open installed modules" aria-label="Open installed modules" data-i18n="market.myModules" data-i18n-title="market.myModulesTitle" data-i18n-aria-label="market.myModulesTitle" onclick="ModUI.showModScreen()">My Modules</button>
-                <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close module samples" aria-label="Close module samples" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
+                <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close host catalog" aria-label="Close host catalog" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
             </div>
         </div>
     </div>

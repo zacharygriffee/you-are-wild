@@ -1,0 +1,30 @@
+{
+  "schema": "yaw-host-modules-v1",
+  "hostId": "example-world",
+  "strictWorldModules": false,
+  "catalog": [
+    {
+      "id": "yaw_narration_first_party",
+      "name": "You Are Wild: Simple Narrator",
+      "version": "0.5.0",
+      "description": "Host-provided player-POV narration.",
+      "type": "presentation_pack",
+      "contentRating": "safe",
+      "url": "mods/you-are-wild-narration.yawmod.json",
+      "preload": true,
+      "runtimeRequirements": {
+        "origins": ["https", "localhost"],
+        "network": true,
+        "secureContext": true,
+        "hotToggleSafe": true
+      }
+    }
+  ],
+  "policy": {
+    "allowUserModules": true,
+    "required": [],
+    "defaultEnabled": ["yaw_narration_first_party"],
+    "optional": [],
+    "forbidden": []
+  }
+}

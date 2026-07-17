@@ -56,7 +56,7 @@ const YAW_LOG_VIEW = {
     },
 
     allowedFilters() {
-        return ['all', 'combat', 'discovery', 'loot', 'heal'];
+        return ['all', 'combat', 'discovery', 'loot', 'heal', 'narration', 'error'];
     },
 
     normalizePreferences(app, input = {}) {
@@ -201,20 +201,27 @@ const YAW_LOG_VIEW = {
         return app._label(key, fallback, { count });
     },
 
-    render(app) {
-        const container = document.getElementById('log-content');
-        const filtered = this.filteredEntries(app);
-        const entries = filtered.slice(-20).reverse().map((e, visibleIndex) => this.renderEntry(app, e, visibleIndex)).join('');
+    renderSurface(app, { containerId, statusId, searchId, limit = 20 } = {}, filtered = this.filteredEntries(app)) {
+        const container = document.getElementById(containerId);
+        const visible = limit > 0 ? filtered.slice(-limit) : filtered;
+        const entries = visible.slice().reverse().map((entry, visibleIndex) => this.renderEntry(app, entry, visibleIndex)).join('');
         if (container) container.innerHTML = entries || `<div class="log-entry text-muted">${app._escapeHtml(app._label('log.noEntriesMatchFilter', 'No log entries match the current filter.'))}</div>`;
-        document.querySelectorAll?.('.log-filter-btn').forEach(btn => {
+        const status = document.getElementById(statusId);
+        if (status) status.textContent = this.visibleCountLabel(app, filtered.length);
+        const search = document.getElementById(searchId);
+        if (search && search.value !== (app.logSearch || '')) search.value = app.logSearch || '';
+        return entries;
+    },
+
+    render(app) {
+        const filtered = this.filteredEntries(app);
+        this.renderSurface(app, { containerId: 'log-content', statusId: 'log-status', searchId: 'log-search', limit: 20 }, filtered);
+        this.renderSurface(app, { containerId: 'system-log-content', statusId: 'system-log-status', searchId: 'system-log-search', limit: 0 }, filtered);
+        document.querySelectorAll?.('.log-filter-btn, .system-log-filter-btn').forEach(btn => {
             const active = btn.dataset.logFilter === (app.logFilter || 'all');
             btn.classList.toggle('active', active);
             btn.setAttribute('aria-pressed', String(active));
         });
-        const status = document.getElementById('log-status');
-        if (status) status.textContent = this.visibleCountLabel(app, filtered.length);
-        const search = document.getElementById('log-search');
-        if (search && search.value !== (app.logSearch || '')) search.value = app.logSearch || '';
         const mobileLog = document.getElementById('mobile-log-summary');
         if (mobileLog) {
             const latest = app.log[app.log.length - 1];

@@ -1,0 +1,27 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_narration_diagnostics_first_party",
+  "gameVersion": "0.11.1",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_narration_diagnostics_first_party",
+      "name": "You Are Wild: Narration Diagnostics",
+      "version": "0.1.0",
+      "description": "Developer fixture for inspecting bounded public narration context and hook lifecycle.",
+      "type": "developer_tool",
+      "contentRating": "safe",
+      "minGameVersion": "0.10.0",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": { "origins": ["file", "https", "localhost", "http"], "hotToggleSafe": true },
+      "permissions": ["scene:read_narrative", "scene:narrate"],
+      "settings": [
+        { "key": "enabled", "type": "boolean", "label": "Enable diagnostic narration", "default": false },
+        { "key": "writeActivityLog", "type": "boolean", "label": "Write lifecycle summaries to Activity Log", "default": true }
+      ]
+    },
+    "code": "const pending = new Set();\nconst setting = (key, fallback) => MODS.getSetting(key, fallback);\nconst resetRuntime = () => pending.clear();\nMODS.registerNarrationOrchestrator({ id: 'diagnostic-exchange', priority: -100, isActive: async () => setting('enabled', false) });\nMODS.registerHook('onSceneBeat', envelope => { if (envelope?.exchangeId) pending.add(envelope.exchangeId); });\nMODS.registerHook('onSceneExchangeClosed', async envelope => {\n  const targetId = envelope?.exchangeId;\n  if (!targetId || !pending.delete(targetId)) return;\n  const owns = await MODS.ownsNarrationExchange(envelope);\n  const context = MODS.getNarrationContext({ exchangeId: targetId, recentBeatLimit: 3, activityLimit: 2 });\n  if (await setting('writeActivityLog', true)) MODS.log(`Narration exchange ${targetId}: owner=${owns}; mode=${context.mode}; beats=${context.recentBeats.length}; characters=${context.characters.length}`);\n  if (!owns) return;\n  MODS.publishNarration({ id: `yaw_narration_diagnostics_first_party.exchange.${targetId}`, scope: 'exchange', targetId, status: 'ready', text: `Diagnostic context: mode ${context.mode}; ${context.recentBeats.length} bounded beats; ${context.characters.length} public characters.`, profileId: 'diagnostic', providerId: 'local-diagnostics', outputRating: envelope.policy?.posture === 'mature' ? 'mature' : 'safe' });\n});\nMODS.registerHook('onContentPolicyChanged', resetRuntime);\nMODS.registerHook('onGameStart', resetRuntime);\nMODS.registerHook('onGameLoad', resetRuntime);",
+    "assets": {}
+  }
+}

@@ -617,6 +617,25 @@ const YAW_CENTER_CONTEXT = {
         if (titleEl && !titleEl.textContent) titleEl.textContent = context.title || '';
         if (descEl && !descEl.textContent && !descEl.innerHTML) descEl.textContent = context.description || '';
         this.renderCenterActions(app);
+        if (typeof YAW_STORY_EVENTS !== 'undefined') YAW_STORY_EVENTS.ensureCurrentTileObservation?.(app);
+    },
+
+    refreshPassage(app) {
+        if (!app || typeof document === 'undefined' || app.combatState?.active || app.mode === app.GAME_MODE?.COMBAT) return false;
+        const context = this.context(app);
+        const titleElements = [document.getElementById('scene-title'), document.getElementById('mobile-scene-title')];
+        const descriptionElements = [document.getElementById('scene-description'), document.getElementById('mobile-scene-description')];
+        titleElements.forEach(element => {
+            if (element) element.textContent = context.title || '';
+        });
+        descriptionElements.forEach(element => {
+            if (!element) return;
+            element.innerHTML = '';
+            element.textContent = context.description || '';
+            if (context.narrationId) element.setAttribute('data-tile-narration-id', context.narrationId);
+            else element.removeAttribute('data-tile-narration-id');
+        });
+        return true;
     },
 
     context(app) {
@@ -641,10 +660,18 @@ const YAW_CENTER_CONTEXT = {
         if (tile?.description) details.push(tile.description);
         if (structure) details.push(`${structure.icon || '🚪'} ${structure.name}`);
         if (tile?.hasLandmark && tile.landmarkName) details.push(tile.landmarkName);
-        const description = details.length
+        const deterministicDescription = details.length
             ? details.join(' ')
             : `${biome.icon || ''} ${app._label('ui.chooseAction', 'Choose your next action.')}`;
-        return { title, description };
+        const narration = typeof YAW_NARRATION_SYSTEM !== 'undefined'
+            ? YAW_NARRATION_SYSTEM.currentTileNarration?.(app)
+            : null;
+        return {
+            title,
+            description: narration?.text || deterministicDescription,
+            deterministicDescription,
+            narrationId: narration?.id || ''
+        };
     }
 };
 

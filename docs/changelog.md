@@ -13,20 +13,36 @@ This is a compact history of completed foundations. Git remains the authoritativ
 - Holdings separates Stats, Equipment, shared Pack, Containers, and Ground, with party-owner selection for owner-specific sections.
 - Sparse saves, deterministic persistent world rolls, deterministic combat rolls, quests, merchants, equipment, perks, party roles, and generated-world foundations are implemented.
 - Trusted-local modules support validated manifests, permissions, dependencies, content ratings, owned hooks/contributions, and versioned public narrative context.
+- HTTP(S) hosts can publish a same-origin, integrity-aware module catalog with required, default, optional, and forbidden policy states. Module provenance and runtime-origin requirements are visible in Mods, host-owned packages cannot be deleted by players, and saves carry a versioned module content profile while downloaded `file://` builds remain fully playable without host discovery.
 - Core now exposes SFW and Mature postures, while provider-declared categories, gameplay variants, localized labels, creation options, and explicit narrative stay in optional modules outside the generated HTML.
 - Provider-neutral narration now uses immutable post-commit hooks, an owned presentation-only store, focused context, declarative mod settings, session-only provider connections, and separately packaged SFW/Mature and explicit orchestrators.
 - Narration prerequisites now include credential-safe module settings, new/load runtime cancellation, exclusive orchestrator ownership, authoritative adult eligibility, target-exchange context snapshots, packaged integration coverage, and a keyless Puter Connect/Test/Disconnect path.
 - A dedicated capability-based AI Providers panel now manages stable profiles separately from mods. The built-in OpenAI-Compatible text adapter supports browser-direct Responses and Chat Completions with fixed-origin requests, blocked redirects, conservative fallback, session-only credentials, and mocked Direct OpenAI/OpenRouter/generic/local coverage.
-- Startup navigation now keeps Continue/New/Load primary and Settings/Mods/Tutorial compact. AI Providers lives under Settings, Module Samples lives under Mods, nested screens return through their origin, and short or enlarged-text layouts retain a scroll fallback.
+- Narration mods now have bounded provider-neutral instructions layered beneath immutable engine constraints. Simple Narrator exposes multiline instructions, ready narration becomes the primary Scene Feed passage with source events retained in a disclosure, and offline Template Narrator plus Diagnostics packages exercise the API without provider access.
+- Startup navigation now keeps Continue/New/Load primary and Settings/Mods/Tutorial compact. AI Providers lives under Settings, a real server-supplied Host Catalog appears conditionally under Mods, nested screens return through their origin, and short or enlarged-text layouts retain a scroll fallback.
 
 ## Recent Fixes
 
+- Release `0.11.1` raises the new-profile completion-token ceiling to 8,192 so reasoning-capable models have room to produce visible narration after hidden reasoning. Existing saved profiles retain their selected ceiling.
+- Release `0.11.0` now has one authoritative bundled record for the runtime, save metadata, module compatibility, generated artifact, hosted package, visible version, localized release notes, and save/mod guidance. Builds reject stale package or first-party mod version mirrors.
+- A player-facing What's New surface is available before and during a run, with an offline once-per-version notice and English/Spanish Added, Changed, Fixed, Known Issues, and compatibility sections.
+- The Activity Log is now run-independent and reachable from startup, Settings, AI Providers, Mods, and Host Catalog. Provider, narration, and catalog failures can be inspected, filtered, searched, exported, or cleared without starting a game.
+- OpenAI-compatible profiles now support provider-managed, none, minimal, low, medium, and high reasoning effort. Unsupported values receive a specific diagnostic, and `file://` remote-provider attempts require an explicit session-only warning/override while browser TLS and CORS remain authoritative.
+- The Mod Manager no longer exposes the development-only Create Example or Module Samples controls. Local builds retain trusted file import, while servers with a real catalog expose a conditional Host Catalog entry.
+- Simple Narrator 0.6 now gives Storyteller, Character reactions, and Hybrid distinct prompt contracts. Character-focused prose is limited to observable behavior, supplied dialogue, stated relationship or status cues, and visible deltas; self-interactions, spectator events, mixed exchanges, and character-free exploration retain explicit safe fallbacks.
+- Simple Narrator 0.5 now renders ready tile-observation prose in the center tile, caches the 32 most recent state-and-style variants, reuses unchanged locations without another API call, and immediately rejects stale responses after movement or visible tile changes. Plain described exploration tiles now emit narratable observations even without landmarks, creatures, structures, or items.
+- Simple Narrator now receives an explicit player-viewpoint contract with per-beat actor, target, self, observer, and mixed participation. Spectator events remain third-person actions observed from the player perspective, missing identity falls back safely, and narrator requests inherit the selected provider profile timeout.
+- OpenAI-compatible provider profiles now expose a configurable reasoning-inclusive completion-token ceiling (default 1,536; range 64–32,768), use a reasoning-friendly 30-second default timeout, and retain the independent 500-character narration limit. Provider tests use a narration-shaped player-POV request, and reasoning-budget exhaustion receives actionable guidance.
+- File-origin builds now detect their opaque origin and offer only credential-free loopback AI connections, with an Ollama-compatible default and clear Settings guidance; remote providers remain available from HTTPS or localhost origins.
+- Narration now exposes queued, request-sent, response-received, and attached lifecycle stages in a dedicated Activity Log category; early publication failures are no longer silent.
+- Failed narration requests now create sanitized Activity Log errors with a dedicated filter and provider error code.
+- Persisted enabled modules now restore their runtime hooks after refresh, after saved content preferences have been applied.
 - Combat-only control effects such as restraint, envelopment, terrain entrapment, stun, freeze, charm, fear, combat sleep, and refractory recovery now clear when an encounter ends. Old noncombat saves are sanitized on load; poison, bleeding, and burns persist until safe rest or defeat regeneration cures them.
 - Toasts self-expire, pause on pointer hover, reset expiration on tap, and retain an explicit close control.
 - Releasing the last swallowed enemy reinstates combat when that hostile returns to the battlefield.
 - Contained and consumed creatures render in separate Holdings collections.
 - Enemy AI filters preferred attack targets through current reach before committing its turn.
 - Content-posture changes immediately rebuild the dynamic provider category and gameplay-variant settings.
-- System overlay navigation now preserves parent and live-game origins across Settings, AI Providers, Mods, and Module Samples.
+- System overlay navigation now preserves parent and live-game origins across Settings, AI Providers, Mods, and Host Catalog.
 
 See the focused doctrine documents in `docs/` for current contracts and deferred design boundaries.

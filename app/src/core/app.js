@@ -33,6 +33,8 @@
                 discovery: { label: 'Discovery', icon: '🧭' },
                 loot: { label: 'Loot', icon: '🎒' },
                 heal: { label: 'Heal', icon: '💚' },
+                narration: { label: 'Narration', icon: '📖' },
+                error: { label: 'Error', icon: '⚠️' },
                 mod: { label: 'Mod', icon: '🧩' }
             },
             MAP_TILESET_KEYS: {
@@ -770,6 +772,7 @@
             log: [],
             storyEvents: [],
             sceneNarrations: [],
+            tileNarrationCache: [],
             sceneEvents: [],
             latestStoryEvent: null,
             latestSceneBeat: null,
@@ -1063,6 +1066,7 @@
                 settings: 'yaw-settings',
                 contentPrefs: 'yaw-content-prefs',
                 logView: 'yaw-log-view',
+                releaseSeen: 'yaw-release-seen',
                 lastSlot: 'yaw-last-slot',
                 lastSaveTime: 'yaw-last-save-time',
                 combatRefreshPrefix: 'yaw-combat-refresh-',
@@ -1128,6 +1132,30 @@
                 this.loadLogViewPreferences();
                 this.applyAccessibilitySettings();
                 this.applyStaticLocalization();
+                this.applyRuntimeOriginGates();
+                if (typeof MODULE_SYSTEM !== 'undefined') {
+                    Promise.resolve(MODULE_SYSTEM.ready).then(async () => {
+                        if (typeof MODULE_SYSTEM.initializeHostCatalog === 'function') {
+                            try {
+                                await MODULE_SYSTEM.initializeHostCatalog();
+                            } catch (error) {
+                                console.error('Host catalog initialization failed:', error);
+                                this._pushLog({
+                                    text: this._label('mod.hostCatalogInitFailed', 'Host Catalog could not be loaded. Local modules remain available.'),
+                                    type: 'error',
+                                    errorCode: 'host_catalog_init_failed'
+                                }, 'error');
+                                this.renderLog();
+                            }
+                        }
+                        this.syncHostCatalogControls();
+                        return MODULE_SYSTEM.loadEnabledModules();
+                    }).catch(error => {
+                        console.error('Enabled modules failed to restore:', error);
+                        this._pushLog(this._label('mod.restoreFailed', 'Enabled modules could not be restored. Open Mods and try enabling them again.'), 'error');
+                        this.renderLog();
+                    });
+                }
                 this.initAppMenu();
                 this.initMobileUnitStripGestures();
                 this.updateTierButtons();
@@ -1136,6 +1164,7 @@
                 this.initBodyPartsGrid();
                 this._syncEncounterPreferenceUI();
                 this.showScreen('menu');
+                this.syncReleaseUI();
             },
 
             initSpeciesGrid() {
@@ -4687,8 +4716,10 @@
                 return YAW_CENTER_CONTEXT.renderPresence(this);
             },
             renderExplorationActions() {
+                YAW_CENTER_CONTEXT.refreshPassage?.(this);
                 this.renderCenterTileActions();
                 this.renderSelectionSentence();
+                YAW_STORY_EVENTS.ensureCurrentTileObservation?.(this);
             },
             showExplorationActions() {
                 const result = YAW_CENTER_CONTEXT.showExplorationActions(this);
@@ -4916,7 +4947,7 @@
                 return this.setAppMenuOpen(false);
             },
             isOverlayScreen(name) {
-                return ['settings', 'providers', 'mods', 'market'].includes(String(name || ''));
+                return ['settings', 'providers', 'mods', 'market', 'release', 'activity'].includes(String(name || ''));
             },
             openOverlayScreen(name) {
                 const target = String(name || '');
@@ -4979,6 +5010,12 @@
                 } else if (name === 'providers') {
                     document.getElementById('app').style.display = 'none';
                     if (typeof AIProviderUI !== 'undefined' && AIProviderUI.refresh) { try { AIProviderUI.refresh(); } catch(e) {} }
+                } else if (name === 'release') {
+                    document.getElementById('app').style.display = 'none';
+                    this.renderReleaseNotes();
+                } else if (name === 'activity') {
+                    document.getElementById('app').style.display = 'none';
+                    this.renderLog();
                 } else if (name === 'market') {
                     document.getElementById('app').style.display = 'none';
                     if (typeof MODULE_MARKETPLACE !== 'undefined' && MODULE_MARKETPLACE.ui && MODULE_MARKETPLACE.ui.showMarketplace) { try { MODULE_MARKETPLACE.ui.showMarketplace(); } catch(e) {} }
@@ -4987,7 +5024,7 @@
                     document.getElementById('save-manager').classList.add('active');
                     this.renderSaveManager();
                 }
-                const overlayId = name === 'save-manager' ? 'save-manager' : ['settings', 'providers', 'mods', 'market'].includes(name) ? `screen-${name}` : '';
+                const overlayId = name === 'save-manager' ? 'save-manager' : ['settings', 'providers', 'mods', 'market', 'release', 'activity'].includes(name) ? `screen-${name}` : '';
                 if (overlayId) this._activateFocusTrap(document.getElementById(overlayId), { close: () => this.returnToGame() });
             },
             returnToGame() {
@@ -5002,7 +5039,7 @@
                 this._restoreFocusTrap();
                 const returnScreen = this.settingsReturnScreen;
                 this.settingsReturnScreen = null;
-                ['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'save-manager'].forEach(id => {
+                ['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'screen-release', 'screen-activity', 'save-manager'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) { el.style.display = 'none'; el.classList.remove('active'); }
                 });
@@ -5242,8 +5279,87 @@
                     ? this.switchOverlayScreen('mods')
                     : this.openOverlayScreen('mods');
             },
-            showAIProviderScreen() { return this.openOverlayScreen('providers'); },
-            showMarketScreen() { return this.openOverlayScreen('market'); },
+            isFileOrigin() {
+                const runtimeLocation = typeof window !== 'undefined' ? window.location : null;
+                return runtimeLocation?.protocol === 'file:' || runtimeLocation?.origin === 'null';
+            },
+            applyRuntimeOriginGates() {
+                const localOnly = this.isFileOrigin();
+                document.querySelectorAll?.('[data-ai-integration-entry]').forEach(element => {
+                    element.hidden = false;
+                    element.setAttribute?.('data-ai-origin-mode', localOnly ? 'local-only' : 'full');
+                });
+                document.querySelectorAll?.('[data-ai-file-origin-notice]').forEach(element => {
+                    element.hidden = !localOnly;
+                });
+                return localOnly;
+            },
+            showAIProviderScreen() {
+                return this.openOverlayScreen('providers');
+            },
+            showActivityLogScreen() {
+                return this.openOverlayScreen('activity');
+            },
+            releaseInfo() {
+                return window.YAW_RELEASE || {
+                    version: '0.0.0', releasedAt: '', channel: 'development',
+                    notes: {}, compatibility: {}
+                };
+            },
+            syncReleaseUI() {
+                const release = this.releaseInfo();
+                document.querySelectorAll('[data-release-version]').forEach(element => {
+                    element.textContent = `v${release.version}`;
+                });
+                const notice = document.getElementById('release-update-notice');
+                if (notice) notice.hidden = this._getStoredValue('releaseSeen') === release.version;
+                return release.version;
+            },
+            dismissReleaseNotice() {
+                const release = this.releaseInfo();
+                this._setStoredValue('releaseSeen', release.version);
+                const notice = document.getElementById('release-update-notice');
+                if (notice) notice.hidden = true;
+                return release.version;
+            },
+            releaseNoteSection(titleKey, titleFallback, entries = []) {
+                const items = Array.isArray(entries) ? entries : [];
+                if (!items.length) return '';
+                return `<section class="release-note-card"><h2>${this._escapeHtml(this._label(titleKey, titleFallback))}</h2><ul>${items.map(item => `<li>${this._escapeHtml(item)}</li>`).join('')}</ul></section>`;
+            },
+            renderReleaseNotes() {
+                const release = this.releaseInfo();
+                const language = CONTENT?.preferences?.language === 'es' ? 'es' : 'en';
+                const notes = release.notes?.[language] || release.notes?.en || {};
+                const compatibility = release.compatibility?.[language] || release.compatibility?.en || {};
+                const version = document.getElementById('release-notes-version');
+                if (version) version.textContent = `v${release.version} · ${release.releasedAt} · ${release.channel}`;
+                const content = document.getElementById('release-notes-content');
+                if (content) {
+                    content.innerHTML = `<div class="release-notes-grid">${this.releaseNoteSection('release.added', 'Added', notes.added)}${this.releaseNoteSection('release.changed', 'Changed', notes.changed)}${this.releaseNoteSection('release.fixed', 'Fixed', notes.fixed)}${this.releaseNoteSection('release.knownIssues', 'Known Issues', notes.knownIssues)}</div><section class="release-compatibility"><h2>${this._escapeHtml(this._label('release.compatibility', 'Compatibility'))}</h2><p><strong>${this._escapeHtml(this._label('release.saves', 'Saves'))}:</strong> ${this._escapeHtml(compatibility.saves || '')}</p><p><strong>${this._escapeHtml(this._label('release.mods', 'Mods'))}:</strong> ${this._escapeHtml(compatibility.mods || '')}</p></section>`;
+                }
+                this.dismissReleaseNotice();
+                return release;
+            },
+            showReleaseNotes() {
+                return this.openOverlayScreen('release');
+            },
+            hasHostCatalog() {
+                return typeof MODULE_SYSTEM !== 'undefined'
+                    && typeof MODULE_SYSTEM.getHostCatalog === 'function'
+                    && MODULE_SYSTEM.getHostCatalog().length > 0;
+            },
+            syncHostCatalogControls() {
+                const available = this.hasHostCatalog();
+                document.querySelectorAll('[data-host-catalog-entry]').forEach(control => {
+                    control.hidden = !available;
+                });
+                return available;
+            },
+            showMarketScreen() {
+                if (!this.hasHostCatalog()) return this.showModScreen();
+                return this.openOverlayScreen('market');
+            },
             showTutorial() {
                 this.tutorialStep = 0;
                 const overlay = document.getElementById('tutorial-overlay');

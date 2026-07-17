@@ -8,14 +8,23 @@ const MODULE_SYSTEM = {
     DB_NAME: 'YAW_Modules',
     LEGACY_DB_NAME: 'FFFme_Modules',
     DB_VERSION: 1,
-    GAME_VERSION: '0.10.0',
+    GAME_VERSION: window.YAW_RELEASE?.version || '0.0.0',
     PACKAGE_TYPE: 'yaw-module',
     PACKAGE_VERSION: 1,
     PUBLIC_CONTEXT_VERSION: 1,
     TRUST_BOUNDARY: 'trusted-local',
     CONTENT_RATINGS: ['safe', 'mature', 'adult'],
+    MODULE_PROVENANCES: ['user', 'host', 'built-in'],
+    RUNTIME_ORIGINS: ['file', 'https', 'localhost', 'http'],
+    HOST_MANIFEST_SCHEMA: 'yaw-host-modules-v1',
+    CONTENT_PROFILE_SCHEMA: 'yaw-content-profile-v1',
+    DEFAULT_HOST_MANIFEST_PATH: 'yaw-host.json',
     KNOWN_PERMISSIONS: ['ui.read', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option'],
     db: null,
+    hostManifest: null,
+    hostManifestState: { status: 'uninitialized', reason: '', url: '' },
+    hostCatalog: new Map(),
+    moduleRecords: new Map(),
     
     // Hooks registry
     hooks: {
@@ -121,6 +130,62 @@ const MODULE_SYSTEM = {
         return permissions;
     },
 
+    _normalizeRuntimeRequirements(value, legacyHotToggleSafe = false) {
+        if (value === undefined || value === null) value = {};
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            throw new Error('Module manifest runtimeRequirements must be an object');
+        }
+        const requestedOrigins = value.origins === undefined
+            ? [...this.RUNTIME_ORIGINS]
+            : this._normalizeStringList(value.origins, 'runtimeRequirements.origins').map(origin => origin.toLowerCase());
+        if (!requestedOrigins.length) throw new Error('Module manifest runtimeRequirements.origins cannot be empty');
+        for (const origin of requestedOrigins) {
+            if (!this.RUNTIME_ORIGINS.includes(origin)) {
+                throw new Error(`Module manifest runtimeRequirements.origins contains unsupported origin ${origin}`);
+            }
+        }
+        return {
+            origins: [...new Set(requestedOrigins)],
+            network: value.network === true,
+            secureContext: value.secureContext === true,
+            hotToggleSafe: value.hotToggleSafe === true || legacyHotToggleSafe === true
+        };
+    },
+
+    _normalizeProvenance(value, fallback = 'user') {
+        const provenance = String(value || fallback).trim().toLowerCase();
+        if (!this.MODULE_PROVENANCES.includes(provenance)) {
+            throw new Error(`Module provenance must be one of: ${this.MODULE_PROVENANCES.join(', ')}`);
+        }
+        return provenance;
+    },
+
+    _runtimeOrigin() {
+        const location = typeof window !== 'undefined' ? window.location : null;
+        const protocol = String(location?.protocol || '').toLowerCase();
+        const hostname = String(location?.hostname || '').toLowerCase();
+        if (protocol === 'file:') return 'file';
+        if (hostname === 'localhost' || hostname === '::1' || /^127(?:\.\d{1,3}){3}$/.test(hostname)) return 'localhost';
+        if (protocol === 'https:') return 'https';
+        return 'http';
+    },
+
+    _runtimeCompatibilityBlockReason(manifest) {
+        const requirements = this._normalizeRuntimeRequirements(manifest?.runtimeRequirements, manifest?.hotToggleSafe);
+        const origin = this._runtimeOrigin();
+        if (!requirements.origins.includes(origin)) {
+            return `Module requires one of these runtime origins: ${requirements.origins.join(', ')}`;
+        }
+        const secure = origin === 'https' || origin === 'localhost';
+        if (requirements.secureContext && !secure) {
+            return 'Module requires HTTPS or localhost';
+        }
+        if (requirements.network && origin === 'file') {
+            return 'Module requires a server-hosted network origin';
+        }
+        return null;
+    },
+
     _normalizePolicyDeclarations(value, fieldName, kind) {
         if (value === undefined) return [];
         if (!Array.isArray(value)) throw new Error(`Module manifest ${fieldName} must be an array`);
@@ -201,7 +266,10 @@ const MODULE_SYSTEM = {
                 setting.default = Math.max(setting.min, Math.min(setting.max, Number(entry.default) || setting.min));
             }
             if (type === 'string') {
-                setting.maxLength = Math.max(1, Math.min(500, Number(entry.maxLength) || 120));
+                setting.multiline = entry.multiline === true;
+                setting.rows = setting.multiline ? Math.max(2, Math.min(12, Number(entry.rows) || 5)) : 1;
+                const hardLimit = setting.multiline ? 2000 : 500;
+                setting.maxLength = Math.max(1, Math.min(hardLimit, Number(entry.maxLength) || (setting.multiline ? 1200 : 120)));
                 setting.default = String(entry.default || '').slice(0, setting.maxLength);
                 this._assertSettingContainsNoCredentials(key, setting.default);
             }
@@ -270,6 +338,7 @@ const MODULE_SYSTEM = {
             });
         }
         const gameplayVariants = this._normalizePolicyDeclarations(manifest.gameplayVariants, 'gameplayVariants', 'variant');
+        const runtimeRequirements = this._normalizeRuntimeRequirements(manifest.runtimeRequirements, manifest.hotToggleSafe);
 
         return {
             ...manifest,
@@ -284,6 +353,7 @@ const MODULE_SYSTEM = {
             minGameVersion,
             contentCategories,
             gameplayVariants,
+            runtimeRequirements,
             settings: this._normalizeSettingsDeclarations(manifest.settings)
         };
     },
@@ -450,7 +520,11 @@ const MODULE_SYSTEM = {
             if (!Number.isFinite(number)) throw new Error('Module setting must be a number');
             return Math.max(declaration.min, Math.min(declaration.max, number));
         }
-        if (declaration.type === 'string') return String(value || '').slice(0, declaration.maxLength);
+        if (declaration.type === 'string') {
+            const normalized = String(value || '').replace(/\r\n?/g, '\n').slice(0, declaration.maxLength);
+            this._assertSettingContainsNoCredentials(declaration.key, normalized);
+            return normalized;
+        }
         if (declaration.type === 'provider_connection') {
             const id = String(value || '');
             const profile = id ? YAW_AI_PROVIDER_MANAGER.profiles.get(id) : null;
@@ -554,6 +628,198 @@ const MODULE_SYSTEM = {
         if (reason) throw new Error(reason);
     },
 
+    _normalizeHostPolicy(value = {}) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            throw new Error('Host module policy must be an object');
+        }
+        const list = (key, fallback = []) => this._normalizeStringList(value[key] ?? fallback, `policy.${key}`);
+        const required = list('required', value.lockedEnabled || []);
+        const defaultEnabled = list('defaultEnabled');
+        const optional = list('optional');
+        const forbidden = list('forbidden', value.lockedDisabled || []);
+        const stateById = {};
+        for (const id of required) stateById[id] = 'required';
+        for (const id of defaultEnabled) if (!stateById[id]) stateById[id] = 'default';
+        for (const id of optional) if (!stateById[id]) stateById[id] = 'optional';
+        for (const id of forbidden) stateById[id] = 'forbidden';
+        if (value.modules !== undefined) {
+            if (!value.modules || typeof value.modules !== 'object' || Array.isArray(value.modules)) {
+                throw new Error('Host module policy.modules must be an object');
+            }
+            for (const [id, declaration] of Object.entries(value.modules)) {
+                if (!/^[a-zA-Z0-9_-]+$/.test(id)) throw new Error('Host module policy ids must be module ids');
+                const state = String(typeof declaration === 'string' ? declaration : declaration?.state || '').trim().toLowerCase();
+                if (!['required', 'default', 'optional', 'forbidden'].includes(state)) {
+                    throw new Error(`Host module policy for ${id} has an invalid state`);
+                }
+                stateById[id] = state;
+            }
+        }
+        return {
+            allowUserModules: value.allowUserModules !== false,
+            stateById
+        };
+    },
+
+    _sameOriginUrl(value, baseUrl = '') {
+        const currentHref = String(baseUrl || (typeof window !== 'undefined' ? window.location?.href : '') || 'http://localhost/');
+        let url;
+        try {
+            url = new URL(String(value || ''), currentHref);
+        } catch (e) {
+            throw new Error('Host module URL is invalid');
+        }
+        const current = new URL(currentHref);
+        if (url.origin !== current.origin) throw new Error('Host module URLs must use the game origin');
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Host module URLs must use HTTP or HTTPS');
+        return url.href;
+    },
+
+    _normalizeHostCatalogEntry(value, baseUrl) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            throw new Error('Host catalog entries must be objects');
+        }
+        const id = String(value.id || value.package?.packageId || value.package?.module?.manifest?.id || value.package?.manifest?.id || '').trim();
+        if (!id || !/^[a-zA-Z0-9_-]+$/.test(id)) throw new Error('Host catalog entry id must be a module id');
+        const version = String(value.version || value.package?.module?.manifest?.version || value.package?.manifest?.version || '').trim();
+        if (!version) throw new Error(`Host catalog entry ${id} requires a version`);
+        if (!value.url && !value.package) throw new Error(`Host catalog entry ${id} requires url or package`);
+        const sha256 = String(value.sha256 || '').trim();
+        if (sha256 && !/^(?:[a-f0-9]{64}|sha256-[A-Za-z0-9+/=]+)$/i.test(sha256)) {
+            throw new Error(`Host catalog entry ${id} has an invalid sha256 value`);
+        }
+        return {
+            id,
+            name: String(value.name || value.package?.module?.manifest?.name || value.package?.manifest?.name || id).trim().slice(0, 120),
+            version,
+            description: String(value.description || value.package?.module?.manifest?.description || value.package?.manifest?.description || '').trim().slice(0, 500),
+            type: String(value.type || value.package?.module?.manifest?.type || value.package?.manifest?.type || 'feature_pack').trim(),
+            contentRating: String(value.contentRating || value.package?.module?.manifest?.contentRating || value.package?.manifest?.contentRating || 'safe').trim().toLowerCase(),
+            preview: String(value.preview || '📦').slice(0, 16),
+            url: value.url ? this._sameOriginUrl(value.url, baseUrl) : '',
+            sha256,
+            preload: value.preload === true,
+            package: value.package || null,
+            runtimeRequirements: this._normalizeRuntimeRequirements(value.runtimeRequirements)
+        };
+    },
+
+    normalizeHostManifest(value, manifestUrl = '') {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Host manifest must be an object');
+        if (String(value.schema || '') !== this.HOST_MANIFEST_SCHEMA) {
+            throw new Error(`Host manifest schema must be ${this.HOST_MANIFEST_SCHEMA}`);
+        }
+        const hostId = String(value.hostId || 'default-host').trim();
+        if (!hostId || !/^[a-zA-Z0-9_.:-]+$/.test(hostId)) throw new Error('Host manifest hostId must be a token');
+        const catalog = (Array.isArray(value.catalog) ? value.catalog : []).map(entry => this._normalizeHostCatalogEntry(entry, manifestUrl));
+        const ids = new Set();
+        for (const entry of catalog) {
+            if (ids.has(entry.id)) throw new Error(`Duplicate host catalog module: ${entry.id}`);
+            ids.add(entry.id);
+        }
+        const policy = this._normalizeHostPolicy(value.policy || {});
+        for (const [id, state] of Object.entries(policy.stateById)) {
+            if (state !== 'forbidden' && !ids.has(id)) throw new Error(`Host policy references missing catalog module ${id}`);
+        }
+        return {
+            schema: this.HOST_MANIFEST_SCHEMA,
+            hostId,
+            catalog,
+            policy,
+            strictWorldModules: value.strictWorldModules === true,
+            manifestUrl: String(manifestUrl || '')
+        };
+    },
+
+    _hostManifestDiscoveryUrl() {
+        if (this._runtimeOrigin() === 'file') return '';
+        const declared = typeof document !== 'undefined'
+            ? document.querySelector('meta[name="yaw-host-manifest"]')?.getAttribute('content')
+            : '';
+        const href = typeof window !== 'undefined' ? window.location?.href : '';
+        return this._sameOriginUrl(declared || this.DEFAULT_HOST_MANIFEST_PATH, href);
+    },
+
+    async _sha256Matches(text, expected) {
+        if (!expected) return true;
+        const cryptoApi = typeof window !== 'undefined' ? window.crypto : null;
+        if (!cryptoApi?.subtle?.digest) throw new Error('Host package integrity verification is unavailable');
+        const bytes = new TextEncoder().encode(String(text));
+        const digest = new Uint8Array(await cryptoApi.subtle.digest('SHA-256', bytes));
+        if (/^[a-f0-9]{64}$/i.test(expected)) {
+            const hex = Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
+            return hex.toLowerCase() === expected.toLowerCase();
+        }
+        const binary = Array.from(digest, byte => String.fromCharCode(byte)).join('');
+        const encode = typeof window !== 'undefined' && typeof window.btoa === 'function' ? window.btoa.bind(window) : null;
+        if (!encode) throw new Error('Host package integrity verification is unavailable');
+        return `sha256-${encode(binary)}` === expected;
+    },
+
+    async _fetchHostPackage(entry) {
+        if (entry.package) return entry.package;
+        const fetchApi = typeof window !== 'undefined' ? window.fetch?.bind(window) : null;
+        if (!fetchApi) throw new Error('Host package loading is unavailable');
+        const response = await fetchApi(entry.url, {
+            method: 'GET',
+            credentials: 'same-origin',
+            redirect: 'error',
+            cache: 'no-cache',
+            headers: { Accept: 'application/json' }
+        });
+        if (!response.ok) throw new Error(`Host package ${entry.id} returned HTTP ${response.status}`);
+        const text = await response.text();
+        if (!(await this._sha256Matches(text, entry.sha256))) throw new Error(`Host package ${entry.id} failed integrity verification`);
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            throw new Error(`Host package ${entry.id} is not valid JSON`);
+        }
+    },
+
+    hostPolicyState(moduleId) {
+        return this.hostManifest?.policy?.stateById?.[String(moduleId)] || '';
+    },
+
+    moduleControlState(module) {
+        const record = module || {};
+        const provenance = this._normalizeProvenance(record.provenance || 'user');
+        const policyState = this.hostPolicyState(record.id);
+        const compatibilityReason = this._runtimeCompatibilityBlockReason(record.manifest || {});
+        const userBlocked = Boolean(this.hostManifest && provenance === 'user' && this.hostManifest.policy.allowUserModules === false);
+        return {
+            provenance,
+            policyState,
+            lockedEnabled: policyState === 'required',
+            lockedDisabled: policyState === 'forbidden',
+            canDelete: provenance === 'user',
+            canEnable: policyState !== 'forbidden' && !userBlocked && !compatibilityReason,
+            canDisable: policyState !== 'required',
+            compatibilityReason,
+            reason: compatibilityReason
+                || (policyState === 'required' ? 'Required by this host' : '')
+                || (policyState === 'forbidden' ? 'Disabled by this host' : '')
+                || (userBlocked ? 'User-installed modules are disabled by this host' : '')
+        };
+    },
+
+    _assertModuleControl(module, enabled, options = {}) {
+        if (options.bypassHostPolicy !== true) {
+            const control = this.moduleControlState(module);
+            if (enabled && !control.canEnable) throw new Error(control.reason || 'Module cannot be enabled in this hosted game');
+            if (!enabled && !control.canDisable) throw new Error(control.reason || 'Module is required by this host');
+        }
+        if (enabled) {
+            const compatibilityReason = this._runtimeCompatibilityBlockReason(module.manifest || {});
+            if (compatibilityReason) throw new Error(compatibilityReason);
+        }
+        const inActiveWorld = typeof App !== 'undefined' && App.screen === 'game' && App.player;
+        const hotToggleSafe = module.manifest?.runtimeRequirements?.hotToggleSafe === true;
+        if (inActiveWorld && !hotToggleSafe && options.bypassLifecycle !== true) {
+            throw new Error('Module changes require returning to the menu or reloading the world');
+        }
+    },
+
     async _assertDependenciesEnabled(moduleId, manifest, store) {
         for (const dependencyId of manifest.dependencies || []) {
             const dependency = await this._request(store.get(dependencyId));
@@ -615,6 +881,224 @@ const MODULE_SYSTEM = {
         }
         return normalized;
     },
+
+    async initializeHostCatalog(options = {}) {
+        if (this._runtimeOrigin() === 'file') {
+            this.hostManifest = null;
+            this.hostCatalog.clear();
+            this.hostManifestState = { status: 'offline-file', reason: 'File mode does not load host manifests', url: '' };
+            return this.hostManifestState;
+        }
+        let url = '';
+        try {
+            url = options.url ? this._sameOriginUrl(options.url) : this._hostManifestDiscoveryUrl();
+            const fetchApi = options.fetch || (typeof window !== 'undefined' ? window.fetch?.bind(window) : null);
+            if (!fetchApi) throw new Error('Host manifest loading is unavailable');
+            const response = await fetchApi(url, {
+                method: 'GET',
+                credentials: 'same-origin',
+                redirect: 'error',
+                cache: 'no-cache',
+                headers: { Accept: 'application/json' }
+            });
+            if (response.status === 404 || response.status === 204) {
+                this.hostManifest = null;
+                this.hostCatalog.clear();
+                this.hostManifestState = { status: 'not-configured', reason: '', url };
+                return this.hostManifestState;
+            }
+            if (!response.ok) throw new Error(`Host manifest returned HTTP ${response.status}`);
+            const manifest = this.normalizeHostManifest(await response.json(), url);
+            this.hostManifest = manifest;
+            this.hostCatalog = new Map(manifest.catalog.map(entry => [entry.id, entry]));
+            this.hostManifestState = { status: 'loaded', reason: '', url, hostId: manifest.hostId };
+            await this.getAllModules();
+
+            const previousById = new Map(this.moduleRecords);
+            const replacedEnabled = new Set();
+            for (const entry of manifest.catalog) {
+                const state = this.hostPolicyState(entry.id);
+                if (!entry.preload && !['required', 'default'].includes(state)) continue;
+                const previous = previousById.get(entry.id) || null;
+                const needsInstall = !previous
+                    || previous.provenance !== 'host'
+                    || String(previous.manifest?.version || '') !== entry.version
+                    || String(previous.integrity || '') !== entry.sha256;
+                if (needsInstall) {
+                    if (previous?.enabled) replacedEnabled.add(entry.id);
+                    const installed = await this.installHostCatalogModule(entry.id, { enable: false });
+                    for (const dependent of installed.disabledDependents || []) replacedEnabled.add(dependent.id);
+                }
+            }
+            const enableIds = new Set();
+            const defaultIds = new Set();
+            for (const entry of manifest.catalog) {
+                const state = this.hostPolicyState(entry.id);
+                const previous = previousById.get(entry.id) || null;
+                if (state === 'required' || replacedEnabled.has(entry.id)) enableIds.add(entry.id);
+                if (state === 'default' && !previous) {
+                    enableIds.add(entry.id);
+                    defaultIds.add(entry.id);
+                }
+            }
+            for (const id of replacedEnabled) enableIds.add(id);
+            const addDependencies = id => {
+                const module = this.moduleRecords.get(id);
+                for (const dependencyId of module?.manifest?.dependencies || []) {
+                    if (!this.moduleRecords.has(dependencyId)) throw new Error(`Host module ${id} requires missing dependency ${dependencyId}`);
+                    if (!enableIds.has(dependencyId)) {
+                        enableIds.add(dependencyId);
+                        addDependencies(dependencyId);
+                    }
+                }
+            };
+            [...enableIds].forEach(addDependencies);
+            const pendingEnable = new Set([...enableIds].filter(id => !this.moduleRecords.get(id)?.enabled));
+            while (pendingEnable.size) {
+                const ready = [...pendingEnable].find(id => (this.moduleRecords.get(id)?.manifest?.dependencies || []).every(dependencyId => !pendingEnable.has(dependencyId)));
+                if (!ready) throw new Error('Host module dependency cycle prevented enablement');
+                const enabledModule = await this.setModuleEnabled(ready, true, { bypassLifecycle: true });
+                if (defaultIds.has(ready)) {
+                    enabledModule.hostDefaultApplied = true;
+                    await this._storeModuleRecord(enabledModule);
+                }
+                pendingEnable.delete(ready);
+            }
+            await this.enforceHostPolicy();
+            return this.hostManifestState;
+        } catch (error) {
+            this.hostManifest = null;
+            this.hostCatalog.clear();
+            this.hostManifestState = { status: 'error', reason: error?.message || String(error), url };
+            console.warn('Host module manifest was not loaded:', error);
+            return this.hostManifestState;
+        }
+    },
+
+    async installHostCatalogModule(moduleId, options = {}) {
+        const entry = this.hostCatalog.get(String(moduleId));
+        if (!entry) throw new Error('Host catalog module not found');
+        const packageData = await this._fetchHostPackage(entry);
+        const normalizedPackage = this._normalizeModulePackage(packageData);
+        const validated = this._validateModuleData(normalizedPackage);
+        if (validated.manifest.id !== entry.id) throw new Error(`Host package id does not match catalog entry ${entry.id}`);
+        if (validated.manifest.version !== entry.version) throw new Error(`Host package version does not match catalog entry ${entry.id}`);
+        const installed = await this.installModule(packageData, {
+            provenance: 'host',
+            hostId: this.hostManifest?.hostId || '',
+            sourceUrl: entry.url,
+            integrity: entry.sha256,
+            hostPolicyState: this.hostPolicyState(entry.id)
+        });
+        if (options.enable === true) {
+            try {
+                return await this.setModuleEnabled(installed.id, true, { bypassLifecycle: options.bypassLifecycle === true });
+            } catch (error) {
+                error.installedModule = installed;
+                throw error;
+            }
+        }
+        return installed;
+    },
+
+    async enforceHostPolicy() {
+        if (!this.hostManifest) return [];
+        const modules = await this.getAllModules();
+        const changed = [];
+        for (const module of modules) {
+            const state = this.hostPolicyState(module.id);
+            const userBlocked = module.provenance === 'user' && this.hostManifest.policy.allowUserModules === false;
+            if ((state === 'forbidden' || userBlocked) && module.enabled) {
+                changed.push(await this.setModuleEnabled(module.id, false, { bypassHostPolicy: true, bypassLifecycle: true }));
+            }
+        }
+        for (const [id, state] of Object.entries(this.hostManifest.policy.stateById)) {
+            if (state !== 'required') continue;
+            let module = this.moduleRecords.get(id);
+            if (!module && this.hostCatalog.has(id)) module = await this.installHostCatalogModule(id, { enable: false });
+            if (module && !module.enabled) changed.push(await this.setModuleEnabled(id, true, { bypassLifecycle: true }));
+        }
+        return changed;
+    },
+
+    getHostCatalog() {
+        return [...this.hostCatalog.values()].map(entry => {
+            const installed = this.moduleRecords.get(entry.id) || null;
+            const manifest = installed?.manifest || { runtimeRequirements: entry.runtimeRequirements };
+            const control = this.moduleControlState({
+                id: entry.id,
+                provenance: 'host',
+                manifest
+            });
+            return {
+                ...entry,
+                provenance: 'host',
+                hostId: this.hostManifest?.hostId || '',
+                policyState: this.hostPolicyState(entry.id) || 'optional',
+                installed: Boolean(installed),
+                enabled: Boolean(installed?.enabled),
+                compatibilityReason: control.compatibilityReason
+            };
+        });
+    },
+
+    contentProfileSnapshot() {
+        const modules = [...this.moduleRecords.values()]
+            .filter(module => module.enabled === true)
+            .map(module => ({
+                id: module.id,
+                version: String(module.manifest?.version || ''),
+                integrity: String(module.integrity || ''),
+                provenance: this._normalizeProvenance(module.provenance || 'user')
+            }))
+            .sort((a, b) => a.id.localeCompare(b.id));
+        return {
+            schema: this.CONTENT_PROFILE_SCHEMA,
+            hostId: this.hostManifest?.hostId || '',
+            strict: this.hostManifest?.strictWorldModules === true,
+            modules
+        };
+    },
+
+    async assertContentProfile(profile) {
+        if (!profile) return true;
+        if (!profile || typeof profile !== 'object' || profile.schema !== this.CONTENT_PROFILE_SCHEMA || !Array.isArray(profile.modules)) {
+            throw new Error('Save has an invalid module content profile');
+        }
+        if (profile.hostId && this.hostManifest?.hostId && profile.hostId !== this.hostManifest.hostId) {
+            throw new Error(`Save requires host ${profile.hostId}`);
+        }
+        await this.getAllModules();
+        const resolved = new Map();
+        for (const lock of profile.modules) {
+            const id = String(lock?.id || '');
+            if (!/^[a-zA-Z0-9_-]+$/.test(id)) throw new Error('Save module content profile contains an invalid module id');
+            let module = this.moduleRecords.get(id);
+            if (!module && this.hostCatalog.has(id)) module = await this.installHostCatalogModule(id, { enable: false });
+            if (!module) throw new Error(`Save requires missing module ${id}`);
+            if (String(module.manifest?.version || '') !== String(lock.version || '')) {
+                throw new Error(`Save requires module ${id} version ${lock.version}`);
+            }
+            if (lock.integrity && String(module.integrity || '') !== String(lock.integrity)) {
+                throw new Error(`Save requires a different build of module ${id}`);
+            }
+            resolved.set(id, module);
+        }
+        if (profile.strict === true) {
+            const requiredIds = new Set(profile.modules.map(module => String(module.id)));
+            const extras = [...this.moduleRecords.values()].filter(module => module.enabled && !requiredIds.has(module.id));
+            if (extras.length) throw new Error(`Save does not allow additional enabled modules: ${extras.map(module => module.id).join(', ')}`);
+        }
+        const pendingEnable = new Set([...resolved.values()].filter(module => !module.enabled).map(module => module.id));
+        while (pendingEnable.size) {
+            const ready = [...pendingEnable].find(id => (resolved.get(id)?.manifest?.dependencies || [])
+                .every(dependencyId => !pendingEnable.has(dependencyId)));
+            if (!ready) throw new Error('Save module dependency cycle prevented enablement');
+            await this.setModuleEnabled(ready, true, { bypassLifecycle: true });
+            pendingEnable.delete(ready);
+        }
+        return true;
+    },
     
     // Initialize database
     async init() {
@@ -655,6 +1139,38 @@ const MODULE_SYSTEM = {
                 }
             };
         });
+    },
+
+    async loadEnabledModules() {
+        const enabled = (await this.getAllModules()).filter(module => module.enabled === true);
+        const pending = new Map(enabled.map(module => [module.id, module]));
+        const loaded = [];
+        let progressed = true;
+        while (pending.size && progressed) {
+            progressed = false;
+            for (const [moduleId, module] of [...pending.entries()]) {
+                const manifest = this._normalizeManifest(module.manifest);
+                if (manifest.dependencies.some(dependencyId => pending.has(dependencyId))) continue;
+                pending.delete(moduleId);
+                progressed = true;
+                const dependenciesReady = manifest.dependencies.every(dependencyId => this.activeModules.has(dependencyId));
+                if (!dependenciesReady) {
+                    console.error(`Enabled module dependencies are unavailable: ${manifest.name}`);
+                    continue;
+                }
+                try {
+                    const control = this.moduleControlState({ ...module, manifest });
+                    if (!control.canEnable) throw new Error(control.reason || 'Module is unavailable in this runtime');
+                    this._assertContentRatingEnabled(manifest);
+                    await this.loadModule({ ...module, manifest });
+                    this._syncContentPolicyProvider({ ...module, manifest });
+                    loaded.push(moduleId);
+                } catch (error) {
+                    console.error(`Failed to restore enabled module ${moduleId}:`, error);
+                }
+            }
+        }
+        return loaded;
     },
 
     closeDatabase() {
@@ -713,17 +1229,23 @@ const MODULE_SYSTEM = {
     },
     
     // Install module from file
-    async installModule(moduleData) {
+    async installModule(moduleData, options = {}) {
         const packageModuleData = this._normalizeModulePackage(moduleData);
         const validated = this._validateModuleData(packageModuleData);
         this._assertGameVersionCompatible(validated.manifest);
+        const provenance = this._normalizeProvenance(options.provenance || 'user');
         const module = {
             id: validated.manifest.id,
             manifest: validated.manifest,
             code: validated.code,
             assets: validated.assets,
             enabled: false,
-            installedAt: Date.now()
+            installedAt: Date.now(),
+            provenance,
+            hostId: provenance === 'host' ? String(options.hostId || '').slice(0, 160) : '',
+            sourceUrl: provenance === 'host' ? String(options.sourceUrl || '').slice(0, 1000) : '',
+            integrity: provenance === 'host' ? String(options.integrity || '') : '',
+            hostPolicyState: provenance === 'host' ? String(options.hostPolicyState || '') : ''
         };
         
         const db = this._requireDb();
@@ -731,6 +1253,9 @@ const MODULE_SYSTEM = {
         const store = tx.objectStore('modules');
         const assetStore = tx.objectStore('assets');
         const previous = await this._request(store.get(module.id));
+        if (previous?.provenance === 'host' && provenance === 'user') {
+            throw new Error('A user-installed module cannot replace a host-supplied module');
+        }
         await this._assertNoDependencyCycle(module.id, module.manifest.dependencies, store);
         const previousAssets = await this._request(assetStore.index('moduleId').getAll(module.id));
         for (const asset of previousAssets) {
@@ -747,19 +1272,22 @@ const MODULE_SYSTEM = {
             module.disabledDependents = await this._disableDependentsOf(module.id);
         }
         this._syncContentPolicyProvider(module);
+        this.moduleRecords.set(module.id, module);
         
         console.log(`Module installed: ${module.manifest.name}`);
         return module;
     },
     
     // Enable/disable module
-    async setModuleEnabled(moduleId, enabled) {
+    async setModuleEnabled(moduleId, enabled, options = {}) {
         const db = this._requireDb();
         const tx = db.transaction(['modules'], 'readwrite');
         const store = tx.objectStore('modules');
         
         const module = await this._request(store.get(moduleId));
         if (!module) throw new Error('Module not found');
+        module.provenance = this._normalizeProvenance(module.provenance || 'user');
+        this._assertModuleControl(module, Boolean(enabled), options);
 
         if (enabled) {
             const validated = this._validateModuleData(module);
@@ -792,6 +1320,7 @@ const MODULE_SYSTEM = {
                 throw e;
             }
             this._syncContentPolicyProvider(module);
+            this.moduleRecords.set(module.id, module);
             return module;
         }
 
@@ -802,6 +1331,7 @@ const MODULE_SYSTEM = {
         this.unloadModule(moduleId);
         module.disabledDependents = await this._disableDependentsOf(moduleId);
         this._syncContentPolicyProvider(module);
+        this.moduleRecords.set(module.id, module);
         
         return module;
     },
@@ -812,6 +1342,7 @@ const MODULE_SYSTEM = {
         const store = tx.objectStore('modules');
         await this._request(store.put(module));
         await this._transactionDone(tx);
+        this.moduleRecords.set(module.id, module);
         return module;
     },
 
@@ -822,7 +1353,7 @@ const MODULE_SYSTEM = {
             if (!module.enabled || module.id === moduleId) continue;
             const manifest = this._normalizeManifest(module.manifest);
             if (!manifest.dependencies.includes(moduleId)) continue;
-            const disabledModule = await this.setModuleEnabled(module.id, false);
+            const disabledModule = await this.setModuleEnabled(module.id, false, { bypassLifecycle: true });
             disabled.push(disabledModule);
         }
         return disabled;
@@ -839,7 +1370,7 @@ const MODULE_SYSTEM = {
             const reason = this._contentRatingBlockReason(manifest);
             if (!reason) continue;
 
-            const disabledModule = await this.setModuleEnabled(module.id, false);
+            const disabledModule = await this.setModuleEnabled(module.id, false, { bypassLifecycle: true });
             disabled.push({
                 ...disabledModule,
                 manifest,
@@ -1311,6 +1842,16 @@ const MODULE_SYSTEM = {
                 return YAW_NARRATION_SYSTEM.clearOwner(App, moduleId);
             },
 
+            getCachedTileNarration(options = {}) {
+                self._requirePermission(moduleId, manifest, 'scene:narrate');
+                return YAW_NARRATION_SYSTEM.getCachedTileNarration(App, moduleId, options);
+            },
+
+            cacheTileNarration(narrationId, options = {}) {
+                self._requirePermission(moduleId, manifest, 'scene:narrate');
+                return YAW_NARRATION_SYSTEM.cacheTileNarration(App, moduleId, narrationId, options);
+            },
+
             registerSettingAction(key, callback) {
                 const declaration = self._declaredSetting(manifest, key);
                 if (declaration?.type !== 'action' || typeof callback !== 'function') throw new Error('Setting action must match a declared action');
@@ -1327,8 +1868,25 @@ const MODULE_SYSTEM = {
                 return YAW_NARRATION_SYSTEM.registerOrchestrator(moduleId, orchestrator);
             },
 
-            ownsNarrationExchange(envelope = {}) {
+            async ownsNarrationExchange(envelope = {}) {
                 self._requirePermission(moduleId, manifest, 'scene:narrate');
+                const enabledSetting = (manifest?.settings || []).find(setting => setting.key === 'enabled' && setting.type === 'boolean');
+                if (enabledSetting && !(await self.getModuleSetting(moduleId, enabledSetting.key, enabledSetting.default ?? true))) return false;
+                const providerSetting = (manifest?.settings || []).find(setting => setting.type === 'provider_connection');
+                if (providerSetting) {
+                    const connectionId = await self.getModuleSetting(moduleId, providerSetting.key, providerSetting.default || '');
+                    if (!connectionId) {
+                        YAW_NARRATION_SYSTEM.logOperationalError(App, moduleId, 'provider_connection_not_selected');
+                        return false;
+                    }
+                    const available = YAW_AI_PROVIDER_MANAGER.listConnections(providerSetting.capability || 'text.generate')
+                        .some(connection => connection.id === connectionId);
+                    if (!available) {
+                        YAW_NARRATION_SYSTEM.logOperationalError(App, moduleId, 'provider_connection_unavailable');
+                        return false;
+                    }
+                    YAW_NARRATION_SYSTEM.clearOperationalErrors(moduleId);
+                }
                 return YAW_NARRATION_SYSTEM.ownsOrchestration(moduleId, envelope.policy || undefined);
             },
 
@@ -1388,7 +1946,16 @@ const MODULE_SYSTEM = {
         const store = tx.objectStore('modules');
         const modules = await this._request(store.getAll());
         await this._transactionDone(tx);
-        return modules;
+        const normalized = modules.map(module => ({
+            ...module,
+            provenance: this._normalizeProvenance(module.provenance || 'user'),
+            hostId: String(module.hostId || ''),
+            sourceUrl: String(module.sourceUrl || ''),
+            integrity: String(module.integrity || ''),
+            hostPolicyState: this.hostPolicyState(module.id) || String(module.hostPolicyState || '')
+        }));
+        this.moduleRecords = new Map(normalized.map(module => [module.id, module]));
+        return normalized;
     },
     
     // Get module settings
@@ -1434,7 +2001,11 @@ const MODULE_SYSTEM = {
     },
     
     // Delete module
-    async deleteModule(moduleId) {
+    async deleteModule(moduleId, options = {}) {
+        const existing = (await this.getAllModules()).find(module => module.id === moduleId);
+        if (existing && existing.provenance !== 'user' && options.bypassOwnership !== true) {
+            throw new Error('Host and built-in modules cannot be deleted by the player');
+        }
         await this._disableDependentsOf(moduleId);
         this.unloadModule(moduleId);
         
@@ -1462,14 +2033,18 @@ const MODULE_SYSTEM = {
         if (typeof CONTENT !== 'undefined' && CONTENT?.unregisterPolicyProvider) {
             CONTENT.unregisterPolicyProvider(moduleId);
         }
+        this.moduleRecords.delete(moduleId);
         
         console.log(`Module deleted: ${moduleId}`);
     }
 };
 
-// Initialize module system
-MODULE_SYSTEM.init().then(() => {
+// Initialize module storage. App.init restores enabled module runtimes after
+// content preferences have been applied.
+MODULE_SYSTEM.ready = MODULE_SYSTEM.init().then(() => {
     console.log('Module system ready');
+    return MODULE_SYSTEM;
 }).catch(err => {
     console.error('Module system failed:', err);
+    throw err;
 });

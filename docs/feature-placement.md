@@ -10,7 +10,8 @@ This inventory records expansion proposals that still need operator placement. I
 | Additional Feast/container variants | Combat actions, containment, saves | High | Tier-dependent | Sub-actions and containment hooks | Which variants are baseline and which are rated modules |
 | Itemized remains and butchering | Inventory, remains, economy | High | Tier-dependent | Remains Pool and future hooks | Whether core should ever create creature-piece items |
 | Generated narrative/LLM bridge | Scene Beats, Activity, public context | Low if presentation-only | Tier-dependent | `MODS.getContext()` and scene templates | First-party example versus third-party seam only |
-| Tilesets and media packs | Asset loading and provenance | Low | Safe-capable | Asset manifest and fallbacks | Which first-party assets ship with core |
+| Lightweight core graphics and rich asset packs | Asset loading, storage, rendering capabilities, provenance | Low unless presentation leaks into state | Safe-capable | Asset manifest, tileset keys, metadata-first terrain, and fallbacks | Core visual baseline, pack format, budgets, and the boundary for animated/3D assets |
+| Remote URI mod acquisition | Package transport, validation, IndexedDB, permissions, updates | Medium | Tier-dependent | Local file import, same-origin Host Catalog, integrity pins, and stored modules | Trust/signature model, archive format, limits, runtime isolation, and who owns update discovery |
 | Advanced interiors | World generation, traversal, saves | High | Safe-capable | `enterable` / `interior.enabled` opt-in | Authored modules versus generated core grammar |
 | Procedural perk trees | Progression, balance, UI | Medium | Safe-capable | Perk registry foundation | Minimal core depth and mod ownership |
 

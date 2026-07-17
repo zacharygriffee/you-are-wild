@@ -13,7 +13,9 @@ const YAW_STORAGE = {
     },
 
     getStoredValue(app, keyName) {
-        return localStorage.getItem(app.storageKeys[keyName]) ?? localStorage.getItem(app.legacyStorageKeys[keyName]);
+        const current = localStorage.getItem(app.storageKeys[keyName]);
+        const legacyKey = app.legacyStorageKeys[keyName];
+        return current ?? (legacyKey ? localStorage.getItem(legacyKey) : null);
     },
 
     setStoredValue(app, keyName, value) {
@@ -22,7 +24,8 @@ const YAW_STORAGE = {
 
     removeStoredValue(app, keyName) {
         localStorage.removeItem(app.storageKeys[keyName]);
-        localStorage.removeItem(app.legacyStorageKeys[keyName]);
+        const legacyKey = app.legacyStorageKeys[keyName];
+        if (legacyKey) localStorage.removeItem(legacyKey);
     },
 
     getSaveTime(app, slotName) {

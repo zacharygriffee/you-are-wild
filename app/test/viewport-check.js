@@ -54,7 +54,7 @@ function makeUnitScript() {
 }
 
 async function checkViewport(browser, name, width, height) {
-  const page = await browser.newPage({ viewport: { width, height }, isMobile: width < 600 });
+  const page = await browser.newPage({ viewport: { width, height }, isMobile: width <= 1024 });
   await page.goto(distUrl, { waitUntil: 'load' });
   await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
   await clearBrowserStorage(page);
@@ -90,9 +90,9 @@ async function checkViewport(browser, name, width, height) {
     };
   });
   assert.deepStrictEqual(menuHierarchy.primary, ['start-new-game', 'open-load-slots'], `${name}: visible primary menu actions should be New and Load before a save exists`);
-  assert.deepStrictEqual(menuHierarchy.utility, ['open-settings', 'open-mods', 'open-help'], `${name}: utility menu actions should be Settings, Mods, and Tutorial`);
+  assert.deepStrictEqual(menuHierarchy.utility, ['open-settings', 'open-mods', 'open-help', 'open-activity-log', 'open-release-notes'], `${name}: utility menu actions should expose settings, mods, help, diagnostics, and release notes`);
   assert.strictEqual(menuHierarchy.hasDirectProviders, false, `${name}: AI Providers should be nested under Settings`);
-  assert.strictEqual(menuHierarchy.hasDirectMarket, false, `${name}: Module Samples should be nested under Mods`);
+  assert.strictEqual(menuHierarchy.hasDirectMarket, false, `${name}: Host Catalog should not be a top-level menu action`);
   assert(menuHierarchy.overflowY === 'auto' || menuHierarchy.overflowY === 'scroll', `${name}: main menu should retain a vertical scroll fallback`);
   assert.strictEqual(menuHierarchy.horizontalOverflow, false, `${name}: compact main menu should not overflow horizontally`);
 
@@ -118,7 +118,11 @@ async function checkViewport(browser, name, width, height) {
       settingsInsideViewport: settingsRect.left >= -1 && settingsRect.right <= innerWidth + 1 && settingsRect.top >= -1 && settingsRect.bottom <= innerHeight + 1,
       closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
       closeControl: close?.getAttribute('data-command-control') || '',
-      closeSlot: close?.getAttribute('data-command-slot') || ''
+      closeSlot: close?.getAttribute('data-command-slot') || '',
+      dialogRole: settings.getAttribute('role') || '',
+      ariaModal: settings.getAttribute('aria-modal') || '',
+      labelled: Boolean(document.getElementById(settings.getAttribute('aria-labelledby') || '')),
+      focusInside: settings.contains(document.activeElement)
     };
   });
   assert.strictEqual(openedSettings.appScreen, 'settings', `${name}: main-menu Settings should enter settings screen state`);
@@ -132,6 +136,10 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(openedSettings.closeVisible, true, `${name}: Settings overlay should expose a visible close/back exit`);
   assert.strictEqual(openedSettings.closeControl, 'close-settings', `${name}: Settings close should expose its command control`);
   assert.strictEqual(openedSettings.closeSlot, 'exit', `${name}: Settings close should identify the exit slot`);
+  assert.strictEqual(openedSettings.dialogRole, 'dialog', `${name}: Settings should expose dialog semantics`);
+  assert.strictEqual(openedSettings.ariaModal, 'true', `${name}: Settings should identify itself as modal`);
+  assert.strictEqual(openedSettings.labelled, true, `${name}: Settings should reference a visible accessible heading`);
+  assert.strictEqual(openedSettings.focusInside, true, `${name}: Settings should move focus into the active overlay`);
 
   await page.locator('#screen-settings [data-command-control="open-ai-providers"]').click();
   await page.waitForTimeout(50);
@@ -141,6 +149,10 @@ async function checkViewport(browser, name, width, height) {
     providersDisplay: getComputedStyle(document.getElementById('screen-providers')).display,
     settingsDisplay: getComputedStyle(document.getElementById('screen-settings')).display,
     focusTrapId: App._focusTrap?.container?.id || '',
+    dialogRole: document.getElementById('screen-providers').getAttribute('role') || '',
+    ariaModal: document.getElementById('screen-providers').getAttribute('aria-modal') || '',
+    labelled: Boolean(document.getElementById(document.getElementById('screen-providers').getAttribute('aria-labelledby') || '')),
+    focusInside: document.getElementById('screen-providers').contains(document.activeElement),
     pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
   }));
   assert.strictEqual(openedProviders.appScreen, 'providers', `${name}: Settings should open AI Providers`);
@@ -148,6 +160,10 @@ async function checkViewport(browser, name, width, height) {
   assert.notStrictEqual(openedProviders.providersDisplay, 'none', `${name}: AI Providers should be visible`);
   assert.strictEqual(openedProviders.settingsDisplay, 'none', `${name}: Settings should hide behind AI Providers`);
   assert.strictEqual(openedProviders.focusTrapId, 'screen-providers', `${name}: AI Providers should own the focus trap`);
+  assert.strictEqual(openedProviders.dialogRole, 'dialog', `${name}: AI Providers should expose dialog semantics`);
+  assert.strictEqual(openedProviders.ariaModal, 'true', `${name}: AI Providers should identify itself as modal`);
+  assert.strictEqual(openedProviders.labelled, true, `${name}: AI Providers should reference its visible heading`);
+  assert.strictEqual(openedProviders.focusInside, true, `${name}: AI Providers should move focus into the active overlay`);
   assert.strictEqual(openedProviders.pageOverflow, false, `${name}: AI Providers should not create horizontal overflow`);
 
   await page.locator('#screen-providers [data-command-control="close-ai-providers"]').click();
@@ -660,6 +676,10 @@ async function checkViewport(browser, name, width, height) {
         appDisplay: getComputedStyle(app).display,
         menuDisplay: getComputedStyle(menu).display,
         focusTrapId: App._focusTrap?.container?.id || '',
+        dialogRole: overlay.getAttribute('role') || '',
+        ariaModal: overlay.getAttribute('aria-modal') || '',
+        labelled: Boolean(document.getElementById(overlay.getAttribute('aria-labelledby') || '')),
+        focusInside: overlay.contains(document.activeElement),
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
       };
     }, { screenName, closeControl });
@@ -673,6 +693,10 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(opened.appDisplay, 'none', `${name}: game app shell should stay hidden while main-menu ${label} is open`);
     assert.strictEqual(opened.menuDisplay, 'none', `${name}: main menu should hide behind main-menu ${label}`);
     assert.strictEqual(opened.focusTrapId, `screen-${screenName}`, `${name}: main-menu ${label} should activate the shared focus trap`);
+    assert.strictEqual(opened.dialogRole, 'dialog', `${name}: main-menu ${label} should expose dialog semantics`);
+    assert.strictEqual(opened.ariaModal, 'true', `${name}: main-menu ${label} should identify itself as modal`);
+    assert.strictEqual(opened.labelled, true, `${name}: main-menu ${label} should reference a visible heading`);
+    assert.strictEqual(opened.focusInside, true, `${name}: main-menu ${label} should move focus into the active overlay`);
     assert.strictEqual(opened.pageOverflow, false, `${name}: main-menu ${label} should not create horizontal overflow`);
 
     await page.locator(`#screen-${screenName} [data-command-control="${closeControl}"]`).first().click();
@@ -712,12 +736,20 @@ async function checkViewport(browser, name, width, height) {
   };
 
   await checkMenuOverlayReturn({ control: 'open-mods', screenName: 'mods', closeControl: 'close-modules', label: 'Mods' });
+  await checkMenuOverlayReturn({ control: 'open-activity-log', screenName: 'activity', closeControl: 'close-activity-log', label: 'Activity Log' });
+  await checkMenuOverlayReturn({ control: 'open-release-notes', screenName: 'release', closeControl: 'close-release-notes', label: "What's New" });
 
   await page.evaluate(() => App.showScreen('menu'));
   await page.locator('#screen-menu [data-command-control="open-mods"]').click();
-  await page.locator('#screen-mods [data-command-control="open-market"]').click();
+  const catalogControl = await page.locator('#screen-mods [data-command-control="open-market"]').evaluate(control => ({
+    hidden: control.hidden,
+    display: getComputedStyle(control).display
+  }));
+  assert.strictEqual(catalogControl.hidden, true, `${name}: no-host build should hide the Host Catalog control`);
+  assert.strictEqual(catalogControl.display, 'none', `${name}: hidden Host Catalog control should not occupy Mod Manager layout`);
+  await page.evaluate(() => App.showMarketScreen());
   await page.waitForTimeout(50);
-  const openedModuleSamples = await page.evaluate(() => ({
+  const guardedCatalog = await page.evaluate(() => ({
     appScreen: App.screen,
     returnStack: [...App.overlayReturnStack],
     marketDisplay: getComputedStyle(document.getElementById('screen-market')).display,
@@ -725,29 +757,12 @@ async function checkViewport(browser, name, width, height) {
     focusTrapId: App._focusTrap?.container?.id || '',
     pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
   }));
-  assert.strictEqual(openedModuleSamples.appScreen, 'market', `${name}: Mods should open Module Samples`);
-  assert.deepStrictEqual(openedModuleSamples.returnStack, ['menu', 'mods'], `${name}: Module Samples should retain Mods and menu origins`);
-  assert.notStrictEqual(openedModuleSamples.marketDisplay, 'none', `${name}: Module Samples should be visible`);
-  assert.strictEqual(openedModuleSamples.modsDisplay, 'none', `${name}: Mods should hide behind Module Samples`);
-  assert.strictEqual(openedModuleSamples.focusTrapId, 'screen-market', `${name}: Module Samples should own the focus trap`);
-  assert.strictEqual(openedModuleSamples.pageOverflow, false, `${name}: Module Samples should not create horizontal overflow`);
-
-  await page.locator('#screen-market [data-command-control="close-marketplace"]').first().click();
-  await page.waitForTimeout(50);
-  const returnedMods = await page.evaluate(() => ({
-    appScreen: App.screen,
-    returnStack: [...App.overlayReturnStack],
-    marketDisplay: getComputedStyle(document.getElementById('screen-market')).display,
-    modsDisplay: getComputedStyle(document.getElementById('screen-mods')).display,
-    modsActive: document.getElementById('screen-mods').classList.contains('active'),
-    focusTrapId: App._focusTrap?.container?.id || ''
-  }));
-  assert.strictEqual(returnedMods.appScreen, 'mods', `${name}: closing Module Samples should return to Mods`);
-  assert.deepStrictEqual(returnedMods.returnStack, ['menu'], `${name}: returned Mods should retain the menu origin`);
-  assert.strictEqual(returnedMods.marketDisplay, 'none', `${name}: Module Samples should hide after close`);
-  assert.notStrictEqual(returnedMods.modsDisplay, 'none', `${name}: Mods should be visible after Module Samples closes`);
-  assert.strictEqual(returnedMods.modsActive, true, `${name}: Mods should regain active state after Module Samples closes`);
-  assert.strictEqual(returnedMods.focusTrapId, 'screen-mods', `${name}: returned Mods should regain the focus trap`);
+  assert.strictEqual(guardedCatalog.appScreen, 'mods', `${name}: no-host catalog route should remain in Mods`);
+  assert.deepStrictEqual(guardedCatalog.returnStack, ['menu'], `${name}: guarded catalog route should preserve the menu origin`);
+  assert.strictEqual(guardedCatalog.marketDisplay, 'none', `${name}: no-host catalog should stay hidden`);
+  assert.notStrictEqual(guardedCatalog.modsDisplay, 'none', `${name}: Mod Manager should remain visible after guarded catalog routing`);
+  assert.strictEqual(guardedCatalog.focusTrapId, 'screen-mods', `${name}: Mod Manager should retain the focus trap`);
+  assert.strictEqual(guardedCatalog.pageOverflow, false, `${name}: guarded catalog routing should not create horizontal overflow`);
 
   await page.locator('#screen-mods [data-command-control="close-modules"]').click();
   await page.waitForTimeout(50);
@@ -791,7 +806,7 @@ async function checkViewport(browser, name, width, height) {
     const dock = document.querySelector('.mobile-panel-dock');
     const playSurface = document.getElementById('mobile-play-surface');
     const desktopSurface = document.querySelector('.desktop-play-surface');
-    const activeSurface = innerWidth < 600 ? playSurface : desktopSurface;
+    const activeSurface = innerWidth <= 1024 ? playSurface : desktopSurface;
     const surfaceRect = activeSurface?.getBoundingClientRect();
     return {
       appScreen: App.screen,
@@ -814,7 +829,7 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedGameSave.gameDisplay, 'flex', `${name}: game screen should be visible after live-game Save Manager closes`);
   assert.strictEqual(returnedGameSave.gameActive, true, `${name}: game screen should regain active state after live-game Save Manager closes`);
   assert.strictEqual(returnedGameSave.menuDisplay, 'none', `${name}: closing live-game Save Manager should not restore the main menu`);
-  if (width < 600) assert.strictEqual(returnedGameSave.dockVisible, true, `${name}: mobile dock should be visible after live-game Save Manager closes`);
+  if (width <= 1024) assert.strictEqual(returnedGameSave.dockVisible, true, `${name}: mobile dock should be visible after live-game Save Manager closes`);
   assert.strictEqual(returnedGameSave.surfaceVisible, true, `${name}: play surface should be visible after live-game Save Manager closes`);
   assert.strictEqual(returnedGameSave.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after live-game Save Manager closes`);
   assert.strictEqual(returnedGameSave.pageOverflow, false, `${name}: closing live-game Save Manager should not introduce horizontal overflow`);
@@ -855,7 +870,7 @@ async function checkViewport(browser, name, width, height) {
     const root = document.getElementById('transaction-window-root');
     const modal = root?.querySelector('.transaction-window');
     const close = root?.querySelector('[data-command-control="close-transaction"]');
-    const composer = document.getElementById(innerWidth < 600 ? 'mobile-control-belt' : 'desktop-command-composer');
+    const composer = document.getElementById(innerWidth <= 1024 ? 'mobile-control-belt' : 'desktop-command-composer');
     const rect = modal?.getBoundingClientRect();
     const closeRect = close?.getBoundingClientRect();
     return {
@@ -971,7 +986,7 @@ async function checkViewport(browser, name, width, height) {
     const dock = document.querySelector('.mobile-panel-dock');
     const playSurface = document.getElementById('mobile-play-surface');
     const desktopSurface = document.querySelector('.desktop-play-surface');
-    const activeSurface = innerWidth < 600 ? playSurface : desktopSurface;
+    const activeSurface = innerWidth <= 1024 ? playSurface : desktopSurface;
     const surfaceRect = activeSurface?.getBoundingClientRect();
     return {
       appScreen: App.screen,
@@ -1000,7 +1015,7 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedGameSettings.menuDisplay, 'none', `${name}: closing live-game Settings should not restore the main menu`);
   assert.strictEqual(returnedGameSettings.appMenuOpen, false, `${name}: app menu should stay closed after live-game Settings closes`);
   assert.strictEqual(returnedGameSettings.appMenuExpanded, 'false', `${name}: app-menu toggle should stay collapsed after live-game Settings closes`);
-  if (width < 600) assert.strictEqual(returnedGameSettings.dockVisible, true, `${name}: mobile dock should be visible after live-game Settings closes`);
+  if (width <= 1024) assert.strictEqual(returnedGameSettings.dockVisible, true, `${name}: mobile dock should be visible after live-game Settings closes`);
   assert.strictEqual(returnedGameSettings.surfaceVisible, true, `${name}: play surface should be visible after live-game Settings closes`);
   assert.strictEqual(returnedGameSettings.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after live-game Settings closes`);
   assert.strictEqual(returnedGameSettings.pageOverflow, false, `${name}: closing live-game Settings should not introduce horizontal overflow`);
@@ -1062,7 +1077,7 @@ async function checkViewport(browser, name, width, height) {
       const dock = document.querySelector('.mobile-panel-dock');
       const playSurface = document.getElementById('mobile-play-surface');
       const desktopSurface = document.querySelector('.desktop-play-surface');
-      const activeSurface = innerWidth < 600 ? playSurface : desktopSurface;
+      const activeSurface = innerWidth <= 1024 ? playSurface : desktopSurface;
       const surfaceRect = activeSurface?.getBoundingClientRect();
       return {
         appScreen: App.screen,
@@ -1087,14 +1102,15 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(returned.gameActive, true, `${name}: game screen should regain active state after live-game ${label} closes`);
     assert.strictEqual(returned.menuDisplay, 'none', `${name}: closing live-game ${label} should not restore the main menu`);
     assert.strictEqual(returned.focusTrapCleared, true, `${name}: live-game ${label} should clear the shared focus trap on close`);
-    if (width < 600) assert.strictEqual(returned.dockVisible, true, `${name}: mobile dock should be visible after live-game ${label} closes`);
+    if (width <= 1024) assert.strictEqual(returned.dockVisible, true, `${name}: mobile dock should be visible after live-game ${label} closes`);
     assert.strictEqual(returned.surfaceVisible, true, `${name}: play surface should be visible after live-game ${label} closes`);
     assert.strictEqual(returned.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after live-game ${label} closes`);
     assert.strictEqual(returned.pageOverflow, false, `${name}: closing live-game ${label} should not introduce horizontal overflow`);
   };
 
   await checkLiveOverlayReturn({ control: 'open-mods', screenName: 'mods', closeControl: 'close-modules', label: 'Mods' });
-  await checkLiveOverlayReturn({ control: 'open-market', screenName: 'market', closeControl: 'close-marketplace', label: 'Market' });
+  await checkLiveOverlayReturn({ control: 'open-activity-log', screenName: 'activity', closeControl: 'close-activity-log', label: 'Activity Log' });
+  await checkLiveOverlayReturn({ control: 'open-release-notes', screenName: 'release', closeControl: 'close-release-notes', label: "What's New" });
 
   await page.evaluate(() => {
     App.player.stomach = [
@@ -1355,7 +1371,7 @@ async function checkViewport(browser, name, width, height) {
     const dock = document.querySelector('.mobile-panel-dock');
     const playSurface = document.getElementById('mobile-play-surface');
     const desktopSurface = document.querySelector('.desktop-play-surface');
-    const activeSurface = innerWidth < 600 ? playSurface : desktopSurface;
+    const activeSurface = innerWidth <= 1024 ? playSurface : desktopSurface;
     const surfaceRect = activeSurface?.getBoundingClientRect();
     return {
       hidden: Boolean(root?.hidden),
@@ -1372,12 +1388,12 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedHoldings.appClass, false, `${name}: closing Holdings should clear the app shell marker`);
   assert.strictEqual(returnedHoldings.stageInert, false, `${name}: closing Holdings should restore stage interactivity`);
   assert.strictEqual(returnedHoldings.focusTrapCleared, true, `${name}: closing Holdings should clear the focus trap`);
-  if (width < 600) assert.strictEqual(returnedHoldings.dockVisible, true, `${name}: mobile dock should be visible after Holdings closes`);
+  if (width <= 1024) assert.strictEqual(returnedHoldings.dockVisible, true, `${name}: mobile dock should be visible after Holdings closes`);
   assert.strictEqual(returnedHoldings.surfaceVisible, true, `${name}: play surface should be visible after Holdings closes`);
   assert.strictEqual(returnedHoldings.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after Holdings closes`);
   assert.strictEqual(returnedHoldings.pageOverflow, false, `${name}: closing Holdings should not introduce horizontal overflow`);
 
-  if (width < 600) {
+  if (width <= 1024) {
     await page.evaluate(() => togglePanel('party'));
     await page.waitForTimeout(350);
     const party = await page.evaluate(() => {
@@ -1482,6 +1498,7 @@ async function checkViewport(browser, name, width, height) {
       const storyLatestRect = storyLatest.getBoundingClientRect();
       const latestBeatRect = latestBeat.getBoundingClientRect();
       const storyHandleRect = storyHandle.getBoundingClientRect();
+      const topStoryButtonRect = topStoryButton.getBoundingClientRect();
       const unitStripsRect = unitStrips.getBoundingClientRect();
       const creatureCardRect = creatureCard.getBoundingClientRect();
       const tileInfoRect = tileInfo.getBoundingClientRect();
@@ -1583,6 +1600,7 @@ async function checkViewport(browser, name, width, height) {
         storyHandleMinHeight: parseFloat(storyHandleStyle.minHeight) || 0,
         storyHandleText: storyHandle?.innerText || '',
         topStoryButtonDisplay: topStoryButtonStyle.display,
+        topStoryButtonLatestBeatOverlap: overlapArea(topStoryButtonRect, latestBeatRect),
         miniMapBottom: miniMapRect.bottom,
         unitStripsTop: unitStripsRect.top,
         creatureCardTop: creatureCardRect.top,
@@ -1656,12 +1674,13 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.latestBeatHeight >= 1, `${name}: mobile latest Scene Beat should be visible without opening a sheet`);
     assert(
       mobileControls.latestBeatTop >= 0 && mobileControls.latestBeatTop < mobileControls.beltTop - 1,
-      `${name}: mobile latest Scene Beat should start visibly above the sticky command belt`
+      `${name}: mobile latest Scene Beat should start visibly above the sticky command belt (beatTop=${mobileControls.latestBeatTop}, beltTop=${mobileControls.beltTop}, sheetBottom=${mobileControls.sheetBottom})`
     );
     assert(mobileControls.mapBottom <= mobileControls.sheetBottom + 1, `${name}: mobile traversal stage should render before the inline Scene Feed`);
     assert.strictEqual(mobileControls.mapContentContained, true, `${name}: mobile 3x3 traversal grid should not be clipped by the traversal card`);
     assert.strictEqual(mobileControls.mapBeforeSceneFeed, true, `${name}: mobile Scene Feed should start after the traversal card, not overlap the map`);
     assert.notStrictEqual(mobileControls.topStoryButtonDisplay, 'none', `${name}: compact story capsule button should be visible on mobile`);
+    assert.strictEqual(mobileControls.topStoryButtonLatestBeatOverlap, 0, `${name}: compact Scene Feed button should reserve space instead of overlapping the latest narrative`);
     assert.strictEqual(mobileControls.storyHandleDisplay, 'none', `${name}: retired floating story handle should not occupy the mobile action zone`);
     assert(/scene|feed|story/i.test(mobileControls.storyHandleText), `${name}: retained mobile scene feed handle markup should stay labeled accessibly`);
     assert(mobileControls.mapHeight <= Math.min(340, mobileControls.viewportHeight * 0.5) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
@@ -3392,11 +3411,13 @@ async function checkShortMenuScrollFallback(browser) {
   const browser = await chromium.launch({ headless: true });
   try {
     await checkShortMenuScrollFallback(browser);
+    await checkViewport(browser, 'small phone 320', 320, 568);
     await checkViewport(browser, 'reported mobile', 412, 915);
     await checkViewport(browser, 'handoff mobile 390', 390, 844);
     await checkViewport(browser, 'narrow mobile 360', 360, 780);
     await checkViewport(browser, 'mobile', 393, 852);
     await checkViewport(browser, 'short mobile', 313, 670);
+    await checkViewport(browser, 'tablet portrait', 768, 1024);
     await checkViewport(browser, 'compact desktop', 1100, 768);
     await checkViewport(browser, 'desktop', 1365, 768);
   } finally {

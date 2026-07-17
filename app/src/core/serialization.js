@@ -346,6 +346,7 @@
         quests: appState.quests || [],
         storyEvents: appState.storyEvents || [],
         sceneNarrations: typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedRecords(appState) : [],
+        tileNarrationCache: typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedTileCache(appState) : [],
         latestStoryEvent: appState.latestStoryEvent || null,
         storyEventSeq: appState.storyEventSeq || 0,
         playerGold: appState.player?.gold || 0,
@@ -364,6 +365,7 @@
         explorationActorIds,
         explorationPartyTargetIds,
         encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null,
+        contentProfile: typeof MODULE_SYSTEM !== 'undefined' && typeof MODULE_SYSTEM.contentProfileSnapshot === 'function' ? MODULE_SYSTEM.contentProfileSnapshot() : null,
         safeAnchor: appState.safeAnchor || null,
         defeatState: appState.defeatState || null,
         combatState

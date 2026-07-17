@@ -8,10 +8,13 @@ const YAW_NARRATION_SYSTEM = {
     MAX_TEXT_LENGTH: 500,
     MAX_CONTEXT_BEATS: 12,
     MAX_ACTIVITY: 12,
+    MAX_TILE_CACHE: 32,
     statuses: new Set(['pending', 'ready', 'failed', 'cancelled']),
     ratings: new Set(['safe', 'mature', 'explicit']),
+    lifecycleStages: new Set(['queued', 'request_sent', 'response_received', 'attached']),
     contextExtensions: new Map(),
     orchestrators: new Map(),
+    operationalErrors: new Set(),
     fallbackTimers: new Map(),
     hookTimers: new Set(),
     closedExchanges: new Set(),
@@ -31,6 +34,33 @@ const YAW_NARRATION_SYSTEM = {
             throw new Error(`${label} must be a token string`);
         }
         return token;
+    },
+
+    providerDiagnostic(value = null) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+        const cleanToken = input => String(input || '').replace(/[^a-z0-9_.:-]/gi, '').slice(0, 40);
+        return {
+            protocol: cleanToken(value.protocol),
+            finishReason: cleanToken(value.finishReason),
+            choiceCount: Math.max(0, Math.min(20, Number(value.choiceCount) || 0)),
+            outputItemCount: Math.max(0, Math.min(20, Number(value.outputItemCount) || 0)),
+            reasoningPresent: value.reasoningPresent === true,
+            refusalPresent: value.refusalPresent === true
+        };
+    },
+
+    providerDiagnosticSummary(status = 0, value = null) {
+        const diagnostic = this.providerDiagnostic(value);
+        const parts = [];
+        const httpStatus = Math.max(0, Math.min(599, Number(status) || 0));
+        if (httpStatus) parts.push(`HTTP ${httpStatus}`);
+        if (diagnostic?.protocol) parts.push(`protocol=${diagnostic.protocol}`);
+        if (diagnostic?.finishReason) parts.push(`finish=${diagnostic.finishReason}`);
+        if (diagnostic?.reasoningPresent) parts.push('reasoning=yes');
+        if (diagnostic?.refusalPresent) parts.push('refusal=yes');
+        if (diagnostic && diagnostic.choiceCount !== 0) parts.push(`choices=${diagnostic.choiceCount}`);
+        if (diagnostic && diagnostic.outputItemCount !== 0) parts.push(`output_items=${diagnostic.outputItemCount}`);
+        return parts.join('; ');
     },
 
     policySnapshot() {
@@ -112,8 +142,12 @@ const YAW_NARRATION_SYSTEM = {
         this.fallbackTimers.clear();
         this.hookTimers.clear();
         this.closedExchanges.clear();
+        this.operationalErrors.clear();
         if (typeof YAW_AI_PROVIDER_MANAGER !== 'undefined') YAW_AI_PROVIDER_MANAGER.resetRuntime(reason);
-        if (clearRecords && app) app.sceneNarrations = [];
+        if (clearRecords && app) {
+            app.sceneNarrations = [];
+            app.tileNarrationCache = [];
+        }
         return this.runtimeGeneration;
     },
 
@@ -167,12 +201,120 @@ const YAW_NARRATION_SYSTEM = {
         }, null);
         this.scheduleHook('onContentPolicyChanged', snapshot);
         app.renderStoryEvents?.();
+        if (typeof YAW_CENTER_CONTEXT !== 'undefined') YAW_CENTER_CONTEXT.refreshPassage?.(app);
+        if (typeof YAW_STORY_EVENTS !== 'undefined') YAW_STORY_EVENTS.ensureCurrentTileObservation?.(app);
         return snapshot;
     },
 
     records(app) {
         if (!Array.isArray(app.sceneNarrations)) app.sceneNarrations = [];
         return app.sceneNarrations;
+    },
+
+    tileCache(app) {
+        if (!Array.isArray(app.tileNarrationCache)) app.tileNarrationCache = [];
+        return app.tileNarrationCache;
+    },
+
+    tileDescriptorForTarget(app, scope = 'exchange', targetId = '') {
+        const id = String(targetId || '');
+        const beats = (app.storyEvents || []).filter(beat => scope === 'beat'
+            ? String(beat.id) === id
+            : String(beat.exchangeId || beat.metadata?.exchangeId || beat.id) === id);
+        const beat = [...beats].reverse().find(item => item?.metadata?.tileNarrativeState?.fingerprint);
+        return beat ? {
+            beat,
+            descriptor: this.copy(beat.metadata.tileNarrativeState),
+            wasExplored: Boolean(beat.metadata?.wasExplored)
+        } : null;
+    },
+
+    normalizeTileCacheEntry(input = {}) {
+        const tileKey = String(input.tileKey || '').trim().slice(0, 240);
+        const fingerprint = String(input.fingerprint || '').trim().slice(0, 80);
+        const variant = String(input.variant || '').trim().slice(0, 160);
+        const text = String(input.text || '').replace(/\s+/g, ' ').trim();
+        if (!tileKey || !fingerprint || !variant || !text || text.length > this.MAX_TEXT_LENGTH) return null;
+        const outputRating = this.ratings.has(String(input.outputRating)) ? String(input.outputRating) : 'safe';
+        const contentCategories = [...new Set((Array.isArray(input.contentCategories) ? input.contentCategories : [])
+            .map(value => String(value || '').trim())
+            .filter(value => value && value.length <= 160 && /^[a-zA-Z0-9_.:-]+$/.test(value)))];
+        return {
+            tileKey,
+            fingerprint,
+            variant,
+            text,
+            ownerModuleId: String(input.ownerModuleId || '').slice(0, 160),
+            providerId: String(input.providerId || '').slice(0, 120),
+            modelId: String(input.modelId || '').slice(0, 120),
+            profileId: String(input.profileId || '').slice(0, 120),
+            profileVersion: String(input.profileVersion || '1').slice(0, 40),
+            outputRating,
+            contentCategories,
+            createdAt: Number.isFinite(Number(input.createdAt)) ? Number(input.createdAt) : Date.now(),
+            lastUsedAt: Number.isFinite(Number(input.lastUsedAt)) ? Number(input.lastUsedAt) : Date.now()
+        };
+    },
+
+    getCachedTileNarration(app, ownerModuleId, options = {}) {
+        const scope = String(options.scope || 'exchange') === 'beat' ? 'beat' : 'exchange';
+        const targetId = String(options.targetId || options.exchangeId || options.beatId || '');
+        const target = this.tileDescriptorForTarget(app, scope, targetId);
+        if (!target) return null;
+        const owner = this.token(ownerModuleId, 'Narration owner');
+        const variant = this.token(options.variant, 'Tile narration variant');
+        const descriptor = target.descriptor;
+        const entry = this.tileCache(app).find(item => item.ownerModuleId === owner
+            && item.tileKey === descriptor.tileKey
+            && item.fingerprint === descriptor.fingerprint
+            && item.variant === variant);
+        if (!entry || !this.outputAllowed(entry)) return null;
+        entry.lastUsedAt = Date.now();
+        app.markAutoSaveDirty?.(['sceneFeed'], 'tile-narration-cache-hit');
+        return this.copy(entry);
+    },
+
+    cacheTileNarration(app, ownerModuleId, narrationId, options = {}) {
+        const owner = this.token(ownerModuleId, 'Narration owner');
+        const record = this.records(app).find(item => item.id === String(narrationId) && item.ownerModuleId === owner);
+        if (!record || record.status !== 'ready') return null;
+        const target = this.tileDescriptorForTarget(app, record.scope, record.targetId);
+        if (!target) return null;
+        const entry = this.normalizeTileCacheEntry({
+            ...record,
+            ownerModuleId: owner,
+            tileKey: target.descriptor.tileKey,
+            fingerprint: target.descriptor.fingerprint,
+            variant: this.token(options.variant, 'Tile narration variant'),
+            lastUsedAt: Date.now()
+        });
+        if (!entry) return null;
+        const cache = this.tileCache(app);
+        const existing = cache.findIndex(item => item.ownerModuleId === entry.ownerModuleId
+            && item.tileKey === entry.tileKey
+            && item.fingerprint === entry.fingerprint
+            && item.variant === entry.variant);
+        if (existing >= 0) cache.splice(existing, 1);
+        cache.push(entry);
+        cache.sort((first, second) => Number(first.lastUsedAt || 0) - Number(second.lastUsedAt || 0));
+        if (cache.length > this.MAX_TILE_CACHE) app.tileNarrationCache = cache.slice(-this.MAX_TILE_CACHE);
+        app.markAutoSaveDirty?.(['sceneFeed'], 'tile-narration-cache-store');
+        return this.copy(entry);
+    },
+
+    persistedTileCache(app) {
+        return this.tileCache(app).slice(-this.MAX_TILE_CACHE).map(entry => this.copy(entry)).filter(Boolean);
+    },
+
+    restoreTileCache(app, entries = []) {
+        const next = [];
+        for (const input of Array.isArray(entries) ? entries : []) {
+            const entry = this.normalizeTileCacheEntry(input);
+            if (entry) next.push(entry);
+        }
+        next.sort((first, second) => Number(first.lastUsedAt || 0) - Number(second.lastUsedAt || 0));
+        app.tileNarrationCache = next.slice(-this.MAX_TILE_CACHE);
+        return app.tileNarrationCache;
     },
 
     beatIdsForTarget(app, scope, targetId) {
@@ -216,17 +358,25 @@ const YAW_NARRATION_SYSTEM = {
             profileId: String(input.profileId ?? previous?.profileId ?? '').slice(0, 120),
             profileVersion: String(input.profileVersion ?? previous?.profileVersion ?? '1').slice(0, 40),
             createdAt: Number.isFinite(Number(previous?.createdAt)) ? Number(previous.createdAt) : Date.now(),
-            errorCode: String(input.errorCode ?? previous?.errorCode ?? '').slice(0, 120)
+            errorCode: String(input.errorCode ?? previous?.errorCode ?? '').slice(0, 120),
+            errorStatus: Math.max(0, Math.min(599, Number(input.errorStatus ?? previous?.errorStatus) || 0)),
+            errorDiagnostic: this.providerDiagnostic(input.errorDiagnostic ?? previous?.errorDiagnostic)
         };
     },
 
     publish(app, ownerModuleId, input = {}) {
-        const records = this.records(app);
-        if (records.some(record => record.id === input.id)) throw new Error('Narration id already exists');
-        const record = this.normalizeRecord(app, ownerModuleId, input);
-        records.push(record);
-        this.changed(app, 'narration-publish');
-        return this.copy(record);
+        try {
+            const records = this.records(app);
+            if (records.some(record => record.id === input.id)) throw new Error('Narration id already exists');
+            const record = this.normalizeRecord(app, ownerModuleId, input);
+            records.push(record);
+            if (record.status === 'pending') this.logLifecycle(app, ownerModuleId, 'queued', record);
+            this.changed(app, 'narration-publish');
+            return this.copy(record);
+        } catch (error) {
+            this.logOperationalError(app, ownerModuleId, 'narration_publish_failed');
+            throw error;
+        }
     },
 
     update(app, ownerModuleId, id, patch = {}) {
@@ -245,8 +395,98 @@ const YAW_NARRATION_SYSTEM = {
         if (!transitions[previous.status]?.has(nextStatus)) throw new Error(`Invalid narration status transition ${previous.status} -> ${nextStatus}`);
         const next = this.normalizeRecord(app, ownerModuleId, { ...previous, ...patch, id: previous.id }, previous);
         records[index] = next;
+        if (previous.status !== 'failed' && next.status === 'failed') this.logFailure(app, next);
+        if (previous.status !== 'ready' && next.status === 'ready') this.logLifecycle(app, ownerModuleId, 'attached', next);
         this.changed(app, 'narration-update');
         return this.copy(next);
+    },
+
+    logLifecycle(app, ownerModuleId, stage, details = {}) {
+        if (!app || !this.lifecycleStages.has(stage)) return null;
+        const owner = String(ownerModuleId || '').slice(0, 160);
+        const targetId = String(details.targetId || details.exchangeId || details.beatId || '').slice(0, 160);
+        const target = targetId || (app._label ? app._label('scene.narration.lifecycle.currentExchange', 'current exchange') : 'current exchange');
+        const messages = {
+            queued: ['scene.narration.lifecycle.queued', 'Narration queued for {target}.'],
+            request_sent: ['scene.narration.lifecycle.requestSent', 'Narration request sent for {target}.'],
+            response_received: ['scene.narration.lifecycle.responseReceived', 'Narration response received for {target}.'],
+            attached: ['scene.narration.lifecycle.attached', 'Narration attached to {target}.']
+        };
+        const [labelKey, fallback] = messages[stage];
+        const text = app._label ? app._label(labelKey, fallback, { target }) : fallback.replace('{target}', target);
+        const entry = {
+            text,
+            type: 'narration',
+            narrationStage: stage,
+            targetId,
+            narrationId: String(details.id || details.narrationId || '').slice(0, 160),
+            sourceModuleId: owner
+        };
+        if (typeof app._pushLog === 'function') app._pushLog(entry, 'narration');
+        else if (Array.isArray(app.log)) app.log.push(entry);
+        app.markAutoSaveDirty?.(['activityLog'], 'narration-lifecycle');
+        app.renderLog?.();
+        return entry;
+    },
+
+    logFailure(app, record) {
+        const code = String(record?.errorCode || 'provider_error').trim().slice(0, 80) || 'provider_error';
+        const diagnostic = this.providerDiagnosticSummary(record?.errorStatus, record?.errorDiagnostic);
+        const failureCode = diagnostic ? `${code}; ${diagnostic}` : code;
+        const baseText = app._label
+            ? app._label('scene.narration.failed', 'Narration failed ({code}). Test the selected connection in AI Providers.', { code: failureCode })
+            : `Narration failed (${failureCode}). Test the selected connection in AI Providers.`;
+        const reasoningBudgetExhausted = code === 'invalid_response'
+            && record?.errorDiagnostic?.finishReason === 'length'
+            && record?.errorDiagnostic?.reasoningPresent === true;
+        const advice = reasoningBudgetExhausted
+            ? (app._label
+                ? app._label('scene.narration.reasoningBudgetExhausted', 'The model exhausted its completion budget in reasoning. Increase the provider completion-token ceiling, reduce reasoning, or choose a non-reasoning model.')
+                : 'The model exhausted its completion budget in reasoning. Increase the provider completion-token ceiling, reduce reasoning, or choose a non-reasoning model.')
+            : '';
+        const text = [baseText, advice].filter(Boolean).join(' ');
+        const entry = {
+            text,
+            type: 'error',
+            errorCode: code,
+            httpStatus: Number(record?.errorStatus) || 0,
+            providerDiagnostic: this.providerDiagnostic(record?.errorDiagnostic),
+            narrationId: String(record?.id || '').slice(0, 160),
+            sourceModuleId: String(record?.ownerModuleId || '').slice(0, 160)
+        };
+        if (typeof app._pushLog === 'function') app._pushLog(entry, 'error');
+        else if (Array.isArray(app.log)) app.log.push(entry);
+        app.markAutoSaveDirty?.(['activityLog'], 'narration-error');
+        app.renderLog?.();
+        return entry;
+    },
+
+    logOperationalError(app, ownerModuleId, code) {
+        const owner = String(ownerModuleId || '').slice(0, 160);
+        const errorCode = String(code || 'narration_unavailable').slice(0, 80);
+        const dedupeKey = `${owner}:${errorCode}`;
+        if (this.operationalErrors.has(dedupeKey)) return null;
+        this.operationalErrors.add(dedupeKey);
+        const messages = {
+            provider_connection_not_selected: ['scene.narration.providerNotSelected', 'Narration is enabled, but no provider connection is selected. Open the narrator Settings.'],
+            provider_connection_unavailable: ['scene.narration.providerUnavailable', 'The selected narration provider is unavailable. Reconnect it in AI Providers.'],
+            narration_publish_failed: ['scene.narration.publishFailed', 'Narration could not attach a pending record to the scene exchange.']
+        };
+        const [labelKey, fallback] = messages[errorCode] || ['scene.narration.unavailable', 'Narration is unavailable ({code}). Check the narrator Settings and AI Providers.'];
+        const text = app._label ? app._label(labelKey, fallback, { code: errorCode }) : fallback.replace('{code}', errorCode);
+        const entry = { text, type: 'error', errorCode, sourceModuleId: owner };
+        if (typeof app._pushLog === 'function') app._pushLog(entry, 'error');
+        else if (Array.isArray(app.log)) app.log.push(entry);
+        app.markAutoSaveDirty?.(['activityLog'], 'narration-error');
+        app.renderLog?.();
+        return entry;
+    },
+
+    clearOperationalErrors(ownerModuleId) {
+        const prefix = `${String(ownerModuleId || '')}:`;
+        for (const key of this.operationalErrors) {
+            if (key.startsWith(prefix)) this.operationalErrors.delete(key);
+        }
     },
 
     remove(app, ownerModuleId, id) {
@@ -272,9 +512,22 @@ const YAW_NARRATION_SYSTEM = {
         return this.removeOwner(app, ownerModuleId);
     },
 
+    discardTarget(app, event = null) {
+        if (!event) return false;
+        const beatId = String(event.id || '');
+        const exchangeId = String(event.exchangeId || event.metadata?.exchangeId || beatId);
+        const records = this.records(app);
+        const next = records.filter(record => !((record.scope === 'beat' && record.targetId === beatId)
+            || (record.scope === 'exchange' && record.targetId === exchangeId)));
+        if (next.length === records.length) return false;
+        app.sceneNarrations = next;
+        return true;
+    },
+
     changed(app, reason) {
         app.markAutoSaveDirty?.(['sceneFeed'], reason);
         app.renderStoryEvents?.();
+        if (typeof YAW_CENTER_CONTEXT !== 'undefined') YAW_CENTER_CONTEXT.refreshPassage?.(app);
     },
 
     persistedRecords(app) {
@@ -284,7 +537,7 @@ const YAW_NARRATION_SYSTEM = {
             .filter(Boolean);
     },
 
-    restore(app, records = []) {
+    restore(app, records = [], tileCache = []) {
         app.sceneNarrations = [];
         for (const input of Array.isArray(records) ? records : []) {
             if (input?.status === 'pending') continue;
@@ -293,6 +546,7 @@ const YAW_NARRATION_SYSTEM = {
                 app.sceneNarrations.push(record);
             } catch (e) {}
         }
+        this.restoreTileCache(app, tileCache);
         return app.sceneNarrations;
     },
 
@@ -301,6 +555,35 @@ const YAW_NARRATION_SYSTEM = {
         return this.records(app).filter(record => record.scope === scope
             && record.targetId === String(targetId)
             && this.outputAllowed(record, policy));
+    },
+
+    hasReadyNarration(app, scope, targetId) {
+        return this.visibleFor(app, scope, targetId).some(record => record.status === 'ready');
+    },
+
+    currentTileNarration(app) {
+        if (!app || app.inInterior || app.combatState?.active || typeof YAW_STORY_EVENTS === 'undefined') return null;
+        const tile = app._currentExplorationTile?.() || app.getTile?.(app.location?.x || 0, app.location?.y || 0);
+        if (!tile) return null;
+        const beat = [...(app.storyEvents || [])].reverse().find(event => {
+            const eventTile = event?.metadata?.tile;
+            return event?.metadata?.tileNarrativeState?.fingerprint
+                && Number(eventTile?.x) === Number(tile.x)
+                && Number(eventTile?.y) === Number(tile.y);
+        });
+        if (!beat) return null;
+        const descriptor = YAW_STORY_EVENTS.tileNarrativeDescriptor(app, tile, {
+            wasExplored: Boolean(beat.metadata?.wasExplored)
+        });
+        if (!descriptor
+            || descriptor.tileKey !== beat.metadata.tileNarrativeState.tileKey
+            || descriptor.fingerprint !== beat.metadata.tileNarrativeState.fingerprint) return null;
+        const exchangeId = String(beat.exchangeId || beat.metadata?.exchangeId || beat.id);
+        const candidates = this.records(app).filter(record => record.status === 'ready'
+            && this.outputAllowed(record)
+            && ((record.scope === 'exchange' && record.targetId === exchangeId)
+                || (record.scope === 'beat' && record.targetId === String(beat.id))));
+        return candidates.length ? this.copy(candidates[candidates.length - 1]) : null;
     },
 
     narrationHtml(app, scope, targetId, { detailed = false } = {}) {
@@ -351,6 +634,7 @@ const YAW_NARRATION_SYSTEM = {
         for (const [key, orchestrator] of this.orchestrators.entries()) {
             if (orchestrator.ownerModuleId === ownerModuleId) this.orchestrators.delete(key);
         }
+        this.clearOperationalErrors(ownerModuleId);
     },
 
     async orchestrationOwner(policy = this.policySnapshot()) {
@@ -394,6 +678,44 @@ const YAW_NARRATION_SYSTEM = {
         };
     },
 
+    unitIdentity(unit) {
+        return String(unit?.id || unit?.name || '').trim().slice(0, 160);
+    },
+
+    viewpointContext(app, targets = [], publicUnit = () => null) {
+        const recorded = targets[targets.length - 1]?.metadata?.contextSnapshot?.viewpoint || {};
+        const recordedId = String(recorded.playerId || '').trim().slice(0, 160);
+        const livePlayerId = this.unitIdentity(app?.player);
+        const playerId = recordedId || livePlayerId;
+        const participants = targets.flatMap(beat => [...(beat.actors || []), ...(beat.targets || [])]);
+        const participant = participants.find(unit => this.unitIdentity(unit) === playerId);
+        const livePlayer = livePlayerId === playerId ? app?.player : null;
+        const playerSource = livePlayer || participant;
+        let player = playerSource ? publicUnit(playerSource) : null;
+        if (!player && playerId) {
+            player = {
+                id: playerId,
+                name: String(recorded.playerName || '').trim().slice(0, 160)
+            };
+        }
+        const beatRoles = targets.map(beat => {
+            if (!playerId) return { beatId: String(beat.id || ''), participation: 'unknown' };
+            const isActor = (beat.actors || []).some(unit => this.unitIdentity(unit) === playerId);
+            const isTarget = (beat.targets || []).some(unit => this.unitIdentity(unit) === playerId);
+            const participation = isActor && isTarget
+                ? 'self'
+                : (isActor ? 'actor' : (isTarget ? 'target' : 'observer'));
+            return { beatId: String(beat.id || ''), participation };
+        });
+        const roles = [...new Set(beatRoles.map(beat => beat.participation))];
+        return {
+            mode: 'player',
+            player: player || null,
+            participation: roles.length === 1 ? roles[0] : (roles.length > 1 ? 'mixed' : 'unknown'),
+            beatRoles
+        };
+    },
+
     context(app, options = {}) {
         const beatLimit = Math.max(1, Math.min(this.MAX_CONTEXT_BEATS, Number(options.recentBeatLimit) || 6));
         const activityLimit = Math.max(0, Math.min(this.MAX_ACTIVITY, Number(options.activityLimit) || 6));
@@ -411,6 +733,7 @@ const YAW_NARRATION_SYSTEM = {
         const publicUnit = unit => typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM?._publicNarrativeUnitSummary
             ? MODULE_SYSTEM._publicNarrativeUnitSummary(unit)
             : null;
+        const viewpoint = this.viewpointContext(app, targets, publicUnit);
         const unitsById = new Map();
         targets.flatMap(beat => [...(beat.actors || []), ...(beat.targets || [])]).forEach(unit => {
             const summary = publicUnit(unit);
@@ -423,11 +746,16 @@ const YAW_NARRATION_SYSTEM = {
             policy: this.policySnapshot(),
             mode: targetSnapshot.mode,
             location: targetSnapshot.location,
+            viewpoint,
             beats: targets.map(beat => this.publicBeat(beat)).filter(Boolean),
             recentBeats: allBeats.slice(0, targetEndIndex + 1).slice(-beatLimit).map(beat => this.publicBeat(beat)).filter(Boolean),
             characters: units,
             quests: (app.quests || []).slice(0, 6).map(quest => typeof MODULE_SYSTEM !== 'undefined' ? MODULE_SYSTEM._publicQuestSummary(quest) : null).filter(Boolean),
-            activity: (app.log || []).slice(-activityLimit).map(entry => typeof MODULE_SYSTEM !== 'undefined' ? MODULE_SYSTEM._publicActivitySummary(entry) : null).filter(Boolean),
+            activity: (app.log || [])
+                .filter(entry => !['narration', 'error', 'mod'].includes(String(entry?.type || '')))
+                .slice(-activityLimit)
+                .map(entry => typeof MODULE_SYSTEM !== 'undefined' ? MODULE_SYSTEM._publicActivitySummary(entry) : null)
+                .filter(Boolean),
             extensions: {}
         };
         for (const extension of this.contextExtensions.values()) {
@@ -447,6 +775,7 @@ const YAW_NARRATION_SYSTEM = {
 const YAW_AI_PROVIDER_MANAGER = (() => {
     const credentialVault = new Map();
     const PROFILE_STORAGE_KEY = 'yaw.ai.providerProfiles.v1';
+    const MAX_INSTRUCTIONS_LENGTH = 2000;
     const capabilityAliases = new Map([
         ['narration', 'text.generate'],
         ['text', 'text.generate']
@@ -460,6 +789,7 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
         requestsByConnection: new Map(),
         connectionSeq: 0,
         profilesRestored: false,
+        MAX_INSTRUCTIONS_LENGTH,
 
         token(value, label) {
             return YAW_NARRATION_SYSTEM.token(value, label);
@@ -469,6 +799,17 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
             const aliased = capabilityAliases.get(String(value || '').trim()) || String(value || '').trim();
             if (!/^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/.test(aliased)) throw new Error('Invalid AI capability');
             return aliased;
+        },
+
+        normalizeInstructions(value = '') {
+            if (value === null || value === undefined) return '';
+            if (typeof value !== 'string') throw new Error('AI instructions must be text');
+            const normalized = value.replace(/\r\n?/g, '\n').trim();
+            if (normalized.length > MAX_INSTRUCTIONS_LENGTH) {
+                throw new Error(`AI instructions exceed ${MAX_INSTRUCTIONS_LENGTH} characters`);
+            }
+            if (this.credentialLikeValue(normalized)) throw new Error('AI instructions cannot contain credentials');
+            return normalized;
         },
 
         credentialLikeName(value) {
@@ -733,7 +1074,7 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
                 }));
         },
 
-        async invoke(ownerModuleId, request = {}) {
+        async invoke(ownerModuleId, request = {}, lifecycle = {}) {
             const capability = this.normalizeCapability(request.capability || 'text.generate');
             const connection = this.connections.get(String(request.providerConnectionId || request.connectionId || ''));
             if (!connection) throw new Error('AI provider connection is unavailable');
@@ -741,6 +1082,7 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
             if (!adapter || !connection.capabilities.includes(capability)) throw new Error('AI provider capability is unavailable');
             const input = YAW_NARRATION_SYSTEM.copy(request.input, null);
             if (!input) throw new Error('AI request input must be serializable');
+            const instructions = this.normalizeInstructions(request.instructions);
             const maxCharacters = Math.max(80, Math.min(YAW_NARRATION_SYSTEM.MAX_TEXT_LENGTH, Number(request.maxCharacters) || YAW_NARRATION_SYSTEM.MAX_TEXT_LENGTH));
             const controller = new AbortController();
             const externalSignal = request.signal;
@@ -754,10 +1096,16 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
             this.requestsByModule.get(ownerModuleId).add(controller);
             if (!this.requestsByConnection.has(connection.id)) this.requestsByConnection.set(connection.id, new Set());
             this.requestsByConnection.get(connection.id).add(controller);
+            const narrationTarget = String(request.input?.context?.target?.exchangeId
+                || request.input?.context?.target?.beatId
+                || request.input?.exchangeId
+                || '').slice(0, 160);
             try {
+                if (lifecycle.narration) YAW_NARRATION_SYSTEM.logLifecycle(window.App, ownerModuleId, 'request_sent', { targetId: narrationTarget });
                 const result = await adapter.invoke({
                     capability,
                     profileId: String(request.profileId || ''),
+                    instructions,
                     input,
                     maxCharacters,
                     credential: credentialVault.get(connection.id),
@@ -774,7 +1122,7 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
                     const cut = sentenceEnd >= Math.floor(maxCharacters * 0.6) ? sentenceEnd + 1 : wordEnd;
                     text = candidate.slice(0, cut > 0 ? cut : maxCharacters).trim();
                 }
-                return {
+                const output = {
                     text,
                     providerId: connection.providerId,
                     modelId: String(result?.modelId || '').slice(0, 120),
@@ -785,6 +1133,8 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
                     modelAccepted: result?.modelAccepted === true,
                     usage: YAW_NARRATION_SYSTEM.copy(result?.usage || null, null)
                 };
+                if (lifecycle.narration) YAW_NARRATION_SYSTEM.logLifecycle(window.App, ownerModuleId, 'response_received', { targetId: narrationTarget });
+                return output;
             } catch (error) {
                 if (controller.signal.aborted) {
                     const code = controller.signal.reason === 'timeout' ? 'timeout' : 'cancelled';
@@ -795,6 +1145,7 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
                 const sanitized = new Error('AI provider request failed');
                 sanitized.code = String(error?.code || 'provider_error').slice(0, 80);
                 sanitized.status = Number(error?.status) || 0;
+                sanitized.diagnostic = YAW_NARRATION_SYSTEM.providerDiagnostic(error?.diagnostic);
                 throw sanitized;
             } finally {
                 window.clearTimeout(timeout);
@@ -810,7 +1161,7 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
             return this.invoke(ownerModuleId, {
                 ...request,
                 capability: request.capability === 'narration' ? 'text.generate' : request.capability
-            });
+            }, { narration: request.capability === 'narration' });
         },
 
         abortModule(ownerModuleId) {

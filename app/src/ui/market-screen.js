@@ -124,26 +124,27 @@ const MODULE_MARKETPLACE = {
             return `<span data-content-rating="${this.escapeHtml(rating)}" title="${title}" aria-label="${title}" style="background: var(--bg-tertiary); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 10px; color: var(--text-muted); text-transform: uppercase;">${label}</span>`;
         },
 
+        catalogModules() {
+            const hosted = typeof MODULE_SYSTEM !== 'undefined' ? MODULE_SYSTEM.getHostCatalog() : [];
+            return hosted;
+        },
+
         showMarketplace() {
-            const sample = MODULE_MARKETPLACE.sampleModules[0] || {};
-            const title = this.escapeHtml(this.label('market.title', 'Module Samples'));
-            const subtitle = this.escapeHtml(this.label('market.subtitle', 'Preview local sample module fixtures and modding workflows'));
+            const hosted = typeof MODULE_SYSTEM !== 'undefined' ? MODULE_SYSTEM.getHostCatalog() : [];
+            const hasHostCatalog = hosted.length > 0;
+            if (!hasHostCatalog) {
+                ModUI.showModScreen();
+                return false;
+            }
+            const title = this.escapeHtml(this.label('market.hostCatalog', 'Host Catalog'));
+            const subtitle = this.escapeHtml(this.label('market.subtitle', 'Modules supplied and governed by this game host.'));
             const myModules = this.escapeHtml(this.label('market.myModules', 'My Modules'));
             const create = this.escapeHtml(this.label('market.create', 'Module Tools'));
             const search = this.escapeHtml(this.label('market.search', 'Search samples...'));
             const typeLabel = this.escapeHtml(this.label('market.typeFilter', 'Module type'));
             const sortLabel = this.escapeHtml(this.label('market.sort', 'Sort modules'));
-            const sampleCatalog = this.escapeHtml(this.label('market.sampleCatalog', 'Sample Catalog'));
-            const installLabel = this.escapeHtml(this.label('market.installSample', 'Install Fixture'));
             const closeLabel = this.escapeHtml(this.label('ui.close', 'Close'));
-            const closeTitle = this.escapeHtml(this.label('market.closeTitle', 'Close module samples'));
-            const sampleTitle = this.escapeHtml(sample.name || 'Safe Biome Fixture');
-            const sampleDesc = this.escapeHtml(this.label('market.sampleDescription', 'Local fixture entry for testing install, enable, filter, and sorting flows. Installed samples are stubs, not full gameplay packs.'));
-            const sampleBadge = this.escapeHtml(this.label('market.sampleBadge', 'Fixture sample'));
-            const samplePurpose = this.escapeHtml(sample.samplePurpose || this.label('market.samplePurposeFallback', 'Workflow test'));
-            const contentRatingBadge = this.renderContentRatingBadge(sample.contentRating);
-            const installTitle = this.escapeHtml(this.label('market.installSampleModule', 'Install fixture {name}', { name: sample.name || 'module' }));
-            const sampleId = this.escapeHtml(this.jsString(sample.id || ''));
+            const closeTitle = this.escapeHtml(this.label('market.closeTitle', 'Close host catalog'));
             const html = `
                 <div data-command-surface="marketplace" data-command-mode="system" style="width: 100%; max-width: 1000px; box-sizing: border-box; margin: 0 auto; padding: 24px; overflow-y: auto; max-height: 100dvh;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;">
@@ -154,6 +155,9 @@ const MODULE_MARKETPLACE = {
                             </p>
                         </div>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+                            <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-activity-log" title="${this.escapeHtml(this.label('ui.activityLog.open', 'Open activity log'))}" aria-label="${this.escapeHtml(this.label('ui.activityLog.open', 'Open activity log'))}" onclick="App.showActivityLogScreen()">
+                                📜 ${this.escapeHtml(this.label('ui.activityLog', 'Activity Log'))}
+                            </button>
                             <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-installed-modules" title="${myModules}" aria-label="${myModules}" onclick="MODULE_MARKETPLACE.ui.showInstalled()">
                                 📦 ${myModules}
                             </button>
@@ -199,35 +203,6 @@ const MODULE_MARKETPLACE = {
                         ${this.filteredModules().map(m => this.renderModuleCard(m)).join('')}
                     </div>
                     
-                    <!-- Sample Section -->
-                    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-default);">
-                        <h2 style="color: var(--text-secondary); font-size: 18px; margin-bottom: 16px;">
-                            ${sampleCatalog}
-                        </h2>
-                        <div style="background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary)); 
-                                        border: 1px solid var(--border-default); border-radius: var(--radius-md); 
-                                        padding: 20px; display: flex; gap: 20px; align-items: center;">
-                            <div style="font-size: 64px;">${this.escapeHtml(sample.preview || '📦')}</div>
-                            <div style="flex: 1;">
-                                <h3 style="color: var(--accent-primary); margin: 0 0 8px 0;">${sampleTitle}</h3>
-                                <p style="color: var(--text-secondary); margin: 0 0 12px 0;">
-                                    ${sampleDesc}
-                                </p>
-                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                    <span style="background: var(--bg-tertiary); padding: 4px 8px; border-radius: var(--radius-sm); 
-                                                 font-size: 12px; color: var(--text-muted);">${sampleBadge}</span>
-                                    <span style="background: var(--bg-tertiary); padding: 4px 8px; border-radius: var(--radius-sm); 
-                                                 font-size: 12px; color: var(--text-muted);">${samplePurpose}</span>
-                                    ${contentRatingBadge}
-                                </div>
-                            </div>
-                            <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="install-sample-module" style="background: var(--accent-primary); color: var(--bg-primary);"
-                                    title="${installTitle}" aria-label="${installTitle}"
-                                    onclick="MODULE_MARKETPLACE.ui.install('${sampleId}')">
-                                ${installLabel}
-                            </button>
-                        </div>
-                    </div>
                 </div>
             `;
             
@@ -241,14 +216,18 @@ const MODULE_MARKETPLACE = {
             const preview = this.escapeHtml(mod.preview);
             const version = this.escapeHtml(mod.version);
             const id = this.escapeHtml(this.jsString(mod.id));
-            const installLabel = this.escapeHtml(this.label('market.installSample', 'Install Fixture'));
-            const installTitle = this.escapeHtml(this.label('market.installSampleModule', 'Install fixture {name}', { name: mod.name }));
+            const isHostModule = mod.provenance === 'host';
+            const installLabel = this.escapeHtml(mod.installed ? (mod.enabled ? 'Enabled' : 'Installed') : (isHostModule ? 'Install' : this.label('market.installSample', 'Install Fixture')));
+            const installTitle = this.escapeHtml(mod.installed ? `${mod.name} is already installed` : (isHostModule ? `Install ${mod.name} from this host` : this.label('market.installSampleModule', 'Install fixture {name}', { name: mod.name })));
             const contentRating = this.renderContentRatingBadge(mod.contentRating);
-            const sampleBadge = this.escapeHtml(this.label('market.sampleBadge', 'Fixture sample'));
-            const samplePurpose = this.escapeHtml(mod.samplePurpose || this.label('market.samplePurposeFallback', 'Workflow test'));
-            const byline = this.escapeHtml(this.label('market.sampleByline', 'local sample - v{version}', {
-                version: mod.version
-            }));
+            const sampleBadge = this.escapeHtml(isHostModule ? 'Host supplied' : this.label('market.sampleBadge', 'Fixture sample'));
+            const samplePurpose = this.escapeHtml(isHostModule ? (mod.policyState || 'optional') : (mod.samplePurpose || this.label('market.samplePurposeFallback', 'Workflow test')));
+            const byline = this.escapeHtml(isHostModule
+                ? `${mod.hostId || 'host'} - v${mod.version}`
+                : this.label('market.sampleByline', 'local sample - v{version}', { version: mod.version }));
+            const requirements = isHostModule
+                ? `<div style="margin-top:8px;font-size:11px;color:${mod.compatibilityReason ? 'var(--accent-danger)' : 'var(--text-muted)'};">${this.escapeHtml(mod.compatibilityReason || `Origins: ${(mod.runtimeRequirements?.origins || []).join(', ')}`)}</div>`
+                : '';
             return `
                 <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 
                                 border-radius: var(--radius-md); overflow: hidden; transition: all 0.2s; cursor: pointer;"
@@ -276,7 +255,7 @@ const MODULE_MARKETPLACE = {
                                 <span>${samplePurpose}</span>
                             </div>
                             <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="install-sample-module" style="padding: 6px 12px; font-size: 12px;"
-                                    title="${installTitle}" aria-label="${installTitle}"
+                                    title="${installTitle}" aria-label="${installTitle}" ${mod.installed || mod.compatibilityReason ? 'disabled' : ''}
                                     onclick="event.stopPropagation(); MODULE_MARKETPLACE.ui.install('${id}')">
                                 ${installLabel}
                             </button>
@@ -284,6 +263,7 @@ const MODULE_MARKETPLACE = {
                         <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
                             ${byline}
                         </div>
+                        ${requirements}
                     </div>
                 </div>
             `;
@@ -292,7 +272,7 @@ const MODULE_MARKETPLACE = {
         filteredModules() {
             const query = String(this.filterQuery || '').trim().toLowerCase();
             const type = this.typeFilter || 'all';
-            const scored = MODULE_MARKETPLACE.sampleModules.filter(mod => {
+            const scored = this.catalogModules().filter(mod => {
                 const matchesType = type === 'all' || mod.type === type;
                 const haystack = [
                     mod.name,
@@ -339,6 +319,24 @@ const MODULE_MARKETPLACE = {
         },
         
         async install(moduleId) {
+            const hostMod = typeof MODULE_SYSTEM !== 'undefined' ? MODULE_SYSTEM.getHostCatalog().find(module => module.id === moduleId) : null;
+            if (hostMod) {
+                try {
+                    App.log.push({ text: `Installing host module: ${hostMod.name}`, type: 'discovery' });
+                    App.renderLog();
+                    await MODULE_SYSTEM.installHostCatalogModule(moduleId, { enable: true });
+                    App.log.push({ text: `Installed host module: ${hostMod.name}`, type: 'discovery' });
+                    App.renderLog();
+                    await ModUI.refreshModList();
+                    this.showMarketplace();
+                    return true;
+                } catch (error) {
+                    await ModUI.refreshModList();
+                    this.showMarketplace();
+                    alert(error.message || String(error));
+                    return false;
+                }
+            }
             const mod = MODULE_MARKETPLACE.sampleModules.find(m => m.id === moduleId);
             if (!mod) return;
 
@@ -355,6 +353,7 @@ const MODULE_MARKETPLACE = {
                         description: this.label('market.sampleManifestDescription', 'Sample stub: {description}', { description: mod.description }),
                         type: mod.type,
                         contentRating: mod.contentRating || 'safe',
+                        runtimeRequirements: { origins: ['file', 'https', 'localhost', 'http'], hotToggleSafe: true },
                         permissions: [],
                         dependencies: []
                     },

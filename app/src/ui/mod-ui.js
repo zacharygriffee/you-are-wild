@@ -152,12 +152,21 @@ const ModUI = {
             const profiles = YAW_AI_PROVIDER_MANAGER.listProfiles()
                 .filter(profile => profile.capabilities.includes(capability))
                 .filter(profile => !localOnly || (profile.providerId === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID
-                    && YAW_OPENAI_COMPATIBLE_PROVIDER.isLoopbackEndpoint(profile.metadata?.endpoint)));
+                    && YAW_OPENAI_COMPATIBLE_PROVIDER.isLoopbackEndpoint(profile.metadata?.endpoint)))
+                .sort((left, right) => {
+                    const rank = profile => profile.providerId === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID
+                        ? 0
+                        : (profile.providerId === YAW_PUTER_PROVIDER.PROVIDER_ID ? 2 : 1);
+                    return rank(left) - rank(right) || left.name.localeCompare(right.name);
+                });
             const options = profiles.map(profile => {
                 const state = profile.connected
                     ? this.label('provider.state.connectedShort', 'connected')
                     : this.label('provider.state.reconnectShort', 'reconnect required');
-                return `<option value="${this.escapeHtml(profile.id)}" ${profile.id === value ? 'selected' : ''}>${this.escapeHtml(profile.name)} - ${this.escapeHtml(state)}</option>`;
+                const tier = profile.providerId === YAW_PUTER_PROVIDER.PROVIDER_ID
+                    ? ` - ${this.label('provider.experimental', 'experimental')}`
+                    : '';
+                return `<option value="${this.escapeHtml(profile.id)}" ${profile.id === value ? 'selected' : ''}>${this.escapeHtml(profile.name)}${this.escapeHtml(tier)} - ${this.escapeHtml(state)}</option>`;
             }).join('');
             const localNotice = localOnly
                 ? `<small class="mod-provider-unavailable">${this.escapeHtml(this.label('provider.fileOriginLocalOnly', 'File mode supports local loopback providers such as Ollama; remote and credentialed providers are unavailable.'))}</small>`

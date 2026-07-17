@@ -18,7 +18,7 @@ const YAW_PUTER_PROVIDER = {
         if (!YAW_AI_PROVIDER_MANAGER.adapters.has(this.PROVIDER_ID)) {
             YAW_AI_PROVIDER_MANAGER.registerAdapter(this.PROVIDER_ID, {
                 name: 'Puter (User Pays)',
-                description: 'Browser sign-in with user-paid model access. No API key is stored by the game.',
+                description: 'Experimental browser sign-in with user-paid model access. This integration is not currently verified.',
                 capabilities: ['text.generate'],
                 generate: request => this.generate(request)
             }, 'core-puter-provider');

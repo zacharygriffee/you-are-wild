@@ -1284,6 +1284,12 @@ test('AI Providers has a dedicated credential-safe UI and provider-backed settin
   assertContains(providerUiContent, 'New profiles default to 8,192; high reasoning may need 16,384 or more', 'Provider editor should explain the reasoning-budget tradeoff');
   assertContains(providerUiContent, 'maxCompletionTokens:', 'Provider form submission should retain the configured completion-token ceiling');
   assertContains(providerUiContent, 'The 30-second default gives reasoning-heavy models time to finish', 'Provider editor should explain the reasoning-friendly timeout default');
+  assertContains(providerUiContent, "provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID", 'Provider UI should rank the OpenAI-compatible adapter first');
+  assertContains(providerUiContent, "provider.recommended", 'Provider UI should identify the OpenAI-compatible path as recommended');
+  assertContains(providerUiContent, "provider.unverified", 'Provider UI should identify Puter as unverified');
+  assertContains(providerUiContent, 'provider-service-secondary', 'Provider UI should visually downplay the experimental Puter integration');
+  assertContains(modUiContent, "profile.providerId === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID", 'Module provider selectors should rank OpenAI-compatible profiles first');
+  assertContains(modUiContent, "provider.experimental", 'Module provider selectors should label Puter profiles as experimental');
   assertContains(providerUiContent, 'Diagnostic: {code}{status}.', 'Provider failures should expose a sanitized code and HTTP status');
   assertContains(providerUiContent, "this.logError(error, action, 'OpenAI-compatible API')", 'OpenAI-compatible provider failures should enter the Activity Log');
   assertContains(providerUiContent, "App._pushLog(entry, 'error')", 'Provider failures should use the Activity Log error category');

@@ -79,7 +79,7 @@ const YAW_OPENAI_COMPATIBLE_PROVIDER = (() => {
             if (YAW_AI_PROVIDER_MANAGER.adapters.has(PROVIDER_ID)) return PROVIDER_ID;
             return YAW_AI_PROVIDER_MANAGER.registerAdapter(PROVIDER_ID, {
                 name: 'OpenAI-Compatible API',
-                description: 'Browser-direct text generation using Responses or Chat Completions compatible endpoints.',
+                description: 'Recommended browser-direct path for OpenAI and compatible Responses or Chat Completions endpoints.',
                 capabilities: ['text.generate'],
                 generate: request => this.generate(request)
             }, 'core-openai-compatible-provider');

@@ -117,11 +117,11 @@ const AIProviderUI = {
             ? this.label('provider.state.connected', 'Connected for this browser session')
             : this.label('provider.state.disconnected', 'Disconnected');
         return `
-            <section class="provider-service" aria-labelledby="provider-puter-title">
+            <section class="provider-service provider-service-secondary" aria-labelledby="provider-puter-title">
                 <div class="provider-service-heading">
                     <div>
-                        <h2 id="provider-puter-title">${this.escape(provider.name)}</h2>
-                        <p>${this.escape(provider.description)}</p>
+                        <div class="provider-service-title"><h2 id="provider-puter-title">${this.escape(provider.name)}</h2><span class="provider-tier-badge" data-tier="experimental">${this.escape(this.label('provider.experimental', 'Experimental'))}</span><span class="provider-tier-badge" data-tier="unverified">${this.escape(this.label('provider.unverified', 'Not currently verified'))}</span></div>
+                        <p>${this.escape(this.label('provider.puter.experimentalDescription', 'Optional browser sign-in with user-paid model access. Retained for evaluation; this integration is not currently verified.'))}</p>
                     </div>
                     <div class="provider-capabilities">${this.capabilityBadges(provider.capabilities)}</div>
                 </div>
@@ -136,7 +136,7 @@ const AIProviderUI = {
                         <input id="provider-puter-model" type="text" maxlength="160" autocomplete="off" value="${this.escape(profile.metadata?.model || '')}" placeholder="${this.escape(this.label('provider.puter.modelPlaceholder', 'Provider default'))}" ${profile.connected || this.busy ? 'disabled' : ''}>
                     </label>
                     <div class="provider-actions" role="group" aria-label="${this.escape(this.label('provider.puter.actions', 'Puter provider actions'))}">
-                        <button class="nav-btn primary" type="button" onclick="AIProviderUI.runPuter('connect')" ${profile.connected || this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.connect', 'Connect'))}</button>
+                        <button class="nav-btn" type="button" onclick="AIProviderUI.runPuter('connect')" ${profile.connected || this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.connect', 'Connect'))}</button>
                         <button class="nav-btn" type="button" onclick="AIProviderUI.runPuter('test')" ${!profile.connected || this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.test', 'Test'))}</button>
                         <button class="nav-btn" type="button" onclick="AIProviderUI.runPuter('disconnect')" ${!profile.connected || this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.disconnect', 'Disconnect'))}</button>
                     </div>
@@ -221,7 +221,7 @@ const AIProviderUI = {
         return `
             <section class="provider-service" aria-labelledby="provider-openai-title">
                 <div class="provider-service-heading">
-                    <div><h2 id="provider-openai-title">${this.escape(provider.name)}</h2><p>${this.escape(provider.description)}</p></div>
+                    <div><div class="provider-service-title"><h2 id="provider-openai-title">${this.escape(provider.name)}</h2><span class="provider-tier-badge" data-tier="recommended">${this.escape(this.label('provider.recommended', 'Recommended'))}</span></div><p>${this.escape(this.label('provider.openai.description', 'Connect OpenAI or another compatible service through the recommended provider path.'))}</p></div>
                     <div class="provider-capabilities">${this.capabilityBadges(provider.capabilities)}</div>
                 </div>
                 ${fileOrigin ? `<label class="provider-replace-credential"><input id="openai-provider-file-origin-override" type="checkbox" ${override ? 'checked' : ''} onchange="AIProviderUI.toggleFileOriginRemoteOverride(this.checked)"><span><strong>${this.escape(this.label('provider.fileOriginOverride', 'Allow remote endpoint attempts for this session'))}</strong><small>${this.escape(this.label('provider.fileOriginOverrideHelp', 'Advanced: the page has an opaque null origin. Credentials and this override are never persisted; browser TLS and CORS rules still apply.'))}</small></span></label>` : ''}
@@ -241,6 +241,12 @@ const AIProviderUI = {
         const visibleProviders = localOnly
             ? providers.filter(provider => provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID)
             : providers;
+        visibleProviders.sort((left, right) => {
+            const rank = provider => provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID
+                ? 0
+                : (provider.id === YAW_PUTER_PROVIDER.PROVIDER_ID ? 2 : 1);
+            return rank(left) - rank(right) || left.name.localeCompare(right.name);
+        });
         container.innerHTML = visibleProviders.map(provider => {
             const ownedProfiles = profiles
                 .filter(profile => profile.providerId === provider.id)

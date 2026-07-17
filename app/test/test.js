@@ -2069,6 +2069,135 @@ asyncTest('Module system imports and exports versioned module package envelopes'
   assertEqual((await MODULE_SYSTEM.getAllModules()).length, 1, 'Rejected package envelopes should not add stored modules');
 });
 
+asyncTest('Remote module acquisition enforces URI, transport, size, redirect, and integrity boundaries', async () => {
+  const webcrypto = require('crypto').webcrypto;
+  const btoa = value => Buffer.from(value, 'binary').toString('base64');
+  const packageData = {
+    packageType: 'yaw-module',
+    packageVersion: 1,
+    packageId: 'remote-test',
+    module: {
+      manifest: {
+        id: 'remote-test',
+        name: 'Remote Test',
+        version: '1.0.0',
+        contentRating: 'safe',
+        permissions: ['ui.read'],
+        dependencies: []
+      },
+      code: '',
+      assets: { preview: { type: 'image', path: 'local-preview.png' } }
+    }
+  };
+  const payload = JSON.stringify(packageData);
+  const digest = require('crypto').createHash('sha256').update(payload).digest('hex');
+  const url = 'https://mods.example.test/remote-test.yawmod.json';
+  let requestOptions = null;
+  const makeResponse = (body = payload, responseUrl = url, headers = { 'content-type': 'application/json' }) => {
+    const response = new Response(body, { status: 200, headers });
+    Object.defineProperty(response, 'url', { value: responseUrl });
+    return response;
+  };
+  const MODULE_SYSTEM = loadModuleSystemForTest({
+    window: {
+      crypto: webcrypto,
+      btoa,
+      fetch: async (requestUrl, options) => {
+        assertEqual(requestUrl, url, 'Remote acquisition should use the normalized package URI');
+        requestOptions = options;
+        return makeResponse();
+      }
+    }
+  });
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  const review = await MODULE_SYSTEM.reviewRemoteModule(url, digest);
+  assertEqual(review.manifest.id, 'remote-test', 'Remote review should validate the nested module manifest');
+  assertEqual(review.integrity, digest, 'Remote review should compute and expose a stable SHA-256 digest');
+  assertEqual(review.integrityVerified, true, 'A matching expected digest should be marked verified');
+  assertEqual(requestOptions.credentials, 'omit', 'Remote acquisition must omit browser credentials');
+  assertEqual(requestOptions.redirect, 'error', 'Remote acquisition must reject redirects');
+  assertEqual(requestOptions.cache, 'no-store', 'Remote acquisition must not rely on HTTP runtime caching');
+
+  const installed = await MODULE_SYSTEM.installReviewedRemoteModule(review);
+  assertEqual(installed.provenance, 'remote', 'Reviewed URI packages should persist remote provenance');
+  assertEqual(installed.enabled, false, 'Reviewed URI packages should remain disabled after installation');
+  assertEqual(installed.sourceUrl, url, 'Remote packages should retain their source URI for explicit future review');
+  assertEqual(installed.integrity, digest, 'Remote packages should retain the reviewed digest');
+  assertEqual(fakeDb.data.assets.get('remote-test:preview').value.path, 'local-preview.png', 'Remote package assets should use the normal local module asset store');
+  assertEqual(MODULE_SYSTEM.moduleControlState(installed).canDelete, true, 'Player-installed URI packages should remain removable');
+
+  const rejectedUris = [
+    'file:///tmp/remote-test.yawmod.json',
+    'http://mods.example.test/remote-test.yawmod.json',
+    'https://user:secret@mods.example.test/remote-test.yawmod.json',
+    `${url}?token=secret`,
+    `${url}#fragment`
+  ];
+  for (const rejectedUri of rejectedUris) {
+    let rejected = false;
+    try { await MODULE_SYSTEM.reviewRemoteModule(rejectedUri); } catch (error) { rejected = true; }
+    assertEqual(rejected, true, `Remote acquisition should reject unsafe URI: ${rejectedUri}`);
+  }
+
+  const loopback = loadModuleSystemForTest({
+    window: {
+      crypto: webcrypto,
+      btoa,
+      fetch: async requestUrl => makeResponse(payload, requestUrl)
+    }
+  });
+  const localReview = await loopback.reviewRemoteModule('http://127.0.0.1:8080/remote-test.yawmod.json');
+  assertEqual(localReview.manifest.id, 'remote-test', 'HTTP loopback should be allowed for local development');
+
+  let rejected = false;
+  try { await MODULE_SYSTEM.reviewRemoteModule(url, '0'.repeat(64)); } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'integrity', 'Digest mismatch should identify integrity verification');
+  }
+  assertEqual(rejected, true, 'A mismatched expected digest must reject before review');
+
+  const redirected = loadModuleSystemForTest({
+    window: {
+      crypto: webcrypto,
+      btoa,
+      fetch: async () => makeResponse(payload, 'https://cdn.example.test/remote-test.yawmod.json')
+    }
+  });
+  rejected = false;
+  try { await redirected.reviewRemoteModule(url); } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'redirect', 'Redirect mismatch should report redirect policy');
+  }
+  assertEqual(rejected, true, 'A changed response URI must reject before review');
+
+  const oversized = loadModuleSystemForTest({
+    window: {
+      crypto: webcrypto,
+      btoa,
+      fetch: async () => makeResponse('', url, {
+        'content-type': 'application/json',
+        'content-length': String(2 * 1024 * 1024 + 1)
+      })
+    }
+  });
+  rejected = false;
+  try { await oversized.reviewRemoteModule(url); } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'download limit', 'Oversized package should report its bounded download limit');
+  }
+  assertEqual(rejected, true, 'Declared oversized packages must reject before buffering');
+});
+
+test('Mod Manager exposes explicit URI review without runtime hotlink controls', () => {
+  assertContains(templateContent, 'data-command-control="import-module-uri"', 'Mod Manager should expose URI package acquisition');
+  assertContains(templateContent, 'id="remote-module-review"', 'Mod Manager should reserve an explicit trust-review result region');
+  assertContains(modUiContent, 'installReviewedRemoteModule', 'URI installation should consume a reviewed in-memory package');
+  assertContains(modUiContent, 'Trusted-local mod code runs in the game page', 'URI review should disclose the trusted-local execution boundary');
+  assertNotContains(modUiContent, 'setInterval(() => ModUI.beginRemoteUpdate', 'URI mods must never poll or auto-update');
+});
+
 asyncTest('Host manifest preloads curated modules and enforces provenance policy', async () => {
   const manifestPayload = {
     schema: 'yaw-host-modules-v1',

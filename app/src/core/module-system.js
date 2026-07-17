@@ -14,11 +14,13 @@ const MODULE_SYSTEM = {
     PUBLIC_CONTEXT_VERSION: 1,
     TRUST_BOUNDARY: 'trusted-local',
     CONTENT_RATINGS: ['safe', 'mature', 'adult'],
-    MODULE_PROVENANCES: ['user', 'host', 'built-in'],
+    MODULE_PROVENANCES: ['user', 'remote', 'host', 'built-in'],
     RUNTIME_ORIGINS: ['file', 'https', 'localhost', 'http'],
     HOST_MANIFEST_SCHEMA: 'yaw-host-modules-v1',
     CONTENT_PROFILE_SCHEMA: 'yaw-content-profile-v1',
     DEFAULT_HOST_MANIFEST_PATH: 'yaw-host.json',
+    REMOTE_PACKAGE_MAX_BYTES: 2 * 1024 * 1024,
+    REMOTE_PACKAGE_TIMEOUT_MS: 15000,
     KNOWN_PERMISSIONS: ['ui.read', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option'],
     db: null,
     hostManifest: null,
@@ -675,6 +677,169 @@ const MODULE_SYSTEM = {
         return url.href;
     },
 
+    _normalizeRemotePackageUrl(value) {
+        let url;
+        try {
+            url = new URL(String(value || '').trim());
+        } catch (error) {
+            throw new Error('Remote module URI is invalid');
+        }
+        const hostname = String(url.hostname || '').toLowerCase();
+        const loopback = hostname === 'localhost' || hostname === '::1' || /^127(?:\.\d{1,3}){3}$/.test(hostname);
+        if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) {
+            throw new Error('Remote modules require HTTPS, except for HTTP localhost or loopback development servers');
+        }
+        if (url.username || url.password) throw new Error('Remote module URIs cannot contain credentials');
+        if (url.search) throw new Error('Remote module URIs cannot contain query parameters');
+        if (url.hash) throw new Error('Remote module URIs cannot contain fragments');
+        return url.href;
+    },
+
+    _normalizeRemoteIntegrity(value) {
+        const integrity = String(value || '').trim();
+        if (!integrity) return '';
+        if (!/^(?:[a-f0-9]{64}|sha256-[A-Za-z0-9+/=]+)$/i.test(integrity)) {
+            throw new Error('Expected SHA-256 must be 64 hexadecimal characters or a sha256- base64 value');
+        }
+        return integrity;
+    },
+
+    async _sha256Bytes(bytes) {
+        const cryptoApi = typeof window !== 'undefined' ? window.crypto : null;
+        if (!cryptoApi?.subtle?.digest) throw new Error('Remote package integrity verification is unavailable');
+        const digest = new Uint8Array(await cryptoApi.subtle.digest('SHA-256', bytes));
+        return {
+            hex: Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join(''),
+            bytes: digest
+        };
+    },
+
+    _base64Bytes(bytes) {
+        const encode = typeof window !== 'undefined' && typeof window.btoa === 'function' ? window.btoa.bind(window) : null;
+        if (!encode) throw new Error('Remote package integrity verification is unavailable');
+        return encode(Array.from(bytes, byte => String.fromCharCode(byte)).join(''));
+    },
+
+    async _readBoundedRemoteResponse(response) {
+        const declaredLength = Number(response.headers?.get?.('content-length') || 0);
+        if (declaredLength > this.REMOTE_PACKAGE_MAX_BYTES) {
+            throw new Error(`Remote module exceeds the ${this.REMOTE_PACKAGE_MAX_BYTES} byte download limit`);
+        }
+        if (response.body?.getReader) {
+            const reader = response.body.getReader();
+            const chunks = [];
+            let total = 0;
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    total += value.byteLength;
+                    if (total > this.REMOTE_PACKAGE_MAX_BYTES) {
+                        await reader.cancel();
+                        throw new Error(`Remote module exceeds the ${this.REMOTE_PACKAGE_MAX_BYTES} byte download limit`);
+                    }
+                    chunks.push(value);
+                }
+            } finally {
+                reader.releaseLock?.();
+            }
+            const bytes = new Uint8Array(total);
+            let offset = 0;
+            for (const chunk of chunks) {
+                bytes.set(chunk, offset);
+                offset += chunk.byteLength;
+            }
+            return bytes;
+        }
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (bytes.byteLength > this.REMOTE_PACKAGE_MAX_BYTES) {
+            throw new Error(`Remote module exceeds the ${this.REMOTE_PACKAGE_MAX_BYTES} byte download limit`);
+        }
+        return bytes;
+    },
+
+    async reviewRemoteModule(sourceUrl, expectedIntegrity = '', options = {}) {
+        const url = this._normalizeRemotePackageUrl(sourceUrl);
+        const expected = this._normalizeRemoteIntegrity(expectedIntegrity);
+        const fetchApi = options.fetch || (typeof window !== 'undefined' ? window.fetch?.bind(window) : null);
+        if (!fetchApi) throw new Error('Remote module loading is unavailable');
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), this.REMOTE_PACKAGE_TIMEOUT_MS);
+        let response;
+        try {
+            response = await fetchApi(url, {
+                method: 'GET',
+                credentials: 'omit',
+                redirect: 'error',
+                cache: 'no-store',
+                referrerPolicy: 'no-referrer',
+                headers: { Accept: 'application/json, text/json;q=0.9, text/plain;q=0.5' },
+                signal: controller.signal
+            });
+        } catch (error) {
+            if (controller.signal.aborted) throw new Error('Remote module download timed out');
+            throw new Error(`Remote module download failed: ${error?.message || error}`);
+        } finally {
+            clearTimeout(timer);
+        }
+        if (!response.ok) throw new Error(`Remote module returned HTTP ${response.status}`);
+        const responseUrl = this._normalizeRemotePackageUrl(response.url || url);
+        if (responseUrl !== url) throw new Error('Remote module redirects are not allowed');
+        const contentType = String(response.headers?.get?.('content-type') || '').split(';')[0].trim().toLowerCase();
+        const allowedTypes = ['', 'application/json', 'text/json', 'text/plain', 'application/octet-stream'];
+        if (!allowedTypes.includes(contentType)) throw new Error(`Remote module returned unsupported content type ${contentType}`);
+        const bytes = await this._readBoundedRemoteResponse(response);
+        const digest = await this._sha256Bytes(bytes);
+        const actualSRI = `sha256-${this._base64Bytes(digest.bytes)}`;
+        if (expected && expected.toLowerCase() !== digest.hex.toLowerCase() && expected !== actualSRI) {
+            throw new Error('Remote module failed SHA-256 integrity verification');
+        }
+        let text;
+        try {
+            text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch (error) {
+            throw new Error('Remote module is not valid UTF-8 text');
+        }
+        let packageData;
+        try {
+            packageData = JSON.parse(text);
+        } catch (error) {
+            throw new Error('Remote module is not valid JSON');
+        }
+        const validated = this._validateModuleData(this._normalizeModulePackage(packageData));
+        this._assertGameVersionCompatible(validated.manifest);
+        return {
+            packageData,
+            manifest: validated.manifest,
+            sourceUrl: url,
+            integrity: digest.hex,
+            integrityVerified: Boolean(expected),
+            byteLength: bytes.byteLength,
+            contentType: contentType || 'unspecified',
+            fetchedAt: Date.now()
+        };
+    },
+
+    async installReviewedRemoteModule(review) {
+        if (!review || typeof review !== 'object' || !review.packageData) throw new Error('Review a remote module before installing it');
+        const sourceUrl = this._normalizeRemotePackageUrl(review.sourceUrl);
+        const integrity = this._normalizeRemoteIntegrity(review.integrity);
+        if (!integrity) throw new Error('Reviewed remote module is missing its computed integrity digest');
+        const validated = this._validateModuleData(this._normalizeModulePackage(review.packageData));
+        if (validated.manifest.id !== review.manifest?.id || validated.manifest.version !== review.manifest?.version) {
+            throw new Error('Reviewed remote module metadata changed before installation');
+        }
+        return this.installModule(review.packageData, {
+            provenance: 'remote',
+            sourceUrl,
+            integrity,
+            integrityVerified: review.integrityVerified === true,
+            sourceFetchedAt: Number(review.fetchedAt) || Date.now(),
+            sourceByteLength: Number(review.byteLength) || 0,
+            sourceContentType: String(review.contentType || '').slice(0, 160)
+        });
+    },
+
     _normalizeHostCatalogEntry(value, baseUrl) {
         if (!value || typeof value !== 'object' || Array.isArray(value)) {
             throw new Error('Host catalog entries must be objects');
@@ -786,13 +951,13 @@ const MODULE_SYSTEM = {
         const provenance = this._normalizeProvenance(record.provenance || 'user');
         const policyState = this.hostPolicyState(record.id);
         const compatibilityReason = this._runtimeCompatibilityBlockReason(record.manifest || {});
-        const userBlocked = Boolean(this.hostManifest && provenance === 'user' && this.hostManifest.policy.allowUserModules === false);
+        const userBlocked = Boolean(this.hostManifest && ['user', 'remote'].includes(provenance) && this.hostManifest.policy.allowUserModules === false);
         return {
             provenance,
             policyState,
             lockedEnabled: policyState === 'required',
             lockedDisabled: policyState === 'forbidden',
-            canDelete: provenance === 'user',
+            canDelete: ['user', 'remote'].includes(provenance),
             canEnable: policyState !== 'forbidden' && !userBlocked && !compatibilityReason,
             canDisable: policyState !== 'required',
             compatibilityReason,
@@ -1007,7 +1172,7 @@ const MODULE_SYSTEM = {
         const changed = [];
         for (const module of modules) {
             const state = this.hostPolicyState(module.id);
-            const userBlocked = module.provenance === 'user' && this.hostManifest.policy.allowUserModules === false;
+            const userBlocked = ['user', 'remote'].includes(module.provenance) && this.hostManifest.policy.allowUserModules === false;
             if ((state === 'forbidden' || userBlocked) && module.enabled) {
                 changed.push(await this.setModuleEnabled(module.id, false, { bypassHostPolicy: true, bypassLifecycle: true }));
             }
@@ -1243,8 +1408,12 @@ const MODULE_SYSTEM = {
             installedAt: Date.now(),
             provenance,
             hostId: provenance === 'host' ? String(options.hostId || '').slice(0, 160) : '',
-            sourceUrl: provenance === 'host' ? String(options.sourceUrl || '').slice(0, 1000) : '',
-            integrity: provenance === 'host' ? String(options.integrity || '') : '',
+            sourceUrl: ['host', 'remote'].includes(provenance) ? String(options.sourceUrl || '').slice(0, 1000) : '',
+            integrity: ['host', 'remote'].includes(provenance) ? String(options.integrity || '') : '',
+            integrityVerified: provenance === 'remote' && options.integrityVerified === true,
+            sourceFetchedAt: provenance === 'remote' ? Number(options.sourceFetchedAt) || Date.now() : 0,
+            sourceByteLength: provenance === 'remote' ? Math.max(0, Number(options.sourceByteLength) || 0) : 0,
+            sourceContentType: provenance === 'remote' ? String(options.sourceContentType || '').slice(0, 160) : '',
             hostPolicyState: provenance === 'host' ? String(options.hostPolicyState || '') : ''
         };
         
@@ -1253,8 +1422,8 @@ const MODULE_SYSTEM = {
         const store = tx.objectStore('modules');
         const assetStore = tx.objectStore('assets');
         const previous = await this._request(store.get(module.id));
-        if (previous?.provenance === 'host' && provenance === 'user') {
-            throw new Error('A user-installed module cannot replace a host-supplied module');
+        if (previous?.provenance === 'host' && provenance !== 'host') {
+            throw new Error('A player-installed module cannot replace a host-supplied module');
         }
         await this._assertNoDependencyCycle(module.id, module.manifest.dependencies, store);
         const previousAssets = await this._request(assetStore.index('moduleId').getAll(module.id));
@@ -1952,6 +2121,10 @@ const MODULE_SYSTEM = {
             hostId: String(module.hostId || ''),
             sourceUrl: String(module.sourceUrl || ''),
             integrity: String(module.integrity || ''),
+            integrityVerified: module.integrityVerified === true,
+            sourceFetchedAt: Number(module.sourceFetchedAt) || 0,
+            sourceByteLength: Math.max(0, Number(module.sourceByteLength) || 0),
+            sourceContentType: String(module.sourceContentType || ''),
             hostPolicyState: this.hostPolicyState(module.id) || String(module.hostPolicyState || '')
         }));
         this.moduleRecords = new Map(normalized.map(module => [module.id, module]));
@@ -2003,7 +2176,7 @@ const MODULE_SYSTEM = {
     // Delete module
     async deleteModule(moduleId, options = {}) {
         const existing = (await this.getAllModules()).find(module => module.id === moduleId);
-        if (existing && existing.provenance !== 'user' && options.bypassOwnership !== true) {
+        if (existing && !['user', 'remote'].includes(existing.provenance) && options.bypassOwnership !== true) {
             throw new Error('Host and built-in modules cannot be deleted by the player');
         }
         await this._disableDependentsOf(moduleId);

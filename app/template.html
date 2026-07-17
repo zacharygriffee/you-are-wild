@@ -9248,8 +9248,18 @@
                     📁 <span data-i18n="mod.import">Import Mod</span>
                     <input type="file" accept=".json,.js" style="display: none;" onchange="ModUI.handleFileSelect(event)">
                 </label>
+                <button class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="import-module-uri" data-i18n="mod.remoteImport" data-i18n-title="mod.remoteImportTitle" data-i18n-aria-label="mod.remoteImportTitle" title="Import mod from URI" aria-label="Import mod from URI" onclick="ModUI.toggleRemoteImport()">🌐 Import from URI</button>
                 <button class="nav-btn" data-host-catalog-entry hidden data-command-surface="module-manager" data-command-mode="system" data-command-control="open-market" title="Open host catalog" aria-label="Open host catalog" data-i18n-title="market.openHostCatalogTitle" data-i18n-aria-label="market.openHostCatalogTitle" onclick="App.showMarketScreen()">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></button>
             </div>
+
+            <section id="remote-module-import" hidden aria-labelledby="remote-module-import-title" style="border:1px solid var(--border-default);background:var(--bg-secondary);border-radius:var(--radius-sm);padding:14px;margin:-12px 0 24px;">
+                <h2 id="remote-module-import-title" style="font-size:16px;margin:0 0 8px;" data-i18n="mod.remoteImportTitle">Import mod from URI</h2>
+                <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;" data-i18n="mod.remoteImportHelp">HTTPS packages, plus HTTP localhost packages for development, are downloaded once and stored locally. Redirects and runtime hotlinks are not allowed.</p>
+                <label style="display:block;margin-bottom:8px;"><span data-i18n="mod.remoteUri">Package URI</span><input id="remote-module-uri" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://example.test/mod.yawmod.json" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;"></label>
+                <label style="display:block;margin-bottom:10px;"><span data-i18n="mod.remoteExpectedIntegrity">Expected SHA-256 (optional)</span><input id="remote-module-integrity" type="text" autocomplete="off" spellcheck="false" maxlength="96" placeholder="64 hexadecimal characters" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;"></label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button id="remote-module-review-button" class="nav-btn" type="button" data-i18n="mod.remoteReview" onclick="ModUI.reviewRemoteUri()">Review package</button><button class="nav-btn" type="button" data-i18n="ui.cancel" onclick="ModUI.toggleRemoteImport(false)">Cancel</button></div>
+                <div id="remote-module-review" aria-live="polite"></div>
+            </section>
 
             <!-- Mod List -->
             <div id="mod-list" style="min-height: 100px;">

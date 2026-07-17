@@ -14,6 +14,10 @@ requirements, and save content locks are defined in
 [Host-Supplied Modules](host-modules.md). That host lane does not change the
 trust boundary for public community packages.
 
+Explicit URI acquisition, review, digest recording, and local-copy behavior are
+defined in [Remote Module Import](remote-modules.md). URI import uses this same
+trusted-local execution boundary and does not make remote code sandboxed.
+
 ## Source Of Truth
 
 Maintained module code lives in:
@@ -23,7 +27,7 @@ Maintained module code lives in:
 - `app/src/ui/market-screen.js`
 
 Without a host manifest, the player-facing Mod Manager exposes trusted local
-file import and installed modules only. Development sample fixtures and the
+file import, explicit URI package review, and installed modules. Development sample fixtures and the
 example-module generator remain internal test utilities rather than public
 controls. With a same-origin host manifest, a **Host Catalog** entry appears for
 the curated packages described in [Host-Supplied Modules](host-modules.md). It
@@ -212,7 +216,7 @@ Built-in content-pack handles exposed through `window.CONTENT_PACKS` contain bas
 
 Content templates registered through `CONTENT.registerTemplate(category, type, variant, templates)` use tokenized category/type/variant keys. The internal `adult` template slot remains a compatibility/provider lane, not a third core posture. Provider modules normally contribute individual tiers through `MODS.registerContentTemplate()`. Malformed registrations reject before mutating the registry.
 
-## Future Marketplace Requirements
+## Future Community Marketplace Requirements
 
 Development-only sample fixtures and example generators are not player-facing
 marketplace entries. Local builds expose trusted file import and installed
@@ -220,11 +224,14 @@ module management. A Host Catalog control exists only after a valid host
 catalog loads; initialization failures are recorded in the run-independent
 Activity Log while local modules remain usable.
 
-Before enabling remote/community packages, add:
+Direct URI import now supplies bounded acquisition, package validation,
+permission/content-rating review, digest verification or recording, local
+IndexedDB installation, and explicit replacement/removal. It does not provide
+community discovery or establish author identity. Before presenting a public
+community marketplace, add:
 
-- remote package signing or integrity checks
-- explicit permission prompts
-- dependency and game-version resolution
+- publisher signing and identity/reputation checks beyond user-supplied hashes
+- richer dependency discovery and conflict resolution
 - stronger runtime isolation, such as an iframe or Worker capability boundary
-- package-level content rating review
-- asset provenance metadata for externally supplied media
+- moderation/reporting and revocation policy
+- asset archive budgets, provenance/licensing metadata, and blob cleanup rules

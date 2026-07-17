@@ -3,6 +3,8 @@
  * Module Manager UI Controller
  */
 const ModUI = {
+    pendingRemoteReview: null,
+
     label(key, fallback, vars = {}) {
         if (typeof App !== 'undefined' && App._label) return App._label(key, fallback, vars);
         if (typeof CONTENT !== 'undefined' && CONTENT.t) {
@@ -86,6 +88,114 @@ const ModUI = {
             reader.onerror = reject;
             reader.readAsText(file);
         });
+    },
+
+    logRemote(text, type = 'discovery') {
+        if (typeof App === 'undefined' || !Array.isArray(App.log)) return;
+        App.log.push({ text, type });
+        App.renderLog?.();
+    },
+
+    toggleRemoteImport(forceOpen = null) {
+        const panel = document.getElementById('remote-module-import');
+        if (!panel) return;
+        const open = forceOpen === null ? panel.hidden : Boolean(forceOpen);
+        panel.hidden = !open;
+        if (!open) {
+            this.pendingRemoteReview = null;
+            const review = document.getElementById('remote-module-review');
+            if (review) review.innerHTML = '';
+        } else {
+            document.getElementById('remote-module-uri')?.focus();
+        }
+    },
+
+    async beginRemoteUpdate(moduleId) {
+        const module = (await MODULE_SYSTEM.getAllModules()).find(entry => entry.id === moduleId);
+        if (!module || module.provenance !== 'remote' || !module.sourceUrl) return;
+        this.toggleRemoteImport(true);
+        const uri = document.getElementById('remote-module-uri');
+        const integrity = document.getElementById('remote-module-integrity');
+        if (uri) uri.value = module.sourceUrl;
+        if (integrity) integrity.value = '';
+        await this.reviewRemoteUri(module.id);
+    },
+
+    async reviewRemoteUri(previousModuleId = '') {
+        const uriInput = document.getElementById('remote-module-uri');
+        const integrityInput = document.getElementById('remote-module-integrity');
+        const output = document.getElementById('remote-module-review');
+        const button = document.getElementById('remote-module-review-button');
+        if (!uriInput || !output) return;
+        this.pendingRemoteReview = null;
+        output.innerHTML = `<p style="color:var(--text-muted);margin:8px 0;">${this.escapeHtml(this.label('mod.remoteFetching', 'Downloading and validating package...'))}</p>`;
+        if (button) button.disabled = true;
+        try {
+            const review = await MODULE_SYSTEM.reviewRemoteModule(uriInput.value, integrityInput?.value || '');
+            const installed = (await MODULE_SYSTEM.getAllModules()).find(module => module.id === review.manifest.id) || null;
+            review.previousModuleId = previousModuleId || installed?.id || '';
+            review.previousIntegrity = installed?.integrity || '';
+            this.pendingRemoteReview = review;
+            const permissions = review.manifest.permissions?.length ? review.manifest.permissions.join(', ') : this.label('mod.remoteNone', 'none');
+            const dependencies = review.manifest.dependencies?.length ? review.manifest.dependencies.join(', ') : this.label('mod.remoteNone', 'none');
+            const changeNote = installed
+                ? `<p style="color:var(--accent-warning);margin:8px 0 0;">${this.escapeHtml(this.label('mod.remoteReplace', 'Installing will replace the currently stored {name} v{version} and leave it disabled.', { name: installed.manifest?.name || installed.id, version: installed.manifest?.version || '?' }))}</p>`
+                : '';
+            const integrityNote = review.integrityVerified
+                ? this.label('mod.remoteIntegrityVerified', 'Matched the supplied SHA-256 pin.')
+                : this.label('mod.remoteIntegrityRecorded', 'No pin was supplied. This digest will be recorded for audit and future comparison.');
+            output.innerHTML = `
+                <div style="border:1px solid var(--border-default);background:var(--bg-tertiary);border-radius:var(--radius-sm);padding:12px;margin-top:12px;">
+                    <strong>${this.escapeHtml(review.manifest.name)} v${this.escapeHtml(review.manifest.version)}</strong>
+                    <p style="color:var(--text-muted);margin:6px 0;">${this.escapeHtml(review.manifest.description || this.label('mod.noDescription', 'No description'))}</p>
+                    <dl style="display:grid;grid-template-columns:max-content 1fr;gap:4px 10px;font-size:12px;margin:8px 0;overflow-wrap:anywhere;">
+                        <dt>${this.escapeHtml(this.label('mod.type', 'Type'))}</dt><dd>${this.escapeHtml(review.manifest.type)}</dd>
+                        <dt>${this.escapeHtml(this.label('mod.remoteRating', 'Content rating'))}</dt><dd>${this.escapeHtml(review.manifest.contentRating)}</dd>
+                        <dt>${this.escapeHtml(this.label('mod.remotePermissions', 'Permissions'))}</dt><dd>${this.escapeHtml(permissions)}</dd>
+                        <dt>${this.escapeHtml(this.label('mod.remoteDependencies', 'Dependencies'))}</dt><dd>${this.escapeHtml(dependencies)}</dd>
+                        <dt>SHA-256</dt><dd><code>${this.escapeHtml(review.integrity)}</code></dd>
+                        <dt>${this.escapeHtml(this.label('mod.remoteSize', 'Download'))}</dt><dd>${this.escapeHtml(String(review.byteLength))} bytes</dd>
+                    </dl>
+                    <p style="font-size:12px;color:${review.integrityVerified ? 'var(--accent-primary)' : 'var(--accent-warning)'};margin:6px 0;">${this.escapeHtml(integrityNote)}</p>
+                    <p style="font-size:12px;color:var(--accent-danger);margin:6px 0;">${this.escapeHtml(this.label('mod.remoteTrustWarning', 'Trusted-local mod code runs in the game page. Install only if you trust the author and source.'))}</p>
+                    ${changeNote}
+                    <button class="nav-btn" type="button" style="margin-top:8px;" onclick="ModUI.installReviewedRemote()">${this.escapeHtml(this.label('mod.remoteInstallReviewed', 'Install reviewed package'))}</button>
+                </div>`;
+            this.logRemote(this.label('mod.remoteReviewedLog', 'Reviewed remote module: {name} v{version}', { name: review.manifest.name, version: review.manifest.version }));
+        } catch (error) {
+            const message = error?.message || String(error);
+            output.innerHTML = `<p style="color:var(--accent-danger);margin:8px 0;">${this.escapeHtml(message)}</p>`;
+            this.logRemote(this.label('mod.remoteFailedLog', 'Remote module review failed: {message}', { message }), 'error');
+            console.error(error);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    },
+
+    async installReviewedRemote() {
+        const review = this.pendingRemoteReview;
+        if (!review) return;
+        const warning = this.label('mod.remoteConfirm', 'Install {name} v{version}? Its trusted-local code can access the game page. The package will be stored locally and will not be enabled automatically.', {
+            name: review.manifest.name,
+            version: review.manifest.version
+        });
+        if (!confirm(warning)) return;
+        try {
+            const installed = await MODULE_SYSTEM.installReviewedRemoteModule(review);
+            this.pendingRemoteReview = null;
+            this.logRemote(this.label('mod.remoteInstalledLog', 'Installed remote module: {name} v{version} (disabled)', {
+                name: installed.manifest.name,
+                version: installed.manifest.version
+            }));
+            const output = document.getElementById('remote-module-review');
+            if (output) output.innerHTML = `<p style="color:var(--accent-primary);margin:8px 0;">${this.escapeHtml(this.label('mod.remoteInstalled', 'Package installed locally. Review its settings, then enable it when ready.'))}</p>`;
+            await this.refreshModList();
+        } catch (error) {
+            const message = error?.message || String(error);
+            this.logRemote(this.label('mod.remoteInstallFailedLog', 'Remote module install failed: {message}', { message }), 'error');
+            alert(message);
+            console.error(error);
+        }
     },
     
     async toggleModule(moduleId) {
@@ -253,7 +363,7 @@ const ModUI = {
             const deleteLabel = this.escapeHtml(this.label('mod.delete', 'Delete'));
             const deleteTitle = this.escapeHtml(this.label('mod.deleteModule', 'Delete {name}', { name: manifest.name || mod.id || 'Module' }));
             const controlState = MODULE_SYSTEM.moduleControlState(mod);
-            const provenanceLabel = this.escapeHtml({ host: 'Host supplied', 'built-in': 'Built in', user: 'Player installed' }[controlState.provenance] || controlState.provenance);
+            const provenanceLabel = this.escapeHtml({ host: 'Host supplied', 'built-in': 'Built in', user: 'Player installed', remote: 'URI installed' }[controlState.provenance] || controlState.provenance);
             const policyLabel = controlState.policyState
                 ? `<span style="font-size:10px;color:var(--accent-primary);text-transform:uppercase;">${this.escapeHtml(controlState.policyState)}</span>`
                 : '';
@@ -264,6 +374,9 @@ const ModUI = {
             const toggleTitle = toggleAllowed ? enableTitle : this.escapeHtml(controlState.reason || 'Controlled by this host');
             const settings = (manifest.settings || []).length
                 ? `<details class="mod-settings"><summary>Settings</summary>${manifest.settings.map(setting => this.settingControl(mod.id, setting, valuesByModule[mod.id]?.[setting.key])).join('')}</details>`
+                : '';
+            const sourceDetails = mod.provenance === 'remote'
+                ? `<details style="font-size:11px;color:var(--text-muted);margin-top:5px;"><summary>${this.escapeHtml(this.label('mod.remoteSource', 'Remote source'))}</summary><div style="overflow-wrap:anywhere;margin-top:4px;">${this.escapeHtml(mod.sourceUrl)}</div><div>SHA-256: <code>${this.escapeHtml(mod.integrity)}</code>${mod.integrityVerified ? ` • ${this.escapeHtml(this.label('mod.remotePinned', 'pin verified'))}` : ''}</div></details>`
                 : '';
             return `
             <div style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 
@@ -284,6 +397,7 @@ const ModUI = {
                         ${this.escapeHtml(this.label('mod.type', 'Type'))}: ${type} • ${provenanceLabel} • ${this.escapeHtml(this.label('mod.installed', 'Installed'))}: ${installed} ${policyLabel}
                     </div>
                     ${availabilityReason}
+                    ${sourceDetails}
                     ${settings}
                 </div>
                 <div style="display: flex; gap: 8px;">
@@ -297,6 +411,7 @@ const ModUI = {
                             onclick="ModUI.deleteModule('${id}')">
                         🗑️ ${deleteLabel}
                     </button>` : ''}
+                    ${mod.provenance === 'remote' ? `<button class="nav-btn" type="button" style="padding:6px 12px;font-size:12px;" onclick="ModUI.beginRemoteUpdate('${id}')">${this.escapeHtml(this.label('mod.remoteReviewSource', 'Review source'))}</button>` : ''}
                 </div>
             </div>
         `;

@@ -55,9 +55,9 @@ const YAW_INTERACTION_STATE = {
                 action,
                 source: 'combat-planner',
                 targetType: 'enemy',
-                shape: actors.length > 1 ? 'many-to-one' : undefined,
+                shape: actors.length > 1 && targets.length > 1 ? 'many-to-many' : (actors.length > 1 ? 'many-to-one' : undefined),
                 timing: 'slowest-participant',
-                distribution: 'single',
+                distribution: targets.length > 1 ? 'all' : 'single',
                 constraints: {
                     requireCurrentTurn: actors.some(unit => app._isCurrentCombatActor?.(unit)),
                     hostileOnly: true,
@@ -65,7 +65,7 @@ const YAW_INTERACTION_STATE = {
                     checkRows: true,
                     minActors: 2,
                     minTargets: 1,
-                    maxTargets: 1
+                    maxTargets: null
                 },
                 metadata: { phase: action === 'choose' ? 'intent' : 'confirm', baseAction: action }
             });
@@ -85,9 +85,9 @@ const YAW_INTERACTION_STATE = {
                 action,
                 source: 'sync-selection',
                 targetType: 'enemy',
-                shape: actors.length > 1 ? 'many-to-one' : undefined,
+                shape: actors.length > 1 && targets.length > 1 ? 'many-to-many' : (actors.length > 1 ? 'many-to-one' : undefined),
                 timing: 'slowest-participant',
-                distribution: 'single',
+                distribution: targets.length > 1 ? 'all' : 'single',
                 constraints: {
                     requireCurrentTurn: true,
                     hostileOnly: true,
@@ -95,7 +95,7 @@ const YAW_INTERACTION_STATE = {
                     checkRows: true,
                     minActors: 2,
                     minTargets: 1,
-                    maxTargets: 1
+                    maxTargets: app.syncSelection.phase === 'target' ? 1 : null
                 },
                 metadata: { phase: app.syncSelection.phase || 'choose', baseAction: app._syncBaseAction?.(action) || action }
             });

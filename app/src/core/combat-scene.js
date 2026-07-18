@@ -34,7 +34,7 @@ const YAW_COMBAT_SCENE = {
             .filter(sync => sync && !sync.resolved && sync.round === app.combatState?.round)
             .map(sync => {
                 const participants = (sync.participants || []).map(unit => unit?.name).filter(Boolean).join(', ');
-                const target = sync.target?.name || app._label('ui.creatures', 'Creatures');
+                const target = (sync.targets?.length ? sync.targets : [sync.target]).map(unit => unit?.name).filter(Boolean).join(', ') || app._label('ui.creatures', 'Creatures');
                 const action = app._syncActionLabel ? app._syncActionLabel(sync.type) : app._uiLabel(String(sync.type || '').replace(/^sync_/, ''));
                 const order = (sync.resolveAtIndex ?? 0) + 1;
                 return {

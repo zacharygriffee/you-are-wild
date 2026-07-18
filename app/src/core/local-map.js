@@ -35,7 +35,7 @@ const YAW_LOCAL_MAP = {
     },
 
     visibleCenterPresenceEntries(app, presence = []) {
-        if (presence.length <= 2) return { visible: presence, overflow: [] };
+        if (presence.length <= 1) return { visible: presence, overflow: [] };
         if (typeof YAW_CENTER_CONTEXT !== 'undefined' && YAW_CENTER_CONTEXT.prioritizedPresenceEntries) {
             return YAW_CENTER_CONTEXT.prioritizedPresenceEntries(app, presence, 1);
         }

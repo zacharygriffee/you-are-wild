@@ -1520,6 +1520,7 @@ async function checkViewport(browser, name, width, height) {
           fontSize: parseFloat(getComputedStyle(button).fontSize) || 0
         };
       });
+      const visibleCenterPresenceRects = centerPresenceRects.filter(rect => rect.width > 0 && rect.height > 0);
       const detailButtonRects = detailButtons.map(button => {
         const rect = button.getBoundingClientRect();
         const style = getComputedStyle(button);
@@ -1606,6 +1607,7 @@ async function checkViewport(browser, name, width, height) {
         creatureCardTop: creatureCardRect.top,
         tileInfoBottom: tileInfoRect.bottom,
         miniMapTop: miniMapRect.top,
+        miniMapWidth: miniMapRect.width,
         miniMapHeight: miniMapRect.height,
         centerTileWidth: centerTileRect.width,
         centerTileHeight: centerTileRect.height,
@@ -1619,16 +1621,16 @@ async function checkViewport(browser, name, width, height) {
           && rect.bottom <= miniMapRect.bottom + 1
         )),
         centerTileBottom: centerTileRect.bottom,
-        centerPresenceInsideTile: centerPresenceRects.every(rect => (
+        centerPresenceInsideTile: visibleCenterPresenceRects.every(rect => (
           rect.left >= centerTileRect.left - 1
           && rect.right <= centerTileRect.right + 1
           && rect.top >= centerTileRect.top - 1
           && rect.bottom <= centerTileRect.bottom + 1
         )),
-        centerPresenceCount: centerPresenceRects.length,
-        minCenterPresenceWidth: Math.min(...centerPresenceRects.map(rect => rect.width)),
-        minCenterPresenceHeight: Math.min(...centerPresenceRects.map(rect => rect.height)),
-        minCenterPresenceFontSize: Math.min(...centerPresenceRects.map(rect => rect.fontSize)),
+        centerPresenceCount: visibleCenterPresenceRects.length,
+        minCenterPresenceWidth: Math.min(...visibleCenterPresenceRects.map(rect => rect.width)),
+        minCenterPresenceHeight: Math.min(...visibleCenterPresenceRects.map(rect => rect.height)),
+        minCenterPresenceFontSize: Math.min(...visibleCenterPresenceRects.map(rect => rect.fontSize)),
         detailButtonCount: detailButtonRects.length,
         visibleDetailButtonCount: visibleDetailButtonRects.length,
         minVisibleDetailButtonWidth: Math.min(...visibleDetailButtonRects.map(rect => rect.width)),
@@ -1692,12 +1694,14 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileControls.movementCellCount, 4, `${name}: mobile traversal grid should expose four cardinal movement cells`);
     assert(mobileControls.minMovementCellWidth >= 44 && mobileControls.minMovementCellHeight >= 44, `${name}: mobile movement cells should keep finger-sized tap targets`);
     assert.strictEqual(mobileControls.movementCellsInsideMap, true, `${name}: mobile movement cells should stay inside the traversal grid`);
-    assert(mobileControls.centerTileWidth >= 176, `${name}: mobile current tile should keep a broad target column for stage presence`);
-    assert(mobileControls.centerTileHeight >= 144, `${name}: mobile current tile should leave room for larger presence controls`);
+    assert(Math.abs(mobileControls.miniMapWidth - mobileControls.miniMapHeight) <= 2, `${name}: mobile traversal grid should preserve a square footprint`);
+    assert(Math.abs(mobileControls.centerTileWidth - mobileControls.centerTileHeight) <= 2, `${name}: mobile current tile should be square`);
+    assert(Math.abs(mobileControls.centerTileWidth - mobileControls.minMovementCellWidth) <= 2, `${name}: mobile current tile should use the same width as movement tiles`);
+    assert(Math.abs(mobileControls.centerTileHeight - mobileControls.minMovementCellHeight) <= 2, `${name}: mobile current tile should use the same height as movement tiles`);
     assert(mobileControls.centerPresenceCount >= 1, `${name}: mobile current tile should expose clickable presence badges`);
     assert(mobileControls.centerPresenceCount <= 2, `${name}: mobile current tile should summarize dense presence instead of wrapping controls out of the tile`);
-    assert(mobileControls.minCenterPresenceWidth >= 80 && mobileControls.minCenterPresenceHeight >= 80, `${name}: mobile current tile presence badges should keep roomy finger-sized tap targets`);
-    assert(mobileControls.minCenterPresenceFontSize >= 34, `${name}: mobile current tile presence badges should keep readable visible symbols`);
+    assert(mobileControls.minCenterPresenceWidth >= 36 && mobileControls.minCenterPresenceHeight >= 36, `${name}: mobile current tile presence badges should remain usable inside the square tile`);
+    assert(mobileControls.minCenterPresenceFontSize >= 20, `${name}: mobile current tile presence badges should keep readable compact symbols`);
     assert.strictEqual(mobileControls.centerPresenceInsideTile, true, `${name}: mobile current tile presence badges should stay inside the center tile`);
     assert(mobileControls.centerTileBottom <= mobileControls.mapBottom + 1, `${name}: mobile current tile should not clip below the Play Surface card`);
     assert(mobileControls.detailButtonCount >= 2, `${name}: mobile party and creature rails should expose explicit Details routes`);

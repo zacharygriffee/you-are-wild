@@ -160,9 +160,9 @@ const YAW_COMBAT_SYNC = {
             action: syncType || action,
             source: 'combat-slot-composer',
             targetType: 'enemy',
-            shape: 'many-to-one',
+            shape: participants.length > 1 && targets.length > 1 ? 'many-to-many' : 'many-to-one',
             timing: 'slowest-participant',
-            distribution: 'single',
+            distribution: targets.length > 1 ? 'all' : 'single',
             constraints: {
                 requireCurrentTurn: true,
                 hostileOnly: true,
@@ -170,7 +170,7 @@ const YAW_COMBAT_SYNC = {
                 checkRows: true,
                 minActors: 2,
                 minTargets: 1,
-                maxTargets: 1
+                maxTargets: null
             },
             metadata: { baseAction: syncType ? app._syncBaseAction(syncType) : action, phase: 'compose' }
         });
@@ -206,7 +206,8 @@ const YAW_COMBAT_SYNC = {
         const target = typeof targetIndex === 'object'
             ? targetIndex
             : app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0)[targetIndex];
-        if (!target) return;
+        const targets = (command?.targets?.length ? command.targets : [target]).filter((unit, index, list) => unit && list.indexOf(unit) === index);
+        if (!targets.length) return false;
         const selectedParticipants = command?.actors?.length ? command.actors : (app._syncParticipants || app._syncSelectedParticipants() || []);
         const participants = selectedParticipants
             .filter(unit => unit && unit.CPun > 0);
@@ -215,9 +216,10 @@ const YAW_COMBAT_SYNC = {
             app.renderLog();
             return false;
         }
-        if (!app._canSyncTarget(participants, target, syncType)) {
+        const unreachableTarget = targets.find(candidate => !app._canSyncTarget(participants, candidate, syncType));
+        if (unreachableTarget) {
             const names = participants.map(p => p?.name).filter(Boolean).join(', ') || app._label('action.sync', 'Sync');
-            app.log.push({ text: app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: names, target: target.name }), type: 'combat' });
+            app.log.push({ text: app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: names, target: unreachableTarget.name }), type: 'combat' });
             app.renderLog();
             app.renderCreatures();
             return false;
@@ -243,14 +245,14 @@ const YAW_COMBAT_SYNC = {
         const plan = app._buildInteractionPlan({
             mode: 'combat',
             actors: participants,
-            targets: [target],
+            targets,
             action: syncType,
             source: command?.source || 'sync-composer',
             targetType: 'enemy',
-            shape: 'many-to-one',
+            shape: targets.length > 1 ? 'many-to-many' : 'many-to-one',
             timing: 'slowest-participant',
             resolveAt: slowestIdx,
-            distribution: 'single',
+            distribution: targets.length > 1 ? 'all' : 'single',
             constraints: {
                 requireCurrentTurn: true,
                 hostileOnly: true,
@@ -258,7 +260,7 @@ const YAW_COMBAT_SYNC = {
                 checkRows: true,
                 minActors: 2,
                 minTargets: 1,
-                maxTargets: 1
+                maxTargets: null
             },
             metadata: {
                 baseAction: app._syncBaseAction(syncType),
@@ -267,11 +269,11 @@ const YAW_COMBAT_SYNC = {
         });
         app._syncCurrentTileCreatures();
         app.combatState.syncActions.push({
-            type: syncType, participants: participants, target: target,
+            type: syncType, participants: participants, target: targets[0], targets,
             resolveAtIndex: slowestIdx, resolved: false, round: app.combatState.round,
             plan
         });
-        app.log.push({ text: `${participants.map(p => p.name).join(', ')} prepare a ${syncType.replace('sync_', '')} on ${target.name}! Resolves when the slowest participant acts.`, type: 'combat' });
+        app.log.push({ text: `${participants.map(p => p.name).join(', ')} prepare a ${syncType.replace('sync_', '')} on ${targets.map(unit => unit.name).join(', ')}! Resolves when the slowest participant acts.`, type: 'combat' });
         const consumeCurrentTurn = command?.metadata?.consumeCurrentTurn !== false;
         for (const p of participants) {
             const qEntry = app.combatState.turnQueue.find(q => q.unit === p);
@@ -300,30 +302,30 @@ const YAW_COMBAT_SYNC = {
             return;
         }
         sync.participants = (sync.participants || []).filter(unit => app._isCombatQueueUnitValid(unit) && app.party.includes(unit));
-        if (!sync.target || !app._isCombatQueueUnitValid(sync.target) || sync.participants.length < 2) {
+        const queuedTargets = (sync.targets?.length ? sync.targets : [sync.target])
+            .filter((unit, index, list) => app._isCombatQueueUnitValid(unit) && unit.disposition === app.DISPOSITION.ENEMY && list.indexOf(unit) === index);
+        if (!queuedTargets.length || sync.participants.length < 2) {
             app.log.push({ text: app._label('combat.sync.failedInvalid', 'Sync failed! The target or participants are no longer available.'), type: 'combat' });
             app.renderLog();
             app.nextTurn();
             return;
         }
-        if (sync.target.CPun <= 0) {
-            app.log.push({ text: `Sync target ${sync.target.name} is already defeated!`, type: 'combat' });
-            app.renderLog();
-            app.nextTurn();
-            return;
-        }
+        sync.targets = queuedTargets;
+        sync.target = queuedTargets[0];
         const baseAction = app._syncBaseAction(sync.type);
         if (app._isReachSensitiveCombatAction?.(baseAction)) {
-            const reachResults = (sync.participants || []).map(unit => app._combatReachResult?.(unit, sync.target, baseAction)).filter(Boolean);
-            if (reachResults.length !== (sync.participants || []).length || !reachResults.every(result => result.canSucceed)) {
-                const reach = reachResults.find(result => result?.canAttempt && !result.canSucceed) || reachResults[0] || null;
-                const result = YAW_COMBAT_RESOLUTION.reachFailure(app, baseAction, sync.participants || [], sync.target, reach);
-                app.renderLog();
-                app.renderParty();
-                app.renderCreatures();
-                app.renderCombatSceneForTurn?.(app._currentCombatActor?.() || app.activeActor || app.player);
-                app.nextTurn();
-                return result;
+            for (const target of queuedTargets) {
+                const reachResults = (sync.participants || []).map(unit => app._combatReachResult?.(unit, target, baseAction)).filter(Boolean);
+                if (reachResults.length !== (sync.participants || []).length || !reachResults.every(result => result.canSucceed)) {
+                    const reach = reachResults.find(result => result?.canAttempt && !result.canSucceed) || reachResults[0] || null;
+                    const result = YAW_COMBAT_RESOLUTION.reachFailure(app, baseAction, sync.participants || [], target, reach);
+                    app.renderLog();
+                    app.renderParty();
+                    app.renderCreatures();
+                    app.renderCombatSceneForTurn?.(app._currentCombatActor?.() || app.activeActor || app.player);
+                    app.nextTurn();
+                    return result;
+                }
             }
         }
         for (const participant of sync.participants || []) {
@@ -333,8 +335,10 @@ const YAW_COMBAT_SYNC = {
                 emitScene: true
             });
         }
-        let result = '';
-        switch (sync.type) {
+        for (const target of queuedTargets) {
+            sync.target = target;
+            let result = '';
+            switch (sync.type) {
             case 'sync_fuck': {
                 let totalCharm = sync.participants.reduce((sum, p) => sum + (p.Fuck || 0) + (p.Flir || 0), 0);
                 if (app.settings.sameSpeciesBonus) {
@@ -434,9 +438,11 @@ const YAW_COMBAT_SYNC = {
                 }
                 break;
             }
+            }
+            app.log.push({ text: result, type: 'combat' });
+            app._emitCombatAction(sync.type, sync.participants, sync.target, result);
         }
-        app.log.push({ text: result, type: 'combat' });
-        app._emitCombatAction(sync.type, sync.participants, sync.target, result);
+        sync.target = queuedTargets[0];
         app.renderLog();
         app.renderCreatures();
         app.renderParty();

@@ -5116,9 +5116,9 @@ test('Desktop play surface helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.render(this)', 'App desktop play renderer should delegate to the helper');
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.updateCenter(this, visual, label)', 'App desktop center updater should delegate to the helper');
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.directionLabel(this, dx, dy)', 'App direction labels should delegate to the helper');
-  assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-surface', 'current-tile')", 'Desktop center tile should identify as the current stage tile');
-  assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-layer', 'tile')", 'Desktop play cells should identify the tile stage layer for future graphics layers');
-  assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-cell', 'center')", 'Desktop center tile should identify its stable stage cell');
+  assertContains(desktopPlaySurfaceContent, "target.setAttribute('data-stage-surface', 'current-tile')", 'Desktop current tile and focus panel should identify the current stage tile');
+  assertContains(desktopPlaySurfaceContent, "target.setAttribute('data-stage-layer', 'tile')", 'Desktop current tile and focus panel should identify the tile stage layer for future graphics layers');
+  assertContains(desktopPlaySurfaceContent, "target.setAttribute('data-stage-cell', 'center')", 'Desktop current tile and focus panel should identify their stable stage cell');
   assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-cell', `${dx},${dy}`)", 'Desktop movement cells should identify their stable stage cell');
   assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-surface', 'traversal-cell')", 'Desktop movement cells should identify as traversal stage cells');
   assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-command-surface', 'stage-traversal')", 'Desktop movement cells should route through the stage traversal command surface');
@@ -6997,11 +6997,12 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active .mobile-story-latest {\n                order: 3;', 'mobile combat Scene Feed should render after enemy and party belts');
   assertContains(template, '.mobile-story-latest', 'mobile Scene Feed should expose the latest beat inline in the stage');
   assertContains(template, 'display: flex;\n                flex-direction: column;', 'mobile map card should stack tile info above the navigation map');
-  assertContains(template, 'grid-template-columns: minmax(48px, 1fr) minmax(176px, 1.95fr) minmax(48px, 1fr);', 'mobile routine play should use a true 3x3 surface with a finger-sized center');
-  assertContains(template, 'grid-template-rows: minmax(44px, 0.6fr) minmax(144px, 2.55fr) minmax(44px, 0.6fr);', 'mobile routine play should reserve a larger center row while keeping edge movement cells visible');
+  assertContains(template, 'grid-template-columns: repeat(3, minmax(0, 1fr));', 'mobile routine play should use three equal columns for tileset-ready geometry');
+  assertContains(template, 'grid-template-rows: repeat(3, minmax(0, 1fr));', 'mobile routine play should use three equal rows for tileset-ready geometry');
+  assertContains(template, 'aspect-ratio: 1;', 'mobile traversal grid should preserve a square tileset-ready footprint');
   assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
-  assertContains(template, 'width: clamp(80px, 20vw, 88px);', 'mobile center presence badges should keep large phone tap targets');
-  assertContains(template, 'font-size: clamp(34px, 8.5vw, 40px);', 'mobile center presence badges should keep readable visible symbols');
+  assertContains(template, 'width: 36px;', 'mobile center presence badges should fit the uniform center cell');
+  assertContains(template, 'font-size: 20px;', 'mobile center presence badges should keep readable compact symbols');
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
   assertContains(template, '.mobile-play-presence-dot.item', 'mobile center presence should distinguish item markers');
   assertContains(template, '.mobile-play-presence-dot.place', 'mobile center presence should distinguish structure and landmark markers');
@@ -7180,10 +7181,12 @@ test('Battle mode contract keeps combat composer-first', () => {
   assertNotContains(contentSystemContent, 'combat.panelFirst', 'Combat should not retain obsolete center prompt locale keys');
 });
 
-test('Desktop play surface uses a 3x3 center-tile layout', () => {
+test('Desktop play surface separates a square 3x3 grid from the location focus panel', () => {
   assertContains(template, 'id="desktop-play-surface"', 'desktop play surface missing');
   assertContains(template, 'id="desktop-play-surface" data-surface-role="play-traversal"', 'desktop play surface should share the traversal surface role with mobile');
   assertContains(template, 'id="desktop-play-cell-center"', 'desktop play surface should have a center tile');
+  assertContains(template, 'id="desktop-neighborhood-grid" role="group" aria-label="3 by 3 traversal grid"', 'desktop play surface should expose a dedicated square traversal grid');
+  assertContains(template, 'id="desktop-map-cell-center" aria-current="location"', 'desktop traversal grid should expose a visual current-location cell');
   assertContains(template, 'id="desktop-context-belt"', 'desktop play surface should expose a context action belt below the 3x3 surface');
   assertContains(template, 'id="desktop-context-belt" data-surface-role="command-composer"', 'desktop context belt should identify as the command composer surface');
   assertContains(template, 'id="desktop-presence-rail" data-surface-role="presence-rail"', 'desktop presence rail should identify as the presence surface');
@@ -7201,7 +7204,7 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true"', 'legacy action slot should identify as hidden compatibility, not the composer');
   assertContains(template, 'id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true" hidden', 'legacy action slot should start hard-hidden while the composer owns controls');
   const centerStart = template.indexOf('id="desktop-play-cell-center"');
-  const centerEnd = template.indexOf('id="desktop-play-cell-e"', centerStart);
+  const centerEnd = template.indexOf('id="desktop-presence-rail"', centerStart);
   const centerMarkup = template.slice(centerStart, centerEnd);
   assertNotContains(centerMarkup, 'id="scene-actions"', 'Desktop center tile should not contain the legacy action slot');
   assertNotContains(centerMarkup, 'id="desktop-scene-feed-slot"', 'Desktop center tile should not contain the latest Scene Feed slot');
@@ -7212,7 +7215,9 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'width: min(100%, 640px);', 'desktop target action row should have a compact maximum width');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(54px, 70px));', 'desktop target actions should use compact grid tracks');
   assertContains(template, 'text-overflow: ellipsis;', 'desktop target action captions should clip instead of pushing horizontal scroll');
-  assertContains(template, 'grid-template-columns: minmax(80px, 0.58fr) minmax(280px, 2.5fr) minmax(80px, 0.58fr);', 'desktop play surface should reserve diagonal context cells around cardinal movement');
+  assertContains(template, 'grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);', 'desktop play surface should reserve a stable neighborhood grid beside location context');
+  assertContains(template, '.desktop-neighborhood-grid {', 'desktop play surface should style the traversal grid independently from the location focus panel');
+  assertContains(template, 'grid-template-columns: repeat(3, minmax(0, 1fr));', 'desktop neighborhood should use equal columns for tileset-ready geometry');
   assertContains(template, 'scroll-padding-block: clamp(16px, 3vw, 32px);', 'desktop center tile should keep scroll starts clear of cell padding');
   assertContains(template, '.desktop-play-cell-content::before', 'desktop center content should use spacer centering instead of clipping-prone vertical centering');
   assertContains(template, 'justify-content: flex-start;', 'desktop center content should start tall content at the top for predictable scrolling');
@@ -9072,13 +9077,20 @@ test('Queued sync combat actions survive save load and resolve with restored uni
     MPun: 90,
     con: 1
   });
+  const secondEnemy = makeUnit('Batfolk', {
+    id: 'enemy-sync-save-second',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 80,
+    MPun: 80,
+    con: 1
+  });
   App.player = player;
   App.party = [player, ally];
-  App.creatures = [enemy];
+  App.creatures = [enemy, secondEnemy];
   App.location = { x: 0, y: 0 };
   App.currentBiome = 'grove';
   App.worldMeta = { worldId: 'sync-save-world', seed: 'sync-save-seed', generatorVersion: 2, mapModsHash: 'core' };
-  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy, secondEnemy], items: [] }]]);
   App.tileDeltas = new Map();
   App.exploredTiles = new Set(['0,0']);
   App.combatState = {
@@ -9090,12 +9102,14 @@ test('Queued sync combat actions survive save load and resolve with restored uni
     turnQueue: [
       { unit: player, initiative: 25, actedThisRound: true },
       { unit: ally, initiative: 10, actedThisRound: true },
-      { unit: enemy, initiative: 5 }
+      { unit: enemy, initiative: 5 },
+      { unit: secondEnemy, initiative: 4 }
     ],
     syncActions: [{
       type: 'sync_fight',
       participants: [player, ally],
       target: enemy,
+      targets: [enemy, secondEnemy],
       resolveAtIndex: 1,
       resolved: false,
       round: 3
@@ -9110,6 +9124,7 @@ test('Queued sync combat actions survive save load and resolve with restored uni
   const loaded = Binary.loadGame(savedBuffers[0]);
   assertEqual(loaded.questState.combatState.syncActions[0].participantIds.join(','), 'player-sync-save,ally-sync-save', 'Saved sync action should preserve participant IDs');
   assertEqual(loaded.questState.combatState.syncActions[0].targetId, 'enemy-sync-save', 'Saved sync action should preserve target ID');
+  assertEqual(loaded.questState.combatState.syncActions[0].targetIds.join(','), 'enemy-sync-save,enemy-sync-save-second', 'Saved sync action should preserve every group target ID');
   assertEqual(loaded.questState.combatState.syncActions[0].resolveAtIndex, 1, 'Saved sync action should preserve delayed resolution turn');
 
   const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
@@ -9122,9 +9137,12 @@ test('Queued sync combat actions survive save load and resolve with restored uni
     assertEqual(sync.participants[0], loadedApp.App.party[0], 'Loaded sync participant should reference restored player object');
     assertEqual(sync.participants[1], loadedApp.App.party[1], 'Loaded sync participant should reference restored ally object');
     assertEqual(sync.target, loadedApp.App.creatures[0], 'Loaded sync target should reference restored enemy object');
+    assertEqual(sync.targets[1], loadedApp.App.creatures[1], 'Loaded sync target list should reference every restored enemy object');
     const enemyPunishmentBeforeSync = loadedApp.App.creatures[0].CPun;
+    const secondPunishmentBeforeSync = loadedApp.App.creatures[1].CPun;
     loadedApp.App.processTurn();
     assert(loadedApp.App.creatures[0].CPun < enemyPunishmentBeforeSync, 'Loaded sync action should resolve at the restored slowest participant turn');
+    assert(loadedApp.App.creatures[1].CPun < secondPunishmentBeforeSync, 'Loaded multi-target sync action should resolve against every restored target');
   }
   assert(loadedApp.App.creatures[0].CPun < 90 || loadedApp.App.creatures[0].disposition === loadedApp.App.DISPOSITION.CORPSE, 'Resolved sync fight should affect the restored enemy');
 });
@@ -12348,6 +12366,54 @@ test('Combat group planner requires current actor lead and queues enemy group ac
   assertEqual(App.combatState.turnQueue[1].actedThisRound, true, 'Committed group plan should lock non-current participants as having spent their turns');
 });
 
+test('Combat group planner queues and resolves one collective effort across multiple marked targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'multi-group-player', Figh: 24, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'multi-group-ally', Figh: 20, combatRow: 'front' });
+  const first = makeUnit('First Enemy', { id: 'multi-group-enemy-a', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  const second = makeUnit('Second Enemy', { id: 'multi-group-enemy-b', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [first, second];
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [
+      { unit: player, initiative: 30 },
+      { unit: ally, initiative: 20 },
+      { unit: first, initiative: 10 },
+      { unit: second, initiative: 9 }
+    ],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.combatPlanSelection = {
+    active: true,
+    source: 'combat-planner',
+    actorIds: [App._unitSelectionId(player), App._unitSelectionId(ally)],
+    pendingIntent: 'fight',
+    explicitActors: true,
+    hadGroupActors: true
+  };
+  App.combatTargetIds = [App._unitSelectionId(first), App._unitSelectionId(second)];
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
+  assertEqual(App.confirmCombatPlan(), true, 'Two actors should be able to commit against two marked enemies');
+  assertEqual(App.combatState.syncActions.length, 1, 'Multi-target group should queue one coordinated action');
+  const sync = App.combatState.syncActions[0];
+  assertEqual(sync.targets.map(unit => unit.id).join(','), 'multi-group-enemy-a,multi-group-enemy-b', 'Queued group should retain all marked targets');
+  assertEqual(sync.plan.shape, 'many-to-many', 'Queued multi-target group should expose many-to-many shape');
+  assertEqual(sync.plan.distribution, 'all', 'Every group participant should contribute to every marked target');
+  App._resolveSyncAction(sync);
+  assertEqual(first.CPun < 100, true, 'Collective resolution should affect the first marked target');
+  assertEqual(second.CPun < 100, true, 'Collective resolution should affect the second marked target');
+  assertEqual(advanced, 2, 'Group queue and eventual resolution should each advance exactly once');
+});
+
 test('Combat planner allows party members as Feast targets', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'party-feast-player', Feas: 60, Flee: 3, size: 8, combatRow: 'front' });
@@ -13533,6 +13599,8 @@ test('Structures hide core enter action by default and explicit enterable struct
   assertEqual(App.inInterior, true, 'Entering structure should switch to interior mode');
   assertEqual(App.log[App.log.length - 1].text, 'Entraste en Cabin.', 'Enter structure feedback should localize');
   assertEqual(Object.keys(App.activeInterior.tiles).length, 6, 'Small structures should use a persistent bounded connected room graph');
+  assertEqual(App.activeInterior.generatorVersion, 2, 'Structure interiors should use the route-and-room-only generator');
+  assertEqual(Object.values(App.activeInterior.tiles).every(room => room.structure === null), true, 'Interior rooms should not sample huts, springs, ruins, or other surface-biome structures');
   assert(App.worldMap.get('0,0').interior, 'Interior should be stored on overworld tile for persistence');
   assertEqual(App.worldMap.get('0,0').items[0].name, 'Healing Herb', 'Entering a structure should preserve ground items instead of copying carried inventory');
   assertContains(App._contextActionKeys().join(','), 'exit', 'Interior center context should include exit action key');
@@ -13695,6 +13763,35 @@ test('Interior movement persists room creatures and exits to overworld', () => {
   assertEqual(App.inInterior, false, 'Exit should return to overworld mode');
   assertEqual(App.log[App.log.length - 1].text, 'Saliste de Cabin.', 'Exit structure feedback should localize');
   assertEqual(App.location.x, 0, 'Exit should restore overworld x coordinate');
+});
+
+test('Legacy contaminated interiors regenerate without surface POIs', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const tile = {
+    x: 0,
+    y: 0,
+    biome: 'forest',
+    explored: true,
+    creatures: [],
+    structure: 'dungeon',
+    structureSpawned: true,
+    interior: {
+      id: 'legacy-interior',
+      generatorVersion: 1,
+      tiles: {
+        '0,0': { x: 0, y: 0, biome: 'indoors', exit: true, structure: null },
+        '1,0': { x: 1, y: 0, biome: 'indoors', exit: false, structure: 'hotSpring' }
+      }
+    }
+  };
+  App.worldMap = new Map([['0,0', tile]]);
+  App.tileDeltas = new Map();
+
+  const interior = App._ensureStructureInterior(tile);
+  assertEqual(interior.generatorVersion, 2, 'Version-one interiors should migrate through deterministic regeneration');
+  assertEqual(interior.id === 'legacy-interior', false, 'Legacy contaminated layout should be replaced rather than reused');
+  assertEqual(Object.values(interior.tiles).every(room => room.structure === null), true, 'Regenerated dungeon cells should contain only interior room archetypes');
+  assertEqual(App.getTileDelta(0, 0).interior.generatorVersion, 2, 'Regenerated interior should persist through the canonical tile delta');
 });
 
 test('Revisiting a tile restores friendly neutral and corpse creatures without combat', () => {
@@ -18850,7 +18947,8 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(desktopMicroCard, 'data-command-control="mark-combat-target"', 'Micro enemy cards should preserve combat target marking');
   assertContains(desktopMicroCard, 'tactical-stat-rings', 'Micro tactical cards should use shared circular tactical status rings');
   assertNotContains(desktopMicroCard, '<div class="unit-name">Fox</div>', 'Micro tactical cards should not render a visible full name row');
-  assertContains(desktopMicroPartyCard, '<span class="micro-avatar" aria-hidden="true">🧙</span>', 'Passive desktop party micro card should paint the real actor avatar');
+  assertContains(desktopMicroPartyCard, 'data-command-surface="combat-plan-actors"', 'Desktop party micro card should restore actor selection during combat');
+  assertContains(desktopMicroPartyCard, "--compact-card-icon-content:&#39;🧙&#39;", 'Desktop party micro actor control should paint the real actor avatar');
   assertNotContains(desktopMicroPartyCard, '>🧙</button>', 'Desktop party micro actor badge should not duplicate the avatar as button text');
   assertContains(mobileMicroCard, 'density-micro', 'Mobile combat strips should render micro tactical cards');
   assertContains(templateContent, '.mobile-unit-chip.micro-tactical-card {\n                flex: 0 0 clamp(148px, 40vw, 160px);', 'Mobile micro cards should stay narrow enough to avoid padded rail rows');
@@ -20464,6 +20562,32 @@ test('Blocked combat reach emits a failure Scene Beat with row guidance', () => 
   assertEqual(elements.get('desktop-scene-feed-latest').getAttribute('data-scene-result'), 'failure', 'Latest Scene Feed slot should expose failure result metadata');
   assertEqual(elements.get('desktop-scene-feed-latest').getAttribute('data-scene-importance'), 'hint', 'Cannot-reach Scene Beat should expose hint-level emphasis');
   assertContains(elements.get('log-content').innerHTML, 'front-row blockers protect the back row', 'Activity Log should still retain the technical failure history');
+});
+
+test('Direct stale combat resolution re-runs reach preflight without consuming the turn', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'stale-reach-player', Figh: 20, combatRow: 'back' });
+  const target = makeUnit('Front Target', { id: 'stale-reach-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [target];
+  App.activeActor = player;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: target, initiative: 10 }],
+    syncActions: []
+  };
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
+  const resolved = App.executeActionAgainstTarget('fight', player, target);
+  assertEqual(resolved, false, 'Stale direct resolution should return to planning when reach is impossible');
+  assertEqual(advanced, 0, 'Impossible direct resolution should not consume the actor turn');
+  assertEqual(target.CPun, 100, 'Impossible direct resolution should not mutate the target');
+  assertEqual(App.combatCorrectionMessage?.reason, 'cannot-reach', 'Impossible direct resolution should expose a reach correction');
 });
 
 test('Tile-entry observation emits one coalesced Scene Beat without activity log duplication', () => {

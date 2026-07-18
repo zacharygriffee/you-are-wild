@@ -119,19 +119,30 @@ const YAW_DESKTOP_PLAY_SURFACE = {
 
     updateCenter(app, visual, label) {
         const el = document.getElementById('desktop-play-cell-center');
-        if (!el) return;
-        el.className = `desktop-play-cell center ${visual?.classes || ''}`;
-        if (typeof el.setAttribute === 'function') {
-            el.setAttribute('title', app._escapeHtml(label));
-            el.setAttribute('aria-label', app._escapeHtml(label));
-            el.setAttribute('data-tileset-key', visual?.tilesetKey || 'unknown');
-            el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
-            el.setAttribute('data-map-kind', visual?.kind || 'current');
-            el.setAttribute('data-stage-surface', 'current-tile');
-            el.setAttribute('data-stage-layer', 'tile');
-            el.setAttribute('data-stage-cell', 'center');
-            if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
-            else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
+        const mapCell = document.getElementById('desktop-map-cell-center');
+        const escapedLabel = app._escapeHtml(label);
+        const applyMetadata = target => {
+            if (!target || typeof target.setAttribute !== 'function') return;
+            target.setAttribute('title', escapedLabel);
+            target.setAttribute('aria-label', escapedLabel);
+            target.setAttribute('data-tileset-key', visual?.tilesetKey || 'unknown');
+            target.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
+            target.setAttribute('data-map-kind', visual?.kind || 'current');
+            target.setAttribute('data-stage-surface', 'current-tile');
+            target.setAttribute('data-stage-layer', 'tile');
+            target.setAttribute('data-stage-cell', 'center');
+            if (visual?.routeShape) target.setAttribute('data-route-shape', visual.routeShape);
+            else if (typeof target.removeAttribute === 'function') target.removeAttribute('data-route-shape');
+        };
+        if (el) {
+            el.className = `desktop-play-cell center desktop-location-focus ${visual?.classes || ''}`;
+            applyMetadata(el);
+        }
+        if (mapCell) {
+            mapCell.className = `desktop-play-cell center desktop-map-current-cell ${visual?.classes || ''}`;
+            mapCell.innerHTML = this.cellHtml(app, visual, label);
+            mapCell.setAttribute?.('aria-current', 'location');
+            applyMetadata(mapCell);
         }
     },
 
@@ -152,6 +163,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             el.setAttribute('data-stage-layer', 'tile');
             el.setAttribute('data-stage-cell', `${dx},${dy}`);
             el.setAttribute('data-stage-direction', `${dx},${dy}`);
+            el.removeAttribute?.('aria-hidden');
             if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
             else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
             if (moveable) {
@@ -189,8 +201,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         const html = app.renderTacticalCard(unit, unitIndex, cardType, {
             presentation: 'desktop',
             density: 'micro',
-            stage: 'combat',
-            suppressAgencyControl: true
+            stage: 'combat'
         });
         return html.replace(
             'data-card-density="micro"',

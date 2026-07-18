@@ -85,7 +85,7 @@ const YAW_TACTICAL_CARD = {
             ? `data-stage-surface="combatant" data-stage-layer="${app._escapeHtml(isParty ? 'party' : 'enemy')}"`
             : '';
         const suppressTargetControl = options.suppressTargetControl === true;
-        const suppressAgencyControl = options.suppressAgencyControl === true || options.stage === 'combat';
+        const suppressAgencyControl = options.suppressAgencyControl === true;
         const rowAttr = app.combatState?.active && unit.combatRow
             ? `data-combat-row="${app._escapeHtml(unit.combatRow)}"`
             : '';

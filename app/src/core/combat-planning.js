@@ -198,9 +198,9 @@ const YAW_COMBAT_PLANNING = {
             action: syncType || action,
             source: 'combat-planner',
             targetType,
-            shape: 'many-to-one',
+            shape: actors.length > 1 && targets.length > 1 ? 'many-to-many' : 'many-to-one',
             timing: 'slowest-participant',
-            distribution: 'single',
+            distribution: targets.length > 1 ? 'all' : 'single',
             constraints: {
                 requireCurrentTurn: true,
                 hostileOnly: false,
@@ -208,7 +208,7 @@ const YAW_COMBAT_PLANNING = {
                 checkRows: true,
                 minActors: 2,
                 minTargets: 1,
-                maxTargets: 1
+                maxTargets: null
             },
             metadata: {
                 baseAction: syncType ? app._syncBaseAction(syncType) : action,

@@ -1434,7 +1434,10 @@
                 if (this.party.includes(target)) this._removeContainedPartyMember(target);
                 else this._removeCreatureFromArea(target);
                 this.combatState.turnQueue = (this.combatState.turnQueue || []).filter(entry => entry.unit !== target);
-                this.combatState.syncActions = (this.combatState.syncActions || []).filter(sync => sync.target !== target && !(sync.participants || []).includes(target));
+                this.combatState.syncActions = (this.combatState.syncActions || []).map(sync => {
+                    const targets = (sync.targets?.length ? sync.targets : [sync.target]).filter(unit => unit && unit !== target);
+                    return { ...sync, targets, target: targets[0] || null };
+                }).filter(sync => sync.target && !(sync.participants || []).includes(target));
                 if (this.activeActor === target) this.activeActor = null;
                 if (this.targetSelection?.target === target || this.targetSelection?.targetId === this._unitSaveRef(target)) this.targetSelection = null;
                 this._syncCurrentTileCreatures();

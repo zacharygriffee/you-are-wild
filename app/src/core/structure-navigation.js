@@ -4,6 +4,10 @@
  */
 
 const YAW_STRUCTURE_NAVIGATION = {
+    interiorGeneratorVersion() {
+        return 2;
+    },
+
     interiorKey(app, x = app.interiorLocation.x, y = app.interiorLocation.y) {
         return `${x},${y}`;
     },
@@ -48,12 +52,6 @@ const YAW_STRUCTURE_NAVIGATION = {
     },
 
     interiorRoom(app, tile, struct, biomeId, x, y, options = {}) {
-        const originBiome = app.biomes[tile.biome] || app.biomes.forest;
-        const featureTable = originBiome.structureTable || [];
-        const roll = typeof WorldGen !== 'undefined'
-            ? WorldGen.hash01(app._mapSeed(), app.worldMeta?.generatorVersion || 3, 'interior-feature', tile.x, tile.y, tile.structure, x, y)
-            : 0;
-        const feature = featureTable.length ? featureTable[Math.floor(roll * featureTable.length) % featureTable.length] : null;
         return {
             x,
             y,
@@ -63,7 +61,9 @@ const YAW_STRUCTURE_NAVIGATION = {
             archetype: options.archetype || 'chamber',
             hasLandmark: false,
             landmarkName: '',
-            structure: options.exit ? null : feature,
+            // Interior cells describe rooms and routes. Surface-biome POIs such as
+            // huts, springs, ruins, and camps must never leak into this namespace.
+            structure: null,
             structureSpawned: false,
             creatures: [],
             items: [],
@@ -115,7 +115,7 @@ const YAW_STRUCTURE_NAVIGATION = {
         const ys = Object.values(tiles).map(room => room.y);
         return {
             id: `interior_${tile.x}_${tile.y}_${tile.structure}`,
-            generatorVersion: 1,
+            generatorVersion: this.interiorGeneratorVersion(),
             kind: profile.kind,
             structure: tile.structure,
             structureName: struct.name,
@@ -168,7 +168,7 @@ const YAW_STRUCTURE_NAVIGATION = {
         if (portals[1]) entryRooms[portals[1].id] = `${end.x},${end.y}`;
         return {
             id: `interior_${site.networkId}`,
-            generatorVersion: 1,
+            generatorVersion: this.interiorGeneratorVersion(),
             kind: 'cave-network',
             networkId: site.networkId,
             structure: 'cave',
@@ -187,7 +187,9 @@ const YAW_STRUCTURE_NAVIGATION = {
         const struct = app.STRUCTURES[tile.structure] || { name: tile.structure, icon: '🚪' };
         const site = tile.site?.kind === 'cave-portal' ? tile.site : null;
         const canonicalTile = site ? app.getTile(site.canonicalOrigin.x, site.canonicalOrigin.y) : tile;
-        if (canonicalTile.interior?.tiles) return canonicalTile.interior;
+        if (canonicalTile.interior?.tiles && Number(canonicalTile.interior.generatorVersion || 0) >= this.interiorGeneratorVersion()) {
+            return canonicalTile.interior;
+        }
         const profile = this.interiorProfile(app, tile.structure);
         canonicalTile.interior = site
             ? this.generateCaveNetwork(app, canonicalTile, struct, site)

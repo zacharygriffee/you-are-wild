@@ -82,27 +82,29 @@ const YAW_COMBAT_SAVE_STATE = {
             turnQueue,
             syncActions: (savedCombat.syncActions || []).map(sync => {
                 const participants = (sync.participantIds || []).map(resolve).filter(Boolean);
-                const target = resolve(sync.targetId);
+                const targets = (sync.targetIds?.length ? sync.targetIds : [sync.targetId]).map(resolve).filter(Boolean);
+                const target = targets[0] || null;
                 const resolveAtIndex = sync.resolveAtIndex || 0;
                 const round = sync.round || savedCombat.round || 1;
                 return {
                     type: sync.type,
                     participants,
                     target,
+                    targets,
                     resolveAtIndex,
                     round,
                     resolved: Boolean(sync.resolved),
                     plan: target && participants.length >= 2 ? app._buildInteractionPlan({
                         mode: 'combat',
                         actors: participants,
-                        targets: [target],
+                        targets,
                         action: sync.type,
                         source: 'sync-save',
                         targetType: 'enemy',
-                        shape: 'many-to-one',
+                        shape: targets.length > 1 ? 'many-to-many' : 'many-to-one',
                         timing: 'slowest-participant',
                         resolveAt: resolveAtIndex,
-                        distribution: 'single',
+                        distribution: targets.length > 1 ? 'all' : 'single',
                         constraints: {
                             requireCurrentTurn: true,
                             hostileOnly: true,
@@ -110,7 +112,7 @@ const YAW_COMBAT_SAVE_STATE = {
                             checkRows: true,
                             minActors: 2,
                             minTargets: 1,
-                            maxTargets: 1
+                            maxTargets: null
                         },
                         metadata: { baseAction: app._syncBaseAction(sync.type), round }
                     }) : null

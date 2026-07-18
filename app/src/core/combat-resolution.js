@@ -45,6 +45,11 @@ const YAW_COMBAT_RESOLUTION = {
         const actor = command?.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
         const targets = (command?.targets || []).filter(Boolean);
         const target = targets[0] || null;
+        const valid = app._validateInteractionCommand?.(command) || { ok: true };
+        if (!valid.ok) {
+            app._reportInvalidCombatCommand?.(command, valid.reason);
+            return false;
+        }
         app.targetSelection = null;
         app.combatTargetId = null;
         app.combatTargetIds = [];
@@ -103,7 +108,6 @@ const YAW_COMBAT_RESOLUTION = {
         try {
             if (!target || !actor || (target.CPun <= 0 && !app._isCorpse(target))) {
                 app.combatState.processing = false;
-                if (advanceTurn) app.nextTurn();
                 return false;
             }
             const actorName = actor.name === app.player?.name ? 'You' : actor.name;
@@ -111,17 +115,26 @@ const YAW_COMBAT_RESOLUTION = {
             let result = '';
             const reach = app._combatReachResult?.(actor, target, action);
             if (reach?.canAttempt && !reach.canSucceed) {
-                result = this.reachFailure(app, action, [actor], target, reach, options);
-                app.renderCombatSceneForTurn(actor);
-                app.renderLog();
-                app.renderCreatures();
-                app.renderParty();
-                app._syncCurrentTileCreatures();
-                app._sanitizeCombatState({ preserveTurn: true });
-                app.markAutoSaveDirty?.(['manifest', 'party', 'currentTile', 'combat', 'sceneFeed', 'activityLog'], 'combat-reach-failure');
-                app.autoSave();
-                if (advanceTurn) app.nextTurn();
-                return true;
+                const command = app._buildPanelInteractionCommand?.({
+                    mode: 'combat',
+                    actors: [actor],
+                    targets: [target],
+                    action,
+                    source: 'combat-resolution-preflight',
+                    constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
+                }) || { mode: 'combat', actors: [actor], targets: [target], action, source: 'combat-resolution-preflight' };
+                app._reportInvalidCombatCommand?.(command, 'cannot-reach');
+                app.lastCombatActionResult = {
+                    action,
+                    actor,
+                    actors: [actor],
+                    target,
+                    result: app.combatCorrectionMessage?.text || app._combatReachFailureText?.([actor], target, action, reach) || '',
+                    reach,
+                    failedReach: true,
+                    preflight: true
+                };
+                return false;
             }
             app._applyActionCost?.(action, actor, target, {}, {
                 mode: 'combat',

@@ -123,7 +123,7 @@ const YAW_COMBAT_ACTOR_STATE = {
         return (app.combatState.syncActions || []).find(sync =>
             !sync.resolved &&
             sync.round === app.combatState.round &&
-            (sync.participants.includes(unit) || sync.target === unit)
+            (sync.participants.includes(unit) || (sync.targets?.length ? sync.targets : [sync.target]).includes(unit))
         ) || null;
     },
 
@@ -197,8 +197,10 @@ const YAW_COMBAT_ACTOR_STATE = {
         app.combatState.turnQueue = validQueue;
         app.combatState.syncActions = (app.combatState.syncActions || []).map(sync => {
             const participants = (sync.participants || []).filter(unit => app._isCombatQueueUnitValid(unit) && (app.party || []).includes(unit));
-            const target = app._isCombatQueueUnitValid(sync.target) && sync.target?.disposition === app.DISPOSITION.ENEMY ? sync.target : null;
-            return { ...sync, participants, target };
+            const targets = (sync.targets?.length ? sync.targets : [sync.target])
+                .filter((unit, index, list) => app._isCombatQueueUnitValid(unit) && unit?.disposition === app.DISPOSITION.ENEMY && list.indexOf(unit) === index);
+            const target = targets[0] || null;
+            return { ...sync, participants, target, targets };
         }).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved);
         if (validQueue.length === 0) {
             app.combatState.currentTurn = 0;

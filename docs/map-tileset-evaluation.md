@@ -13,6 +13,8 @@ The sheet appears usable for a first pass over the current wilderness map:
 
 The implementation now exposes `data-tileset-key`, `data-base-tileset-key`, `data-map-kind`, and route shape metadata on minimap, interior minimap, and large-map cells so extracted tile assets can be attached later without changing map generation or gameplay state. Route visuals infer straight, corner, T-junction, intersection, and dead-end keys from known/visible neighboring route tiles. Interior visuals expose room, cave-room, exit, wall, and structure-feature keys.
 
+Traversal Surface Geometry V1 also removes the variable-track blocker. Mobile and desktop local maps now use equal square 3x3 cells. Desktop keeps narration and location context in a sibling focus panel, so the visual current-location cell has the same geometry as every neighbor; combat still expands into the full presentation stage. The next blocker is rendering/schema work rather than layout geometry.
+
 ## Missing Or Deferred Tiles
 
 Before using the sheet as the main map art, we likely need additional or clarified tiles for:
@@ -35,6 +37,7 @@ Use the sheet as an optional first art layer after licensing is confirmed:
 3. Include route variants for straight roads, corners, T-junctions, intersections, dead ends, bridge directions, and interior room/exit/wall variants.
 4. Keep emoji/text fallback for accessibility, missing assets, and low-bandwidth builds.
 5. Keep roads, bridges, structures, and POIs as overlays. Do not replace `baseBiome` or deterministic terrain identity with art choices.
-6. Add visual tests after the actual image assets are present.
+6. Define integer atlas rectangles, rotation/flip behavior, layer order, and pixelated-versus-smooth scaling in Tileset Pack V1.
+7. Reconcile route-shape names with manifest keys before activating bitmap lookup, then add visual tests after the actual image assets are present.
 
 The current code seam is deliberately metadata-first: terrain and overlays still decide what exists, while CSS/assets can decide how it looks.

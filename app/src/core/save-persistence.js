@@ -368,6 +368,7 @@ const YAW_SAVE_PERSISTENCE = {
                 type: sync.type,
                 participantIds: (sync.participants || []).map(unitRef).filter(Boolean),
                 targetId: unitRef(sync.target),
+                targetIds: (sync.targets?.length ? sync.targets : [sync.target]).map(unitRef).filter(Boolean),
                 resolveAtIndex: sync.resolveAtIndex || 0,
                 round: sync.round || app.combatState.round || 1,
                 resolved: Boolean(sync.resolved)

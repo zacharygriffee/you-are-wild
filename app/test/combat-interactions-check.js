@@ -435,6 +435,7 @@ async function runCombatTargetFirstComposerFlow(page) {
       enemyLaneCount: stack?.querySelectorAll('.desktop-battle-lane.enemy').length || 0,
       partyLaneCount: stack?.querySelectorAll('.desktop-battle-lane.party').length || 0,
       stackMicroCount: stack?.querySelectorAll('.micro-tactical-card').length || 0,
+      stackPartyActorCount: stack?.querySelectorAll('.desktop-battle-lane.party [data-command-surface="combat-plan-actors"]').length || 0,
       stackPartyMarkCount: stack?.querySelectorAll('.desktop-battle-lane.party [data-command-control="focus-target"]').length || 0,
       stackEnemyMarkCount: stack?.querySelectorAll('.desktop-battle-lane.enemy [data-command-control="mark-combat-target"]').length || 0,
       interactiveCardRootCount: Array.from(stack?.querySelectorAll('.micro-tactical-card') || []).filter(card => (
@@ -462,6 +463,7 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(stageState.enemyLaneCount, 1, 'Desktop combat battle stack should include an enemy belt without requiring side rails');
   assert.strictEqual(stageState.partyLaneCount, 1, 'Desktop combat battle stack should include a party belt without requiring side rails');
   assert(stageState.stackMicroCount >= 2, 'Desktop combat battle stack should use micro combat cards for visible combatants');
+  assert(stageState.stackPartyActorCount >= 1, 'Desktop combat party micro cards should expose compact actor selection');
   assert(stageState.stackPartyMarkCount >= 1, 'Desktop combat party micro cards should expose compact target marks');
   assert(stageState.stackEnemyMarkCount >= 1, 'Desktop combat enemy micro cards should expose compact combat marks');
   assert.strictEqual(stageState.interactiveCardRootCount, 0, 'Desktop combat micro card bodies should remain passive while mark buttons stay interactive');
@@ -1020,7 +1022,7 @@ async function runCombatSlotGroupComposerFlow(page) {
 
   await page.setViewportSize({ width: 1365, height: 768 });
   await prepare();
-  await page.locator(`#party-content button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]`).first().click();
+  await page.locator(`#scene-description .desktop-battle-lane.party button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]`).first().click();
   let state = await page.evaluate(() => ({
     planActive: Boolean(App.combatPlanSelection?.active),
     source: App.combatPlanSelection?.source || null,
@@ -1211,7 +1213,7 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.strictEqual(state.queued, false, 'Slot group intent with no target should not queue');
   assert.strictEqual(state.syncCount, 0, 'Slot group missing target should not create a queued action');
   assert.strictEqual(state.planActive, true, 'Slot group missing target should preserve planner state for correction');
-  assert(state.lastLog.includes('Choose one target') || state.lastLog.includes('not valid') || state.lastLog.includes('valid'), 'Slot group missing target should report an invalid command');
+  assert(state.lastLog.includes('Choose at least one target') || state.lastLog.includes('not valid') || state.lastLog.includes('valid'), 'Slot group missing target should report an invalid command');
 
   await prepare();
   await page.locator(`#enemies-content button[data-command-control="mark-combat-target"]`).first().click();
@@ -1313,14 +1315,16 @@ async function runCombatSlotGroupComposerFlow(page) {
       syncCount: App.combatState.syncActions.length,
       planActive: Boolean(App.combatPlanSelection?.active),
       targetIds: App.combatTargetIds,
+      queuedTargetIds: (App.combatState.syncActions[0]?.targets || []).map(unit => unit.id || unit.name),
       lastLog: App.log[App.log.length - 1]?.text || ''
     };
   });
-  assert.strictEqual(state.queued, false, 'Slot group intent with multiple targets should not queue in pass 2');
-  assert.strictEqual(state.syncCount, 0, 'Slot group multiple targets should not create a queued action');
-  assert.strictEqual(state.planActive, true, 'Slot group multiple targets should preserve planner state for correction');
-  assert.deepStrictEqual(state.targetIds, ['enemy-1', 'enemy-2'], 'Slot group multiple targets should preserve selected targets for correction');
-  assert(state.lastLog.includes('Choose one target'), 'Slot group multiple targets should explain the one-target correction');
+  assert.strictEqual(state.queued, true, 'Slot group intent with multiple targets should queue as one collective effort');
+  assert.strictEqual(state.syncCount, 1, 'Slot group multiple targets should create one queued group action');
+  assert.strictEqual(state.planActive, false, 'Successful multi-target group queue should clear planner state');
+  assert.deepStrictEqual(state.targetIds, [], 'Successful multi-target group queue should clear transient marks');
+  assert.deepStrictEqual(state.queuedTargetIds, ['enemy-1', 'enemy-2'], 'Queued group action should preserve every marked target');
+  assert(state.lastLog.includes('Enemy') && state.lastLog.includes('Enemy B'), 'Queued group summary should name every marked target');
 
   await prepare();
   await page.locator(`#party-content button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]`).first().click();
@@ -3220,7 +3224,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.selectionState, 'marked', 'Selected center presence badge should expose marked target state');
   assert.strictEqual(state.ariaPressed, 'true', 'Selected center presence badge should expose pressed state to assistive tech');
   assert.strictEqual(state.targetRef, 'merchant-1', 'Selected center presence badge should point at the marked creature');
-  assert(state.width >= 80 && state.height >= 80, 'Selected center presence badge should keep a roomy mobile target');
+  assert(state.width >= 36 && state.height >= 36, 'Selected center presence badge should keep a usable compact target inside the square map tile');
   assert.strictEqual(state.insideTile, true, 'Selected center presence badge should stay inside the current tile');
 
   await page.evaluate(() => App.focusPresence('items', 'tile-items'));
@@ -3259,7 +3263,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.railItemSelected, true, 'Focused stage item should repaint the compact target rail item chip');
   assert.strictEqual(state.clearFocusVisible, true, 'Focused stage item should expose a visible Clear focus exit in the mobile composer');
   assert.strictEqual(state.takeItemsVisible, true, 'Focused stage item should keep Take Items reachable through location intents');
-  assert(state.width >= 80 && state.height >= 80, 'Focused center presence badge should keep a roomy mobile target');
+  assert(state.width >= 36 && state.height >= 36, 'Focused center presence badge should keep a usable compact target inside the square map tile');
   assert.strictEqual(state.insideTile, true, 'Focused center presence badge should stay inside the current tile');
 
   await page.evaluate(() => App.clearFocusedStageObject());

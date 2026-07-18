@@ -13,6 +13,8 @@ This is the short handoff for unfinished work. Completed implementation history 
 - First-party narration references now include provider-backed Simple Narrator, offline Template Narrator, and opt-in Narration Diagnostics. Simple Narrator's Storyteller, Character reactions, and Hybrid profiles have explicit contracts, while mod instructions remain bounded and cannot override viewpoint, profile, deterministic, policy, plain-text, or output-length constraints.
 - Simple Narrator promotes ready tile observations into the center passage and reuses a bounded state-fingerprinted cache for unchanged revisits. Changed visible tile state restores deterministic text and produces a fresh observation before narration is requested again.
 - The Mod Manager can explicitly review and install HTTPS or localhost URI packages. Acquisition is bounded, credentialless, redirect-free, digest-recorded, and copied into IndexedDB; installs and updates never auto-enable or hotlink their source.
+- Media Repository V1 now provides content-addressed catalog/ref tracking, staged IndexedDB payload storage, reviewed HTTPS/loopback HTTP acquisition, a capability-checked endpoint/sidecar adapter, cached object-URL leases, module ownership cleanup, and `media:read` access.
+- Asset Bundle V1 adds a code-free URI manifest, per-resource integrity and quotas, relative source resolution, licensing/provenance, same-bundle fallbacks, target-module ownership, reviewed local installation, health/repair status, replacement, and cleanup. It deliberately defines no tileset or sprite presentation format.
 
 ## Active Objectives
 
@@ -40,8 +42,10 @@ This is the short handoff for unfinished work. Completed implementation history 
 5. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, the dedicated AI Providers panel, Puter, and session-only browser-direct OpenAI-Compatible text connections now exist. Gather playtest feedback on that lifecycle before adding OAuth, relays, MCP, image/video/audio providers, or localhost sidecars.
 6. After player-POV narration has enough playtest coverage, consider a narrator perspective setting with explicit player, first-person, third-person-limited, and cinematic modes. Keep player POV as the default and preserve the structured viewpoint-role contract across modes.
 7. Establish a lightweight default graphics layer: small local 2D tiles, sprites, icons, and restrained animation with text/emoji fallbacks, reduced-motion support, low-bandwidth operation, and no dependency on WebGL. Keep terrain and gameplay semantics independent from the selected art.
-8. Extend asset/content-pack mod seams so optional packs can provide richer tilesets, animated 2D media, and eventually capability-gated 3D models or scenes. Define performance budgets, fallback assets, provenance/licensing metadata, accessibility behavior, runtime capability checks, and cleanup/storage limits before treating heavyweight packs as supported.
-9. Extend the completed single-JSON URI package importer only after the asset-pack format is decided. Archive and multi-resource support still needs unpacked-size budgets, safe relative paths, per-resource integrity, binary media storage, licensing/provenance metadata, runtime fallbacks, and cleanup quotas.
+8. Design the first presentation consumer on top of Asset Bundle V1. Start with a small role-to-render seam and async activation/lease cache, preserve text/emoji fallbacks, then decide a tileset or sprite schema only after map path/connectivity mechanics are settled.
+9. Keep later media providers ordered in backlog: AI generation as a reviewed Source at priority 3; Electron, Pear, or another packaged-runtime bridge at priority 4; and OPFS as an optional browser-storage optimization at priority 5. None may become a prerequisite for the downloaded `file://` game.
+10. Extend asset/content-pack presentation seams. Optional packs may eventually provide richer tilesets, sprites, portraits, audio, animated 2D media, and capability-gated 3D scenes, but their presentation formats must remain independent from storage providers and the bundle envelope.
+11. Consider archive transport only after real bundle use shows that individually hashed URI resources are insufficient. Archives still need unpacked-size budgets and safe relative paths; publisher signatures and community update discovery remain separate work.
 
 ### Release / Distribution
 
@@ -71,6 +75,8 @@ generated artifact.
 - `docs/control-model.md`
 - `docs/combat-row-reach-audit.md`
 - `docs/modding.md`
+- `docs/media-repository.md`
+- `docs/asset-bundle-v1.md`
 - `docs/ai-providers.md`
 - `docs/scene-feed-dsl.md`
 - `docs/holdings-model.md`

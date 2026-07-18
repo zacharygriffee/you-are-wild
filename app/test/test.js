@@ -232,6 +232,11 @@ const createFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'create-flo
 const contentSystemPath = path.join(SRC_DIR, 'core', 'content-system.js');
 const contentSystemContent = fs.readFileSync(contentSystemPath, 'utf8');
 const moduleSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'module-system.js'), 'utf8');
+const mediaContractContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'media-contract.js'), 'utf8');
+const mediaIndexedDbStoreContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'media-indexeddb-store.js'), 'utf8');
+const mediaHttpProvidersContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'media-http-providers.js'), 'utf8');
+const mediaRepositoryContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'media-repository.js'), 'utf8');
+const assetBundleV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'asset-bundle-v1.js'), 'utf8');
 const narrationSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'narration-system.js'), 'utf8');
 const puterProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'puter-provider.js'), 'utf8');
 const openAICompatibleProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'openai-compatible-provider.js'), 'utf8');
@@ -423,12 +428,17 @@ function createFakeIndexedDb(options = {}) {
   const data = {
     modules: new Map(),
     assets: new Map(),
-    settings: new Map()
+    settings: new Map(),
+    mediaPayloads: new Map(),
+    mediaStaging: new Map(),
+    mediaCatalog: new Map(),
+    mediaRefs: new Map(),
+    mediaOwners: new Map()
   };
 
   function clone(value) {
     if (value === undefined || value === null) return value;
-    return JSON.parse(JSON.stringify(value));
+    return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
   }
 
   function createRequest(tx, operation) {
@@ -460,15 +470,18 @@ function createFakeIndexedDb(options = {}) {
       getAll(query) {
         return createRequest(tx, () => {
           const values = Array.from(store.values());
-          if (name === 'assets' && query !== undefined) {
-            return clone(values.filter(value => value.moduleId === query));
-          }
           return clone(values);
         });
       },
       put(value) {
         return createRequest(tx, () => {
-          const key = value.id !== undefined ? value.id : value.key;
+          const key = value.id !== undefined
+            ? value.id
+            : value.key !== undefined
+              ? value.key
+              : value.ownerId !== undefined
+                ? value.ownerId
+                : value.hash;
           if (typeof options.onPut === 'function') options.onPut(name, clone(value), key);
           store.set(key, clone(value));
           return key;
@@ -481,10 +494,9 @@ function createFakeIndexedDb(options = {}) {
         });
       },
       index(indexName) {
-        assertEqual(indexName, 'moduleId', 'Fake IndexedDB only supports the moduleId asset index');
         return {
           getAll(query) {
-            return createRequest(tx, () => clone(Array.from(store.values()).filter(value => value.moduleId === query)));
+            return createRequest(tx, () => clone(Array.from(store.values()).filter(value => value[indexName] === query)));
           }
         };
       }
@@ -553,9 +565,42 @@ function loadModuleSystemForTest(options = {}) {
     renderLog() {}
   };
   const CONTENT = options.CONTENT || { preferences: { maxTier: 0, explicitDescriptions: false } };
-  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT);
+  const mediaRepository = options.mediaRepository || {
+    attachDatabase() {}, setLogger() {}, async cleanup() {}, close() {}, releaseOwner() {},
+    async removeOwner() {}, async installFromSource() {}, async listOwner() { return []; },
+    async metadata() { return null; }, async ownerMetadata() { return null; }, async repairOwner(ownerId) { return { ownerId, ok: true, missing: [] }; }, async acquire() { throw new Error('Media unavailable'); }, release() { return false; }
+  };
+  const assetBundleV1 = options.assetBundleV1 || loadMediaSystemForTest().YAW_ASSET_BUNDLE_V1;
+  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1);
   MODULE_SYSTEM._testApp = App;
   return MODULE_SYSTEM;
+}
+
+function loadMediaSystemForTest(options = {}) {
+  const cryptoApi = require('crypto').webcrypto;
+  const window = {};
+  const globalObject = { crypto: cryptoApi };
+  const urlState = options.urlState || { sequence: 0, revoked: [] };
+  const urlApi = options.urlApi || class TestURL extends URL {};
+  if (!options.urlApi) {
+    urlApi.createObjectURL = () => `blob:test-${++urlState.sequence}`;
+    urlApi.revokeObjectURL = url => urlState.revoked.push(url);
+  }
+  const source = [mediaContractContent, mediaIndexedDbStoreContent, mediaHttpProvidersContent, mediaRepositoryContent, assetBundleV1Content].join('\n');
+  return new Function(
+    'globalThis', 'window', 'fetch', 'navigator', 'URL', 'Blob', 'AbortController', 'setTimeout', 'clearTimeout',
+    `${source}\nreturn { YAW_MEDIA_CONTRACT, YAWIndexedDBMediaStore, YAWHttpMediaSource, YAWEndpointMediaStore, YAWMediaRepository, YAW_ASSET_BUNDLE_V1 };`
+  )(
+    globalObject,
+    window,
+    options.fetch,
+    options.navigator || {},
+    urlApi,
+    Blob,
+    AbortController,
+    setTimeout,
+    clearTimeout
+  );
 }
 
 test('App object is defined', () => {
@@ -23644,6 +23689,306 @@ test('Mobile gesture helpers include haptic feedback hooks', () => {
   assertContains(mobileGesturesContent, 'navigator.vibrate', 'Mobile gestures should use haptic feedback when available');
   assertContains(mobileGesturesContent, 'app._haptic([12, 20, 12])', 'Long-press should trigger haptic feedback');
   assertNotContains(mobileGesturesContent, 'app._haptic(6)', 'Removed panel swipes should not trigger stray haptic feedback');
+});
+
+section('Media Repository Tests', 'core');
+
+test('Media Repository V1 is built before modules and migrates provider-neutral stores', () => {
+  const contractIndex = buildContent.indexOf("'src/core/media-contract.js'");
+  const repositoryIndex = buildContent.indexOf("'src/core/media-repository.js'");
+  const moduleIndex = buildContent.indexOf("'src/core/module-system.js'");
+  assert(contractIndex >= 0 && repositoryIndex > contractIndex && moduleIndex > repositoryIndex, 'Media contracts and repository should load before the module runtime');
+  assertContains(moduleSystemContent, 'DB_VERSION: 3', 'Asset bundle ownership should version the module database migration');
+  for (const store of ['mediaPayloads', 'mediaStaging', 'mediaCatalog', 'mediaRefs', 'mediaOwners']) {
+    assertContains(moduleSystemContent, `objectStoreNames.contains('${store}')`, `Migration should create ${store}`);
+  }
+  assertContains(moduleSystemContent, "'media:read'", 'Module manifests should declare media lease access explicitly');
+  assertNotContains(mediaRepositoryContent, 'tileset', 'Media storage infrastructure should remain tileset-neutral');
+});
+
+asyncTest('IndexedDB media storage verifies, deduplicates, leases, and reference-cleans payloads', async () => {
+  const urlState = { sequence: 0, revoked: [] };
+  const { YAW_MEDIA_CONTRACT, YAWIndexedDBMediaStore, YAWMediaRepository } = loadMediaSystemForTest({ urlState });
+  const fake = createFakeIndexedDb();
+  const bytes = new TextEncoder().encode('offline media payload');
+  const hash = await YAW_MEDIA_CONTRACT.sha256(bytes);
+  const descriptor = {
+    id: 'portrait.hero', hash, mimeType: 'application/octet-stream', byteLength: bytes.byteLength,
+    role: 'portrait', provenance: { kind: 'test' }
+  };
+  const store = new YAWIndexedDBMediaStore({ contract: YAW_MEDIA_CONTRACT, db: fake.db });
+  const batch = await store.beginBatch();
+  await store.stage(batch, descriptor, new Blob([bytes], { type: descriptor.mimeType }));
+  await store.commit(batch);
+  assertEqual(fake.data.mediaPayloads.size, 1, 'Committed content should live in IndexedDB');
+
+  const duplicate = await store.beginBatch();
+  await store.stage(duplicate, descriptor, new Blob([bytes], { type: descriptor.mimeType }));
+  await store.commit(duplicate);
+  assertEqual(fake.data.mediaPayloads.size, 1, 'Content-addressed writes should deduplicate the same hash');
+
+  const firstLease = await store.acquire(hash);
+  const secondLease = await store.acquire(hash);
+  assertEqual(firstLease.url, secondLease.url, 'Active leases should reuse one session object URL');
+  firstLease.release();
+  assertEqual(urlState.revoked.length, 0, 'A shared object URL should remain while referenced');
+  secondLease.release();
+  assertEqual(urlState.revoked.length, 1, 'The final release should revoke the object URL');
+
+  const repository = new YAWMediaRepository({ contract: YAW_MEDIA_CONTRACT, db: fake.db, indexeddbStore: store });
+  await repository.replaceOwnerCatalog('module-a', store.id, [descriptor]);
+  await repository.replaceOwnerCatalog('module-b', store.id, [descriptor]);
+  await repository.removeOwner('module-a');
+  assert(await store.has(hash), 'Shared media should remain until its final owner is removed');
+  await repository.removeOwner('module-b');
+  assert(!(await store.has(hash)), 'Final owner removal should delete the unreferenced payload');
+});
+
+asyncTest('HTTP media source enforces reviewed transport, MIME, size, and SHA-256', async () => {
+  const bytes = new TextEncoder().encode('remote media payload');
+  const cryptoApi = require('crypto').webcrypto;
+  const digest = new Uint8Array(await cryptoApi.subtle.digest('SHA-256', bytes));
+  const hash = Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
+  let requestOptions = null;
+  const fetchApi = async (url, options) => {
+    requestOptions = options;
+    const response = new Response(bytes, { status: 200, headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': String(bytes.byteLength) } });
+    Object.defineProperty(response, 'url', { value: url });
+    return response;
+  };
+  const { YAWHttpMediaSource } = loadMediaSystemForTest({ fetch: fetchApi });
+  const source = new YAWHttpMediaSource({ fetch: fetchApi });
+  const descriptor = { id: 'remote.asset', hash, mimeType: 'application/octet-stream', byteLength: bytes.byteLength };
+  const acquired = await source.acquire({ url: 'https://media.example/asset.bin', descriptor });
+  assertEqual(await acquired.blob.text(), 'remote media payload', 'Reviewed HTTP media should return verified bytes');
+  assertEqual(requestOptions.credentials, 'omit', 'HTTP acquisition should not send ambient credentials');
+  assertEqual(requestOptions.redirect, 'error', 'HTTP acquisition should reject redirects');
+  assertEqual(requestOptions.referrerPolicy, 'no-referrer', 'HTTP acquisition should omit the page referrer');
+
+  let rejected = false;
+  try {
+    await source.acquire({ url: 'http://media.example/asset.bin', descriptor });
+  } catch (error) {
+    rejected = error.code === 'insecure_url';
+  }
+  assert(rejected, 'Non-loopback HTTP media should be rejected');
+
+  const badSource = new YAWHttpMediaSource({ fetch: async url => {
+    const response = new Response(bytes, { status: 200, headers: { 'Content-Type': 'text/plain', 'Content-Length': String(bytes.byteLength) } });
+    Object.defineProperty(response, 'url', { value: url });
+    return response;
+  } });
+  rejected = false;
+  try { await badSource.acquire({ url: 'https://media.example/asset.bin', descriptor }); } catch (error) { rejected = error.code === 'mime_mismatch'; }
+  assert(rejected, 'A response MIME mismatch should be rejected before installation');
+});
+
+asyncTest('Endpoint sidecar adapter stages, reads, leases, and removes content through V1 routes', async () => {
+  const bytes = new TextEncoder().encode('sidecar media payload');
+  const cryptoApi = require('crypto').webcrypto;
+  const digest = new Uint8Array(await cryptoApi.subtle.digest('SHA-256', bytes));
+  const hash = Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
+  const payloads = new Map();
+  const routes = [];
+  const fetchApi = async (url, options = {}) => {
+    const parsed = new URL(url);
+    const path = parsed.pathname;
+    const method = options.method || 'GET';
+    routes.push(`${method} ${path}`);
+    if (path.endsWith('/media/v1/health')) return Response.json({ schema: 'yaw-media-endpoint-v1', capabilities: { rangeReads: true } });
+    if (path.endsWith('/media/v1/batches') && method === 'POST') return Response.json({ batchId: 'batch-1' });
+    if (/\/batches\/batch-1\/content\/[a-f0-9]{64}$/.test(path) && method === 'PUT') {
+      payloads.set(path.split('/').pop(), options.body);
+      return new Response(null, { status: 204 });
+    }
+    if (path.endsWith('/batches/batch-1/commit') && method === 'POST') return new Response(null, { status: 204 });
+    const match = path.match(/\/media\/v1\/content\/([a-f0-9]{64})$/);
+    if (match && method === 'HEAD') {
+      const blob = payloads.get(match[1]);
+      return blob
+        ? new Response(null, { status: 200, headers: { 'Content-Type': blob.type, 'Content-Length': String(blob.size) } })
+        : new Response(null, { status: 404 });
+    }
+    if (match && method === 'GET') {
+      const blob = payloads.get(match[1]);
+      return blob ? new Response(blob, { status: 200, headers: { 'Content-Type': blob.type, 'Content-Length': String(blob.size) } }) : new Response(null, { status: 404 });
+    }
+    if (match && method === 'DELETE') {
+      payloads.delete(match[1]);
+      return new Response(null, { status: 204 });
+    }
+    return new Response(null, { status: 404 });
+  };
+  const { YAWEndpointMediaStore } = loadMediaSystemForTest({ fetch: fetchApi });
+  const store = new YAWEndpointMediaStore({ endpoint: 'http://127.0.0.1:4545/', fetch: fetchApi, sessionHeaders: { Authorization: 'Bearer session-only' } });
+  assert((await store.health()).ok, 'A conforming sidecar should advertise healthy V1 capabilities');
+  const descriptor = { id: 'sidecar.asset', hash, mimeType: 'application/octet-stream', byteLength: bytes.byteLength };
+  const batch = await store.beginBatch();
+  await store.stage(batch, descriptor, new Blob([bytes], { type: descriptor.mimeType }));
+  await store.commit(batch);
+  const acquiredSource = await store.acquire({ descriptor });
+  assertEqual(await acquiredSource.blob.text(), 'sidecar media payload', 'A sidecar can serve as a MediaSource as well as a store');
+  const lease = await store.acquire(hash);
+  assertContains(lease.url, 'blob:test-', 'Endpoint reads should become explicit session leases');
+  lease.release();
+  await store.remove(hash);
+  assert(!(await store.has(hash)), 'Endpoint removal should remove content-addressed bytes');
+  assert(routes.some(route => route.startsWith('PUT ')) && routes.some(route => route.startsWith('DELETE ')), 'Sidecar adapter should use staged write and cleanup routes');
+});
+
+asyncTest('Module media API is permission-scoped and releases leases on unload', async () => {
+  const calls = [];
+  const mediaRepository = {
+    attachDatabase() {}, setLogger() {}, async cleanup() {}, close() {},
+    async listOwner(ownerId) { calls.push(['list', ownerId]); return [{ resourceId: 'hero' }]; },
+    async metadata(ownerId, resourceId) { calls.push(['metadata', ownerId, resourceId]); return { resourceId }; },
+    async acquire(ownerId, resourceId) { calls.push(['acquire', ownerId, resourceId]); return { leaseId: 'lease-1', url: 'blob:test' }; },
+    release(ownerId, leaseId) { calls.push(['release', ownerId, leaseId]); return true; },
+    releaseOwner(ownerId) { calls.push(['releaseOwner', ownerId]); return 1; },
+    async removeOwner() {}, async installFromSource(ownerId) { calls.push(['install', ownerId]); return { ownerId }; }
+  };
+  const MODULE_SYSTEM = loadModuleSystemForTest({ mediaRepository });
+  const api = MODULE_SYSTEM.createModAPI('media-module', { permissions: ['media:read'] });
+  assertEqual((await api.media.list())[0].resourceId, 'hero', 'Authorized modules should list only their owned media');
+  assertEqual((await api.media.acquire('hero')).leaseId, 'lease-1', 'Authorized modules should receive an opaque lease id');
+  assert(api.media.release('lease-1'), 'Authorized modules should explicitly release leases');
+  let rejected = false;
+  try { await MODULE_SYSTEM.createModAPI('denied-module', { permissions: [] }).media.list(); } catch (error) { rejected = error.message.includes('media:read'); }
+  assert(rejected, 'Modules without media:read should not access repository media');
+  MODULE_SYSTEM.activeModules.set('media-module', { runtimeTimers: { timeouts: new Set(), intervals: new Set() } });
+  MODULE_SYSTEM.unloadModule('media-module');
+  assert(calls.some(call => call[0] === 'releaseOwner' && call[1] === 'media-module'), 'Module unload should release every owner lease');
+});
+
+test('Asset Bundle V1 normalizes relative resources and rejects unsafe fallback graphs', () => {
+  const { YAW_ASSET_BUNDLE_V1 } = loadMediaSystemForTest();
+  const hash = 'a'.repeat(64);
+  const packageData = {
+    packageType: 'yaw-asset-bundle',
+    packageVersion: 1,
+    bundle: {
+      id: 'portraits.standard',
+      targetModuleId: 'portrait_mod',
+      name: 'Standard Portraits',
+      version: '1.0.0',
+      license: 'CC-BY-4.0',
+      resources: [
+        { id: 'hero.primary', uri: './hero.bin', hash, mimeType: 'application/octet-stream', byteLength: 12, role: 'portrait', fallback: 'hero.fallback' },
+        { id: 'hero.fallback', uri: './fallback.bin', hash, mimeType: 'application/octet-stream', byteLength: 12, role: 'portrait' }
+      ]
+    }
+  };
+  const normalized = YAW_ASSET_BUNDLE_V1.normalizePackage(packageData, { sourceUrl: 'https://packs.example/bundles/portraits.json' });
+  assertEqual(normalized.bundle.resources[0].uri, 'https://packs.example/bundles/hero.bin', 'Relative resources should resolve from the reviewed manifest URI');
+  assertEqual(normalized.bundle.totalByteLength, 24, 'Bundle review should expose the full declared download size');
+  assertEqual(normalized.bundle.resources[0].license, 'CC-BY-4.0', 'Resources should inherit the bundle license');
+  assertEqual(normalized.bundle.resources[0].fallback.resourceId, 'hero.fallback', 'Fallbacks should remain resource-id references');
+
+  const cyclic = structuredClone(packageData);
+  cyclic.bundle.resources[1].fallback = 'hero.primary';
+  let rejected = false;
+  try { YAW_ASSET_BUNDLE_V1.normalizePackage(cyclic, { sourceUrl: 'https://packs.example/bundles/portraits.json' }); } catch (error) { rejected = error.message.includes('fallback cycle'); }
+  assert(rejected, 'Fallback cycles should reject before any resource download');
+
+  const insecure = structuredClone(packageData);
+  insecure.bundle.resources[0].uri = 'http://packs.example/hero.bin';
+  rejected = false;
+  try { YAW_ASSET_BUNDLE_V1.normalizePackage(insecure, { sourceUrl: 'https://packs.example/bundles/portraits.json' }); } catch (error) { rejected = error.code === 'insecure_url'; }
+  assert(rejected, 'Non-loopback plaintext resource URIs should reject during review');
+});
+
+asyncTest('Asset Bundle V1 review, install, replacement, and removal are local and reference-safe', async () => {
+  const cryptoApi = require('crypto').webcrypto;
+  const hashBytes = async bytes => {
+    const digest = new Uint8Array(await cryptoApi.subtle.digest('SHA-256', bytes));
+    return Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
+  };
+  let assetBytes = new TextEncoder().encode('asset bundle payload v1');
+  let assetHash = await hashBytes(assetBytes);
+  let packageData;
+  const makePackage = version => ({
+    packageType: 'yaw-asset-bundle',
+    packageVersion: 1,
+    bundle: {
+      id: 'test.assets',
+      targetModuleId: 'asset-module',
+      name: 'Test Assets',
+      version,
+      minModuleVersion: '1.0.0',
+      contentRating: 'safe',
+      license: 'CC0-1.0',
+      resources: [{
+        id: 'portrait.hero',
+        uri: './hero.bin',
+        hash: assetHash,
+        mimeType: 'application/octet-stream',
+        byteLength: assetBytes.byteLength,
+        role: 'portrait'
+      }]
+    }
+  });
+  packageData = makePackage('1.0.0');
+  const fetchApi = async (url, options = {}) => {
+    const href = String(url);
+    let response;
+    if (href.endsWith('/bundle.json')) {
+      const text = JSON.stringify(packageData);
+      response = new Response(text, { status: 200, headers: { 'Content-Type': 'application/json', 'Content-Length': String(new TextEncoder().encode(text).byteLength) } });
+    } else if (href.endsWith('/hero.bin')) {
+      response = new Response(assetBytes, { status: 200, headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': String(assetBytes.byteLength) } });
+    } else {
+      response = new Response(null, { status: 404 });
+    }
+    Object.defineProperty(response, 'url', { value: href });
+    return response;
+  };
+  const fake = createFakeIndexedDb();
+  const media = loadMediaSystemForTest({ fetch: fetchApi });
+  const store = new media.YAWIndexedDBMediaStore({ contract: media.YAW_MEDIA_CONTRACT, db: fake.db });
+  const source = new media.YAWHttpMediaSource({ contract: media.YAW_MEDIA_CONTRACT, fetch: fetchApi });
+  const repository = new media.YAWMediaRepository({ contract: media.YAW_MEDIA_CONTRACT, db: fake.db, indexeddbStore: store, httpSource: source });
+  const MODULE_SYSTEM = loadModuleSystemForTest({
+    mediaRepository: repository,
+    assetBundleV1: media.YAW_ASSET_BUNDLE_V1,
+    window: { fetch: fetchApi, crypto: cryptoApi, btoa: value => Buffer.from(value, 'binary').toString('base64') }
+  });
+  MODULE_SYSTEM.db = fake.db;
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'asset-module', name: 'Asset Module', version: '1.0.0', contentRating: 'safe', permissions: ['media:read'] },
+    code: ''
+  });
+
+  const review = await MODULE_SYSTEM.reviewRemoteModule('https://packs.example/bundle.json');
+  assertEqual(review.kind, 'asset_bundle_v1', 'URI review should auto-detect the code-free asset bundle envelope');
+  assertEqual(review.bundle.resourceCount, 1, 'Review should expose resource count before downloading payloads');
+  assertEqual(fake.data.mediaPayloads.size, 0, 'Review should not download or install resource payloads');
+  const installed = await MODULE_SYSTEM.installReviewedRemoteAssetBundle(review);
+  assertEqual(installed.bundle.bundleId, 'test.assets', 'Install should atomically publish owner metadata with the resource catalog');
+  assertEqual(fake.data.mediaPayloads.size, 1, 'Confirmed install should copy verified payloads into IndexedDB');
+  assertEqual((await repository.metadata('asset-module', 'portrait.hero')).descriptor.hash, assetHash, 'Target module catalog should point to the installed content hash');
+  assertEqual((await MODULE_SYSTEM.getModuleAssetBundleStatus('asset-module')).health.ok, true, 'Installed bundles should expose a verified local health state');
+
+  const oldHash = assetHash;
+  assetBytes = new TextEncoder().encode('asset bundle payload v2');
+  assetHash = await hashBytes(assetBytes);
+  packageData = makePackage('1.1.0');
+  const replacement = await MODULE_SYSTEM.reviewRemoteModule('https://packs.example/bundle.json');
+  await MODULE_SYSTEM.installReviewedRemoteAssetBundle(replacement);
+  assert(!(await store.has(oldHash)), 'Successful replacement should clean the unreferenced previous payload');
+  assert(await store.has(assetHash), 'Successful replacement should retain the new verified payload');
+  assertEqual((await MODULE_SYSTEM.getModuleAssetBundle('asset-module')).version, '1.1.0', 'Replacement should update bundle audit metadata');
+
+  await MODULE_SYSTEM.removeModuleAssetBundle('asset-module');
+  assertEqual(await MODULE_SYSTEM.getModuleAssetBundle('asset-module'), null, 'Explicit removal should clear bundle ownership metadata');
+  assert(!(await store.has(assetHash)), 'Explicit removal should clean the final unreferenced payload');
+});
+
+test('Mod Manager presents URI asset bundles as reviewed code-free packages', () => {
+  assertContains(templateContent, 'Import module or asset bundle from URI', 'URI import should identify both supported V1 package types');
+  assertContains(modUiContent, "review.kind === 'asset_bundle_v1'", 'Remote review UI should branch on the normalized bundle package kind');
+  assertContains(modUiContent, "getModuleAssetBundleStatus(mod.id)", 'Installed module cards should resolve bundle metadata and local repair state');
+  assertContains(modUiContent, "removeAssetBundle('${id}')", 'Installed bundles should expose explicit cleanup while their module is disabled');
+  assertContains(contentSystemContent, "'mod.assetBundleV1'", 'Asset Bundle V1 review labels should be localized');
 });
 
 // === SUMMARY ===

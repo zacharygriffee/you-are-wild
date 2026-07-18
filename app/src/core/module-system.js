@@ -7,7 +7,7 @@
 const MODULE_SYSTEM = {
     DB_NAME: 'YAW_Modules',
     LEGACY_DB_NAME: 'FFFme_Modules',
-    DB_VERSION: 1,
+    DB_VERSION: 3,
     GAME_VERSION: window.YAW_RELEASE?.version || '0.0.0',
     PACKAGE_TYPE: 'yaw-module',
     PACKAGE_VERSION: 1,
@@ -21,7 +21,7 @@ const MODULE_SYSTEM = {
     DEFAULT_HOST_MANIFEST_PATH: 'yaw-host.json',
     REMOTE_PACKAGE_MAX_BYTES: 2 * 1024 * 1024,
     REMOTE_PACKAGE_TIMEOUT_MS: 15000,
-    KNOWN_PERMISSIONS: ['ui.read', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option'],
+    KNOWN_PERMISSIONS: ['ui.read', 'media:read', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option'],
     db: null,
     hostManifest: null,
     hostManifestState: { status: 'uninitialized', reason: '', url: '' },
@@ -682,16 +682,16 @@ const MODULE_SYSTEM = {
         try {
             url = new URL(String(value || '').trim());
         } catch (error) {
-            throw new Error('Remote module URI is invalid');
+            throw new Error('Remote package URI is invalid');
         }
         const hostname = String(url.hostname || '').toLowerCase();
         const loopback = hostname === 'localhost' || hostname === '::1' || /^127(?:\.\d{1,3}){3}$/.test(hostname);
         if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) {
-            throw new Error('Remote modules require HTTPS, except for HTTP localhost or loopback development servers');
+            throw new Error('Remote packages require HTTPS, except for HTTP localhost or loopback development servers');
         }
-        if (url.username || url.password) throw new Error('Remote module URIs cannot contain credentials');
-        if (url.search) throw new Error('Remote module URIs cannot contain query parameters');
-        if (url.hash) throw new Error('Remote module URIs cannot contain fragments');
+        if (url.username || url.password) throw new Error('Remote package URIs cannot contain credentials');
+        if (url.search) throw new Error('Remote package URIs cannot contain query parameters');
+        if (url.hash) throw new Error('Remote package URIs cannot contain fragments');
         return url.href;
     },
 
@@ -723,7 +723,7 @@ const MODULE_SYSTEM = {
     async _readBoundedRemoteResponse(response) {
         const declaredLength = Number(response.headers?.get?.('content-length') || 0);
         if (declaredLength > this.REMOTE_PACKAGE_MAX_BYTES) {
-            throw new Error(`Remote module exceeds the ${this.REMOTE_PACKAGE_MAX_BYTES} byte download limit`);
+            throw new Error(`Remote package exceeds the ${this.REMOTE_PACKAGE_MAX_BYTES} byte download limit`);
         }
         if (response.body?.getReader) {
             const reader = response.body.getReader();
@@ -736,7 +736,7 @@ const MODULE_SYSTEM = {
                     total += value.byteLength;
                     if (total > this.REMOTE_PACKAGE_MAX_BYTES) {
                         await reader.cancel();
-                        throw new Error(`Remote module exceeds the ${this.REMOTE_PACKAGE_MAX_BYTES} byte download limit`);
+                        throw new Error(`Remote package exceeds the ${this.REMOTE_PACKAGE_MAX_BYTES} byte download limit`);
                     }
                     chunks.push(value);
                 }
@@ -753,7 +753,7 @@ const MODULE_SYSTEM = {
         }
         const bytes = new Uint8Array(await response.arrayBuffer());
         if (bytes.byteLength > this.REMOTE_PACKAGE_MAX_BYTES) {
-            throw new Error(`Remote module exceeds the ${this.REMOTE_PACKAGE_MAX_BYTES} byte download limit`);
+            throw new Error(`Remote package exceeds the ${this.REMOTE_PACKAGE_MAX_BYTES} byte download limit`);
         }
         return bytes;
     },
@@ -762,7 +762,7 @@ const MODULE_SYSTEM = {
         const url = this._normalizeRemotePackageUrl(sourceUrl);
         const expected = this._normalizeRemoteIntegrity(expectedIntegrity);
         const fetchApi = options.fetch || (typeof window !== 'undefined' ? window.fetch?.bind(window) : null);
-        if (!fetchApi) throw new Error('Remote module loading is unavailable');
+        if (!fetchApi) throw new Error('Remote package loading is unavailable');
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), this.REMOTE_PACKAGE_TIMEOUT_MS);
         let response;
@@ -777,38 +777,71 @@ const MODULE_SYSTEM = {
                 signal: controller.signal
             });
         } catch (error) {
-            if (controller.signal.aborted) throw new Error('Remote module download timed out');
-            throw new Error(`Remote module download failed: ${error?.message || error}`);
+            clearTimeout(timer);
+            if (controller.signal.aborted) throw new Error('Remote package download timed out');
+            throw new Error(`Remote package download failed: ${error?.message || error}`);
+        }
+        if (!response.ok) {
+            clearTimeout(timer);
+            throw new Error(`Remote package returned HTTP ${response.status}`);
+        }
+        const responseUrl = this._normalizeRemotePackageUrl(response.url || url);
+        if (responseUrl !== url) {
+            clearTimeout(timer);
+            throw new Error('Remote package redirects are not allowed');
+        }
+        const contentType = String(response.headers?.get?.('content-type') || '').split(';')[0].trim().toLowerCase();
+        const allowedTypes = ['', 'application/json', 'text/json', 'text/plain', 'application/octet-stream'];
+        if (!allowedTypes.includes(contentType)) {
+            clearTimeout(timer);
+            throw new Error(`Remote package returned unsupported content type ${contentType}`);
+        }
+        let bytes;
+        try {
+            bytes = await this._readBoundedRemoteResponse(response);
+        } catch (error) {
+            if (controller.signal.aborted) throw new Error('Remote package download timed out');
+            throw error;
         } finally {
             clearTimeout(timer);
         }
-        if (!response.ok) throw new Error(`Remote module returned HTTP ${response.status}`);
-        const responseUrl = this._normalizeRemotePackageUrl(response.url || url);
-        if (responseUrl !== url) throw new Error('Remote module redirects are not allowed');
-        const contentType = String(response.headers?.get?.('content-type') || '').split(';')[0].trim().toLowerCase();
-        const allowedTypes = ['', 'application/json', 'text/json', 'text/plain', 'application/octet-stream'];
-        if (!allowedTypes.includes(contentType)) throw new Error(`Remote module returned unsupported content type ${contentType}`);
-        const bytes = await this._readBoundedRemoteResponse(response);
         const digest = await this._sha256Bytes(bytes);
         const actualSRI = `sha256-${this._base64Bytes(digest.bytes)}`;
         if (expected && expected.toLowerCase() !== digest.hex.toLowerCase() && expected !== actualSRI) {
-            throw new Error('Remote module failed SHA-256 integrity verification');
+            throw new Error('Remote package failed SHA-256 integrity verification');
         }
         let text;
         try {
             text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
         } catch (error) {
-            throw new Error('Remote module is not valid UTF-8 text');
+            throw new Error('Remote package is not valid UTF-8 text');
         }
         let packageData;
         try {
             packageData = JSON.parse(text);
         } catch (error) {
-            throw new Error('Remote module is not valid JSON');
+            throw new Error('Remote package is not valid JSON');
+        }
+        if (String(packageData?.packageType || '') === YAW_ASSET_BUNDLE_V1.PACKAGE_TYPE) {
+            const normalizedPackage = YAW_ASSET_BUNDLE_V1.normalizePackage(packageData, { sourceUrl: url });
+            const bundle = normalizedPackage.bundle;
+            this._assertGameVersionCompatible({ id: bundle.id, minGameVersion: bundle.minGameVersion });
+            return {
+                kind: 'asset_bundle_v1',
+                packageData,
+                bundle,
+                sourceUrl: url,
+                integrity: digest.hex,
+                integrityVerified: Boolean(expected),
+                byteLength: bytes.byteLength,
+                contentType: contentType || 'unspecified',
+                fetchedAt: Date.now()
+            };
         }
         const validated = this._validateModuleData(this._normalizeModulePackage(packageData));
         this._assertGameVersionCompatible(validated.manifest);
         return {
+            kind: 'module',
             packageData,
             manifest: validated.manifest,
             sourceUrl: url,
@@ -822,6 +855,7 @@ const MODULE_SYSTEM = {
 
     async installReviewedRemoteModule(review) {
         if (!review || typeof review !== 'object' || !review.packageData) throw new Error('Review a remote module before installing it');
+        if (review.kind && review.kind !== 'module') throw new Error('Reviewed package is not a module');
         const sourceUrl = this._normalizeRemotePackageUrl(review.sourceUrl);
         const integrity = this._normalizeRemoteIntegrity(review.integrity);
         if (!integrity) throw new Error('Reviewed remote module is missing its computed integrity digest');
@@ -838,6 +872,79 @@ const MODULE_SYSTEM = {
             sourceByteLength: Number(review.byteLength) || 0,
             sourceContentType: String(review.contentType || '').slice(0, 160)
         });
+    },
+
+    async getModuleAssetBundle(moduleId) {
+        if (typeof YAW_MEDIA_REPOSITORY === 'undefined') return null;
+        const metadata = await YAW_MEDIA_REPOSITORY.ownerMetadata(moduleId);
+        return metadata?.kind === 'asset_bundle_v1' ? metadata : null;
+    },
+
+    async getModuleAssetBundleStatus(moduleId) {
+        const bundle = await this.getModuleAssetBundle(moduleId);
+        if (!bundle) return null;
+        const health = await YAW_MEDIA_REPOSITORY.repairOwner(moduleId);
+        return { ...bundle, health };
+    },
+
+    async installReviewedRemoteAssetBundle(review, options = {}) {
+        if (!review || review.kind !== 'asset_bundle_v1' || !review.packageData) {
+            throw new Error('Review an asset bundle before installing it');
+        }
+        const sourceUrl = this._normalizeRemotePackageUrl(review.sourceUrl);
+        const integrity = this._normalizeRemoteIntegrity(review.integrity);
+        if (!integrity) throw new Error('Reviewed asset bundle is missing its computed integrity digest');
+        const normalizedPackage = YAW_ASSET_BUNDLE_V1.normalizePackage(review.packageData, { sourceUrl });
+        const bundle = normalizedPackage.bundle;
+        if (bundle.id !== review.bundle?.id || bundle.version !== review.bundle?.version || bundle.targetModuleId !== review.bundle?.targetModuleId) {
+            throw new Error('Reviewed asset bundle metadata changed before installation');
+        }
+        this._assertGameVersionCompatible({ id: bundle.id, minGameVersion: bundle.minGameVersion });
+        this._assertContentRatingEnabled({ id: bundle.id, contentRating: bundle.contentRating });
+        const module = this.moduleRecords.get(bundle.targetModuleId)
+            || (await this.getAllModules()).find(record => record.id === bundle.targetModuleId);
+        if (!module) throw new Error(`Install target module ${bundle.targetModuleId} before its asset bundle`);
+        if (module.enabled === true || this.activeModules.has(bundle.targetModuleId)) {
+            throw new Error(`Disable module ${bundle.targetModuleId} before installing or replacing its asset bundle`);
+        }
+        if (!module.manifest?.permissions?.includes('media:read')) {
+            throw new Error(`Target module ${bundle.targetModuleId} must declare permission media:read`);
+        }
+        if (this._contentRatingTier(bundle.contentRating) > this._contentRatingTier(module.manifest.contentRating)) {
+            throw new Error('Asset bundle contentRating cannot exceed its target module contentRating');
+        }
+        if (bundle.minModuleVersion && this._compareVersions(module.manifest.version, bundle.minModuleVersion) < 0) {
+            throw new Error(`Asset bundle ${bundle.id} requires ${bundle.targetModuleId} version ${bundle.minModuleVersion} or newer`);
+        }
+        const ownerMetadata = YAW_ASSET_BUNDLE_V1.ownerMetadata(normalizedPackage, {
+            sourceUrl,
+            integrity,
+            integrityVerified: review.integrityVerified === true
+        });
+        const result = await YAW_MEDIA_REPOSITORY.installFromSource(
+            bundle.targetModuleId,
+            YAW_ASSET_BUNDLE_V1.installationResources(normalizedPackage),
+            {
+                sourceId: options.sourceId || 'http',
+                storeId: options.storeId || 'auto',
+                signal: options.signal,
+                onProgress: options.onProgress,
+                ownerMetadata
+            }
+        );
+        return { ...result, bundle: await this.getModuleAssetBundle(bundle.targetModuleId) };
+    },
+
+    async removeModuleAssetBundle(moduleId) {
+        const module = this.moduleRecords.get(moduleId) || (await this.getAllModules()).find(record => record.id === moduleId);
+        if (!module) throw new Error('Module not found');
+        if (module.enabled === true || this.activeModules.has(moduleId)) {
+            throw new Error(`Disable module ${moduleId} before removing its asset bundle`);
+        }
+        const existing = await this.getModuleAssetBundle(moduleId);
+        if (!existing) return false;
+        await YAW_MEDIA_REPOSITORY.removeOwner(moduleId);
+        return true;
     },
 
     _normalizeHostCatalogEntry(value, baseUrl) {
@@ -1273,9 +1380,23 @@ const MODULE_SYSTEM = {
             request.onerror = () => reject(request.error);
             request.onsuccess = async () => {
                 this.db = request.result;
+                if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') {
+                    YAW_MEDIA_REPOSITORY.attachDatabase(this.db);
+                    YAW_MEDIA_REPOSITORY.setLogger(event => {
+                        if (typeof App === 'undefined' || !Array.isArray(App.log)) return;
+                        const details = event?.details || {};
+                        const detail = details.message || details.providerId || details.ownerId || '';
+                        App.log.push({
+                            text: `[Media] ${String(event?.code || 'media_event')}${detail ? `: ${String(detail).slice(0, 300)}` : ''}`,
+                            type: event?.type === 'error' ? 'error' : 'discovery'
+                        });
+                        App.renderLog?.();
+                    });
+                }
                 console.log('Module DB initialized');
                 try {
                     await this.purgeCredentialSettings();
+                    if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') await YAW_MEDIA_REPOSITORY.cleanup?.();
                     resolve();
                 } catch (error) {
                     reject(error);
@@ -1301,6 +1422,35 @@ const MODULE_SYSTEM = {
                 // Settings store
                 if (!db.objectStoreNames.contains('settings')) {
                     db.createObjectStore('settings', { keyPath: 'key' });
+                }
+
+                if (!db.objectStoreNames.contains('mediaPayloads')) {
+                    db.createObjectStore('mediaPayloads', { keyPath: 'hash' });
+                }
+
+                if (!db.objectStoreNames.contains('mediaStaging')) {
+                    const stagingStore = db.createObjectStore('mediaStaging', { keyPath: 'id' });
+                    stagingStore.createIndex('batchId', 'batchId', { unique: false });
+                    stagingStore.createIndex('hash', 'hash', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains('mediaCatalog')) {
+                    const catalogStore = db.createObjectStore('mediaCatalog', { keyPath: 'id' });
+                    catalogStore.createIndex('ownerId', 'ownerId', { unique: false });
+                    catalogStore.createIndex('hash', 'hash', { unique: false });
+                    catalogStore.createIndex('providerId', 'providerId', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains('mediaRefs')) {
+                    const refStore = db.createObjectStore('mediaRefs', { keyPath: 'id' });
+                    refStore.createIndex('hash', 'hash', { unique: false });
+                    refStore.createIndex('providerId', 'providerId', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains('mediaOwners')) {
+                    const ownerStore = db.createObjectStore('mediaOwners', { keyPath: 'ownerId' });
+                    ownerStore.createIndex('kind', 'kind', { unique: false });
+                    ownerStore.createIndex('bundleId', 'bundleId', { unique: false });
                 }
             };
         });
@@ -1339,6 +1489,7 @@ const MODULE_SYSTEM = {
     },
 
     closeDatabase() {
+        if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') YAW_MEDIA_REPOSITORY.close();
         if (this.db && typeof this.db.close === 'function') {
             this.db.close();
         }
@@ -1436,6 +1587,10 @@ const MODULE_SYSTEM = {
         await this._request(store.put(module));
         await this._transactionDone(tx);
 
+        if (previous && options.preserveMedia !== true && typeof YAW_MEDIA_REPOSITORY !== 'undefined') {
+            await YAW_MEDIA_REPOSITORY.removeOwner(module.id);
+        }
+
         if (previous?.enabled || this.activeModules.has(module.id)) {
             this.unloadModule(module.id);
             module.disabledDependents = await this._disableDependentsOf(module.id);
@@ -1445,6 +1600,13 @@ const MODULE_SYSTEM = {
         
         console.log(`Module installed: ${module.manifest.name}`);
         return module;
+    },
+
+    async installModuleMedia(moduleId, resources, options = {}) {
+        const module = this.moduleRecords.get(moduleId) || (await this.getAllModules()).find(record => record.id === moduleId);
+        if (!module) throw new Error('Module not found');
+        if (typeof YAW_MEDIA_REPOSITORY === 'undefined') throw new Error('Media repository is unavailable');
+        return YAW_MEDIA_REPOSITORY.installFromSource(moduleId, resources, options);
     },
     
     // Enable/disable module
@@ -1931,6 +2093,7 @@ const MODULE_SYSTEM = {
             YAW_NARRATION_SYSTEM.removeOrchestrators(moduleId);
             YAW_NARRATION_SYSTEM.removeOwner(App, moduleId);
         }
+        if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') YAW_MEDIA_REPOSITORY.releaseOwner(moduleId);
         for (const key of [...this.settingActions.keys()]) {
             if (key.startsWith(`${moduleId}:`)) this.settingActions.delete(key);
         }
@@ -1984,6 +2147,30 @@ const MODULE_SYSTEM = {
             getContext(options = {}) {
                 self._requirePermission(moduleId, manifest, 'ui.read');
                 return self.getPublicContext(options);
+            },
+
+            media: {
+                async list() {
+                    self._requirePermission(moduleId, manifest, 'media:read');
+                    return YAW_MEDIA_REPOSITORY.listOwner(moduleId);
+                },
+
+                async metadata(resourceId) {
+                    self._requirePermission(moduleId, manifest, 'media:read');
+                    return YAW_MEDIA_REPOSITORY.metadata(moduleId, resourceId);
+                },
+
+                async acquire(resourceId, options = {}) {
+                    self._requirePermission(moduleId, manifest, 'media:read');
+                    return YAW_MEDIA_REPOSITORY.acquire(moduleId, resourceId, {
+                        fallbackProviderId: options?.fallbackProviderId ? String(options.fallbackProviderId) : undefined
+                    });
+                },
+
+                release(leaseId) {
+                    self._requirePermission(moduleId, manifest, 'media:read');
+                    return YAW_MEDIA_REPOSITORY.release(moduleId, leaseId);
+                }
             },
 
             getNarrationContext(options = {}) {
@@ -2203,6 +2390,7 @@ const MODULE_SYSTEM = {
             }
         }
         await this._transactionDone(tx);
+        if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') await YAW_MEDIA_REPOSITORY.removeOwner(moduleId);
         if (typeof CONTENT !== 'undefined' && CONTENT?.unregisterPolicyProvider) {
             CONTENT.unregisterPolicyProvider(moduleId);
         }

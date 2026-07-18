@@ -121,6 +121,54 @@ const ModUI = {
         await this.reviewRemoteUri(module.id);
     },
 
+    async beginAssetBundleUpdate(moduleId) {
+        const bundle = await MODULE_SYSTEM.getModuleAssetBundle(moduleId);
+        if (!bundle?.sourceUrl) return;
+        this.toggleRemoteImport(true);
+        const uri = document.getElementById('remote-module-uri');
+        const integrity = document.getElementById('remote-module-integrity');
+        if (uri) uri.value = bundle.sourceUrl;
+        if (integrity) integrity.value = '';
+        await this.reviewRemoteUri(moduleId);
+    },
+
+    async renderAssetBundleReview(review, output) {
+        const bundle = review.bundle;
+        const targetModule = (await MODULE_SYSTEM.getAllModules()).find(module => module.id === bundle.targetModuleId) || null;
+        const current = targetModule ? await MODULE_SYSTEM.getModuleAssetBundle(bundle.targetModuleId) : null;
+        const integrityNote = review.integrityVerified
+            ? this.label('mod.remoteIntegrityVerified', 'Matched the supplied SHA-256 pin.')
+            : this.label('mod.remoteIntegrityRecorded', 'No pin was supplied. This digest will be recorded for audit and future comparison.');
+        const targetState = !targetModule
+            ? this.label('mod.assetTargetMissing', 'Install target module {id} before this bundle.', { id: bundle.targetModuleId })
+            : targetModule.enabled
+                ? this.label('mod.assetTargetDisable', 'Disable target module {id} before installing or replacing this bundle.', { id: bundle.targetModuleId })
+                : this.label('mod.assetTargetReady', 'Target module {id} is installed and disabled.', { id: bundle.targetModuleId });
+        const replacement = current
+            ? `<p style="color:var(--accent-warning);margin:8px 0 0;">${this.escapeHtml(this.label('mod.assetReplace', 'Installing replaces asset bundle {name} v{version} after every new resource verifies.', { name: current.name, version: current.version }))}</p>`
+            : '';
+        output.innerHTML = `
+            <div style="border:1px solid var(--border-default);background:var(--bg-tertiary);border-radius:var(--radius-sm);padding:12px;margin-top:12px;">
+                <strong>${this.escapeHtml(bundle.name)} v${this.escapeHtml(bundle.version)}</strong>
+                <p style="color:var(--text-muted);margin:6px 0;">${this.escapeHtml(bundle.description || this.label('mod.noDescription', 'No description'))}</p>
+                <dl style="display:grid;grid-template-columns:max-content 1fr;gap:4px 10px;font-size:12px;margin:8px 0;overflow-wrap:anywhere;">
+                    <dt>${this.escapeHtml(this.label('mod.assetPackageType', 'Package'))}</dt><dd>${this.escapeHtml(this.label('mod.assetBundleV1', 'Asset Bundle V1 (code-free)'))}</dd>
+                    <dt>${this.escapeHtml(this.label('mod.assetTarget', 'Target module'))}</dt><dd>${this.escapeHtml(bundle.targetModuleId)}</dd>
+                    <dt>${this.escapeHtml(this.label('mod.remoteRating', 'Content rating'))}</dt><dd>${this.escapeHtml(bundle.contentRating)}</dd>
+                    <dt>${this.escapeHtml(this.label('mod.assetResources', 'Resources'))}</dt><dd>${bundle.resourceCount} • ${bundle.totalByteLength} bytes</dd>
+                    <dt>${this.escapeHtml(this.label('mod.assetRoles', 'Roles'))}</dt><dd>${this.escapeHtml(bundle.roles.join(', '))}</dd>
+                    <dt>${this.escapeHtml(this.label('mod.assetLicense', 'License'))}</dt><dd>${this.escapeHtml(bundle.license)}</dd>
+                    <dt>SHA-256</dt><dd><code>${this.escapeHtml(review.integrity)}</code></dd>
+                    <dt>${this.escapeHtml(this.label('mod.remoteSize', 'Manifest download'))}</dt><dd>${this.escapeHtml(String(review.byteLength))} bytes</dd>
+                </dl>
+                <p style="font-size:12px;color:${targetModule && !targetModule.enabled ? 'var(--accent-primary)' : 'var(--accent-warning)'};margin:6px 0;">${this.escapeHtml(targetState)}</p>
+                <p style="font-size:12px;color:${review.integrityVerified ? 'var(--accent-primary)' : 'var(--accent-warning)'};margin:6px 0;">${this.escapeHtml(integrityNote)}</p>
+                <p style="font-size:12px;color:var(--text-muted);margin:6px 0;">${this.escapeHtml(this.label('mod.assetReviewNotice', 'The manifest contains no executable code. Confirming downloads every resource, verifies its declared hash, and stores a local copy before replacing the current bundle.'))}</p>
+                ${replacement}
+                <button class="nav-btn" type="button" style="margin-top:8px;" ${targetModule && !targetModule.enabled ? '' : 'disabled'} onclick="ModUI.installReviewedRemote()">${this.escapeHtml(this.label('mod.remoteInstallReviewed', 'Install reviewed package'))}</button>
+            </div>`;
+    },
+
     async reviewRemoteUri(previousModuleId = '') {
         const uriInput = document.getElementById('remote-module-uri');
         const integrityInput = document.getElementById('remote-module-integrity');
@@ -132,6 +180,12 @@ const ModUI = {
         if (button) button.disabled = true;
         try {
             const review = await MODULE_SYSTEM.reviewRemoteModule(uriInput.value, integrityInput?.value || '');
+            if (review.kind === 'asset_bundle_v1') {
+                this.pendingRemoteReview = review;
+                await this.renderAssetBundleReview(review, output);
+                this.logRemote(this.label('mod.assetReviewedLog', 'Reviewed asset bundle: {name} v{version}', { name: review.bundle.name, version: review.bundle.version }));
+                return;
+            }
             const installed = (await MODULE_SYSTEM.getAllModules()).find(module => module.id === review.manifest.id) || null;
             review.previousModuleId = previousModuleId || installed?.id || '';
             review.previousIntegrity = installed?.integrity || '';
@@ -165,7 +219,7 @@ const ModUI = {
         } catch (error) {
             const message = error?.message || String(error);
             output.innerHTML = `<p style="color:var(--accent-danger);margin:8px 0;">${this.escapeHtml(message)}</p>`;
-            this.logRemote(this.label('mod.remoteFailedLog', 'Remote module review failed: {message}', { message }), 'error');
+            this.logRemote(this.label('mod.remoteFailedLog', 'Remote package review failed: {message}', { message }), 'error');
             console.error(error);
         } finally {
             if (button) button.disabled = false;
@@ -175,6 +229,39 @@ const ModUI = {
     async installReviewedRemote() {
         const review = this.pendingRemoteReview;
         if (!review) return;
+        if (review.kind === 'asset_bundle_v1') {
+            const bundle = review.bundle;
+            const warning = this.label('mod.assetConfirm', 'Install {name} v{version} for {module}? The game will download and verify {count} resources ({bytes} bytes) before replacing its current bundle.', {
+                name: bundle.name,
+                version: bundle.version,
+                module: bundle.targetModuleId,
+                count: bundle.resourceCount,
+                bytes: bundle.totalByteLength
+            });
+            if (!confirm(warning)) return;
+            const output = document.getElementById('remote-module-review');
+            try {
+                await MODULE_SYSTEM.installReviewedRemoteAssetBundle(review, {
+                    onProgress: progress => {
+                        if (!output) return;
+                        const completed = Number(progress.index || 0);
+                        const count = Number(progress.count || bundle.resourceCount);
+                        output.innerHTML = `<p style="color:var(--text-muted);margin:8px 0;">${this.escapeHtml(this.label('mod.assetInstalling', 'Installing asset bundle: {completed}/{count} resources verified...', { completed, count }))}</p>`;
+                    }
+                });
+                this.pendingRemoteReview = null;
+                this.logRemote(this.label('mod.assetInstalledLog', 'Installed asset bundle: {name} v{version} for {module}', { name: bundle.name, version: bundle.version, module: bundle.targetModuleId }));
+                if (output) output.innerHTML = `<p style="color:var(--accent-primary);margin:8px 0;">${this.escapeHtml(this.label('mod.assetInstalled', 'Asset bundle installed locally. Enable its target module when ready.'))}</p>`;
+                await this.refreshModList();
+            } catch (error) {
+                const message = error?.message || String(error);
+                this.logRemote(this.label('mod.assetInstallFailedLog', 'Asset bundle install failed: {message}', { message }), 'error');
+                if (output) output.innerHTML = `<p style="color:var(--accent-danger);margin:8px 0;">${this.escapeHtml(message)}</p>`;
+                alert(message);
+                console.error(error);
+            }
+            return;
+        }
         const warning = this.label('mod.remoteConfirm', 'Install {name} v{version}? Its trusted-local code can access the game page. The package will be stored locally and will not be enabled automatically.', {
             name: review.manifest.name,
             version: review.manifest.version
@@ -195,6 +282,17 @@ const ModUI = {
             this.logRemote(this.label('mod.remoteInstallFailedLog', 'Remote module install failed: {message}', { message }), 'error');
             alert(message);
             console.error(error);
+        }
+    },
+
+    async removeAssetBundle(moduleId) {
+        if (!confirm(this.label('mod.assetRemoveConfirm', 'Remove this module\'s installed asset bundle? The module must be disabled.'))) return;
+        try {
+            await MODULE_SYSTEM.removeModuleAssetBundle(moduleId);
+            this.logRemote(this.label('mod.assetRemovedLog', 'Removed asset bundle for {module}', { module: moduleId }));
+            await this.refreshModList();
+        } catch (error) {
+            alert(error?.message || String(error));
         }
     },
     
@@ -349,6 +447,10 @@ const ModUI = {
             mod.id,
             await MODULE_SYSTEM.getDeclaredModuleSettings(mod.id, mod.manifest || {})
         ])));
+        const bundlesByModule = Object.fromEntries(await Promise.all(modules.map(async mod => [
+            mod.id,
+            await MODULE_SYSTEM.getModuleAssetBundleStatus(mod.id)
+        ])));
 
         container.innerHTML = modules.map(mod => {
             const manifest = mod.manifest || {};
@@ -378,6 +480,15 @@ const ModUI = {
             const sourceDetails = mod.provenance === 'remote'
                 ? `<details style="font-size:11px;color:var(--text-muted);margin-top:5px;"><summary>${this.escapeHtml(this.label('mod.remoteSource', 'Remote source'))}</summary><div style="overflow-wrap:anywhere;margin-top:4px;">${this.escapeHtml(mod.sourceUrl)}</div><div>SHA-256: <code>${this.escapeHtml(mod.integrity)}</code>${mod.integrityVerified ? ` • ${this.escapeHtml(this.label('mod.remotePinned', 'pin verified'))}` : ''}</div></details>`
                 : '';
+            const bundle = bundlesByModule[mod.id];
+            const bundleHealth = bundle?.health?.ok === false
+                ? `<div style="color:var(--accent-warning);margin-top:4px;">${this.escapeHtml(this.label('mod.assetStatusRepair', 'Status: repair needed ({missing} missing)', { missing: bundle.health.missing?.length || Math.max(0, bundle.health.expectedCount - bundle.health.catalogCount) }))}</div>`
+                : bundle
+                    ? `<div style="color:var(--accent-primary);margin-top:4px;">${this.escapeHtml(this.label('mod.assetStatusReady', 'Status: verified locally'))}</div>`
+                    : '';
+            const bundleDetails = bundle
+                ? `<details style="font-size:11px;color:var(--text-muted);margin-top:5px;"><summary>${this.escapeHtml(this.label('mod.assetInstalledBundle', 'Installed asset bundle'))}: ${this.escapeHtml(bundle.name)} v${this.escapeHtml(bundle.version)}</summary><div style="margin-top:4px;">${bundle.resourceCount} ${this.escapeHtml(this.label('mod.assetResourcesLower', 'resources'))} • ${bundle.totalByteLength} bytes • ${this.escapeHtml(bundle.roles?.join(', ') || 'media')}</div><div>${this.escapeHtml(this.label('mod.assetLicense', 'License'))}: ${this.escapeHtml(bundle.license)}</div>${bundleHealth}<div style="overflow-wrap:anywhere;">${this.escapeHtml(bundle.sourceUrl)}</div><div>SHA-256: <code>${this.escapeHtml(bundle.integrity)}</code>${bundle.integrityVerified ? ` • ${this.escapeHtml(this.label('mod.remotePinned', 'pin verified'))}` : ''}</div></details>`
+                : '';
             return `
             <div style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 
                         border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px;
@@ -398,9 +509,10 @@ const ModUI = {
                     </div>
                     ${availabilityReason}
                     ${sourceDetails}
+                    ${bundleDetails}
                     ${settings}
                 </div>
-                <div style="display: flex; gap: 8px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
                     <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="toggle-module" style="padding: 6px 12px; font-size: 12px;"
                             title="${toggleTitle}" aria-label="${enableTitle}" ${toggleAllowed ? '' : 'disabled'}
                             onclick="ModUI.toggleModule('${id}')">
@@ -412,6 +524,7 @@ const ModUI = {
                         🗑️ ${deleteLabel}
                     </button>` : ''}
                     ${mod.provenance === 'remote' ? `<button class="nav-btn" type="button" style="padding:6px 12px;font-size:12px;" onclick="ModUI.beginRemoteUpdate('${id}')">${this.escapeHtml(this.label('mod.remoteReviewSource', 'Review source'))}</button>` : ''}
+                    ${bundle ? `<button class="nav-btn" type="button" style="padding:6px 12px;font-size:12px;" onclick="ModUI.beginAssetBundleUpdate('${id}')">${this.escapeHtml(this.label(bundle.health?.ok === false ? 'mod.assetRepairSource' : 'mod.assetReviewSource', bundle.health?.ok === false ? 'Review source to repair' : 'Review asset source'))}</button><button class="nav-btn" type="button" style="padding:6px 12px;font-size:12px;color:var(--accent-danger);" ${mod.enabled ? 'disabled' : ''} onclick="ModUI.removeAssetBundle('${id}')">${this.escapeHtml(this.label('mod.assetRemove', 'Remove assets'))}</button>` : ''}
                 </div>
             </div>
         `;

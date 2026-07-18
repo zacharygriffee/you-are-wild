@@ -4,6 +4,10 @@ Content posture, optional provider ownership, and compatibility rules are
 defined in [Content Posture And Optional Providers](content-posture-and-providers.md).
 AI transport profiles, capabilities, and credential boundaries are defined in
 [AI Providers](ai-providers.md).
+Backend-neutral media acquisition, persistence, lease resolution, and provider
+priority are defined in [Media Repository And Provider Priority](media-repository.md).
+Code-free URI asset packaging, review, quotas, replacement, repair, and cleanup
+are defined in [Asset Bundle V1](asset-bundle-v1.md).
 The narration-specific lifecycle, prompt hierarchy, and reference packages are
 defined in [Narration Mods](narration-mods.md).
 
@@ -81,6 +85,7 @@ Explicit narration additionally requires structured `adultEligibility` metadata 
 Mutating runtime registries requires declared permissions:
 
 - `MODS.getContext(options)` requires `ui.read`
+- `MODS.media.list()`, `metadata()`, `acquire()`, and `release()` require `media:read`
 - `MODS.addBiome()` requires `world:add_biome`
 - `MODS.addSpecies()` requires `content:add_species`
 - `MODS.addItem()` requires `content:add_item`
@@ -89,6 +94,34 @@ Mutating runtime registries requires declared permissions:
 - `MODS.registerCreationOption()` requires `content:add_creation_option`
 
 If a module calls one of these APIs without the matching permission, enablement fails, partial runtime contributions are cleaned up, and the module remains disabled in storage.
+
+## Runtime Media Leases
+
+Media Repository V1 keeps binary payloads and their provider details outside
+module code. A module declaring `media:read` may list its installed resources,
+inspect normalized metadata, and acquire an opaque session lease:
+
+```js
+const resources = await MODS.media.list();
+const portrait = await MODS.media.acquire('portrait.hero');
+image.src = portrait.url;
+
+// Release when the presentation no longer uses the resource.
+MODS.media.release(portrait.leaseId);
+```
+
+The returned URL is session-scoped and must not be saved. Core releases every
+remaining lease when the module unloads. Replacing or deleting a module removes
+its catalog ownership, and content-addressed payloads are deleted only after
+their final owner is gone.
+
+Installation is host-managed rather than module-controlled. The installer may
+call `MODULE_SYSTEM.installModuleMedia(moduleId, descriptors, options)` after a
+module package is installed. HTTP acquisition requires explicit SHA-256, MIME,
+and byte-length metadata and permits HTTPS or HTTP loopback only. Bytes are
+copied into the selected durable store; modules do not hotlink the source URI.
+The initial `auto` route prefers IndexedDB. A configured endpoint/sidecar may be
+registered through the repository and selected explicitly as a source/store.
 
 ## Public Narrative Context
 
@@ -184,7 +217,12 @@ Mod work should be classified before implementation:
 
 - **Narrative/presentation mods** consume existing structured gameplay data and render it differently. They may register content templates, Scene Feed templates, safe summaries, Activity Log exporters, or optional LLM bridge output. They should read `SceneBeat`, `InteractionPlan`, `ActionOutcome`, Activity Log entries, content preferences, and public unit/tile summaries rather than parsing rendered prose as state.
 - **Structural/gameplay mods** add or alter game data and mechanics. They may register species, biomes, items, quest templates, encounter hooks, combat/action hooks, or balance constants through explicit APIs and permissions. They must preserve save compatibility boundaries, content-tier policy, and sapient/person-like interaction eligibility gates.
-- **Asset/content-pack mods** provide images, sprites, tilesets, local content packs, or template bundles. They need manifest provenance, content rating, relative paths, fallbacks, and clear ownership/licensing metadata before they are treated as more than local trusted fixtures.
+- **Asset/content-pack mods** may now use Asset Bundle V1 for code-free,
+  locally retained media attached to an installed `media:read` module. The
+  bundle handles provenance, content rating, relative URIs, hashes, quotas,
+  fallbacks, ownership, licensing, replacement, and cleanup; presentation
+  formats such as tilesets and sprite atlases remain separate downstream
+  contracts.
 
 Optional LLM-facing mods are narrative consumers, not core dependencies. Core gameplay must remain deterministic and readable without a model call, network request, or remote service. If a module prepares data for an LLM, it should emit bounded structured context from Scene Beats, Activity history, safe map summaries, quest state, and public unit metadata. It must not require hidden raw save internals, credentials, or unreviewed remote package behavior.
 

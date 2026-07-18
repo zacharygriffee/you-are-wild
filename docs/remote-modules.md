@@ -1,9 +1,9 @@
 # Remote Module Import
 
 The Mod Manager supports explicit, player-initiated package import from a URI.
-This is a transport and provenance feature for the existing trusted-local
-module lane. It is not a sandbox, marketplace, hotlink system, or automatic
-updater.
+It auto-detects trusted-local module packages and code-free Asset Bundle V1
+manifests. This is a transport and provenance feature, not a sandbox,
+marketplace, hotlink system, or automatic updater.
 
 ## Player Flow
 
@@ -13,10 +13,12 @@ updater.
 3. Optionally enter a known SHA-256 digest as 64 hexadecimal characters or an
    SRI-style `sha256-...` value.
 4. Choose **Review package**. No code executes during review.
-5. Review the module identity, version, description, content rating,
-   permissions, dependencies, size, and computed digest.
-6. Confirm installation. The package is copied into IndexedDB and remains
-   disabled until the player explicitly enables it.
+5. Review module identity, permissions, dependencies, rating, size, and digest,
+   or review an asset bundle's target, resource count, byte total, roles,
+   license, rating, and digest.
+6. Confirm installation. A module package is copied into IndexedDB and remains
+   disabled. For an asset bundle, every declared resource is downloaded and
+   verified before its target module's local catalog is replaced.
 
 Installed URI modules expose their source and recorded digest in the Mod
 Manager. **Review source** performs a new user-initiated download and review;
@@ -60,16 +62,22 @@ They remain player-removable when the host permits them.
 Module code still uses the `trusted-local` boundary and executes in the game
 page. The review warning is therefore a trust decision, not a security sandbox.
 
-## Asset-Pack Extension Seam
+## Asset Bundle V1
 
-Current version-1 packages may include the existing bounded JSON-style
-`assets` metadata object. They cannot hotlink arbitrary runtime media through
-this importer.
+Backend roles and implementation priority are defined in
+[Media Repository And Provider Priority](media-repository.md). IndexedDB and
+reviewed HTTP endpoint/sidecar providers come first; AI generation, packaged
+runtime bridges, and OPFS remain ordered backlog providers.
 
-Future asset packs should extend this acquisition contract rather than create
-a parallel downloader. An archive or multi-resource format will need explicit
-encoded and unpacked byte budgets, path traversal protection, per-resource
-digests, media-type checks, atomic blob storage, licensing/provenance metadata,
-fallback assets, capability declarations, and cleanup quotas. Until that
-format is designed, URI import intentionally handles one JSON module package
-only.
+Module packages may include their existing bounded JSON-style `assets`
+metadata object. Separately, [Asset Bundle V1](asset-bundle-v1.md) defines a
+code-free `yaw-asset-bundle` envelope with per-resource hashes, exact MIME and
+size declarations, roles, same-bundle fallbacks, provenance/licensing, quotas,
+local storage, repair status, and explicit replacement/removal.
+
+Asset Bundle V1 is a JSON manifest that points to individually verified
+resources; it is not an archive. A future archive transport would still need
+explicit encoded and unpacked budgets and path-traversal protection. Tileset,
+sprite, animation, audio, video, and 3D presentation schemas remain downstream
+and should consume the bundle/repository contracts rather than create a
+parallel downloader.

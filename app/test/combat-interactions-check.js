@@ -28,7 +28,7 @@ async function clearBrowserStorage(page) {
 
 async function createIndexedDb(page, name, stores = ['records']) {
   await page.evaluate(({ name, stores }) => new Promise((resolve, reject) => {
-    const version = name === 'YAW_Saves' ? 2 : 1;
+    const version = name === 'YAW_Modules' ? 3 : name === 'YAW_Saves' ? 2 : 1;
     const req = indexedDB.open(name, version);
     req.onupgradeneeded = event => {
       const db = event.target.result;
@@ -47,7 +47,7 @@ async function createIndexedDb(page, name, stores = ['records']) {
 
 async function putIndexedDbValue(page, name, store, key, value) {
   await page.evaluate(({ name, store, key, value }) => new Promise((resolve, reject) => {
-    const version = name === 'YAW_Saves' ? 2 : 1;
+    const version = name === 'YAW_Modules' ? 3 : name === 'YAW_Saves' ? 2 : 1;
     const req = indexedDB.open(name, version);
     req.onupgradeneeded = event => {
       const db = event.target.result;

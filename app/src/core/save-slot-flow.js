@@ -117,6 +117,10 @@ const YAW_SAVE_SLOT_FLOW = {
     },
 
     async deleteSlotConfirmed(app, slotName) {
+        return this.deleteSlotData(app, slotName, { showManager: true, resetActiveSlot: true });
+    },
+
+    async deleteSlotData(app, slotName, options = {}) {
         slotName = app._normalizeSaveSlotName(slotName, null);
         if (!slotName) return false;
         try {
@@ -132,8 +136,8 @@ const YAW_SAVE_SLOT_FLOW = {
                 app._removeStoredValue('lastSlot');
                 app._removeStoredValue('lastSaveTime');
             }
-            if (app._normalizeSaveSlotName(app.activeSlot) === slotName) app.activeSlot = 'slot1';
-            app.showSaveManager(app.saveManagerMode || 'load');
+            if (options.resetActiveSlot !== false && app._normalizeSaveSlotName(app.activeSlot) === slotName) app.activeSlot = 'slot1';
+            if (options.showManager !== false) app.showSaveManager(app.saveManagerMode || 'load');
             await app.refreshContinueButton();
             app._pruneUnreferencedWorldStore().catch(e => console.warn('World cleanup skipped after delete', e));
             return true;

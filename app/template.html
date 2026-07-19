@@ -9665,6 +9665,13 @@
                         <span>Hardcore Mode (delete save on death)</span>
                         <input type="checkbox" id="toggle-hardcore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-game-setting" data-setting-key="hardcore" onchange="App.settings.hardcore = this.checked; App.saveSettings()">
                     </label>
+                    <label style="display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                        <span data-i18n="settings.inventoryRecovery">Inventory after defeat</span>
+                        <select id="setting-inventory-recovery" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-game-setting" data-setting-key="inventoryRecovery" onchange="App.settings.inventoryRecovery = this.value; App.saveSettings()">
+                            <option value="death-bag" data-i18n="settings.inventoryRecovery.deathBag">Drop a recovery bag</option>
+                            <option value="retain" data-i18n="settings.inventoryRecovery.retain">Retain inventory</option>
+                        </select>
+                    </label>
                 </div>
             </div>
 

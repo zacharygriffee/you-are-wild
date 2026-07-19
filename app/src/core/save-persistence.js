@@ -83,6 +83,18 @@ const YAW_SAVE_PERSISTENCE = {
         return true;
     },
 
+    cancelAutoSave(app, options = {}) {
+        const state = this.autoSaveState(app);
+        if (state.timer) clearTimeout(state.timer);
+        state.timer = null;
+        state.dirty = false;
+        state.pendingImmediate = false;
+        if (options.suppress === true) app._autoSaveSuppressed = true;
+        this.clearSaveDirtyAll(app);
+        this.sparseSaveState(app).queueState = 'idle';
+        return true;
+    },
+
     dirtySaveDomains(app) {
         return Array.from(this.sparseSaveState(app).dirtyDomains);
     },
@@ -423,6 +435,7 @@ const YAW_SAVE_PERSISTENCE = {
             contentProfile: this.serializableClone(typeof MODULE_SYSTEM !== 'undefined' && typeof MODULE_SYSTEM.contentProfileSnapshot === 'function' ? MODULE_SYSTEM.contentProfileSnapshot() : null, null),
             safeAnchor: this.serializableClone(app.safeAnchor || null, null),
             defeatState: this.serializableClone(app.defeatState || null, null),
+            strandedCompanions: this.serializableClone(app.strandedCompanions || [], []),
             combatState: this.buildCombatDto(app),
             storyEvents: this.serializableClone(app.storyEvents || [], []),
             sceneNarrations: this.serializableClone(typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedRecords(app) : [], []),
@@ -685,7 +698,7 @@ const YAW_SAVE_PERSISTENCE = {
     },
 
     async runAutoSave(app) {
-        if (!app.player || app.screen !== 'game') return false;
+        if (app._autoSaveSuppressed || !app.player || app.screen !== 'game') return false;
         const state = this.autoSaveState(app);
         if (state.saving) {
             state.dirty = true;
@@ -717,6 +730,7 @@ const YAW_SAVE_PERSISTENCE = {
     },
 
     async flushAutoSave(app) {
+        if (app._autoSaveSuppressed) return false;
         const state = this.autoSaveState(app);
         if (state.timer) {
             clearTimeout(state.timer);
@@ -729,6 +743,7 @@ const YAW_SAVE_PERSISTENCE = {
 
     async autoSave(app) {
         const options = arguments[1] || {};
+        if (app._autoSaveSuppressed) return false;
         if (options.immediate === true) return this.flushAutoSave(app);
         if (!app.player || app.screen !== 'game') return false;
         const state = this.autoSaveState(app);

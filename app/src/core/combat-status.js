@@ -181,6 +181,9 @@ const YAW_COMBAT_STATUS = {
                 app._dropPartyCorpse(unit, 'status');
             }
         }
+        if (app.player?.CPun <= 0 && !app.defeatState?.terminal) {
+            app._handlePlayerFall?.({ cause: 'combat-status', source: 'combat-status' });
+        }
     }
 };
 

@@ -20,6 +20,7 @@ This is the short handoff for unfinished work. Completed implementation history 
 - Coast presentation now composes neutral reusable sand with immediate-water cardinal shoreline semantics. Danger sites use one anchor marker plus bounded regional influence, while immediate live threats remain a separate state.
 - Traversal Surface Geometry V1 now gives mobile and desktop equal square 3x3 map tracks. Desktop location prose lives in a sibling focus panel instead of forcing the current map cell to become oversized; mobile presence remains compact and contained. Combat continues to use the full stage.
 - The group-interaction regression gate is restored: combat micro-cards retain actor selection, collective combat plans may mark multiple targets, each participant pays once and contributes to every valid mark at slowest-participant timing, queued target lists survive saves, impossible reach remains a non-consuming correction, and interior generator v2 removes surface-biome POIs from deterministic room graphs.
+- Death/Defeat V2 now owns versioned `active`, `incapacitated`, `captured`, `dead`, `recovering`, and `run-ended` outcomes across direct combat, persistent combat damage, containment, legacy save migration, and pending recovery. Regular recovery returns the player alone, persists explicit stranded/dead companion records, and uses the selected recovery-bag or retain-inventory policy. Hardcore suppresses autosave and deletes only the active full/sparse slot and its resume metadata.
 
 ## Active Objectives
 
@@ -33,10 +34,12 @@ This is the short handoff for unfinished work. Completed implementation history 
 
 ### Mechanics/Core
 
-1. Playtest the size-scaled containment nutrition and rest-time digestion baseline before further retuning hunger, Spirit, action costs, recovery, XP, reward pacing, creature size, containment capacity, and Fight/Play/Feed/Feast/Flee tradeoffs.
-2. Harden multi-creature interaction edge cases only where behavior contradicts current actor-target-intent doctrine.
-3. Later, audit equipment reach, reach traits, snare/grab/pull, area distribution, blockers, and back-row defensive value. Do not expand row mechanics without a design decision.
-4. Design gameplay-bearing SFW body builds separately from stat-oriented traits. Explicit anatomy remains optional-provider gated.
+1. Playtest Death/Defeat V2 across longer saves, especially repeated death bags, full-pack partial retrieval, stranded companion follow-up, legacy saves, and Hardcore terminal causes supplied by future modules or environment systems.
+2. Design the first recovery route for stranded companions. Their persisted records are intentionally not auto-spawned or silently rejoined in V2.
+3. Use `docs/balance-scenario-baseline.md` for playtest comparisons before retuning hunger, Spirit, action costs, recovery, XP, reward pacing, creature size, containment capacity, or Fight/Play/Feed/Feast/Flee tradeoffs.
+4. Harden multi-creature interaction edge cases only where behavior contradicts `docs/multi-interaction-regression-matrix.md`.
+5. Later, audit equipment reach, reach traits, snare/grab/pull, area distribution, blockers, and back-row defensive value. Do not expand row mechanics without a design decision.
+6. Design gameplay-bearing SFW body builds separately from stat-oriented traits. Explicit anatomy remains optional-provider gated.
 
 ### Features
 
@@ -53,10 +56,12 @@ This is the short handoff for unfinished work. Completed implementation history 
 11. Keep later media providers ordered in backlog: AI generation as a reviewed Source at priority 3; Electron, Pear, or another packaged-runtime bridge at priority 4; and OPFS as an optional browser-storage optimization at priority 5. None may become a prerequisite for the downloaded `file://` game.
 12. Extend asset/content-pack presentation seams. Optional packs may eventually provide richer tilesets, sprites, portraits, audio, animated 2D media, and capability-gated 3D scenes, but their presentation formats must remain independent from storage providers and the bundle envelope.
 13. Consider archive transport only after real bundle use shows that individually hashed URI resources are insufficient. Archives still need unpacked-size budgets and safe relative paths; publisher signatures and community update discovery remain separate work.
+14. Add Ghost recovery as an opt-in mode after the terminal-state resolver and persistent shrine placement are proven. A ghost keeps identity and navigation but loses ordinary living combat, inventory use, hunger, recruitment, and physical interactions until reaching a known reachable resurrection shrine. Provide a guaranteed fallback route or home shrine so procedural maps and inaccessible interiors cannot soft-lock the run.
+15. Consider later recovery variants through the same resolver rather than separate death code: surviving companions can extract the player, a healer/faction can resurrect them for a coin debt or quest obligation, and a prior body/death bag can become a map landmark. These are downstream content hooks, not V2 baseline requirements.
 
 ### Release / Distribution
 
-1. Preserve immutable, rollback-ready hosted artifacts when the publishing workflow is formalized; publishing remains operator-mediated.
+1. Continue preserving immutable, rollback-ready hosted artifacts through the established Sites version workflow; publishing remains operator-mediated.
 2. Add a browsable archive when more than one player-facing release record exists. The bundled offline surface may continue to prioritize the current release.
 
 ## Operator-Mediated Decisions
@@ -78,6 +83,7 @@ generated artifact.
 
 ## References
 
+- `docs/immediate-backlog-plan.md`
 - `docs/changelog.md`
 - `docs/control-model.md`
 - `docs/combat-row-reach-audit.md`
@@ -89,6 +95,9 @@ generated artifact.
 - `docs/scene-feed-dsl.md`
 - `docs/holdings-model.md`
 - `docs/balance-cost-doctrine.md`
+- `docs/balance-scenario-baseline.md`
+- `docs/multi-interaction-regression-matrix.md`
+- `docs/map-tileset-acceptance.md`
 - `docs/feast-containment-v2.md`
 - `docs/save-sparse-delta.md`
 - `docs/testing.md`

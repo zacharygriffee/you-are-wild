@@ -152,36 +152,17 @@ const YAW_COMBAT_ENEMIES = {
                     app.log.push({ text: app._label('combat.godModeSaved', 'God Mode saved you from death!'), type: 'combat' });
                     app.renderLog(); app.nextTurn(); return;
                 }
-                app.log.push({ text: app._label('combat.playerFallen', 'You have fallen! Game Over!'), type: 'combat' });
-                app.renderLog();
-                if (app.settings.hardcore) {
-                    app.log.push({ text: app._label('combat.hardcoreSaveDeleted', 'HARDCORE MODE: Your save has been deleted.'), type: 'combat' });
+                const state = app._handlePlayerFall({ cause: 'combat-damage', source: 'enemy-fight' });
+                if (state?.terminal) {
+                    app.log.push({ text: app._label('combat.playerFallen', 'You have fallen! Game Over!'), type: 'combat' });
                     app.renderLog();
-                    app._removeStoredValue('lastSlot');
-                    app._removeStoredValue('lastSaveTime');
-                    for (let i = 1; i <= 5; i++) {
-                        app._removeSaveTime('slot' + i);
-                    }
-                    app._dbDelete('saves', app.activeSlot).catch(() => {});
-                    setTimeout(() => { App.showScreen('menu'); }, 2000);
-                } else {
-                    target.CPun = 0;
-                    target.CPle = 0;
-                    target.knockedOut = true;
-                    app.log.push({ text: app._label('combat.playerKnockedOut', 'You have been knocked out! Your party must finish the fight...'), type: 'combat' });
-                    app.renderLog(); app.renderParty();
-                    const livingAllies = app.party.filter(p => p.CPun > 0 && !p.knockedOut && p.name !== app.player.name);
-                    if (livingAllies.length === 0) {
-                        app.log.push({ text: app._label('combat.partyWipedOut', 'Your party has been wiped out!'), type: 'combat' });
-                        app.renderLog();
-                        app.endCombat('defeat');
-                        return;
-                    }
-                    app.log.push({ text: app._label('combat.alliesContinue', 'Your allies continue the fight...'), type: 'combat' });
-                    app.renderLog();
-                    app.nextTurn(); return;
+                    return;
                 }
-                app.combatState.active = false;
+                app.log.push({ text: app._label('combat.playerKnockedOut', 'You have been knocked out! Your party must finish the fight...'), type: 'combat' });
+                app.log.push({ text: app._label('combat.alliesContinue', 'Your allies continue the fight...'), type: 'combat' });
+                app.renderLog();
+                app.renderParty();
+                app.nextTurn();
                 return;
             }
             if (app._dropPartyCorpse(target, 'fight')) {

@@ -371,6 +371,7 @@ const WorldGen = (() => {
         const paths = {
             resourceSite: nearestResourceSite ? pathTo(nearestResourceSite.x, nearestResourceSite.y) : [],
             restCandidate: nearestRestCandidate ? pathTo(nearestRestCandidate.x, nearestRestCandidate.y) : [],
+            recoveryAnchor: nearestRestCandidate ? pathTo(nearestRestCandidate.x, nearestRestCandidate.y) : [],
             routeAccess: nearestRouteTile ? pathTo(nearestRouteTile.x, nearestRouteTile.y) : [],
             earlyPoi: nearestPoi ? pathTo(nearestPoi.x, nearestPoi.y) : []
         };
@@ -381,6 +382,7 @@ const WorldGen = (() => {
             resourceSite: paths.resourceSite.length > 0,
             routeAccess,
             restCandidate: paths.restCandidate.length > 0,
+            recoveryReachable: paths.recoveryAnchor.length > 0,
             connectedRestRoute: routeAccess && paths.restCandidate.length > 0,
             earlyPoi: poiCandidate && paths.earlyPoi.length > 0
         };

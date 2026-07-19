@@ -241,7 +241,15 @@ const YAW_HOLDINGS = {
             looted: Boolean(corpse.looted),
             depleted: Boolean(corpse.depleted || corpse.scavenged)
         }));
-        return { kind: 'ground', tile, items, remains };
+        const deathBags = (Array.isArray(tile?.deathBags) ? tile.deathBags : []).map((bag, index) => ({
+            kind: 'death-bag',
+            bag,
+            index,
+            id: String(bag.id || index),
+            itemCount: Array.isArray(bag.items) ? bag.items.length : 0,
+            gold: Math.max(0, Number(bag.gold) || 0)
+        }));
+        return { kind: 'ground', tile, items, remains, deathBags };
     },
 
     holdingEntryKind(entry) {
@@ -326,9 +334,18 @@ const YAW_HOLDINGS = {
 
     renderGroundSection(app, section) {
         const ground = section.ground;
-        let html = `<section class="holdings-section" data-holding-section="ground"><div class="holdings-section-title"><span>${app._escapeHtml(section.label)}</span><span>${ground.items.length + ground.remains.length}</span></div>`;
-        if (ground.items.length === 0 && ground.remains.length === 0) {
+        let html = `<section class="holdings-section" data-holding-section="ground"><div class="holdings-section-title"><span>${app._escapeHtml(section.label)}</span><span>${ground.items.length + ground.remains.length + ground.deathBags.length}</span></div>`;
+        if (ground.items.length === 0 && ground.remains.length === 0 && ground.deathBags.length === 0) {
             html += `<p class="holding-entry-meta">${app._escapeHtml(app._label('holdings.groundEmpty', 'Nothing loose here.'))}</p>`;
+        }
+        if (ground.deathBags.length > 0) {
+            html += `<div class="holdings-subtitle">${app._escapeHtml(app._label('recovery.deathBags', 'Recovery bags'))}</div>`;
+            ground.deathBags.forEach(entry => {
+                const id = app._escapeJsString(entry.id);
+                const recover = app._escapeHtml(app._label('recovery.collectDeathBag', 'Recover'));
+                const meta = app._escapeHtml(app._label('recovery.deathBagContents', '{items} item(s) · {gold} gold', { items: entry.itemCount, gold: entry.gold }));
+                html += `<div class="holdings-entry" data-holding-kind="death-bag"><div class="holding-entry-main"><div class="holding-entry-name">${app._escapeHtml(app._label('recovery.deathBag', 'Recovery bag'))}</div><div class="holding-entry-meta">${meta}</div></div><div class="holding-entry-actions"><button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="collect-death-bag" onclick="App.collectDeathBag('${id}');App.showInventory();">${recover}</button></div></div>`;
+            });
         }
         if (ground.items.length > 0) {
             const takeTitle = app._escapeHtml(app._label('ui.takeItems', 'Take Items'));

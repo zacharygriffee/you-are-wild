@@ -190,6 +190,7 @@ const YAW_SAVE_LOAD_FLOW = {
             app._recalculateEquipment(app.player, { inferBase: !loaded.questState?.playerEquipmentBaseStats });
             app.player.perks = loaded.questState?.playerPerks || app.player.perks || [];
             app.player.pendingPerkChoices = loaded.questState?.pendingPerkChoices || app.player.pendingPerkChoices || 0;
+            app.strandedCompanions = Array.isArray(loaded.questState?.strandedCompanions) ? loaded.questState.strandedCompanions : [];
             app.partyLeaderId = loaded.questState?.partyLeaderId || app._unitSelectionId(app.player);
             app.worldMeta = app._normalizeWorldMeta(loaded.worldMeta, {
                 worldId: 'world_legacy',
@@ -201,6 +202,7 @@ const YAW_SAVE_LOAD_FLOW = {
             app.activeInterior = null;
             app.interiorLocation = { x: 0, y: 0 };
             app.activeSlot = slotName;
+            app._autoSaveSuppressed = false;
             const hasInlineWorldMap = Boolean(loaded.worldMap && Object.keys(loaded.worldMap).length > 0);
             app._restoreWorldState(loaded);
             if (!hasInlineWorldMap) {

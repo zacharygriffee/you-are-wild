@@ -88,6 +88,8 @@ const YAW_COMBAT_LIFECYCLE = {
         if (outcome !== 'defeat' && app.player?.knockedOut) {
             app.player.knockedOut = false;
             app.player.CPun = Math.max(1, app.player.CPun || 0);
+            app._resolvePlayerState?.({ status: 'active', terminal: false, cause: 'rescued-after-combat', source: 'combat-lifecycle' });
+            app.defeatState = null;
             app.log.push({ text: app._label('combat.playerComesTo', '{name} comes to after the fight.', { name: app.player.name }), type: 'discovery' });
         }
         if (outcome === 'victory') {

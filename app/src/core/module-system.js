@@ -36,6 +36,7 @@ const MODULE_SYSTEM = {
         onDigestionTick: [],
         onSubActionExecute: [],
         onDefeat: [],
+        onPlayerState: [],
         onRegenerate: [],
         onPlayerMove: [],
         onGameStart: [],

@@ -42,6 +42,7 @@ const YAW_SETTINGS_FLOW = {
             sameSpeciesBonus: false, fluidEnabled: false,
             cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
             partyPlayFightMode: 'nonlethal',
+            inventoryRecovery: 'death-bag',
             highContrast: false, reducedMotion: false, fontSize: 14
         };
     },
@@ -70,6 +71,9 @@ const YAW_SETTINGS_FLOW = {
         normalized.partyPlayFightMode = ['nonlethal', 'lethal'].includes(source.partyPlayFightMode)
             ? source.partyPlayFightMode
             : defaults.partyPlayFightMode;
+        normalized.inventoryRecovery = ['death-bag', 'retain'].includes(source.inventoryRecovery)
+            ? source.inventoryRecovery
+            : defaults.inventoryRecovery;
         const parsedFontSize = Number(source.fontSize);
         normalized.fontSize = Math.max(12, Math.min(20, Number.isFinite(parsedFontSize) ? Math.round(parsedFontSize) : defaults.fontSize));
         return normalized;
@@ -325,6 +329,8 @@ const YAW_SETTINGS_FLOW = {
         document.getElementById('screen-settings').style.display = 'block';
         const hardcore = document.getElementById('toggle-hardcore');
         if (hardcore) hardcore.checked = app.settings.hardcore;
+        const inventoryRecovery = document.getElementById('setting-inventory-recovery');
+        if (inventoryRecovery) inventoryRecovery.value = app.settings.inventoryRecovery;
         app.updateTierButtons();
         void this.renderContentPolicySettings(app);
         app.updateCheatButtons();

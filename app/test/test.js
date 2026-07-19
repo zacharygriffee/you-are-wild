@@ -3549,6 +3549,23 @@ test('Balance system applies conservative hunger pressure and relief', () => {
   assertEqual(balance.costTitle(app, 'recruit', 'Recruit'), 'Recruit', 'No-cost contextual actions should not receive misleading cost text');
 });
 
+test('Balance scenario baseline reports deterministic survival and digestion pacing', () => {
+  const balance = loadBalanceSystemForTest();
+  const app = { BALANCE_V1: {} };
+  const report = balance.scenarioBaseline(app);
+  assertEqual(report.commandsToHungryFromSated.move, 70, 'Seventy ordinary moves should reach the hungry threshold from sated');
+  assertEqual(report.commandsToHungryFromSated.fight, 24, 'Twenty-four Fight commands should cross the hungry threshold from sated');
+  assertEqual(report.commandsToHungryFromSated.fuck, 18, 'Eighteen Play commands should cross the hungry threshold from sated');
+  assertEqual(report.emptyRest.restsToHungry, 9, 'Nine empty rests should cross the hungry threshold');
+  assertEqual(report.emptyRest.hoursToHungry, 72, 'Empty-rest hunger pacing should report elapsed hours');
+  const fastLarge = report.digestion.find(entry => entry.size === 6 && entry.rate === 5);
+  const slowLarge = report.digestion.find(entry => entry.size === 6 && entry.rate === 2);
+  assertEqual(fastLarge.ticks, 20, 'Fast digestion should complete in twenty ticks');
+  assertEqual(slowLarge.ticks, 50, 'Slow digestion should complete in fifty ticks');
+  assertEqual(fastLarge.nutrition, slowLarge.nutrition, 'Fast and slow digestion should preserve equal total nutrition');
+  assert(fastLarge.netRestHunger < 0, 'A large fast-digesting meal should more than offset one rest hunger cost');
+});
+
 test('Rest increases hunger while accelerated digestion can provide size-scaled relief', () => {
   const { App } = loadAppForCombat(() => 0.5);
   const contained = makeUnit('Contained', { id: 'rest-contained', CPun: 100, MPun: 100, size: 4, alive: true, inStomach: true });
@@ -6911,6 +6928,9 @@ test('Static setup review and system controls identify non-composer surfaces', (
   assertNotContains(template, 'id="tier-adult"', 'Default settings should not present a built-in Adult posture');
   assertNotContains(template, 'id="toggle-explicit"', 'Default settings should not present a built-in explicit-content toggle');
   assertContains(template, 'id="toggle-hardcore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-game-setting" data-setting-key="hardcore"', 'Game setting toggles should identify as settings system controls');
+  assertContains(template, 'id="setting-inventory-recovery" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-game-setting" data-setting-key="inventoryRecovery"', 'Inventory recovery policy should be an explicit settings system control');
+  assertContains(template, 'value="death-bag" data-i18n="settings.inventoryRecovery.deathBag"', 'Death-bag recovery should be the localized default option');
+  assertContains(template, 'value="retain" data-i18n="settings.inventoryRecovery.retain"', 'Retain recovery should remain a localized lower-friction option');
   assertContains(template, 'id="setting-high-contrast" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-accessibility-setting" data-setting-key="highContrast"', 'Accessibility toggles should identify as settings system controls');
   assertContains(template, 'id="setting-font-size" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="fontSize"', 'Accessibility range inputs should identify as settings system controls');
   assertContains(template, 'id="cheat-godMode" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="godMode"', 'Cheat toggles should identify as system settings controls');
@@ -9383,6 +9403,164 @@ test('Defeat regeneration restores the safe anchor without clearing defeated til
   assertEqual(App.worldMap.get('7,-2').creatures[0].id, 'enemy-regenerate', 'Regenerate should not clear enemies from the defeat tile');
   assertEqual(autoSaveCalls, 1, 'Regenerate should autosave resumed exploration state');
   assert(hooks.some(hook => hook.event === 'onRegenerate'), 'Regenerate should emit an onRegenerate module hook');
+});
+
+test('Regular defeat strands companions and creates one recoverable death bag', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-death-bag', CPun: 0, MPun: 100, knockedOut: true });
+  const companion = makeUnit('Harpy', { id: 'companion-death-bag', CPun: 35, MPun: 50 });
+  App.player = player;
+  App.party = [player, companion];
+  App.inventory = [{ id: 'ordinary', name: 'Rations' }, { id: 'bound', name: 'Quest Token', questItem: true }];
+  App.player.gold = 17;
+  App.settings.inventoryRecovery = 'death-bag';
+  App.location = { x: 7, y: -2 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.defeatState = {
+    pending: true,
+    defeatedAt: { x: 7, y: -2, interior: false },
+    safeAnchor: { x: 0, y: 0, label: 'The Beginning' },
+    loggedAt: 12345
+  };
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'forest', creatures: [] }],
+    ['7,-2', { ...App.getBaseTile(7, -2), explored: true, biome: 'jungle', creatures: [], deathBags: [] }]
+  ]);
+  App.autoSave = () => true;
+
+  assertEqual(App.regenerateFromDefeat(), true, 'Regular recovery should complete');
+  assertEqual(App.party.length, 1, 'Regular recovery should return the player alone');
+  assertEqual(App.party[0], App.player, 'Recovered party should contain the player');
+  assertEqual(App.strandedCompanions.length, 1, 'Former companions should become explicit stranded records');
+  assertEqual(App.strandedCompanions[0].id, 'companion-death-bag', 'Stranded companion record should preserve identity');
+  assertEqual(App.inventory.length, 1, 'Protected items should remain in the pack');
+  assertEqual(App.inventory[0].id, 'bound', 'Quest items should be protected from death bags');
+  assertEqual(App.player.gold, 0, 'Dropped gold should leave the player');
+  const bag = App.worldMap.get('7,-2').deathBags[0];
+  assert(bag, 'Defeat tile should receive a recovery bag');
+  assertEqual(bag.items[0].id, 'ordinary', 'Recovery bag should contain ordinary pack items');
+  assertEqual(bag.gold, 17, 'Recovery bag should contain dropped gold');
+
+  App.location = { x: 7, y: -2 };
+  const ground = App._groundHoldings(App.worldMap.get('7,-2'));
+  assertEqual(ground.deathBags.length, 1, 'Holdings should expose recovery bags as explicit ground objects');
+  assertEqual(App.collectDeathBag(bag.id), true, 'Recovery bag should be collectable at its tile');
+  assert(App.inventory.some(item => item.id === 'ordinary'), 'Collected bag item should return to the pack');
+  assertEqual(App.player.gold, 17, 'Collected bag gold should return to the player');
+  assertEqual(App.worldMap.get('7,-2').deathBags.length, 0, 'Empty recovery bag should be removed');
+});
+
+test('Death bag collection preserves overflow until pack space is available', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'player-partial-bag', CPun: 30, MPun: 100 });
+  App.party = [App.player];
+  App.player.gold = 1;
+  App.inventory = Array.from({ length: App.MAX_INVENTORY }, (_, index) => ({
+    id: `packed-${index}`,
+    name: `Packed item ${index}`
+  }));
+  App.location = { x: 1, y: 1 };
+  const tile = {
+    ...App.getBaseTile(1, 1),
+    explored: true,
+    biome: 'plains',
+    creatures: [],
+    items: [],
+    deathBags: [{
+      id: 'death-bag-partial',
+      items: [{ id: 'recovery-a', name: 'Recovery A' }, { id: 'recovery-b', name: 'Recovery B' }],
+      gold: 5
+    }]
+  };
+  App.worldMap = new Map([['1,1', tile]]);
+  App.autoSave = () => true;
+
+  assertEqual(App.collectDeathBag('death-bag-partial'), true, 'A full pack should still inspect and collect available bag contents');
+  assertEqual(App.inventory.length, App.MAX_INVENTORY, 'A full pack should not overflow');
+  assertEqual(App.player.gold, 6, 'Gold should be recovered even when item capacity is full');
+  assertEqual(tile.deathBags.length, 1, 'A bag with unrecovered items should remain on the ground');
+  assertEqual(tile.deathBags[0].items.length, 2, 'All blocked items should remain in the bag');
+  assertEqual(tile.deathBags[0].gold, 0, 'Recovered gold should not be duplicated on a later collection');
+
+  App.inventory.splice(-2, 2);
+  assertEqual(App.collectDeathBag('death-bag-partial'), true, 'The same bag should be recoverable after capacity is freed');
+  assert(App.inventory.some(item => item.id === 'recovery-a'), 'First deferred item should be recovered');
+  assert(App.inventory.some(item => item.id === 'recovery-b'), 'Second deferred item should be recovered');
+  assertEqual(tile.deathBags.length, 0, 'The bag should be removed only after all contents are recovered');
+  assertEqual(App.player.gold, 6, 'Repeated collection should not duplicate previously recovered gold');
+});
+
+test('Retain recovery policy keeps inventory and gold while still separating companions', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-retain', CPun: 0, MPun: 100, knockedOut: true });
+  const companion = makeUnit('Slimefolk', { id: 'companion-retain', CPun: 30, MPun: 40 });
+  App.player = player;
+  App.party = [player, companion];
+  App.inventory = [{ id: 'kept', name: 'Kept Item' }];
+  App.player.gold = 9;
+  App.settings.inventoryRecovery = 'retain';
+  App.location = { x: 2, y: 2 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.defeatState = { pending: true, defeatedAt: { x: 2, y: 2 }, safeAnchor: App.safeAnchor, loggedAt: 67890 };
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'forest', creatures: [] }],
+    ['2,2', { ...App.getBaseTile(2, 2), explored: true, biome: 'plains', creatures: [], deathBags: [] }]
+  ]);
+  App.autoSave = () => true;
+
+  App.regenerateFromDefeat();
+  assertEqual(App.inventory[0].id, 'kept', 'Retain policy should preserve ordinary inventory');
+  assertEqual(App.player.gold, 9, 'Retain policy should preserve gold');
+  assertEqual(App.worldMap.get('2,2').deathBags.length, 0, 'Retain policy should not create a death bag');
+  assertEqual(App.strandedCompanions.length, 1, 'Retain policy should not change companion consequences');
+});
+
+test('Death resolver migrates legacy state and resolves a pending terminal outcome once', () => {
+  const { App, hooks } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'player-resolver', CPun: 0, MPun: 100 });
+  App.party = [App.player];
+  App.location = { x: 4, y: 6 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.defeatState = { pending: true, outcome: 'defeat', defeatedAt: { x: 4, y: 6 }, loggedAt: 123 };
+
+  const migrated = App._sanitizeLoadedDefeatState({
+    playerHp: 0,
+    party: [App.player],
+    questState: { defeatState: App.defeatState, safeAnchor: App.safeAnchor }
+  });
+  assertEqual(migrated, true, 'Legacy pending defeat should still load into recovery');
+  assertEqual(App.defeatState.schemaVersion, 2, 'Legacy defeat should migrate to the V2 schema');
+  assertEqual(App.defeatState.status, 'dead', 'Legacy pending defeat should migrate as terminal death');
+  const resolutionId = App.defeatState.resolutionId;
+  const firstHookCount = hooks.filter(hook => hook.event === 'onDefeat').length;
+  App._markDefeat('defeat');
+  assertEqual(App.defeatState.resolutionId, resolutionId, 'Repeated terminal resolution should preserve one outcome identity');
+  assertEqual(hooks.filter(hook => hook.event === 'onDefeat').length, firstHookCount, 'Repeated terminal resolution should not emit a duplicate defeat hook');
+});
+
+test('Hardcore finalization deletes only the active full and sparse slot data', async () => {
+  const { App, window } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'player-hardcore', CPun: 0, MPun: 100 });
+  App.party = [App.player];
+  App.activeSlot = 'slot3';
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App._setStoredValue('lastSlot', 'slot3');
+  const deletes = [];
+  App._dbDelete = async (store, key) => { deletes.push(`${store}:${key}`); };
+  App.refreshContinueButton = async () => true;
+  App._pruneUnreferencedWorldStore = async () => true;
+  const state = App._resolvePlayerState({ status: 'dead', terminal: true, cause: 'combat-damage', source: 'test' });
+
+  await window.YAW_DEFEAT_RECOVERY.finalizeHardcore(App, state);
+
+  assert(deletes.includes('saves:slot3'), 'Hardcore should delete the active full save');
+  assert(deletes.includes('saveManifests:slot3'), 'Hardcore should delete the active sparse manifest');
+  assert(deletes.some(entry => entry === 'saveRecords:slot3:player'), 'Hardcore should delete active sparse records');
+  assertEqual(deletes.some(entry => entry.includes('slot1')), false, 'Hardcore should leave unrelated slot1 data intact');
+  assertEqual(deletes.some(entry => entry.includes('slot2')), false, 'Hardcore should leave unrelated slot2 data intact');
+  assertEqual(App._getStoredValue('lastSlot'), null, 'Hardcore should clear resume metadata for the ended active slot');
+  assertEqual(App._autoSaveSuppressed, true, 'Hardcore should suppress autosave after the run ends');
+  assertEqual(App.defeatState.status, 'run-ended', 'Hardcore should finish in an explicit run-ended state');
 });
 
 test('Safe place action is available only on safe overworld rest-capable structures', () => {
@@ -15078,6 +15256,8 @@ test('Versioned start area validation guarantees early route and rest access', (
     assertEqual(result.checks.routeAccess, true, `Start should have nearby route access for seed ${seed}`);
     assertEqual(result.checks.restCandidate, true, `Start should have a nearby rest-site candidate for seed ${seed}`);
     assertEqual(result.checks.connectedRestRoute, true, `Start should have a reachable route to rest for seed ${seed}`);
+    assertEqual(result.checks.recoveryReachable, true, `Start should expose a reachable recovery-anchor seam for seed ${seed}`);
+    assert(result.paths.recoveryAnchor.length > 0, `Start should retain a deterministic recovery path for seed ${seed}`);
     assertEqual(result.checks.earlyPoi, true, `Start should have early POI availability for seed ${seed}`);
     assert(result.metrics.reachableTiles >= result.metrics.safeTiles, `Start validation should count safe terrain from reachable tiles for seed ${seed}`);
     assertEqual(result.metrics.nearestResourceSite?.x, -2, `Start validation should identify the deterministic resource-site x for seed ${seed}`);
@@ -15688,6 +15868,38 @@ test('Sparse map tile delta records round-trip through store shape', () => {
   assertEqual(restored.description, 'Stored delta tile.', 'Stored delta record should restore effective tile description');
   assertEqual(restored.items[0].name, 'Coin', 'Stored delta record should restore tile items');
   assertEqual(App.exploredTiles.has('-2,7'), true, 'Stored explored delta should repopulate explored set');
+});
+
+test('Death bags round-trip through deterministic tile deltas', () => {
+  const { App } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-death-bag', seed: 'death-bag-seed', generatorVersion: 1, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  const tile = App.getTile(3, 4);
+  tile.explored = true;
+  tile.deathBags = [{
+    id: 'death-bag-round-trip',
+    resolutionId: 'resolution-round-trip',
+    items: [{ id: 'round-trip-item', name: 'Recovered keepsake' }],
+    gold: 12,
+    createdAt: 12345,
+    cause: 'combat-damage',
+    sourceLocation: { x: 3, y: 4, interior: false }
+  }];
+  const delta = App.persistTileDelta(3, 4, tile);
+  const record = App._tileDeltaRecordFromEntry('3,4', delta);
+
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App._applyTileDeltaRecords([record]);
+  const restored = App.getTile(3, 4);
+  assertEqual(restored.deathBags.length, 1, 'Persistent tile deltas should restore recovery bags');
+  assertEqual(restored.deathBags[0].id, 'death-bag-round-trip', 'Recovery bag identity should survive sparse storage');
+  assertEqual(restored.deathBags[0].resolutionId, 'resolution-round-trip', 'Recovery resolution identity should survive sparse storage');
+  assertEqual(restored.deathBags[0].items[0].id, 'round-trip-item', 'Recovery bag items should survive sparse storage');
+  assertEqual(restored.deathBags[0].gold, 12, 'Recovery bag gold should survive sparse storage');
 });
 
 test('Sparse map store skips malformed tile delta records', () => {

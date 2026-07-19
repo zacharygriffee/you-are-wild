@@ -370,6 +370,7 @@
         contentProfile: typeof MODULE_SYSTEM !== 'undefined' && typeof MODULE_SYSTEM.contentProfileSnapshot === 'function' ? MODULE_SYSTEM.contentProfileSnapshot() : null,
         safeAnchor: appState.safeAnchor || null,
         defeatState: appState.defeatState || null,
+        strandedCompanions: appState.strandedCompanions || [],
         combatState
       }
     };

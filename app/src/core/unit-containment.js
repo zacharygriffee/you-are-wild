@@ -715,6 +715,9 @@ const YAW_UNIT_CONTAINMENT = {
     terminalize(app, holder, prey, config) {
         this.normalizeRecord(app, holder, prey, config.key || prey.containerId || 'stomach');
         if (prey.state === 'terminal' && prey.absorptionApplied) return prey;
+        const playerRef = app?._unitSelectionId?.(app.player) || app?.player?.id || app?.player?.name;
+        const preyRef = app?._unitSelectionId?.(prey) || prey?.id || prey?.name;
+        const isPlayer = Boolean(app?.player && (prey === app.player || (playerRef && String(playerRef) === String(preyRef))));
         const survivable = Boolean(app?.settings?.endoMode) && !app?.settings?.fatalVore;
         if (survivable) {
             prey.state = 'softened';
@@ -732,6 +735,7 @@ const YAW_UNIT_CONTAINMENT = {
                 this.emitContainmentBeat(app, 'softened', holder, prey, { deltas });
                 app?.log?.push?.({ text: `${prey.name} is fully softened inside ${holder.name} and can be released alive.`, type: 'combat' });
             }
+            if (isPlayer) app?._resolvePlayerState?.({ status: 'captured', terminal: false, cause: 'survivable-containment', source: 'unit-containment' });
             return prey;
         }
         prey.state = 'terminal';
@@ -750,6 +754,7 @@ const YAW_UNIT_CONTAINMENT = {
             this.emitContainmentBeat(app, 'terminal', holder, prey, { deltas });
             app?.log?.push?.({ text: `${prey.name} reaches terminal digestion inside ${holder.name}.`, type: 'combat' });
         }
+        if (isPlayer) app?._handlePlayerFall?.({ fatal: true, cause: 'fatal-digestion', source: 'unit-containment' });
         return prey;
     },
 

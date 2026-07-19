@@ -246,6 +246,8 @@ const YAW_CREATE_FLOW = {
         app.interiorLocation = { x: 0, y: 0 };
         app.safeAnchor = app._ensureSafeAnchor();
         app.defeatState = null;
+        app.strandedCompanions = [];
+        app._autoSaveSuppressed = false;
         app._emitModuleHook('onGameStart', {
             slotName: app.activeSlot,
             location: { ...app.location }

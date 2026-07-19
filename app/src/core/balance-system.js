@@ -151,6 +151,45 @@ const YAW_BALANCE_SYSTEM = {
             .filter(Boolean);
     },
 
+    scenarioBaseline(app) {
+        const cfg = this.ensure(app);
+        const turnsTo = (threshold, cost) => cost > 0 ? Math.ceil(threshold / cost) : null;
+        const digestion = (size, rate) => {
+            const nutrition = Math.min(100, Math.max(1, size) * cfg.relief.containmentNutritionPerSize);
+            const ticks = Math.ceil(100 / rate);
+            const restProgress = Math.min(100, rate * cfg.relief.restDigestionTicks);
+            const restNutrition = Math.floor(nutrition * restProgress / 100);
+            return {
+                size,
+                rate,
+                ticks,
+                nutrition,
+                immediateFullness: Math.min(20, Math.max(1, size) * cfg.relief.containmentFullnessPerSize),
+                restProgress,
+                restNutrition,
+                netRestHunger: cfg.relief.restHungerPressure - restNutrition
+            };
+        };
+        return {
+            thresholds: {
+                warning: cfg.hungerWarning,
+                hungry: cfg.hungerHungry,
+                starving: cfg.hungerStarving
+            },
+            commandsToHungryFromSated: Object.fromEntries(Object.entries(cfg.costs).map(([action, cost]) => [action, turnsTo(cfg.hungerHungry, cost)])),
+            emptyRest: {
+                hungerPerRest: cfg.relief.restHungerPressure,
+                restsToHungry: turnsTo(cfg.hungerHungry, cfg.relief.restHungerPressure),
+                hoursToHungry: turnsTo(cfg.hungerHungry, cfg.relief.restHungerPressure) * 8
+            },
+            digestion: [1, 3, 6].flatMap(size => [digestion(size, 5), digestion(size, 2)]),
+            spirit: {
+                breakthroughRatio: cfg.spiritThresholdRatio,
+                postResolveRatio: cfg.spiritPostResolveRatio
+            }
+        };
+    },
+
     spiritThresholdState(app, unit) {
         const cfg = this.ensure(app);
         if (!unit) return { reached: false, ratio: 0, threshold: cfg.spiritThresholdRatio };

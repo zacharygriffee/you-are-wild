@@ -847,6 +847,8 @@
             activeSlot: 'slot1',
             safeAnchor: null,
             defeatState: null,
+            strandedCompanions: [],
+            _autoSaveSuppressed: false,
             settings: {
                 powerDynamics: false, endoMode: false, slowDigestion: false,
                 fatalVore: false, chewing: false, allTheWayThrough: false,
@@ -856,6 +858,7 @@
                 sameSpeciesBonus: false, fluidEnabled: false,
                 cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
                 partyPlayFightMode: 'nonlethal',
+                inventoryRecovery: 'death-bag',
                 highContrast: false, reducedMotion: false, fontSize: 14
             },
 
@@ -1952,6 +1955,9 @@
 
             _balanceConfig() {
                 return YAW_BALANCE_SYSTEM.ensure(this);
+            },
+            _balanceScenarioBaseline() {
+                return YAW_BALANCE_SYSTEM.scenarioBaseline(this);
             },
             _applyHungerPressure(unit, amount, context = {}) {
                 return YAW_BALANCE_SYSTEM.applyHungerPressure(this, unit, amount, context);
@@ -5053,6 +5059,12 @@
             _markDefeat(outcome = 'defeat') {
                 return YAW_DEFEAT_RECOVERY.markDefeat(this, outcome);
             },
+            _resolvePlayerState(input = {}) {
+                return YAW_DEFEAT_RECOVERY.resolve(this, input);
+            },
+            _handlePlayerFall(input = {}) {
+                return YAW_DEFEAT_RECOVERY.handlePlayerFall(this, input);
+            },
             _sanitizeLoadedDefeatState(loaded = null) {
                 return YAW_DEFEAT_RECOVERY.sanitizeLoadedDefeat(this, loaded);
             },
@@ -5061,6 +5073,9 @@
             },
             regenerateFromDefeat() {
                 return YAW_DEFEAT_RECOVERY.regenerate(this);
+            },
+            collectDeathBag(bagId) {
+                return YAW_DEFEAT_RECOVERY.collectDeathBag(this, bagId);
             },
             endDefeatedRun() {
                 return YAW_DEFEAT_RECOVERY.endDefeatedRun(this);
@@ -5942,6 +5957,12 @@
             },
             async _deleteSlotConfirmed(slotName) {
                 return YAW_SAVE_SLOT_FLOW.deleteSlotConfirmed(this, slotName);
+            },
+            async _deleteSlotData(slotName, options = {}) {
+                return YAW_SAVE_SLOT_FLOW.deleteSlotData(this, slotName, options);
+            },
+            cancelAutoSave(options = {}) {
+                return YAW_SAVE_PERSISTENCE.cancelAutoSave(this, options);
             },
             async _dbOpen(dbName = this.SAVE_DB_NAME) { return YAW_STORAGE.dbOpen(this, dbName); },
             async _readSaveSlotPresence(slotNames) { return YAW_STORAGE.readSaveSlotPresence(this, slotNames); },

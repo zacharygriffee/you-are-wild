@@ -24,7 +24,11 @@ const YAW_BALANCE_SYSTEM = {
                 moveRow: 1
             },
             relief: {
-                rest: 10
+                rest: 0,
+                restHungerPressure: 8,
+                restDigestionTicks: 8,
+                containmentFullnessPerSize: 3,
+                containmentNutritionPerSize: 15
             }
         };
     },

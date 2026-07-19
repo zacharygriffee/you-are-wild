@@ -70,7 +70,6 @@ const YAW_COMBAT_ALLIES = {
                     const canEat = weakest.CPun <= weakest.MPun * 0.3 || (ally.Feas > weakest.Flee && ally.size >= weakest.size - 2);
                     if (canEat && app._canFitPrey(ally, weakest, 'stomach')) {
                         app._containTargetIn(ally, weakest, 'stomach');
-                        ally.hunger = Math.max(0, ally.hunger - 50);
                         ally.obedient = true;
                         app._awardCombatXP(app.XP_REWARDS.consumeEnemy);
                         app.log.push({ text: `${ally.name} is starving and eats ${weakest.name}! Loyalty restored.`, type: 'combat' });
@@ -102,7 +101,6 @@ const YAW_COMBAT_ALLIES = {
             if (predators.length > 0) {
                 const pred = predators.reduce((best, p) => p.hunger > best.hunger ? p : best, predators[0]);
                 app._containTargetIn(pred, ally, 'stomach', { willingSacrifice: true });
-                pred.hunger = Math.max(0, pred.hunger - 50);
                 pred.obedient = true;
                 app._awardCombatXP(app.XP_REWARDS.consumeEnemy);
                 app.log.push({ text: ally.name + ' willingly offers themself to ' + pred.name + "'s hunger, sliding into their belly.", type: 'combat' });
@@ -147,8 +145,10 @@ const YAW_COMBAT_ALLIES = {
         if (target.CPun <= 0) {
             result += ` ${target.name} collapses!`;
             app._awardCombatXP(app.XP_REWARDS.defeatEnemy);
-            if (app.settings.endoMode) { target.CPun = 1; target.disposition = app.DISPOSITION.FRIENDLY; }
-            else app._makeCorpse(target, 'fight');
+            if (app.settings.powerDynamics) {
+                app._subdueCreature(target, ally, { source: 'ally-fight' });
+                result += ` ${app._label('combat.subduedRecruitable', '{name} yields and may be recruited.', { name: target.name })}`;
+            } else app._makeCorpse(target, 'fight');
         }
         app.log.push({ text: result, type: 'combat' });
         app._emitCombatAction('ally_fight', ally, target, result);

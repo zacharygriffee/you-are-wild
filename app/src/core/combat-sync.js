@@ -415,8 +415,10 @@ const YAW_COMBAT_SYNC = {
                 if (sync.target.CPun <= 0) {
                     result += ` ${sync.target.name} is overwhelmed and collapses!`;
                     app._awardCombatXP(app.XP_REWARDS.defeatEnemy);
-                    if (app.settings.endoMode) { sync.target.CPun = 1; sync.target.disposition = app.DISPOSITION.FRIENDLY; }
-                    else app._makeCorpse(sync.target, 'fight');
+                    if (app.settings.powerDynamics) {
+                        app._subdueCreature(sync.target, sync.participants[0], { source: 'group-fight' });
+                        result += ` ${app._label('combat.subduedRecruitable', '{name} yields and may be recruited.', { name: sync.target.name })}`;
+                    } else app._makeCorpse(sync.target, 'fight');
                 }
                 break;
             }

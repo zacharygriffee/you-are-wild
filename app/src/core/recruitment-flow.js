@@ -4,6 +4,25 @@
  */
 
 const YAW_RECRUITMENT_FLOW = {
+    subdue(app, target, actor = app.player, options = {}) {
+        if (!target || app._isCorpse(target)) return null;
+        target.CPun = 1;
+        target.alive = true;
+        target.knockedOut = false;
+        target.disposition = app.DISPOSITION.FRIENDLY;
+        target.willing = true;
+        target.recruitReady = true;
+        target.subdued = true;
+        target.submission = {
+            by: app._unitSelectionId?.(actor) || actor?.id || actor?.name || null,
+            day: Number(app.dayCount || 0),
+            hour: Number(app.timeHour || 0),
+            source: options.source || 'fight'
+        };
+        app._normalizeUnit?.(target, { disposition: app.DISPOSITION.FRIENDLY });
+        return target;
+    },
+
     score(app, actor, target) {
         if (!actor || !target || app._isCorpse(target)) return 0;
         const pleasureRatio = (target.CPle || 0) / Math.max(1, target.MPle || 100);

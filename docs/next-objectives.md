@@ -33,7 +33,7 @@ This is the short handoff for unfinished work. Completed implementation history 
 
 ### Mechanics/Core
 
-1. Gather playtest data before retuning hunger, Spirit, action costs, recovery, XP, reward pacing, creature size, containment capacity, and Fight/Play/Feed/Feast/Flee tradeoffs.
+1. Playtest the size-scaled containment nutrition and rest-time digestion baseline before further retuning hunger, Spirit, action costs, recovery, XP, reward pacing, creature size, containment capacity, and Fight/Play/Feed/Feast/Flee tradeoffs.
 2. Harden multi-creature interaction edge cases only where behavior contradicts current actor-target-intent doctrine.
 3. Later, audit equipment reach, reach traits, snare/grab/pull, area distribution, blockers, and back-row defensive value. Do not expand row mechanics without a design decision.
 4. Design gameplay-bearing SFW body builds separately from stat-oriented traits. Explicit anatomy remains optional-provider gated.

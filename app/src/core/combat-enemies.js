@@ -93,7 +93,7 @@ const YAW_COMBAT_ENEMIES = {
             app.log.push({ text: app._label('combat.enemyFlees', '{name} flees in terror!', { name: enemy.name }), type: 'combat' });
             enemy.fledCombat = true;
             app._emitCombatAction('enemy_flee', enemy, null, 'fled');
-            app._removeCreatureFromArea(enemy);
+            app._relocateFleeingCreature(enemy, { source: 'combat-morale' });
             app.renderCreatures();
             app.renderLog();
             if (app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0).length === 0) {

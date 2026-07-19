@@ -3545,9 +3545,10 @@ test('Balance system applies conservative hunger pressure and relief', () => {
   assertEqual(balance.costTitle(app, 'recruit', 'Recruit'), 'Recruit', 'No-cost contextual actions should not receive misleading cost text');
 });
 
-test('Rest applies V1 hunger relief while preserving recovery and time pressure', () => {
+test('Rest increases hunger while accelerated digestion can provide size-scaled relief', () => {
   const { App } = loadAppForCombat(() => 0.5);
-  const player = makeUnit('You', { id: 'player-rest', CPun: 40, MPun: 100, hunger: 55 });
+  const contained = makeUnit('Contained', { id: 'rest-contained', CPun: 100, MPun: 100, size: 4, alive: true, inStomach: true });
+  const player = makeUnit('You', { id: 'player-rest', CPun: 40, MPun: 100, hunger: 55, stomach: [contained] });
   const ally = makeUnit('Ally', { id: 'ally-rest', CPun: 20, MPun: 90, hunger: 75 });
   App.player = player;
   App.party = [player, ally];
@@ -3559,8 +3560,9 @@ test('Rest applies V1 hunger relief while preserving recovery and time pressure'
   App.rest();
   assertEqual(player.CPun, 70, 'Rest should preserve existing recovery behavior for the player');
   assertEqual(ally.CPun, 50, 'Rest should preserve existing recovery behavior for party members');
-  assertEqual(player.hunger, 45, 'Rest should reduce player hunger pressure by the configured V1 relief');
-  assertEqual(ally.hunger, 65, 'Rest should reduce ally hunger pressure by the configured V1 relief');
+  assertEqual(player.hunger, 39, 'A size-four contained creature should more than offset overnight hunger through accelerated fast digestion');
+  assertEqual(ally.hunger, 83, 'Rest without contained nutrition should make the resting ally hungrier');
+  assertEqual(contained.digestionProgress, 40, 'Eight hours of rest should advance eight fast digestion ticks');
   assertEqual(App.timeHour, 14, 'Rest should preserve existing time pressure');
 });
 
@@ -4306,11 +4308,11 @@ test('Unit containment helper module is registered before app code', () => {
   assertContains(unitContainmentContent, 'createPrey(app, target, extra = {})', 'Unit containment helper should own contained-unit snapshots');
   assertContains(unitContainmentContent, 'emptyStatDrain()', 'Unit containment helper should own stat drain defaults');
   assertContains(unitContainmentContent, 'containerConfigs()', 'Unit containment helper should own containment processing configs');
-  assertContains(unitContainmentContent, 'processContainer(app, unit, config)', 'Unit containment helper should own per-container tick processing');
+  assertContains(unitContainmentContent, 'processContainer(app, unit, config, options = {})', 'Unit containment helper should own configurable per-container tick processing');
   assertContains(unitContainmentContent, "MODULE_SYSTEM.executeHook('onDigestionTick'", 'Unit containment helper should preserve module tick hooks');
   assertContains(appContent, 'YAW_UNIT_CONTAINMENT.createPrey(this, target, extra)', 'App contained-unit wrapper should delegate to unit containment');
-  assertContains(appContent, 'YAW_UNIT_CONTAINMENT.processContainer(this, unit, config)', 'App container processing wrapper should delegate to unit containment');
-  assertContains(appContent, 'YAW_UNIT_CONTAINMENT.process(this, unit)', 'App containment processing wrapper should delegate to unit containment');
+  assertContains(appContent, 'YAW_UNIT_CONTAINMENT.processContainer(this, unit, config, options)', 'App container processing wrapper should delegate configurable ticks to unit containment');
+  assertContains(appContent, 'YAW_UNIT_CONTAINMENT.process(this, unit, options)', 'App containment processing wrapper should delegate configurable ticks to unit containment');
 });
 
 test('Time system helper module is registered before app code', () => {
@@ -8479,6 +8481,42 @@ test('Digestion container configs preserve per-container drain behavior', () => 
   assertEqual(ballsPrey.Fuck, 10, 'Reserve tick should not directly mutate visible play stat');
 });
 
+test('Fast and slow digestion deliver the same size-scaled total nutrition', () => {
+  const run = slowDigestion => {
+    const { App } = loadAppForCombat();
+    const prey = makeUnit('Sized Prey', { id: `nutrition-${slowDigestion}`, CPun: 1000, MPun: 1000, size: 4, alive: true, inStomach: true });
+    const predator = makeUnit('Predator', { id: `predator-${slowDigestion}`, hunger: 90, stomach: [prey] });
+    App.player = predator;
+    App.party = [predator];
+    App.creatures = [];
+    App.settings.slowDigestion = slowDigestion;
+    App._processDigestion({ ticks: slowDigestion ? 50 : 20 });
+    return { hunger: predator.hunger, progress: prey.digestionProgress, applied: prey.nutritionReliefApplied };
+  };
+  const fast = run(false);
+  const slow = run(true);
+  assertEqual(fast.progress, 100, 'Fast digestion should complete after twenty five-point ticks');
+  assertEqual(slow.progress, 100, 'Slow digestion should complete after fifty two-point ticks');
+  assertEqual(fast.applied, 60, 'Size-four prey should provide sixty digestion nutrition points');
+  assertEqual(slow.applied, fast.applied, 'Slow digestion should spread nutrition over time without reducing its total');
+  assertEqual(slow.hunger, fast.hunger, 'Fast and slow completion should produce the same final hunger relief');
+});
+
+test('Containment gives modest immediate fullness before digestion nutrition', () => {
+  const { App } = loadAppForCombat();
+  const predator = makeUnit('Predator', { id: 'fullness-predator', hunger: 80, stomach: [] });
+  const prey = makeUnit('Prey', { id: 'fullness-prey', size: 4, CPun: 20, MPun: 20 });
+  App.player = predator;
+  App.party = [predator];
+  App.creatures = [prey];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'grove', creatures: [prey], items: [] }]]);
+  const contained = App._containTargetIn(predator, prey, 'stomach');
+  assert(contained, 'Containment should create a stored prey record');
+  assertEqual(predator.hunger, 68, 'Size-four containment should provide twelve points of immediate fullness');
+  assertEqual(contained.nutritionReliefApplied, 0, 'Immediate fullness should not consume the later digestion nutrition budget');
+});
+
 test('Status effects apply damage and expire during processing', () => {
   const { App } = loadAppForCombat();
   const unit = makeUnit('Target', {
@@ -9715,12 +9753,33 @@ test('Fight defeat converts enemies into corpses', () => {
   App.player = player;
   App.party = [player];
   App.creatures = [enemy];
+  App.settings.endoMode = true;
+  App.settings.powerDynamics = false;
   App.combatState.active = true;
   App.nextTurn = function() {};
   App.executeAction('fight', 0);
   assertEqual(enemy.disposition, App.DISPOSITION.CORPSE, 'Fight defeat should convert enemy to corpse disposition');
   assertEqual(enemy.CPun, 0, 'Corpse punishment should be zeroed');
   assertEqual(App._livingEnemies(App.creatures).length, 0, 'Corpses should not count as living enemies');
+});
+
+test('Power-dynamics submission leaves an explicit recruit-ready survivor', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'submission-player', Figh: 50, xp: 0, xpToNext: 1000 });
+  const enemy = makeUnit('Enemy', { id: 'submission-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 1, MPun: 100, con: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.settings.endoMode = false;
+  App.settings.powerDynamics = true;
+  App.combatState.active = true;
+  App.nextTurn = function() {};
+  App.executeAction('fight', 0);
+  assertEqual(enemy.CPun, 1, 'Submitted enemy should survive at minimal condition');
+  assertEqual(enemy.disposition, App.DISPOSITION.FRIENDLY, 'Submitted enemy should stop being hostile');
+  assertEqual(enemy.recruitReady, true, 'Submitted enemy should explicitly become recruit-ready');
+  assertEqual(App._canRecruit(player, enemy), true, 'Submitted enemy should be recruitable through the ordinary recruitment flow');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'may be recruited', 'Submission result should explain the recruitment opportunity');
 });
 
 test('Defeated enemies stay corpses after save and load', async () => {
@@ -18277,7 +18336,7 @@ test('Enemy morale flee is deterministic by combat state', () => {
   assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Enemy morale flee should not depend on ambient Math.random');
 });
 
-test('Enemy morale flee persists as area cleanup after save and load', async () => {
+test('Enemy morale flee persists on an adjacent tile after save and load', async () => {
   const Binary = loadBinaryForTest();
   const savedBuffers = [];
   const { App } = loadAppForCombat(() => 0, { binary: Binary });
@@ -18302,6 +18361,9 @@ test('Enemy morale flee persists as area cleanup after save and load', async () 
   App.enemyTurn(enemy);
   assertEqual(App.creatures.length, 0, 'Fled enemy should leave active creatures before saving');
   assertEqual(App.worldMap.get('0,0').creatures.length, 0, 'Fled enemy should leave persisted current tile before saving');
+  const destination = [...App.worldMap.values()].find(tile => tile.x !== 0 || tile.y !== 0 ? tile.creatures?.some(creature => creature.id === 'enemy-flee-save') : false);
+  assert(destination, 'Fled enemy should relocate to a valid adjacent tile instead of disappearing');
+  assertEqual(Math.abs(destination.x) + Math.abs(destination.y), 1, 'Fled enemy destination should be cardinally adjacent');
   const saved = await App._saveToSlotConfirmed('slot1');
   assertEqual(saved, true, 'Manual save should complete after enemy morale flee');
 
@@ -18312,6 +18374,8 @@ test('Enemy morale flee persists as area cleanup after save and load', async () 
   assertEqual(restored, true, 'Enemy-flee save should load');
   assertEqual(loadedApp.App.creatures.some(creature => creature.id === 'enemy-flee-save'), false, 'Fled enemy should not reload into area creatures');
   assertEqual(loadedApp.App.worldMap.get('0,0').creatures.some(creature => creature.id === 'enemy-flee-save'), false, 'Fled enemy should not reload into tile creatures');
+  const restoredDestination = loadedApp.App.worldMap.get(`${destination.x},${destination.y}`);
+  assertEqual(restoredDestination?.creatures?.some(creature => creature.id === 'enemy-flee-save'), true, 'Fled enemy should reload on its adjacent destination tile');
   assertEqual(loadedApp.App.combatState.active, false, 'Fled-enemy save should reload outside combat');
 });
 

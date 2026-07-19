@@ -187,6 +187,12 @@ const YAW_UNIT_CONTAINMENT = {
             : this.captureVitalProfile(prey);
         prey.digestionRate = Number.isFinite(prey.digestionRate) ? prey.digestionRate : profile.digestionRate || 5;
         prey.absorptionRate = Number.isFinite(prey.absorptionRate) ? prey.absorptionRate : profile.absorptionRate || 1;
+        const nutritionPerSize = Number(app?.BALANCE_V1?.relief?.containmentNutritionPerSize ?? 15);
+        const nutritionMax = Math.max(1, Math.min(100, Math.round(Math.max(1, Number(prey.size || 1)) * nutritionPerSize)));
+        prey.nutritionReliefMax = Number.isFinite(prey.nutritionReliefMax) ? Math.max(0, prey.nutritionReliefMax) : nutritionMax;
+        prey.nutritionReliefApplied = Number.isFinite(prey.nutritionReliefApplied) ? Math.max(0, prey.nutritionReliefApplied) : 0;
+        prey.nutritionReliefRemainder = Number.isFinite(prey.nutritionReliefRemainder) ? Math.max(0, prey.nutritionReliefRemainder) : 0;
+        prey.initialSatietyApplied = Boolean(prey.initialSatietyApplied);
         prey.temporaryStatEffects = Array.isArray(prey.temporaryStatEffects) ? prey.temporaryStatEffects : [];
         prey.modifiers = prey.modifiers && typeof prey.modifiers === 'object' ? prey.modifiers : {};
         prey.tags = Array.isArray(prey.tags) ? Array.from(new Set([...prey.tags, 'containment', prey.entryVerb, prey.integrity])) : ['containment', prey.entryVerb, prey.integrity];
@@ -198,6 +204,34 @@ const YAW_UNIT_CONTAINMENT = {
         prey.digestionState = prey.state === 'terminal' ? 'terminal' : prey.state === 'digested' ? 'digested' : prey.state === 'released' ? 'released' : prey.state === 'depleted' ? 'depleted' : prey.state === 'digesting' ? 'digesting' : 'contained';
         this.ensureStatDrain(prey);
         return prey;
+    },
+
+    applyInitialSatiety(app, holder, prey, containerId = 'stomach') {
+        if (!holder || !prey || prey.initialSatietyApplied) return 0;
+        prey.initialSatietyApplied = true;
+        if (containerId !== 'stomach') return 0;
+        const perSize = Number(app?.BALANCE_V1?.relief?.containmentFullnessPerSize ?? 3);
+        const relief = Math.max(1, Math.min(20, Math.round(Math.max(1, Number(prey.size || 1)) * perSize)));
+        const before = Math.max(0, Number(holder.hunger || 0));
+        holder.hunger = Math.max(0, before - relief);
+        return before - holder.hunger;
+    },
+
+    applyDigestionNutrition(app, holder, prey, progressDelta = 0) {
+        if (!holder || !prey || progressDelta <= 0) return 0;
+        const maximum = Math.max(0, Number(prey.nutritionReliefMax || 0));
+        const applied = Math.max(0, Number(prey.nutritionReliefApplied || 0));
+        const remaining = Math.max(0, maximum - applied);
+        if (remaining <= 0) return 0;
+        const raw = maximum * (Math.max(0, Number(progressDelta)) / 100) + Math.max(0, Number(prey.nutritionReliefRemainder || 0));
+        const requested = Math.min(remaining, Math.floor(raw));
+        prey.nutritionReliefRemainder = Math.max(0, raw - Math.floor(raw));
+        if (requested <= 0) return 0;
+        const before = Math.max(0, Number(holder.hunger || 0));
+        holder.hunger = Math.max(0, before - requested);
+        const actual = before - holder.hunger;
+        prey.nutritionReliefApplied = applied + requested;
+        return actual;
     },
 
     normalizeContainer(app, holder, containerId = 'stomach') {
@@ -647,11 +681,15 @@ const YAW_UNIT_CONTAINMENT = {
         if (!holder || !prey || prey.absorptionApplied) return [];
         const size = Math.max(1, Number(prey.size || 1));
         const healAmount = Math.max(1, Math.min(12, Math.floor(size * 2)));
-        const hungerRelief = Math.max(4, Math.min(35, Math.floor(size * 8)));
         const beforeHp = Number(holder.CPun || 0);
         const beforeHunger = Number(holder.hunger || 0);
         holder.CPun = Math.min(holder.MPun || beforeHp || 1, beforeHp + healAmount);
-        holder.hunger = Math.max(0, beforeHunger - hungerRelief);
+        const remainingNutrition = Math.max(0, Number(prey.nutritionReliefMax || 0) - Number(prey.nutritionReliefApplied || 0));
+        if (remainingNutrition > 0) {
+            holder.hunger = Math.max(0, beforeHunger - remainingNutrition);
+            prey.nutritionReliefApplied = Number(prey.nutritionReliefApplied || 0) + remainingNutrition;
+            prey.nutritionReliefRemainder = 0;
+        }
         const effect = {
             id: `containment-${prey.containedId || prey.name || 'prey'}`,
             source: 'containment',
@@ -726,7 +764,8 @@ const YAW_UNIT_CONTAINMENT = {
         ];
     },
 
-    processContainer(app, unit, config) {
+    processContainer(app, unit, config, options = {}) {
+        const ticks = Math.max(1, Math.floor(Number(options.ticks) || 1));
         for (const prey of (unit[config.key] || [])) {
             this.normalizeRecord(app, unit, prey, config.key);
             if (this.isTerminalVitalState(prey) && !['released', 'passed', 'depleted'].includes(prey.state)) {
@@ -737,18 +776,21 @@ const YAW_UNIT_CONTAINMENT = {
             this.ensureStatDrain(prey);
             if (config.advanceContained && prey.digestionState === 'contained') prey.digestionState = 'digesting';
             const rate = app.settings.slowDigestion ? config.slowRate : config.fastRate;
-            prey.progress = Math.min(100, (prey.progress || prey.digestionProgress || 0) + rate);
+            const beforeProgress = Math.max(0, Number(prey.progress || prey.digestionProgress || 0));
+            prey.progress = Math.min(100, beforeProgress + rate * ticks);
             prey.digestionProgress = prey.progress;
             prey.state = prey.progress > 0 ? 'digesting' : 'contained';
             prey.digestionState = prey.state;
-            const drain = Math.max(1, Math.floor(rate * 0.3));
+            const progressDelta = prey.progress - beforeProgress;
+            const drain = Math.max(1, Math.floor(progressDelta * 0.3));
             for (const stat of config.stats) {
                 prey.statDrain[stat] += drain;
             }
-            const conditionDrain = Math.max(1, Math.floor(rate * 0.4));
+            const conditionDrain = Math.max(1, Math.floor(progressDelta * 0.4));
             this.applyVitalDamage(prey, conditionDrain, { source: 'digestion-tick' });
+            this.applyDigestionNutrition(app, unit, prey, progressDelta);
             if (app.settings.statAbsorption) {
-                app._absorbStats(unit, rate, config.stats);
+                app._absorbStats(unit, progressDelta, config.stats);
             }
             if (!prey.digestingSceneBeatEmitted && prey.progress >= 50) {
                 prey.digestingSceneBeatEmitted = true;
@@ -762,12 +804,12 @@ const YAW_UNIT_CONTAINMENT = {
         }
     },
 
-    process(app, unit) {
+    process(app, unit, options = {}) {
         if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM.executeHook) {
             MODULE_SYSTEM.executeHook('onDigestionTick', { unit, app }).catch(() => {});
         }
         for (const config of this.containerConfigs()) {
-            this.processContainer(app, unit, config);
+            this.processContainer(app, unit, config, options);
         }
     }
 };

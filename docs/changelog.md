@@ -30,6 +30,8 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Recent Fixes
 
+- Hunger and containment now use size-scaled nutrition: stomach entry gives modest immediate fullness, digestion distributes the larger nutrition budget by actual progress, and slow digestion preserves the same total while taking more ticks. Rest no longer feeds the party; eight resting hours add hunger while accelerating digestion eight ticks, so empty holders wake hungrier and meaningful meals can offset the cost.
+- Fleeing non-party creatures now relocate deterministically to a valid adjacent overworld tile or connected interior room instead of disappearing. `Survivable containment` no longer changes Fight defeat; optional `Power dynamics` now owns explicit submission and leaves a friendly, recruit-ready survivor.
 - Non-room cells in bundled cave networks and burrows now render as near-black negative space instead of repeating literal wall sprites. Traversal remains blocked, wall semantics remain in the DOM, and replacement packs may still author visible cave boundaries.
 - Cave-network and burrow corridors now use the same exact 50% edge contract as surface roads, with a dark stone treatment for isolated chambers, ends, straights, corners, T-junctions, and intersections. Building-room skins and replacement-pack art remain independent.
 - Generated roads over deep water now survive only when the full crossing resolves as a traversable bridge. Invalid spans render as ordinary water, and resolved non-route neighbors remove stale visual road seams.

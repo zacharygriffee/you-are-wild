@@ -180,8 +180,10 @@ const YAW_COMBAT_RESOLUTION = {
                 if (target.CPun <= 0) {
                     result += ` ${target.name} collapses!`;
                     app._awardCombatXP(app.XP_REWARDS.defeatEnemy);
-                    if (app.settings.endoMode) { target.CPun = 1; target.disposition = app.DISPOSITION.FRIENDLY; }
-                    else app._makeCorpse(target, 'fight');
+                    if (app.settings.powerDynamics) {
+                        app._subdueCreature(target, actor, { source: 'combat-fight' });
+                        result += ` ${app._label('combat.subduedRecruitable', '{name} yields and may be recruited.', { name: target.name })}`;
+                    } else app._makeCorpse(target, 'fight');
                 }
                 break;
             }

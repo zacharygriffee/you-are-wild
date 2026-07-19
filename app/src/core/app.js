@@ -760,7 +760,11 @@
                     moveRow: 1
                 },
                 relief: {
-                    rest: 10
+                    rest: 0,
+                    restHungerPressure: 8,
+                    restDigestionTicks: 8,
+                    containmentFullnessPerSize: 3,
+                    containmentNutritionPerSize: 15
                 }
             },
 
@@ -1571,8 +1575,11 @@
                 return this._isTimid(unit) || temp.fastFlee || temp.passive || (temp.prey && !temp.aggressive);
             },
             _makeCreatureFlee(unit, threat = this.player) {
-                this._removeCreatureFromArea(unit);
+                this._relocateFleeingCreature(unit, { threat, source: 'threat-reaction' });
                 return { fled: true, text: `${unit.name} panics and flees from ${threat?.name || 'the threat'}!` };
+            },
+            _relocateFleeingCreature(unit, options = {}) {
+                return YAW_WORLD_STATE.relocateFleeingCreature(this, unit, options);
             },
             _removeCreatureFromArea(unit) {
                 if (!unit) return;
@@ -1608,6 +1615,7 @@
                 });
                 if (!Array.isArray(predator[container])) predator[container] = [];
                 predator[container].push(prey);
+                YAW_UNIT_CONTAINMENT.applyInitialSatiety(this, predator, prey, container);
                 YAW_UNIT_CONTAINMENT.emitContainmentBeat(this, 'contained', predator, prey);
                 target.CPun = 0;
                 target.CPle = 0;
@@ -1944,6 +1952,9 @@
             },
             _resolveSpiritThreshold(actor, target, action = 'flirt', context = {}) {
                 return YAW_BALANCE_SYSTEM.resolveSpiritThreshold(this, actor, target, action, context);
+            },
+            _subdueCreature(target, actor = this.player, options = {}) {
+                return YAW_RECRUITMENT_FLOW.subdue(this, target, actor, options);
             },
             _costSceneBeat(action, actor, target, costResult = {}) {
                 return YAW_BALANCE_SYSTEM.emitCostSceneBeat(this, action, actor, target, costResult);
@@ -2488,10 +2499,10 @@
                 }
             },
 
-            _processDigestion() {
+            _processDigestion(options = {}) {
                 const all = [...this.party, ...this.creatures];
                 for (const unit of all) {
-                    this._processStomachState(unit);
+                    this._processStomachState(unit, options);
                     // Lactation cooldown decrement
                     if (unit.lactationCooldown > 0) {
                         unit.lactationCooldown--;
@@ -2784,11 +2795,11 @@
             _digestionContainerConfigs() {
                 return YAW_UNIT_CONTAINMENT.containerConfigs();
             },
-            _processDigestionContainer(unit, config) {
-                return YAW_UNIT_CONTAINMENT.processContainer(this, unit, config);
+            _processDigestionContainer(unit, config, options = {}) {
+                return YAW_UNIT_CONTAINMENT.processContainer(this, unit, config, options);
             },
-            _processStomachState(unit) {
-                return YAW_UNIT_CONTAINMENT.process(this, unit);
+            _processStomachState(unit, options = {}) {
+                return YAW_UNIT_CONTAINMENT.process(this, unit, options);
             },
 
             // ===== MODDING API =====
@@ -3123,7 +3134,6 @@
                 if (prey === this.player || prey.mc) return this._label('group.feed.playerBlocked', '{name} cannot be handed off as prey right now.', { name: prey.name });
                 if (!this._canFitPrey(consumer, prey, 'stomach')) return this._capacityFailureMessage(consumer, prey, 'stomach');
                 this._containTargetIn(consumer, prey, 'stomach', { willingSacrifice: true });
-                consumer.hunger = Math.max(0, (consumer.hunger || 0) - 40);
                 return this._label('group.feed.partyToConsumer', '{prey} is fed to {consumer} and settles in their belly.', { prey: prey.name, consumer: consumer.name });
             },
 

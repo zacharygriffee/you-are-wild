@@ -368,11 +368,12 @@ const YAW_STRUCTURE_NAVIGATION = {
         const healed = new Set([app.player, ...app.party]);
         healed.forEach(p => {
             p.CPun = Math.min(p.MPun, p.CPun + healAmount);
-            app._applyHungerRelief?.(p, app.BALANCE_V1?.relief?.rest ?? 10, { action: 'rest', source: 'rest' });
+            app._applyHungerPressure?.(p, app.BALANCE_V1?.relief?.restHungerPressure ?? 8, { action: 'rest', source: 'rest' });
         });
+        app._processDigestion?.({ ticks: app.BALANCE_V1?.relief?.restDigestionTicks ?? 8, source: 'rest' });
         const cured = YAW_COMBAT_STATUS.curePersistentAilments([...healed]);
         app._advanceTime(8);
-        const restedText = app._label('log.rested', 'Rested and recovered.');
+        const restedText = app._label('log.rested', 'Rested and recovered. Time passes, hunger rises, and digestion advances.');
         app.log.push({ text: restedText, type: 'heal' });
         app._addTileEvent(restedText, 'heal');
         if (cured.length > 0) {

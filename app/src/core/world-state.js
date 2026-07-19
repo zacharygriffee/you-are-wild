@@ -317,6 +317,54 @@ const YAW_WORLD_STATE = {
             }
         }
         return revealed;
+    },
+
+    relocateFleeingCreature(app, unit, options = {}) {
+        if (!unit || (app.party || []).includes(unit)) return null;
+        const directions = Object.values(YAW_TRAVERSAL?.DIRECTIONS || {});
+        const candidates = directions.map(direction => {
+            const decision = app.inInterior
+                ? YAW_TRAVERSAL.resolveInterior(app, direction.dx, direction.dy)
+                : YAW_TRAVERSAL.resolveOverworld(app, direction.dx, direction.dy);
+            return decision?.allowed ? decision : null;
+        }).filter(Boolean);
+        const unitId = app._unitSelectionId?.(unit) || unit.id || unit.name || 'creature';
+        const roll = app._worldRoll?.(
+            'creature-flee-destination',
+            Number(app.location?.x || 0),
+            Number(app.location?.y || 0),
+            unitId,
+            Number(app.dayCount || 0),
+            Number(app.timeHour || 0),
+            options.source || 'flee'
+        ) ?? 0;
+        const destination = candidates.length
+            ? candidates[Math.min(candidates.length - 1, Math.floor(roll * candidates.length))]
+            : null;
+        const queueIndex = (app.combatState?.turnQueue || []).findIndex(entry => entry?.unit === unit);
+        app._removeCreatureFromArea(unit);
+        if (queueIndex >= 0 && queueIndex <= Number(app.combatState?.currentTurn || 0)) {
+            app.combatState.currentTurn = Math.max(-1, Number(app.combatState.currentTurn || 0) - 1);
+        }
+        if (typeof YAW_COMBAT_STATUS !== 'undefined') YAW_COMBAT_STATUS.clearCombatOnlyStatuses([unit]);
+        unit.fledCombat = false;
+        unit.lastFledAt = {
+            day: Number(app.dayCount || 0),
+            hour: Number(app.timeHour || 0),
+            source: options.source || 'flee'
+        };
+        if (!destination) return null;
+        if (app.inInterior) {
+            const room = destination.tile;
+            if (!Array.isArray(room.creatures)) room.creatures = [];
+            if (!room.creatures.includes(unit)) room.creatures.push(unit);
+            return { interior: true, x: destination.to.x, y: destination.to.y, direction: destination.direction, tile: room };
+        }
+        const tile = destination.tile || app.getTile(destination.to.x, destination.to.y);
+        if (!Array.isArray(tile.creatures)) tile.creatures = [];
+        if (!tile.creatures.includes(unit)) tile.creatures.push(unit);
+        app.persistTileDelta(tile.x, tile.y, tile);
+        return { interior: false, x: tile.x, y: tile.y, direction: destination.direction, tile };
     }
 };
 

@@ -76,6 +76,7 @@ const YAW_COMBAT_STATUS = {
             const lowHp = unit.CPun < unit.MPun * 0.3;
             if (lowHp) {
                 unit.fledCombat = true;
+                if (!(app.party || []).includes(unit)) app._relocateFleeingCreature?.(unit, { source: 'combat-fear' });
                 return app._label('combat.status.fearFlee', '{name} panics and flees from fear!', { name: unit.name });
             }
             if (app._combatStateRoll('combat-fear-freeze', unit, 'skip') < 0.5) {

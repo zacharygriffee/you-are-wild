@@ -252,6 +252,7 @@ const YAW_TILESET_RUNTIME = {
             `image-rendering:${layer.scaling === 'pixelated' ? 'pixelated' : 'auto'}`,
             `opacity:${layer.opacity}`,
             `mix-blend-mode:${layer.blend}`,
+            `z-index:${layer.z}`,
             `transform-origin:${layer.anchor.x * 100}% ${layer.anchor.y * 100}%`,
             `transform:rotate(${layer.transform.rotate}deg) scale(${scaleX},${scaleY})`
         ].join(';');

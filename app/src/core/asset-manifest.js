@@ -132,6 +132,16 @@
       south: 'shoreline-water-south',
       west: 'shoreline-water-west'
     },
+    shorelineCorners: {
+      'outer-ne': 'shoreline-water-outer-ne',
+      'outer-es': 'shoreline-water-outer-es',
+      'outer-sw': 'shoreline-water-outer-sw',
+      'outer-wn': 'shoreline-water-outer-wn',
+      'inner-ne': 'shoreline-water-inner-ne',
+      'inner-es': 'shoreline-water-inner-es',
+      'inner-sw': 'shoreline-water-inner-sw',
+      'inner-wn': 'shoreline-water-inner-wn'
+    },
     effects: {
       dangerInfluence: 'state-danger-influence'
     },
@@ -158,6 +168,7 @@
     .concat(Object.values(TILE_KEYS.interiorExits))
     .concat(Object.values(TILE_KEYS.interiorWalls))
     .concat(Object.values(TILE_KEYS.shorelines))
+    .concat(Object.values(TILE_KEYS.shorelineCorners))
     .concat(Object.values(TILE_KEYS.effects))
     .concat(Object.values(TILE_KEYS.states))
     .concat([TILE_KEYS.unknown])
@@ -176,6 +187,9 @@
   const BASIC_TILESET_OVERLAY_HEIGHT = 1254;
   const BASIC_TILESET_OVERLAY_COLUMNS = 4;
   const BASIC_TILESET_OVERLAY_ROWS = 4;
+  const BASIC_TILESET_MATERIAL_SRC = 'terrain-sand-seamless-v1.png';
+  const BASIC_TILESET_MATERIAL_WIDTH = 512;
+  const BASIC_TILESET_MATERIAL_HEIGHT = 512;
   const basicTileRect = (col, row) => {
     const x = Math.floor((col * BASIC_TILESET_WIDTH) / BASIC_TILESET_COLUMNS);
     const y = Math.floor((row * BASIC_TILESET_HEIGHT) / BASIC_TILESET_ROWS);
@@ -202,6 +216,17 @@
       label,
       sheet: BASIC_TILESET_SRC,
       rect: { ...rect }
+    },
+    renderMode: 'sprite-sheet',
+    fallback: 'sprite-sheet',
+    ...extra
+  });
+  const basicMaterialTile = (label, extra = {}) => ({
+    src: BASIC_TILESET_MATERIAL_SRC,
+    sprite: {
+      label,
+      sheet: BASIC_TILESET_MATERIAL_SRC,
+      rect: { x: 0, y: 0, width: BASIC_TILESET_MATERIAL_WIDTH, height: BASIC_TILESET_MATERIAL_HEIGHT }
     },
     renderMode: 'sprite-sheet',
     fallback: 'sprite-sheet',
@@ -236,8 +261,8 @@
     [TILE_KEYS.biomes.jungle]: basicTile(4, 0, 'tropical jungle'),
     [TILE_KEYS.biomes.cliff]: basicTile(5, 0, 'rock cliff'),
     [TILE_KEYS.biomes.water]: basicTile(6, 0, 'deep water'),
-    [TILE_KEYS.biomes.sand]: basicTileFromRect({ x: 1646, y: 0, width: 128, height: 221 }, 'neutral sand'),
-    [TILE_KEYS.biomes.beach]: basicTileFromRect({ x: 1646, y: 0, width: 128, height: 221 }, 'neutral beach sand'),
+    [TILE_KEYS.biomes.sand]: basicMaterialTile('seamless neutral sand'),
+    [TILE_KEYS.biomes.beach]: basicMaterialTile('seamless neutral beach sand'),
     [TILE_KEYS.biomes.cave]: basicTile(0, 1, 'dark cave floor'),
     [TILE_KEYS.biomes.dungeon]: basicTile(1, 1, 'stone dungeon'),
     [TILE_KEYS.biomes.manor]: basicTile(1, 1, 'stone manor interior'),
@@ -287,7 +312,7 @@
     [TILE_KEYS.interior.cave]: basicTile(0, 1, 'interior cave room'),
     [TILE_KEYS.interior.room]: basicTile(1, 1, 'interior room'),
     [TILE_KEYS.interior.exit]: overlayTile(3, 1, 'interior exit marker'),
-    [TILE_KEYS.interior.wall]: overlayTile(0, 3, 'interior wall edge'),
+    [TILE_KEYS.interior.wall]: basicTile(0, 1, 'shadowed interior boundary'),
     [TILE_KEYS.interior.door]: overlayTile(2, 1, 'interior door overlay'),
     [TILE_KEYS.interior.entrance]: overlayTile(3, 1, 'interior entrance marker'),
     [TILE_KEYS.interiorPaths.isolated]: basicTile(1, 1, 'isolated interior room'),
@@ -340,8 +365,15 @@
     slot,
     transform: { rotate: 0, flipX: false, flipY: false, ...transform }
   });
+  const bundledMaterialLayer = (slot = 'base', transform = {}) => ({
+    atlasId: 'materials',
+    rect: { x: 0, y: 0, width: BASIC_TILESET_MATERIAL_WIDTH, height: BASIC_TILESET_MATERIAL_HEIGHT },
+    slot,
+    transform: { rotate: 0, flipX: false, flipY: false, ...transform }
+  });
   const bundledTile = (col, row, slot = 'base', transform = {}) => ({ layers: [bundledLayer(col, row, slot, transform)] });
   const bundledRectTile = (rect, slot = 'base', transform = {}) => ({ layers: [bundledRectLayer(rect, slot, transform)] });
+  const bundledMaterialTile = (slot = 'base', transform = {}) => ({ layers: [bundledMaterialLayer(slot, transform)] });
   const bundledOverlayLayer = (col, row, slot = 'feature', transform = {}) => ({
     atlasId: 'overlays',
     rect: overlayTileRect(col, row),
@@ -362,7 +394,8 @@
     scaling: 'smooth',
     atlases: [
       { id: 'main', resourceId: 'atlas.main', density: 1 },
-      { id: 'overlays', resourceId: 'atlas.overlays', density: 1 }
+      { id: 'overlays', resourceId: 'atlas.overlays', density: 1 },
+      { id: 'materials', resourceId: 'atlas.materials', density: 1 }
     ],
     tiles: {
       [TILE_KEYS.unknown]: bundledTile(0, 3, 'base'),
@@ -373,12 +406,23 @@
       [TILE_KEYS.biomes.jungle]: bundledTile(4, 0, 'base'),
       [TILE_KEYS.biomes.cliff]: bundledTile(5, 0, 'base'),
       [TILE_KEYS.biomes.water]: bundledTile(6, 0, 'base'),
-      [TILE_KEYS.biomes.sand]: bundledRectTile({ x: 1646, y: 0, width: 128, height: 221 }, 'base'),
+      [TILE_KEYS.biomes.sand]: bundledMaterialTile('base'),
       [TILE_KEYS.biomes.beach]: bundledAlias(TILE_KEYS.biomes.sand),
-      [TILE_KEYS.shorelines.north]: bundledAlias(TILE_KEYS.biomes.sand),
-      [TILE_KEYS.shorelines.east]: bundledAlias(TILE_KEYS.biomes.sand),
-      [TILE_KEYS.shorelines.south]: bundledAlias(TILE_KEYS.biomes.sand),
-      [TILE_KEYS.shorelines.west]: bundledAlias(TILE_KEYS.biomes.sand),
+      // Terrain Transition V1 reuses the water material through pack-scoped
+      // CSS masks. Semantics remain ordinary layers so replacement packs can
+      // supply authored edge and corner artwork without core clipping it.
+      [TILE_KEYS.shorelines.north]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelines.east]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelines.south]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelines.west]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelineCorners['outer-ne']]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelineCorners['outer-es']]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelineCorners['outer-sw']]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelineCorners['outer-wn']]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelineCorners['inner-ne']]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelineCorners['inner-es']]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelineCorners['inner-sw']]: bundledTile(6, 0, 'feature'),
+      [TILE_KEYS.shorelineCorners['inner-wn']]: bundledTile(6, 0, 'feature'),
       [TILE_KEYS.biomes.cave]: bundledTile(0, 1, 'base'),
       [TILE_KEYS.biomes.dungeon]: bundledTile(1, 1, 'base'),
       [TILE_KEYS.biomes.manor]: bundledAlias(TILE_KEYS.biomes.dungeon),
@@ -427,7 +471,7 @@
       [TILE_KEYS.poi.restSite]: bundledTile(5, 3, 'marker'),
       [TILE_KEYS.interior.cave]: bundledTile(0, 1, 'base'),
       [TILE_KEYS.interior.room]: bundledTile(7, 3, 'base'),
-      [TILE_KEYS.interior.wall]: bundledAlias(TILE_KEYS.biomes.cliff),
+      [TILE_KEYS.interior.wall]: bundledAlias(TILE_KEYS.interior.cave),
       [TILE_KEYS.interior.exit]: bundledAlias(TILE_KEYS.structures.cave),
       [TILE_KEYS.interior.door]: bundledAlias(TILE_KEYS.structures.hut),
       [TILE_KEYS.interior.entrance]: bundledAlias(TILE_KEYS.interior.exit),
@@ -496,6 +540,19 @@
     fallback: null,
     source: { kind: 'bundled' }
   };
+  const BUNDLED_TILESET_MATERIAL_RESOURCE = {
+    id: 'atlas.materials',
+    hash: '82bf985a5673eb7ec348814098422db9e861659af85c064f192ce00e8c1cf1b5',
+    mimeType: 'image/png',
+    byteLength: 391293,
+    width: BASIC_TILESET_MATERIAL_WIDTH,
+    height: BASIC_TILESET_MATERIAL_HEIGHT,
+    role: 'tileset-atlas',
+    license: 'owner-supplied-ai-generated',
+    provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/terrain-sand-seamless-v1.png' },
+    fallback: null,
+    source: { kind: 'bundled' }
+  };
 
   const ASSET_MANIFEST = {
     version: 1,
@@ -535,8 +592,8 @@
           generatedBy: 'project-owner',
           generatedAt: null,
           source: 'media/basic-tileset-v1.png',
-          sources: ['media/basic-tileset-v1.png', 'media/basic-tileset-overlays-v1.png'],
-          notes: 'Owner-directed AI-generated opaque 8x4 terrain atlas plus transparent 4x4 topology/state overlay atlas.'
+          sources: ['media/basic-tileset-v1.png', 'media/basic-tileset-overlays-v1.png', 'media/terrain-sand-seamless-v1.png'],
+          notes: 'Owner-directed AI-generated opaque terrain atlas, transparent topology/state overlay atlas, and seamless neutral material sheet.'
         },
         aiMetadata: {
           aiMade: true,
@@ -556,7 +613,8 @@
         },
         sheets: [
           { src: BASIC_TILESET_SRC, width: BASIC_TILESET_WIDTH, height: BASIC_TILESET_HEIGHT, columns: BASIC_TILESET_COLUMNS, rows: BASIC_TILESET_ROWS, alpha: false },
-          { src: BASIC_TILESET_OVERLAY_SRC, width: BASIC_TILESET_OVERLAY_WIDTH, height: BASIC_TILESET_OVERLAY_HEIGHT, columns: BASIC_TILESET_OVERLAY_COLUMNS, rows: BASIC_TILESET_OVERLAY_ROWS, alpha: true }
+          { src: BASIC_TILESET_OVERLAY_SRC, width: BASIC_TILESET_OVERLAY_WIDTH, height: BASIC_TILESET_OVERLAY_HEIGHT, columns: BASIC_TILESET_OVERLAY_COLUMNS, rows: BASIC_TILESET_OVERLAY_ROWS, alpha: true },
+          { src: BASIC_TILESET_MATERIAL_SRC, width: BASIC_TILESET_MATERIAL_WIDTH, height: BASIC_TILESET_MATERIAL_HEIGHT, columns: 1, rows: 1, alpha: false }
         ],
         fallback: { mode: 'tileset-key', tilesetId: 'core-emoji-fallback' },
         tiles: basicTiles
@@ -573,12 +631,14 @@
     bundledTilesetPack() {
       const embedded = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_URL || '') : '';
       const embeddedOverlays = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_OVERLAY_URL || '') : '';
+      const embeddedMaterials = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_MATERIAL_URL || '') : '';
       return {
         presentation: JSON.parse(JSON.stringify(BUNDLED_TILESET_PRESENTATION)),
-        resources: [BUNDLED_TILESET_RESOURCE, BUNDLED_TILESET_OVERLAY_RESOURCE].map(resource => JSON.parse(JSON.stringify(resource))),
+        resources: [BUNDLED_TILESET_RESOURCE, BUNDLED_TILESET_OVERLAY_RESOURCE, BUNDLED_TILESET_MATERIAL_RESOURCE].map(resource => JSON.parse(JSON.stringify(resource))),
         atlasUrls: {
           'atlas.main': embedded || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${BASIC_TILESET_SRC}`,
-          'atlas.overlays': embeddedOverlays || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${BASIC_TILESET_OVERLAY_SRC}`
+          'atlas.overlays': embeddedOverlays || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${BASIC_TILESET_OVERLAY_SRC}`,
+          'atlas.materials': embeddedMaterials || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${BASIC_TILESET_MATERIAL_SRC}`
         }
       };
     },

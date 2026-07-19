@@ -3319,8 +3319,10 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   const bundled = manifest.bundledTilesetPack();
   const atlasBytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'basic-tileset-v1.png'));
   const overlayBytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'basic-tileset-overlays-v1.png'));
+  const materialBytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'terrain-sand-seamless-v1.png'));
   const atlasHash = require('crypto').createHash('sha256').update(atlasBytes).digest('hex');
   const overlayHash = require('crypto').createHash('sha256').update(overlayBytes).digest('hex');
+  const materialHash = require('crypto').createHash('sha256').update(materialBytes).digest('hex');
   assertEqual(atlasBytes.byteLength, bundled.resources[0].byteLength, 'Bundled atlas byte length should match its reviewed descriptor');
   assertEqual(atlasHash, bundled.resources[0].hash, 'Bundled atlas SHA-256 should match its reviewed descriptor');
   assertEqual(atlasBytes.readUInt32BE(16), bundled.resources[0].width, 'Bundled PNG header width should match its descriptor');
@@ -3329,6 +3331,10 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertEqual(overlayHash, bundled.resources[1].hash, 'Bundled overlay atlas SHA-256 should match its reviewed descriptor');
   assertEqual(overlayBytes.readUInt32BE(16), bundled.resources[1].width, 'Bundled overlay PNG header width should match its descriptor');
   assertEqual(overlayBytes.readUInt32BE(20), bundled.resources[1].height, 'Bundled overlay PNG header height should match its descriptor');
+  assertEqual(materialBytes.byteLength, bundled.resources[2].byteLength, 'Bundled material atlas byte length should match its reviewed descriptor');
+  assertEqual(materialHash, bundled.resources[2].hash, 'Bundled material atlas SHA-256 should match its reviewed descriptor');
+  assertEqual(materialBytes.readUInt32BE(16), bundled.resources[2].width, 'Bundled material PNG header width should match its descriptor');
+  assertEqual(materialBytes.readUInt32BE(20), bundled.resources[2].height, 'Bundled material PNG header height should match its descriptor');
   const { YAW_TILESET_PACK_V1, YAW_TILESET_RUNTIME } = loadMediaSystemForTest();
   const pack = YAW_TILESET_PACK_V1.normalizePresentation(bundled.presentation, {
     resources: bundled.resources,
@@ -3362,9 +3368,11 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertContains(buildContent, '.then(response => response.blob())', 'Embedded atlas bytes should decode asynchronously before becoming a short session object URL');
   assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_URL = terrainUrl', 'Resolved terrain atlas object URLs should be published for bundled pack activation');
   assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_OVERLAY_URL = overlayUrl', 'Resolved overlay atlas object URLs should be published for bundled pack activation');
+  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_MATERIAL_URL = materialUrl', 'Resolved material atlas object URLs should be published for bundled pack activation');
   assertContains(buildContent, 'URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_URL)', 'Embedded atlas object URLs should be revoked when the page closes');
   assertContains(buildContent, 'URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_OVERLAY_URL)', 'Embedded overlay atlas object URLs should be revoked when the page closes');
-  assertContains(buildContent, 'BUNDLED_TILESET, BUNDLED_TILESET_OVERLAYS, ...SCRIPT_ORDER', 'Both atlas files should participate in development watch rebuilds');
+  assertContains(buildContent, 'URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_MATERIAL_URL)', 'Embedded material atlas object URLs should be revoked when the page closes');
+  assertContains(buildContent, 'BUNDLED_TILESET, BUNDLED_TILESET_OVERLAYS, BUNDLED_TILESET_MATERIALS, ...SCRIPT_ORDER', 'All bundled atlas files should participate in development watch rebuilds');
 });
 
 test('Gameplay map semantics remain registered in bundled tileset coverage', () => {
@@ -6053,12 +6061,14 @@ test('Asset manifest supports tileset provenance and fallback metadata', () => {
   assertEqual(painted.provenance.generatedBy, 'project-owner', 'Basic tileset should record project-owner source');
   assertEqual(painted.relativeBasePath, '../media/', 'Basic tileset should use relative sidecar media paths');
   assertEqual(painted.sheet.src, 'basic-tileset-v1.png', 'Basic tileset should point at the normalized bitmap atlas');
+  assert(painted.sheets.some(sheet => sheet.src === 'terrain-sand-seamless-v1.png'), 'Basic tileset should include the neutral sand material sheet');
   assertEqual(painted.aiMetadata.aiMade, true, 'Basic tileset should expose AI-made metadata for future asset-pack policy');
   assert(painted.allowedUse.includes('future-mod-pack'), 'Tileset metadata should allow future mod-pack use');
   const forestAsset = manifest.getTileAsset('terrain-forest');
   assertEqual(forestAsset.tilesetId, 'default-basic-tileset', 'Default tile lookup should resolve through the basic tileset');
   assertEqual(forestAsset.src, '../media/basic-tileset-v1.png', 'Default tile lookup should expose the relative bitmap path');
   assertEqual(forestAsset.sprite.col, 0, 'Default tile lookup should expose sprite metadata');
+  assertEqual(manifest.getTileAsset('terrain-sand').src, '../media/terrain-sand-seamless-v1.png', 'Neutral sand should resolve through its dedicated seamless material rather than a coast crop');
   const roadEnd = manifest.getTileAsset('route-road-end');
   assertEqual(roadEnd.tilesetId, 'default-basic-tileset', 'Every core route semantic should resolve through bundled art');
   assertEqual(roadEnd.src, '../media/basic-tileset-overlays-v1.png', 'Route semantics should use the transparent bundled overlay atlas');
@@ -14331,6 +14341,8 @@ test('Interior map visuals expose tileset metadata for rooms exits and features'
 
   App.inInterior = true;
   App.activeInterior = {
+    kind: 'building',
+    structure: 'cabin',
     structureName: 'Cabin',
     tiles: {
       '0,0': exit,
@@ -14347,6 +14359,7 @@ test('Interior map visuals expose tileset metadata for rooms exits and features'
   assertContains(html, 'data-tileset-key="interior-cave-room"', 'Rendered interior mobile minimap should expose cave room tileset key');
   assertContains(html, 'data-tileset-key="interior-wall"', 'Rendered interior mobile minimap should expose wall tileset key for missing rooms');
   assertContains(html, 'data-map-kind="interior-exit"', 'Rendered interior mobile minimap should expose interior map kind');
+  assertContains(html, 'data-interior-structure="cabin"', 'Rendered interior mobile minimap should expose the active structure skin identity');
 });
 
 test('Interior visuals derive paths exits doors and walls from deterministic topology', () => {
@@ -14354,7 +14367,7 @@ test('Interior visuals derive paths exits doors and walls from deterministic top
   const caveCorner = { x: 0, y: 0, biome: 'cave', explored: true, exit: false, connections: ['north', 'east'] };
   const buildingExit = { x: 1, y: 0, biome: 'indoors', explored: true, exit: true, connections: ['west'] };
   const caveVisual = App._interiorTileVisual(caveCorner, { isCurrent: true });
-  const exitVisual = App._interiorTileVisual(buildingExit);
+  const exitVisual = App._interiorTileVisual(buildingExit, { interiorKind: 'building', interiorStructure: 'dungeon' });
   const rooms = { '0,0': caveCorner };
   const wallVisual = App._interiorTileVisual(null, {
     x: 0,
@@ -14363,14 +14376,51 @@ test('Interior visuals derive paths exits doors and walls from deterministic top
     roomResolver: (x, y) => rooms[`${x},${y}`] || null
   });
   assertEqual(caveVisual.interiorShape, 'corner-ne', 'Room connections should derive a stable interior topology shape');
+  assertEqual(caveVisual.interiorConnections.join(','), 'north,east', 'Interior visuals should expose the authoritative reciprocal edges separately from their sprite shape');
+  assertEqual(caveVisual.interiorTheme, 'cave-network', 'Cave rooms should retain a distinct presentation theme');
   assertEqual(caveVisual.tilesetKey, 'interior-path-corner-ne', 'Connected cave rooms should expose a topology-aware path semantic');
   assert(caveVisual.semanticKeys.includes('interior-cave-room') && caveVisual.semanticKeys.includes('interior-path-corner-ne'), 'Cave topology should compose the cave base and path overlay');
   assert(caveVisual.semanticKeys.includes('state-current'), 'Interior current rooms should use the shared current-position state layer');
   assertEqual(exitVisual.exitDirection, 'east', 'A one-connection exit should face outward from its interior connection');
+  assertEqual(exitVisual.interiorTheme, 'building', 'Indoor rooms should default to the building presentation theme');
+  assertEqual(exitVisual.interiorStructure, 'dungeon', 'Indoor rooms should retain the active structure identity for presentation variants');
   assertEqual(exitVisual.tilesetKey, 'interior-exit-east', 'Interior exits should expose their outward cardinal semantic');
   assert(exitVisual.semanticKeys.includes('interior-door-east'), 'Building exits should include a direction-aware door layer');
   assertEqual(wallVisual.interiorShape, 'wall-north', 'Missing cells should expose the direction of an adjacent room');
+  assertEqual(wallVisual.interiorAdjacent.join(','), 'north', 'Boundary cells should expose every adjacent room edge for compatible wall joins');
   assert(wallVisual.semanticKeys.includes('interior-wall-north') && wallVisual.semanticKeys.includes('state-blocked-north'), 'Interior walls should compose directional wall and blocked-edge semantics');
+  const attrs = App._mapTileAttrs(caveVisual);
+  assertContains(attrs, 'data-interior-connections="north east"', 'Rendered interior rooms should expose their reciprocal edge contract');
+  assertContains(attrs, 'data-interior-theme="cave-network"', 'Rendered interior rooms should expose their presentation theme');
+  const exitAttrs = App._mapTileAttrs(exitVisual);
+  assertContains(exitAttrs, 'data-interior-structure="dungeon"', 'Rendered indoor rooms should expose their active structure identity');
+  assertContains(exitAttrs, 'data-interior-exit-direction="east"', 'Rendered exits should expose their outward threshold edge');
+  assertContains(App._mapTileAttrs(wallVisual), 'data-interior-adjacent="north"', 'Rendered boundary cells should expose adjacent-room edges');
+});
+
+test('Bundled building interior skin preserves mod semantics while composing room-scale surfaces', () => {
+  assertContains(templateContent, 'Interior Skin V1', 'Template should identify the bundled building interior composition contract');
+  assertContains(templateContent, '[data-interior-connections~="north"]', 'Building interior skin should open perimeter walls at reciprocal north connections');
+  assertContains(templateContent, '[data-interior-exit-direction="west"]', 'Building interior skin should paint an outward west exit threshold');
+  assertContains(templateContent, '.yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"]', 'Bundled miniature corridor suppression should be scoped to the first-party pack');
+  assertContains(templateContent, '[data-tileset-semantic-key^="interior-path-"]', 'Interior path semantic layers should remain addressable for replacement tileset packs');
+});
+
+test('Interior boundary visuals compose every adjacent room edge', () => {
+  const { App } = loadAppForCombat();
+  const rooms = {
+    '0,-1': { x: 0, y: -1, biome: 'indoors', connections: ['south'] },
+    '1,0': { x: 1, y: 0, biome: 'indoors', connections: ['west'] }
+  };
+  const wall = App._interiorTileVisual(null, {
+    x: 0,
+    y: 0,
+    interiorKind: 'building',
+    roomResolver: (x, y) => rooms[`${x},${y}`] || null
+  });
+  assertEqual(wall.interiorAdjacent.join(','), 'north,east', 'A corner boundary should retain both neighboring room directions');
+  assert(wall.semanticKeys.includes('interior-wall-north') && wall.semanticKeys.includes('interior-wall-east'), 'A corner boundary should compose both compatible wall edges');
+  assertEqual(wall.interiorTheme, 'building', 'Boundary cells should inherit their active interior theme');
 });
 
 test('Super-patch generation uses seeded region biomes only', () => {
@@ -14494,8 +14544,53 @@ test('Beach biome is derived only near deterministic water', () => {
   assert(adjacentVisual.semanticKeys.includes(`shoreline-water-${actualEdges[0]}`), 'Adjacent water should compose a cardinal shoreline semantic');
   assertEqual(neutralVisual.shorelineEdges.length, 0, 'Near-water beach without cardinal water should retain the neutral sand fallback');
   assertContains(App._mapTileAttrs(adjacentVisual), `data-shoreline-edges="${actualEdges.join(' ')}"`, 'Cross-surface map attributes should expose ordered shoreline edges');
+  const bundledPack = loadAssetManifestForTest().bundledTilesetPack();
+  const bundledSand = bundledPack.presentation.tiles['terrain-sand'];
+  const bundledShore = bundledPack.presentation.tiles['shoreline-water-north'];
+  assertEqual(bundledSand.layers[0].atlasId, 'materials', 'Default sand should use the dedicated seamless material atlas');
+  assertEqual(bundledShore.layers[0].atlasId, 'main', 'Default shoreline semantics should reuse the matching water material');
+  assertEqual(bundledShore.layers[0].slot, 'feature', 'Default shoreline water should layer over neutral sand without replacing it');
   assert(inland, 'Test seed should produce a far-inland land tile in the sampled area');
   assert(inland.biome !== 'beach', 'Far-inland land should not classify as beach');
+});
+
+test('Terrain Transition V1 derives outer and diagonal inner shoreline corners', () => {
+  const { App } = loadAppForCombat();
+  const beach = { x: 0, y: 0, biome: 'beach', baseBiome: 'beach', derivedBiome: 'beach', overlays: {} };
+  const water = { biome: 'water', derivedBiome: 'water', water: true };
+  const outerNeighbors = new Map([['0,-1', water], ['1,0', water]]);
+  const outer = App._mapTileVisual(beach, { neighborResolver: (x, y) => outerNeighbors.get(`${x},${y}`) || null });
+  assertEqual(outer.shorelineEdges.join(','), 'north,east', 'Adjacent cardinal water should derive ordered shoreline edges');
+  assertEqual(outer.shorelineCorners.join(','), 'outer-ne', 'Two touching cardinal water edges should derive one outer blend corner');
+  assertEqual(outer.shorelineMask, 5, 'Eight-neighbor shoreline mask should encode north and east water bits');
+  assert(outer.semanticKeys.includes('shoreline-water-outer-ne'), 'Outer shoreline corner should remain an authored tileset semantic');
+  const outerAttrs = App._mapTileAttrs(outer);
+  assertContains(outerAttrs, 'data-shoreline-corners="outer-ne"', 'Rendered coast should expose its corner transition contract');
+  assertContains(outerAttrs, 'data-shoreline-mask="5"', 'Rendered coast should expose its eight-neighbor bitmask');
+
+  const diagonalNeighbors = new Map([['1,-1', water]]);
+  const inner = App._mapTileVisual(beach, { neighborResolver: (x, y) => diagonalNeighbors.get(`${x},${y}`) || null });
+  assertEqual(inner.shorelineEdges.length, 0, 'Diagonal-only water should not invent a cardinal shoreline edge');
+  assertEqual(inner.shorelineCorners.join(','), 'inner-ne', 'Diagonal-only water should derive a small inner corner blend');
+  assertEqual(inner.shorelineMask, 2, 'Eight-neighbor shoreline mask should encode diagonal northeast water');
+  assert(inner.semanticKeys.includes('shoreline-water-inner-ne'), 'Inner shoreline corner should remain an authored tileset semantic');
+});
+
+test('Bundled natural water suppresses literal wall art without removing blocked semantics', () => {
+  const template = fs.readFileSync(path.join(ROOT, 'template.html'), 'utf8');
+  assertContains(
+    template,
+    '[data-base-tileset-key="terrain-water"][data-map-kind="biome"]:is([data-blocked-reason="impassable"], [data-blocked-reason="capability"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"]',
+    'The bundled skin should scope natural-water wall suppression to ordinary water biomes'
+  );
+  assertContains(template, 'opacity: 0 !important;', 'Bundled natural-water blocked art should be visually suppressed');
+  const { App } = loadAppForCombat();
+  const visual = App._mapTileVisual(
+    { biome: 'water', baseBiome: 'water', derivedBiome: 'water', water: true, overlays: { barriers: [] } },
+    { blockedEdges: ['south'], blockedReason: 'capability' }
+  );
+  assert(visual.semanticKeys.includes('state-blocked-south'), 'Natural water should retain the directional blocked semantic');
+  assertContains(App._mapTileAttrs(visual), 'data-blocked-reason="capability"', 'Rendered water should distinguish a terrain capability constraint from an authored barrier');
 });
 
 test('Road and bridge overlays are deterministic constrained features', () => {

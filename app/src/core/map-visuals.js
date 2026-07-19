@@ -18,6 +18,66 @@ const YAW_MAP_VISUALS = {
         return [...new Set((Array.isArray(values) ? values : []).map(String).filter(value => allowed.has(value)))];
     },
 
+    shorelineNeighborPositions() {
+        return [
+            { id: 'north', dx: 0, dy: -1, bit: 1 },
+            { id: 'ne', dx: 1, dy: -1, bit: 2 },
+            { id: 'east', dx: 1, dy: 0, bit: 4 },
+            { id: 'es', dx: 1, dy: 1, bit: 8 },
+            { id: 'south', dx: 0, dy: 1, bit: 16 },
+            { id: 'sw', dx: -1, dy: 1, bit: 32 },
+            { id: 'west', dx: -1, dy: 0, bit: 64 },
+            { id: 'wn', dx: -1, dy: -1, bit: 128 }
+        ];
+    },
+
+    normalizedShorelineCorners(values = []) {
+        const allowed = new Set(['outer-ne', 'outer-es', 'outer-sw', 'outer-wn', 'inner-ne', 'inner-es', 'inner-sw', 'inner-wn']);
+        return [...new Set((Array.isArray(values) ? values : []).map(String).filter(value => allowed.has(value)))];
+    },
+
+    isWaterTile(tile) {
+        return Boolean(tile?.water || tile?.terrain?.water || tile?.derivedBiome === 'water' || tile?.biome === 'water');
+    },
+
+    shorelineTopology(tile, resolver = null) {
+        const biomeId = tile?.derivedBiome || tile?.baseBiome || tile?.biome || '';
+        if (biomeId !== 'beach') return { edges: [], corners: [], mask: 0 };
+        const explicitEdges = tile?.overlays?.shoreline?.edges;
+        const explicitCorners = tile?.overlays?.shoreline?.corners;
+        const positions = this.shorelineNeighborPositions();
+        const canResolve = typeof resolver === 'function' && Number.isFinite(Number(tile?.x)) && Number.isFinite(Number(tile?.y));
+        const x = Number(tile?.x);
+        const y = Number(tile?.y);
+        let mask = 0;
+        if (canResolve) {
+            positions.forEach(position => {
+                if (this.isWaterTile(resolver(x + position.dx, y + position.dy))) mask |= position.bit;
+            });
+        }
+        const edges = Array.isArray(explicitEdges)
+            ? this.normalizedDirections(explicitEdges)
+            : positions.filter(position => ['north', 'east', 'south', 'west'].includes(position.id) && (mask & position.bit)).map(position => position.id);
+        if (Array.isArray(explicitEdges)) {
+            const bitByEdge = { north: 1, east: 4, south: 16, west: 64 };
+            edges.forEach(edge => { mask |= bitByEdge[edge] || 0; });
+        }
+        const corners = Array.isArray(explicitCorners)
+            ? this.normalizedShorelineCorners(explicitCorners)
+            : [
+                { id: 'ne', edges: ['north', 'east'], diagonalBit: 2 },
+                { id: 'es', edges: ['east', 'south'], diagonalBit: 8 },
+                { id: 'sw', edges: ['south', 'west'], diagonalBit: 32 },
+                { id: 'wn', edges: ['west', 'north'], diagonalBit: 128 }
+            ].flatMap(corner => {
+                const [first, second] = corner.edges.map(edge => edges.includes(edge));
+                if (first && second) return [`outer-${corner.id}`];
+                if (!first && !second && (mask & corner.diagonalBit)) return [`inner-${corner.id}`];
+                return [];
+            });
+        return { edges, corners, mask };
+    },
+
     connectionShape(values = [], fallback = 'isolated') {
         const connections = this.normalizedDirections(values);
         const has = direction => connections.includes(direction);
@@ -60,19 +120,7 @@ const YAW_MAP_VISUALS = {
     },
 
     shorelineEdges(tile, resolver = null) {
-        const biomeId = tile?.derivedBiome || tile?.baseBiome || tile?.biome || '';
-        if (biomeId !== 'beach') return [];
-        const explicit = tile?.overlays?.shoreline?.edges;
-        if (Array.isArray(explicit)) return this.normalizedDirections(explicit);
-        if (typeof resolver !== 'function' || !Number.isFinite(Number(tile?.x)) || !Number.isFinite(Number(tile?.y))) return [];
-        const x = Number(tile.x);
-        const y = Number(tile.y);
-        return this.directions()
-            .filter(direction => {
-                const neighbor = resolver(x + direction.dx, y + direction.dy);
-                return Boolean(neighbor?.water || neighbor?.terrain?.water || neighbor?.derivedBiome === 'water' || neighbor?.biome === 'water');
-            })
-            .map(direction => direction.id);
+        return this.shorelineTopology(tile, resolver).edges;
     },
 
     hasImmediateDanger(app, tile, explicit = undefined) {
@@ -120,7 +168,9 @@ const YAW_MAP_VISUALS = {
         const isBeach = baseBiomeId === 'beach';
         const biomeTilesetKey = app.MAP_TILESET_KEYS.biomes[baseBiomeId] || `terrain-${baseBiomeId}`;
         const baseTilesetKey = isBeach ? (app.MAP_TILESET_KEYS.biomes.sand || 'terrain-sand') : biomeTilesetKey;
-        const shorelineEdges = this.shorelineEdges(tile, options.neighborResolver);
+        const shoreline = this.shorelineTopology(tile, options.neighborResolver);
+        const shorelineEdges = shoreline.edges;
+        const shorelineCorners = shoreline.corners;
         let icon = biome.icon || '□';
         let tilesetKey = baseTilesetKey;
         let kind = 'biome';
@@ -130,6 +180,9 @@ const YAW_MAP_VISUALS = {
         if (isBeach && biomeTilesetKey !== baseTilesetKey) semanticKeys.push(biomeTilesetKey);
         for (const direction of shorelineEdges) {
             semanticKeys.push(app.MAP_TILESET_KEYS.shorelines?.[direction] || `shoreline-water-${direction}`);
+        }
+        for (const corner of shorelineCorners) {
+            semanticKeys.push(app.MAP_TILESET_KEYS.shorelineCorners?.[corner] || `shoreline-water-${corner}`);
         }
         if (tile.overlays?.bridge) {
             const direction = tile.overlays.bridge.direction || tile.overlays.road?.direction || 'east-west';
@@ -167,6 +220,7 @@ const YAW_MAP_VISUALS = {
             ...(tile.overlays?.barriers || []),
             ...(options.blockedEdges || [])
         ]);
+        const blockedReason = options.blockedReason ? String(options.blockedReason) : '';
         semanticKeys.push(...this.blockedStateKeys(app, blockedEdges));
         const dangerInfluence = Boolean(tile.overlays?.dangerInfluence);
         if (dangerInfluence) {
@@ -196,7 +250,10 @@ const YAW_MAP_VISUALS = {
             kind,
             routeShape,
             shorelineEdges,
+            shorelineCorners,
+            shorelineMask: shoreline.mask,
             blockedEdges,
+            blockedReason,
             dangerInfluence,
             immediateDanger,
             semanticKeys: [...new Set(semanticKeys)],
@@ -219,8 +276,16 @@ const YAW_MAP_VISUALS = {
         const kind = app._escapeHtml(visual?.kind || 'unknown');
         const shape = visual?.routeShape ? ` data-route-shape="${app._escapeHtml(visual.routeShape)}"` : '';
         const interiorShape = visual?.interiorShape ? ` data-interior-shape="${app._escapeHtml(visual.interiorShape)}"` : '';
+        const interiorConnections = visual?.interiorConnections?.length ? ` data-interior-connections="${app._escapeHtml(visual.interiorConnections.join(' '))}"` : '';
+        const interiorAdjacent = visual?.interiorAdjacent?.length ? ` data-interior-adjacent="${app._escapeHtml(visual.interiorAdjacent.join(' '))}"` : '';
+        const interiorTheme = visual?.interiorTheme ? ` data-interior-theme="${app._escapeHtml(visual.interiorTheme)}"` : '';
+        const interiorStructure = visual?.interiorStructure ? ` data-interior-structure="${app._escapeHtml(visual.interiorStructure)}"` : '';
+        const interiorExitDirection = visual?.exitDirection ? ` data-interior-exit-direction="${app._escapeHtml(visual.exitDirection)}"` : '';
         const blocked = visual?.blockedEdges?.length ? ` data-blocked-edges="${app._escapeHtml(visual.blockedEdges.join(' '))}"` : '';
+        const blockedReason = visual?.blockedReason ? ` data-blocked-reason="${app._escapeHtml(visual.blockedReason)}"` : '';
         const shoreline = visual?.shorelineEdges?.length ? ` data-shoreline-edges="${app._escapeHtml(visual.shorelineEdges.join(' '))}"` : '';
+        const shorelineCorners = visual?.shorelineCorners?.length ? ` data-shoreline-corners="${app._escapeHtml(visual.shorelineCorners.join(' '))}"` : '';
+        const shorelineMask = Number.isInteger(visual?.shorelineMask) && visual.shorelineMask > 0 ? ` data-shoreline-mask="${visual.shorelineMask}"` : '';
         const dangerInfluence = visual?.dangerInfluence ? ' data-danger-influence="true"' : '';
         const immediateDanger = visual?.immediateDanger ? ' data-immediate-danger="true"' : '';
         const semantics = visual?.semanticKeys?.length ? ` data-tileset-semantic-keys="${app._escapeHtml(visual.semanticKeys.join(' '))}"` : '';
@@ -228,10 +293,12 @@ const YAW_MAP_VISUALS = {
         const assetAttrs = asset
             ? ` data-asset-id="${app._escapeHtml(asset.id)}" data-asset-fallback="${app._escapeHtml(asset.fallbackMode || 'emoji')}"${asset.src ? ` data-asset-src="${app._escapeHtml(asset.src)}"` : ''}`
             : '';
-        return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}${interiorShape}${blocked}${shoreline}${dangerInfluence}${immediateDanger}${semantics}${assetAttrs}`;
+        return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}${interiorShape}${interiorConnections}${interiorAdjacent}${interiorTheme}${interiorStructure}${interiorExitDirection}${blocked}${blockedReason}${shoreline}${shorelineCorners}${shorelineMask}${dangerInfluence}${immediateDanger}${semantics}${assetAttrs}`;
     },
 
     interiorTileVisual(app, room = null, options = {}) {
+        const interiorTheme = String(options.interiorKind || (room?.biome === 'cave' ? 'cave-network' : 'building'));
+        const interiorStructure = String(options.interiorStructure || '');
         if (!room) {
             const adjacent = typeof options.roomResolver === 'function' && Number.isFinite(Number(options.x)) && Number.isFinite(Number(options.y))
                 ? this.directions().filter(direction => options.roomResolver(Number(options.x) + direction.dx, Number(options.y) + direction.dy)).map(direction => direction.id)
@@ -239,14 +306,21 @@ const YAW_MAP_VISUALS = {
             const wallDirection = adjacent.length === 1 ? adjacent[0] : '';
             const wallKey = app.MAP_TILESET_KEYS.interiorWalls?.[wallDirection] || app.MAP_TILESET_KEYS.interior.wall;
             const asset = this.tilesetAssetForKey(app.MAP_TILESET_KEYS.interior.wall);
+            const wallKeys = adjacent.length
+                ? adjacent.map(direction => app.MAP_TILESET_KEYS.interiorWalls?.[direction] || app.MAP_TILESET_KEYS.interior.wall)
+                : [wallKey];
             return {
                 icon: '■',
                 tilesetKey: app.MAP_TILESET_KEYS.interior.wall,
                 baseTilesetKey: app.MAP_TILESET_KEYS.interior.wall,
                 kind: 'interior-wall',
-                interiorShape: wallDirection ? `wall-${wallDirection}` : 'wall',
+                interiorShape: wallDirection ? `wall-${wallDirection}` : (adjacent.length ? `wall-${this.connectionShape(adjacent)}` : 'wall'),
+                interiorConnections: [],
+                interiorAdjacent: this.normalizedDirections(adjacent),
+                interiorTheme,
+                interiorStructure,
                 blockedEdges: this.normalizedDirections(options.blockedEdges || []),
-                semanticKeys: [...new Set([app.MAP_TILESET_KEYS.interior.wall, wallKey, ...this.blockedStateKeys(app, options.blockedEdges || [])])],
+                semanticKeys: [...new Set([app.MAP_TILESET_KEYS.interior.wall, ...wallKeys, ...this.blockedStateKeys(app, options.blockedEdges || [])])],
                 classes: 'map-visual map-visual-interior map-visual-interior-wall',
                 label: options.label || 'Wall',
                 marker: null,
@@ -258,7 +332,8 @@ const YAW_MAP_VISUALS = {
         const baseTilesetKey = app.MAP_TILESET_KEYS.biomes[biomeId] || (biomeId === 'cave' ? app.MAP_TILESET_KEYS.interior.cave : app.MAP_TILESET_KEYS.interior.room);
         const roomBaseKey = biomeId === 'cave' ? app.MAP_TILESET_KEYS.interior.cave : app.MAP_TILESET_KEYS.interior.room;
         const hasTopology = Array.isArray(room.connections);
-        const interiorShape = hasTopology ? this.connectionShape(room.connections) : '';
+        const interiorConnections = hasTopology ? this.normalizedDirections(room.connections) : [];
+        const interiorShape = hasTopology ? this.connectionShape(interiorConnections) : '';
         const pathKey = hasTopology ? (app.MAP_TILESET_KEYS.interiorPaths?.[interiorShape] || roomBaseKey) : roomBaseKey;
         const exitDirection = hasTopology ? this.outwardDirection(room.connections) : '';
         let tilesetKey = pathKey;
@@ -298,6 +373,10 @@ const YAW_MAP_VISUALS = {
             kind,
             routeShape: interiorShape || null,
             interiorShape: interiorShape || null,
+            interiorConnections,
+            interiorAdjacent: [],
+            interiorTheme,
+            interiorStructure,
             exitDirection: room.exit ? exitDirection : null,
             blockedEdges,
             semanticKeys: [...new Set(semanticKeys)],

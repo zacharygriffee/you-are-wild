@@ -31,8 +31,16 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         };
         setOrRemove('data-tileset-semantic-keys', Array.isArray(visual.semanticKeys) ? visual.semanticKeys.join(' ') : '');
         setOrRemove('data-blocked-edges', Array.isArray(visual.blockedEdges) ? visual.blockedEdges.join(' ') : '');
+        setOrRemove('data-blocked-reason', visual.blockedReason || '');
         setOrRemove('data-interior-shape', visual.interiorShape || '');
+        setOrRemove('data-interior-connections', Array.isArray(visual.interiorConnections) ? visual.interiorConnections.join(' ') : '');
+        setOrRemove('data-interior-adjacent', Array.isArray(visual.interiorAdjacent) ? visual.interiorAdjacent.join(' ') : '');
+        setOrRemove('data-interior-theme', visual.interiorTheme || '');
+        setOrRemove('data-interior-structure', visual.interiorStructure || '');
+        setOrRemove('data-interior-exit-direction', visual.exitDirection || '');
         setOrRemove('data-shoreline-edges', Array.isArray(visual.shorelineEdges) ? visual.shorelineEdges.join(' ') : '');
+        setOrRemove('data-shoreline-corners', Array.isArray(visual.shorelineCorners) ? visual.shorelineCorners.join(' ') : '');
+        setOrRemove('data-shoreline-mask', Number.isInteger(visual.shorelineMask) && visual.shorelineMask > 0 ? visual.shorelineMask : '');
         setOrRemove('data-danger-influence', visual.dangerInfluence ? 'true' : '');
         setOrRemove('data-immediate-danger', visual.immediateDanger ? 'true' : '');
     },
@@ -110,7 +118,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         if (!surface) return;
         const inCombat = this.isCombatActive(app);
         surface.classList?.toggle('combat-active', inCombat);
-        surface.setAttribute?.('data-surface-mode', inCombat ? 'combat' : 'exploration');
+        surface.setAttribute?.('data-surface-mode', inCombat ? 'combat' : (app.inInterior ? 'interior' : 'exploration'));
     },
 
     clearCellCommand(el) {
@@ -321,6 +329,8 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             const visual = app._interiorTileVisual(room, {
                 x: tx,
                 y: ty,
+                interiorKind: app.activeInterior.kind,
+                interiorStructure: app.activeInterior.structure,
                 blockedEdges: blockedEdge ? [blockedEdge] : [],
                 roomResolver: (x, y) => app.activeInterior.tiles[`${x},${y}`] || null
             });
@@ -334,6 +344,8 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             x: cx,
             y: cy,
             isCurrent: true,
+            interiorKind: app.activeInterior.kind,
+            interiorStructure: app.activeInterior.structure,
             roomResolver: (x, y) => app.activeInterior.tiles[`${x},${y}`] || null
         });
         this.updateCenter(app, currentVisual, `${currentVisual.label} (${cx}, ${cy})`);
@@ -354,6 +366,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
                 blockedEdges: !traversal.allowed && this.targetFacingEdge(cell.dx, cell.dy)
                     ? [this.targetFacingEdge(cell.dx, cell.dy)]
                     : [],
+                blockedReason: !traversal.allowed ? traversal.reasonCode : '',
                 neighborResolver: (nx, ny) => app.getTile(nx, ny)
             });
             const direction = this.directionLabel(app, cell.dx, cell.dy);

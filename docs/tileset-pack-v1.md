@@ -103,13 +103,34 @@ doors, adjacent walls, and blocked edges expose cardinal keys such as
 `state-blocked-north`. A rendered cell also exposes its ordered stack in
 `data-tileset-semantic-keys`, with `data-blocked-edges` and
 `data-interior-shape` available for diagnostics and authoring tests.
+`data-interior-connections` carries the authoritative reciprocal passable
+edges, `data-interior-adjacent` carries every room-facing edge on a blocked
+boundary cell, and `data-interior-theme` distinguishes building, burrow, and
+cave-network presentation. Core interior grids remove their overworld gutters
+so edge-to-edge topology art composes as one plan; packs should draw route
+layers through the indicated cell edges and treat exits as localized markers.
+The first-party `yaw.default-basic-v1` skin currently composes building floors,
+walls, doorway gaps, and exit thresholds from that metadata and suppresses its
+own miniature path/door/exit atlas layers. Those layers are not removed from
+the DOM or semantic stack, and the suppression is pack-scoped, so an authored
+replacement pack can render them normally. Cave-network presentation remains
+independent.
 
 Coasts use a reusable `terrain-sand` base plus zero or more cardinal
-`shoreline-water-north|east|south|west` semantics. The generator derives those
-edges only from immediately adjacent water; a beach that is merely near water
-keeps neutral sand. `terrain-beach` remains a separate identity semantic so a
-future desert can reuse sand presentation without becoming a coast. Rendered
-cells expose the result in `data-shoreline-edges`.
+`shoreline-water-north|east|south|west` semantics. Outer joins use
+`shoreline-water-outer-ne|es|sw|wn`; diagonal-only contacts use matching
+`shoreline-water-inner-*` keys. The generator derives edges only from
+immediately adjacent water, while presentation derives corners from all eight
+neighbors. A beach merely near water keeps neutral sand. `terrain-beach`
+remains a separate identity semantic so a future desert can reuse sand
+presentation without becoming a coast. Rendered cells expose
+`data-shoreline-edges`, `data-shoreline-corners`, and an eight-bit
+`data-shoreline-mask` ordered N, NE, E, SE, S, SW, W, NW.
+
+The bundled pack's transition layers reuse its water atlas and are clipped by
+pack-scoped alpha masks over `terrain-sand`. Replacement packs may provide
+ordinary authored layers for any edge or corner semantic; core does not apply
+the bundled masks to them.
 
 Danger sites deliberately separate place from pressure. Only the deterministic
 anchor tile receives `poi-danger-site`; its bounded surrounding footprint uses

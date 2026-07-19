@@ -4284,9 +4284,13 @@ async function runTilesetCrossSurfaceFlow(page) {
       return {
         semantics: root?.getAttribute('data-tileset-semantic-keys') || '',
         shoreline: root?.getAttribute('data-shoreline-edges') || '',
+        shorelineCorners: root?.getAttribute('data-shoreline-corners') || '',
+        shorelineMask: root?.getAttribute('data-shoreline-mask') || '',
         influence: root?.getAttribute('data-danger-influence') || '',
         immediate: root?.getAttribute('data-immediate-danger') || '',
-        pseudo: root ? getComputedStyle(root.querySelector('.yaw-tile-art'), '::after').backgroundImage : ''
+        sandImage: root ? getComputedStyle(root.querySelector('[data-tileset-semantic-key="terrain-sand"]')).backgroundImage : '',
+        northMask: root ? getComputedStyle(root.querySelector('[data-tileset-semantic-key="shoreline-water-north"]')).maskImage : '',
+        northFoam: root ? getComputedStyle(root.querySelector('[data-tileset-semantic-key="shoreline-water-north"]'), '::after').backgroundImage : ''
       };
     };
     return {
@@ -4304,13 +4308,50 @@ async function runTilesetCrossSurfaceFlow(page) {
   for (const [surface, value] of [['mobile coast', state.mobile], ['desktop coast', state.desktop], ['large-map coast', state.large]]) {
     assert(value.semantics.includes('terrain-sand') && value.semantics.includes('terrain-beach'), `${surface} should retain reusable sand and beach identity semantics`);
     assert(value.semantics.includes('shoreline-water-north') && value.semantics.includes('shoreline-water-east'), `${surface} should compose every adjacent cardinal shoreline`);
+    assert(value.semantics.includes('shoreline-water-outer-ne'), `${surface} should compose the outer corner joining adjacent north and east water`);
     assert.strictEqual(value.shoreline, 'north east', `${surface} should expose authoritative shoreline metadata`);
+    assert.strictEqual(value.shorelineCorners, 'outer-ne', `${surface} should expose authoritative shoreline corner metadata`);
+    assert.strictEqual(value.shorelineMask, '5', `${surface} should expose its eight-neighbor transition mask`);
     assert.strictEqual(value.influence, 'true', `${surface} should expose bounded danger influence`);
     assert.strictEqual(value.immediate, '', `${surface} should not confuse regional pressure with immediate danger`);
-    assert(value.pseudo.includes('linear-gradient'), `${surface} should paint the simple core shoreline fallback`);
+    assert(value.sandImage && value.sandImage !== 'none', `${surface} should resolve the neutral sand material atlas; got ${value.sandImage}`);
+    assert(value.northMask.includes('linear-gradient'), `${surface} should mask the reusable water material to its north edge`);
+    assert(value.northFoam.includes('radial-gradient'), `${surface} should paint a softened foam boundary over the transition`);
   }
   assert.deepStrictEqual([state.mobileAnchors, state.desktopAnchors, state.largeAnchors], [1, 1, 1], 'Every map surface should render one danger-site anchor instead of a skull carpet');
   assert.deepStrictEqual([state.mobileInfluence, state.desktopInfluence, state.largeInfluence], [9, 9, 9], 'Every map surface should retain the bounded 3x3 danger influence footprint');
+  const shorelineLayers = await page.evaluate(() => [...document.querySelectorAll('#desktop-map-cell-center [data-tileset-semantic-key^="shoreline-water-"]')].map(layer => ({
+    key: layer.getAttribute('data-tileset-semantic-key'),
+    opacity: getComputedStyle(layer).opacity,
+    mask: getComputedStyle(layer).maskImage
+  })));
+  assert(shorelineLayers.length >= 3, 'Cross-surface coast fixture should resolve edge and outer-corner shoreline semantics');
+  assert(shorelineLayers.every(layer => layer.opacity === '1' && layer.mask !== 'none'), `Bundled shoreline semantics should paint reusable water only through directional masks: ${JSON.stringify(shorelineLayers)}`);
+
+  const naturalWaterWalls = await page.evaluate(() => {
+    const inspect = selector => {
+      const root = document.querySelector(selector);
+      const blockedLayers = [...(root?.querySelectorAll('[data-tileset-semantic-key^="state-blocked"]') || [])];
+      return {
+        base: root?.getAttribute('data-base-tileset-key') || '',
+        kind: root?.getAttribute('data-map-kind') || '',
+        reason: root?.getAttribute('data-blocked-reason') || '',
+        semanticCount: blockedLayers.length,
+        visibleCount: blockedLayers.filter(layer => getComputedStyle(layer).opacity !== '0').length
+      };
+    };
+    return {
+      mobile: inspect('#mobile-mini-map [data-mobile-play-cell="n"]'),
+      desktop: inspect('#desktop-play-cell-n')
+    };
+  });
+  for (const [surface, water] of Object.entries(naturalWaterWalls)) {
+    assert.strictEqual(water.base, 'terrain-water', `${surface} fixture should inspect a natural water cell`);
+    assert.strictEqual(water.kind, 'biome', `${surface} water fixture should remain an ordinary biome rather than an authored barrier`);
+    assert(['impassable', 'capability'].includes(water.reason), `${surface} water fixture should expose a natural traversal-block reason; got ${water.reason}`);
+    assert(water.semanticCount > 0, `${surface} natural water should retain its blocked-edge semantic layers for traversal and replacement packs`);
+    assert.strictEqual(water.visibleCount, 0, `${surface} bundled natural water should not paint blocked edges as literal cliff walls`);
+  }
 
   await page.evaluate(() => {
     const exit = { x: 0, y: 0, biome: 'indoors', explored: true, exit: true, archetype: 'entry', connections: ['east'], creatures: [], items: [] };
@@ -4319,7 +4360,7 @@ async function runTilesetCrossSurfaceFlow(page) {
     App.inInterior = true;
     App.interiorLocation = { x: 0, y: 0 };
     App.activeInterior = {
-      id: 'tileset-interior', structure: 'hut', structureName: 'Topology Fixture', origin: { x: 0, y: 0 },
+      id: 'tileset-interior', kind: 'building', structure: 'hut', structureName: 'Topology Fixture', origin: { x: 0, y: 0 },
       tiles: { '0,0': exit, '1,0': corridor, '1,1': chamber }
     };
     App.renderMap();
@@ -4328,16 +4369,44 @@ async function runTilesetCrossSurfaceFlow(page) {
   state = await page.evaluate(() => {
     const center = document.querySelector('#mobile-mini-map .map-tile.center');
     const northWall = document.querySelector('#mobile-mini-map [data-mobile-play-cell="n"]');
+    const desktopCenter = document.querySelector('#desktop-map-cell-center');
+    const exitLayer = desktopCenter?.querySelector('[data-tileset-semantic-key="interior-exit-west"]');
+    const pathLayer = desktopCenter?.querySelector('[data-tileset-semantic-key="interior-path-end-east"]');
+    const tileArt = desktopCenter?.querySelector('.yaw-tile-art');
     const layerKeys = selector => [...document.querySelectorAll(`${selector} .yaw-tile-art-layer`)].map(layer => layer.getAttribute('data-tileset-semantic-key'));
     return {
       centerShape: center?.getAttribute('data-interior-shape') || '',
+      centerConnections: center?.getAttribute('data-interior-connections') || '',
+      centerTheme: center?.getAttribute('data-interior-theme') || '',
+      centerStructure: center?.getAttribute('data-interior-structure') || '',
+      centerExitDirection: center?.getAttribute('data-interior-exit-direction') || '',
       centerKeys: layerKeys('#mobile-mini-map .map-tile.center'),
       desktopKeys: layerKeys('#desktop-map-cell-center'),
+      mobileMode: document.querySelector('#mobile-mini-map')?.getAttribute('data-map-mode') || '',
+      desktopMode: document.querySelector('#desktop-play-surface')?.getAttribute('data-surface-mode') || '',
+      mobileGap: getComputedStyle(document.querySelector('#mobile-mini-map')).gap,
+      desktopGap: getComputedStyle(document.querySelector('#desktop-neighborhood-grid')).gap,
+      exitInset: exitLayer ? getComputedStyle(exitLayer).inset : '',
+      pathOpacity: pathLayer ? getComputedStyle(pathLayer).opacity : '',
+      exitOpacity: exitLayer ? getComputedStyle(exitLayer).opacity : '',
+      floorBackground: tileArt ? getComputedStyle(tileArt, '::before').backgroundImage : '',
+      wallBackground: tileArt ? getComputedStyle(tileArt, '::after').backgroundImage : '',
       northWallShape: northWall?.getAttribute('data-interior-shape') || '',
+      northWallAdjacent: northWall?.getAttribute('data-interior-adjacent') || '',
       northWallSemantics: northWall?.getAttribute('data-tileset-semantic-keys') || ''
     };
   });
   assert.strictEqual(state.centerShape, 'end-east', 'Interior current room should derive its path shape from reciprocal room connections');
+  assert.strictEqual(state.centerConnections, 'east', 'Interior cells should expose their authoritative reciprocal connection edges');
+  assert.strictEqual(state.centerTheme, 'building', 'Interior cells should expose the active building theme');
+  assert.strictEqual(state.centerStructure, 'hut', 'Interior cells should expose the active structure skin identity');
+  assert.strictEqual(state.centerExitDirection, 'west', 'Interior exits should expose their outward threshold edge');
+  assert.deepStrictEqual([state.mobileMode, state.desktopMode], ['interior', 'interior'], 'Mobile and desktop surfaces should enter an explicit interior presentation mode');
+  assert.deepStrictEqual([state.mobileGap, state.desktopGap], ['0px', '0px'], 'Interior neighborhood grids should remove overworld gutters');
+  assert(state.exitInset === '27%' || state.exitInset.split(' ').every(value => value === '27%'), `The bundled exit marker should retain its reduced inset; got ${state.exitInset}`);
+  assert.deepStrictEqual([state.pathOpacity, state.exitOpacity], ['0', '0'], 'The bundled building skin should hide miniature path and exit atlas art without removing their semantic layers');
+  assert(state.floorBackground.includes('linear-gradient'), 'The bundled building skin should paint a continuous room-scale floor');
+  assert(state.wallBackground.includes('linear-gradient'), 'The bundled building skin should paint perimeter walls and connection openings');
   for (const [surface, keys] of [['mobile interior', state.centerKeys], ['desktop interior', state.desktopKeys]]) {
     assert(keys.includes('interior-room'), `${surface} should retain its room base layer`);
     assert(keys.includes('interior-path-end-east'), `${surface} should render the directional interior path overlay`);
@@ -4346,6 +4415,7 @@ async function runTilesetCrossSurfaceFlow(page) {
     assert(keys.includes('state-current'), `${surface} should retain current-position presentation inside structures`);
   }
   assert.strictEqual(state.northWallShape, 'wall-south', 'A missing interior cell should face its adjacent room rather than becoming an unrelated random tile');
+  assert.strictEqual(state.northWallAdjacent, 'south', 'A missing interior cell should expose its adjacent-room edge');
   assert(state.northWallSemantics.includes('interior-wall-south') && state.northWallSemantics.includes('state-blocked-south'), 'Interior wall metadata should expose its directional wall and blocked edge');
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });

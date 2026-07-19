@@ -144,6 +144,8 @@ const YAW_LOCAL_MAP = {
                 x: tx,
                 y: ty,
                 isCurrent: isCenter,
+                interiorKind: app.activeInterior.kind,
+                interiorStructure: app.activeInterior.structure,
                 blockedEdges: blockedEdge ? [blockedEdge] : [],
                 roomResolver: (x, y) => app.activeInterior.tiles[`${x},${y}`] || null
             });
@@ -159,7 +161,7 @@ const YAW_LOCAL_MAP = {
             if (!isCenter && traversal && !traversal.allowed) title += ` — ${app._traversalMessage(traversal)}`;
             html += this.cellHtml(app, { classes, visual, title, dx: cell.dx, dy: cell.dy, key: cell.key, moveable });
         });
-        this.writeMobileMap(html);
+        this.writeMobileMap(html, 'interior');
         const coords = document.getElementById('coords');
         if (coords) coords.textContent = `Inside ${app.activeInterior.structureName}`;
         const mobileCoords = document.getElementById('mobile-coords');
@@ -189,6 +191,7 @@ const YAW_LOCAL_MAP = {
                 blockedEdges: !isCenter && traversal && !traversal.allowed && this.targetFacingEdge(cell.dx, cell.dy)
                     ? [this.targetFacingEdge(cell.dx, cell.dy)]
                     : [],
+                blockedReason: !isCenter && traversal && !traversal.allowed ? traversal.reasonCode : '',
                 neighborResolver: (nx, ny) => {
                     const vx = nx - cx;
                     const vy = ny - cy;
@@ -211,7 +214,7 @@ const YAW_LOCAL_MAP = {
             if (!isCenter && traversal && !traversal.allowed) title += ` — ${app._traversalMessage(traversal)}`;
             html += this.cellHtml(app, { classes, visual, title, dx: cell.dx, dy: cell.dy, key: cell.key, moveable });
         });
-        this.writeMobileMap(html);
+        this.writeMobileMap(html, 'overworld');
         const mobileCoords = document.getElementById('mobile-coords');
         if (mobileCoords) mobileCoords.textContent = `${cx}, ${cy}`;
         app.renderTileInfo(app.getTile(cx, cy));
@@ -221,9 +224,12 @@ const YAW_LOCAL_MAP = {
         app._renderTime();
     },
 
-    writeMobileMap(html) {
+    writeMobileMap(html, mode = 'overworld') {
         const containers = [document.getElementById('mobile-mini-map')].filter(Boolean);
-        containers.forEach(container => { container.innerHTML = html; });
+        containers.forEach(container => {
+            container.setAttribute?.('data-map-mode', mode);
+            container.innerHTML = html;
+        });
     }
 };
 

@@ -19,9 +19,14 @@ The sheet appears usable for a first pass over the current wilderness map:
 The implementation exposes `data-tileset-key`, `data-base-tileset-key`,
 `data-tileset-semantic-keys`, `data-map-kind`, route shape, interior shape, and
 blocked-edge metadata on mobile, desktop, interior, and large-map cells.
-Beach cells additionally expose cardinal shoreline edges over a neutral sand
-base, and danger-site influence is distinct from both its single anchor marker
-and immediate creature danger.
+Beach cells additionally expose cardinal shoreline edges, inner/outer corner
+joins, and an eight-neighbor water mask over a neutral sand base. Danger-site
+influence is distinct from both its single anchor marker and immediate creature
+danger. Terrain Transition V1 replaces the old crop of the atlas's baked
+west-facing coast with a dedicated seamless sand material. The bundled skin
+reuses its water texture through directional alpha masks and foam boundaries;
+the mask CSS is scoped to the bundled pack so authored edge/corner art remains
+unmodified.
 Tileset Pack V1 consumes those semantics through bounded atlas rectangles and
 local Media Repository leases. Route visuals infer straight, corner,
 T-junction, intersection, and cardinal dead-end keys from authoritative
@@ -71,15 +76,27 @@ The accepted sheet is used through these boundaries:
    URI override, fallback, replacement, persistence, and restoration without
    hotlinking its source during play.
 
-## Interior Cohesion Follow-Up
+## Interior Cohesion
 
-The deterministic room graph and directional semantics are sound, but the
-current default atlas treats corridor overlays like miniature complete rooms.
-That makes adjacent cells read as disconnected floor plans, and wall/exit art
-uses a different scale. The next interior presentation slice should establish
-a continuous floor field, edge-to-edge reciprocal path joins, compatible wall
-joins, and a restrained exit marker. This is an art/composition correction,
-not a change to structure generation or traversal topology.
+The deterministic room graph remains the gameplay authority. Interior mode
+now removes the overworld card gutters so reciprocal corridor overlays meet at
+their shared cell edges on mobile and desktop. Missing-room cells use a
+shadowed boundary field rather than a freestanding cliff tile, compose every
+adjacent directional wall semantic, and expose `data-interior-adjacent`.
+Passable cells expose their authoritative edges in
+`data-interior-connections`, while `data-interior-theme` keeps buildings and
+cave networks available to different art treatments. Interior Skin V1 hides
+the bundled miniature corridor, hut, and exit atlas cells for building rooms.
+It paints a restrained masonry floor, perimeter walls with reciprocal doorway
+gaps, and an outward threshold at the structure exit. This override is scoped
+to the bundled pack: replacement packs still receive and may render every
+path, door, exit, wall, marker, and presence semantic. Cave networks retain
+their organic atlas treatment rather than inheriting building masonry.
+
+This remains an art/composition correction, not a change to structure
+generation, traversal topology, deterministic saves, or mod ownership. A
+future authored atlas can replace the default room grammar without changing
+these semantics.
 
 The code seam remains deliberately metadata-first: terrain and overlays decide
 what exists, while the active presentation stack decides how it looks.

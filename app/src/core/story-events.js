@@ -780,7 +780,10 @@ const YAW_STORY_EVENTS = {
             }
             groups.push({ ...exchange, events: [event] });
         });
-        return groups.reverse();
+        return groups.reverse().map(group => ({
+            ...group,
+            events: [...group.events].reverse()
+        }));
     },
 
     exchangeEventCountLabel(app, count) {

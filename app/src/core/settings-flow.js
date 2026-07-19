@@ -331,6 +331,12 @@ const YAW_SETTINGS_FLOW = {
         if (hardcore) hardcore.checked = app.settings.hardcore;
         const inventoryRecovery = document.getElementById('setting-inventory-recovery');
         if (inventoryRecovery) inventoryRecovery.value = app.settings.inventoryRecovery;
+        const playerDeathCheat = document.getElementById('cheat-playerDeath');
+        if (playerDeathCheat) {
+            const available = app.canTriggerPlayerDeathCheat();
+            playerDeathCheat.disabled = !available;
+            playerDeathCheat.setAttribute('aria-disabled', String(!available));
+        }
         app.updateTierButtons();
         void this.renderContentPolicySettings(app);
         app.updateCheatButtons();

@@ -4950,6 +4950,7 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(inventoryPanelContent, 'data-command-grammar="holdings-management"', 'Holdings overlay should identify its management grammar');
   assertContains(inventoryPanelContent, 'data-command-surface="holdings-window"', 'Holdings overlay should identify its focused command surface');
   assertContains(inventoryPanelContent, 'data-command-control="use-item"', 'Inventory use controls should identify item action controls');
+  assertContains(inventoryPanelContent, 'use(app, itemId)', 'Inventory panel helper should own consumable item resolution');
   assertContains(inventoryPanelContent, 'data-command-control="equip-item"', 'Inventory equip controls should identify item action controls');
   assertContains(inventoryPanelContent, 'data-command-control="drop-item"', 'Inventory drop controls should identify item action controls');
   assertContains(inventoryPanelContent, 'data-command-control="close-holdings"', 'Holdings close control should identify its overlay exit');
@@ -4960,6 +4961,7 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(inventoryPanelContent, 'app._persistCurrentExplorationTile(tile)', 'Dropped inventory should persist as tile-local state');
   assertNotContains(inventoryPanelContent, "document.getElementById('scene-description')", 'Inventory helper should not render into center tile content');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.show(this)', 'App showInventory wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INVENTORY_PANEL.use(this, itemId)', 'App item-use wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.equip(this, itemId, ownerId)', 'App equip wrapper should delegate to the helper with optional owner routing');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.unequip(this, slot, ownerId)', 'App unequip wrapper should delegate to the helper with optional owner routing');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.drop(this, itemId)', 'App drop wrapper should delegate to the helper');
@@ -5708,6 +5710,8 @@ test('Cheat system present', () => {
   assertContains(appContent, 'cheats:', 'cheats object missing');
   assertContains(appContent, 'godMode', 'godMode cheat missing');
   assertContains(appContent, 'toggleCheat(', 'toggleCheat method missing');
+  assertContains(appContent, 'triggerPlayerDeathCheat()', 'Player death test wrapper missing');
+  assertContains(defeatRecoveryContent, 'triggerDebugDeath(app)', 'Player death test should be owned by the defeat resolver');
 });
 
 test('Combat queue system present', () => {
@@ -6308,6 +6312,9 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'combat.instantWin': 'Victoria instantanea'", 'Spanish instant-win label missing');
   assertContains(contentContent, "'cheat.overpoweredMaxed': 'Overpowered! All stats maxed.'", 'English overpowered cheat log missing');
   assertContains(contentContent, "'cheat.overpoweredMaxed': 'Sobrepotenciado! Todas las estadisticas al maximo.'", 'Spanish overpowered cheat log missing');
+  assertContains(contentContent, "'cheat.playerDeath': 'Test Player Death'", 'English player-death cheat label missing');
+  assertContains(contentContent, "'cheat.playerDeath': 'Probar muerte del jugador'", 'Spanish player-death cheat label missing');
+  assertContains(contentContent, "'cheat.playerDeathConfirmHardcore': 'This will trigger real Hardcore death handling and permanently delete the active save slot. Continue?'", 'Hardcore player-death warning missing');
   assertContains(contentContent, "'combat.allyHolds': '{name} holds position.'", 'English ally hold log missing');
   assertContains(contentContent, "'combat.allyHolds': '{name} mantiene la posicion.'", 'Spanish ally hold log missing');
   assertContains(contentContent, "'combat.enemyReinforces': '{enemy} calls for help! {reinforcement} joins the fight.'", 'English reinforcement log missing');
@@ -6935,6 +6942,8 @@ test('Static setup review and system controls identify non-composer surfaces', (
   assertContains(template, 'id="setting-font-size" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="fontSize"', 'Accessibility range inputs should identify as settings system controls');
   assertContains(template, 'id="cheat-godMode" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="godMode"', 'Cheat toggles should identify as system settings controls');
   assertContains(template, 'id="cheat-instantWin" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="instant-win"', 'Instant win should identify as a settings system control');
+  assertContains(template, 'id="cheat-playerDeath" class="nav-btn danger" data-command-surface="settings-detail" data-command-mode="system" data-command-control="test-player-death"', 'Player death test should identify as a dangerous settings system control');
+  assertContains(template, 'onclick="App.confirmPlayerDeathCheat()"', 'Player death test should require the shared confirmation flow');
   assertContains(template, 'data-command-surface="settings-detail" data-command-mode="system" data-command-control="delete-all-saves"', 'Clear all saves should identify as a settings system control');
   assertContains(template, 'data-command-surface="settings-detail" data-command-mode="system" data-command-control="close-settings"', 'Settings close should identify as a settings system exit');
   assertContains(template, 'data-command-surface="settings-detail" data-command-mode="system" data-command-control="close-settings" data-command-slot="exit"', 'Settings close should identify the canonical exit slot');
@@ -8053,6 +8062,104 @@ test('Cheat toggle feedback localizes', () => {
   const logs = App.log.map(entry => entry.text).join('\n');
   assertContains(logs, 'Truco overpowered: ACTIVADO', 'Cheat toggle state should localize');
   assertContains(logs, 'Sobrepotenciado! Todas las estadisticas al maximo.', 'Overpowered max-stat feedback should localize');
+});
+
+test('Player death cheat uses the authoritative resolver and deliberately bypasses God Mode', () => {
+  const { App, hooks } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-debug-death', CPun: 75, CPle: 20, MPun: 100 });
+  const ally = makeUnit('Harpy', { id: 'ally-debug-death', CPun: 40, MPun: 80 });
+  App.player = player;
+  App.party = [player, ally];
+  App.screen = 'settings';
+  App.settingsReturnScreen = 'game';
+  App.settings.hardcore = false;
+  App.cheats.godMode = true;
+  App.location = { x: 3, y: -1 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.combatState.active = false;
+  let returnedToGame = 0;
+  let autosaves = 0;
+  App.returnToGame = () => {
+    returnedToGame += 1;
+    App.screen = 'game';
+    App.settingsReturnScreen = null;
+  };
+  App.autoSave = () => { autosaves += 1; return true; };
+
+  const state = App.triggerPlayerDeathCheat();
+
+  assertEqual(returnedToGame, 1, 'Death test should close Settings back to the active game');
+  assertEqual(state.status, 'dead', 'Death test should produce the normal terminal state');
+  assertEqual(state.terminal, true, 'Death test should be terminal even with a living ally');
+  assertEqual(state.cause, 'debug-cheat', 'Death test should retain a diagnostic cause');
+  assertEqual(state.source, 'cheat-player-death', 'Death test should identify its source');
+  assertEqual(App.player.CPun, 0, 'Death test should reduce player condition to zero');
+  assertEqual(App.player.knockedOut, true, 'Death test should mark the player down');
+  assertEqual(App.defeatState.resolutionId, state.resolutionId, 'Death test should use the authoritative defeat state');
+  assertEqual(autosaves, 1, 'Noncombat regular death testing should persist the pending outcome');
+  assert(hooks.some(hook => hook.event === 'onDefeat'), 'Death test should emit the standard defeat hook');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'Player death test triggered.', 'Death test should write a diagnostic Activity Log entry');
+});
+
+test('Player death cheat preserves the recovery surface after combat teardown', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-debug-combat-death', CPun: 75, CPle: 20, MPun: 100 });
+  const enemy = makeUnit('Wolfkin', { id: 'enemy-debug-combat-death', disposition: App.DISPOSITION.ENEMY, CPun: 60, MPun: 60 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.screen = 'settings';
+  App.settingsReturnScreen = 'game';
+  App.settings.hardcore = false;
+  App.location = { x: 5, y: 5 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.mode = App.GAME_MODE.COMBAT;
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    sceneExchangeId: 'combat-debug-death',
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.returnToGame = () => {
+    App.screen = 'game';
+    App.settingsReturnScreen = null;
+  };
+  App.autoSave = () => true;
+
+  const state = App.triggerPlayerDeathCheat();
+
+  assertEqual(state.status, 'dead', 'Combat death test should resolve terminal death');
+  assertEqual(App.combatState.active, false, 'Combat death test should finish combat teardown');
+  assertEqual(App.defeatState.pending, true, 'Combat teardown should retain the pending recovery state');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="regenerate"', 'Desktop combat teardown should leave Regenerate available');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="end-game"', 'Desktop combat teardown should leave End Game available');
+  assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-control="regenerate"', 'Mobile combat teardown should leave Regenerate available');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'executeCombatIntent', 'Combat actions should not overwrite recovery commands');
+  assertContains(elements.get('scene-title').textContent, 'Defeat', 'Exploration context should not overwrite the recovery scene');
+});
+
+test('Player death cheat is game-scoped and gives Hardcore an explicit destructive warning', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'player-debug-confirm', CPun: 50, MPun: 100 });
+  App.party = [App.player];
+  App.screen = 'settings';
+  App.settingsReturnScreen = 'menu';
+  assertEqual(App.canTriggerPlayerDeathCheat(), false, 'Menu-origin Settings should not expose a stale run to the death test');
+
+  App.settingsReturnScreen = 'game';
+  App.settings.hardcore = true;
+  let confirmation = null;
+  App.showConfirmDialog = options => { confirmation = options; return false; };
+  App.confirmPlayerDeathCheat();
+  assert(confirmation, 'Available death testing should open a confirmation dialog');
+  assertEqual(confirmation.danger, true, 'Death testing confirmation should be destructive');
+  assertContains(confirmation.message, 'permanently delete the active save slot', 'Hardcore confirmation should disclose active-slot deletion');
+  assertEqual(typeof confirmation.onConfirm, 'function', 'Confirmation should defer the death action until explicit approval');
 });
 
 test('Flee ends combat without granting victory XP', () => {
@@ -14314,6 +14421,88 @@ test('Full inventory keeps tile-local item pickup stable', () => {
   assertContains(App._renderContextActions(), 'App.takeTileItems()', 'Full inventory pickup should keep Take Items available for correction');
   assertContains(App.log[App.log.length - 1].text, 'Inventory is full.', 'Full inventory pickup should explain why nothing moved');
   assertEqual(autoSaveCalls, 1, 'Full inventory pickup should autosave feedback state');
+});
+
+test('Healing consumables restore capped player condition and consume exactly one item', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-healing-item', CPun: 80, MPun: 100 });
+  App.player = player;
+  App.party = [player];
+  App.inventory = [
+    { id: 'mushroom-heal', name: 'Strange Mushroom' },
+    { id: 'herb-spare', name: 'Healing Herb' }
+  ];
+  App.combatState.active = false;
+  let autoSaveCalls = 0;
+  App.autoSave = () => { autoSaveCalls += 1; return true; };
+
+  assertEqual(App.useItem('mushroom-heal'), true, 'A healing consumable should resolve from Holdings');
+  assertEqual(App.player.CPun, 100, 'Healing should cap at maximum condition');
+  assertEqual(App.inventory.length, 1, 'Using an item should consume only the selected object');
+  assertEqual(App.inventory[0].id, 'herb-spare', 'A different healing item should remain in the pack');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'recovers 20 condition', 'Healing feedback should report the actual capped amount');
+  assertEqual(autoSaveCalls, 1, 'Healing item use should autosave the changed player and inventory state');
+
+  assertEqual(App.useItem('herb-spare'), false, 'A full-condition player should not waste another healing item');
+  assertEqual(App.inventory.length, 1, 'Blocked full-condition use should retain the item');
+  assertEqual(autoSaveCalls, 1, 'Blocked full-condition use should not autosave an unchanged item state');
+  assertContains(App.log[App.log.length - 1].text, 'already at full condition', 'Blocked use should explain why the item was retained');
+});
+
+test('Healing consumables spend the player combat turn and reject other turns', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-combat-heal', CPun: 25, MPun: 100 });
+  const enemy = makeUnit('Wolfkin', { id: 'enemy-combat-heal', disposition: App.DISPOSITION.ENEMY, CPun: 50, MPun: 50 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.inventory = [{ id: 'combat-herb', name: 'Healing Herb' }];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  let closed = 0;
+  let advanced = 0;
+  App.closeHoldingsWindow = () => { closed += 1; return false; };
+  App.nextTurn = () => { advanced += 1; };
+  App.autoSave = () => true;
+
+  assertEqual(App.useItem('combat-herb'), true, 'The player should be able to use a healing item on their combat turn');
+  assertEqual(App.player.CPun, 55, 'Combat healing should apply the authored recovery amount');
+  assertEqual(App.inventory.length, 0, 'Combat healing should consume the item');
+  assertEqual(closed, 1, 'Successful combat use should close Holdings');
+  assertEqual(advanced, 1, 'Successful combat use should spend the player turn');
+
+  App.inventory = [{ id: 'blocked-herb', name: 'Healing Herb' }];
+  App.player.CPun = 20;
+  App.combatState.currentTurn = 1;
+  App.activeActor = enemy;
+  assertEqual(App.useItem('blocked-herb'), false, 'Healing should not interrupt another combatant turn');
+  assertEqual(App.player.CPun, 20, 'Rejected out-of-turn use should not heal');
+  assertEqual(App.inventory.length, 1, 'Rejected out-of-turn use should retain the item');
+  assertEqual(advanced, 1, 'Rejected out-of-turn use should not advance combat');
+});
+
+test('Pack only advertises implemented consumable effects', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'player-item-contract', CPun: 50, MPun: 100 });
+  App.party = [App.player];
+  App.inventory = [
+    { id: 'usable-herb', name: 'Healing Herb' },
+    { id: 'future-berry', name: 'Enchanted Berry' },
+    { id: 'future-venom', name: 'Vial of Venom' }
+  ];
+  App.showInventory();
+  const html = elements.get('holdings-window-root').innerHTML;
+  assertContains(html, "App.useItem('usable-herb')", 'Healing items should expose Use');
+  assertNotContains(html, "App.useItem('future-berry')", 'Unimplemented buff items should not expose a no-op Use button');
+  assertNotContains(html, "App.useItem('future-venom')", 'Untargeted damage items should not expose a no-op Use button');
 });
 
 test('Dropping carried inventory creates tile-local pickup state', () => {

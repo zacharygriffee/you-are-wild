@@ -120,15 +120,20 @@ const YAW_COMBAT_LIFECYCLE = {
             app.log.push({ text: app._label('combat.defeat', 'Defeat...'), type: 'combat' });
             app.updateScene('Defeat', 'Darkness claims you...', false);
             app._markDefeat(outcome);
-            app.showDefeatRecovery();
         }
         if (outcome !== 'defeat') app.renderMap();
         app.renderLog();
-        if ((app.player?.pendingPerkChoices || 0) > 0) app.showPerkSelection();
-        else app.renderParty();
-        app.renderCreatures();
-        app.showExplorationActions();
-        app.renderMobileCombatToolbelt();
+        if (outcome === 'defeat') {
+            app.renderParty();
+            app.renderCreatures();
+            app.showDefeatRecovery();
+        } else {
+            if ((app.player?.pendingPerkChoices || 0) > 0) app.showPerkSelection();
+            else app.renderParty();
+            app.renderCreatures();
+            app.showExplorationActions();
+            app.renderMobileCombatToolbelt();
+        }
         app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'combat', 'quests', 'sceneFeed', 'activityLog'], `combat-end-${outcome}`);
         app.autoSave();
     },

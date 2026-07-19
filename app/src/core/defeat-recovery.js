@@ -160,9 +160,68 @@ const YAW_DEFEAT_RECOVERY = {
         return this.resolve(app, { status: 'dead', terminal: true, outcome, cause: outcome, source: 'defeat-recovery' });
     },
 
+    canTriggerDebugDeath(app) {
+        const gameOrigin = app.screen === 'game'
+            || app.settingsReturnScreen === 'game'
+            || (Array.isArray(app.overlayReturnStack) && app.overlayReturnStack.includes('game'));
+        return Boolean(gameOrigin
+            && app.player
+            && app.player.CPun > 0
+            && !app.defeatState?.pending
+            && app.defeatState?.status !== 'run-ended');
+    },
+
+    confirmDebugDeath(app) {
+        if (!this.canTriggerDebugDeath(app)) {
+            const message = app._label('cheat.playerDeathUnavailable', 'Start or load an active game before testing player death.');
+            app.log.push({ text: message, type: 'discovery' });
+            app.renderLog?.();
+            return false;
+        }
+        const hardcore = Boolean(app.settings?.hardcore);
+        return app.showConfirmDialog({
+            title: app._label('cheat.playerDeathTitle', 'Test Player Death'),
+            message: hardcore
+                ? app._label('cheat.playerDeathConfirmHardcore', 'This will trigger real Hardcore death handling and permanently delete the active save slot. Continue?')
+                : app._label('cheat.playerDeathConfirm', 'This will trigger real player death and recovery consequences, including the selected inventory policy. Continue?'),
+            confirmLabel: app._label('cheat.playerDeathConfirmAction', 'Trigger Death'),
+            cancelLabel: app._label('ui.cancel', 'Cancel'),
+            danger: true,
+            onConfirm: () => this.triggerDebugDeath(app)
+        });
+    },
+
+    triggerDebugDeath(app) {
+        if (!this.canTriggerDebugDeath(app)) {
+            const message = app._label('cheat.playerDeathUnavailable', 'Start or load an active game before testing player death.');
+            app.log.push({ text: message, type: 'discovery' });
+            app.renderLog?.();
+            return false;
+        }
+        const wasCombat = Boolean(app.combatState?.active);
+        if (app.screen !== 'game') app.returnToGame?.();
+        const message = app._label('cheat.playerDeathTriggered', 'Player death test triggered.');
+        app.log.push({ text: message, type: 'discovery' });
+        app.player.CPun = 0;
+        app.player.CPle = 0;
+        app.player.knockedOut = true;
+        const state = this.handlePlayerFall(app, {
+            fatal: true,
+            cause: 'debug-cheat',
+            source: 'cheat-player-death',
+            ignoreGodMode: true,
+            endCombat: true
+        });
+        if (!app.settings?.hardcore && !wasCombat) {
+            app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'combat', 'quests', 'sceneFeed', 'activityLog'], 'debug-player-death');
+            app.autoSave?.();
+        }
+        return state;
+    },
+
     handlePlayerFall(app, input = {}) {
         if (!app.player) return null;
-        if (app.cheats?.godMode) {
+        if (app.cheats?.godMode && input.ignoreGodMode !== true) {
             app.player.CPun = Math.max(1, app.player.CPun || 0);
             app.player.knockedOut = false;
             app.defeatState = null;

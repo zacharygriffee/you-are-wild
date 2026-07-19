@@ -287,7 +287,7 @@ const YAW_HOLDINGS = {
 
     renderPackItem(app, item, owner = app.player) {
         const def = app.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
-        const canUse = def.effect === 'heal' || def.effect === 'buff' || def.effect === 'damage';
+        const canUse = def.effect === 'heal';
         const canEquip = app._isEquippable(item);
         const itemKey = app._escapeJsString(item.id);
         const name = app._escapeHtml(item.name || app._label('ui.item', 'item'));
@@ -680,6 +680,67 @@ const YAW_INVENTORY_PANEL = {
     setSort(app, sort) {
         app.inventorySort = ['name', 'type', 'value-desc', 'value-asc'].includes(sort) ? sort : 'name';
         YAW_HOLDINGS.refresh(app) || app.showInventory();
+    },
+
+    use(app, itemId) {
+        const index = (app.inventory || []).findIndex(item => String(item?.id) === String(itemId));
+        if (index < 0) return false;
+        const item = app.inventory[index];
+        const def = app._getItemDef(item);
+        if (def.effect !== 'heal') return false;
+        const player = app._syncPlayerPartyReference?.() || app.player;
+        if (!player || player.CPun <= 0 || app.defeatState?.pending) {
+            const text = app._label('inventory.cannotHealDefeated', 'A healing item cannot replace defeat recovery.');
+            app.log.push({ text, type: 'heal' });
+            app.renderLog?.();
+            return false;
+        }
+        const inCombat = Boolean(app.combatState?.active);
+        if (inCombat) {
+            const actor = app._currentCombatActor?.() || app.activeActor;
+            if (actor !== player) {
+                const text = app._label('inventory.notPlayerTurn', 'Healing items can only be used on your combat turn.');
+                app.log.push({ text, type: 'heal' });
+                app.renderLog?.();
+                return false;
+            }
+        }
+        const current = Math.max(0, Number(player.CPun) || 0);
+        const maximum = Math.max(1, Number(player.MPun) || current || 1);
+        if (current >= maximum) {
+            const text = app._label('inventory.fullCondition', '{name} is already at full condition.', { name: player.name || app._label('party.you', 'You') });
+            app.log.push({ text, type: 'heal' });
+            app.renderLog?.();
+            return false;
+        }
+        const requested = Math.max(1, Math.floor(Number(def.healAmount ?? def.value) || 1));
+        const healed = Math.min(requested, maximum - current);
+        player.CPun = current + healed;
+        app.inventory.splice(index, 1);
+        const text = app._label('inventory.healed', '{name} uses {item} and recovers {amount} condition.', {
+            name: player.name || app._label('party.you', 'You'),
+            item: item.name || app._label('ui.item', 'item'),
+            amount: healed
+        });
+        app.log.push({ text, type: 'heal' });
+        app._addTileEvent?.(text, 'heal');
+        app.showToast?.({ text, type: 'heal', importance: 'notable', dedupeKey: `inventory-heal:${String(item.id || item.name)}` });
+        if (inCombat) app._emitCombatAction?.('use_item', player, player, text);
+        else app.emitStoryResult?.({ mode: 'adventure', actors: [player], targets: [player], action: 'use-item', subAction: 'heal' }, text, {
+            resultKind: 'healing',
+            deltas: [{ kind: 'healing', amount: healed, unit: player.name }]
+        });
+        app.renderLog?.();
+        app.renderParty?.();
+        app.renderCenterPresence?.();
+        YAW_HOLDINGS.refresh(app);
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'combat', 'sceneFeed', 'activityLog'], 'inventory-use-heal');
+        app.autoSave?.();
+        if (inCombat) {
+            app.closeHoldingsWindow?.();
+            app.nextTurn?.();
+        }
+        return true;
     },
 
     equip(app, itemId, ownerId = null) {

@@ -617,9 +617,9 @@
             MAX_PARTY_SIZE: 6,
             MAX_INVENTORY: 20,
             ITEMS: {
-                'Healing Herb': { type: 'consumable', icon: '🌿', effect: 'heal', value: 30, desc: 'Restores 30 HP' },
+                'Healing Herb': { type: 'consumable', icon: '🌿', effect: 'heal', healAmount: 30, value: 30, desc: 'Restores 30 HP' },
                 'Shiny Gem': { type: 'valuable', icon: '💎', effect: 'sell', value: 50, desc: 'Worth 50 gold' },
-                'Strange Mushroom': { type: 'consumable', icon: '🍄', effect: 'heal', value: 50, desc: 'Restores 50 HP' },
+                'Strange Mushroom': { type: 'consumable', icon: '🍄', effect: 'heal', healAmount: 50, value: 50, desc: 'Restores 50 HP' },
                 'Old Coin': { type: 'valuable', icon: '🪙', effect: 'sell', value: 10, desc: 'Worth 10 gold' },
                 'Monster Fang': { type: 'material', icon: '🦷', effect: 'craft', value: 25, desc: 'Crafting material' },
                 'Crystal Shard': { type: 'material', icon: '💠', effect: 'craft', value: 40, desc: 'Crafting material' },
@@ -4726,7 +4726,9 @@
             setInventorySort(sort) {
                 return YAW_INVENTORY_PANEL.setSort(this, sort);
             },
-            useItem(itemId) { /* simplified */ },
+            useItem(itemId) {
+                return YAW_INVENTORY_PANEL.use(this, itemId);
+            },
             dropItem(itemId) {
                 return YAW_INVENTORY_PANEL.drop(this, itemId);
             },
@@ -5064,6 +5066,15 @@
             },
             _handlePlayerFall(input = {}) {
                 return YAW_DEFEAT_RECOVERY.handlePlayerFall(this, input);
+            },
+            canTriggerPlayerDeathCheat() {
+                return YAW_DEFEAT_RECOVERY.canTriggerDebugDeath(this);
+            },
+            confirmPlayerDeathCheat() {
+                return YAW_DEFEAT_RECOVERY.confirmDebugDeath(this);
+            },
+            triggerPlayerDeathCheat() {
+                return YAW_DEFEAT_RECOVERY.triggerDebugDeath(this);
             },
             _sanitizeLoadedDefeatState(loaded = null) {
                 return YAW_DEFEAT_RECOVERY.sanitizeLoadedDefeat(this, loaded);

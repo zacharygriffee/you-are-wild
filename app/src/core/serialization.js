@@ -360,6 +360,7 @@
         partyUnitRefs,
         playerCompatibility: unitCompatibility(appState.player),
         partyCompatibility,
+        partyMultiActionPractice: (appState.party || []).map(unit => unit?.multiActionPractice || null),
         partyRoles,
         partyAIOrders,
         logEntries,

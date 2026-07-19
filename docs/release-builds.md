@@ -1,6 +1,11 @@
 # Release Builds
 
 `dist/you-are-wild.html` is a generated playable artifact, not source of truth.
+It remains the self-contained offline download with the first-party atlases
+embedded. `npm --prefix app run build:hosted` additionally generates
+`dist/you-are-wild.hosted.html`, which references separately hosted, cacheable
+atlas files and can skip them entirely in `?graphics=emoji` mode. Both outputs
+contain the same game runtime and module/tileset contracts.
 
 Source of truth remains:
 

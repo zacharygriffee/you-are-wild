@@ -60,3 +60,14 @@ request.
 - Existing saves and modules remain compatible without migration.
 - Existing provider profiles retain their explicitly stored token ceiling.
 - New provider profiles default to an 8,192-token completion ceiling.
+
+## Version 0.12.0 Compatibility
+
+- Existing 0.10.x and 0.11.x saves load without a schema migration.
+- Multi-target Fight practice is additive save metadata; older units begin at
+  Novice and learn through play.
+- Modules requiring game version 0.10.0 or 0.11.x remain compatible. Tileset
+  packs authored against the finalized first-party V1 semantics may declare
+  0.12.0 as their minimum version.
+- Hosted Textured and Lightweight choices use the same runtime, save format,
+  and module API. The choice only controls first-party atlas acquisition.

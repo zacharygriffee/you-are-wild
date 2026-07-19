@@ -143,6 +143,11 @@
                 support: 'Support',
                 gatherer: 'Gatherer'
             },
+            MULTI_TARGET_TECHNIQUES: {
+                sweep: { id: 'sweep', actions: ['fight'], recovery: 0.25, maxTargets: 3 },
+                multiStrike: { id: 'multiStrike', actions: ['fight'], recovery: 0.4, maxTargets: 4 },
+                areaAttack: { id: 'areaAttack', actions: ['fight'], area: true }
+            },
             SUB_ACTIONS: YAW_SUB_ACTIONS.definitions,
             defaultSubActions: YAW_SUB_ACTIONS.defaultActions(),
             _getDefaultSubAction(action) {
@@ -196,6 +201,27 @@
             },
             _actionIcon(key) {
                 return YAW_ACTION_UI.icon(key);
+            },
+            _multiInteractionProfile(action) {
+                return YAW_MULTI_INTERACTION.profile(action);
+            },
+            _multiInteractionEffect(actor, action, targetCount = 1) {
+                return YAW_MULTI_INTERACTION.effect(this, actor, action, targetCount);
+            },
+            _multiInteractionScaleValue(value, effect, options = {}) {
+                return YAW_MULTI_INTERACTION.scaleValue(value, effect, options);
+            },
+            _multiInteractionPreview(action, actors = [], targets = []) {
+                return YAW_MULTI_INTERACTION.preview(this, action, actors, targets);
+            },
+            _multiInteractionCurrentPreview(action) {
+                return YAW_MULTI_INTERACTION.currentPreview(this, action);
+            },
+            _awardMultiInteractionPractice(actors, action, targets = [], options = {}) {
+                return YAW_MULTI_INTERACTION.awardPractice(this, actors, action, targets, options);
+            },
+            _multiInteractionOutcomeText(action, actors = [], targets = []) {
+                return YAW_MULTI_INTERACTION.outcomeText(this, action, actors, targets);
             },
             _isNight(hour = this.timeHour) {
                 return YAW_TIME_SYSTEM.isNight(this, hour);
@@ -1261,7 +1287,7 @@
                         : window.YAW_PREPARE_BUNDLED_TILESET?.();
                     const result = promise?.then ? await promise : null;
                     if (!result) throw new Error('Bundled tileset atlases could not be prepared');
-                    if (typeof YAW_TILESET_RUNTIME !== 'undefined' && typeof AssetManifest !== 'undefined') {
+                    if (!result.disabled && typeof YAW_TILESET_RUNTIME !== 'undefined' && typeof AssetManifest !== 'undefined') {
                         YAW_TILESET_RUNTIME.registerBuiltin(AssetManifest.bundledTilesetPack());
                         YAW_TILESET_RUNTIME._refreshMaps?.();
                     }
@@ -1868,6 +1894,7 @@
                 unit.willing = unit.willing ?? false;
                 unit.aiOrder = unit.aiOrder || (unit.mc ? 'aggressive' : 'aggressive');
                 unit.partyRole = this.PARTY_ROLES[unit.partyRole] ? unit.partyRole : 'companion';
+                YAW_MULTI_INTERACTION.normalizeUnit(unit);
                 this._applySpeciesAbilities(unit);
                 return unit;
             },
@@ -3296,7 +3323,7 @@
                 const targetList = (targets || []).filter(target => target && this._isLivingCreature(target));
                 if (targetList.length === 0) return false;
                 actor = actor || this.player;
-                if (!this._canHandleMultipleTargets(actor, action, targetList)) {
+                if (action !== 'fight' && !this._canHandleMultipleTargets(actor, action, targetList)) {
                     this.log.push({ text: this._label('target.cannotHandleMultiple', '{name} cannot handle {count} targets with {action} yet.', {
                         name: actor.name,
                         count: targetList.length,
@@ -3310,13 +3337,25 @@
                 }
                 const skipped = [];
                 const skippedSet = new Set();
+                const multiEffect = action === 'fight'
+                    ? this._multiInteractionEffect(actor, 'fight', targetList.length)
+                    : null;
+                const spreadText = action === 'fight'
+                    ? this._multiInteractionOutcomeText('fight', [actor], targetList)
+                    : '';
                 for (const target of targetList) {
                     if (action === 'feed' && this._shouldSkipFullFeedTarget(options) && this.party.includes(target) && target.CPun >= target.MPun) {
                         skipped.push(target.name);
                         skippedSet.add(target);
                         continue;
                     }
-                    const resolved = this.outsideActionOnTarget(action, target, actor, { ...options, allowPartySacrifice: false, suppressStory: true, applyCost: false });
+                    const resolved = this.outsideActionOnTarget(action, target, actor, {
+                        ...options,
+                        allowPartySacrifice: false,
+                        suppressStory: true,
+                        applyCost: false,
+                        multiEffect
+                    });
                     if (resolved === false || this.lastActionResolution?.affected === false) skippedSet.add(target);
                 }
                 const affected = targetList.filter(target => !skippedSet.has(target)).map(t => t.name);
@@ -3331,6 +3370,7 @@
                         action: this._uiLabel(action).toLowerCase()
                     });
                 if (skipped.length > 0) summary += ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`;
+                if (spreadText && affected.length > 0) summary += ` ${spreadText}`;
                 this.log.push({ text: summary, type: 'discovery' });
                 if (affected.length > 0) {
                     this._applyActionCost?.(action, actor, targetList[0], { affected: true }, {
@@ -3338,6 +3378,9 @@
                         source: 'exploration-multi-target-resolution',
                         emitScene: true
                     });
+                }
+                if (action === 'fight') {
+                    this._awardMultiInteractionPractice([actor], 'fight', targetList, { success: affected.length > 0 });
                 }
                 this.emitStoryResult({ mode: 'adventure', actors: [actor], targets: targetList, action, shape: 'one-to-many' }, summary);
                 this._normalizeExplorationSelections();
@@ -3481,6 +3524,9 @@
                 if (livingActors.length < 2 || targetList.length < 2) return false;
                 const resolutions = [];
                 const combatTargets = new Set();
+                const spreadText = action === 'fight'
+                    ? this._multiInteractionOutcomeText('fight', livingActors, targetList)
+                    : '';
                 for (const target of targetList) {
                     const resolved = this.outsideGroupActionOnTarget(action, target, livingActors, {
                         ...options,
@@ -3488,7 +3534,8 @@
                         suppressLog: true,
                         suppressStory: true,
                         suppressRender: true,
-                        deferCombat: true
+                        deferCombat: true,
+                        multiTargetCount: targetList.length
                     });
                     const outcome = this.lastActionResolution;
                     if (resolved === false || !outcome?.message) continue;
@@ -3501,7 +3548,7 @@
                 const summary = this._label('target.manyToManyActionDone', '{actors} act together with {targets}: {results}', {
                     actors: actorNames,
                     targets: targetNames,
-                    results: resolutions.join(' ')
+                    results: `${resolutions.join(' ')}${spreadText ? ` ${spreadText}` : ''}`
                 });
                 livingActors.forEach(actor => {
                     this._applyActionCost?.(action, actor, targetList[0], { affected: true }, {
@@ -3510,6 +3557,9 @@
                         emitScene: true
                     });
                 });
+                if (action === 'fight') {
+                    this._awardMultiInteractionPractice(livingActors, 'fight', targetList, { success: resolutions.length > 0 });
+                }
                 this.log.push({ text: summary, type: 'discovery' });
                 this.emitStoryResult({
                     mode: 'adventure',
@@ -3565,7 +3615,12 @@
                             startCombatAfter = combatTargets.length > 0;
                             break;
                         }
-                        const totalFigh = livingActors.reduce((sum, actor) => sum + (actor.Figh || 10), 0);
+                        const targetCount = Math.max(1, Number(options.multiTargetCount) || 1);
+                        const totalFigh = livingActors.reduce((sum, actor) => {
+                            const contribution = actor.Figh || 10;
+                            const effect = targetCount > 1 ? this._multiInteractionEffect(actor, 'fight', targetCount) : null;
+                            return sum + contribution * (effect?.scale ?? 1);
+                        }, 0);
                         const actorKey = livingActors.map(actor => this._unitSelectionId(actor)).join('|');
                         const dmg = Math.max(1, Math.floor(
                             this._explorationActionRating(totalFigh, livingActors[0] || this.player, target, `group-fight:${actorKey}`)
@@ -3805,7 +3860,10 @@
                         }
                         const ar = this._explorationActionRating(actor.Figh, actor, target, 'single-fight');
                         const def = target.con || 10;
-                        const dmg = Math.max(1, Math.floor(ar - def * 0.3 + this._explorationDamageVariance(actor, target, 'single-fight')));
+                        const unscaledDmg = Math.max(1, Math.floor(ar - def * 0.3 + this._explorationDamageVariance(actor, target, 'single-fight')));
+                        const dmg = options.multiEffect
+                            ? this._multiInteractionScaleValue(unscaledDmg, options.multiEffect)
+                            : unscaledDmg;
                         target.CPun -= dmg;
                         result = this._label('explore.fight.hit', '{actor} hits {target} for {amount} punishment.', { actor: actorName, target: target.name, amount: dmg });
                         if (target.CPun <= 0) {

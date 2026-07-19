@@ -284,6 +284,6 @@ if (typeof globalThis !== 'undefined' && globalThis.AssetManifest?.bundledTilese
         }
     };
     const bundledReady = typeof window !== 'undefined' ? window.YAW_BUNDLED_TILESET_READY : null;
-    if (bundledReady?.then) bundledReady.then(url => { if (url) registerBundled(); });
+    if (bundledReady?.then) bundledReady.then(url => { if (url && !url.disabled) registerBundled(); });
     else registerBundled();
 }

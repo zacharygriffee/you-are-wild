@@ -6,9 +6,15 @@
 const YAW_ACTION_UI = {
     iconButton(app, key, icon, onclick, extraClass = '', attrs = '') {
         const label = app._uiLabel(key);
-        const titleLabel = app._actionCostTitle ? app._actionCostTitle(key, label) : label;
+        const preview = app._multiInteractionCurrentPreview?.(key) || null;
+        const baseTitle = app._actionCostTitle ? app._actionCostTitle(key, label) : label;
+        const titleLabel = preview ? `${baseTitle} · ${preview.text}` : baseTitle;
         const className = `action-btn${extraClass ? ' ' + extraClass : ''}`;
-        const attrText = attrs ? ` ${attrs}` : '';
+        const previewAttrs = preview
+            ? `data-multi-effect-percent="${preview.minPercent === preview.maxPercent ? preview.minPercent : `${preview.minPercent}-${preview.maxPercent}`}" data-multi-target-count="${preview.targetCount}"`
+            : '';
+        const combinedAttrs = [attrs, previewAttrs].filter(Boolean).join(' ');
+        const attrText = combinedAttrs ? ` ${combinedAttrs}` : '';
         return `<button class="${className}"${attrText} title="${app._escapeHtml(titleLabel)}" aria-label="${app._escapeHtml(titleLabel)}" onclick="${onclick}"><span class="action-icon" aria-hidden="true">${icon}</span><span class="action-caption">${label}</span></button>`;
     },
 

@@ -56,7 +56,14 @@ const YAW_COMBAT_RESOLUTION = {
         app.renderMobileCombatToolbelt();
         if (targets.length > 1 && ['fight', 'flirt', 'fuck', 'feast'].includes(command.action)) {
             let resolved = false;
+            let meaningfulAttempt = false;
             const resultLines = [];
+            const multiEffect = command.action === 'fight'
+                ? app._multiInteractionEffect?.(actor, 'fight', targets.length)
+                : null;
+            const spreadText = command.action === 'fight'
+                ? app._multiInteractionOutcomeText?.('fight', [actor], targets)
+                : '';
             for (const multiTarget of targets) {
                 if (!app.combatState?.active) break;
                 if (!multiTarget || multiTarget.CPun <= 0 || multiTarget.disposition !== app.DISPOSITION.ENEMY) continue;
@@ -66,8 +73,14 @@ const YAW_COMBAT_RESOLUTION = {
                     resolved = true;
                     continue;
                 }
-                const targetResolved = app.executeActionAgainstTarget(command.action, actor, multiTarget, { advanceTurn: false, suppressStory: true, applyCost: false }) !== false;
+                const targetResolved = app.executeActionAgainstTarget(command.action, actor, multiTarget, {
+                    advanceTurn: false,
+                    suppressStory: true,
+                    applyCost: false,
+                    multiEffect
+                }) !== false;
                 if (targetResolved && app.lastCombatActionResult?.result) resultLines.push(app.lastCombatActionResult.result);
+                meaningfulAttempt = targetResolved || meaningfulAttempt;
                 resolved = targetResolved || resolved;
             }
             if (resolved) {
@@ -78,14 +91,18 @@ const YAW_COMBAT_RESOLUTION = {
                     applyCost: command.applyCost
                 });
                 const targetNames = targets.map(unit => unit?.name).filter(Boolean).join(', ');
-                const summary = resultLines.length > 0
+                let summary = resultLines.length > 0
                     ? resultLines.join(' ')
                     : app._label('target.multiActionDone', '{name} finishes a multi-target {action} action on {targets}.', {
                         name: actor?.name || app._label('target.actorRole', 'Actor'),
                         action: app._uiLabel(command.action).toLowerCase(),
                         targets: targetNames
                     });
+                if (spreadText) summary += ` ${spreadText}`;
                 app.emitStoryResult?.({ ...command, shape: command.shape || 'one-to-many' }, summary, { mode: 'combat' });
+                if (command.action === 'fight') {
+                    app._awardMultiInteractionPractice?.([actor], 'fight', targets, { success: meaningfulAttempt });
+                }
             }
             app.renderCombatSceneForTurn(actor);
             app.renderLog();
@@ -172,7 +189,10 @@ const YAW_COMBAT_RESOLUTION = {
                 const ar = app._combatActionRating(actor.Figh, actor, target, 'player-fight');
                 const def = app._effectiveCon(target);
                 const baseDmg = Math.max(1, ar - def * 0.3 + app._combatDamageVariance(actor, target, 'player-fight'));
-                const dmg = Math.max(1, Math.floor(baseDmg * app._physicalDamageMultiplier(actor, target)));
+                const unscaledDmg = Math.max(1, Math.floor(baseDmg * app._physicalDamageMultiplier(actor, target)));
+                const dmg = options.multiEffect
+                    ? app._multiInteractionScaleValue(unscaledDmg, options.multiEffect)
+                    : unscaledDmg;
                 target.CPun -= dmg;
                 app._wakeOnDamage(target);
                 app._applyAttackStatus(actor, target, dmg);
@@ -267,7 +287,7 @@ const YAW_COMBAT_RESOLUTION = {
             }
             }
             app._pushLog(result, 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'action' });
-            app.lastCombatActionResult = { action, actor, target, result };
+            app.lastCombatActionResult = { action, actor, target, result, multiEffect: options.multiEffect || null };
             if (!options.suppressStory) app._emitCombatAction(action, actor, target, result);
             app.renderCombatSceneForTurn(actor);
             app.renderLog();

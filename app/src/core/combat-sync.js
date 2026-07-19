@@ -318,6 +318,9 @@ const YAW_COMBAT_SYNC = {
                         });
                     }
                     const result = YAW_COMBAT_RESOLUTION.reachFailure(app, baseAction, sync.participants || [], target, reach);
+                    if (baseAction === 'fight' && queuedTargets.length > 1) {
+                        app._awardMultiInteractionPractice?.(sync.participants || [], 'fight', queuedTargets, { success: false });
+                    }
                     app.renderLog();
                     app.renderParty();
                     app.renderCreatures();
@@ -334,7 +337,15 @@ const YAW_COMBAT_SYNC = {
                 emitScene: true
             });
         }
-        for (const target of queuedTargets) {
+        const fightEffects = baseAction === 'fight'
+            ? new Map((sync.participants || []).map(participant => [participant, app._multiInteractionEffect?.(participant, 'fight', queuedTargets.length)]))
+            : new Map();
+        const spreadText = baseAction === 'fight'
+            ? app._multiInteractionOutcomeText?.('fight', sync.participants || [], queuedTargets)
+            : '';
+        let meaningfulAttempt = false;
+        for (let targetIndex = 0; targetIndex < queuedTargets.length; targetIndex++) {
+            const target = queuedTargets[targetIndex];
             sync.target = target;
             let result = '';
             switch (sync.type) {
@@ -407,11 +418,16 @@ const YAW_COMBAT_SYNC = {
                 break;
             }
             case 'sync_fight': {
-                const totalStr = sync.participants.reduce((sum, p) => sum + (p.Figh || 0), 0);
+                const totalStr = sync.participants.reduce((sum, participant) => {
+                    const contribution = participant.Figh || 0;
+                    const effect = fightEffects.get(participant);
+                    return sum + contribution * (effect?.scale ?? 1);
+                }, 0);
                 const def = app._effectiveCon(sync.target);
                 const dmg = Math.max(1, Math.floor(totalStr - def * 0.5 + app._combatDamageVariance(sync.participants[0], sync.target, `sync-fight:${sync.participants.map(p => app._unitSelectionId(p)).join('|')}`, 10)));
                 sync.target.CPun -= dmg;
                 result = `${sync.participants.map(p => p.name).join(' and ')} gang up on ${sync.target.name}, dealing ${dmg} punishment!`;
+                meaningfulAttempt = true;
                 if (sync.target.CPun <= 0) {
                     result += ` ${sync.target.name} is overwhelmed and collapses!`;
                     app._awardCombatXP(app.XP_REWARDS.defeatEnemy);
@@ -440,8 +456,12 @@ const YAW_COMBAT_SYNC = {
                 break;
             }
             }
+            if (targetIndex === 0 && spreadText) result += ` ${spreadText}`;
             app.log.push({ text: result, type: 'combat' });
             app._emitCombatAction(sync.type, sync.participants, sync.target, result);
+        }
+        if (baseAction === 'fight') {
+            app._awardMultiInteractionPractice?.(sync.participants || [], 'fight', queuedTargets, { success: meaningfulAttempt });
         }
         sync.target = queuedTargets[0];
         app.renderLog();

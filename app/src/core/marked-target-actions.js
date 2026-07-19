@@ -23,7 +23,8 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const panelIntent = action => `App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')`;
         const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
         const buttonEntries = singleCorpseTarget ? [] : keys.map(key => {
-            const title = app._escapeHtml(`${app._uiLabel(key)} ${label}`);
+            const effectPreview = app._multiInteractionPreview?.(key, actors, targets) || null;
+            const title = app._escapeHtml(`${app._uiLabel(key)} ${label}${effectPreview ? ` · ${effectPreview.text}` : ''}`);
             const intent = app._escapeHtml(key);
             const actionSource = ['desktop', 'desktop-target', 'composer-tray', 'panel-tray', 'mobile-target'].includes(source)
                 ? 'composer-tray'
@@ -35,7 +36,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
             return {
                 action: key,
-                html: `<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`
+                html: `<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"${effectPreview ? ` data-multi-effect-percent="${effectPreview.minPercent === effectPreview.maxPercent ? effectPreview.minPercent : `${effectPreview.minPercent}-${effectPreview.maxPercent}`}" data-multi-target-count="${effectPreview.targetCount}"` : ''} title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`
             };
         });
         if (singleCorpseTarget) {
@@ -81,11 +82,15 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const controlsLabel = app._escapeHtml(app._label('target.intentControls', 'Target intent controls'));
         const actorCount = app._escapeHtml(String(actors.length));
         const targetCount = app._escapeHtml(String(targets.length));
+        const multiPreview = app._multiInteractionPreview?.('fight', actors, targets) || null;
+        const previewHtml = multiPreview
+            ? `<div class="multi-effect-preview" role="status" data-command-preview="multi-effect" data-multi-effect-percent="${multiPreview.minPercent === multiPreview.maxPercent ? multiPreview.minPercent : `${multiPreview.minPercent}-${multiPreview.maxPercent}`}">${app._escapeHtml(multiPreview.text)}</div>`
+            : '';
         const clearButton = `<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-control="clear-targets" data-command-slot="exit" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button>`;
         const actionRow = `<div class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-actor-count="${actorCount}" data-command-target-count="${targetCount}" aria-label="${controlsLabel}">${clearButton}${buttonHtml}</div>`;
         return source === 'composer-tray' || source === 'panel-tray'
-            ? `<div class="panel-interaction-tray adventure-interaction-tray" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-actor-count="${actorCount}" data-command-target-count="${targetCount}">${actionRow}</div>`
-            : actionRow;
+            ? `<div class="panel-interaction-tray adventure-interaction-tray" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-actor-count="${actorCount}" data-command-target-count="${targetCount}">${previewHtml}${actionRow}</div>`
+            : `${previewHtml}${actionRow}`;
     },
 
     openSubActionSheet(app, action, source = 'target-bar') {

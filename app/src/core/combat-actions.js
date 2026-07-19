@@ -115,7 +115,11 @@ const YAW_COMBAT_ACTIONS = {
         if (buttons.length === 0) return '';
         const rowAttrs = app._unitActionRowAttrs('combat-actions', actor);
         const compactClass = compact ? ' compact' : '';
-        return `<div class="unit-actions unit-combat-actions${compactClass}" data-command-surface="combat-intents" ${rowAttrs}>${buttons.join('')}</div>`;
+        const preview = app._multiInteractionCurrentPreview?.('fight') || null;
+        const previewHtml = preview
+            ? `<div class="multi-effect-preview" role="status" data-command-preview="multi-effect" data-multi-effect-percent="${preview.minPercent === preview.maxPercent ? preview.minPercent : `${preview.minPercent}-${preview.maxPercent}`}">${app._escapeHtml(preview.text)}</div>`
+            : '';
+        return `<div class="unit-actions unit-combat-actions${compactClass}" data-command-surface="combat-intents" ${rowAttrs}>${previewHtml}${buttons.join('')}</div>`;
     },
 
     desktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {

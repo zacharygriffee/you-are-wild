@@ -161,7 +161,8 @@ const feastContainmentV2Doc = fs.readFileSync(FEAST_CONTAINMENT_V2, 'utf8');
 const balanceCostDoc = fs.readFileSync(BALANCE_COST_DOCTRINE, 'utf8');
 const controlModelContent = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'control-model.md'), 'utf8');
 const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
-const interactionPlanContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-plan.js'), 'utf8');
+const multiInteractionSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'multi-interaction-system.js'), 'utf8');
+const interactionPlanContent = `${multiInteractionSystemContent}\n${fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-plan.js'), 'utf8')}`;
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
 const interactionStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-state.js'), 'utf8');
 const explorationSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'exploration-selection.js'), 'utf8');
@@ -613,7 +614,7 @@ test('App object is defined', () => {
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.11.1', 'Release manifest should identify the planned public version');
+  assertEqual(releaseInfo.version, '0.12.0', 'Release manifest should identify the planned public version');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
   assertContains(buildContent, 'window.YAW_RELEASE = Object.freeze', 'Build should inject release metadata into the generated artifact');
@@ -3363,8 +3364,11 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertEqual(layered.layers[2].atlasId, 'overlays', 'Current-position state should resolve from the transparent overlay atlas');
   assertEqual(overlayBytes[25], 6, 'Bundled overlay PNG should retain an RGBA color type for transparent composition');
   assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_URL', 'Single-file builds should embed the default atlas for offline and file-origin play');
-  assertContains(buildContent, 'window.YAW_PREPARE_BUNDLED_TILESET = () => Promise.all', 'Embedded atlas preparation should expose a retryable asynchronous factory so file-origin menu startup is never blocked by bitmap decoding');
+  assertContains(buildContent, "window.YAW_PREPARE_BUNDLED_TILESET = () => {", 'Atlas preparation should expose a retryable asynchronous factory so menu startup is never blocked by bitmap decoding');
   assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_READY = window.YAW_PREPARE_BUNDLED_TILESET()', 'Initial embedded atlas preparation should begin without blocking the menu shell');
+  assertContains(buildContent, "window.YAW_GRAPHICS_MODE === 'emoji'", 'The shared runtime should support a lightweight graphics mode without registering bundled atlases');
+  assertContains(buildContent, "mode === 'external'", 'The build should support a hosted external-atlas mode without duplicating the game runtime');
+  assertContains(buildContent, "'./assets/basic-tileset-v1.png'", 'Hosted builds should reference the cacheable first-party terrain atlas');
   assertContains(buildContent, '.then(response => response.blob())', 'Embedded atlas bytes should decode asynchronously before becoming a short session object URL');
   assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_URL = terrainUrl', 'Resolved terrain atlas object URLs should be published for bundled pack activation');
   assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_OVERLAY_URL = overlayUrl', 'Resolved overlay atlas object URLs should be published for bundled pack activation');
@@ -3622,6 +3626,128 @@ test('Multi-target actions charge once per actor command, not once per target', 
   combat.App.nextTurn = function() {};
   combat.App._resolveCombatAction({ mode: 'combat', actors: [combatActor], targets: [enemyA, enemyB], action: 'flirt' });
   assertEqual(combatActor.hunger, 21, 'Combat one-to-many Talk should charge one Talk cost, not one per target');
+});
+
+test('Multi-target Fight distributes novice effect without changing single-target or social actions', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'multi-effect-player', Figh: 40, Flir: 40, cha: 20 });
+  App.player = actor;
+  App.party = [actor];
+  App._combatActionRating = () => 40;
+  App._combatDamageVariance = () => 0;
+  App._effectiveCon = () => 0;
+  App._physicalDamageMultiplier = () => 1;
+  App._terrainCausesMiss = () => false;
+  App.nextTurn = function() {};
+  App.combatState.active = true;
+  App.combatState.sceneExchangeId = 'combat-multi-effect';
+
+  const single = makeUnit('Single', { id: 'single-effect-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  App.creatures = [single];
+  App.executeActionAgainstTarget('fight', actor, single, { advanceTurn: false });
+  assertEqual(single.CPun, 60, 'Single-target Fight should retain its full existing damage');
+
+  const first = makeUnit('First', { id: 'multi-effect-a', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  const second = makeUnit('Second', { id: 'multi-effect-b', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  App.creatures = [first, second];
+  App._resolveCombatAction({ mode: 'combat', actors: [actor], targets: [first, second], action: 'fight' });
+  assertEqual(first.CPun, 80, 'Novice two-target Fight should apply half of the single-target damage to the first target');
+  assertEqual(second.CPun, 80, 'Novice two-target Fight should apply half of the single-target damage to the second target');
+  assertEqual(actor.Figh, 40, 'Multi-target practice should not mutate general Fight');
+  assertEqual(actor.multiActionPractice.multi.fight.commands, 1, 'One multi-target command should record one practice command');
+  assertEqual(actor.multiActionPractice.multi.fight.xp, 5, 'A meaningful two-target command should award bounded practice once');
+
+  const talkEffect = App._multiInteractionEffect(actor, 'flirt', 2);
+  assertEqual(talkEffect.profiled, false, 'Unprofiled social actions should retain their existing resolution');
+  assertEqual(talkEffect.scale, 1, 'Unprofiled social actions should not receive Fight dilution');
+});
+
+test('Multi-target mastery and authored techniques recover distributed Fight effect', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Practitioner', { id: 'practice-player', Figh: 40 });
+  App.player = actor;
+  App.party = [actor];
+  actor.multiActionPractice = { multi: { fight: { xp: 100, commands: 10 } } };
+  App._normalizeUnit(actor, { disposition: App.DISPOSITION.PARTY });
+  assertEqual(App._multiInteractionEffect(actor, 'fight', 2).percent, 75, 'Half mastery should recover half of the divided two-target effect');
+
+  App.ITEMS['Sweep Blade'] = { type: 'equipment', slot: 'hands', multiTargetTechnique: 'sweep' };
+  actor.equipment.hands = { name: 'Sweep Blade' };
+  assertEqual(App._multiInteractionEffect(actor, 'fight', 2).percent, 88, 'An authored sweeping weapon should add technique recovery without changing base stats');
+
+  actor.multiTargetTechniques = ['areaAttack'];
+  assertEqual(App._multiInteractionEffect(actor, 'fight', 4).percent, 100, 'A true authored area technique should retain full effect across covered targets');
+});
+
+test('Many-to-many Fight scales each participant contribution and trains each actor once', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const novice = makeUnit('Novice', { id: 'group-novice', Figh: 20 });
+  const master = makeUnit('Master', { id: 'group-master', Figh: 20, multiActionPractice: { multi: { fight: { xp: 200 } } } });
+  const first = makeUnit('First', { id: 'group-target-a', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  const second = makeUnit('Second', { id: 'group-target-b', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  App.player = novice;
+  App.party = [novice, master];
+  App.creatures = [first, second];
+  [novice, master, first, second].forEach(unit => App._normalizeUnit(unit));
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    sceneExchangeId: 'combat-group-practice',
+    xpEarned: 0,
+    syncActions: [],
+    turnQueue: [novice, master, first, second].map((unit, index) => ({ unit, initiative: 20 - index }))
+  };
+  App._effectiveCon = () => 0;
+  App._combatDamageVariance = () => 0;
+  App.nextTurn = function() {};
+  App._resolveSyncAction({ type: 'sync_fight', participants: [novice, master], target: first, targets: [first, second], resolved: false });
+  assertEqual(first.CPun, 70, 'First target should receive the novice half contribution plus the master full contribution');
+  assertEqual(second.CPun, 70, 'Second target should receive the same independently scaled contributions');
+  assertEqual(novice.multiActionPractice.multi.fight.commands, 1, 'Novice participant should train once for the group command');
+  assertEqual(master.multiActionPractice.multi.fight.commands, 1, 'Master participant should train once for the group command');
+});
+
+test('Multi-target practice diminishes within an encounter and persists in save compatibility metadata', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Learner', { id: 'practice-save-player' });
+  const targets = [makeUnit('A', { id: 'practice-a' }), makeUnit('B', { id: 'practice-b' })];
+  App.player = actor;
+  App.party = [actor];
+  App.location = { x: 4, y: 9 };
+  App.dayCount = 2;
+  App._normalizeUnit(actor);
+  App._awardMultiInteractionPractice([actor], 'fight', targets, { success: true });
+  App._awardMultiInteractionPractice([actor], 'fight', targets, { success: true });
+  App._awardMultiInteractionPractice([actor], 'fight', targets, { success: true });
+  assertEqual(actor.multiActionPractice.multi.fight.xp, 9, 'Repeated practice in one context should diminish from five to three to one');
+  const persistence = new Function(`${savePersistenceContent}\nreturn YAW_SAVE_PERSISTENCE;`)();
+  const questState = persistence.buildQuestStateDto(App);
+  assertEqual(questState.partyMultiActionPractice[0].multi.fight.xp, 9, 'Save compatibility metadata should retain multi-action practice');
+});
+
+test('Multi-target preview is visible in plans and desktop/mobile shared action surfaces', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Preview', { id: 'preview-multi-player', Figh: 20 });
+  const first = makeUnit('First', { id: 'preview-multi-a', disposition: App.DISPOSITION.ENEMY });
+  const second = makeUnit('Second', { id: 'preview-multi-b', disposition: App.DISPOSITION.ENEMY });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [first, second];
+  App.explorationActorIds = [actor.id];
+  App.explorationTargetIds = ['creature:preview-multi-a', 'creature:preview-multi-b'];
+  const plan = App._buildInteractionPlan({ mode: 'adventure', actors: [actor], targets: [first, second], action: 'fight' });
+  assertEqual(plan.effectPreview.minPercent, 50, 'Interaction plans should expose deterministic effect preview metadata');
+  const explorationHtml = App._renderExplorationTargetActions('composer-tray');
+  assertContains(explorationHtml, 'Novice spread: 50% effect per target', 'Shared exploration tray should visibly preview Fight distribution');
+  assertContains(explorationHtml, 'data-multi-effect-percent="50"', 'Previewed Fight control should expose machine-readable effect metadata');
+
+  App.combatState.active = true;
+  App.activeActor = actor;
+  App.combatTargetIds = [first.id, second.id];
+  App.combatTargetId = first.id;
+  const combatHtml = App._combatActionButtons(actor);
+  assertContains(combatHtml, 'Novice spread: 50% effect per target', 'Shared combat action surface should visibly preview Fight distribution');
 });
 
 test('Group action resolution charges each participant once and fizzle does not double-charge', () => {
@@ -4326,6 +4452,14 @@ test('Time system helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_TIME_SYSTEM.advance(this, hours)', 'App time advancement wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_TIME_SYSTEM.mapVisibilityRadius(this)', 'App map visibility wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_TIME_SYSTEM.adjustedEncounterTable(this, table)', 'App encounter table wrapper should delegate to the helper');
+});
+
+test('Multi-interaction helper is opt-in and registered before interaction planning', () => {
+  assertContains(buildContent, "'src/core/multi-interaction-system.js'", 'Multi-interaction system should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/multi-interaction-system.js'") < buildContent.indexOf("'src/core/interaction-plan.js'"), 'Multi-interaction profiles should load before plan previews');
+  assertContains(multiInteractionSystemContent, "fight: {", 'Fight should be the first explicitly profiled multi-target action');
+  assertNotContains(multiInteractionSystemContent, "flirt: {", 'Talk should not silently opt into Fight dilution');
+  assertContains(multiInteractionSystemContent, 'multiTargetTechnique', 'Equipment and unit technique declarations should have an authored hook');
 });
 
 test('Sub-action helper module is registered before app code', () => {
@@ -5662,6 +5796,21 @@ test('Binary save uses live top-level stats when nested stats are stale', () => 
   assertEqual(loaded.playerStats.cha, 19, 'Root player stats should preserve live top-level CHA');
   assertEqual(loaded.party[0].stats.con, 15, 'Serialized player unit should preserve live top-level CON');
   assertEqual(loaded.party[1].stats.spd, 26, 'Serialized ally unit should preserve live top-level SPD');
+});
+
+test('Binary save compatibility metadata preserves multi-action practice', () => {
+  const Binary = loadBinaryForTest();
+  const player = makeSerializableUnit('You', {
+    id: 'binary-practice-player',
+    multiActionPractice: { multi: { fight: { xp: 73, commands: 9, contextKey: 'combat:test', contextGain: 4 } } }
+  });
+  const loaded = Binary.loadGame(Binary.saveGame({
+    player,
+    party: [player],
+    location: { x: 0, y: 0 },
+    currentBiome: 'forest'
+  }));
+  assertEqual(loaded.questState.partyMultiActionPractice[0].multi.fight.xp, 73, 'Binary export/import metadata should preserve Fight practice even though the legacy unit codec is fixed');
 });
 
 test('Binary save/load preserves full world tile state', () => {

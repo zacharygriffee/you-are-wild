@@ -1,52 +1,60 @@
 {
   "schema": 1,
-  "version": "0.11.1",
-  "releasedAt": "2026-07-17",
+  "version": "0.12.0",
+  "releasedAt": "2026-07-19",
   "channel": "public-preview",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Existing 0.10.x saves load automatically; no manual migration is required.",
+      "saves": "Existing 0.10.x and 0.11.x saves load automatically; multi-target practice starts at Novice when no prior record exists.",
       "mods": "Modules requiring game version 0.10.0 remain compatible. Host and bundled packages declare their own minimum version."
     },
     "es": {
-      "saves": "Las partidas 0.10.x existentes se cargan automaticamente; no se requiere una migracion manual.",
+      "saves": "Las partidas 0.10.x y 0.11.x existentes se cargan automaticamente; la practica de objetivos multiples empieza en Principiante cuando no existe un registro anterior.",
       "mods": "Los modulos que requieren la version 0.10.0 siguen siendo compatibles. Los paquetes del host y los incluidos declaran su propia version minima."
     }
   },
   "notes": {
     "en": {
       "added": [
-        "Expanded keyboard, focus, localization, and responsive-device verification for system and provider screens."
+        "Tileset Pack V1 adds moddable layered terrain, routes, interiors, shoreline transitions, landmarks, and resource overlays while retaining emoji fallback.",
+        "Multi-target Fight practice now progresses from Novice through Master, with equipment, instinct, and area-technique extension hooks.",
+        "The hosted edition offers Textured and Lightweight presentation choices from one shared game runtime."
       ],
       "changed": [
-        "New OpenAI-compatible profiles default to an 8,192-token completion ceiling.",
-        "Provider guidance recommends 16,384 or more when high reasoning needs additional room."
+        "Hunger, digestion, rest, fleeing, survivable containment, roads, beaches, caves, and building interiors have received their first balancing and presentation pass.",
+        "Hosted textures are separate cacheable files; the downloadable HTML remains a self-contained offline build."
       ],
       "fixed": [
-        "Reasoning-capable models have substantially more default room to emit visible narration after hidden reasoning."
+        "Group interactions support many-to-many targeting and explicit cancellation without turning tactical failures into interface errors.",
+        "Mobile party and creature belts can be swiped horizontally, and startup controls wait for their specific saved-game or media dependencies."
       ],
       "knownIssues": [
         "Browser-direct AI connections still depend on endpoint TLS and CORS support.",
-        "Some providers or models may reject reasoning-effort values they do not support."
+        "Combat and survival values are still alpha balance and will continue to change.",
+        "The first textured visit transfers approximately 4 MB of atlas media; Lightweight mode avoids that transfer."
       ]
     },
     "es": {
       "added": [
-        "Verificacion ampliada de teclado, foco, localizacion y dispositivos adaptables para pantallas del sistema y proveedores."
+        "Tileset Pack V1 agrega terreno, rutas, interiores, costas, puntos de referencia y recursos en capas modificables, conservando los emoji como alternativa.",
+        "La practica de Lucha contra multiples objetivos progresa de Principiante a Maestro, con extensiones para equipo, instintos y tecnicas de area.",
+        "La edicion alojada ofrece presentaciones Con texturas y Ligera desde un solo juego compartido."
       ],
       "changed": [
-        "Los perfiles nuevos compatibles con OpenAI usan un limite predeterminado de 8.192 tokens de finalizacion.",
-        "La guia recomienda 16.384 o mas cuando el razonamiento alto necesita espacio adicional."
+        "Hambre, digestion, descanso, huida, contencion, caminos, playas, cuevas e interiores recibieron su primera revision de equilibrio y presentacion.",
+        "Las texturas alojadas son archivos separados y almacenables en cache; el HTML descargable sigue siendo autonomo y funciona sin conexion."
       ],
       "fixed": [
-        "Los modelos con razonamiento tienen mucho mas espacio predeterminado para emitir narracion visible despues del razonamiento oculto."
+        "Las interacciones grupales admiten objetivos muchos-a-muchos y cancelacion explicita sin convertir fallos tacticos en errores de interfaz.",
+        "Las bandas moviles de grupo y criaturas se desplazan horizontalmente, y los controles iniciales esperan solo sus dependencias de partidas o medios."
       ],
       "knownIssues": [
         "Las conexiones directas desde el navegador dependen de TLS y CORS del endpoint.",
-        "Algunos proveedores o modelos pueden rechazar niveles de razonamiento no compatibles."
+        "Los valores de combate y supervivencia siguen en equilibrio alfa y continuaran cambiando.",
+        "La primera visita con texturas transfiere aproximadamente 4 MB de atlas; el modo Ligero evita esa transferencia."
       ]
     }
   }

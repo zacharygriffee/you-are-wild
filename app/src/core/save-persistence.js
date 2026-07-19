@@ -413,6 +413,7 @@ const YAW_SAVE_PERSISTENCE = {
             partyUnitRefs,
             playerCompatibility: unitCompatibility(app.player),
             partyCompatibility: (app.party || []).map(unitCompatibility),
+            partyMultiActionPractice: (app.party || []).map(unit => this.serializableClone(unit?.multiActionPractice || null, null)),
             partyRoles,
             partyAIOrders,
             logEntries: this.serializableClone(app.log || [], []),

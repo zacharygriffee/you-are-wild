@@ -2,7 +2,7 @@
   "packageType": "yaw-module",
   "packageVersion": 1,
   "packageId": "yaw_example_tileset_v1",
-  "gameVersion": "0.11.1",
+  "gameVersion": "0.12.0",
   "trustBoundary": "trusted-local",
   "module": {
     "manifest": {
@@ -12,7 +12,7 @@
       "description": "Safe development fixture demonstrating a locally retained partial Tileset Pack V1 override.",
       "type": "presentation_pack",
       "contentRating": "safe",
-      "minGameVersion": "0.11.1",
+      "minGameVersion": "0.12.0",
       "trustBoundary": "trusted-local",
       "runtimeRequirements": {
         "origins": ["file", "https", "localhost", "http"],

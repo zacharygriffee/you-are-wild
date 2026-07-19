@@ -99,6 +99,7 @@ const YAW_INTERACTION_PLAN = {
             ? context.resolveAt
             : (timing === 'slowest-participant' ? this.slowestParticipantIndex(app, actors) : null);
         const targetType = context.targetType || this.inferTargetType(app, targets);
+        const effectPreview = app._multiInteractionPreview?.(context.action, actors, targets) || null;
         const plan = {
             mode: planMode,
             actors,
@@ -115,7 +116,8 @@ const YAW_INTERACTION_PLAN = {
             constraints: this.defaultConstraints(planMode, { ...context, timing }),
             distribution: this.inferDistribution(shape, context.distribution || null),
             clearTargets: Boolean(context.clearTargets),
-            metadata: context.metadata || {}
+            metadata: context.metadata || {},
+            effectPreview
         };
         return {
             ...plan,

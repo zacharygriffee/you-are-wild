@@ -269,6 +269,7 @@ const YAW_SETTINGS_FLOW = {
         app.saveSettings();
         app.syncLanguageControl();
         app.applyStaticLocalization();
+        app.syncStartupReadinessUI?.();
         app.renderExplorationActions();
         app.renderParty();
         app.renderCreatures();

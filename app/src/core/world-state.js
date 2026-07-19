@@ -236,7 +236,12 @@ const YAW_WORLD_STATE = {
                 if (Array.isArray(tile.creatures)) {
                     tile.creatures = tile.creatures.map(unit => app._normalizeUnit(unit, {}));
                 }
-                const effective = app.applyTileDelta(app.getBaseTile(tile.x, tile.y), tile);
+                // Inline saves from older builds contain generated fields such as overlays and
+                // encounter pressure. Rebuild those from the current deterministic generator and
+                // carry forward only mutable tile state, or legacy danger footprints can overwrite
+                // corrected anchor/influence semantics indefinitely.
+                const delta = app._tileDeltaFromEffectiveTile(tile);
+                const effective = app.applyTileDelta(app.getBaseTile(tile.x, tile.y), delta);
                 const effectiveKey = app._tileKey(effective.x, effective.y);
                 app.worldMap.set(effectiveKey, effective);
                 app.persistTileDelta(effective.x, effective.y, effective, { markDirty: false });

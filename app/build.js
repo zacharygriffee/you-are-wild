@@ -13,6 +13,8 @@ const TEMPLATE = path.join(__dirname, 'template.html');
 const RELEASE_FILE = path.join(__dirname, 'release.json');
 const DIST_DIR = path.join(ROOT_DIR, 'dist');
 const OUTPUT = path.join(DIST_DIR, 'you-are-wild.html');
+const BUNDLED_TILESET = path.join(ROOT_DIR, 'media', 'basic-tileset-v1.png');
+const BUNDLED_TILESET_OVERLAYS = path.join(ROOT_DIR, 'media', 'basic-tileset-overlays-v1.png');
 const PLACEHOLDER = '<!-- SCRIPTS_PLACEHOLDER -->';
 const GENERATED_BANNER = '<!-- GENERATED FILE. Do not edit directly. Edit app/src and run npm run build. -->';
 
@@ -55,12 +57,15 @@ const SCRIPT_ORDER = [
   'src/core/world-generation.js',
   'src/core/traversal-system.js',
   'src/core/asset-manifest.js',
+  'src/core/startup-readiness.js',
   'src/core/storage-system.js',
   'src/core/media-contract.js',
   'src/core/media-indexeddb-store.js',
   'src/core/media-http-providers.js',
   'src/core/media-repository.js',
   'src/core/asset-bundle-v1.js',
+  'src/core/tileset-pack-v1.js',
+  'src/core/tileset-runtime.js',
   'src/core/world-state.js',
   'src/core/world-store.js',
   'src/core/world-random.js',
@@ -231,7 +236,10 @@ function renderHtml() {
   }
 
   const release = loadRelease();
-  const scripts = [`<script>\nwindow.YAW_RELEASE = Object.freeze(${JSON.stringify(release)});\n</script>`];
+  if (!fs.existsSync(BUNDLED_TILESET) || !fs.existsSync(BUNDLED_TILESET_OVERLAYS)) throw new Error('Bundled Tileset Pack atlas is missing');
+  const bundledTilesetBase64 = fs.readFileSync(BUNDLED_TILESET).toString('base64');
+  const bundledTilesetOverlayBase64 = fs.readFileSync(BUNDLED_TILESET_OVERLAYS).toString('base64');
+  const scripts = [`<script>\nwindow.YAW_RELEASE = Object.freeze(${JSON.stringify(release)});\nwindow.YAW_BUNDLED_TILESET_URL = '';\nwindow.YAW_BUNDLED_TILESET_OVERLAY_URL = '';\nwindow.YAW_PREPARE_BUNDLED_TILESET = () => Promise.all([\n  fetch(${JSON.stringify(`data:image/png;base64,${bundledTilesetBase64}`)}).then(response => response.blob()).then(blob => URL.createObjectURL(blob)),\n  fetch(${JSON.stringify(`data:image/png;base64,${bundledTilesetOverlayBase64}`)}).then(response => response.blob()).then(blob => URL.createObjectURL(blob))\n])\n  .then(([terrainUrl, overlayUrl]) => {\n    if (window.YAW_BUNDLED_TILESET_URL) URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_URL);\n    if (window.YAW_BUNDLED_TILESET_OVERLAY_URL) URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_OVERLAY_URL);\n    window.YAW_BUNDLED_TILESET_URL = terrainUrl;\n    window.YAW_BUNDLED_TILESET_OVERLAY_URL = overlayUrl;\n    return { terrainUrl, overlayUrl };\n  })\n  .catch(error => {\n    console.warn('Bundled Tileset Pack atlases could not be prepared; emoji fallback remains active.', error);\n    return null;\n  });\nwindow.YAW_BUNDLED_TILESET_READY = window.YAW_PREPARE_BUNDLED_TILESET();\nwindow.addEventListener('beforeunload', () => {\n  if (window.YAW_BUNDLED_TILESET_URL) URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_URL);\n  if (window.YAW_BUNDLED_TILESET_OVERLAY_URL) URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_OVERLAY_URL);\n}, { once: true });\n</script>`];
   let totalLines = 0;
 
   for (const relPath of SCRIPT_ORDER) {
@@ -282,7 +290,7 @@ function check() {
 
 function watch() {
   console.log('Watching for changes... (Ctrl+C to stop)\n');
-  const watchedFiles = [TEMPLATE, RELEASE_FILE, ...SCRIPT_ORDER.map(p => path.join(__dirname, p))];
+  const watchedFiles = [TEMPLATE, RELEASE_FILE, BUNDLED_TILESET, BUNDLED_TILESET_OVERLAYS, ...SCRIPT_ORDER.map(p => path.join(__dirname, p))];
 
   let building = false;
 

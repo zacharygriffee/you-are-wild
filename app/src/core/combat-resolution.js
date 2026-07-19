@@ -115,26 +115,33 @@ const YAW_COMBAT_RESOLUTION = {
             let result = '';
             const reach = app._combatReachResult?.(actor, target, action);
             if (reach?.canAttempt && !reach.canSucceed) {
-                const command = app._buildPanelInteractionCommand?.({
+                app._applyActionCost?.(action, actor, target, {}, {
                     mode: 'combat',
-                    actors: [actor],
-                    targets: [target],
-                    action,
-                    source: 'combat-resolution-preflight',
-                    constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
-                }) || { mode: 'combat', actors: [actor], targets: [target], action, source: 'combat-resolution-preflight' };
-                app._reportInvalidCombatCommand?.(command, 'cannot-reach');
+                    source: 'combat-reach-failure',
+                    emitScene: true,
+                    applyCost: options.applyCost
+                });
+                const result = this.reachFailure(app, action, [actor], target, reach);
                 app.lastCombatActionResult = {
                     action,
                     actor,
                     actors: [actor],
                     target,
-                    result: app.combatCorrectionMessage?.text || app._combatReachFailureText?.([actor], target, action, reach) || '',
+                    result,
                     reach,
                     failedReach: true,
-                    preflight: true
+                    attempted: true
                 };
-                return false;
+                app.combatCorrectionMessage = null;
+                app.renderCombatSceneForTurn(actor);
+                app.renderLog();
+                app.renderCreatures();
+                app.renderParty();
+                app._syncCurrentTileCreatures();
+                app.markAutoSaveDirty?.(['manifest', 'party', 'currentTile', 'combat', 'sceneFeed', 'activityLog'], 'combat-reach-failure');
+                app.autoSave();
+                if (advanceTurn) app.nextTurn();
+                return true;
             }
             app._applyActionCost?.(action, actor, target, {}, {
                 mode: 'combat',

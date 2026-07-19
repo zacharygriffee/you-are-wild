@@ -20,12 +20,25 @@ const YAW_SAVE_METADATA = {
         return String(parsed);
     },
 
-    async findLatestExistingSlot(app) {
-        const slots = [];
-        for (const slotName of this.slotNames()) {
+    async readSlotPresence(app) {
+        const slotNames = this.slotNames();
+        if (typeof app._readSaveSlotPresence === 'function') {
+            return app._readSaveSlotPresence(slotNames);
+        }
+        const presence = new Map();
+        for (const slotName of slotNames) {
             const saveData = await app._dbGet('saves', slotName);
             const sparseManifest = saveData ? null : await app._dbGet('saveManifests', slotName).catch(() => null);
-            if (saveData || sparseManifest) {
+            presence.set(slotName, { saveData, sparseManifest, exists: Boolean(saveData || sparseManifest) });
+        }
+        return presence;
+    },
+
+    async findLatestExistingSlot(app) {
+        const presence = await this.readSlotPresence(app);
+        const slots = [];
+        for (const slotName of this.slotNames()) {
+            if (presence.get(slotName)?.exists) {
                 const time = parseInt(app._getSaveTime(slotName), 10) || 0;
                 slots.push({ slotName, time });
             }
@@ -35,6 +48,7 @@ const YAW_SAVE_METADATA = {
     },
 
     async syncLastSlot(app) {
+        const presence = await this.readSlotPresence(app);
         const rawLastSlot = app._getStoredValue('lastSlot');
         const lastSlot = rawLastSlot ? app._normalizeSaveSlotName(rawLastSlot, null) : null;
         if (rawLastSlot && !lastSlot) {
@@ -42,9 +56,7 @@ const YAW_SAVE_METADATA = {
             app._removeStoredValue('lastSaveTime');
         }
         if (lastSlot) {
-            const saveData = await app._dbGet('saves', lastSlot);
-            const sparseManifest = saveData ? null : await app._dbGet('saveManifests', lastSlot).catch(() => null);
-            if (saveData || sparseManifest) {
+            if (presence.get(lastSlot)?.exists) {
                 if (rawLastSlot !== lastSlot) app._setStoredValue('lastSlot', lastSlot);
                 const saveTime = app._getSaveTime(lastSlot);
                 if (parseInt(saveTime, 10) > 0) app._setStoredValue('lastSaveTime', saveTime);
@@ -52,7 +64,9 @@ const YAW_SAVE_METADATA = {
                 return lastSlot;
             }
         }
-        const fallbackSlot = await app._findLatestExistingSaveSlot();
+        const fallbackSlot = this.slotNames()
+            .filter(slotName => presence.get(slotName)?.exists)
+            .sort((a, b) => (parseInt(app._getSaveTime(b), 10) || 0) - (parseInt(app._getSaveTime(a), 10) || 0) || a.localeCompare(b))[0] || null;
         if (fallbackSlot) {
             app._setStoredValue('lastSlot', fallbackSlot);
             const saveTime = app._getSaveTime(fallbackSlot);

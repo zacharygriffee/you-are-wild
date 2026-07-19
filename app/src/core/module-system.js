@@ -720,6 +720,22 @@ const MODULE_SYSTEM = {
         return encode(Array.from(bytes, byte => String.fromCharCode(byte)).join(''));
     },
 
+    _normalizeAssetBundlePackage(packageData, sourceUrl) {
+        const normalizedPackage = YAW_ASSET_BUNDLE_V1.normalizePackage(packageData, { sourceUrl });
+        if (typeof YAW_TILESET_PACK_V1 === 'undefined') return normalizedPackage;
+        const normalizedTilesets = YAW_TILESET_PACK_V1.normalizeBundle(normalizedPackage, {
+            requiredKeys: typeof globalThis !== 'undefined' && globalThis.AssetManifest?.allTileKeys
+                ? globalThis.AssetManifest.allTileKeys()
+                : []
+        });
+        let index = 0;
+        normalizedPackage.bundle.presentations = normalizedPackage.bundle.presentations.map(presentation => {
+            if (String(presentation?.type || '') !== YAW_TILESET_PACK_V1.PRESENTATION_TYPE) return presentation;
+            return normalizedTilesets[index++];
+        });
+        return normalizedPackage;
+    },
+
     async _readBoundedRemoteResponse(response) {
         const declaredLength = Number(response.headers?.get?.('content-length') || 0);
         if (declaredLength > this.REMOTE_PACKAGE_MAX_BYTES) {
@@ -823,7 +839,7 @@ const MODULE_SYSTEM = {
             throw new Error('Remote package is not valid JSON');
         }
         if (String(packageData?.packageType || '') === YAW_ASSET_BUNDLE_V1.PACKAGE_TYPE) {
-            const normalizedPackage = YAW_ASSET_BUNDLE_V1.normalizePackage(packageData, { sourceUrl: url });
+            const normalizedPackage = this._normalizeAssetBundlePackage(packageData, url);
             const bundle = normalizedPackage.bundle;
             this._assertGameVersionCompatible({ id: bundle.id, minGameVersion: bundle.minGameVersion });
             return {
@@ -894,7 +910,7 @@ const MODULE_SYSTEM = {
         const sourceUrl = this._normalizeRemotePackageUrl(review.sourceUrl);
         const integrity = this._normalizeRemoteIntegrity(review.integrity);
         if (!integrity) throw new Error('Reviewed asset bundle is missing its computed integrity digest');
-        const normalizedPackage = YAW_ASSET_BUNDLE_V1.normalizePackage(review.packageData, { sourceUrl });
+        const normalizedPackage = this._normalizeAssetBundlePackage(review.packageData, sourceUrl);
         const bundle = normalizedPackage.bundle;
         if (bundle.id !== review.bundle?.id || bundle.version !== review.bundle?.version || bundle.targetModuleId !== review.bundle?.targetModuleId) {
             throw new Error('Reviewed asset bundle metadata changed before installation');
@@ -1396,7 +1412,6 @@ const MODULE_SYSTEM = {
                 console.log('Module DB initialized');
                 try {
                     await this.purgeCredentialSettings();
-                    if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') await YAW_MEDIA_REPOSITORY.cleanup?.();
                     resolve();
                 } catch (error) {
                     reject(error);
@@ -1786,6 +1801,17 @@ const MODULE_SYSTEM = {
                 runtimeTimers,
                 loading: false
             });
+
+            if (typeof YAW_TILESET_RUNTIME !== 'undefined') {
+                try {
+                    await YAW_TILESET_RUNTIME.activateModule(module.id);
+                } catch (error) {
+                    YAW_MEDIA_REPOSITORY?.diagnostic?.('tileset_activation_failed', {
+                        ownerId: module.id,
+                        message: error.code || error.message || 'tileset_error'
+                    }, 'error');
+                }
+            }
             
             console.log(`Module loaded: ${module.manifest.name}`);
         } catch (e) {
@@ -2093,6 +2119,7 @@ const MODULE_SYSTEM = {
             YAW_NARRATION_SYSTEM.removeOrchestrators(moduleId);
             YAW_NARRATION_SYSTEM.removeOwner(App, moduleId);
         }
+        if (typeof YAW_TILESET_RUNTIME !== 'undefined') YAW_TILESET_RUNTIME.deactivateModule(moduleId);
         if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') YAW_MEDIA_REPOSITORY.releaseOwner(moduleId);
         for (const key of [...this.settingActions.keys()]) {
             if (key.startsWith(`${moduleId}:`)) this.settingActions.delete(key);
@@ -2407,5 +2434,15 @@ MODULE_SYSTEM.ready = MODULE_SYSTEM.init().then(() => {
     return MODULE_SYSTEM;
 }).catch(err => {
     console.error('Module system failed:', err);
+    throw err;
+});
+MODULE_SYSTEM.prepareInstalledMedia = async () => {
+    await MODULE_SYSTEM.ready;
+    if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') await YAW_MEDIA_REPOSITORY.cleanup?.();
+    console.log('Installed media ready');
+    return typeof YAW_MEDIA_REPOSITORY !== 'undefined' ? YAW_MEDIA_REPOSITORY : null;
+};
+MODULE_SYSTEM.mediaReady = MODULE_SYSTEM.prepareInstalledMedia().catch(err => {
+    console.error('Installed media failed:', err);
     throw err;
 });

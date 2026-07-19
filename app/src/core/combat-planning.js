@@ -164,7 +164,8 @@ const YAW_COMBAT_PLANNING = {
         app.combatCorrectionMessage = null;
         app.combatPlanSelection = null;
         app.targetSelection = null;
-        if (options.clearTargets) {
+        const clearTargets = options.clearTargets ?? reason === 'cancel';
+        if (clearTargets) {
             app.combatTargetId = null;
             app.combatTargetIds = [];
         }
@@ -274,16 +275,19 @@ const YAW_COMBAT_PLANNING = {
         if (!app.combatPlanSelection?.active) return '';
         const actorCount = this.actors(app).length;
         const pendingIntent = app.combatPlanSelection.pendingIntent;
-        if (!pendingIntent) return '';
         const intentLabel = pendingIntent ? app._uiLabel(pendingIntent) : app._label('ui.chooseAction', 'Choose');
         const confirmLabel = app._escapeHtml(actorCount > 1
             ? app._label('combat.group.commitIntent', 'Commit Group {intent}', { intent: intentLabel })
             : app._label('combat.action.commitIntent', 'Commit {intent}', { intent: intentLabel }));
-        const reset = options.includeReset
-            ? `<button class="action-btn compact-secondary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-group" data-command-slot="exit" title="${app._escapeHtml(app._label('combat.group.clearCompact', 'Clear'))}" aria-label="${app._escapeHtml(app._label('combat.group.clearCompact', 'Clear'))}" onclick="event.stopPropagation();App.clearCombatPlan()">${app._escapeHtml(app._label('combat.group.clearCompact', 'Clear'))}</button>`
+        const cancelLabel = app._escapeHtml(app._label('combat.group.cancel', 'Cancel Group'));
+        const confirm = pendingIntent
+            ? `<button class="action-btn primary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-combat-plan" data-command-slot="intent" data-command-intent="${app._escapeHtml(pendingIntent)}" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="event.stopPropagation();App.confirmCombatPlan()">${confirmLabel}</button>`
             : '';
-        return `<div class="unit-actions unit-combat-actions compact combat-group-compose-controls" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${confirmLabel}">
-            <button class="action-btn primary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-combat-plan" data-command-slot="intent" data-command-intent="${app._escapeHtml(pendingIntent)}" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="event.stopPropagation();App.confirmCombatPlan()">${confirmLabel}</button>
+        const reset = options.includeReset === false
+            ? ''
+            : `<button class="action-btn compact-secondary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-group" data-command-slot="exit" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="event.stopPropagation();App.clearCombatPlan()">${cancelLabel}</button>`;
+        return `<div class="unit-actions unit-combat-actions compact combat-group-compose-controls" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${pendingIntent ? confirmLabel : cancelLabel}">
+            ${confirm}
             ${reset}
         </div>`;
     },

@@ -534,6 +534,60 @@
             background-size: cover;
         }
 
+        .yaw-tile-art {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            border-radius: inherit;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .yaw-tile-art-layer {
+            position: absolute;
+            inset: 0;
+            display: block;
+            background-repeat: no-repeat;
+            pointer-events: none;
+        }
+
+        [data-danger-influence="true"] .yaw-tile-art::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background: radial-gradient(circle at center, transparent 48%, rgba(239, 71, 111, 0.16) 100%);
+            box-shadow: inset 0 0 0 1px rgba(239, 71, 111, 0.2);
+            pointer-events: none;
+        }
+
+        [data-shoreline-edges] .yaw-tile-art::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background:
+                var(--yaw-shore-north, linear-gradient(transparent, transparent)) top / 100% 30% no-repeat,
+                var(--yaw-shore-east, linear-gradient(transparent, transparent)) right / 30% 100% no-repeat,
+                var(--yaw-shore-south, linear-gradient(transparent, transparent)) bottom / 100% 30% no-repeat,
+                var(--yaw-shore-west, linear-gradient(transparent, transparent)) left / 30% 100% no-repeat;
+            pointer-events: none;
+        }
+
+        [data-shoreline-edges~="north"] { --yaw-shore-north: linear-gradient(to bottom, rgba(8, 72, 105, 0.96) 0 42%, rgba(31, 131, 164, 0.92) 48%, rgba(245, 250, 239, 0.94) 53%, rgba(214, 231, 199, 0.72) 58%, transparent 76%); }
+        [data-shoreline-edges~="east"] { --yaw-shore-east: linear-gradient(to left, rgba(8, 72, 105, 0.96) 0 42%, rgba(31, 131, 164, 0.92) 48%, rgba(245, 250, 239, 0.94) 53%, rgba(214, 231, 199, 0.72) 58%, transparent 76%); }
+        [data-shoreline-edges~="south"] { --yaw-shore-south: linear-gradient(to top, rgba(8, 72, 105, 0.96) 0 42%, rgba(31, 131, 164, 0.92) 48%, rgba(245, 250, 239, 0.94) 53%, rgba(214, 231, 199, 0.72) 58%, transparent 76%); }
+        [data-shoreline-edges~="west"] { --yaw-shore-west: linear-gradient(to right, rgba(8, 72, 105, 0.96) 0 42%, rgba(31, 131, 164, 0.92) 48%, rgba(245, 250, 239, 0.94) 53%, rgba(214, 231, 199, 0.72) 58%, transparent 76%); }
+
+        .yaw-tile-art.primary-rendered ~ :is(.mobile-play-tile-icon, .desktop-play-cell-icon, .large-map-tile-icon) {
+            opacity: 0;
+        }
+
+        :is(.mobile-play-tile-icon, .desktop-play-cell-icon, .large-map-tile-icon, .mobile-play-presence, .desktop-play-cell-label) {
+            position: relative;
+            z-index: 2;
+        }
+
         .map-visual-road,
         .map-visual-bridge {
             border-color: rgba(255, 184, 0, 0.45);
@@ -4324,10 +4378,13 @@
         }
 
         .action-btn.disabled,
-        .action-btn[aria-disabled="true"] {
+        .action-btn[aria-disabled="true"],
+        .action-btn:disabled {
             opacity: 0.68;
             border-style: dashed;
             box-shadow: none;
+            cursor: wait;
+            transform: none;
         }
 
         .action-icon {
@@ -4386,6 +4443,28 @@
             gap: 12px;
             width: 100%;
             max-width: 400px;
+        }
+
+        .menu-startup-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            width: 100%;
+            max-width: 400px;
+            min-height: 28px;
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .menu-startup-status[data-state="ready"] {
+            visibility: hidden;
+        }
+
+        .menu-startup-status[data-state="error"] {
+            color: var(--accent-warning);
         }
 
         .menu-primary-actions {
@@ -6509,6 +6588,8 @@
                 scroll-padding-inline: 10px;
                 scrollbar-width: none;
                 touch-action: pan-x;
+                -webkit-overflow-scrolling: touch;
+                cursor: grab;
             }
 
             .mobile-actor-belt::-webkit-scrollbar {
@@ -6525,6 +6606,8 @@
                 scroll-padding-inline: 10px;
                 scrollbar-width: none;
                 touch-action: pan-x;
+                -webkit-overflow-scrolling: touch;
+                cursor: grab;
             }
 
             .mobile-actor-belt > *,
@@ -7058,6 +7141,9 @@
                 grid-template-columns: 1fr;
                 gap: 8px;
                 flex: 0 0 auto;
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
             }
 
             .mobile-combat-toolbelt {
@@ -7142,6 +7228,17 @@
                 min-height: 44px;
             }
 
+            .mobile-combat-phase-controls.combat-plan-cancel-only .unit-actions {
+                display: flex;
+                justify-content: flex-end;
+            }
+
+            .mobile-combat-phase-controls.combat-plan-cancel-only .action-btn {
+                flex: 0 0 auto;
+                min-height: 28px !important;
+                padding: 4px 8px;
+            }
+
             .mobile-play-surface.combat-active .mobile-map-card {
                 display: none;
             }
@@ -7190,12 +7287,16 @@
             .mobile-strip-card {
                 padding: 8px;
                 overflow: hidden;
+                width: 100%;
+                max-width: 100%;
                 min-width: 0;
             }
 
             .mobile-unit-strip {
                 display: flex;
                 gap: 8px;
+                width: 100%;
+                max-width: 100%;
                 overflow-x: auto;
                 overflow-y: hidden;
                 overscroll-behavior-x: contain;
@@ -7204,12 +7305,21 @@
                 min-width: 0;
                 contain: layout paint;
                 touch-action: pan-x;
+                -webkit-overflow-scrolling: touch;
+                cursor: grab;
             }
 
             .mobile-unit-strip > *,
             .mobile-unit-strip .action-btn,
             .mobile-unit-strip button {
                 touch-action: pan-x;
+            }
+
+            .mobile-unit-strip.is-dragging,
+            .mobile-actor-belt.is-dragging,
+            .mobile-target-picker-belt.is-dragging {
+                cursor: grabbing;
+                user-select: none;
             }
 
             .mobile-unit-strip > .panel-interaction-tray {
@@ -8638,13 +8748,13 @@
 
             <div class="menu-actions" data-command-surface="main-menu" data-command-mode="system">
                 <div class="menu-primary-actions" role="group" aria-label="Play actions" data-i18n-aria-label="ui.menu.playActions">
-                    <button id="menu-continue" class="action-btn primary" data-command-surface="main-menu" data-command-mode="system" data-command-control="continue-game" style="display: none;" title="Continue last game" aria-label="Continue last game" data-i18n-title="ui.menu.continueTitle" data-i18n-aria-label="ui.menu.continueTitle" onclick="App.continueLastGame()">
-                        ▶ <span data-i18n="ui.menu.continue">Continue Last Game</span>
+                    <button id="menu-continue" class="action-btn primary" data-command-surface="main-menu" data-command-mode="system" data-command-control="continue-game" disabled aria-disabled="true" aria-busy="true" title="Continue last game" aria-label="Continue last game" data-i18n-title="ui.menu.continueTitle" data-i18n-aria-label="ui.menu.continueTitle" onclick="App.continueLastGame()">
+                        ▶ <span id="menu-continue-label">Checking saved games…</span>
                     </button>
-                    <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="start-new-game" title="Start a new game" aria-label="Start a new game" data-i18n-title="ui.menu.newGameTitle" data-i18n-aria-label="ui.menu.newGameTitle" onclick="App.showNewGameManager()">
+                    <button id="menu-new-game" class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="start-new-game" disabled aria-disabled="true" aria-busy="true" title="Start a new game" aria-label="Start a new game" data-i18n-title="ui.menu.newGameTitle" data-i18n-aria-label="ui.menu.newGameTitle" onclick="App.showNewGameManager()">
                         🆕 <span data-i18n="ui.menu.newGame">New Game</span>
                     </button>
-                    <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-load-slots" title="Load game" aria-label="Load game" data-i18n-title="ui.menu.loadGameTitle" data-i18n-aria-label="ui.menu.loadGameTitle" onclick="App.showSaveManager()">
+                    <button id="menu-load-game" class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-load-slots" disabled aria-disabled="true" aria-busy="true" title="Load game" aria-label="Load game" data-i18n-title="ui.menu.loadGameTitle" data-i18n-aria-label="ui.menu.loadGameTitle" onclick="App.showSaveManager()">
                         📂 <span data-i18n="ui.menu.loadGame">Load Game</span>
                     </button>
                 </div>
@@ -8652,7 +8762,7 @@
                     <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-settings" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.openSettingsFromMenu()">
                         ⚙️ <span data-i18n="ui.menu.settings">Settings</span>
                     </button>
-                    <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-mods" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.showModScreen()">
+                    <button id="menu-mods" class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-mods" disabled aria-disabled="true" aria-busy="true" title="Loading installed mods" aria-label="Loading installed mods" onclick="App.showModScreen()">
                         📦 <span data-i18n="ui.menu.mods">Mods</span>
                     </button>
                     <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-help" title="Open tutorial" aria-label="Open tutorial" data-i18n-title="ui.menu.tutorialTitle" data-i18n-aria-label="ui.menu.tutorialTitle" onclick="App.showTutorial()">
@@ -8665,6 +8775,11 @@
                         ✨ <span data-i18n="release.whatsNew">What's New</span>
                     </button>
                 </div>
+            </div>
+
+            <div id="menu-startup-status" class="menu-startup-status" role="status" aria-live="polite" aria-atomic="true">
+                <span id="menu-startup-status-text">Preparing saved games, mods, media, and visuals…</span>
+                <button id="menu-startup-retry" class="nav-btn" type="button" hidden data-i18n="startup.retry" onclick="App.retryStartupReadiness()">Retry</button>
             </div>
 
             <aside id="release-update-notice" class="release-update-notice" role="status" aria-live="polite" hidden>

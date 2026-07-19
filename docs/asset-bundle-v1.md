@@ -74,6 +74,12 @@ Roles are presentation-neutral token labels. A future portrait, tileset,
 sprite, audio, or other consumer defines the roles and metadata it understands.
 Unknown roles can remain installed without changing core gameplay state.
 
+Bundles may also include up to 16 inert `presentations` declarations totaling
+at most 1 MiB of encoded JSON. Asset Bundle V1 only bounds and preserves these
+declarations. A named presentation consumer validates its own schema before
+installation; unknown presentation types remain installed but inactive.
+Tileset Pack V1 is the first such consumer and is specified separately.
+
 ## Validation And Budgets
 
 Review rejects a bundle before downloading any resource unless all metadata
@@ -148,11 +154,12 @@ acquisition on file origin still depends on the endpoint's browser CORS policy.
 - no archive extraction or executable module code;
 - no automatic update polling, background repair, or publisher identity;
 - no multiple bundle overlays for one module;
-- no tileset, sprite-sheet, atlas, animation, audio, video, or 3D schema;
+- no built-in sprite, animation, audio, video, or 3D schema (Tileset Pack V1
+  is a separate presentation consumer layered on this envelope);
 - no direct remote hotlinking during play;
 - no dependency on AI generation, packaged-runtime bridges, or OPFS.
 
-Presentation consumers are the next layer. They should resolve leases during
-asynchronous activation, cache render-ready handles, preserve text/emoji or
-local fallback presentation, and keep terrain and gameplay semantics separate
-from the selected art.
+Presentation consumers are the next layer. Tileset Pack V1 now demonstrates
+that contract: it resolves leases during asynchronous activation, caches
+render-ready handles, preserves lower-priority local and text/emoji fallbacks,
+and keeps terrain and gameplay semantics separate from selected art.

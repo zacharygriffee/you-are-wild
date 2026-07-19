@@ -109,7 +109,8 @@ const YAW_LARGE_MAP = {
                 if (visual.classes) classes += ` ${visual.classes}`;
                 const label = tile ? `${visual.label} (${x}, ${y})` : `Unknown (${x}, ${y})`;
                 const markerLabel = questMarker || poi;
-                html += `<div class="${classes}" ${app._mapTileAttrs(visual)} title="${app._escapeHtml(markerLabel ? `${label}: ${markerLabel}` : label)}" aria-label="${app._escapeHtml(label)}">${app._escapeHtml(visual.icon)}</div>`;
+                const tileArt = app._mapTileArtHtml(visual);
+                html += `<div class="${classes}" ${app._mapTileAttrs(visual)} title="${app._escapeHtml(markerLabel ? `${label}: ${markerLabel}` : label)}" aria-label="${app._escapeHtml(label)}">${tileArt}<span class="large-map-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span></div>`;
                 if (poi) points.push({ x, y, biome: visual.label || 'Known area', poi });
                 if (questMarker) points.push({ x, y, biome: 'Quest', poi: questMarker });
             }

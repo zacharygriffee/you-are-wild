@@ -53,6 +53,73 @@ function makeUnitScript() {
   `;
 }
 
+async function checkFileOriginFirstRunMenu(browser) {
+  const page = await browser.newPage({ viewport: { width: 1100, height: 768 } });
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.goto(distUrl, { waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+  await clearBrowserStorage(page);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+
+  const firstRun = await page.evaluate(() => {
+    const tutorial = document.getElementById('tutorial-overlay');
+    const menu = document.getElementById('screen-menu');
+    return {
+      protocol: location.protocol,
+      appScreen: App.screen,
+      tutorialDisplay: getComputedStyle(tutorial).display,
+      menuDisplay: getComputedStyle(menu).display,
+      focusTrapId: App._focusTrap?.container?.id || '',
+      focusInsideTutorial: tutorial.contains(document.activeElement)
+    };
+  });
+  assert.strictEqual(firstRun.protocol, 'file:', 'first-run menu check should exercise the downloadable file origin');
+  assert.strictEqual(firstRun.appScreen, 'menu', 'first-run startup should establish the main-menu screen before opening help');
+  assert.strictEqual(firstRun.tutorialDisplay, 'flex', 'first-run startup should visibly present the tutorial');
+  assert.strictEqual(firstRun.menuDisplay, 'flex', 'first-run startup should retain the menu behind the tutorial');
+  assert.strictEqual(firstRun.focusTrapId, 'tutorial-overlay', 'first-run tutorial should own the active focus trap');
+  assert.strictEqual(firstRun.focusInsideTutorial, true, 'first-run tutorial should receive keyboard focus');
+
+  await page.locator('#tutorial-overlay [data-command-control="skip-tutorial"]').click();
+  await page.waitForFunction(() => getComputedStyle(document.getElementById('tutorial-overlay')).display === 'none');
+
+  const actions = [
+    ['open-settings', 'screen-settings', 'close-settings'],
+    ['open-mods', 'screen-mods', 'close-modules'],
+    ['open-activity-log', 'screen-activity', 'close-activity-log'],
+    ['open-release-notes', 'screen-release', 'close-release-notes']
+  ];
+  for (const [openControl, screenId, closeControl] of actions) {
+    await page.locator(`#screen-menu [data-command-control="${openControl}"]`).click();
+    await page.waitForFunction(id => {
+      const screen = document.getElementById(id);
+      return Boolean(screen?.classList.contains('active') && getComputedStyle(screen).display !== 'none');
+    }, screenId);
+    await page.locator(`#${screenId} [data-command-control="${closeControl}"]`).click();
+    await page.waitForFunction(() => App.screen === 'menu' && getComputedStyle(document.getElementById('screen-menu')).display === 'flex');
+  }
+
+  await page.locator('#screen-menu [data-command-control="open-help"]').click();
+  await page.waitForFunction(() => getComputedStyle(document.getElementById('tutorial-overlay')).display === 'flex');
+  await page.locator('#tutorial-overlay [data-command-control="skip-tutorial"]').click();
+  await page.waitForFunction(() => getComputedStyle(document.getElementById('tutorial-overlay')).display === 'none');
+
+  await page.locator('#screen-menu [data-command-control="start-new-game"]').click();
+  await page.waitForFunction(() => App.screen === 'save-manager' && getComputedStyle(document.getElementById('save-manager')).display !== 'none');
+  await page.locator('#save-manager [data-command-control="close-save-manager"]').click();
+  await page.waitForFunction(() => App.screen === 'menu');
+
+  await page.locator('#screen-menu [data-command-control="open-load-slots"]').click();
+  await page.waitForFunction(() => App.screen === 'save-manager' && getComputedStyle(document.getElementById('save-manager')).display !== 'none');
+  await page.locator('#save-manager [data-command-control="close-save-manager"]').click();
+  await page.waitForFunction(() => App.screen === 'menu');
+
+  assert.deepStrictEqual(pageErrors, [], `file-origin first-run menu should not raise page errors: ${pageErrors.join('; ')}`);
+  await page.close();
+}
+
 async function checkViewport(browser, name, width, height) {
   const page = await browser.newPage({ viewport: { width, height }, isMobile: width <= 1024 });
   await page.goto(distUrl, { waitUntil: 'load' });
@@ -2598,6 +2665,9 @@ async function checkViewport(browser, name, width, height) {
         assert(match.bottom <= groupIntentPhase.dockTop + 1, `${name}: ${label} should be fully reachable above the fixed dock`);
       }
       assert(!groupIntentPhase.buttonRects.some(button => button.text.includes('Commit Group')), `${name}: group intent phase should not show a group commit before an intent is pending`);
+      const cancelGroup = groupIntentPhase.buttonRects.find(button => button.text === 'Cancel Group');
+      assert(cancelGroup, `${name}: group intent phase should expose an explicit Cancel Group exit`);
+      assert(cancelGroup.bottom <= groupIntentPhase.dockTop + 1, `${name}: Cancel Group should remain reachable above the fixed dock`);
       assert(groupIntentPhase.beltScrollHeight <= groupIntentPhase.beltClientHeight + 1, `${name}: group intent phase should not require internal belt scrolling at 412x915`);
       assert.strictEqual(groupIntentPhase.beltOverflowY, 'visible', `${name}: group intent phase should avoid a nested scroll belt`);
 
@@ -2626,9 +2696,9 @@ async function checkViewport(browser, name, width, height) {
         };
       });
       const confirm = groupConfirmPhase.buttonRects.find(button => button.text.includes('Commit Group Fight'));
-      const clear = groupConfirmPhase.buttonRects.find(button => button.text === 'Clear');
-      assert(confirm && clear, `${name}: group confirm phase should expose intent-owned commit and compact Clear controls`);
-      assert(confirm.bottom <= groupConfirmPhase.dockTop + 1 && clear.bottom <= groupConfirmPhase.dockTop + 1, `${name}: group confirm controls should stay above the fixed dock`);
+      const cancel = groupConfirmPhase.buttonRects.find(button => button.text === 'Cancel Group');
+      assert(confirm && cancel, `${name}: group confirm phase should expose intent-owned commit and Cancel Group controls`);
+      assert(confirm.bottom <= groupConfirmPhase.dockTop + 1 && cancel.bottom <= groupConfirmPhase.dockTop + 1, `${name}: group confirm controls should stay above the fixed dock`);
       assert(!groupConfirmPhase.buttonRects.some(button => button.text.includes('Talk') || button.text.includes('Eat') || button.text.includes('Play')), `${name}: group confirm phase should not keep the full intent grid visible`);
       assert(groupConfirmPhase.beltScrollHeight <= groupConfirmPhase.beltClientHeight + 1, `${name}: group confirm phase should not require internal belt scrolling at 412x915`);
     }
@@ -3411,9 +3481,71 @@ async function checkShortMenuScrollFallback(browser) {
   await page.close();
 }
 
+async function checkScopedStartupReadiness(browser) {
+  const page = await browser.newPage({ viewport: { width: 900, height: 720 } });
+  await page.goto(distUrl, { waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App && window.YAW_STARTUP_READINESS), null, { timeout: 5000 });
+  await page.waitForFunction(() => ['ready', 'error'].includes(YAW_STARTUP_READINESS.state('modules')?.status), null, { timeout: 5000 });
+  await page.evaluate(() => App.closeTutorial?.());
+
+  await page.evaluate(() => {
+    window.__startupDeferred = {};
+    const deferred = name => new Promise(resolve => { window.__startupDeferred[name] = resolve; });
+    YAW_STARTUP_READINESS.start('saves', () => deferred('saves'), { label: 'saved games', force: true });
+    YAW_STARTUP_READINESS.start('installedMedia', () => deferred('media'), { label: 'installed media', force: true });
+    YAW_STARTUP_READINESS.start('bundledAssets', () => deferred('assets'), { label: 'visual assets', blocking: false, force: true });
+    App.syncStartupReadinessUI();
+  });
+  const pending = await page.evaluate(() => ({
+    newGameDisabled: document.getElementById('menu-new-game').disabled,
+    loadDisabled: document.getElementById('menu-load-game').disabled,
+    modsDisabled: document.getElementById('menu-mods').disabled,
+    settingsDisabled: document.querySelector('[data-command-control="open-settings"]').disabled,
+    helpDisabled: document.querySelector('[data-command-control="open-help"]').disabled,
+    busy: document.getElementById('menu-load-game').getAttribute('aria-busy'),
+    status: document.getElementById('menu-startup-status-text').textContent
+  }));
+  assert.strictEqual(pending.newGameDisabled, true, 'startup readiness: New Game should wait for required save and content state');
+  assert.strictEqual(pending.loadDisabled, true, 'startup readiness: Load should wait for save discovery');
+  assert.strictEqual(pending.modsDisabled, true, 'startup readiness: Mods should wait for installed media');
+  assert.strictEqual(pending.settingsDisabled, false, 'startup readiness: Settings should remain available');
+  assert.strictEqual(pending.helpDisabled, false, 'startup readiness: Help should remain available');
+  assert.strictEqual(pending.busy, 'true', 'startup readiness: gated controls should expose aria-busy');
+  assert(pending.status.includes('saved games') && pending.status.includes('installed media'), 'startup readiness: live status should identify pending domains');
+
+  await page.evaluate(async () => {
+    window.__startupDeferred.saves(null);
+    window.__startupDeferred.media(null);
+    window.__startupDeferred.assets({ terrainUrl: 'blob:test', overlayUrl: 'blob:test-overlay' });
+    await Promise.all([
+      YAW_STARTUP_READINESS.state('saves').promise,
+      YAW_STARTUP_READINESS.state('installedMedia').promise,
+      YAW_STARTUP_READINESS.state('bundledAssets').promise
+    ]);
+    YAW_STARTUP_READINESS.start('modules', async () => { throw new Error('delayed test failure'); }, { label: 'mods', force: true });
+    await YAW_STARTUP_READINESS.state('modules').promise;
+    App.syncStartupReadinessUI();
+  });
+  const failed = await page.evaluate(() => ({
+    statusState: document.getElementById('menu-startup-status').dataset.state,
+    retryHidden: document.getElementById('menu-startup-retry').hidden,
+    modsDisabled: document.getElementById('menu-mods').disabled,
+    settingsDisabled: document.querySelector('[data-command-control="open-settings"]').disabled,
+    activityError: App.log.some(entry => entry.errorCode === 'startup_modules_failed')
+  }));
+  assert.strictEqual(failed.statusState, 'error', 'startup readiness: failures should become a visible error state');
+  assert.strictEqual(failed.retryHidden, false, 'startup readiness: failed domains should expose Retry');
+  assert.strictEqual(failed.modsDisabled, true, 'startup readiness: a failed module domain should remain gated');
+  assert.strictEqual(failed.settingsDisabled, false, 'startup readiness: unrelated controls should remain available after failure');
+  assert.strictEqual(failed.activityError, true, 'startup readiness: failures should be recorded in the Activity Log');
+  await page.close();
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
+    await checkFileOriginFirstRunMenu(browser);
+    await checkScopedStartupReadiness(browser);
     await checkShortMenuScrollFallback(browser);
     await checkViewport(browser, 'small phone 320', 320, 568);
     await checkViewport(browser, 'reported mobile', 412, 915);

@@ -216,14 +216,6 @@ const YAW_COMBAT_SYNC = {
             app.renderLog();
             return false;
         }
-        const unreachableTarget = targets.find(candidate => !app._canSyncTarget(participants, candidate, syncType));
-        if (unreachableTarget) {
-            const names = participants.map(p => p?.name).filter(Boolean).join(', ') || app._label('action.sync', 'Sync');
-            app.log.push({ text: app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: names, target: unreachableTarget.name }), type: 'combat' });
-            app.renderLog();
-            app.renderCreatures();
-            return false;
-        }
         const queueEntries = participants.map(p => {
             const index = app.combatState.turnQueue.findIndex(q => q.unit === p);
             return index >= 0 ? { index, entry: app.combatState.turnQueue[index] } : null;
@@ -318,6 +310,13 @@ const YAW_COMBAT_SYNC = {
                 const reachResults = (sync.participants || []).map(unit => app._combatReachResult?.(unit, target, baseAction)).filter(Boolean);
                 if (reachResults.length !== (sync.participants || []).length || !reachResults.every(result => result.canSucceed)) {
                     const reach = reachResults.find(result => result?.canAttempt && !result.canSucceed) || reachResults[0] || null;
+                    for (const participant of sync.participants || []) {
+                        app._applyActionCost?.(baseAction, participant, target, {}, {
+                            mode: 'combat',
+                            source: 'sync-reach-failure',
+                            emitScene: true
+                        });
+                    }
                     const result = YAW_COMBAT_RESOLUTION.reachFailure(app, baseAction, sync.participants || [], target, reach);
                     app.renderLog();
                     app.renderParty();

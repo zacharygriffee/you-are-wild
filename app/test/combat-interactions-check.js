@@ -2,12 +2,49 @@
 
 const assert = require('assert');
 const fs = require('fs');
+const http = require('http');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { chromium } = require('playwright');
 
 const distUrl = pathToFileURL(path.resolve(__dirname, '../../dist/you-are-wild.html')).href;
 const explicitProviderPackage = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../optional-mods/you-are-wild-explicit.yawmod.json'), 'utf8'));
+
+async function startTilesetFixtureServer() {
+  const root = path.resolve(__dirname, '../..');
+  const contentTypes = {
+    '.html': 'text/html; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.png': 'image/png'
+  };
+  const server = http.createServer((request, response) => {
+    const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
+    const relative = pathname === '/dist/you-are-wild' ? 'dist/you-are-wild.html' : pathname.replace(/^\/+/, '');
+    const file = path.resolve(root, relative);
+    if (!file.startsWith(`${root}${path.sep}`) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end('Not found');
+      return;
+    }
+    const bytes = fs.readFileSync(file);
+    response.writeHead(200, {
+      'Content-Type': contentTypes[path.extname(file)] || 'application/octet-stream',
+      'Content-Length': String(bytes.byteLength),
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-store'
+    });
+    response.end(bytes);
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  return {
+    origin: `http://127.0.0.1:${address.port}`,
+    close: () => new Promise(resolve => server.close(resolve))
+  };
+}
 
 async function clearBrowserStorage(page) {
   await page.evaluate(async () => {
@@ -720,15 +757,28 @@ async function runReachabilityMatrix(page) {
   let target = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
   let attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
-  assert.strictEqual(attrs.disabled, true, 'Known-impossible fight target should be disabled before spending a turn');
-  assert.strictEqual(attrs.ariaDisabled, 'true', 'Known-impossible fight target should expose disabled state');
+  assert.strictEqual(attrs.disabled, false, 'Known-impossible fight target should remain available as an attempt');
+  assert.strictEqual(attrs.ariaDisabled, null, 'Known-impossible fight target should not expose disabled state');
   assert(attrs.label.includes('out of reach') || attrs.label.includes('likely fails'), 'Unreachable fight target should explain the flying reach blocker');
   let state = await page.evaluate(() => ({
     enemyPun: App.creatures[0]?.CPun,
     targetSelectionAction: App.targetSelection?.action || null
   }));
   assert.strictEqual(state.enemyPun, 100, 'Unresolved fight target attempt should not damage enemy before selection');
-  assert.strictEqual(state.targetSelectionAction, 'fight', 'Unreachable fight target should preserve selected intent for correction');
+  assert.strictEqual(state.targetSelectionAction, 'fight', 'Unreachable fight target should preserve selected intent until the attempt is committed');
+  await page.locator('#enemies-content .compact-tactical-card').first().click();
+  state = await page.evaluate(() => ({
+    enemyPun: App.creatures[0]?.CPun,
+    targetSelectionAction: App.targetSelection?.action || null,
+    advanced: App._advancedTurn === true,
+    sceneFeed: document.querySelector('#desktop-scene-feed-latest')?.textContent || '',
+    correction: App.combatCorrectionMessage
+  }));
+  assert.strictEqual(state.enemyPun, 100, 'Committed unreachable Fight should not damage the enemy');
+  assert.strictEqual(state.targetSelectionAction, null, 'Committed unreachable Fight should leave target selection');
+  assert.strictEqual(state.advanced, true, 'Committed unreachable Fight should spend the turn');
+  assert(state.sceneFeed.includes('out of reach'), 'Committed unreachable Fight should fail through Scene Feed');
+  assert.strictEqual(state.correction, null, 'Committed unreachable Fight should not create a UI error');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
@@ -745,13 +795,26 @@ async function runReachabilityMatrix(page) {
       enemyPun: App.creatures[0]?.CPun
     };
   });
-  assert.strictEqual(attrs.disabled, true, 'Mobile known-impossible fight target should be disabled before spending a turn');
-  assert.strictEqual(attrs.ariaDisabled, 'true', 'Mobile known-impossible fight target should expose disabled state');
+  assert.strictEqual(attrs.disabled, false, 'Mobile known-impossible fight target should remain available as an attempt');
+  assert.strictEqual(attrs.ariaDisabled, null, 'Mobile known-impossible fight target should not expose disabled state');
   assert(attrs.label.includes('out of reach') || attrs.label.includes('likely fails'), 'Mobile unreachable fight target should explain the flying reach blocker');
   assert.strictEqual(state.chipRow, 'back', 'Mobile compact enemy chip should expose row feedback while targeting');
   assert.strictEqual(state.selectedTarget, false, 'Mobile combat target should not look selected before an attempted pick');
   assert.strictEqual(state.enemyPun, 100, 'Mobile unresolved fight target attempt should not damage enemy before selection');
-  assert.strictEqual(state.targetSelectionAction, 'fight', 'Mobile unreachable fight target should preserve selected intent for correction');
+  assert.strictEqual(state.targetSelectionAction, 'fight', 'Mobile unreachable fight target should preserve selected intent until commit');
+  await page.locator('#mobile-creature-strip .mobile-unit-chip').first().click();
+  state = await page.evaluate(() => ({
+    enemyPun: App.creatures[0]?.CPun,
+    targetSelectionAction: App.targetSelection?.action || null,
+    advanced: App._advancedTurn === true,
+    sceneFeed: document.querySelector('#mobile-scene-feed-latest')?.textContent || document.querySelector('#desktop-scene-feed-latest')?.textContent || '',
+    correction: App.combatCorrectionMessage
+  }));
+  assert.strictEqual(state.enemyPun, 100, 'Mobile committed unreachable Fight should not damage the enemy');
+  assert.strictEqual(state.targetSelectionAction, null, 'Mobile committed unreachable Fight should leave target selection');
+  assert.strictEqual(state.advanced, true, 'Mobile committed unreachable Fight should spend the turn');
+  assert(state.sceneFeed.includes('out of reach'), 'Mobile committed unreachable Fight should fail through Scene Feed');
+  assert.strictEqual(state.correction, null, 'Mobile committed unreachable Fight should not create a UI error');
   await page.setViewportSize({ width: 1365, height: 768 });
 
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 20, MPun: 100, size: 2 } });
@@ -759,15 +822,15 @@ async function runReachabilityMatrix(page) {
   target = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
   attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
-  assert.strictEqual(attrs.disabled, true, 'Known-impossible feast target should be disabled before spending a turn');
-  assert.strictEqual(attrs.ariaDisabled, 'true', 'Known-impossible feast target should expose disabled state');
+  assert.strictEqual(attrs.disabled, false, 'Known-impossible feast target should remain available as an attempt');
+  assert.strictEqual(attrs.ariaDisabled, null, 'Known-impossible feast target should not expose disabled state');
   assert(attrs.label.includes('close contact') || attrs.label.includes('front row') || attrs.label.includes('out of reach'), 'Unreachable feast target should explain the applicable front-row or flying contact blocker');
   state = await page.evaluate(() => ({
     stomachCount: App.player.stomach.length,
     targetSelectionAction: App.targetSelection?.action || null
   }));
   assert.strictEqual(state.stomachCount, 0, 'Unresolved feast target attempt should not contain enemy before selection');
-  assert.strictEqual(state.targetSelectionAction, 'feast', 'Unreachable feast target should preserve selected intent for correction');
+  assert.strictEqual(state.targetSelectionAction, 'feast', 'Unreachable feast target should preserve selected intent until commit');
 
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
   await clickIntentAndTarget(page, 'flirt');
@@ -779,12 +842,12 @@ async function runReachabilityMatrix(page) {
   target = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
   attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
-  assert.strictEqual(attrs.disabled, true, 'Contact-social Play target should be disabled when row/flying contact is impossible');
-  assert.strictEqual(attrs.ariaDisabled, 'true', 'Contact-social Play target should expose disabled state');
+  assert.strictEqual(attrs.disabled, false, 'Contact-social Play target should remain available when row/flying contact is impossible');
+  assert.strictEqual(attrs.ariaDisabled, null, 'Contact-social Play target should not expose disabled state');
   assert(attrs.label.includes('close contact') || attrs.label.includes('out of reach'), 'Contact-social Play target should explain the contact reach blocker');
   state = await page.evaluate(() => ({ enemyPle: App.creatures[0]?.CPle, targetSelectionAction: App.targetSelection?.action || null }));
   assert.strictEqual(state.enemyPle, 0, 'Blocked contact-social Play should not resolve before a valid target can be selected');
-  assert.strictEqual(state.targetSelectionAction, 'fuck', 'Blocked contact-social Play should preserve selected intent for correction');
+  assert.strictEqual(state.targetSelectionAction, 'fuck', 'Unreachable contact-social Play should preserve selected intent until commit');
 }
 
 async function runMultiEnemyCombatTargetingFlow(page) {
@@ -1041,10 +1104,23 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert(state.sentence.includes('You') && state.sentence.includes('Ally'), 'Desktop group compose sentence should show both actors');
   assert.strictEqual(state.oldConfirmVisible, false, 'Desktop slot group compose should not show old Confirm Participants');
   assert.strictEqual(state.confirmGroupVisible, false, 'Desktop combat planner should defer group commit until an intent is pending');
-  assert.strictEqual(state.clearGroupVisible, false, 'Desktop combat planner should not duplicate actor reset in the action shelf');
+  assert.strictEqual(state.clearGroupVisible, true, 'Desktop combat planner should expose an explicit Cancel Group exit');
   assert.strictEqual(state.sentenceActorExitVisible, true, 'Desktop combat planner should expose actor reset through the command sentence');
   assert.strictEqual(state.normalFightVisible, true, 'Desktop slot group compose should keep normal intents visible');
   assert.strictEqual(state.centerHasControls, false, 'Desktop slot group compose should keep center stage free of controls');
+
+  await page.locator(`#desktop-context-belt button[data-command-control="clear-combat-group"]`).first().click();
+  state = await page.evaluate(() => ({
+    plan: App.combatPlanSelection,
+    targetIds: App.combatTargetIds,
+    cancelVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="clear-combat-group"]'))
+  }));
+  assert.strictEqual(state.plan, null, 'Desktop Cancel Group should leave group composition');
+  assert.deepStrictEqual(state.targetIds, [], 'Desktop Cancel Group should clear group targets');
+  assert.strictEqual(state.cancelVisible, false, 'Desktop Cancel Group should remove its composer controls after exit');
+
+  await prepare();
+  await page.locator(`#scene-description .desktop-battle-lane.party button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]`).first().click();
 
   await page.locator(`#enemies-content button[data-command-control="mark-combat-target"]`).first().click();
   state = await page.evaluate(() => ({
@@ -1235,7 +1311,7 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Desktop target-first flow should select current actor plus ally');
   assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Desktop target-first flow should preserve the already marked enemy');
   assert(state.sentence.includes('You') && state.sentence.includes('Ally') && state.sentence.includes('Enemy'), 'Desktop target-first sentence should show actors and target');
-  assert.strictEqual(state.clearVisible, false, 'Desktop target-first group compose should not duplicate Clear Group in the action shelf');
+  assert.strictEqual(state.clearVisible, true, 'Desktop target-first group compose should expose Cancel Group in the action shelf');
   assert.strictEqual(state.sentenceActorExitVisible, true, 'Desktop target-first group compose should keep actor reset in the command sentence');
   assert.strictEqual(state.normalFightVisible, true, 'Desktop slot group compose should keep normal intents visible');
   assert.strictEqual(state.actorBadgeText, '', 'Desktop compact combat actor badge should not duplicate the avatar as text');
@@ -1386,7 +1462,7 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Mobile target-first flow should select current actor plus ally');
   assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Mobile target-first flow should preserve the marked enemy');
   assert(state.sentence.includes('You') && state.sentence.includes('Ally') && state.sentence.includes('Enemy'), 'Mobile target-first sentence should show actors and target');
-  assert.strictEqual(state.clearVisible, false, 'Mobile slot group compose should defer Clear Group until an intent is pending');
+  assert.strictEqual(state.clearVisible, true, 'Mobile slot group compose should expose Cancel Group before an intent is pending');
   assert.strictEqual(state.normalFightVisible, true, 'Mobile slot group compose should keep normal intents visible');
   assert.strictEqual(state.actorBadgeText, '', 'Mobile compact combat actor badge should not duplicate the avatar as text');
   assert(state.actorBadgeStyle.includes("--compact-card-icon-content:'X'"), 'Mobile compact combat actor badge should paint the unit avatar/icon');
@@ -1566,12 +1642,12 @@ async function runDesktopSyncComposerFlow(page) {
       rowFeedback: card?.innerText || ''
     };
   });
-  assert.strictEqual(state.disabled, true, 'Desktop known-impossible Sync target should be disabled before queueing');
-  assert.strictEqual(state.ariaDisabled, 'true', 'Desktop known-impossible Sync target should expose aria-disabled');
-  assert.strictEqual(state.disabledClass, true, 'Desktop known-impossible Sync target should carry disabled visual styling');
-  assert.strictEqual(state.selectionState, 'blocked', 'Desktop known-impossible Sync target should expose blocked state');
+  assert.strictEqual(state.disabled, false, 'Desktop known-impossible Sync target should remain available as an attempt');
+  assert.strictEqual(state.ariaDisabled, '', 'Desktop known-impossible Sync target should not expose aria-disabled');
+  assert.strictEqual(state.disabledClass, false, 'Desktop known-impossible Sync target should not carry disabled visual styling');
+  assert.strictEqual(state.selectionState, 'pickable', 'Desktop known-impossible Sync target should expose pickable attempt state');
   assert(state.label.includes('out of reach') || state.label.includes('likely fails'), 'Desktop unreachable Sync target should explain the reach blocker');
-  assert.strictEqual(state.cardSelectedTarget, false, 'Desktop blocked Sync target should not look selected during target selection');
+  assert.strictEqual(state.cardSelectedTarget, true, 'Desktop warned Sync target should retain targetable presentation during selection');
   assert(state.rowFeedback.includes('Back'), 'Desktop unreachable Sync target card should still show row feedback');
   await page.evaluate(() => {
     const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
@@ -1803,12 +1879,12 @@ async function runMobileSyncComposerFlow(page) {
       rowFeedback: chip?.getAttribute('data-combat-row') || ''
     };
   });
-  assert.strictEqual(state.disabled, true, 'Mobile known-impossible Sync target should be disabled before queueing');
-  assert.strictEqual(state.ariaDisabled, 'true', 'Mobile known-impossible Sync target should expose aria-disabled');
-  assert.strictEqual(state.disabledClass, true, 'Mobile known-impossible Sync target should carry disabled visual styling');
-  assert.strictEqual(state.selectionState, 'blocked', 'Mobile known-impossible Sync target should expose blocked state');
+  assert.strictEqual(state.disabled, false, 'Mobile known-impossible Sync target should remain available as an attempt');
+  assert.strictEqual(state.ariaDisabled, '', 'Mobile known-impossible Sync target should not expose aria-disabled');
+  assert.strictEqual(state.disabledClass, false, 'Mobile known-impossible Sync target should not carry disabled visual styling');
+  assert.strictEqual(state.selectionState, 'pickable', 'Mobile known-impossible Sync target should expose pickable attempt state');
   assert(state.label.includes('out of reach') || state.label.includes('likely fails'), 'Mobile unreachable Sync target should explain the reach blocker');
-  assert.strictEqual(state.chipSelectedTarget, false, 'Mobile blocked Sync target should not look selected during target selection');
+  assert.strictEqual(state.chipSelectedTarget, true, 'Mobile warned Sync target should retain targetable presentation during selection');
   assert.strictEqual(state.rowFeedback, 'back', 'Mobile unreachable Sync target chip should still expose row feedback');
   await page.evaluate(() => {
     const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
@@ -3031,6 +3107,110 @@ async function runMobileSelectionAndCombatFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
 }
 
+async function runMobileHorizontalUnitStripFlow(page) {
+  await page.setViewportSize({ width: 320, height: 760 });
+  await setupCombat(page, { withAlly: true });
+  const state = await page.evaluate(() => {
+    const cloneUnit = (source, name, id, disposition) => ({
+      ...source,
+      id,
+      name,
+      icon: disposition === App.DISPOSITION.ENEMY ? 'N' : 'P',
+      disposition,
+      status: {},
+      stomach: [],
+      womb: [],
+      balls: [],
+      inventory: []
+    });
+    App.party = [
+      App.player,
+      ...Array.from({ length: 5 }, (_, index) => cloneUnit(App.party[1] || App.player, `Party ${index + 1}`, `pan-party-${index + 1}`, App.DISPOSITION.PARTY))
+    ];
+    App.creatures = Array.from({ length: 6 }, (_, index) => cloneUnit(App.creatures[0], `Creature ${index + 1}`, `pan-creature-${index + 1}`, App.DISPOSITION.ENEMY));
+    const tile = App.worldMap.get('0,0');
+    if (tile) tile.creatures = App.creatures;
+    App.combatState.turnQueue = [
+      ...App.party.map((unit, index) => ({ unit, initiative: 30 - index })),
+      ...App.creatures.map((unit, index) => ({ unit, initiative: 15 - index }))
+    ];
+    App.combatState.currentTurn = 0;
+    App.activeActor = App.player;
+    App.renderParty();
+    App.renderCreatures();
+    App.renderMobileCombatToolbelt();
+    App.initMobileUnitStripGestures();
+
+    const dragRail = (id, pointerId) => {
+      const strip = document.getElementById(id);
+      const card = strip.querySelector('.mobile-unit-chip');
+      const probe = document.createElement('button');
+      probe.type = 'button';
+      probe.textContent = 'gesture probe';
+      probe.style.position = 'absolute';
+      probe.style.width = '1px';
+      probe.style.height = '1px';
+      probe.style.opacity = '0';
+      let taps = 0;
+      probe.addEventListener('click', event => {
+        taps += 1;
+        event.stopPropagation();
+      });
+      card.appendChild(probe);
+      strip.scrollLeft = 0;
+      const rect = strip.getBoundingClientRect();
+      const emit = (type, clientX, buttons) => probe.dispatchEvent(new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        pointerId,
+        pointerType: 'mouse',
+        isPrimary: true,
+        button: 0,
+        buttons,
+        clientX,
+        clientY: rect.top + Math.min(20, rect.height / 2)
+      }));
+      emit('pointerdown', rect.right - 20, 1);
+      emit('pointermove', rect.left + 20, 1);
+      emit('pointerup', rect.left + 20, 0);
+      probe.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      const afterDrag = {
+        scrollLeft: strip.scrollLeft,
+        taps,
+        dragging: strip.classList.contains('is-dragging')
+      };
+      App._mobileUnitStripSuppressClickUntil = 0;
+      probe.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      const result = {
+        bound: strip.dataset.unitStripPanBound || '',
+        clientWidth: strip.clientWidth,
+        scrollWidth: strip.scrollWidth,
+        touchAction: getComputedStyle(strip).touchAction,
+        afterDrag,
+        tapsAfterNormalTap: taps
+      };
+      probe.remove();
+      return result;
+    };
+    return {
+      party: dragRail('mobile-party-strip', 71),
+      creatures: dragRail('mobile-creature-strip', 72)
+    };
+  });
+
+  for (const [label, rail] of Object.entries(state)) {
+    assert(rail.scrollWidth > rail.clientWidth, `Mobile ${label} rail test should contain more cards than fit the viewport`);
+    assert.strictEqual(rail.bound, 'true', `Mobile ${label} rail should bind the shared pan gesture owner`);
+    assert.strictEqual(rail.touchAction, 'pan-x', `Mobile ${label} rail should retain native horizontal touch panning`);
+    assert(rail.afterDrag.scrollLeft > 0, `Mobile ${label} rail should move horizontally when dragged over a nested card control`);
+    assert.strictEqual(rail.afterDrag.taps, 0, `Mobile ${label} drag should suppress the synthetic card tap after release`);
+    assert.strictEqual(rail.afterDrag.dragging, false, `Mobile ${label} rail should clear dragging presentation after release`);
+    assert.strictEqual(rail.tapsAfterNormalTap, 1, `Mobile ${label} rail should preserve normal control taps after the drag suppression window`);
+  }
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+}
+
 async function runCompactRailRoundTripFlow(page) {
   await page.setViewportSize({ width: 390, height: 844 });
   await setupAdventure(page);
@@ -3273,7 +3453,7 @@ async function runCompactRailRoundTripFlow(page) {
   await page.locator(`.mobile-panel-dock button[data-command-control="toggle-actor-rail"]`).click();
   await page.locator(`#mobile-actor-belt button[onclick*="selectExplorationActor(1)"]`).click();
   await page.locator(`#mobile-actor-belt button[onclick*="selectExplorationActor(2)"]`).click();
-  await page.locator(`#mobile-actor-belt button[onclick*="toggleExplorationTarget('party','player-1')"]`).click();
+  await page.locator(`#mobile-actor-belt button[onclick*="toggleExplorationTarget('party','ally-1')"]`).click();
   state = await page.evaluate(() => ({
     actorRailOpen: App.mobileActorBeltOpen,
     actors: App._getExplorationActors().map(unit => unit.id),
@@ -3295,7 +3475,7 @@ async function runCompactRailRoundTripFlow(page) {
   }));
   assert.strictEqual(state.actorRailOpen, true, 'Party dock should open the compact actor rail');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Compact actor rail should support multiple selected party actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Compact actor rail should allow marking a party member as target without losing creature target');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Compact actor rail should allow an acting party member to target themselves without losing a creature target');
   assert(state.actorBeltText.includes('Ally') && state.actorBeltText.includes('Scout'), 'Compact actor rail should show selected party choices');
   assert.deepStrictEqual(state.actorDetailsAttrs, {
     surface: 'drawer-shortcuts',
@@ -3317,7 +3497,7 @@ async function runCompactRailRoundTripFlow(page) {
   }));
   assert.strictEqual(state.partyDrawerOpen, true, 'Compact actor rail Details should open the Party drawer');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Party details should preserve selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening Party details should preserve marked targets');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Opening Party details should preserve mixed and self targets');
   await page.evaluate(() => App.closeAllPanels());
   state = await page.evaluate(() => ({
     partyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false,
@@ -3334,7 +3514,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert(state.actorButtons >= 3 && state.actorDetailsVisible, 'Returned actor rail should keep actor controls and Details reachable');
   assert.strictEqual(state.activeControl, 'focus-actor', 'Closing Party details should return focus to the compact actor rail');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing Party details should keep selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Closing Party details should keep marked targets');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Closing Party details should keep mixed and self targets');
   assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Closing Party details should keep the mobile composer sentence visible');
 
   await page.evaluate(() => {
@@ -3352,7 +3532,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.holdingsStatsOpen, true, 'Mobile party stats detail should open the Holdings stats tab');
   assert(state.holdingsOwnerText.includes('Ally'), 'Mobile party stats detail should target the selected party member in Holdings');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening party Holdings detail should preserve selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening party Holdings detail should preserve marked targets');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Opening party Holdings detail should preserve mixed and self targets');
   await page.locator('#holdings-window-root button[data-command-control="close-holdings"]').click();
   state = await page.evaluate(() => ({
     holdingsOpen: !document.querySelector('#holdings-window-root')?.hidden,
@@ -3367,7 +3547,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.actorRailOpen, true, 'Closing Holdings should restore the compact actor rail');
   assert(state.actorButtons >= 3 && state.actorDetailsVisible, 'Closing Holdings should restore actor controls and Details');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing Holdings should keep selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Closing Holdings should keep marked targets');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Closing Holdings should keep mixed and self targets');
   assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Closing Holdings should keep the composer sentence visible');
 
   await page.locator(`#mobile-selection-sentence [data-command-control="open-target-slot"]`).click();
@@ -3400,7 +3580,7 @@ async function runCompactRailRoundTripFlow(page) {
   }));
   assert.strictEqual(state.creatureDrawerOpen, true, 'Target picker Details should open the Creatures drawer');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Creature details should preserve selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening Creature details should preserve marked targets');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Opening Creature details should preserve mixed and self targets');
   await page.evaluate(() => App.closeAllPanels());
   state = await page.evaluate(() => ({
     creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
@@ -3418,7 +3598,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert(state.targetButtons >= 2, 'Returned target picker should keep target controls reachable');
   assert.strictEqual(state.activeControl, 'focus-target', 'Closing Creature details should return focus to the target picker');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing Creature details should keep selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Closing Creature details should keep marked targets');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Closing Creature details should keep mixed and self targets');
   assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Closing Creature details should keep shared composer intents visible');
 
   await page.evaluate(() => {
@@ -3444,7 +3624,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.composerHidden, true, 'Mobile Trade transaction should hide the underlying composer');
   assert.strictEqual(state.selectionControlsInsideTransaction, 0, 'Mobile Trade transaction should not duplicate actor/target controls');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening target detail should preserve selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening target detail should preserve marked targets');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Opening target detail should preserve mixed and self targets');
   await page.evaluate(() => App.closeTransactionWindow());
   state = await page.evaluate(() => ({
     creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
@@ -3462,7 +3642,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.notStrictEqual(state.targetPickerDisplay, 'none', 'Transaction Back should keep the target picker visible');
   assert(state.targetButtons >= 2, 'Transaction Back should restore target controls');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Transaction Back should keep selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Transaction Back should keep marked targets');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Transaction Back should keep mixed and self targets');
   assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Transaction Back should keep shared composer intents visible');
 
   await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).click();
@@ -3473,14 +3653,16 @@ async function runCompactRailRoundTripFlow(page) {
     targetIds: App.lastIntentCommand?.targetIds || [],
     targetsRemaining: [...App.explorationTargetIds],
     targetPleasures: App.creatures.filter(unit => unit.id === 'merchant-1').map(unit => unit.CPle),
+    selfTargetPleasure: App.party.find(unit => unit.id === 'ally-1')?.CPle || 0,
     centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.action, 'flirt', 'Safe mobile target intent should route through shared intent dispatch');
   assert.strictEqual(state.subAction, 'tease', 'Safe mobile target intent should preserve the selected sub-action');
   assert.strictEqual(state.source, 'composer-tray', 'Resolved compact rail intent should preserve composer-tray source metadata');
-  assert(state.targetIds.includes('merchant-1') && state.targetIds.includes('player-1'), 'Resolved compact rail intent should record marked creature and party targets');
+  assert(state.targetIds.includes('merchant-1') && state.targetIds.includes('ally-1'), 'Resolved compact rail intent should record the mixed creature and acting-party-member targets');
   assert.strictEqual(state.targetsRemaining.length, 0, 'Resolved compact rail intent should clear marked targets intentionally');
   assert(state.targetPleasures[0] > 0, 'Resolved safe intent should affect the marked creature target');
+  assert(state.selfTargetPleasure > 0, 'Resolved safe intent should allow an acting party member to affect themselves as a selected target');
   assert.strictEqual(state.centerHasActorControls, false, 'Compact rail resolution should keep center free of actor controls');
 
   await page.locator(`#mobile-target-picker-belt button[onclick*="toggleExplorationTarget('creature','corpse-rail')"]`).click();
@@ -3715,6 +3897,7 @@ async function runSaveManagerSlotBrowserFlow(page) {
   await clearBrowserStorage(page);
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+  await page.waitForFunction(() => App.startupActionReady?.('play') === true, null, { timeout: 5000 });
 
   await page.evaluate(() => {
     localStorage.setItem('yaw-save-time-slot2', '1710000000000');
@@ -4006,6 +4189,276 @@ async function runCombatProgressInvariantFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
 }
 
+async function runTilesetCrossSurfaceFlow(page) {
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await page.waitForFunction(() => typeof YAW_TILESET_RUNTIME !== 'undefined' && Boolean(YAW_TILESET_RUNTIME.status('__bundled__')), null, { timeout: 10000 });
+  await page.evaluate(() => {
+    const makeUnit = (name, id) => ({
+      id, name, species: 'human', icon: 'X', level: 1,
+      CPun: 100, MPun: 100, CPle: 0, MPle: 100,
+      Figh: 20, Feas: 20, Flir: 20, Fuck: 20, Flee: 20, Feed: 20,
+      str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10,
+      size: 4, appetite: 4, stomach: [], womb: [], balls: [], bodyParts: [], tags: ['Person'], status: {}, disposition: 'party'
+    });
+    App.player = makeUnit('You', 'tileset-player');
+    App.party = [App.player];
+    App.creatures = [];
+    App.screen = 'game';
+    App.inInterior = false;
+    App.activeInterior = null;
+    App.location = { x: 0, y: 0 };
+    const road = {
+      x: 0, y: 0, biome: 'swamp', baseBiome: 'swamp', derivedBiome: 'swamp', displayBiome: 'road', explored: true,
+      creatures: [], items: [], overlays: { road: { id: 'visual-road', direction: 'east-west', connections: ['east'] }, barriers: ['north'] }
+    };
+    const east = {
+      x: 1, y: 0, biome: 'jungle', baseBiome: 'jungle', derivedBiome: 'jungle', displayBiome: 'jungle', explored: true,
+      creatures: [], items: [], overlays: { road: { id: 'visual-road', direction: 'east-west', connections: ['west'] }, barriers: [] }
+    };
+    App.worldMap = new Map([['0,0', road], ['1,0', east]]);
+    App.exploredTiles = new Set(['0,0', '1,0']);
+    App.renderMap();
+    App.renderLargeMap();
+    App.renderDesktopPlaySurface();
+  });
+  let state = await page.evaluate(() => {
+    const layerKeys = selector => [...document.querySelectorAll(`${selector} .yaw-tile-art-layer`)].map(layer => layer.getAttribute('data-tileset-semantic-key'));
+    const center = document.querySelector('#mobile-mini-map .map-tile.center');
+    return {
+      origin: location.protocol,
+      mobileKeys: layerKeys('#mobile-mini-map .map-tile.center'),
+      desktopKeys: layerKeys('#desktop-map-cell-center'),
+      largeKeys: layerKeys('#large-map .large-map-tile.current'),
+      semantics: center?.getAttribute('data-tileset-semantic-keys') || '',
+      blockedEdges: center?.getAttribute('data-blocked-edges') || '',
+      baseStyle: document.querySelector('#mobile-mini-map .map-tile.center [data-tileset-semantic-key="terrain-swamp"]')?.getAttribute('style') || '',
+      routeStyle: document.querySelector('#mobile-mini-map .map-tile.center [data-tileset-semantic-key="route-road-end-east"]')?.getAttribute('style') || ''
+    };
+  });
+  assert.strictEqual(state.origin, 'file:', 'Cross-surface bundled tileset regression should exercise the offline file-origin build');
+  for (const [surface, keys] of [['mobile', state.mobileKeys], ['desktop', state.desktopKeys], ['large map', state.largeKeys]]) {
+    assert(keys.includes('terrain-swamp'), `${surface} should render the underlying swamp terrain layer`);
+    assert(keys.includes('route-road-end-east'), `${surface} should render the directional transparent road overlay`);
+    assert(keys.includes('state-current'), `${surface} should render current-position state independently of terrain`);
+    assert(keys.includes('state-blocked-north'), `${surface} should render the intrinsic north blocked-edge state`);
+  }
+  assert(state.semantics.includes('terrain-swamp') && state.semantics.includes('route-road-end-east'), 'Rendered tile metadata should expose ordered terrain and route semantics');
+  assert.strictEqual(state.blockedEdges, 'north', 'Rendered current tile should retain directional barrier metadata');
+  assert(state.baseStyle.includes('yaw-tileset-atlas-') && state.routeStyle.includes('yaw-tileset-atlas-'), 'Terrain and route layers should resolve through prepared session atlas variables');
+  assert.notStrictEqual(state.baseStyle.match(/yaw-tileset-atlas-\d+/)?.[0], state.routeStyle.match(/yaw-tileset-atlas-\d+/)?.[0], 'Road overlays should use a different RGBA atlas from opaque terrain');
+
+  await page.evaluate(() => {
+    const tiles = new Map();
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const isWater = (dx === 0 && dy === -1) || (dx === 1 && dy === 0);
+        const isAnchor = dx === 0 && dy === 0;
+        tiles.set(`${dx},${dy}`, {
+          x: dx, y: dy,
+          biome: isWater ? 'water' : 'beach',
+          baseBiome: isWater ? 'water' : 'beach',
+          derivedBiome: isWater ? 'water' : 'beach',
+          displayBiome: isWater ? 'water' : 'beach',
+          water: isWater,
+          explored: true,
+          creatures: [], items: [],
+          overlays: {
+            shoreline: isWater ? null : { edges: isAnchor ? ['north', 'east'] : [], nearWater: true },
+            poi: isAnchor ? { id: 'danger-anchor', category: 'dangerSite', anchor: { x: 0, y: 0 } } : null,
+            dangerInfluence: { siteId: 'danger-anchor', category: 'dangerSite', anchor: { x: 0, y: 0 }, distance: Math.max(Math.abs(dx), Math.abs(dy)), modifier: isAnchor ? 0.18 : 0.1 },
+            barriers: []
+          }
+        });
+      }
+    }
+    App.location = { x: 0, y: 0 };
+    App.worldMap = tiles;
+    App.exploredTiles = new Set([...tiles.keys()]);
+    App.renderMap();
+    App.renderLargeMap();
+    App.renderDesktopPlaySurface();
+  });
+  state = await page.evaluate(() => {
+    const inspect = selector => {
+      const root = document.querySelector(selector);
+      return {
+        semantics: root?.getAttribute('data-tileset-semantic-keys') || '',
+        shoreline: root?.getAttribute('data-shoreline-edges') || '',
+        influence: root?.getAttribute('data-danger-influence') || '',
+        immediate: root?.getAttribute('data-immediate-danger') || '',
+        pseudo: root ? getComputedStyle(root.querySelector('.yaw-tile-art'), '::after').backgroundImage : ''
+      };
+    };
+    return {
+      mobile: inspect('#mobile-mini-map .map-tile.center'),
+      desktop: inspect('#desktop-map-cell-center'),
+      large: inspect('#large-map .large-map-tile.current'),
+      mobileAnchors: document.querySelectorAll('#mobile-mini-map [data-tileset-key="poi-danger-site"]').length,
+      desktopAnchors: document.querySelectorAll('#desktop-neighborhood-grid [data-tileset-key="poi-danger-site"]').length,
+      largeAnchors: document.querySelectorAll('#large-map [data-tileset-key="poi-danger-site"]').length,
+      mobileInfluence: document.querySelectorAll('#mobile-mini-map [data-danger-influence="true"]').length,
+      desktopInfluence: document.querySelectorAll('#desktop-neighborhood-grid [data-danger-influence="true"]').length,
+      largeInfluence: document.querySelectorAll('#large-map [data-danger-influence="true"]').length
+    };
+  });
+  for (const [surface, value] of [['mobile coast', state.mobile], ['desktop coast', state.desktop], ['large-map coast', state.large]]) {
+    assert(value.semantics.includes('terrain-sand') && value.semantics.includes('terrain-beach'), `${surface} should retain reusable sand and beach identity semantics`);
+    assert(value.semantics.includes('shoreline-water-north') && value.semantics.includes('shoreline-water-east'), `${surface} should compose every adjacent cardinal shoreline`);
+    assert.strictEqual(value.shoreline, 'north east', `${surface} should expose authoritative shoreline metadata`);
+    assert.strictEqual(value.influence, 'true', `${surface} should expose bounded danger influence`);
+    assert.strictEqual(value.immediate, '', `${surface} should not confuse regional pressure with immediate danger`);
+    assert(value.pseudo.includes('linear-gradient'), `${surface} should paint the simple core shoreline fallback`);
+  }
+  assert.deepStrictEqual([state.mobileAnchors, state.desktopAnchors, state.largeAnchors], [1, 1, 1], 'Every map surface should render one danger-site anchor instead of a skull carpet');
+  assert.deepStrictEqual([state.mobileInfluence, state.desktopInfluence, state.largeInfluence], [9, 9, 9], 'Every map surface should retain the bounded 3x3 danger influence footprint');
+
+  await page.evaluate(() => {
+    const exit = { x: 0, y: 0, biome: 'indoors', explored: true, exit: true, archetype: 'entry', connections: ['east'], creatures: [], items: [] };
+    const corridor = { x: 1, y: 0, biome: 'indoors', explored: true, exit: false, archetype: 'corridor', connections: ['west', 'south'], creatures: [], items: [] };
+    const chamber = { x: 1, y: 1, biome: 'indoors', explored: true, exit: false, archetype: 'chamber', connections: ['north'], creatures: [], items: [] };
+    App.inInterior = true;
+    App.interiorLocation = { x: 0, y: 0 };
+    App.activeInterior = {
+      id: 'tileset-interior', structure: 'hut', structureName: 'Topology Fixture', origin: { x: 0, y: 0 },
+      tiles: { '0,0': exit, '1,0': corridor, '1,1': chamber }
+    };
+    App.renderMap();
+    App.renderDesktopPlaySurface();
+  });
+  state = await page.evaluate(() => {
+    const center = document.querySelector('#mobile-mini-map .map-tile.center');
+    const northWall = document.querySelector('#mobile-mini-map [data-mobile-play-cell="n"]');
+    const layerKeys = selector => [...document.querySelectorAll(`${selector} .yaw-tile-art-layer`)].map(layer => layer.getAttribute('data-tileset-semantic-key'));
+    return {
+      centerShape: center?.getAttribute('data-interior-shape') || '',
+      centerKeys: layerKeys('#mobile-mini-map .map-tile.center'),
+      desktopKeys: layerKeys('#desktop-map-cell-center'),
+      northWallShape: northWall?.getAttribute('data-interior-shape') || '',
+      northWallSemantics: northWall?.getAttribute('data-tileset-semantic-keys') || ''
+    };
+  });
+  assert.strictEqual(state.centerShape, 'end-east', 'Interior current room should derive its path shape from reciprocal room connections');
+  for (const [surface, keys] of [['mobile interior', state.centerKeys], ['desktop interior', state.desktopKeys]]) {
+    assert(keys.includes('interior-room'), `${surface} should retain its room base layer`);
+    assert(keys.includes('interior-path-end-east'), `${surface} should render the directional interior path overlay`);
+    assert(keys.includes('interior-exit-west'), `${surface} should render the outward-facing exit marker`);
+    assert(keys.includes('interior-door-west'), `${surface} should render a direction-aware building door layer`);
+    assert(keys.includes('state-current'), `${surface} should retain current-position presentation inside structures`);
+  }
+  assert.strictEqual(state.northWallShape, 'wall-south', 'A missing interior cell should face its adjacent room rather than becoming an unrelated random tile');
+  assert(state.northWallSemantics.includes('interior-wall-south') && state.northWallSemantics.includes('state-blocked-south'), 'Interior wall metadata should expose its directional wall and blocked edge');
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+}
+
+async function runUriTilesetLifecycleFlow(browser) {
+  const fixture = await startTilesetFixtureServer();
+  const page = await browser.newPage({ viewport: { width: 1365, height: 768 } });
+  const moduleId = 'yaw_example_tileset_v1';
+  try {
+    await page.goto(`${fixture.origin}/dist/you-are-wild`, { waitUntil: 'load' });
+    await page.waitForFunction(() => Boolean(window.App) && typeof MODULE_SYSTEM !== 'undefined' && typeof YAW_TILESET_RUNTIME !== 'undefined', null, { timeout: 10000 });
+    await clearBrowserStorage(page);
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(() => Boolean(window.App) && typeof MODULE_SYSTEM !== 'undefined' && typeof YAW_TILESET_RUNTIME !== 'undefined', null, { timeout: 10000 });
+    await page.waitForFunction(() => Boolean(YAW_TILESET_RUNTIME.status('__bundled__')), null, { timeout: 10000 });
+
+    const installed = await page.evaluate(async ({ origin, moduleId }) => {
+      await MODULE_SYSTEM.init();
+      const modulePackage = await fetch(`${origin}/optional-mods/example-tileset-pack/you-are-wild-example-tileset.yawmod.json`, { cache: 'no-store' }).then(response => response.json());
+      await MODULE_SYSTEM.installModule(modulePackage);
+      const review = await MODULE_SYSTEM.reviewRemoteModule(`${origin}/optional-mods/example-tileset-pack/bundle.json`);
+      const result = await MODULE_SYSTEM.installReviewedRemoteAssetBundle(review);
+      await MODULE_SYSTEM.setModuleEnabled(moduleId, true);
+      const route = YAW_TILESET_RUNTIME.resolveTile('route-road-vertical');
+      const fallback = YAW_TILESET_RUNTIME.resolveTile('terrain-swamp');
+      const shorelineFallback = YAW_TILESET_RUNTIME.resolveTile('shoreline-water-north');
+      const dangerInfluenceFallback = YAW_TILESET_RUNTIME.resolveTile('state-danger-influence');
+      const layers = YAW_TILESET_RUNTIME.layersForVisual({
+        semanticKeys: ['terrain-swamp', 'route-road-vertical', 'state-current'],
+        baseTilesetKey: 'terrain-swamp',
+        tilesetKey: 'route-road-vertical',
+        classes: 'map-visual-current'
+      });
+      const status = await MODULE_SYSTEM.getModuleAssetBundleStatus(moduleId);
+      return {
+        reviewKind: review.kind,
+        bundleVersion: result.bundle.version,
+        sourceUrl: status.sourceUrl,
+        healthOk: status.health.ok,
+        routeOwner: route?.moduleId || '',
+        fallbackOwner: fallback?.moduleId || '',
+        shorelineFallbackOwner: shorelineFallback?.moduleId || '',
+        dangerInfluenceFallbackOwner: dangerInfluenceFallback?.moduleId || '',
+        activePack: YAW_TILESET_RUNTIME.status(moduleId)?.packId || '',
+        layerOwners: layers.layers.map(layer => layer.url),
+        moduleEnabled: MODULE_SYSTEM.activeModules.has(moduleId)
+      };
+    }, { origin: fixture.origin, moduleId });
+    assert.strictEqual(installed.reviewKind, 'asset_bundle_v1', 'Loopback URI review should recognize the example code-free asset bundle');
+    assert.strictEqual(installed.bundleVersion, '1.0.0', 'Initial example bundle should install its reviewed version');
+    assert.strictEqual(installed.sourceUrl, `${fixture.origin}/optional-mods/example-tileset-pack/bundle.json`, 'Installed example bundle should retain its explicit URI for audit and repair');
+    assert.strictEqual(installed.healthOk, true, 'Real HTTP installation should retain a verified local IndexedDB payload');
+    assert.strictEqual(installed.routeOwner, moduleId, 'Example partial pack should override the semantic route it provides');
+    assert.strictEqual(installed.fallbackOwner, '__bundled__', 'Missing example semantics should fall through to the bundled pack');
+    assert.strictEqual(installed.shorelineFallbackOwner, '__bundled__', 'URI-installed partial packs should inherit cardinal shoreline semantics from the bundled pack');
+    assert.strictEqual(installed.dangerInfluenceFallbackOwner, '__bundled__', 'URI-installed partial packs should inherit restrained danger influence from the bundled pack');
+    assert.strictEqual(installed.activePack, 'yaw.example-partial-v1', 'Enabling the target module should activate its installed Tileset Pack presentation');
+    assert.strictEqual(installed.moduleEnabled, true, 'Example target module should be active after explicit enablement');
+    assert(installed.layerOwners.every(url => url.startsWith('blob:')), 'Gameplay layers should use local object-URL leases rather than hotlinking the source URI');
+
+    const replaced = await page.evaluate(async ({ origin, moduleId }) => {
+      await MODULE_SYSTEM.setModuleEnabled(moduleId, false);
+      const restoredBeforeReplacement = YAW_TILESET_RUNTIME.activeCandidate()?.moduleId || '';
+      const review = await MODULE_SYSTEM.reviewRemoteModule(`${origin}/optional-mods/example-tileset-pack/bundle-replacement.json`);
+      const result = await MODULE_SYSTEM.installReviewedRemoteAssetBundle(review);
+      await MODULE_SYSTEM.setModuleEnabled(moduleId, true);
+      return {
+        restoredBeforeReplacement,
+        version: result.bundle.version,
+        packId: YAW_TILESET_RUNTIME.status(moduleId)?.packId || '',
+        currentRectX: YAW_TILESET_RUNTIME.resolveTile('state-current')?.tile?.layers?.[0]?.rect?.x
+      };
+    }, { origin: fixture.origin, moduleId });
+    assert.strictEqual(replaced.restoredBeforeReplacement, '__bundled__', 'Disabling the partial pack should immediately restore bundled presentation');
+    assert.strictEqual(replaced.version, '1.1.0', 'Reviewed replacement should update the installed bundle audit version');
+    assert.strictEqual(replaced.packId, 'yaw.example-partial-v1.1', 'Replacement enablement should activate the replacement presentation');
+    assert.strictEqual(replaced.currentRectX, 940, 'Replacement presentation geometry should replace the prior current-position layer');
+
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(id => MODULE_SYSTEM.activeModules.has(id) && YAW_TILESET_RUNTIME.status(id)?.active, moduleId, { timeout: 10000 });
+    const persisted = await page.evaluate(async moduleId => {
+      const status = await MODULE_SYSTEM.getModuleAssetBundleStatus(moduleId);
+      const resolved = YAW_TILESET_RUNTIME.resolveTile('route-road-vertical');
+      return {
+        version: status.version,
+        healthOk: status.health.ok,
+        packId: YAW_TILESET_RUNTIME.status(moduleId)?.packId || '',
+        routeOwner: resolved?.moduleId || '',
+        routeUrl: resolved?.atlases?.get('example')?.url || ''
+      };
+    }, moduleId);
+    assert.strictEqual(persisted.version, '1.1.0', 'Replacement bundle metadata should survive a full browser reload');
+    assert.strictEqual(persisted.healthOk, true, 'Replacement payload health should survive a full browser reload');
+    assert.strictEqual(persisted.packId, 'yaw.example-partial-v1.1', 'Enabled replacement presentation should reactivate from IndexedDB after reload');
+    assert.strictEqual(persisted.routeOwner, moduleId, 'Persisted replacement should continue to own provided route semantics');
+    assert(persisted.routeUrl.startsWith('blob:'), 'Reloaded replacement should reacquire a local session lease');
+
+    const restored = await page.evaluate(async moduleId => {
+      await MODULE_SYSTEM.setModuleEnabled(moduleId, false);
+      return {
+        activeModuleId: YAW_TILESET_RUNTIME.activeCandidate()?.moduleId || '',
+        routeOwner: YAW_TILESET_RUNTIME.resolveTile('route-road-vertical')?.moduleId || ''
+      };
+    }, moduleId);
+    assert.strictEqual(restored.activeModuleId, '__bundled__', 'Final disable should restore the bundled candidate');
+    assert.strictEqual(restored.routeOwner, '__bundled__', 'Final disable should restore bundled route semantics');
+  } finally {
+    await page.close();
+    await fixture.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -4023,6 +4476,7 @@ async function runCombatProgressInvariantFlow(page) {
     await clearBrowserStorage(page);
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+    await runTilesetCrossSurfaceFlow(page);
     await runCombatTargetFirstComposerFlow(page);
     await runCombatProgressInvariantFlow(page);
     await runActionMatrix(page);
@@ -4043,6 +4497,7 @@ async function runCombatProgressInvariantFlow(page) {
     await runDesktopIntentSubActionSheetFlow(page);
     await runRadialIntentSubActionPresentationFlow(page);
     await runMobileSelectionAndCombatFlow(page);
+    await runMobileHorizontalUnitStripFlow(page);
     await runCompactRailRoundTripFlow(page);
     await runContentSettingsBrowserFlow(page);
     await runIndexedDbNamespaceBrowserFlow(page);
@@ -4050,6 +4505,7 @@ async function runCombatProgressInvariantFlow(page) {
     await runMalformedSaveMetadataBrowserFlow(page);
     await runClearAllBrowserStorageFlow(page);
     await page.close();
+    await runUriTilesetLifecycleFlow(browser);
   } finally {
     await browser.close();
   }

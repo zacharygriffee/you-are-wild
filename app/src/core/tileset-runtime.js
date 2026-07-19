@@ -1,0 +1,288 @@
+/**
+ * YOU ARE WILD TILESET RUNTIME
+ * Async Media Repository leases with synchronous, layered map presentation.
+ */
+
+const YAW_TILESET_RUNTIME = {
+    candidates: new Map(),
+    builtinCandidate: null,
+    activeModuleId: '',
+    sequence: 0,
+    styleSequence: 0,
+
+    repository() {
+        return typeof YAW_MEDIA_REPOSITORY !== 'undefined' ? YAW_MEDIA_REPOSITORY : null;
+    },
+
+    requiredKeys() {
+        if (typeof globalThis === 'undefined' || !globalThis.AssetManifest?.allTileKeys) return [];
+        return globalThis.AssetManifest.allTileKeys();
+    },
+
+    _presentation(metadata) {
+        return (Array.isArray(metadata?.presentations) ? metadata.presentations : [])
+            .find(presentation => presentation?.type === YAW_TILESET_PACK_V1.PRESENTATION_TYPE) || null;
+    },
+
+    _setActiveCandidate() {
+        const candidates = [...this.candidates.values()].sort((left, right) => right.sequence - left.sequence);
+        this.activeModuleId = candidates[0]?.moduleId || '';
+        return candidates[0] || null;
+    },
+
+    _registerAtlasUrl(url) {
+        const safeUrl = String(url || '');
+        if (typeof document === 'undefined' || !document.documentElement?.style?.setProperty) {
+            return { cssImage: `url("${this._styleUrl(safeUrl)}")`, cssVariable: '' };
+        }
+        const cssVariable = `--yaw-tileset-atlas-${++this.styleSequence}`;
+        document.documentElement.style.setProperty(cssVariable, `url("${this._styleUrl(safeUrl)}")`);
+        return { cssImage: `var(${cssVariable})`, cssVariable };
+    },
+
+    _releaseAtlasUrl(atlas) {
+        if (!atlas?.cssVariable || typeof document === 'undefined') return;
+        document.documentElement?.style?.removeProperty?.(atlas.cssVariable);
+    },
+
+    registerBuiltin(value) {
+        const presentation = value?.presentation;
+        const resources = Array.isArray(value?.resources) ? value.resources : [];
+        const atlasUrls = value?.atlasUrls || {};
+        const pack = YAW_TILESET_PACK_V1.normalizePresentation(presentation, {
+            resources,
+            requiredKeys: this.requiredKeys()
+        });
+        const leases = new Map(pack.atlases.map(atlas => {
+            const url = String(atlasUrls[atlas.resourceId] || '');
+            return [atlas.id, { ...atlas, leaseId: '', url, ...this._registerAtlasUrl(url) }];
+        }));
+        if ([...leases.values()].some(atlas => !atlas.url)) {
+            throw new Error('Bundled Tileset Pack is missing an atlas URL');
+        }
+        this.builtinCandidate = { moduleId: '__bundled__', pack, leases, sequence: 0, bundled: true };
+        return this.status('__bundled__');
+    },
+
+    _refreshMaps() {
+        if (typeof App === 'undefined' || !App?.player || App.screen !== 'game') return;
+        try { App.renderMap?.(); } catch (error) {}
+    },
+
+    async activateModule(moduleValue, options = {}) {
+        const moduleId = String(moduleValue || '').trim();
+        const repository = options.repository || this.repository();
+        if (!moduleId || !repository) return null;
+        const metadata = await repository.ownerMetadata(moduleId);
+        const presentation = this._presentation(metadata);
+        if (!presentation) return null;
+        const records = await repository.listOwner(moduleId);
+        const resources = records.map(record => record?.descriptor).filter(Boolean);
+        const pack = YAW_TILESET_PACK_V1.normalizePresentation(presentation, {
+            resources,
+            requiredKeys: this.requiredKeys()
+        });
+        const leases = new Map();
+        try {
+            for (const atlas of pack.atlases) {
+                const lease = await repository.acquire(moduleId, atlas.resourceId);
+                leases.set(atlas.id, { ...atlas, ...lease, ...this._registerAtlasUrl(lease.url) });
+            }
+        } catch (error) {
+            for (const lease of leases.values()) {
+                this._releaseAtlasUrl(lease);
+                repository.release(moduleId, lease.leaseId);
+            }
+            throw error;
+        }
+        this.deactivateModule(moduleId, { repository, refresh: false });
+        const candidate = { moduleId, pack, leases, sequence: ++this.sequence };
+        this.candidates.set(moduleId, candidate);
+        this._setActiveCandidate();
+        if (options.refresh !== false) this._refreshMaps();
+        return this.status(moduleId);
+    },
+
+    deactivateModule(moduleValue, options = {}) {
+        const moduleId = String(moduleValue || '').trim();
+        const candidate = this.candidates.get(moduleId);
+        if (!candidate) return false;
+        const repository = options.repository || this.repository();
+        for (const lease of candidate.leases.values()) {
+            this._releaseAtlasUrl(lease);
+            try { repository?.release(moduleId, lease.leaseId); } catch (error) {}
+        }
+        this.candidates.delete(moduleId);
+        this._setActiveCandidate();
+        if (options.refresh !== false) this._refreshMaps();
+        return true;
+    },
+
+    clear(options = {}) {
+        for (const moduleId of [...this.candidates.keys()]) {
+            this.deactivateModule(moduleId, { ...options, refresh: false });
+        }
+        this.activeModuleId = '';
+        if (options.refresh !== false) this._refreshMaps();
+    },
+
+    activeCandidate() {
+        return this.activeModuleId ? this.candidates.get(this.activeModuleId) || this.builtinCandidate : this.builtinCandidate;
+    },
+
+    _candidateChain() {
+        const modules = [...this.candidates.values()].sort((left, right) => right.sequence - left.sequence);
+        if (this.builtinCandidate) modules.push(this.builtinCandidate);
+        return modules;
+    },
+
+    status(moduleId = this.activeModuleId) {
+        const normalizedId = String(moduleId || '');
+        const candidate = normalizedId === '__bundled__' ? this.builtinCandidate : this.candidates.get(normalizedId);
+        if (!candidate) return null;
+        return {
+            moduleId: candidate.moduleId,
+            packId: candidate.pack.id,
+            name: candidate.pack.name,
+            active: candidate.moduleId === (this.activeModuleId || '__bundled__'),
+            scaling: candidate.pack.scaling,
+            atlasCount: candidate.pack.atlases.length,
+            tileCount: Object.keys(candidate.pack.tiles).length,
+            missingRequired: candidate.pack.coverage.missingRequired.slice()
+        };
+    },
+
+    resolveTile(keyValue) {
+        const requestedKey = String(keyValue || '');
+        const candidates = this._candidateChain();
+        const resolveFrom = (key, startIndex, seen) => {
+            if (!key || seen.has(`${startIndex}:${key}`)) return null;
+            seen.add(`${startIndex}:${key}`);
+            for (let index = startIndex; index < candidates.length; index++) {
+                const candidate = candidates[index];
+                const localSeen = new Set();
+                let cursor = key;
+                while (cursor && !localSeen.has(cursor)) {
+                    localSeen.add(cursor);
+                    const tile = candidate.pack.tiles[cursor];
+                    if (!tile) break;
+                    if (tile.layers?.length) {
+                        return {
+                            key: cursor,
+                            requestedKey,
+                            tile,
+                            pack: candidate.pack,
+                            atlases: candidate.leases,
+                            moduleId: candidate.moduleId
+                        };
+                    }
+                    if (!tile.fallback) break;
+                    if (!candidate.pack.tiles[tile.fallback]) {
+                        const inherited = resolveFrom(tile.fallback, index + 1, seen);
+                        if (inherited) return inherited;
+                    }
+                    cursor = tile.fallback;
+                }
+            }
+            return null;
+        };
+        return resolveFrom(requestedKey, 0, new Set());
+    },
+
+    _semanticKeys(visual = {}) {
+        const keys = [];
+        const push = key => {
+            const normalized = String(key || '');
+            if (normalized && !keys.includes(normalized)) keys.push(normalized);
+        };
+        if (Array.isArray(visual.semanticKeys)) visual.semanticKeys.forEach(push);
+        else {
+            push(visual.baseTilesetKey);
+            push(visual.tilesetKey);
+        }
+        if (String(visual.classes || '').includes('map-visual-quest')) push('state-quest');
+        if (String(visual.classes || '').includes('map-visual-current')) push('state-current');
+        return keys;
+    },
+
+    layersForVisual(visual = {}) {
+        const semanticKeys = this._semanticKeys(visual);
+        const primaryKey = String(visual.tilesetKey || visual.baseTilesetKey || '');
+        const layers = [];
+        let primaryRendered = false;
+        for (const semanticKey of semanticKeys) {
+            const resolved = this.resolveTile(semanticKey);
+            if (!resolved) continue;
+            if (semanticKey === primaryKey || resolved.key === primaryKey) primaryRendered = true;
+            for (const layer of resolved.tile.layers) {
+                const atlas = resolved.atlases.get(layer.atlasId);
+                if (!atlas?.url) continue;
+                layers.push({
+                    ...layer,
+                    semanticKey,
+                    url: atlas.url,
+                    cssImage: atlas.cssImage,
+                    atlasWidth: atlas.width,
+                    atlasHeight: atlas.height,
+                    scaling: resolved.pack.scaling
+                });
+            }
+        }
+        const slotRank = slot => Math.max(0, YAW_TILESET_PACK_V1.LAYER_SLOTS.indexOf(slot));
+        layers.sort((left, right) => (slotRank(left.slot) * 1000 + left.z) - (slotRank(right.slot) * 1000 + right.z));
+        return { layers, primaryRendered };
+    },
+
+    _styleUrl(value) {
+        return String(value || '').replace(/[\\"'()\n\r]/g, character => `\\${character}`);
+    },
+
+    _layerStyle(layer) {
+        const rect = layer.rect;
+        const sizeX = (layer.atlasWidth / rect.width) * 100;
+        const sizeY = (layer.atlasHeight / rect.height) * 100;
+        const positionX = layer.atlasWidth === rect.width ? 0 : (rect.x / (layer.atlasWidth - rect.width)) * 100;
+        const positionY = layer.atlasHeight === rect.height ? 0 : (rect.y / (layer.atlasHeight - rect.height)) * 100;
+        const scaleX = layer.transform.flipX ? -1 : 1;
+        const scaleY = layer.transform.flipY ? -1 : 1;
+        return [
+            `background-image:${layer.cssImage || `url("${this._styleUrl(layer.url)}")`}`,
+            `background-size:${sizeX}% ${sizeY}%`,
+            `background-position:${positionX}% ${positionY}%`,
+            `image-rendering:${layer.scaling === 'pixelated' ? 'pixelated' : 'auto'}`,
+            `opacity:${layer.opacity}`,
+            `mix-blend-mode:${layer.blend}`,
+            `transform-origin:${layer.anchor.x * 100}% ${layer.anchor.y * 100}%`,
+            `transform:rotate(${layer.transform.rotate}deg) scale(${scaleX},${scaleY})`
+        ].join(';');
+    },
+
+    tileArtHtml(app, visual = {}) {
+        const rendered = this.layersForVisual(visual);
+        if (!rendered.layers.length) return '';
+        const layers = rendered.layers.map((layer, index) => {
+            const style = app._escapeHtml(this._layerStyle(layer));
+            const slot = app._escapeHtml(layer.slot);
+            const key = app._escapeHtml(layer.semanticKey);
+            return `<span class="yaw-tile-art-layer" data-tileset-layer="${slot}" data-tileset-semantic-key="${key}" data-tileset-layer-index="${index}" style="${style}"></span>`;
+        }).join('');
+        const primaryClass = rendered.primaryRendered ? ' primary-rendered' : '';
+        const packId = app._escapeHtml(this.activeCandidate()?.pack.id || '');
+        return `<span class="yaw-tile-art${primaryClass}" data-tileset-pack="${packId}" aria-hidden="true">${layers}</span>`;
+    }
+};
+
+if (typeof window !== 'undefined') window.YAW_TILESET_RUNTIME = YAW_TILESET_RUNTIME;
+if (typeof globalThis !== 'undefined' && globalThis.AssetManifest?.bundledTilesetPack) {
+    const registerBundled = () => {
+        try {
+            YAW_TILESET_RUNTIME.registerBuiltin(globalThis.AssetManifest.bundledTilesetPack());
+            YAW_TILESET_RUNTIME._refreshMaps();
+        } catch (error) {
+            console.error('Bundled Tileset Pack failed to initialize:', error);
+        }
+    };
+    const bundledReady = typeof window !== 'undefined' ? window.YAW_BUNDLED_TILESET_READY : null;
+    if (bundledReady?.then) bundledReady.then(url => { if (url) registerBundled(); });
+    else registerBundled();
+}

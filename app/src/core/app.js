@@ -48,6 +48,7 @@
                     jungle: 'terrain-jungle',
                     cliff: 'terrain-cliff',
                     water: 'terrain-water',
+                    sand: 'terrain-sand',
                     beach: 'terrain-beach',
                     cave: 'terrain-cave',
                     dungeon: 'terrain-dungeon',
@@ -66,16 +67,27 @@
                     'corner-sw': 'route-road-corner-sw',
                     'corner-wn': 'route-road-corner-wn',
                     intersection: 'route-road-intersection',
-                    't-n': 'route-road-t-n',
-                    't-e': 'route-road-t-e',
-                    't-s': 'route-road-t-s',
-                    't-w': 'route-road-t-w',
+                    't-n': 'route-road-t-north',
+                    't-e': 'route-road-t-east',
+                    't-s': 'route-road-t-south',
+                    't-w': 'route-road-t-west',
                     end: 'route-road-end'
                 },
                 bridges: {
                     ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.bridges : {}),
                     'east-west': 'route-bridge-horizontal',
                     'north-south': 'route-bridge-vertical'
+                },
+                shorelines: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.shorelines : {}),
+                    north: 'shoreline-water-north',
+                    east: 'shoreline-water-east',
+                    south: 'shoreline-water-south',
+                    west: 'shoreline-water-west'
+                },
+                effects: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.effects : {}),
+                    dangerInfluence: 'state-danger-influence'
                 },
                 poi: {
                     ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.poi : {}),
@@ -93,7 +105,7 @@
                     cabin: 'structure-cabin',
                     hut: 'structure-hut',
                     farm: 'structure-farm',
-                    cave: 'structure-cave-mouth',
+                    cave: 'structure-cave',
                     ruins: 'structure-ruins',
                     shrine: 'structure-shrine',
                     pond: 'structure-pond',
@@ -1105,14 +1117,175 @@
             _combatRefreshKey(slotName = this.activeSlot) { return YAW_STORAGE.combatRefreshKey(this, this._normalizeSaveSlotName(slotName)); },
             _reloadPage() { return YAW_STORAGE.reloadPage(); },
 
+            startupReadinessState(name) {
+                return typeof YAW_STARTUP_READINESS !== 'undefined' ? YAW_STARTUP_READINESS.state(name) : null;
+            },
+            startupDomainsReady(names) {
+                if (typeof YAW_STARTUP_READINESS === 'undefined') return true;
+                return (Array.isArray(names) ? names : [names]).every(name => YAW_STARTUP_READINESS.isReady(name));
+            },
+            startupActionReady(action) {
+                if (action === 'mods') return this.startupDomainsReady(['installedMedia', 'modules']);
+                if (action === 'play') return this.startupDomainsReady(['saves', 'installedMedia', 'modules']);
+                return true;
+            },
+            _setStartupControl(id, ready, options = {}) {
+                const control = document.getElementById(id);
+                if (!control) return;
+                control.disabled = !ready;
+                control.setAttribute('aria-disabled', ready ? 'false' : 'true');
+                control.setAttribute('aria-busy', ready ? 'false' : 'true');
+                const title = String(ready ? options.readyTitle || '' : options.pendingTitle || 'Preparing…');
+                if (title) {
+                    control.title = title;
+                    control.setAttribute('aria-label', title);
+                }
+            },
+            syncStartupReadinessUI() {
+                if (typeof YAW_STARTUP_READINESS === 'undefined') return;
+                const saves = YAW_STARTUP_READINESS.state('saves');
+                const media = YAW_STARTUP_READINESS.state('installedMedia');
+                const modules = YAW_STARTUP_READINESS.state('modules');
+                const bundled = YAW_STARTUP_READINESS.state('bundledAssets');
+                const savesReady = saves?.status === 'ready';
+                const contentReady = media?.status === 'ready' && modules?.status === 'ready';
+                const playReady = savesReady && contentReady;
+                const continueButton = document.getElementById('menu-continue');
+                const continueLabel = document.getElementById('menu-continue-label');
+                if (continueButton) {
+                    const hasSave = savesReady && Boolean(saves.result);
+                    continueButton.style.display = savesReady && !hasSave ? 'none' : 'flex';
+                    if (continueLabel) continueLabel.textContent = savesReady ? this._label('ui.menu.continue', 'Continue Last Game') : this._label('startup.checkingSaves', 'Checking saved games…');
+                    this._setStartupControl('menu-continue', playReady && hasSave, {
+                        readyTitle: this._label('ui.menu.continueTitle', 'Continue last game'),
+                        pendingTitle: saves?.status === 'error'
+                            ? this._label('startup.savesFailed', 'Saved games could not be checked')
+                            : this._label('startup.checkingSaves', 'Checking saved games…')
+                    });
+                }
+                this._setStartupControl('menu-new-game', playReady, {
+                    readyTitle: this._label('ui.menu.newGameTitle', 'Start a new game'),
+                    pendingTitle: this._label('startup.preparingContent', 'Preparing game content…')
+                });
+                this._setStartupControl('menu-load-game', playReady, {
+                    readyTitle: this._label('ui.menu.loadGameTitle', 'Load game'),
+                    pendingTitle: saves?.status === 'error'
+                        ? this._label('startup.savesFailed', 'Saved games could not be checked')
+                        : this._label('startup.checkingSaves', 'Checking saved games…')
+                });
+                this._setStartupControl('menu-mods', contentReady, {
+                    readyTitle: this._label('ui.menu.modsTitle', 'Open mods'),
+                    pendingTitle: this._label('startup.loadingMods', 'Loading installed mods…')
+                });
+
+                const states = [saves, media, modules, bundled].filter(Boolean);
+                const blockingErrors = states.filter(state => state.status === 'error' && state.blocking !== false);
+                const degradedErrors = states.filter(state => state.status === 'error' && state.blocking === false);
+                const pending = states.filter(state => state.status === 'pending');
+                const status = document.getElementById('menu-startup-status');
+                const statusText = document.getElementById('menu-startup-status-text');
+                const retry = document.getElementById('menu-startup-retry');
+                if (!status || !statusText || !retry) return;
+                retry.hidden = blockingErrors.length === 0 && degradedErrors.length === 0;
+                if (blockingErrors.length) {
+                    status.dataset.state = 'error';
+                    statusText.textContent = this._label('startup.blocked', 'Some saved or installed content could not be prepared.');
+                } else if (pending.length) {
+                    status.dataset.state = 'pending';
+                    const labels = pending.map(state => state.label).join(', ');
+                    statusText.textContent = this._label('startup.preparing', 'Preparing {items}…', { items: labels });
+                } else if (degradedErrors.length) {
+                    status.dataset.state = 'error';
+                    statusText.textContent = this._label('startup.visualFallback', 'Visual assets are unavailable; fallback graphics remain active.');
+                } else {
+                    status.dataset.state = 'ready';
+                    statusText.textContent = this._label('startup.ready', 'Ready');
+                }
+            },
+            _recordStartupReadiness(state) {
+                this.syncStartupReadinessUI();
+                if (!state || state.status !== 'error') return;
+                const key = `${state.name}:${state.attempts}`;
+                if (!this._startupReadinessErrors) this._startupReadinessErrors = new Set();
+                if (this._startupReadinessErrors.has(key)) return;
+                this._startupReadinessErrors.add(key);
+                const message = state.error?.message || String(state.error || 'Unknown startup failure');
+                this._pushLog({
+                    text: this._label('startup.domainFailed', 'Startup {domain} failed: {message}', { domain: state.label, message }),
+                    type: 'error',
+                    errorCode: `startup_${state.name}_failed`
+                }, 'error');
+                this.renderLog();
+            },
+            initializeStartupReadiness() {
+                if (typeof YAW_STARTUP_READINESS === 'undefined') return Promise.resolve([]);
+                if (!this._startupReadinessUnsubscribe) {
+                    this._startupReadinessUnsubscribe = YAW_STARTUP_READINESS.subscribe(state => this._recordStartupReadiness(state));
+                }
+                let bundledAttempt = 0;
+                const saves = YAW_STARTUP_READINESS.start('saves', () => this._syncLastSaveSlot(), { label: 'saved games', timeoutMs: 10000 });
+                const installedMedia = YAW_STARTUP_READINESS.start('installedMedia', async () => {
+                    if (typeof MODULE_SYSTEM === 'undefined') return null;
+                    const attempt = YAW_STARTUP_READINESS.state('installedMedia')?.attempts || 1;
+                    if (attempt === 1 && MODULE_SYSTEM.mediaReady) return MODULE_SYSTEM.mediaReady;
+                    if (typeof MODULE_SYSTEM.prepareInstalledMedia === 'function') return MODULE_SYSTEM.prepareInstalledMedia();
+                    return MODULE_SYSTEM.ready;
+                }, { label: 'installed media', timeoutMs: 20000 });
+                const modules = YAW_STARTUP_READINESS.start('modules', async () => {
+                    await YAW_STARTUP_READINESS.when('installedMedia');
+                    if (typeof MODULE_SYSTEM === 'undefined') return [];
+                    if (typeof MODULE_SYSTEM.initializeHostCatalog === 'function') {
+                        try {
+                            await MODULE_SYSTEM.initializeHostCatalog();
+                        } catch (error) {
+                            console.error('Host catalog initialization failed:', error);
+                            this._pushLog({
+                                text: this._label('mod.hostCatalogInitFailed', 'Host Catalog could not be loaded. Local modules remain available.'),
+                                type: 'error',
+                                errorCode: 'host_catalog_init_failed'
+                            }, 'error');
+                            this.renderLog();
+                        }
+                    }
+                    this.syncHostCatalogControls();
+                    return MODULE_SYSTEM.loadEnabledModules();
+                }, { label: 'mods', timeoutMs: 30000 });
+                const bundledAssets = YAW_STARTUP_READINESS.start('bundledAssets', async () => {
+                    bundledAttempt++;
+                    const promise = bundledAttempt === 1
+                        ? window.YAW_BUNDLED_TILESET_READY
+                        : window.YAW_PREPARE_BUNDLED_TILESET?.();
+                    const result = promise?.then ? await promise : null;
+                    if (!result) throw new Error('Bundled tileset atlases could not be prepared');
+                    if (typeof YAW_TILESET_RUNTIME !== 'undefined' && typeof AssetManifest !== 'undefined') {
+                        YAW_TILESET_RUNTIME.registerBuiltin(AssetManifest.bundledTilesetPack());
+                        YAW_TILESET_RUNTIME._refreshMaps?.();
+                    }
+                    return result;
+                }, { label: 'visual assets', blocking: false, timeoutMs: 20000 });
+                this.syncStartupReadinessUI();
+                return Promise.all([saves, installedMedia, modules, bundledAssets]);
+            },
+            async retryStartupReadiness() {
+                if (typeof YAW_STARTUP_READINESS === 'undefined') return [];
+                const retried = [];
+                const saves = YAW_STARTUP_READINESS.state('saves');
+                if (saves?.status === 'error') retried.push(await YAW_STARTUP_READINESS.retry('saves'));
+                const media = YAW_STARTUP_READINESS.state('installedMedia');
+                if (media?.status === 'error') retried.push(await YAW_STARTUP_READINESS.retry('installedMedia'));
+                const modules = YAW_STARTUP_READINESS.state('modules');
+                if (modules?.status === 'error') retried.push(await YAW_STARTUP_READINESS.retry('modules'));
+                const bundled = YAW_STARTUP_READINESS.state('bundledAssets');
+                if (bundled?.status === 'error') retried.push(await YAW_STARTUP_READINESS.retry('bundledAssets'));
+                this.syncStartupReadinessUI();
+                return retried;
+            },
+
             init() {
                 console.log('App.init() - Mechanics Overhaul');
-                this.refreshContinueButton();
                 const hasPlayed = this._getStoredValue('hasPlayed');
-                if (!hasPlayed) {
-                    this.showTutorial();
-                    this._setStoredValue('hasPlayed', 'true');
-                }
+                const showFirstRunTutorial = !hasPlayed;
+                if (showFirstRunTutorial) this._setStoredValue('hasPlayed', 'true');
                 // Load saved settings
                 try {
                     const savedSettings = JSON.parse(this._getStoredValue('settings') || '{}');
@@ -1137,29 +1310,7 @@
                 this.applyAccessibilitySettings();
                 this.applyStaticLocalization();
                 this.applyRuntimeOriginGates();
-                if (typeof MODULE_SYSTEM !== 'undefined') {
-                    Promise.resolve(MODULE_SYSTEM.ready).then(async () => {
-                        if (typeof MODULE_SYSTEM.initializeHostCatalog === 'function') {
-                            try {
-                                await MODULE_SYSTEM.initializeHostCatalog();
-                            } catch (error) {
-                                console.error('Host catalog initialization failed:', error);
-                                this._pushLog({
-                                    text: this._label('mod.hostCatalogInitFailed', 'Host Catalog could not be loaded. Local modules remain available.'),
-                                    type: 'error',
-                                    errorCode: 'host_catalog_init_failed'
-                                }, 'error');
-                                this.renderLog();
-                            }
-                        }
-                        this.syncHostCatalogControls();
-                        return MODULE_SYSTEM.loadEnabledModules();
-                    }).catch(error => {
-                        console.error('Enabled modules failed to restore:', error);
-                        this._pushLog(this._label('mod.restoreFailed', 'Enabled modules could not be restored. Open Mods and try enabling them again.'), 'error');
-                        this.renderLog();
-                    });
-                }
+                this.initializeStartupReadiness();
                 this.initAppMenu();
                 this.initMobileUnitStripGestures();
                 this.updateTierButtons();
@@ -1169,6 +1320,7 @@
                 this._syncEncounterPreferenceUI();
                 this.showScreen('menu');
                 this.syncReleaseUI();
+                if (showFirstRunTutorial) this.showTutorial();
             },
 
             initSpeciesGrid() {
@@ -3313,6 +3465,68 @@
                 return true;
             },
 
+            outsideManyToManyActionOnTargets(action, actors, targets, options = {}) {
+                const livingActors = [...new Set((actors || []).filter(actor => actor && this._isLivingCreature(actor)))];
+                const targetList = [...new Set((targets || []).filter(target => target && this._isLivingCreature(target)))];
+                if (livingActors.length < 2 || targetList.length < 2) return false;
+                const resolutions = [];
+                const combatTargets = new Set();
+                for (const target of targetList) {
+                    const resolved = this.outsideGroupActionOnTarget(action, target, livingActors, {
+                        ...options,
+                        applyCost: false,
+                        suppressLog: true,
+                        suppressStory: true,
+                        suppressRender: true,
+                        deferCombat: true
+                    });
+                    const outcome = this.lastActionResolution;
+                    if (resolved === false || !outcome?.message) continue;
+                    resolutions.push(outcome.message);
+                    for (const combatTarget of outcome.combatTargets || []) combatTargets.add(combatTarget);
+                }
+                if (resolutions.length === 0) return false;
+                const actorNames = livingActors.map(actor => actor.name).join(', ');
+                const targetNames = targetList.map(target => target.name).join(', ');
+                const summary = this._label('target.manyToManyActionDone', '{actors} act together with {targets}: {results}', {
+                    actors: actorNames,
+                    targets: targetNames,
+                    results: resolutions.join(' ')
+                });
+                livingActors.forEach(actor => {
+                    this._applyActionCost?.(action, actor, targetList[0], { affected: true }, {
+                        mode: 'adventure',
+                        source: 'exploration-many-to-many-resolution',
+                        emitScene: true
+                    });
+                });
+                this.log.push({ text: summary, type: 'discovery' });
+                this.emitStoryResult({
+                    mode: 'adventure',
+                    actors: livingActors,
+                    targets: targetList,
+                    action,
+                    shape: 'many-to-many',
+                    distribution: 'all'
+                }, summary);
+                this.lastActionResolution = {
+                    action,
+                    actors: livingActors,
+                    targets: targetList,
+                    ok: true,
+                    affected: true,
+                    message: summary,
+                    combatTargets: [...combatTargets]
+                };
+                this._normalizeExplorationSelections();
+                this.renderLog();
+                this.renderParty();
+                this.renderCreatures();
+                if (combatTargets.size > 0) this.startCombat([...combatTargets]);
+                else if (!this.combatState.active) this.renderExplorationActions();
+                return true;
+            },
+
             outsideActionForPartyTargets(action, targetIndexes, actorId = null, options = {}) {
                 return YAW_PANEL_COMMANDS.outsideActionForPartyTargets(this, action, targetIndexes, actorId, options);
             },
@@ -3503,23 +3717,38 @@
                         this.outsideActionOnTarget(action, target, livingActors[0] || this.player);
                         return true;
                 }
-                this.log.push({ text: result, type: 'discovery' });
-                livingActors.forEach(actor => {
-                    this._applyActionCost?.(action, actor, target, { affected: true }, {
-                        mode: 'adventure',
-                        source: 'exploration-group-resolution',
-                        emitScene: true
+                this.lastActionResolution = {
+                    action,
+                    actors: livingActors,
+                    target,
+                    ok: true,
+                    affected: true,
+                    message: result,
+                    combatTargets
+                };
+                if (!options.suppressLog) this.log.push({ text: result, type: 'discovery' });
+                if (options.applyCost !== false) {
+                    livingActors.forEach(actor => {
+                        this._applyActionCost?.(action, actor, target, { affected: true }, {
+                            mode: 'adventure',
+                            source: 'exploration-group-resolution',
+                            emitScene: true
+                        });
                     });
-                });
-                this.emitStoryResult({ mode: 'adventure', actors: livingActors, targets: [target], action, shape: 'many-to-one' }, result);
-                this.renderLog();
-                this.renderParty();
-                this.renderCreatures();
-                if (startCombatAfter) {
+                }
+                if (!options.suppressStory) {
+                    this.emitStoryResult({ mode: 'adventure', actors: livingActors, targets: [target], action, shape: 'many-to-one' }, result);
+                }
+                if (!options.suppressRender) {
+                    this.renderLog();
+                    this.renderParty();
+                    this.renderCreatures();
+                }
+                if (startCombatAfter && !options.deferCombat) {
                     this.startCombat(combatTargets);
                     return true;
                 }
-                if (!this.combatState.active) this.renderExplorationActions();
+                if (!options.suppressRender && !this.combatState.active) this.renderExplorationActions();
                 return true;
             },
 
@@ -4610,6 +4839,9 @@
             _mapTileAttrs(visual) {
                 return YAW_MAP_VISUALS.mapTileAttrs(this, visual);
             },
+            _mapTileArtHtml(visual) {
+                return typeof YAW_TILESET_RUNTIME !== 'undefined' ? YAW_TILESET_RUNTIME.tileArtHtml(this, visual) : '';
+            },
             _interiorTileVisual(room = null, options = {}) {
                 return YAW_MAP_VISUALS.interiorTileVisual(this, room, options);
             },
@@ -5010,7 +5242,7 @@
                 } else if (name === 'menu') {
                     document.getElementById('app').style.display = 'none';
                     document.getElementById('screen-menu').style.display = 'flex';
-                    this.refreshContinueButton();
+                    this.syncStartupReadinessUI();
                 } else if (name === 'create') {
                     document.getElementById('app').style.display = 'none';
                     document.getElementById('screen-create').style.display = 'flex';
@@ -5273,8 +5505,12 @@
             showSettings() {
                 return YAW_SETTINGS_FLOW.show(this);
             },
-            showNewGameManager() { return YAW_SAVE_SLOT_FLOW.showNewGameManager(this); },
+            showNewGameManager() {
+                if (!this.startupActionReady('play')) return false;
+                return YAW_SAVE_SLOT_FLOW.showNewGameManager(this);
+            },
             showSaveManager(mode = 'load') {
+                if (!this.player && !this.startupActionReady('play')) return false;
                 return YAW_SAVE_SLOT_FLOW.showManager(this, mode);
             },
             _slotDisplayLabel(slotName) {
@@ -5290,6 +5526,7 @@
                 return YAW_SAVE_MANAGER.render(this, mode);
             },
             showModScreen() {
+                if (!this.startupActionReady('mods')) return false;
                 return this.screen === 'market'
                     ? this.switchOverlayScreen('mods')
                     : this.openOverlayScreen('mods');
@@ -5555,6 +5792,15 @@
                 return YAW_SAVE_METADATA.syncLastSlot(this);
             },
             async refreshContinueButton() {
+                if (typeof YAW_STARTUP_READINESS !== 'undefined' && YAW_STARTUP_READINESS.state('saves')) {
+                    const state = await YAW_STARTUP_READINESS.start('saves', () => this._syncLastSaveSlot(), {
+                        label: 'saved games',
+                        timeoutMs: 10000,
+                        force: true
+                    });
+                    this.syncStartupReadinessUI();
+                    return state?.status === 'ready' && Boolean(state.result);
+                }
                 return YAW_SAVE_METADATA.refreshContinueButton(this);
             },
             async checkLastPlayed() {
@@ -5630,6 +5876,7 @@
                 return YAW_SAVE_SLOT_FLOW.deleteSlotConfirmed(this, slotName);
             },
             async _dbOpen(dbName = this.SAVE_DB_NAME) { return YAW_STORAGE.dbOpen(this, dbName); },
+            async _readSaveSlotPresence(slotNames) { return YAW_STORAGE.readSaveSlotPresence(this, slotNames); },
             async _dbPut(store, key, value) { return YAW_STORAGE.dbPut(this, store, key, value); },
             async _dbGet(store, key) { return YAW_STORAGE.dbGet(this, store, key); },
             async _dbDelete(store, key) { return YAW_STORAGE.dbDelete(this, store, key); },

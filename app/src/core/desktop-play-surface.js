@@ -15,9 +15,32 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         { id: 'desktop-play-cell-se', dx: 1, dy: 1 }
     ],
 
+    targetFacingEdge(dx, dy) {
+        if (dx === 0 && dy === -1) return 'south';
+        if (dx === 1 && dy === 0) return 'west';
+        if (dx === 0 && dy === 1) return 'north';
+        if (dx === -1 && dy === 0) return 'east';
+        return '';
+    },
+
+    applyVisualMetadata(target, visual = {}) {
+        if (!target || typeof target.setAttribute !== 'function') return;
+        const setOrRemove = (name, value) => {
+            if (value) target.setAttribute(name, value);
+            else target.removeAttribute?.(name);
+        };
+        setOrRemove('data-tileset-semantic-keys', Array.isArray(visual.semanticKeys) ? visual.semanticKeys.join(' ') : '');
+        setOrRemove('data-blocked-edges', Array.isArray(visual.blockedEdges) ? visual.blockedEdges.join(' ') : '');
+        setOrRemove('data-interior-shape', visual.interiorShape || '');
+        setOrRemove('data-shoreline-edges', Array.isArray(visual.shorelineEdges) ? visual.shorelineEdges.join(' ') : '');
+        setOrRemove('data-danger-influence', visual.dangerInfluence ? 'true' : '');
+        setOrRemove('data-immediate-danger', visual.immediateDanger ? 'true' : '');
+    },
+
     cellHtml(app, visual, label) {
         const escapedLabel = app._escapeHtml(label);
-        return `<span class="desktop-play-cell-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span><span class="desktop-play-cell-label">${escapedLabel}</span>`;
+        const tileArt = app._mapTileArtHtml(visual);
+        return `${tileArt}<span class="desktop-play-cell-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span><span class="desktop-play-cell-label">${escapedLabel}</span>`;
     },
 
     directionLabel(app, dx, dy) {
@@ -133,6 +156,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             target.setAttribute('data-stage-cell', 'center');
             if (visual?.routeShape) target.setAttribute('data-route-shape', visual.routeShape);
             else if (typeof target.removeAttribute === 'function') target.removeAttribute('data-route-shape');
+            this.applyVisualMetadata(target, visual);
         };
         if (el) {
             el.className = `desktop-play-cell center desktop-location-focus ${visual?.classes || ''}`;
@@ -166,6 +190,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             el.removeAttribute?.('aria-hidden');
             if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
             else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
+            this.applyVisualMetadata(el, visual);
             if (moveable) {
                 el.setAttribute('role', 'button');
                 el.setAttribute('data-command-surface', 'stage-traversal');
@@ -290,16 +315,27 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             const tx = cx + cell.dx;
             const ty = cy + cell.dy;
             const room = app.activeInterior.tiles[`${tx},${ty}`];
-            const visual = app._interiorTileVisual(room);
             const direction = this.directionLabel(app, cell.dx, cell.dy);
             const traversal = app._traversalDecision(cell.dx, cell.dy);
+            const blockedEdge = !traversal.allowed ? this.targetFacingEdge(cell.dx, cell.dy) : '';
+            const visual = app._interiorTileVisual(room, {
+                x: tx,
+                y: ty,
+                blockedEdges: blockedEdge ? [blockedEdge] : [],
+                roomResolver: (x, y) => app.activeInterior.tiles[`${x},${y}`] || null
+            });
             const moveable = Boolean(room) && traversal.allowed && !inCombat;
             const blocked = traversal.allowed ? '' : ` — ${app._traversalMessage(traversal)}`;
             const label = `${direction}: ${visual.label} (${tx}, ${ty})${blocked}`;
             this.updateCell(app, el, visual, label, cell.dx, cell.dy, moveable);
         });
         const currentRoom = app.activeInterior.tiles[`${cx},${cy}`];
-        const currentVisual = app._interiorTileVisual(currentRoom);
+        const currentVisual = app._interiorTileVisual(currentRoom, {
+            x: cx,
+            y: cy,
+            isCurrent: true,
+            roomResolver: (x, y) => app.activeInterior.tiles[`${x},${y}`] || null
+        });
         this.updateCenter(app, currentVisual, `${currentVisual.label} (${cx}, ${cy})`);
     },
 
@@ -313,11 +349,14 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             const tx = cx + cell.dx;
             const ty = cy + cell.dy;
             const tile = app.getTile(tx, ty);
+            const traversal = app._traversalDecision(cell.dx, cell.dy);
             const visual = app._mapTileVisual(tile, {
+                blockedEdges: !traversal.allowed && this.targetFacingEdge(cell.dx, cell.dy)
+                    ? [this.targetFacingEdge(cell.dx, cell.dy)]
+                    : [],
                 neighborResolver: (nx, ny) => app.getTile(nx, ny)
             });
             const direction = this.directionLabel(app, cell.dx, cell.dy);
-            const traversal = app._traversalDecision(cell.dx, cell.dy);
             const moveable = traversal.allowed && !inCombat;
             const blocked = traversal.allowed ? '' : ` — ${app._traversalMessage(traversal)}`;
             const label = `${direction}: ${visual.label} (${tx}, ${ty})${blocked}`;
@@ -325,6 +364,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         });
         const currentTile = app.getTile(cx, cy);
         const currentVisual = app._mapTileVisual(currentTile, {
+            isCurrent: true,
             neighborResolver: (nx, ny) => app.getTile(nx, ny)
         });
         this.updateCenter(app, currentVisual, `${currentVisual.label} (${cx}, ${cy})`);

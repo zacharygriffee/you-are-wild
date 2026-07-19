@@ -133,10 +133,16 @@ const WorldGen = (() => {
 
     function coastInfo(seed, version, x, y) {
         const near = [];
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, 2], [0, -2]]) {
-            if (isWater(seed, version, x + dx, y + dy)) near.push({ dx, dy });
+        const cardinal = [];
+        for (const [direction, dx, dy] of [['north', 0, -1], ['east', 1, 0], ['south', 0, 1], ['west', -1, 0]]) {
+            if (!isWater(seed, version, x + dx, y + dy)) continue;
+            near.push({ direction, dx, dy, distance: 1 });
+            cardinal.push(direction);
         }
-        return { nearWater: near.length > 0, waterNeighbors: near };
+        for (const [direction, dx, dy] of [['north', 0, -2], ['east', 2, 0], ['south', 0, 2], ['west', -2, 0]]) {
+            if (isWater(seed, version, x + dx, y + dy)) near.push({ direction, dx, dy, distance: 2 });
+        }
+        return { nearWater: near.length > 0, waterNeighbors: near, shorelineEdges: cardinal };
     }
 
     function terrainTags(fields, biome, overlays = {}) {
@@ -156,6 +162,8 @@ const WorldGen = (() => {
         if (overlays.road) tags.push('road');
         if (overlays.bridge) tags.push('bridge');
         if (overlays.barriers?.length) tags.push('barrier-edge');
+        if (overlays.shoreline?.edges?.length) tags.push('shoreline');
+        if (overlays.dangerInfluence) tags.push('danger-influence');
         return tags;
     }
 
@@ -228,7 +236,8 @@ const WorldGen = (() => {
         const baseDanger = clamp01(Math.max(terrainDanger, biomeDanger));
         const roadModifier = tile.overlays?.road ? -0.12 : 0;
         const poiCategory = tile.overlays?.poi?.category || null;
-        const poiModifier = poiCategory === 'dangerSite' ? 0.18 : (poiCategory === 'restSite' || poiCategory === 'settlement' ? -0.08 : 0);
+        const influenceModifier = Number(tile.overlays?.dangerInfluence?.modifier || 0);
+        const poiModifier = influenceModifier || (poiCategory === 'restSite' || poiCategory === 'settlement' ? -0.08 : 0);
         const timeModifier = context.isNight ? 0.08 : 0;
         const localStateModifier = Number(context.localStateModifier || 0);
         return {
@@ -249,6 +258,7 @@ const WorldGen = (() => {
         if (tile.overlays?.road) markers.push('Road');
         if (tile.overlays?.bridge) markers.push('Bridge');
         if (tile.overlays?.poi?.category) markers.push(tile.overlays.poi.category);
+        if (tile.overlays?.dangerInfluence && tile.overlays?.poi?.category !== 'dangerSite') markers.push('Danger influence');
         if (tile.structure) markers.push('Structure');
         if (tile.hasLandmark) markers.push('Landmark');
         if (Array.isArray(tile.creatures) && tile.creatures.some(creature => creature?.disposition === 'merchant' || creature?.merchant || creature?.stock)) markers.push('Merchant');
@@ -454,6 +464,8 @@ const WorldGen = (() => {
         landmark: { min: 1, max: 3, minDistance: 8, weight: 3 },
         structure: { min: 0, max: 2, minDistance: 6, weight: 2 }
     };
+    const POI_CANDIDATE_CACHE_LIMIT = 512;
+    const poiCandidateCache = new Map();
 
     function budgetCount(seed, version, category, cellX, cellY, rule) {
         const min = Math.max(0, rule.min || 0);
@@ -499,6 +511,8 @@ const WorldGen = (() => {
     }
 
     function getPoiCandidatesForRegion(seed, version, cellX, cellY) {
+        const cacheKey = `${seed}|${version}|${cellX}|${cellY}`;
+        if (poiCandidateCache.has(cacheKey)) return poiCandidateCache.get(cacheKey);
         const budget = getPoiBudgetForRegion(seed, version, cellX, cellY);
         const accepted = [];
         const categories = Object.keys(POI_BUDGET_RULES)
@@ -522,7 +536,12 @@ const WorldGen = (() => {
                 acceptedForCategory++;
             }
         }
-        return accepted.sort((a, b) => a.anchor.y - b.anchor.y || a.anchor.x - b.anchor.x || a.category.localeCompare(b.category));
+        const result = accepted.sort((a, b) => a.anchor.y - b.anchor.y || a.anchor.x - b.anchor.x || a.category.localeCompare(b.category));
+        poiCandidateCache.set(cacheKey, result);
+        if (poiCandidateCache.size > POI_CANDIDATE_CACHE_LIMIT) {
+            poiCandidateCache.delete(poiCandidateCache.keys().next().value);
+        }
+        return result;
     }
 
     function getRouteAnchorsForRegion(seed, version, cellX, cellY) {
@@ -538,34 +557,55 @@ const WorldGen = (() => {
         }];
     }
 
-    function getPoiForTile(seed, version, x, y, regionCell = null) {
+    function getPoiContextForTile(seed, version, x, y, regionCell = null) {
         if ((version || 1) >= 2 && x === 4 && y === 0) {
-            return {
-                id: 'poi_start_rest',
-                category: 'restSite',
-                regionId: 'start',
-                anchor: { x, y },
-                startArea: true
-            };
+            return { poi: { id: 'poi_start_rest', category: 'restSite', regionId: 'start', anchor: { x, y }, startArea: true }, dangerInfluence: null };
         }
         if ((version || 1) >= 2 && x === -2 && y === 0) {
-            return {
-                id: 'poi_start_resource',
-                category: 'resourceSite',
-                regionId: 'start',
-                anchor: { x, y },
-                startArea: true
-            };
+            return { poi: { id: 'poi_start_resource', category: 'resourceSite', regionId: 'start', anchor: { x, y }, startArea: true }, dangerInfluence: null };
         }
         const cell = regionCell || cellular2D(seed, version, 'macro-region', x, y, 36);
+        const matches = [];
+        const dangerMatches = [];
         for (let oy = -1; oy <= 1; oy++) {
             for (let ox = -1; ox <= 1; ox++) {
-                const match = getPoiCandidatesForRegion(seed, version, cell.cellX + ox, cell.cellY + oy)
-                    .find(candidate => Math.abs(x - candidate.anchor.x) <= 1 && Math.abs(y - candidate.anchor.y) <= 1);
-                if (match) return match;
+                for (const candidate of getPoiCandidatesForRegion(seed, version, cell.cellX + ox, cell.cellY + oy)) {
+                    const dx = Math.abs(x - candidate.anchor.x);
+                    const dy = Math.abs(y - candidate.anchor.y);
+                    const distance = Math.max(dx, dy);
+                    if (candidate.category === 'dangerSite' && distance <= 1) dangerMatches.push({ candidate, distance });
+                    const matchesTile = candidate.category === 'dangerSite'
+                        ? distance === 0
+                        : dx <= 1 && dy <= 1;
+                    if (matchesTile) matches.push({ candidate, distance });
+                }
             }
         }
-        return null;
+        matches.sort((left, right) => {
+            const leftDangerAnchor = left.candidate.category === 'dangerSite' && left.distance === 0 ? 0 : 1;
+            const rightDangerAnchor = right.candidate.category === 'dangerSite' && right.distance === 0 ? 0 : 1;
+            return leftDangerAnchor - rightDangerAnchor || left.distance - right.distance || left.candidate.id.localeCompare(right.candidate.id);
+        });
+        dangerMatches.sort((left, right) => left.distance - right.distance || left.candidate.id.localeCompare(right.candidate.id));
+        const danger = dangerMatches[0];
+        return {
+            poi: matches[0]?.candidate || null,
+            dangerInfluence: danger ? {
+                siteId: danger.candidate.id,
+                category: 'dangerSite',
+                anchor: { ...danger.candidate.anchor },
+                distance: danger.distance,
+                modifier: danger.distance === 0 ? 0.18 : 0.1
+            } : null
+        };
+    }
+
+    function getPoiForTile(seed, version, x, y, regionCell = null) {
+        return getPoiContextForTile(seed, version, x, y, regionCell).poi;
+    }
+
+    function getDangerInfluenceForTile(seed, version, x, y, regionCell = null) {
+        return getPoiContextForTile(seed, version, x, y, regionCell).dangerInfluence;
     }
 
     function routeSegmentsForTile(seed, version, x, y) {
@@ -761,9 +801,22 @@ const WorldGen = (() => {
         const road = getRoadOverlay(seed, version, x, y, fields);
         const bridge = getBridgeOverlay(seed, version, x, y, fields, road);
         const barriers = getBarrierEdges(seed, version, x, y, fields, road);
-        const poi = getPoiForTile(seed, version, x, y, regionCell);
+        const poiContext = getPoiContextForTile(seed, version, x, y, regionCell);
+        const poi = poiContext.poi;
+        const dangerInfluence = poiContext.dangerInfluence;
         const cavePortal = getCavePortalForTile(worldMeta, x, y);
-        const overlays = { road, bridge, barriers, poi, structure: cavePortal ? { id: 'cave', site: cavePortal } : null };
+        const shoreline = derivedBiome === 'beach'
+            ? { edges: coast.shorelineEdges.slice(), nearWater: coast.nearWater }
+            : null;
+        const overlays = {
+            road,
+            bridge,
+            barriers,
+            poi,
+            shoreline,
+            dangerInfluence,
+            structure: cavePortal ? { id: 'cave', site: cavePortal } : null
+        };
         const traversal = getTraversal({ biome: derivedBiome, baseBiome: derivedBiome, derivedBiome, water: fields.water, overlays });
         const encounterPressure = getEncounterPressure({ biome: derivedBiome, baseBiome: derivedBiome, derivedBiome, water: fields.water, dangerPressure: fields.dangerPressure, overlays });
         return {
@@ -840,6 +893,7 @@ const WorldGen = (() => {
         pickWeighted,
         getTerrainFields,
         getPoiForTile,
+        getDangerInfluenceForTile,
         getPoiBudgetForRegion,
         getPoiCandidatesForRegion,
         getRouteAnchorsForRegion,

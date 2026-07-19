@@ -9,6 +9,8 @@ const YAW_ASSET_BUNDLE_V1 = {
     MAX_RESOURCES: 256,
     MAX_TOTAL_BYTES: 128 * 1024 * 1024,
     MAX_PROVENANCE_BYTES: 4096,
+    MAX_PRESENTATIONS: 16,
+    MAX_PRESENTATION_BYTES: 1024 * 1024,
 
     _text(value, field, maxLength, required = false) {
         const text = String(value || '').trim();
@@ -64,6 +66,31 @@ const YAW_ASSET_BUNDLE_V1 = {
         return { resourceId: contract.token(resourceId, 'fallback resource id') };
     },
 
+    _presentations(value, contract) {
+        if (value === undefined || value === null) return [];
+        if (!Array.isArray(value) || value.length > this.MAX_PRESENTATIONS) {
+            throw new Error(`Asset bundle presentations must contain at most ${this.MAX_PRESENTATIONS} entries`);
+        }
+        const presentations = value.map((presentation, index) => {
+            if (!presentation || typeof presentation !== 'object' || Array.isArray(presentation)) {
+                throw new Error(`Asset bundle presentation ${index + 1} must be an object`);
+            }
+            const copy = contract.serializable(presentation, null);
+            if (!copy) throw new Error(`Asset bundle presentation ${index + 1} must be serializable data`);
+            copy.type = contract.token(copy.type, 'presentation type');
+            const version = Number(copy.version);
+            if (!Number.isSafeInteger(version) || version < 1) {
+                throw new Error(`Asset bundle presentation ${index + 1} version must be a positive integer`);
+            }
+            copy.version = version;
+            return copy;
+        });
+        if (JSON.stringify(presentations).length > this.MAX_PRESENTATION_BYTES) {
+            throw new Error(`Asset bundle presentations must be at most ${this.MAX_PRESENTATION_BYTES} encoded characters`);
+        }
+        return presentations;
+    },
+
     _assertFallbackGraph(resources) {
         const byId = new Map(resources.map(resource => [resource.id, resource]));
         for (const resource of resources) {
@@ -104,6 +131,7 @@ const YAW_ASSET_BUNDLE_V1 = {
         const version = this._version(input.version);
         const license = this._text(input.license, 'license', 240, true);
         const provenance = this._provenance(input.provenance, contract);
+        const presentations = this._presentations(input.presentations, contract);
         if (!Array.isArray(input.resources) || !input.resources.length || input.resources.length > this.MAX_RESOURCES) {
             throw new Error(`Asset bundle resources must contain between 1 and ${this.MAX_RESOURCES} entries`);
         }
@@ -161,6 +189,7 @@ const YAW_ASSET_BUNDLE_V1 = {
                 minGameVersion: input.minGameVersion ? this._version(input.minGameVersion, 'minGameVersion') : '',
                 minModuleVersion: input.minModuleVersion ? this._version(input.minModuleVersion, 'minModuleVersion') : '',
                 provenance,
+                presentations,
                 resources,
                 resourceCount: resources.length,
                 totalByteLength,
@@ -209,6 +238,7 @@ const YAW_ASSET_BUNDLE_V1 = {
             resourceIds: bundle.resources.map(resource => resource.id),
             totalByteLength: bundle.totalByteLength,
             roles: bundle.roles,
+            presentations: bundle.presentations,
             sourceUrl: String(review.sourceUrl || ''),
             integrity: String(review.integrity || ''),
             integrityVerified: review.integrityVerified === true,

@@ -1,6 +1,11 @@
 # Map Tileset Evaluation
 
-This evaluates the proposed painted square tileset as a future replacement or augmentation for the current emoji map cells. Do not import or extract the image into the project until the source/license/ownership is confirmed.
+This records the evaluation that led to the first-party Tileset Pack V1 atlas.
+The accepted sources are normalized as the opaque terrain atlas
+`media/basic-tileset-v1.png` and transparent topology/state atlas
+`media/basic-tileset-overlays-v1.png`, with project ownership/provenance
+recorded in the asset manifest. Emoji and text remain the guaranteed fallback
+rather than being removed.
 
 ## Current Fit
 
@@ -11,33 +16,70 @@ The sheet appears usable for a first pass over the current wilderness map:
 - Structures/features: camp, spring/pond, cabin/hut, farm/garden, settlement, cave mouth, ruins/stonework, web, fog/unknown.
 - Markers: generic focus/POI, alert/danger, gold/market, camp/rest, tower/landmark.
 
-The implementation now exposes `data-tileset-key`, `data-base-tileset-key`, `data-map-kind`, and route shape metadata on minimap, interior minimap, and large-map cells so extracted tile assets can be attached later without changing map generation or gameplay state. Route visuals infer straight, corner, T-junction, intersection, and dead-end keys from known/visible neighboring route tiles. Interior visuals expose room, cave-room, exit, wall, and structure-feature keys.
+The implementation exposes `data-tileset-key`, `data-base-tileset-key`,
+`data-tileset-semantic-keys`, `data-map-kind`, route shape, interior shape, and
+blocked-edge metadata on mobile, desktop, interior, and large-map cells.
+Beach cells additionally expose cardinal shoreline edges over a neutral sand
+base, and danger-site influence is distinct from both its single anchor marker
+and immediate creature danger.
+Tileset Pack V1 consumes those semantics through bounded atlas rectangles and
+local Media Repository leases. Route visuals infer straight, corner,
+T-junction, intersection, and cardinal dead-end keys from authoritative
+connections. Interior visuals derive matching path shapes, outward exits,
+building doors, adjacent walls, and blocked edges from deterministic room
+graphs.
 
-Traversal Surface Geometry V1 also removes the variable-track blocker. Mobile and desktop local maps now use equal square 3x3 cells. Desktop keeps narration and location context in a sibling focus panel, so the visual current-location cell has the same geometry as every neighbor; combat still expands into the full presentation stage. The next blocker is rendering/schema work rather than layout geometry.
+Traversal Surface Geometry V1 removed the variable-track blocker. Mobile and
+desktop local maps use equal square 3x3 cells, while desktop narration and
+location context live in a sibling focus panel. The renderer and schema are
+now active; remaining work is art-direction playtesting and additional future
+presentation contracts, not foundational map layout.
 
 ## Missing Or Deferred Tiles
 
 Before using the sheet as the main map art, we likely need additional or clarified tiles for:
 
 - Manor and other built-region biomes.
-- Door/opening variants beyond the first interior room, cave-room, exit, wall, and structure-feature metadata keys.
 - Road-water and road-coast transitions beyond simple bridge spans.
-- River bends, shore curves, marsh edges, and rocky/coastal cliff edges.
-- Direction-specific bridge span variants beyond the current horizontal/vertical bridge keys.
+- River bends, marsh edges, and rocky/coastal cliff edges. Cardinal beach-water
+  edges now compose in core; authored corner foam and irregular shore curves
+  remain art-pack opportunities.
+- Bridge art beyond the current horizontal/vertical span variants.
 - POI-specific markers for quest, merchant, rest, danger, resource, structure, and settlement categories.
 - Future special biomes such as snow, desert, lava, corrupted terrain, or modded environments.
-- Asset-state variants for discovered, adjacent but undiscovered, hidden, current position, selected route, quest focus, and blocked terrain.
+- Asset-state variants for discovered, adjacent but undiscovered, hidden, and selected-route presentation. Current position, quest, danger, and directional blocked edges are now layered.
 
-## Recommended Use
+## Implemented Use
 
-Use the sheet as an optional first art layer after licensing is confirmed:
+The accepted sheet is used through these boundaries:
 
-1. Extract individual tiles into a generated/owned asset bundle.
-2. Map each asset to the existing tileset keys in `App.MAP_TILESET_KEYS`.
-3. Include route variants for straight roads, corners, T-junctions, intersections, dead ends, bridge directions, and interior room/exit/wall variants.
-4. Keep emoji/text fallback for accessibility, missing assets, and low-bandwidth builds.
-5. Keep roads, bridges, structures, and POIs as overlays. Do not replace `baseBiome` or deterministic terrain identity with art choices.
-6. Define integer atlas rectangles, rotation/flip behavior, layer order, and pixelated-versus-smooth scaling in Tileset Pack V1.
-7. Reconcile route-shape names with manifest keys before activating bitmap lookup, then add visual tests after the actual image assets are present.
+1. `AssetManifest.bundledTilesetPack()` maps deterministic integer atlas
+   rectangles to existing semantic keys.
+2. Straight roads, corners, T-junctions, intersections, cardinal ends,
+   bridges, topology-aware interiors, exits, doors, walls, and state markers
+   reuse transparent atlas cells through right-angle transforms and aliases.
+3. Roads, bridges, structures, and POIs remain layers over base terrain; art
+   never replaces `baseBiome`, traversal, or deterministic state.
+4. Missing mod semantics inherit prior enabled packs and the bundled pack,
+   then retain emoji/text fallback.
+5. URI-installed packs use the same renderer only after review, local
+   retention, target-module enable, and atlas lease acquisition. Gameplay does
+   not hotlink the package source.
+6. The generated single-file build embeds both accepted atlases and creates a
+   session blob URL for each, retaining offline `file://` support.
+7. The example pack under `optional-mods/example-tileset-pack/` proves partial
+   URI override, fallback, replacement, persistence, and restoration without
+   hotlinking its source during play.
 
-The current code seam is deliberately metadata-first: terrain and overlays still decide what exists, while CSS/assets can decide how it looks.
+## Interior Cohesion Follow-Up
+
+The deterministic room graph and directional semantics are sound, but the
+current default atlas treats corridor overlays like miniature complete rooms.
+That makes adjacent cells read as disconnected floor plans, and wall/exit art
+uses a different scale. The next interior presentation slice should establish
+a continuous floor field, edge-to-edge reciprocal path joins, compatible wall
+joins, and a restrained exit marker. This is an art/composition correction,
+not a change to structure generation or traversal topology.
+
+The code seam remains deliberately metadata-first: terrain and overlays decide
+what exists, while the active presentation stack decides how it looks.

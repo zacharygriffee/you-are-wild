@@ -195,6 +195,49 @@ const YAW_STORAGE = {
         });
     },
 
+    async readSaveSlotPresence(app, slotNames) {
+        const names = [...new Set((slotNames || []).map(String).filter(Boolean))];
+        if (!names.length) return new Map();
+        const db = await this.dbOpen(app, app.SAVE_DB_NAME);
+        return new Promise((resolve, reject) => {
+            const result = new Map(names.map(name => [name, { saveData: null, sparseManifest: null, exists: false }]));
+            let settled = false;
+            const finish = (error = null) => {
+                if (settled) return;
+                settled = true;
+                try { db.close(); } catch (closeError) {}
+                if (error) reject(error);
+                else resolve(result);
+            };
+            let tx;
+            try {
+                tx = db.transaction(['saves', 'saveManifests'], 'readonly');
+                const saves = tx.objectStore('saves');
+                const manifests = tx.objectStore('saveManifests');
+                for (const name of names) {
+                    const saveRequest = saves.get(name);
+                    saveRequest.onsuccess = () => {
+                        const entry = result.get(name);
+                        entry.saveData = saveRequest.result || null;
+                        entry.exists = Boolean(entry.saveData || entry.sparseManifest);
+                    };
+                    const manifestRequest = manifests.get(name);
+                    manifestRequest.onsuccess = () => {
+                        const entry = result.get(name);
+                        entry.sparseManifest = manifestRequest.result || null;
+                        entry.exists = Boolean(entry.saveData || entry.sparseManifest);
+                    };
+                }
+            } catch (error) {
+                finish(error);
+                return;
+            }
+            tx.oncomplete = () => finish();
+            tx.onerror = () => finish(tx.error || new Error('Save slot metadata transaction failed'));
+            tx.onabort = () => finish(tx.error || new Error('Save slot metadata transaction aborted'));
+        });
+    },
+
     async dbPut(app, store, key, value) {
         return new Promise((resolve, reject) => {
             this.dbOpen(app, app.SAVE_DB_NAME).then(db => {

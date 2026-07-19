@@ -192,8 +192,8 @@ const YAW_INTERACTION_DISPATCH = {
                     if (constraints.hostileOnly !== false && target.disposition !== app.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };
                     if (constraints.checkReach !== false && app._isReachSensitiveCombatAction?.(normalizedCombatAction)) {
                         const reachResults = reachActors.map(unit => app._combatReachResult?.(unit, target, normalizedCombatAction)).filter(Boolean);
-                        const allContribute = reachResults.length === reachActors.length && reachResults.every(result => result.canSucceed);
-                        if (!allContribute) return { ok: false, reason: 'cannot-reach' };
+                        const allCanAttempt = reachResults.length === reachActors.length && reachResults.every(result => result.canAttempt);
+                        if (!allCanAttempt) return { ok: false, reason: 'cannot-reach' };
                     } else if (constraints.checkReach !== false && !reachActors.some(unit => app._canAttemptCombatTarget?.(unit, target, normalizedCombatAction))) {
                         return { ok: false, reason: 'cannot-reach' };
                     }
@@ -333,21 +333,10 @@ const YAW_INTERACTION_DISPATCH = {
             resolved = app.outsideActionOnTargets(command.action, targets, actors[0], options);
         } else if (app._sameUnitSet(actors, targets)) {
             resolved = app.outsideMutualGroupAction(command.action, actors, options);
-        } else if (app._isUnitSubset(targets, actors)) {
-            resolved = app.outsideMutualGroupAction(command.action, actors, options);
-        } else if (app._isUnitSubset(actors, targets)) {
-            resolved = app.outsideMutualGroupAction(command.action, [...actors, ...targets], options);
-        } else if (actors.length === targets.length) {
+        } else if (command.distribution === 'paired' && actors.length === targets.length) {
             resolved = app.outsidePairedActionsOnTargets(command.action, actors, targets, options);
         } else {
-            app.log.push({ text: app._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
-                action: app._uiLabel(command.action).toLowerCase(),
-                actorCount: actors.length,
-                targetCount: targets.length
-            }), type: 'discovery' });
-            app.renderLog();
-            app._renderInteractionState({ exploration: true, toolbelt: false });
-            return false;
+            resolved = app.outsideManyToManyActionOnTargets(command.action, actors, targets, options);
         }
         if (resolved !== false && command.clearTargets) app.clearExplorationTargets();
         return resolved !== false;

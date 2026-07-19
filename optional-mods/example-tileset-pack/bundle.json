@@ -1,0 +1,98 @@
+{
+  "packageType": "yaw-asset-bundle",
+  "packageVersion": 1,
+  "bundle": {
+    "id": "yaw.example-tileset-assets-v1",
+    "targetModuleId": "yaw_example_tileset_v1",
+    "name": "You Are Wild: Example Tileset Assets",
+    "version": "1.0.0",
+    "description": "A partial, code-free Tileset Pack V1 override used to verify URI review, local retention, activation, fallback, and restoration.",
+    "author": "You Are Wild Project",
+    "license": "owner-supplied-ai-generated",
+    "contentRating": "safe",
+    "minGameVersion": "0.11.1",
+    "minModuleVersion": "1.0.0",
+    "provenance": {
+      "kind": "first-party-example",
+      "source": "media/basic-tileset-overlays-v1.png"
+    },
+    "presentations": [
+      {
+        "type": "yaw-tileset-pack",
+        "version": 1,
+        "id": "yaw.example-partial-v1",
+        "name": "Example Partial Override",
+        "nativeTileSize": { "width": 313, "height": 313 },
+        "scaling": "smooth",
+        "atlases": [
+          { "id": "example", "resourceId": "atlas.example", "density": 1 }
+        ],
+        "tiles": {
+          "route-road-vertical": {
+            "label": "Stone road override",
+            "layers": [
+              {
+                "atlasId": "example",
+                "rect": { "x": 0, "y": 627, "width": 313, "height": 313 },
+                "slot": "route",
+                "z": 0,
+                "opacity": 1,
+                "blend": "normal",
+                "anchor": { "x": 0.5, "y": 0.5 },
+                "transform": { "rotate": 0, "flipX": false, "flipY": false }
+              }
+            ]
+          },
+          "state-current": {
+            "label": "Gold current-position override",
+            "layers": [
+              {
+                "atlasId": "example",
+                "rect": { "x": 627, "y": 940, "width": 313, "height": 314 },
+                "slot": "presence",
+                "z": 0,
+                "opacity": 1,
+                "blend": "normal",
+                "anchor": { "x": 0.5, "y": 0.5 },
+                "transform": { "rotate": 0, "flipX": false, "flipY": false }
+              }
+            ]
+          },
+          "state-danger": {
+            "label": "Danger override",
+            "layers": [
+              {
+                "atlasId": "example",
+                "rect": { "x": 313, "y": 940, "width": 314, "height": 314 },
+                "slot": "marker",
+                "z": 0,
+                "opacity": 1,
+                "blend": "normal",
+                "anchor": { "x": 0.5, "y": 0.5 },
+                "transform": { "rotate": 0, "flipX": false, "flipY": false }
+              }
+            ]
+          },
+          "state-blocked": { "fallback": "state-danger" }
+        }
+      }
+    ],
+    "resources": [
+      {
+        "id": "atlas.example",
+        "uri": "../../media/basic-tileset-overlays-v1.png",
+        "hash": "4e926d26895b5b7e8f69c66c82ffef812f06991922549748e45b34e84f15c57b",
+        "mimeType": "image/png",
+        "byteLength": 1077089,
+        "width": 1254,
+        "height": 1254,
+        "role": "tileset-atlas",
+        "license": "owner-supplied-ai-generated",
+        "provenance": {
+          "kind": "ai-generated-overlay-atlas",
+          "tool": "ChatGPT Image"
+        }
+      }
+    ]
+  }
+}

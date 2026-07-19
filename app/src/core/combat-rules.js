@@ -242,14 +242,14 @@ const YAW_COMBAT_RULES = {
             });
         }
         if (reason === 'target-protected-back-row' || reason === 'target-back-row') {
-            return app._label('combat.reachFail.protectedBackRow', '{actors} cannot use {action} on {target}: front-row blockers protect the back row. Use ranged or flying reach, clear the front row, or try a social action.', {
+            return app._label('combat.reachFail.protectedBackRow', '{actors} tries {action} on {target}, but the front row closes ranks and keeps {target} out of reach. Open the front line, use ranged or flying reach, or try a social action.', {
                 actors: actorText,
                 action: actionLabel,
                 target: targetName
             });
         }
         if (reason === 'contact-protected-back-row' || reason === 'contact-back-row') {
-            return app._label('combat.reachFail.contactProtectedBackRow', '{actors} cannot use {action} on {target}: close contact cannot reach a protected back-row target.', {
+            return app._label('combat.reachFail.contactProtectedBackRow', '{actors} tries {action} on {target}, but the front row blocks every path to close contact.', {
                 actors: actorText,
                 action: actionLabel,
                 target: targetName

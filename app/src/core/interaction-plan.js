@@ -36,12 +36,10 @@ const YAW_INTERACTION_PLAN = {
         const targetCount = targets.length;
         if (actorCount > 0 && targetCount > 0) {
             if (this.sameUnitSet(app, actors, targets)) return 'mutual';
-            if (this.isUnitSubset(app, targets, actors) || this.isUnitSubset(app, actors, targets)) return 'mutual';
         }
         if (actorCount === 1 && targetCount === 1) return 'one-to-one';
         if (actorCount > 1 && targetCount === 1) return 'many-to-one';
         if (actorCount === 1 && targetCount > 1) return 'one-to-many';
-        if (actorCount > 1 && targetCount > 1 && actorCount === targetCount) return 'paired';
         if (actorCount > 1 && targetCount > 1) return 'many-to-many';
         return actorCount > 1 ? 'many-to-one' : 'one-to-one';
     },
@@ -51,7 +49,7 @@ const YAW_INTERACTION_PLAN = {
         if (shape === 'mutual') return 'mutual';
         if (shape === 'paired') return 'paired';
         if (shape === 'one-to-many') return 'all';
-        if (shape === 'many-to-many') return 'split';
+        if (shape === 'many-to-many') return 'all';
         return 'single';
     },
 

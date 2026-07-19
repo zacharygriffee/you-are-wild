@@ -40,6 +40,8 @@ The source object is an `InteractionPlan`. Existing compatibility command fields
 
 Exploration and combat should differ by timing and constraints, not by unrelated UI grammars. Exploration normally uses `timing: immediate`; combat normally uses `timing: current-turn`; group combat uses `timing: slowest-participant` and resolves on the slowest participant's turn. Future area, row, chain, or multi-target mechanics should extend plan constraints/distribution rather than creating a second action system.
 
+Exploration selections with multiple actors and multiple targets default to `shape: many-to-many` and `distribution: all`: every selected actor contributes to every selected target. Targets may mix party members and local creatures of any disposition, and an actor may also be an explicit target. Only an exactly identical actor and target set infers `mutual`; partial overlap stays many-to-many. Ordered pairing requires an explicitly requested `paired` distribution and is never inferred from equal counts alone.
+
 Invalid or ambiguous plans must preserve actor/target selection state and return correction guidance. They must not silently choose a different actor, target, distribution, or intent.
 
 During migration, legacy transient UI state such as combat target-pick, marked combat targets, feed sub-action choice, and Sync participant choice must be readable as the current `InteractionPlan`. Those states may remain as compatibility storage while older renderers are being migrated, but UI sentences, tests, Scene Beat / log metadata, and future resolvers should treat the plan snapshot as the shared semantic shape.
@@ -79,7 +81,7 @@ See [Balance / Cost Doctrine V1](balance-cost-doctrine.md) for hunger sign seman
 
 These decisions are settled doctrine until a later explicit mechanics pass reopens them:
 
-- Known-impossible physical actions should be blocked during selection or preview with clear Scene Feed/correction feedback before spending the turn. Poor but selectable physical actions, or delayed plans that become impossible before resolution, can still consume the actor or committed group's action and explain the failure through Scene Feed.
+- Known-impossible physical actions remain selectable when the actor and target are otherwise valid. The target control previews the reach warning; committing pays the action cost, spends the turn, and resolves as an in-world Scene Feed failure rather than a correction error.
 - Nonviolent victory should grant equivalent baseline XP to combat victory. Reward flavor, tags, relationship changes, quest hooks, or follow-up opportunities can differ, but social routes should not be mechanically inferior by default.
 - Perks are a feature layer, not a prerequisite for core mechanics. The default game should expose a minimal, approachable perk surface: early perks can be stat bumps and small passives, milestone perks can unlock mechanics, and deeper procedural or moddable perk trees are deferred until the core game shape is stable.
 - Party size uses a hard default cap for performance and UI readability. Mods may raise or replace that cap for players who opt into larger parties on capable devices.
@@ -143,7 +145,7 @@ Current implementation:
 - Anti-flying actors answer flying targets for relevant physical profiles, but anti-flying does not bypass front-row blockers by itself.
 - Front-row blockers protect back-row units on the same side. Ordinary melee and close/contact actions cannot target a protected back-row unit while living front-row blockers remain.
 - If a side has no living front-row blockers, back-row targets are exposed. Ordinary melee and close/contact actions may reach exposed back-row targets unless a specific action profile says otherwise.
-- Back-row ordinary melee and close/contact actors cannot freely hit front-row targets without a future special reach profile. Known impossible target selection should block and explain the issue before spending the turn.
+- Back-row ordinary melee and close/contact actors cannot freely hit front-row targets without a future special reach profile. A valid actor may still commit a tactically impossible attempt: the creature visibly fails in the Scene Feed, pays the action cost, and spends the turn instead of receiving a UI error or correction.
 - If a committed or delayed group plan becomes impossible before resolution, it can fizzle and consume the committed plan through existing group timing, with Scene Feed explaining the failure.
 - Current reach is intentionally narrow: the current implementation does not yet model equipment reach, snare/grab, pull, advanced row AI, or area distribution.
 - `Move Row` toggles the active actor between front and back row and consumes that actor's turn. UI copy labels this as Advance or Retreat while preserving the internal `moveRow` id, and should not imply that moving rows always solves back-row targeting.

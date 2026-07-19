@@ -8,6 +8,10 @@ Backend-neutral media acquisition, persistence, lease resolution, and provider
 priority are defined in [Media Repository And Provider Priority](media-repository.md).
 Code-free URI asset packaging, review, quotas, replacement, repair, and cleanup
 are defined in [Asset Bundle V1](asset-bundle-v1.md).
+The bounded map-presentation contract is defined in
+[Tileset Pack V1](tileset-pack-v1.md), with an end-to-end localhost/HTTPS
+fixture and replacement walkthrough in
+`optional-mods/example-tileset-pack/README.md`.
 The narration-specific lifecycle, prompt hierarchy, and reference packages are
 defined in [Narration Mods](narration-mods.md).
 
@@ -220,9 +224,11 @@ Mod work should be classified before implementation:
 - **Asset/content-pack mods** may now use Asset Bundle V1 for code-free,
   locally retained media attached to an installed `media:read` module. The
   bundle handles provenance, content rating, relative URIs, hashes, quotas,
-  fallbacks, ownership, licensing, replacement, and cleanup; presentation
-  formats such as tilesets and sprite atlases remain separate downstream
-  contracts.
+  fallbacks, ownership, licensing, replacement, and cleanup. Tileset Pack V1
+  is the first separate presentation contract: a bundle may declare one
+  bounded code-free atlas mapping, and enabling its target module activates
+  that mapping with lower-priority pack and emoji fallback. Sprite atlases
+  remain a future independent presentation contract.
 
 Optional LLM-facing mods are narrative consumers, not core dependencies. Core gameplay must remain deterministic and readable without a model call, network request, or remote service. If a module prepares data for an LLM, it should emit bounded structured context from Scene Beats, Activity history, safe map summaries, quest state, and public unit metadata. It must not require hidden raw save internals, credentials, or unreviewed remote package behavior.
 

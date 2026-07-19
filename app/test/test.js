@@ -133,6 +133,7 @@ section('Structure Tests', 'core');
 
 const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
+const startupReadinessContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'startup-readiness.js'), 'utf8');
 const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage-system.js'), 'utf8');
 const mapVisualsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'map-visuals.js'), 'utf8');
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
@@ -237,6 +238,8 @@ const mediaIndexedDbStoreContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'm
 const mediaHttpProvidersContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'media-http-providers.js'), 'utf8');
 const mediaRepositoryContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'media-repository.js'), 'utf8');
 const assetBundleV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'asset-bundle-v1.js'), 'utf8');
+const tilesetPackV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'tileset-pack-v1.js'), 'utf8');
+const tilesetRuntimeContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tileset-runtime.js'), 'utf8');
 const narrationSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'narration-system.js'), 'utf8');
 const puterProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'puter-provider.js'), 'utf8');
 const openAICompatibleProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'openai-compatible-provider.js'), 'utf8');
@@ -571,7 +574,9 @@ function loadModuleSystemForTest(options = {}) {
     async metadata() { return null; }, async ownerMetadata() { return null; }, async repairOwner(ownerId) { return { ownerId, ok: true, missing: [] }; }, async acquire() { throw new Error('Media unavailable'); }, release() { return false; }
   };
   const assetBundleV1 = options.assetBundleV1 || loadMediaSystemForTest().YAW_ASSET_BUNDLE_V1;
-  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1);
+  const tilesetPackV1 = options.tilesetPackV1 || loadMediaSystemForTest().YAW_TILESET_PACK_V1;
+  const tilesetRuntime = options.tilesetRuntime;
+  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime);
   MODULE_SYSTEM._testApp = App;
   return MODULE_SYSTEM;
 }
@@ -586,10 +591,10 @@ function loadMediaSystemForTest(options = {}) {
     urlApi.createObjectURL = () => `blob:test-${++urlState.sequence}`;
     urlApi.revokeObjectURL = url => urlState.revoked.push(url);
   }
-  const source = [mediaContractContent, mediaIndexedDbStoreContent, mediaHttpProvidersContent, mediaRepositoryContent, assetBundleV1Content].join('\n');
+  const source = [mediaContractContent, mediaIndexedDbStoreContent, mediaHttpProvidersContent, mediaRepositoryContent, assetBundleV1Content, tilesetPackV1Content, tilesetRuntimeContent].join('\n');
   return new Function(
     'globalThis', 'window', 'fetch', 'navigator', 'URL', 'Blob', 'AbortController', 'setTimeout', 'clearTimeout',
-    `${source}\nreturn { YAW_MEDIA_CONTRACT, YAWIndexedDBMediaStore, YAWHttpMediaSource, YAWEndpointMediaStore, YAWMediaRepository, YAW_ASSET_BUNDLE_V1 };`
+    `${source}\nreturn { YAW_MEDIA_CONTRACT, YAWIndexedDBMediaStore, YAWHttpMediaSource, YAWEndpointMediaStore, YAWMediaRepository, YAW_ASSET_BUNDLE_V1, YAW_TILESET_PACK_V1, YAW_TILESET_RUNTIME };`
   )(
     globalObject,
     window,
@@ -3309,7 +3314,78 @@ test('Asset manifest module is registered before app code', () => {
   assertContains(appContent, 'globalThis.AssetManifest', 'App should read asset manifest through global registry');
 });
 
+test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas geometry', () => {
+  const manifest = loadAssetManifestForTest();
+  const bundled = manifest.bundledTilesetPack();
+  const atlasBytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'basic-tileset-v1.png'));
+  const overlayBytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'basic-tileset-overlays-v1.png'));
+  const atlasHash = require('crypto').createHash('sha256').update(atlasBytes).digest('hex');
+  const overlayHash = require('crypto').createHash('sha256').update(overlayBytes).digest('hex');
+  assertEqual(atlasBytes.byteLength, bundled.resources[0].byteLength, 'Bundled atlas byte length should match its reviewed descriptor');
+  assertEqual(atlasHash, bundled.resources[0].hash, 'Bundled atlas SHA-256 should match its reviewed descriptor');
+  assertEqual(atlasBytes.readUInt32BE(16), bundled.resources[0].width, 'Bundled PNG header width should match its descriptor');
+  assertEqual(atlasBytes.readUInt32BE(20), bundled.resources[0].height, 'Bundled PNG header height should match its descriptor');
+  assertEqual(overlayBytes.byteLength, bundled.resources[1].byteLength, 'Bundled overlay atlas byte length should match its reviewed descriptor');
+  assertEqual(overlayHash, bundled.resources[1].hash, 'Bundled overlay atlas SHA-256 should match its reviewed descriptor');
+  assertEqual(overlayBytes.readUInt32BE(16), bundled.resources[1].width, 'Bundled overlay PNG header width should match its descriptor');
+  assertEqual(overlayBytes.readUInt32BE(20), bundled.resources[1].height, 'Bundled overlay PNG header height should match its descriptor');
+  const { YAW_TILESET_PACK_V1, YAW_TILESET_RUNTIME } = loadMediaSystemForTest();
+  const pack = YAW_TILESET_PACK_V1.normalizePresentation(bundled.presentation, {
+    resources: bundled.resources,
+    requiredKeys: manifest.allTileKeys()
+  });
+  assertEqual(pack.coverage.missingRequired.length, 0, 'Bundled art should cover or alias every core semantic tile key');
+  assertEqual(pack.atlases[0].width, 1774, 'Bundled atlas width should match generated media');
+  assertEqual(pack.atlases[0].height, 887, 'Bundled atlas height should match generated media');
+  const atlasDimensions = new Map(pack.atlases.map(atlas => [atlas.id, atlas]));
+  for (const tile of Object.values(pack.tiles)) {
+    for (const layer of tile.layers) {
+      const atlas = atlasDimensions.get(layer.atlasId);
+      assert(Number.isInteger(layer.rect.x) && Number.isInteger(layer.rect.y), 'Bundled source positions should be integer pixels');
+      assert(layer.rect.x + layer.rect.width <= atlas.width && layer.rect.y + layer.rect.height <= atlas.height, 'Bundled source rectangles should stay inside their declared atlas');
+    }
+  }
+  YAW_TILESET_RUNTIME.registerBuiltin(bundled);
+  const layered = YAW_TILESET_RUNTIME.layersForVisual({
+    baseTilesetKey: 'terrain-grove',
+    tilesetKey: 'route-road-vertical',
+    classes: 'map-visual map-visual-road map-visual-current'
+  });
+  assertEqual(layered.layers.map(layer => layer.slot).join(','), 'base,route,presence', 'Bundled map presentation should compose terrain, route, and current-position layers in order');
+  assertEqual(layered.layers[0].atlasId, 'main', 'Base terrain should remain on the opaque terrain atlas');
+  assertEqual(layered.layers[1].atlasId, 'overlays', 'Routes should resolve from the transparent overlay atlas instead of replacing biome art');
+  assertEqual(layered.layers[2].atlasId, 'overlays', 'Current-position state should resolve from the transparent overlay atlas');
+  assertEqual(overlayBytes[25], 6, 'Bundled overlay PNG should retain an RGBA color type for transparent composition');
+  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_URL', 'Single-file builds should embed the default atlas for offline and file-origin play');
+  assertContains(buildContent, 'window.YAW_PREPARE_BUNDLED_TILESET = () => Promise.all', 'Embedded atlas preparation should expose a retryable asynchronous factory so file-origin menu startup is never blocked by bitmap decoding');
+  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_READY = window.YAW_PREPARE_BUNDLED_TILESET()', 'Initial embedded atlas preparation should begin without blocking the menu shell');
+  assertContains(buildContent, '.then(response => response.blob())', 'Embedded atlas bytes should decode asynchronously before becoming a short session object URL');
+  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_URL = terrainUrl', 'Resolved terrain atlas object URLs should be published for bundled pack activation');
+  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_OVERLAY_URL = overlayUrl', 'Resolved overlay atlas object URLs should be published for bundled pack activation');
+  assertContains(buildContent, 'URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_URL)', 'Embedded atlas object URLs should be revoked when the page closes');
+  assertContains(buildContent, 'URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_OVERLAY_URL)', 'Embedded overlay atlas object URLs should be revoked when the page closes');
+  assertContains(buildContent, 'BUNDLED_TILESET, BUNDLED_TILESET_OVERLAYS, ...SCRIPT_ORDER', 'Both atlas files should participate in development watch rebuilds');
+});
+
+test('Gameplay map semantics remain registered in bundled tileset coverage', () => {
+  const manifest = loadAssetManifestForTest();
+  const { App } = loadAppForCombat();
+  const registered = new Set(manifest.allTileKeys());
+  const gameplayKeys = [];
+  const collect = value => {
+    if (typeof value === 'string') gameplayKeys.push(value);
+    else if (value && typeof value === 'object') Object.values(value).forEach(collect);
+  };
+  collect(App.MAP_TILESET_KEYS);
+  const missing = [...new Set(gameplayKeys)].filter(key => !registered.has(key)).sort();
+  assertEqual(missing.join(','), '', `Gameplay semantic keys must be registered for pack coverage; missing: ${missing.join(', ')}`);
+});
+
 test('Storage helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/startup-readiness.js'", 'Startup readiness coordinator should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/startup-readiness.js'") < buildContent.indexOf("'src/core/app.js'"), 'Startup readiness coordinator should load before app.js');
+  assertContains(startupReadinessContent, 'const YAW_STARTUP_READINESS = {', 'Startup readiness should expose named domain coordination');
+  assertContains(startupReadinessContent, 'performance.measure(', 'Startup readiness should publish browser timing measures');
   assertContains(buildContent, "'src/core/storage-system.js'", 'Storage helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/storage-system.js'") < buildContent.indexOf("'src/core/app.js'"), 'Storage helper should load before app.js');
   assertContains(storageSystemContent, 'const YAW_STORAGE = {', 'Storage helper should expose the storage service');
@@ -3319,6 +3395,7 @@ test('Storage helper module is registered before app code', () => {
   assertContains(storageSystemContent, 'JSON.parse(raw)', 'Storage helper should parse combat refresh snapshots defensively');
   assertContains(storageSystemContent, 'validBytes', 'Storage helper should validate combat refresh snapshot byte payloads');
   assertContains(storageSystemContent, 'databaseExists(dbName)', 'Storage helper should inspect legacy IndexedDB names without opening them');
+  assertContains(storageSystemContent, 'readSaveSlotPresence(app, slotNames)', 'Storage helper should batch save-slot discovery through one database transaction');
   assertContains(storageSystemContent, 'deleteDatabaseIfExists(dbName)', 'Storage helper should delete legacy IndexedDB names only when present');
   assertNotContains(storageSystemContent, 'readFrom(app.LEGACY_SAVE_DB_NAME)', 'Save loads should not open the legacy FFF_Saves namespace');
   assertNotContains(storageSystemContent, 'deleteFrom(app.LEGACY_SAVE_DB_NAME)', 'Save deletes should not open the legacy FFF_Saves namespace');
@@ -3326,6 +3403,84 @@ test('Storage helper module is registered before app code', () => {
   assertContains(appContent, 'MODULE_SYSTEM.closeDatabase()', 'Clear-all should close the module database before deleting IndexedDB namespaces');
   assertContains(storageSystemContent, 'writeCombatRefreshSnapshot(app, saveData, slotName', 'Storage should retain legacy combat refresh write support for old recovery tests and compatibility');
   assertContains(combatSaveStateContent, 'YAW_STORAGE.readCombatRefreshSnapshot(app, slotName)', 'Combat refresh reads should delegate to storage helper');
+});
+
+asyncTest('Startup readiness keeps domains independent and retries failed work', async () => {
+  const marks = [];
+  const measures = [];
+  const quietConsole = { info() {}, warn() {}, error() {} };
+  const readiness = new Function('window', 'performance', 'console', `${startupReadinessContent}\nreturn YAW_STARTUP_READINESS;`)(
+    {},
+    { now: (() => { let now = 0; return () => ++now; })(), mark: name => marks.push(name), measure: name => measures.push(name) },
+    quietConsole
+  );
+  let resolveSaves;
+  const savesWork = new Promise(resolve => { resolveSaves = resolve; });
+  readiness.start('saves', () => savesWork, { label: 'saved games' });
+  readiness.start('bundledAssets', async () => ({ terrainUrl: 'blob:test' }), { label: 'visual assets', blocking: false });
+  assertEqual(readiness.state('saves').status, 'pending', 'Delayed save discovery should remain independently pending');
+  await readiness.state('bundledAssets').promise;
+  assertEqual(readiness.state('bundledAssets').status, 'ready', 'Unrelated visual preparation should resolve without waiting for saves');
+  resolveSaves('slot2');
+  await readiness.state('saves').promise;
+  assertEqual(readiness.state('saves').result, 'slot2', 'Save readiness should retain the discovered slot result');
+
+  let attempts = 0;
+  readiness.start('modules', async () => {
+    attempts++;
+    if (attempts === 1) throw new Error('temporary module failure');
+    return ['example-module'];
+  }, { label: 'mods' });
+  await readiness.state('modules').promise;
+  assertEqual(readiness.state('modules').status, 'error', 'Domain failures should be retained without rejecting unrelated startup work');
+  await readiness.retry('modules');
+  assertEqual(readiness.state('modules').status, 'ready', 'Retry should rerun the failed domain factory');
+  assertEqual(readiness.state('modules').attempts, 2, 'Retry should preserve an observable attempt count');
+  assert(marks.includes('yaw-startup:saves:start') && marks.includes('yaw-startup:saves:end'), 'Readiness should mark the start and end of each domain');
+  assert(measures.includes('yaw-startup:saves'), 'Readiness should publish a duration measure for diagnostics');
+});
+
+asyncTest('Save-slot discovery reads all slots through one IndexedDB transaction', async () => {
+  const storage = new Function('window', `${storageSystemContent}\nreturn YAW_STORAGE;`)({});
+  const data = {
+    saves: new Map([['slot2', { bytes: true }]]),
+    saveManifests: new Map([['slot4', { sparse: true }]])
+  };
+  let opens = 0;
+  let transactions = 0;
+  let closes = 0;
+  storage.dbOpen = async () => {
+    opens++;
+    return {
+      transaction(storeNames) {
+        transactions++;
+        const tx = {
+          objectStore(storeName) {
+            return {
+              get(key) {
+                const request = {};
+                queueMicrotask(() => {
+                  request.result = data[storeName].get(key);
+                  request.onsuccess?.();
+                });
+                return request;
+              }
+            };
+          }
+        };
+        setTimeout(() => tx.oncomplete?.(), 0);
+        return tx;
+      },
+      close() { closes++; }
+    };
+  };
+  const presence = await storage.readSaveSlotPresence({ SAVE_DB_NAME: 'YAW_Saves' }, ['slot1', 'slot2', 'slot3', 'slot4', 'slot5']);
+  assertEqual(opens, 1, 'Slot discovery should open the save database once');
+  assertEqual(transactions, 1, 'Slot discovery should use one readonly transaction');
+  assertEqual(closes, 1, 'Slot discovery should close its shared connection after the transaction');
+  assertEqual(presence.get('slot2').exists, true, 'Full saves should be detected in the batched result');
+  assertEqual(presence.get('slot4').exists, true, 'Sparse save manifests should be detected in the batched result');
+  assertEqual(presence.get('slot1').exists, false, 'Empty save slots should remain empty');
 });
 
 test('Balance system module is registered before action resolution code', () => {
@@ -3482,7 +3637,7 @@ test('Group action resolution charges each participant once and fizzle does not 
   assertEqual(helper.hunger, 40, 'Invalid/fizzled group plan should not silently charge the helper');
 });
 
-test('Known-impossible combat previews cost nothing while allowed failed attempts can cost', () => {
+test('Committed unreachable and ordinary missed combat attempts both cost once', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', { id: 'cost-failure-player', hunger: 20, Figh: 40 });
   const target = makeUnit('Harpy', { id: 'cost-failure-harpy', disposition: App.DISPOSITION.ENEMY, CPun: 100 });
@@ -3491,17 +3646,21 @@ test('Known-impossible combat previews cost nothing while allowed failed attempt
   App.creatures = [target];
   App.combatState.active = true;
   App.activeActor = actor;
-  App.nextTurn = function() {};
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
   App._combatReachResult = () => ({ canAttempt: true, canSucceed: false, reason: 'flying', profile: 'melee' });
   App.executeActionAgainstTarget('fight', actor, target);
-  assertEqual(actor.hunger, 20, 'Known-impossible reach failure should not charge hunger');
-  assert(App.storyEvents.some(event => event.tags?.includes('cannot-reach')), 'Known-impossible reach failure should explain the blocked attempt in Scene Feed');
+  assertEqual(actor.hunger, 23, 'Committed reach failure should charge the action cost once');
+  assertEqual(advanced, 1, 'Committed reach failure should spend the actor turn');
+  assert(App.storyEvents.some(event => event.tags?.includes('cannot-reach')), 'Committed reach failure should explain the failed attempt in Scene Feed');
 
   App.storyEvents = [];
+  actor.hunger = 30;
   App._combatReachResult = () => ({ canAttempt: true, canSucceed: true, profile: 'melee' });
   App._terrainCausesMiss = () => true;
   App.executeActionAgainstTarget('fight', actor, target);
-  assertEqual(actor.hunger, 23, 'Allowed failed/missed attempt should still charge the action cost');
+  assertEqual(actor.hunger, 33, 'Allowed failed/missed attempt should still charge the action cost once');
+  assertEqual(advanced, 2, 'Ordinary missed attempt should also spend the actor turn');
 });
 
 test('Combat XP parity covers fight talk and play without breakthrough double-awards', () => {
@@ -5893,16 +6052,16 @@ test('Asset manifest supports tileset provenance and fallback metadata', () => {
   assertEqual(painted.provenance.tool, 'ChatGPT Image 2', 'Basic tileset should record generation tool');
   assertEqual(painted.provenance.generatedBy, 'project-owner', 'Basic tileset should record project-owner source');
   assertEqual(painted.relativeBasePath, '../media/', 'Basic tileset should use relative sidecar media paths');
-  assertEqual(painted.sheet.src, 'basic-tileset.png', 'Basic tileset should point at the supplied bitmap sheet');
+  assertEqual(painted.sheet.src, 'basic-tileset-v1.png', 'Basic tileset should point at the normalized bitmap atlas');
   assertEqual(painted.aiMetadata.aiMade, true, 'Basic tileset should expose AI-made metadata for future asset-pack policy');
   assert(painted.allowedUse.includes('future-mod-pack'), 'Tileset metadata should allow future mod-pack use');
   const forestAsset = manifest.getTileAsset('terrain-forest');
   assertEqual(forestAsset.tilesetId, 'default-basic-tileset', 'Default tile lookup should resolve through the basic tileset');
-  assertEqual(forestAsset.src, '../media/basic-tileset.png', 'Default tile lookup should expose the relative bitmap path');
+  assertEqual(forestAsset.src, '../media/basic-tileset-v1.png', 'Default tile lookup should expose the relative bitmap path');
   assertEqual(forestAsset.sprite.col, 0, 'Default tile lookup should expose sprite metadata');
-  const missingDefault = manifest.getTileAsset('route-road-end');
-  assertEqual(missingDefault.tilesetId, 'core-emoji-fallback', 'Missing default tiles should honestly identify the emoji fallback tileset');
-  assertEqual(missingDefault.fallbackMode, 'emoji', 'Missing default tiles should retain emoji fallback mode');
+  const roadEnd = manifest.getTileAsset('route-road-end');
+  assertEqual(roadEnd.tilesetId, 'default-basic-tileset', 'Every core route semantic should resolve through bundled art');
+  assertEqual(roadEnd.src, '../media/basic-tileset-overlays-v1.png', 'Route semantics should use the transparent bundled overlay atlas');
   manifest.registerTileset({
     id: 'test-mod-tileset',
     relativeBasePath: '../mods/test-assets/',
@@ -5913,7 +6072,7 @@ test('Asset manifest supports tileset provenance and fallback metadata', () => {
   manifest.setActiveTileset('test-mod-tileset');
   assertEqual(manifest.getTileAsset('terrain-forest').tilesetId, 'test-mod-tileset', 'Active mod assets should override default tile assets');
   assertEqual(manifest.getTileAsset('route-road-vertical').tilesetId, 'default-basic-tileset', 'Missing mod assets should fall through to the default basic tileset');
-  assertEqual(manifest.getTileAsset('route-road-end').tilesetId, 'core-emoji-fallback', 'Missing mod and default assets should fall through to emoji fallback');
+  assertEqual(manifest.getTileAsset('route-road-end').tilesetId, 'default-basic-tileset', 'Missing mod route assets should fall through to bundled overlay art');
 });
 
 test('Corpse content templates exist', () => {
@@ -7038,7 +7197,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'max-height: min(268px, 40dvh);\n                overflow-y: visible;', 'mobile combat action belt should reserve enough zero-scroll height for the primary intent grid');
   assertContains(mobileCombatToolbeltContent, "if (app.targetSelection?.source === 'combat') return '';", 'mobile combat should hide the full intent grid during target confirmation phases');
   assertContains(mobileCombatToolbeltContent, 'if (app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent) return \'\';', 'mobile combat should hide the full intent grid once a group intent is pending');
-  assertContains(mobileCombatToolbeltContent, 'if (!app.combatPlanSelection.pendingIntent) return \'\';', 'mobile combat should hide Confirm/Clear until a group intent is pending');
+  assertContains(mobileCombatToolbeltContent, "const phaseClass = app.combatPlanSelection.pendingIntent ? '' : ' combat-plan-cancel-only';", 'mobile combat should keep a cancel-only escape available before a group intent is selected');
+  assertContains(mobileCombatToolbeltContent, 'app._combatPlanControls?.({ includeReset: true })', 'mobile combat should expose shared group reset and cancel controls without duplicating planner rules');
   assertContains(template, '.mobile-location-actions', 'mobile location actions should have bounded control-belt styling');
   assertNotContains(template, 'class="mobile-scene-actions action-bar"', 'mobile presentation sheet should not own location action controls');
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');
@@ -7548,11 +7708,13 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     const currentOverrides = {
       en: {
         'ui.tutorial.combat.content': 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Select actors, mark targets, choose an intent, then commit group plans. Each intent owns its reach: social actions can cross rows, while physical attempts may fail and explain why in the Scene Feed.',
-        'structure.notEnterable': 'There is no interior to enter here.'
+        'structure.notEnterable': 'There is no interior to enter here.',
+        'target.manyToManyActionDone': '{actors} act together with {targets}: {results}'
       },
       es: {
         'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Hablar, Comer, Jugar, Alimentar o Huir. Selecciona actores, marca objetivos, elige una intencion y confirma planes grupales. Cada intencion tiene su propio alcance: las acciones sociales pueden cruzar filas, mientras que los intentos fisicos pueden fallar y explicarse en la Scene Feed.',
-        'structure.notEnterable': 'No hay un interior para entrar aqui.'
+        'structure.notEnterable': 'No hay un interior para entrar aqui.',
+        'target.manyToManyActionDone': '{actors} actuan juntos con {targets}: {results}'
       }
     };
     const value = currentOverrides[this.__testLanguage]?.[key];
@@ -12165,8 +12327,11 @@ test('InteractionPlan infers exploration shapes and distributions', () => {
   assertEqual(plan.distribution, 'all', 'One-to-many should infer all-target distribution');
 
   plan = App._buildPanelInteractionCommand({ mode: 'adventure', actors: [actorA, actorB], targets: [targetA, targetB], action: 'inspect' });
-  assertEqual(plan.shape, 'paired', 'Equal non-overlapping actor and target groups should infer paired shape');
-  assertEqual(plan.distribution, 'paired', 'Paired shape should infer paired distribution');
+  assertEqual(plan.shape, 'many-to-many', 'Equal non-overlapping actor and target groups should infer collective many-to-many shape');
+  assertEqual(plan.distribution, 'all', 'Many-to-many exploration should send every actor across every target');
+
+  plan = App._buildPanelInteractionCommand({ mode: 'adventure', actors: [actorA, actorB], targets: [targetA, targetB], action: 'inspect', distribution: 'paired' });
+  assertEqual(plan.distribution, 'paired', 'Explicit paired distribution should remain representable without being inferred from counts');
 
   plan = App._buildPanelInteractionCommand({ mode: 'adventure', actors: [actorA, actorB], targets: [actorA, actorB], action: 'feed' });
   assertEqual(plan.shape, 'mutual', 'Identical actor and target sets should infer mutual shape');
@@ -12203,8 +12368,8 @@ test('InteractionPlan backs combat current-turn target plans and validation', ()
 
   assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [ally], targets: [frontEnemy], action: 'fight' })).ok, false, 'Combat plans should reject non-current actors');
   const backRowAttempt = App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [backEnemy], action: 'fight' }));
-  assertEqual(backRowAttempt.ok, false, 'Combat plans should block known-impossible protected physical targets');
-  assertEqual(backRowAttempt.reason, 'cannot-reach', 'Protected physical target should report cannot-reach');
+  assertEqual(backRowAttempt.ok, true, 'Combat plans should accept a valid attempt against a protected physical target');
+  assertEqual(App._combatReachResult(player, backEnemy, 'fight').canSucceed, false, 'Protected physical target should still preview its tactical failure');
   frontEnemy.CPun = 0;
   const exposedBackRow = App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [backEnemy], action: 'fight' }));
   assertEqual(exposedBackRow.ok, true, 'Combat plans should allow exposed back-row targets when no front blockers remain');
@@ -13004,7 +13169,7 @@ test('Direct multi-target creature feast preserves explicit sub-action options',
   assertContains(App.log[App.log.length - 1].text, 'Prey A, Prey B', 'Direct explicit feast sub-action summary should name affected targets');
 });
 
-test('Equal actors and marked targets resolve as ordered paired actions', () => {
+test('Equal actors and marked targets resolve as collective many-to-many actions', () => {
   const { App } = loadAppForCombat(() => 0);
   const actorA = makeUnit('Actor A', { id: 'actor-a', Flir: 30, cha: 20 });
   const actorB = makeUnit('Actor B', { id: 'actor-b', Flir: 30, cha: 20 });
@@ -13017,13 +13182,15 @@ test('Equal actors and marked targets resolve as ordered paired actions', () => 
   App.toggleExplorationTarget('party', 'target-a');
   App.toggleExplorationTarget('party', 'target-b');
   App.resolveExplorationTargetAction('flirt');
-  assert(targetA.CPle > 0, 'First paired target should be affected by first actor');
-  assert(targetB.CPle > 0, 'Second paired target should be affected by second actor');
-  assertEqual(App.explorationTargetIds.length, 0, 'Resolved paired action should clear selected targets');
-  assertContains(App.log[App.log.length - 1].text, 'Acciones emparejadas de hablar resueltas: Actor A -> Target A, Actor B -> Target B.', 'Paired action summary should localize ordered pairs');
+  assert(targetA.CPle > 0, 'First target should receive the collective group action');
+  assert(targetB.CPle > 0, 'Second target should receive the collective group action');
+  assertEqual(App.explorationTargetIds.length, 0, 'Resolved many-to-many action should clear selected targets');
+  assertEqual(App.lastIntentCommand.shape, 'many-to-many', 'Equal group counts should remain many-to-many');
+  assertEqual(App.lastIntentCommand.distribution, 'all', 'Every selected actor should contribute to every selected target');
+  assertEqual(App.log.some(entry => entry.text.includes('Actor A, Actor B actuan juntos con Target A, Target B')), true, 'Many-to-many summary should localize the selected actors and targets');
 });
 
-test('Unequal actors against marked targets are rejected clearly', () => {
+test('Unequal actor and target groups resolve many-to-many without correction errors', () => {
   const { App } = loadAppForCombat(() => 0);
   const actorA = makeUnit('Actor A', { id: 'actor-a', Flir: 30, cha: 20 });
   const actorB = makeUnit('Actor B', { id: 'actor-b', Flir: 30, cha: 20 });
@@ -13038,16 +13205,52 @@ test('Unequal actors against marked targets are rejected clearly', () => {
   App.toggleExplorationTarget('party', 'target-b');
   App.toggleExplorationTarget('party', 'target-c');
   const resolved = App.resolveExplorationTargetAction('flirt');
-  assertEqual(resolved, false, 'Ambiguous unequal many-to-many action should report failure');
-  assertEqual(targetA.CPle, 0, 'Ambiguous unequal many-to-many action should not affect first target');
-  assertEqual(targetB.CPle, 0, 'Ambiguous unequal many-to-many action should not affect second target');
-  assertEqual(targetC.CPle, 0, 'Ambiguous unequal many-to-many action should not affect third target');
-  assertEqual(App.explorationActorIds.join(','), 'actor-a,actor-b', 'Rejected unequal many-to-many action should preserve selected actors for correction');
-  assertEqual(App.explorationTargetIds.join(','), 'party:target-a,party:target-b,party:target-c', 'Rejected unequal many-to-many action should preserve selected targets for correction');
-  assertContains(App.log[App.log.length - 1].text, 'Elige un actor para acciones multiobjetivo de hablar, o un objetivo para acciones grupales de hablar. La seleccion actual tiene 2 actores y 3 objetivos.', 'Unequal many-to-many rejection should localize correction paths with selected counts');
+  assertEqual(resolved, true, 'Unequal many-to-many action should resolve');
+  assert(targetA.CPle > 0, 'Unequal many-to-many action should affect first target');
+  assert(targetB.CPle > 0, 'Unequal many-to-many action should affect second target');
+  assert(targetC.CPle > 0, 'Unequal many-to-many action should affect third target');
+  assertEqual(App.explorationTargetIds.length, 0, 'Resolved unequal many-to-many action should clear selected targets');
+  assertEqual(App.lastIntentCommand.shape, 'many-to-many', 'Unequal group sizes should record many-to-many shape');
+  assertEqual(App.lastIntentCommand.distribution, 'all', 'Unequal group sizes should apply all actors to all targets');
+  assertEqual(App.log.some(entry => entry.text.includes('Actor A, Actor B actuan juntos con Target A, Target B, Target C')), true, 'Unequal many-to-many summary should name the full selection');
 });
 
-test('Marked target subset of actors resolves as self-included mutual group', () => {
+test('Many-to-many exploration preserves mixed external and self targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actorA = makeUnit('Actor A', { id: 'actor-a', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
+  const actorB = makeUnit('Actor B', { id: 'actor-b', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
+  const outsider = makeUnit('Outsider', { id: 'outsider', disposition: App.DISPOSITION.NEUTRAL, CPle: 0, MPle: 100, wis: 1 });
+  App.player = actorA;
+  App.party = [actorA, actorB];
+  App.creatures = [outsider];
+  App.explorationActorIds = ['actor-a', 'actor-b'];
+  App.toggleExplorationTarget('party', 'actor-a');
+  App.toggleExplorationTarget('creature', 'outsider');
+  const resolved = App.resolveExplorationTargetAction('flirt');
+  assertEqual(resolved, true, 'Mixed self and outside targets should resolve together');
+  assert(actorA.CPle > 0, 'An explicitly self-targeted actor should receive the group interaction');
+  assert(outsider.CPle > 0, 'The outside target should receive the same group interaction');
+  assertEqual(App.lastIntentCommand.targetType, 'marked', 'Composer should preserve its marked mixed-target source');
+  assertEqual(App.lastIntentCommand.shape, 'many-to-many', 'Partial actor/target overlap should remain many-to-many');
+  assertEqual(App.lastIntentCommand.distribution, 'all', 'Mixed self and outside targets should use all-to-all contribution');
+});
+
+test('Explicit paired exploration distribution retains ordered pairing', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actorA = makeUnit('Actor A', { id: 'actor-a', Flir: 30, cha: 20 });
+  const actorB = makeUnit('Actor B', { id: 'actor-b', Flir: 30, cha: 20 });
+  const targetA = makeUnit('Target A', { id: 'target-a', CPle: 0, MPle: 100, wis: 1 });
+  const targetB = makeUnit('Target B', { id: 'target-b', CPle: 0, MPle: 100, wis: 1 });
+  App.player = actorA;
+  App.party = [actorA, actorB, targetA, targetB];
+  const command = App._buildPanelInteractionCommand({
+    mode: 'adventure', actors: [actorA, actorB], targets: [targetA, targetB], action: 'flirt', distribution: 'paired'
+  });
+  assertEqual(App._dispatchInteractionCommand(command), true, 'Explicit paired distribution should still resolve');
+  assertContains(App.log[App.log.length - 1].text, 'Paired talk actions resolved: Actor A -> Target A, Actor B -> Target B.', 'Explicit pairing should retain ordered pair semantics');
+});
+
+test('Marked target subset of actors remains many-to-many', () => {
   const { App } = loadAppForCombat(() => 0);
   const actorA = makeUnit('Actor A', { id: 'actor-a', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
   const actorB = makeUnit('Actor B', { id: 'actor-b', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
@@ -13058,32 +13261,35 @@ test('Marked target subset of actors resolves as self-included mutual group', ()
   App.toggleExplorationTarget('party', 'actor-a');
   App.toggleExplorationTarget('party', 'actor-b');
   App.resolveExplorationTargetAction('flirt');
-  assert(actorA.CPle > 0, 'Subset self-included mutual action should affect first marked participant');
-  assert(actorB.CPle > 0, 'Subset self-included mutual action should affect second marked participant');
-  assert(actorC.CPle > 0, 'Subset self-included mutual action should include unmarked selected helper as participant');
-  assertEqual(App.explorationTargetIds.length, 0, 'Resolved subset self-included action should clear selected targets');
-  assertContains(App.log[App.log.length - 1].text, 'share talk as a mutual group', 'Subset self-included action should route to mutual group semantics');
+  assert(actorA.CPle > 0, 'Many-to-many action should affect first self target');
+  assert(actorB.CPle > 0, 'Many-to-many action should affect second self target');
+  assert(actorC.CPle > 0, 'Unmarked selected helper should contribute across the selected targets');
+  assertEqual(App.explorationTargetIds.length, 0, 'Resolved partially overlapping action should clear selected targets');
+  assertEqual(App.lastIntentCommand.shape, 'many-to-many', 'Target subset should not be silently widened into mutual');
+  assertEqual(App.lastIntentCommand.distribution, 'all', 'Every actor should contribute to each selected target');
 });
 
-test('Marked target subset of actors blocks mutual feast safely', () => {
+test('Marked self targets fail safely inside a many-to-many feast', () => {
   const { App } = loadAppForCombat(() => 0);
   const eaterA = makeUnit('Eater A', { id: 'eater-a', size: 8, appetite: 8, Feas: 60 });
   const eaterB = makeUnit('Eater B', { id: 'eater-b', size: 8, appetite: 8, Feas: 60 });
   const eaterC = makeUnit('Eater C', { id: 'eater-c', size: 8, appetite: 8, Feas: 60 });
   App.player = eaterA;
   App.party = [eaterA, eaterB, eaterC];
+  App.settings.chewing = false;
   App.explorationActorIds = ['eater-a', 'eater-b', 'eater-c'];
   App.toggleExplorationTarget('party', 'eater-a');
   App.toggleExplorationTarget('party', 'eater-b');
   App.resolveExplorationTargetAction('feast');
-  assertEqual(eaterA.stomach.length, 0, 'Subset mutual feast should not contain first participant');
-  assertEqual(eaterB.stomach.length, 0, 'Subset mutual feast should not contain second participant');
-  assertEqual(eaterC.stomach.length, 0, 'Subset mutual feast should not route marked targets into helper');
-  assertEqual(App.party.length, 3, 'Subset mutual feast should leave all participants in party');
-  assertContains(App.log[App.log.length - 1].text, 'cannot eat themselves as a mutual group', 'Subset mutual feast should use safe rejection semantics');
+  assertEqual(eaterA.stomach.length, 0, 'Many-to-many feast should not contain the first self target');
+  assertEqual(eaterB.stomach.length, 0, 'Many-to-many feast should not contain the second self target');
+  assertEqual(eaterC.stomach.length, 0, 'Unmarked helper should not become an implicit target');
+  assertEqual(App.party.length, 3, 'Failed self-target feast attempts should leave all participants in party');
+  assertContains(App.log[App.log.length - 1].text, 'Eater A cannot eat themself', 'First self-target failure should remain visible in the combined result');
+  assertContains(App.log[App.log.length - 1].text, 'Eater B cannot eat themself', 'Second self-target failure should remain visible in the combined result');
 });
 
-test('Marked actor subset of targets resolves as wider mutual group', () => {
+test('Marked actor subset of targets remains many-to-many', () => {
   const { App } = loadAppForCombat(() => 0);
   const actorA = makeUnit('Actor A', { id: 'actor-a', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
   const actorB = makeUnit('Actor B', { id: 'actor-b', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
@@ -13095,30 +13301,33 @@ test('Marked actor subset of targets resolves as wider mutual group', () => {
   App.toggleExplorationTarget('party', 'actor-b');
   App.toggleExplorationTarget('party', 'target-c');
   App.resolveExplorationTargetAction('flirt');
-  assert(actorA.CPle > 0, 'Actor-subset mutual action should affect first selected actor');
-  assert(actorB.CPle > 0, 'Actor-subset mutual action should affect second selected actor');
-  assert(targetC.CPle > 0, 'Actor-subset mutual action should include the extra marked target');
-  assertEqual(App.explorationTargetIds.length, 0, 'Resolved actor-subset mutual action should clear targets');
-  assertContains(App.log[App.log.length - 1].text, 'share talk as a mutual group', 'Actor-subset target action should use mutual group semantics');
+  assert(actorA.CPle > 0, 'Many-to-many action should affect first self target');
+  assert(actorB.CPle > 0, 'Many-to-many action should affect second self target');
+  assert(targetC.CPle > 0, 'Many-to-many action should affect the additional target');
+  assertEqual(App.explorationTargetIds.length, 0, 'Resolved actor-subset action should clear targets');
+  assertEqual(App.lastIntentCommand.shape, 'many-to-many', 'Actor subset should not be silently widened into mutual');
+  assertEqual(App.lastIntentCommand.distribution, 'all', 'Actor subset should preserve all-to-all contribution');
 });
 
-test('Marked actor subset of targets blocks mutual feast safely', () => {
+test('Many-to-many feast can fail on self targets and resolve on another party target', () => {
   const { App } = loadAppForCombat(() => 0);
   const eaterA = makeUnit('Eater A', { id: 'eater-a', size: 8, appetite: 8, Feas: 60 });
   const eaterB = makeUnit('Eater B', { id: 'eater-b', size: 8, appetite: 8, Feas: 60 });
   const eaterC = makeUnit('Eater C', { id: 'eater-c', size: 8, appetite: 8, Feas: 60 });
   App.player = eaterA;
   App.party = [eaterA, eaterB, eaterC];
+  App.settings.chewing = false;
   App.explorationActorIds = ['eater-a', 'eater-b'];
   App.toggleExplorationTarget('party', 'eater-a');
   App.toggleExplorationTarget('party', 'eater-b');
   App.toggleExplorationTarget('party', 'eater-c');
   App.resolveExplorationTargetAction('feast');
-  assertEqual(eaterA.stomach.length, 0, 'Actor-subset mutual feast should not contain first participant');
-  assertEqual(eaterB.stomach.length, 0, 'Actor-subset mutual feast should not contain second participant');
-  assertEqual(eaterC.stomach.length, 0, 'Actor-subset mutual feast should not contain extra marked participant');
-  assertEqual(App.party.length, 3, 'Actor-subset mutual feast should leave all participants in party');
-  assertContains(App.log[App.log.length - 1].text, 'cannot eat themselves as a mutual group', 'Actor-subset mutual feast should use safe rejection semantics');
+  assertEqual([...eaterA.stomach, ...eaterB.stomach].some(unit => unit.name === 'Eater C'), true, 'A non-self party target should resolve even when sibling self targets fail');
+  assertEqual(App.party.includes(eaterA), true, 'First self target should remain in party');
+  assertEqual(App.party.includes(eaterB), true, 'Second self target should remain in party');
+  assertEqual(App.party.includes(eaterC), false, 'Resolved non-self Feast target should leave the active party');
+  assertContains(App.log[App.log.length - 1].text, 'Eater A cannot eat themself', 'Combined result should retain the first self-target failure');
+  assertContains(App.log[App.log.length - 1].text, 'Eater B cannot eat themself', 'Combined result should retain the second self-target failure');
 });
 
 test('Marked self-included group target resolves through shared group semantics', () => {
@@ -13972,7 +14181,7 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   assertEqual(roadVisual.routeShape, 'north-south', 'Road visual should use stored direction when no neighbor resolver is available');
   assertEqual(roadVisual.asset.key, 'route-road-vertical', 'Road visual should resolve manifest asset metadata');
   assertEqual(roadVisual.asset.tilesetId, 'default-basic-tileset', 'Road visual should resolve through the bundled basic tileset when available');
-  assertEqual(roadVisual.asset.src, '../media/basic-tileset.png', 'Road visual should expose sidecar bitmap metadata');
+  assertEqual(roadVisual.asset.src, '../media/basic-tileset-overlays-v1.png', 'Road visual metadata should identify the transparent sidecar overlay atlas');
   assertEqual(roadVisual.hasPaintedAsset, true, 'Road visual should flag bundled painted asset metadata when available');
   assertEqual(forestRoad.biome, 'forest', 'Visual mapping should not replace the base biome with road');
   assertEqual(bridgeVisual.tilesetKey, 'route-bridge-horizontal', 'Bridge visual should expose a direction-specific tileset key');
@@ -13992,14 +14201,13 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   App.exploredTiles = new Set(['0,0', '1,0', '0,1']);
   App.renderMap();
   App.renderLargeMap();
-  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-tileset-key="route-road-end"', 'Mobile minimap should infer route shape from known neighbors');
+  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-tileset-key="route-road-end-east"', 'Mobile minimap should infer a directional road end from known connections');
   assertContains(elements.get('mobile-mini-map').innerHTML, 'data-base-tileset-key="terrain-forest"', 'Mobile minimap should render base terrain tileset keys');
-  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-asset-id="core-emoji-fallback:route-road-end"', 'Mobile minimap should expose fallback asset manifest ids when the basic sheet lacks a key');
-  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-asset-fallback="emoji"', 'Mobile minimap should expose fallback rendering mode');
+  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-tileset-semantic-keys="terrain-forest route-road-end-east', 'Mobile minimap should expose its ordered base and directional-route semantic stack');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-bridge-horizontal"', 'Large map should render bridge tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="structure-camp"', 'Large map should render structure tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-asset-id="default-basic-tileset:structure-camp"', 'Large map should expose bundled basic structure asset ids');
-  assertContains(elements.get('large-map').innerHTML, 'data-asset-src="../media/basic-tileset.png"', 'Large map should expose the relative sidecar bitmap path');
+  assertContains(elements.get('large-map').innerHTML, 'data-asset-src="../media/basic-tileset-v1.png"', 'Large map should expose the relative sidecar bitmap path');
 });
 
 test('Map route visuals infer corners and intersections from known neighbors', () => {
@@ -14049,6 +14257,60 @@ test('Map route visuals infer corners and intersections from known neighbors', (
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-road-corner-ne"', 'Rendered large map should expose inferred corner tileset key from known tiles');
 });
 
+test('Map route visuals use canonical directional T-junction tileset keys', () => {
+  const { App } = loadAppForCombat();
+  const road = (connections) => ({
+    x: 0,
+    y: 0,
+    biome: 'plains',
+    baseBiome: 'plains',
+    derivedBiome: 'plains',
+    displayBiome: 'road',
+    explored: true,
+    creatures: [],
+    overlays: { road: { id: 'road-t', direction: 'east-west', connections } }
+  });
+  const cases = [
+    [['north', 'east', 'west'], 't-north', 'route-road-t-north'],
+    [['north', 'east', 'south'], 't-east', 'route-road-t-east'],
+    [['east', 'south', 'west'], 't-south', 'route-road-t-south'],
+    [['north', 'south', 'west'], 't-west', 'route-road-t-west']
+  ];
+  for (const [connections, shape, key] of cases) {
+    const visual = App._mapTileVisual(road(connections));
+    assertEqual(visual.routeShape, shape, `T-junction connections should resolve ${shape}`);
+    assertEqual(visual.tilesetKey, key, `${shape} should use its canonical Tileset Pack semantic key`);
+  }
+});
+
+test('Map visuals preserve directional ends and blocked-edge state semantics', () => {
+  const { App } = loadAppForCombat();
+  const road = {
+    x: 4,
+    y: 8,
+    biome: 'swamp',
+    baseBiome: 'swamp',
+    derivedBiome: 'swamp',
+    displayBiome: 'road',
+    explored: true,
+    creatures: [{ id: 'enemy-1', name: 'Threat', disposition: 'enemy', hp: 10 }],
+    overlays: {
+      road: { id: 'road-end', direction: 'east-west', connections: ['west'] },
+      barriers: ['north'],
+      dangerInfluence: { siteId: 'danger-1', category: 'dangerSite', distance: 1, modifier: 0.1 }
+    }
+  };
+  const visual = App._mapTileVisual(road, { blockedEdges: ['east'], isCurrent: true });
+  assertEqual(visual.routeShape, 'end-west', 'One route connection should retain its cardinal end direction');
+  assertEqual(visual.tilesetKey, 'route-road-end-west', 'Directional road ends should expose a dedicated semantic key');
+  assertEqual(visual.blockedEdges.join(','), 'north,east', 'Intrinsic and current traversal barriers should merge without losing direction');
+  assert(visual.semanticKeys.includes('terrain-swamp'), 'Directional route rendering should preserve the underlying biome semantic');
+  assert(visual.semanticKeys.includes('route-road-end-west'), 'Directional route rendering should include the route overlay semantic');
+  assert(visual.semanticKeys.includes('state-blocked-north') && visual.semanticKeys.includes('state-blocked-east'), 'Blocked edges should become directional state semantics');
+  assert(visual.semanticKeys.includes('state-danger-influence'), 'Danger influence should compose as restrained regional context');
+  assert(visual.semanticKeys.includes('state-danger') && visual.semanticKeys.includes('state-current'), 'Immediate creature danger and current-position state should remain distinct composable states');
+});
+
 test('Interior map visuals expose tileset metadata for rooms exits and features', () => {
   const { App, elements } = loadAppForCombat();
   const indoor = { x: 1, y: 0, biome: 'indoors', explored: true, structure: 'camp', exit: false };
@@ -14085,6 +14347,30 @@ test('Interior map visuals expose tileset metadata for rooms exits and features'
   assertContains(html, 'data-tileset-key="interior-cave-room"', 'Rendered interior mobile minimap should expose cave room tileset key');
   assertContains(html, 'data-tileset-key="interior-wall"', 'Rendered interior mobile minimap should expose wall tileset key for missing rooms');
   assertContains(html, 'data-map-kind="interior-exit"', 'Rendered interior mobile minimap should expose interior map kind');
+});
+
+test('Interior visuals derive paths exits doors and walls from deterministic topology', () => {
+  const { App } = loadAppForCombat();
+  const caveCorner = { x: 0, y: 0, biome: 'cave', explored: true, exit: false, connections: ['north', 'east'] };
+  const buildingExit = { x: 1, y: 0, biome: 'indoors', explored: true, exit: true, connections: ['west'] };
+  const caveVisual = App._interiorTileVisual(caveCorner, { isCurrent: true });
+  const exitVisual = App._interiorTileVisual(buildingExit);
+  const rooms = { '0,0': caveCorner };
+  const wallVisual = App._interiorTileVisual(null, {
+    x: 0,
+    y: 1,
+    blockedEdges: ['north'],
+    roomResolver: (x, y) => rooms[`${x},${y}`] || null
+  });
+  assertEqual(caveVisual.interiorShape, 'corner-ne', 'Room connections should derive a stable interior topology shape');
+  assertEqual(caveVisual.tilesetKey, 'interior-path-corner-ne', 'Connected cave rooms should expose a topology-aware path semantic');
+  assert(caveVisual.semanticKeys.includes('interior-cave-room') && caveVisual.semanticKeys.includes('interior-path-corner-ne'), 'Cave topology should compose the cave base and path overlay');
+  assert(caveVisual.semanticKeys.includes('state-current'), 'Interior current rooms should use the shared current-position state layer');
+  assertEqual(exitVisual.exitDirection, 'east', 'A one-connection exit should face outward from its interior connection');
+  assertEqual(exitVisual.tilesetKey, 'interior-exit-east', 'Interior exits should expose their outward cardinal semantic');
+  assert(exitVisual.semanticKeys.includes('interior-door-east'), 'Building exits should include a direction-aware door layer');
+  assertEqual(wallVisual.interiorShape, 'wall-north', 'Missing cells should expose the direction of an adjacent room');
+  assert(wallVisual.semanticKeys.includes('interior-wall-north') && wallVisual.semanticKeys.includes('state-blocked-north'), 'Interior walls should compose directional wall and blocked-edge semantics');
 });
 
 test('Super-patch generation uses seeded region biomes only', () => {
@@ -14169,6 +14455,8 @@ test('Beach biome is derived only near deterministic water', () => {
   App.worldMap = new Map();
   App.tileDeltas = new Map();
   let beach = null;
+  let adjacentBeach = null;
+  let neutralBeach = null;
   let inland = null;
   const hasNearbyWater = (x, y) => {
     for (let dx = -2; dx <= 2; dx++) {
@@ -14179,17 +14467,33 @@ test('Beach biome is derived only near deterministic water', () => {
     }
     return false;
   };
-  for (let x = -90; x <= 90 && (!beach || !inland); x++) {
-    for (let y = -90; y <= 90 && (!beach || !inland); y++) {
+  for (let x = -90; x <= 90 && (!beach || !adjacentBeach || !neutralBeach || !inland); x++) {
+    for (let y = -90; y <= 90 && (!beach || !adjacentBeach || !neutralBeach || !inland); y++) {
       const tile = App.getBaseTile(x, y);
       const nearWater = hasNearbyWater(x, y);
       if (!beach && tile.biome === 'beach') beach = { tile, nearWater };
+      if (tile.biome === 'beach' && tile.overlays?.shoreline?.edges?.length && !adjacentBeach) adjacentBeach = tile;
+      if (tile.biome === 'beach' && tile.overlays?.shoreline?.nearWater && !tile.overlays?.shoreline?.edges?.length && !neutralBeach) neutralBeach = tile;
       if (!inland && !tile.water && !nearWater) inland = tile;
     }
   }
   assert(beach, 'Test seed should produce at least one deterministic beach in the sampled area');
   assertEqual(beach.tile.water, false, 'Beach should be land, not water');
   assert(beach.nearWater, 'Beach should be adjacent or near deterministic water');
+  assert(adjacentBeach, 'Sampled coast should include a beach with immediate cardinal water');
+  assert(neutralBeach, 'Sampled coast should include a near-water beach with no immediately adjacent water');
+  const directions = [[0, -1, 'north'], [1, 0, 'east'], [0, 1, 'south'], [-1, 0, 'west']];
+  const actualEdges = directions
+    .filter(([dx, dy]) => App.getBaseTile(adjacentBeach.x + dx, adjacentBeach.y + dy).water)
+    .map(([, , direction]) => direction);
+  assertEqual(adjacentBeach.overlays.shoreline.edges.join(','), actualEdges.join(','), 'Shoreline edges should match immediate cardinal water deterministically');
+  const adjacentVisual = App._mapTileVisual(adjacentBeach);
+  const neutralVisual = App._mapTileVisual(neutralBeach);
+  assertEqual(adjacentVisual.baseTilesetKey, 'terrain-sand', 'Beach presentation should use reusable neutral sand as its base terrain');
+  assert(adjacentVisual.semanticKeys.includes('terrain-beach'), 'Beach identity should remain available as a distinct mod semantic');
+  assert(adjacentVisual.semanticKeys.includes(`shoreline-water-${actualEdges[0]}`), 'Adjacent water should compose a cardinal shoreline semantic');
+  assertEqual(neutralVisual.shorelineEdges.length, 0, 'Near-water beach without cardinal water should retain the neutral sand fallback');
+  assertContains(App._mapTileAttrs(adjacentVisual), `data-shoreline-edges="${actualEdges.join(' ')}"`, 'Cross-surface map attributes should expose ordered shoreline edges');
   assert(inland, 'Test seed should produce a far-inland land tile in the sampled area');
   assert(inland.biome !== 'beach', 'Far-inland land should not classify as beach');
 });
@@ -14404,12 +14708,12 @@ test('Map summary and encounter pressure expose safe UI metadata', () => {
     explored: false
   };
   const roadTile = { ...wildTile, overlays: { road: { id: 'road-test' } }, terrainTags: ['dense-growth', 'road'] };
-  const dangerTile = { ...wildTile, overlays: { poi: { category: 'dangerSite' } } };
+  const dangerTile = { ...wildTile, overlays: { dangerInfluence: { siteId: 'danger-test', category: 'dangerSite', distance: 1, modifier: 0.1 } } };
   const wildPressure = WorldGen.getEncounterPressure(wildTile, { biomeDanger: 3 });
   const roadPressure = WorldGen.getEncounterPressure(roadTile, { biomeDanger: 3 });
   const dangerPressure = WorldGen.getEncounterPressure(dangerTile, { biomeDanger: 3 });
   assert(roadPressure.finalChance < wildPressure.finalChance, 'Road overlay should lower wilderness encounter pressure');
-  assert(dangerPressure.finalChance > wildPressure.finalChance, 'Danger POI should raise encounter pressure');
+  assert(dangerPressure.finalChance > wildPressure.finalChance, 'Bounded danger-site influence should raise encounter pressure');
   const summary = WorldGen.getTileMapSummary({
     ...roadTile,
     structure: 'camp',
@@ -14462,6 +14766,40 @@ test('POI budgets create stable spaced region candidates and route anchors', () 
   const tilePoi = WorldGen.getPoiForTile(seed, version, first.anchor.x, first.anchor.y);
   assert(tilePoi, 'Tile lookup should resolve deterministic POI candidate anchors');
   assertEqual(tilePoi.id, first.id, 'Tile POI lookup should return the matching candidate id');
+});
+
+test('Danger sites render one anchor while retaining bounded surrounding influence', () => {
+  const { App } = loadAppForCombat();
+  const WorldGen = loadWorldGenForTest();
+  const seed = 'danger-anchor-seed';
+  const version = 3;
+  const candidate = WorldGen.getPoiCandidatesForRegion(seed, version, 0, 0)
+    .find(entry => entry.category === 'dangerSite');
+  assert(candidate, 'Deterministic region should provide a danger-site candidate');
+  App.worldMeta = { worldId: 'world-danger-anchor', seed, generatorVersion: version, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  const footprint = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      footprint.push(App.getBaseTile(candidate.anchor.x + dx, candidate.anchor.y + dy));
+    }
+  }
+  const anchors = footprint.filter(tile => tile.overlays?.poi?.category === 'dangerSite');
+  const influenced = footprint.filter(tile => tile.overlays?.dangerInfluence?.siteId === candidate.id);
+  assertEqual(anchors.length, 1, 'A danger footprint should expose exactly one skull-marker anchor');
+  assertEqual(anchors[0].x, candidate.anchor.x, 'Danger marker should stay on the candidate anchor x coordinate');
+  assertEqual(anchors[0].y, candidate.anchor.y, 'Danger marker should stay on the candidate anchor y coordinate');
+  assertEqual(influenced.length, 9, 'The bounded 3x3 footprint should retain deterministic danger influence');
+  assertEqual(anchors[0].overlays.dangerInfluence.modifier, 0.18, 'Anchor pressure should retain the strongest bounded modifier');
+  assert(influenced.filter(tile => tile !== anchors[0]).every(tile => tile.overlays.dangerInfluence.modifier === 0.1), 'Surrounding danger influence should use the restrained ring modifier');
+
+  const anchorVisual = App._mapTileVisual(anchors[0]);
+  const ringVisual = App._mapTileVisual(influenced.find(tile => tile !== anchors[0]));
+  assertEqual(anchorVisual.tilesetKey, 'poi-danger-site', 'Only the anchor should resolve the skull-marker semantic');
+  assert(ringVisual.semanticKeys.includes('state-danger-influence'), 'Influence ring should expose its own mod-overridable semantic');
+  assertEqual(ringVisual.semanticKeys.includes('state-danger'), false, 'Regional influence should not masquerade as immediate creature danger');
+  assertContains(App._mapTileAttrs(ringVisual), 'data-danger-influence="true"', 'All map surfaces should receive restrained danger-influence metadata');
 });
 
 test('Landmarks and structures are deterministic by seed and coordinate', () => {
@@ -14705,6 +15043,42 @@ test('Loaded world state rebuilds tile deltas over deterministic base tiles', ()
   assertEqual(delta.description, 'Saved clearing.', 'Rebuilt delta should preserve saved description');
   assertEqual(delta.structure, 'camp', 'Rebuilt delta should preserve saved structure');
   assertEqual(App.getTile(4, 5).baseBiome, App.getBaseTile(4, 5).biome, 'Restored tile should retain generated base biome metadata');
+});
+
+test('Legacy inline saves regenerate shoreline and danger overlays instead of persisting stale footprints', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const WorldGen = loadWorldGenForTest();
+  const seed = 'save-semantic-seed';
+  const version = 3;
+  const candidate = WorldGen.getPoiCandidatesForRegion(seed, version, 0, 0)
+    .find(entry => entry.category === 'dangerSite');
+  assert(candidate, 'Save fixture should locate a deterministic danger site');
+  App.worldMeta = { worldId: 'world-save-semantics', seed, generatorVersion: version, mapModsHash: 'core' };
+  App.location = { ...candidate.anchor };
+  App.player = makeUnit('You');
+  const worldMap = {};
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const x = candidate.anchor.x + dx;
+      const y = candidate.anchor.y + dy;
+      const generated = App.getBaseTile(x, y);
+      worldMap[`${x},${y}`] = {
+        ...generated,
+        explored: true,
+        description: `Saved ${dx},${dy}`,
+        overlays: { poi: { id: 'legacy-danger-carpet', category: 'dangerSite' } }
+      };
+    }
+  }
+  App._restoreWorldState({ worldMeta: App.worldMeta, exploredTiles: Object.keys(worldMap), worldMap });
+  const restored = Object.keys(worldMap).map(key => {
+    const [x, y] = key.split(',').map(Number);
+    return App.getTile(x, y);
+  });
+  assertEqual(restored.filter(tile => tile.overlays?.poi?.category === 'dangerSite').length, 1, 'Legacy full-tile data should not restore a nine-skull danger carpet');
+  assertEqual(restored.filter(tile => tile.overlays?.dangerInfluence?.siteId === candidate.id).length, 9, 'Restored tiles should regenerate bounded influence from world metadata');
+  assert(restored.every(tile => tile.overlays?.poi?.id !== 'legacy-danger-carpet'), 'Generated overlay fields should not survive as mutable save deltas');
+  assert(restored.every(tile => App.getTileDelta(tile.x, tile.y)?.description?.startsWith('Saved')), 'Mutable authored tile descriptions should still survive legacy save migration');
 });
 
 test('World metadata normalizes malformed save and store records', () => {
@@ -16179,7 +16553,7 @@ test('Desktop composer shell mirrors combat belt metadata without a sentence slo
   assertEqual(shell.getAttribute('data-command-intent'), 'fight', 'Desktop composer shell should mirror target-pick intent from the belt');
 });
 
-test('Desktop combat planner uses sentence exits instead of a duplicate Clear row', () => {
+test('Desktop combat planner keeps sentence edits and an explicit group cancel', () => {
   const { App, elements, document } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'planner-composer-player' });
   const ally = makeUnit('Ally', { id: 'planner-composer-ally' });
@@ -16207,7 +16581,8 @@ test('Desktop combat planner uses sentence exits instead of a duplicate Clear ro
   App.renderSelectionSentence();
   App.renderDesktopCombatComposer(player);
   assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-control="clear-actor-slot"', 'Group actor selection should remain clearable from its command-sentence slot');
-  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="clear-combat-group"', 'Desktop composer should not duplicate group reset below the sentence');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="clear-combat-group"', 'Desktop composer should expose an explicit group cancel before intent selection');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'Cancel Group', 'Desktop composer should label the full-plan exit clearly');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="fight"', 'Group planning without an intent should keep the primary intent row visible');
 
   App.combatPlanSelection.pendingIntent = 'fight';
@@ -16215,9 +16590,14 @@ test('Desktop combat planner uses sentence exits instead of a duplicate Clear ro
   App.renderDesktopCombatComposer(player);
   const pendingHtml = elements.get('desktop-context-belt').innerHTML;
   assertContains(pendingHtml, 'data-command-control="confirm-combat-plan"', 'Pending group plan should retain its explicit commit command');
-  assertNotContains(pendingHtml, 'data-command-control="clear-combat-group"', 'Pending group plan should not restore the duplicate Clear command');
+  assertContains(pendingHtml, 'data-command-control="clear-combat-group"', 'Pending group plan should retain an explicit group cancel beside commit');
   assertNotContains(pendingHtml, 'data-command-control="clear-combat-intent"', 'Pending intent should use the sentence slot exit instead of a duplicate Change Intent button');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-control="clear-intent-slot"', 'Pending intent should remain clearable through its sentence slot');
+  App.combatTargetId = App._unitSelectionId(enemy);
+  App.combatTargetIds = [App._unitSelectionId(enemy)];
+  assertEqual(App.clearCombatPlan(), true, 'Explicit cancel should exit the active group plan');
+  assertEqual(App.combatPlanSelection, null, 'Explicit cancel should clear group actor and intent state');
+  assertEqual(App.combatTargetIds.length, 0, 'Explicit cancel should clear marked group targets');
 });
 
 test('Combat creature target button localizes visible and accessible labels', () => {
@@ -16346,7 +16726,7 @@ test('Combat auto-position assigns flying and ranged units to back row', () => {
   assertEqual(harpy.combatRow, 'back', 'Flying/ranged enemy should default to back row');
 });
 
-test('Melee combat targeting blocks protected back rows and allows exposed back rows', () => {
+test('Melee combat targeting previews protected attempts and allows exposed back rows', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-melee', Figh: 30 });
   const enemy = makeUnit('Backline', { id: 'backline-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'back' });
@@ -16357,19 +16737,20 @@ test('Melee combat targeting blocks protected back rows and allows exposed back 
   App.combatState.active = true;
   App.activeActor = player;
   player.combatRow = 'front';
-  App.nextTurn = function() {};
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
   App.showActorActions(player);
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="flirt"', 'Talk should remain available when physical reach is blocked by row');
   App.selectTarget('fight');
   const desktopTargetHtml = elements.get('enemies-content').innerHTML;
-  assertContains(desktopTargetHtml, 'disabled aria-disabled="true"', 'Protected back-row enemy should be blocked before spending a turn');
-  assertContains(desktopTargetHtml, 'Unavailable', 'Known-impossible protected target should be labeled unavailable');
-  assertContains(desktopTargetHtml, 'front-row blockers protect the back row', 'Desktop target should explain protected back-row failure');
+  assertNotContains(desktopTargetHtml, 'disabled aria-disabled="true"', 'Protected back-row enemy should remain a valid attempt');
+  assertContains(desktopTargetHtml, 'data-selection-state="available"', 'Known-impossible protected target should remain available as a warned attempt');
+  assertContains(desktopTargetHtml, 'front row closes ranks', 'Desktop target should preview protected back-row failure');
   assertContains(desktopTargetHtml, 'try a social action', 'Desktop target should suggest non-physical counterplay');
   assertNotContains(desktopTargetHtml, 'move rows before choosing', 'Unreachable desktop target should not imply Move Row solves current back-row reach rules');
   const mobileTargetHtml = App.renderMobileUnitChip(enemy, 0, 'creature');
-  assertContains(mobileTargetHtml, 'data-selection-state="blocked"', 'Protected mobile target should expose blocked target metadata');
-  assertContains(mobileTargetHtml, 'front-row blockers protect the back row', 'Mobile target should explain protected back-row failure');
+  assertContains(mobileTargetHtml, 'data-selection-state="available"', 'Protected mobile target should remain available as an attempt');
+  assertContains(mobileTargetHtml, 'front row closes ranks', 'Mobile target should preview protected back-row failure');
   assertNotContains(mobileTargetHtml, 'move rows before choosing', 'Unreachable mobile target should not imply Move Row solves current back-row reach rules');
   App.updateLanguage('es');
   const command = App._buildPanelInteractionCommand({
@@ -16381,9 +16762,13 @@ test('Melee combat targeting blocks protected back rows and allows exposed back 
     constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
   });
   const valid = App._validateInteractionCommand(command);
-  assertEqual(valid.ok, false, 'Protected back-row physical target should fail validation before spending the turn');
-  assertEqual(valid.reason, 'cannot-reach', 'Protected back-row validation should fail with cannot-reach');
+  assertEqual(valid.ok, true, 'Protected back-row physical target should validate as a committed attempt');
+  assertEqual(App._dispatchInteractionCommand(command), true, 'Protected back-row attempt should resolve as an in-world failure');
   assertEqual(enemy.CPun, 100, 'Unreachable target should not take damage');
+  assertEqual(advanced, 1, 'Unreachable attempt should spend the actor turn');
+  assertEqual(App.combatCorrectionMessage, null, 'Unreachable attempt should not leave a UI correction error');
+  assertEqual(App.latestSceneBeat.resultKind, 'failure', 'Unreachable attempt should fail in the Scene Feed');
+  assertEqual(App.latestSceneBeat.tags.includes('cannot-reach'), true, 'Unreachable attempt should retain its reach-failure semantics');
   blocker.CPun = 0;
   App.updateLanguage('en');
   const exposed = App._buildPanelInteractionCommand({
@@ -16418,10 +16803,10 @@ test('Intent reach profiles separate social ranged flying anti-flying and contac
   App.executeActionAgainstTarget('flirt', ground, backline);
   assertContains(App.lastCombatActionResult.result, 'talk', 'Cross-row Talk should resolve normally');
   assertEqual(App._combatReachResult(ground, backline, 'fuck').canSucceed, false, 'Play/Seduce should use contact-social reach by default');
-  assertContains(App._combatReachFailureText([ground], backline, 'fuck', App._combatReachResult(ground, backline, 'fuck')), 'close contact cannot reach a protected back-row target', 'Contact-social failure should explain protected back-row contact');
+  assertContains(App._combatReachFailureText([ground], backline, 'fuck', App._combatReachResult(ground, backline, 'fuck')), 'front row blocks every path to close contact', 'Contact-social failure should explain protected back-row contact');
 
   App.executeActionAgainstTarget('feast', ground, backline);
-  assertContains(App.lastCombatActionResult.result, 'close contact cannot reach a protected back-row target', 'Feast should use a close/contact profile and respect front-row blockers');
+  assertContains(App.lastCombatActionResult.result, 'front row blocks every path to close contact', 'Feast should use a close/contact profile and respect front-row blockers');
   frontTarget.CPun = 0;
   flyingTarget.CPun = 0;
   assertEqual(App._combatReachResult(ground, backline, 'feast').canSucceed, true, 'Feast/contact should reach an exposed back-row target when no front blockers remain');
@@ -16457,7 +16842,7 @@ test('Intent reach profiles separate social ranged flying anti-flying and contac
   flyingTarget.CPun = 100;
   flyingTarget.combatRow = 'back';
   assertEqual(App._combatReachResult(anti, flyingTarget, 'fight').canSucceed, false, 'Anti-flying should not bypass protected back-row blockers by itself');
-  assertContains(App._combatReachFailureText([anti], flyingTarget, 'fight', App._combatReachResult(anti, flyingTarget, 'fight')), 'front-row blockers protect the back row', 'Anti-flying protected-row failure should name blockers');
+  assertContains(App._combatReachFailureText([anti], flyingTarget, 'fight', App._combatReachResult(anti, flyingTarget, 'fight')), 'front row closes ranks', 'Anti-flying protected-row failure should name blockers');
   flyingTarget.combatRow = 'front';
 
   flyingTarget.CPun = 100;
@@ -16537,7 +16922,7 @@ test('Combat ranged back-row traits outrank generic tags and emit an intro beat'
   assertContains(detailed, 'social intents', 'Detailed card should suggest non-physical answers');
 });
 
-test('Combat group planner blocks protected targets and delayed groups can fizzle through Scene Feed', () => {
+test('Combat group planner commits protected attempts that fail through Scene Feed', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'planner-row-player', Figh: 30, combatRow: 'front' });
   const ally = makeUnit('Ally', { id: 'planner-row-ally', Figh: 30, combatRow: 'front' });
@@ -16566,27 +16951,19 @@ test('Combat group planner blocks protected targets and delayed groups can fizzl
   App.combatTargetIds = [App._unitSelectionId(enemy)];
   App.nextTurn = function() { this._plannerNextTurn = (this._plannerNextTurn || 0) + 1; };
 
-  assertEqual(App.confirmCombatPlan(), false, 'Protected group physical target should not queue');
-  assertEqual(App.combatState.syncActions.length, 0, 'Blocked group action should not create a queued sync action');
-  assertContains(App.combatCorrectionMessage?.text || '', 'front-row blockers protect the back row', 'Blocked group action should explain the protected row');
-  App.combatPlanSelection.pendingIntent = 'fuck';
-  assertEqual(App.confirmCombatPlan(), false, 'Protected group contact-social target should not queue');
-  assertEqual(App.combatState.syncActions.length, 0, 'Blocked contact-social group action should not create a queued sync action');
-  assertContains(App.combatCorrectionMessage?.text || '', 'close contact cannot reach a protected back-row target', 'Blocked contact-social group action should explain contact reach');
-  App.combatPlanSelection.pendingIntent = 'fight';
-  blocker.CPun = 0;
-  assertEqual(App.confirmCombatPlan(), true, 'Exposed back-row group plan should queue through existing slowest-participant plumbing');
-  assertEqual(App.combatState.syncActions.length, 1, 'Exposed group action should queue');
-  assertEqual(App.combatCorrectionMessage, null, 'Queued exposed plan should not leave invalid-command correction state');
-  blocker.CPun = 100;
+  assertEqual(App.confirmCombatPlan(), true, 'Protected group physical attempt should queue through group timing');
+  assertEqual(App.combatState.syncActions.length, 1, 'Committed protected group attempt should create a queued sync action');
+  assertEqual(App.combatCorrectionMessage, null, 'Committed protected plan should not leave invalid-command correction state');
   App._resolveSyncAction(App.combatState.syncActions[0]);
-  assertContains(App.latestSceneBeat.summary, 'Siren 1', 'Fizzling group reach should name the target in Scene Feed');
-  assertContains(App.latestSceneBeat.summary, 'front-row blockers protect the back row', 'Fizzling group reach should explain the row blocker');
+  assertContains(App.latestSceneBeat.summary, 'Siren 1', 'Failed group reach should name the target in Scene Feed');
+  assertContains(App.latestSceneBeat.summary, 'front row closes ranks', 'Failed group reach should explain the row blocker in-world');
+  assertEqual(App._plannerNextTurn, 2, 'Group commit and its failed resolution should preserve existing group timing');
   App.renderMobileCombatToolbelt();
-  assertContains(App.log[App.log.length - 1].text, 'front-row blockers protect the back row', 'Fizzling group action should remain in the durable log');
+  assertContains(App.log[App.log.length - 1].text, 'front row closes ranks', 'Failed group action should remain in the durable log without becoming an error');
+  assertEqual(App.log[App.log.length - 1].type, 'combat', 'Failed group attempt should remain combat history rather than an error entry');
 });
 
-test('Sync combat target selection blocks protected targets and resolves stale groups as fizzles', () => {
+test('Sync combat target selection previews and resolves protected attempts as failures', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-sync-reach', Figh: 30, combatRow: 'front' });
   const ally = makeUnit('Ally', { id: 'ally-sync-reach', Figh: 30, combatRow: 'front' });
@@ -16602,17 +16979,13 @@ test('Sync combat target selection blocks protected targets and resolves stale g
   App.nextTurn = function() { this._syncReachConsumedTurn = (this._syncReachConsumedTurn || 0) + 1; };
 
   App.renderCreatures();
-  assertEqual(App.canSelectCreatureTarget(enemy), false, 'Sync target selection should block protected physical targets');
-  assertContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Protected sync target should render as disabled');
-  assertContains(elements.get('enemies-content').innerHTML, 'Unavailable', 'Protected sync target should be labeled unavailable');
-  assertEqual(App.queueSyncAction('sync_fight', enemy), false, 'Protected sync target should not queue');
-  assertEqual(App.combatState.syncActions.length, 0, 'Blocked sync target should not create a queued sync action');
-  blocker.CPun = 0;
-  assertEqual(App.queueSyncAction('sync_fight', enemy), true, 'Exposed sync target should queue');
-  assertEqual(App.combatState.syncActions.length, 1, 'Exposed sync target should create a queued sync action');
-  blocker.CPun = 100;
+  assertEqual(App.canSelectCreatureTarget(enemy), true, 'Sync target selection should allow a protected physical attempt');
+  assertNotContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Protected sync target should remain enabled');
+  assertContains(elements.get('enemies-content').innerHTML, '>Try</button>', 'Protected sync target should be labeled as an attempt');
+  assertEqual(App.queueSyncAction('sync_fight', enemy), true, 'Protected sync target attempt should queue');
+  assertEqual(App.combatState.syncActions.length, 1, 'Committed sync attempt should create a queued action');
   App._resolveSyncAction(App.combatState.syncActions[0]);
-  assertContains(App.latestSceneBeat.summary, 'front-row blockers protect the back row', 'Stale queued sync should fizzle with a Scene Feed explanation');
+  assertContains(App.latestSceneBeat.summary, 'front row closes ranks', 'Protected queued sync should fail with a Scene Feed explanation');
 
   App.combatState.syncActions = [];
   blocker.CPun = 0;
@@ -16815,7 +17188,7 @@ test('Swamp terrain stuck outcome is deterministic by combat state', () => {
   assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Swamp terrain stuck should not depend on ambient Math.random');
 });
 
-test('Ground melee flying targets are blocked in selection and fail if resolved stale', () => {
+test('Ground melee flying targets remain selectable and fail through Scene Feed', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'ground-melee', Figh: 30 });
   const flyer = makeUnit('Flyer', { id: 'flying-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, flying: true, combatRow: 'front' });
@@ -16824,14 +17197,17 @@ test('Ground melee flying targets are blocked in selection and fail if resolved 
   App.creatures = [flyer];
   App.combatState.active = true;
   App.activeActor = player;
-  App.nextTurn = function() {};
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
   App.selectTarget('fight');
-  assertContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Known-impossible ground melee flying target should be blocked');
-  assertContains(elements.get('enemies-content').innerHTML, 'Unavailable', 'Ground melee flying target should be labeled unavailable');
-  assertContains(elements.get('enemies-content').innerHTML, 'out of reach in the air', 'Blocked flying target should explain the reach problem');
+  assertNotContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Known-impossible ground melee flying target should remain a valid attempt');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-selection-state="available"', 'Ground melee flying target should remain available as a warned attempt');
+  assertContains(elements.get('enemies-content').innerHTML, 'out of reach in the air', 'Flying target should preview the reach problem');
   App.executeActionAgainstTarget('fight', player, flyer);
   assertEqual(flyer.CPun, 100, 'Failed flying reach attempt should not damage the target');
   assertContains(App.latestSceneBeat.summary, 'out of reach in the air', 'Failed flying reach should explain the miss through Scene Feed');
+  assertEqual(advanced, 1, 'Failed flying reach attempt should spend the actor turn');
+  assertEqual(App.combatCorrectionMessage, null, 'Failed flying reach attempt should not become a UI error');
 });
 
 test('Obedient ally turns use the same panel target selection', () => {
@@ -19257,13 +19633,12 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobileEnemyChip, 'data-selection-control="combat-target"', 'Mobile combat target button should identify combat target selection separately from exploration marking');
   assertContains(mobileEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available"', 'Mobile combat target button should expose available combat-target mode');
   assertContains(mobileEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Mobile combat target button should identify the target slot');
-  assertContains(blockedEnemyCard, 'disabled aria-disabled="true"', 'Desktop known-impossible combat target should be disabled before spending a turn');
-  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="blocked"', 'Desktop difficult combat target should expose blocked combat-target state');
-  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="blocked" data-command-slot="target"', 'Desktop difficult combat target should identify the target slot');
-  assertContains(blockedEnemyCard, '>Unavailable</button>', 'Desktop difficult combat target should show blocked semantics');
-  assertContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile known-impossible combat target should be disabled before spending a turn');
-  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked"', 'Mobile difficult combat target should expose blocked combat-target state');
-  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked" data-command-slot="target"', 'Mobile difficult combat target should identify the target slot');
+  assertNotContains(blockedEnemyCard, 'disabled aria-disabled="true"', 'Desktop known-impossible combat target should remain selectable as an attempt');
+  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="available"', 'Desktop difficult combat target should expose available attempt state');
+  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Desktop difficult combat target should identify the target slot');
+  assertNotContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile known-impossible combat target should remain selectable as an attempt');
+  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available"', 'Mobile difficult combat target should expose available attempt state');
+  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Mobile difficult combat target should identify the target slot');
   assertContains(mobileBlockedEnemyChip, 'stays out of reach in the air', 'Mobile difficult combat target should keep the reach warning available to assistive tech');
   assertNotContains(enemyCard, 'data-selection-control="target" aria-pressed', 'Combat target picking should not present itself as exploration target marking');
   assertNotContains(enemyCard, 'data-selection-mode="mark-target"', 'Combat target picking should not reuse exploration mark-target mode');
@@ -20271,7 +20646,7 @@ test('Desktop Scene Feed uses one canonical latest slot in exploration and comba
   assertNotContains(combatSceneText, 'desktop-story-latest', 'Desktop combat should not render the retired legacy latest target');
 });
 
-test('Scene Feed groups combat rounds newest-first while preserving causal order', () => {
+test('Scene Feed groups combat rounds newest-first with newest beats first inside each round', () => {
   const { App, elements } = loadAppForCombat();
   const you = makeUnit('You', { id: 'you-1' });
   const wolfkin = makeUnit('Wolfkin', { id: 'wolfkin-1', disposition: App.DISPOSITION.ENEMY });
@@ -20291,12 +20666,12 @@ test('Scene Feed groups combat rounds newest-first while preserving causal order
   assertEqual(desktop, mobile, 'Desktop and mobile should render the same Scene Feed stream contract');
   assertEqual((desktop.match(/class="scene-exchange-group/g) || []).length, 2, 'Two combat rounds should render as two exchange groups');
   assert(desktop.indexOf('data-scene-exchange-id="combat-round-2"') < desktop.indexOf('data-scene-exchange-id="combat-round-1"'), 'Newest round should render above the older round');
-  assert(desktop.indexOf('Second round begins.') < desktop.indexOf('Second round answers.'), 'Beats inside a round should remain chronological');
+  assert(desktop.indexOf('Second round answers.') < desktop.indexOf('Second round begins.'), 'Newest beat inside a round should render above older beats');
 
   App.openSceneFeed();
   const sheet = elements.get('story-sheet-list').innerHTML;
   assert(sheet.indexOf('Round 2') < sheet.indexOf('Round 1'), 'Expanded Scene Feed should use the same newest-first exchange order');
-  assert(sheet.indexOf('Second round begins.') < sheet.indexOf('Second round answers.'), 'Expanded exchange details should remain chronological');
+  assert(sheet.indexOf('Second round answers.') < sheet.indexOf('Second round begins.'), 'Expanded exchange details should show newest beats first inside the round');
   App.closeSceneFeed();
 });
 
@@ -20377,7 +20752,7 @@ test('Control model records accepted mechanics decisions', () => {
   const controlModel = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'control-model.md'), 'utf8');
   const nextObjectives = fs.readFileSync(NEXT_OBJECTIVES, 'utf8');
   assertContains(controlModel, '## Accepted Mechanics Decisions', 'Control model should record settled mechanics decisions');
-  assertContains(controlModel, 'Known impossible target selection should block and explain the issue before spending the turn', 'Known-impossible physical selection should be documented as blocked');
+  assertContains(controlModel, 'A valid actor may still commit a tactically impossible attempt', 'Known-impossible physical selection should be documented as an in-world attempt');
   assertContains(controlModel, 'Nonviolent victory should grant equivalent baseline XP to combat victory', 'Nonviolent victory XP parity should be accepted doctrine');
   assertContains(controlModel, 'Perks are a feature layer, not a prerequisite for core mechanics', 'Perks should be documented as a feature layer');
   assertContains(controlModel, 'Party size uses a hard default cap', 'Party cap doctrine should be documented');
@@ -20518,7 +20893,7 @@ test('Scene Beat DSL coalesces group and multi-target actions into one beat with
   assertEqual(event.subEvents.some(subEvent => subEvent.targetName === 'Bunnyfolk'), true, 'Sub-events should include second target');
 });
 
-test('Blocked combat reach emits a failure Scene Beat with row guidance', () => {
+test('Committed combat reach failure emits a Scene Beat with row guidance', () => {
   const { App, elements } = loadAppForCombat();
   const mousefolk = makeUnit('Mousefolk', { id: 'mouse-1', Figh: 20, combatRow: 'front' });
   const siren = makeUnit('Siren 1', { id: 'siren-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, ranged: true, combatRow: 'back' });
@@ -20535,7 +20910,8 @@ test('Blocked combat reach emits a failure Scene Beat with row guidance', () => 
     turnQueue: [{ unit: mousefolk, initiative: 20 }, { unit: siren, initiative: 10 }],
     syncActions: []
   };
-  App.nextTurn = () => {};
+  let advanced = 0;
+  App.nextTurn = () => { advanced++; };
 
   const resolved = App._dispatchInteractionCommand(App._buildPanelInteractionCommand({
     mode: 'combat',
@@ -20553,18 +20929,21 @@ test('Blocked combat reach emits a failure Scene Beat with row guidance', () => 
     }
   }));
 
-  assertEqual(resolved, false, 'Known-impossible protected physical reach should be blocked before spending the turn');
-  assertEqual(siren.CPun, 100, 'Blocked reach attempt should not damage the target');
-  assertEqual(App.storyEvents.length, 1, 'Blocked reach should emit one failure Scene Beat');
-  assertEqual(App.storyEvents[0].resultKind, 'failure', 'Blocked reach Scene Beat should be marked as failure');
-  assertContains(App.storyEvents[0].summary, 'front-row blockers protect the back row', 'Blocked reach Scene Beat should explain the row problem');
-  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'front-row blockers protect the back row', 'Desktop context Scene Feed should show the reach failure');
+  assertEqual(resolved, true, 'Known-impossible protected physical reach should resolve as a committed attempt');
+  assertEqual(advanced, 1, 'Committed reach failure should spend the actor turn');
+  assertEqual(siren.CPun, 100, 'Failed reach attempt should not damage the target');
+  assertEqual(App.storyEvents.length, 1, 'Failed reach should emit one failure Scene Beat');
+  assertEqual(App.storyEvents[0].resultKind, 'failure', 'Failed reach Scene Beat should be marked as failure');
+  assertContains(App.storyEvents[0].summary, 'front row closes ranks', 'Failed reach Scene Beat should explain the row problem in-world');
+  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'front row closes ranks', 'Desktop context Scene Feed should show the reach failure');
   assertEqual(elements.get('desktop-scene-feed-latest').getAttribute('data-scene-result'), 'failure', 'Latest Scene Feed slot should expose failure result metadata');
   assertEqual(elements.get('desktop-scene-feed-latest').getAttribute('data-scene-importance'), 'hint', 'Cannot-reach Scene Beat should expose hint-level emphasis');
-  assertContains(elements.get('log-content').innerHTML, 'front-row blockers protect the back row', 'Activity Log should still retain the technical failure history');
+  assertContains(elements.get('log-content').innerHTML, 'front row closes ranks', 'Activity Log should retain the in-world failure history');
+  assertEqual(App.log[App.log.length - 1].type, 'combat', 'Failed attempt should be combat history rather than an error');
+  assertEqual(App.combatCorrectionMessage, null, 'Failed attempt should not leave UI error state');
 });
 
-test('Direct stale combat resolution re-runs reach preflight without consuming the turn', () => {
+test('Direct stale combat resolution commits the failed attempt and consumes the turn', () => {
   const { App } = loadAppForCombat();
   const player = makeUnit('You', { id: 'stale-reach-player', Figh: 20, combatRow: 'back' });
   const target = makeUnit('Front Target', { id: 'stale-reach-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
@@ -20584,10 +20963,12 @@ test('Direct stale combat resolution re-runs reach preflight without consuming t
   App.nextTurn = function() { advanced++; };
 
   const resolved = App.executeActionAgainstTarget('fight', player, target);
-  assertEqual(resolved, false, 'Stale direct resolution should return to planning when reach is impossible');
-  assertEqual(advanced, 0, 'Impossible direct resolution should not consume the actor turn');
+  assertEqual(resolved, true, 'Stale direct resolution should resolve as an in-world failed attempt');
+  assertEqual(advanced, 1, 'Impossible direct attempt should consume the actor turn');
   assertEqual(target.CPun, 100, 'Impossible direct resolution should not mutate the target');
-  assertEqual(App.combatCorrectionMessage?.reason, 'cannot-reach', 'Impossible direct resolution should expose a reach correction');
+  assertEqual(App.combatCorrectionMessage, null, 'Impossible direct resolution should not expose a reach correction error');
+  assertEqual(App.lastCombatActionResult?.attempted, true, 'Impossible direct resolution should record the committed attempt');
+  assertContains(App.latestSceneBeat.summary, 'ordinary melee needs the front row', 'Impossible direct resolution should explain the failure through Scene Feed');
 });
 
 test('Tile-entry observation emits one coalesced Scene Beat without activity log duplication', () => {
@@ -23780,7 +24161,9 @@ test('Mobile map pinch changes zoom and applies transform', () => {
 });
 
 test('Mobile combat unit strips own horizontal touch scrolling', () => {
-  assertContains(template, '.mobile-unit-strip {\n                display: flex;\n                gap: 8px;\n                overflow-x: auto;', 'Mobile unit strips should remain the horizontal scroll containers');
+  assertContains(template, '.mobile-unit-strip {\n                display: flex;\n                gap: 8px;\n                width: 100%;\n                max-width: 100%;\n                overflow-x: auto;', 'Mobile unit strips should remain viewport-constrained horizontal scroll containers');
+  assertContains(template, '.mobile-unit-strips {\n                order: 5;\n                display: grid;', 'Mobile unit rail wrappers should retain their shared layout container');
+  assertContains(template, 'max-width: 100%;\n                min-width: 0;', 'Mobile unit rail wrappers should not expand to their cards full intrinsic width');
   assertContains(template, '.mobile-unit-strip > *,\n            .mobile-unit-strip .action-btn,\n            .mobile-unit-strip button {\n                touch-action: pan-x;', 'Mobile unit strip children should permit horizontal pan gestures over cards and controls');
   assertContains(template, '.mobile-actor-belt > *,\n            .mobile-actor-belt .action-btn,\n            .mobile-actor-belt button,', 'Mobile actor picker belt children should permit horizontal pan gestures');
   assertContains(template, '.mobile-target-picker-belt > *,\n            .mobile-target-picker-belt .action-btn,\n            .mobile-target-picker-belt button {', 'Mobile target picker belt children should permit horizontal pan gestures');
@@ -23789,6 +24172,10 @@ test('Mobile combat unit strips own horizontal touch scrolling', () => {
   assertContains(mobileGesturesContent, "event.target?.closest?.(this.unitStripPanSelector)", 'Strip pan support should delegate from any touched child to the nearest strip');
   assertContains(mobileGesturesContent, "strip.dataset.unitStripPanBound === 'true'", 'Strip pan support should avoid duplicate listeners on rerendered rails');
   assertContains(mobileGesturesContent, "strip.addEventListener('touchmove'", 'Touchmove handling should be scoped to each horizontal rail');
+  assertContains(mobileGesturesContent, "strip.addEventListener('pointerdown'", 'Horizontal rails should support pointer drags in desktop mobile emulation and modern touch browsers');
+  assertContains(mobileGesturesContent, "strip.addEventListener('pointermove'", 'Pointer movement should directly pan overflowing mobile rails');
+  assertContains(mobileGesturesContent, '_mobileUnitStripSuppressClickUntil', 'A completed rail drag should suppress the synthetic card click that follows touch release');
+  assertContains(mobileGesturesContent, "strip.addEventListener('click', event =>", 'Rail click suppression should run before nested card controls after a drag');
   assertContains(mobileGesturesContent, 'pan.strip.scrollLeft = pan.scrollLeft - dx', 'Horizontal touch moves should scroll the touched unit strip directly');
   assertContains(mobileGesturesContent, 'this.cancelCreaturePress(app)', 'Horizontal strip pans should cancel creature long-press timers');
   assertContains(mobileGesturesContent, 'this.cancelPartyPress(app)', 'Horizontal strip pans should cancel party long-press timers');
@@ -24019,6 +24406,207 @@ test('Asset Bundle V1 normalizes relative resources and rejects unsafe fallback 
   rejected = false;
   try { YAW_ASSET_BUNDLE_V1.normalizePackage(insecure, { sourceUrl: 'https://packs.example/bundles/portraits.json' }); } catch (error) { rejected = error.code === 'insecure_url'; }
   assert(rejected, 'Non-loopback plaintext resource URIs should reject during review');
+});
+
+test('Tileset Pack V1 validates code-free atlas geometry, transforms, coverage, and fallbacks', () => {
+  assertContains(buildContent, "'src/core/tileset-pack-v1.js'", 'Tileset Pack V1 should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/asset-bundle-v1.js'") < buildContent.indexOf("'src/core/tileset-pack-v1.js'"), 'Tileset Pack should load after the generic asset bundle envelope');
+  assert(buildContent.indexOf("'src/core/tileset-pack-v1.js'") < buildContent.indexOf("'src/core/module-system.js'"), 'Tileset Pack should validate before module installation and activation');
+  const { YAW_ASSET_BUNDLE_V1, YAW_TILESET_PACK_V1 } = loadMediaSystemForTest();
+  const hash = 'b'.repeat(64);
+  const packageData = {
+    packageType: 'yaw-asset-bundle',
+    packageVersion: 1,
+    bundle: {
+      id: 'tiles.standard',
+      targetModuleId: 'tiles_mod',
+      name: 'Standard Tiles',
+      version: '1.0.0',
+      license: 'CC0-1.0',
+      presentations: [{
+        type: 'yaw-tileset-pack',
+        version: 1,
+        id: 'tiles.standard',
+        name: 'Standard Tiles',
+        nativeTileSize: 128,
+        scaling: 'smooth',
+        atlases: [{ id: 'main', resourceId: 'atlas.main' }],
+        tiles: {
+          'terrain-grove': {
+            layers: [{ atlasId: 'main', rect: { x: 0, y: 0, width: 128, height: 128 }, slot: 'base' }]
+          },
+          'route-road-vertical': {
+            fallback: 'terrain-grove',
+            layers: [{ atlasId: 'main', rect: { x: 128, y: 0, width: 128, height: 128 }, slot: 'route', transform: { rotate: 90, flipX: true } }]
+          }
+        }
+      }],
+      resources: [{
+        id: 'atlas.main', uri: './tiles.webp', hash, mimeType: 'image/webp', byteLength: 64,
+        width: 256, height: 128, role: 'tileset-atlas'
+      }]
+    }
+  };
+  const normalizedBundle = YAW_ASSET_BUNDLE_V1.normalizePackage(packageData, { sourceUrl: 'https://packs.example/tiles/bundle.json' });
+  const pack = YAW_TILESET_PACK_V1.normalizeBundle(normalizedBundle, { requiredKeys: ['terrain-grove', 'terrain-water'] })[0];
+  const MODULE_SYSTEM = loadModuleSystemForTest({ assetBundleV1: YAW_ASSET_BUNDLE_V1, tilesetPackV1: YAW_TILESET_PACK_V1 });
+  const reviewedBundle = MODULE_SYSTEM._normalizeAssetBundlePackage(packageData, 'https://packs.example/tiles/bundle.json');
+  assertEqual(reviewedBundle.bundle.presentations[0].tiles['route-road-vertical'].layers[0].transform.rotate, 90, 'Module review should run Tileset Pack normalization before any resource download');
+  assertEqual(pack.nativeTileSize.width, 128, 'A square native tile size should normalize to width');
+  assertEqual(pack.nativeTileSize.height, 128, 'A square native tile size should normalize to height');
+  assertEqual(pack.tiles['route-road-vertical'].layers[0].transform.rotate, 90, 'Right-angle transforms should remain explicit');
+  assertEqual(pack.tiles['route-road-vertical'].layers[0].slot, 'route', 'Presentation layer slots should remain semantic');
+  assertEqual(pack.coverage.missingRequired[0], 'terrain-water', 'Review should report required semantic keys that will use fallback');
+
+  const outOfBounds = structuredClone(packageData);
+  outOfBounds.bundle.presentations[0].tiles['terrain-grove'].layers[0].rect.width = 257;
+  let rejected = false;
+  try {
+    YAW_TILESET_PACK_V1.normalizeBundle(YAW_ASSET_BUNDLE_V1.normalizePackage(outOfBounds, { sourceUrl: 'https://packs.example/tiles/bundle.json' }));
+  } catch (error) {
+    rejected = error.code === 'invalid_tileset_pack' || error.code === 'tileset_rect_out_of_bounds';
+  }
+  assert(rejected, 'Atlas rectangles outside declared resource dimensions should reject before download');
+
+  const badRotation = structuredClone(packageData);
+  badRotation.bundle.presentations[0].tiles['terrain-grove'].layers[0].transform = { rotate: 45 };
+  rejected = false;
+  try {
+    YAW_TILESET_PACK_V1.normalizeBundle(YAW_ASSET_BUNDLE_V1.normalizePackage(badRotation, { sourceUrl: 'https://packs.example/tiles/bundle.json' }));
+  } catch (error) {
+    rejected = error.code === 'invalid_tileset_transform';
+  }
+  assert(rejected, 'Arbitrary rotation should reject instead of reaching CSS or canvas');
+
+  const cyclic = structuredClone(packageData);
+  cyclic.bundle.presentations[0].tiles['terrain-grove'].fallback = 'route-road-vertical';
+  rejected = false;
+  try {
+    YAW_TILESET_PACK_V1.normalizeBundle(YAW_ASSET_BUNDLE_V1.normalizePackage(cyclic, { sourceUrl: 'https://packs.example/tiles/bundle.json' }));
+  } catch (error) {
+    rejected = error.code === 'tileset_fallback_cycle';
+  }
+  assert(rejected, 'Semantic tile fallback cycles should reject');
+
+  const ambiguous = structuredClone(packageData);
+  ambiguous.bundle.presentations.push(structuredClone(ambiguous.bundle.presentations[0]));
+  ambiguous.bundle.presentations[1].id = 'tiles.alternate';
+  rejected = false;
+  try {
+    YAW_TILESET_PACK_V1.normalizeBundle(YAW_ASSET_BUNDLE_V1.normalizePackage(ambiguous, { sourceUrl: 'https://packs.example/tiles/bundle.json' }));
+  } catch (error) {
+    rejected = error.code === 'invalid_tileset_pack' && error.message.includes('at most one');
+  }
+  assert(rejected, 'One asset bundle must not contain ambiguous competing Tileset Pack presentations');
+});
+
+test('Example Tileset Pack packages are valid URI-installable module and replacement fixtures', () => {
+  const fixtureRoot = path.join(__dirname, '..', '..', 'optional-mods', 'example-tileset-pack');
+  const modulePackage = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'you-are-wild-example-tileset.yawmod.json'), 'utf8'));
+  const initialPackage = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'bundle.json'), 'utf8'));
+  const replacementPackage = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'bundle-replacement.json'), 'utf8'));
+  const media = loadMediaSystemForTest();
+  const MODULE_SYSTEM = loadModuleSystemForTest({
+    assetBundleV1: media.YAW_ASSET_BUNDLE_V1,
+    tilesetPackV1: media.YAW_TILESET_PACK_V1
+  });
+  const normalizedModule = MODULE_SYSTEM._normalizeModulePackage(modulePackage);
+  assert(normalizedModule.manifest.permissions.includes('media:read'), 'Example target module should declare the media permission required by Tileset Pack activation');
+  const initial = MODULE_SYSTEM._normalizeAssetBundlePackage(initialPackage, 'http://127.0.0.1:3000/optional-mods/example-tileset-pack/bundle.json');
+  const replacement = MODULE_SYSTEM._normalizeAssetBundlePackage(replacementPackage, 'http://127.0.0.1:3000/optional-mods/example-tileset-pack/bundle-replacement.json');
+  assertEqual(initial.bundle.targetModuleId, normalizedModule.manifest.id, 'Example bundle should target its installable presentation module');
+  assertEqual(initial.bundle.resources[0].uri, 'http://127.0.0.1:3000/media/basic-tileset-overlays-v1.png', 'Example resource URI should resolve relative to the reviewed loopback manifest');
+  assertEqual(initial.bundle.presentations[0].tiles['state-current'].layers[0].rect.x, 627, 'Initial fixture should retain its reviewed partial override geometry');
+  assertEqual(replacement.bundle.version, '1.1.0', 'Replacement fixture should publish a newer auditable bundle version');
+  assertEqual(replacement.bundle.presentations[0].tiles['state-current'].layers[0].rect.x, 940, 'Replacement fixture should visibly change its current-position presentation');
+});
+
+asyncTest('Tileset runtime acquires atlas leases, composes semantic layers, restores candidates, and releases cleanly', async () => {
+  assertContains(buildContent, "'src/core/tileset-runtime.js'", 'Tileset runtime should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/tileset-pack-v1.js'") < buildContent.indexOf("'src/core/tileset-runtime.js'"), 'Tileset runtime should load after its validator');
+  assert(buildContent.indexOf("'src/core/tileset-runtime.js'") < buildContent.indexOf("'src/core/map-visuals.js'"), 'Tileset runtime should be ready before map presentation');
+  const { YAW_TILESET_RUNTIME } = loadMediaSystemForTest();
+  const releases = [];
+  const presentations = new Map();
+  const descriptors = new Map();
+  const makePresentation = (id, tileKey, slot) => ({
+    type: 'yaw-tileset-pack', version: 1, id, name: id, nativeTileSize: 128, scaling: 'pixelated',
+    atlases: [{ id: 'main', resourceId: 'atlas.main' }],
+    tiles: tileKey === 'terrain-grove'
+      ? {
+          [tileKey]: { layers: [{ atlasId: 'main', rect: { x: 0, y: 0, width: 128, height: 128 }, slot }] },
+          'terrain-forest': { fallback: 'terrain-grove' }
+        }
+      : { [tileKey]: { layers: [{ atlasId: 'main', rect: { x: 0, y: 0, width: 128, height: 128 }, slot }] } }
+  });
+  presentations.set('tiles-a', makePresentation('pack-a', 'terrain-grove', 'base'));
+  const packB = makePresentation('pack-b', 'route-road-vertical', 'route');
+  packB.tiles['terrain-water'] = { fallback: 'terrain-grove' };
+  presentations.set('tiles-b', packB);
+  for (const moduleId of presentations.keys()) {
+    descriptors.set(moduleId, {
+      id: 'atlas.main', hash: 'c'.repeat(64), mimeType: 'image/png', byteLength: 64,
+      width: 128, height: 128, role: 'tileset-atlas', license: 'CC0-1.0', provenance: {}, fallback: null, source: {}
+    });
+  }
+  let leaseSequence = 0;
+  const repository = {
+    async ownerMetadata(moduleId) { return { kind: 'asset_bundle_v1', presentations: [presentations.get(moduleId)] }; },
+    async listOwner(moduleId) { return [{ descriptor: descriptors.get(moduleId) }]; },
+    async acquire(moduleId, resourceId) { return { leaseId: `lease-${++leaseSequence}`, url: `blob:${moduleId}/${resourceId}` }; },
+    release(moduleId, leaseId) { releases.push([moduleId, leaseId]); return true; }
+  };
+  await YAW_TILESET_RUNTIME.activateModule('tiles-a', { repository, refresh: false });
+  let rendered = YAW_TILESET_RUNTIME.layersForVisual({ tilesetKey: 'terrain-grove', baseTilesetKey: 'terrain-grove', classes: '' });
+  assertEqual(rendered.layers.length, 1, 'Active pack should resolve its installed atlas layer synchronously');
+  assertEqual(rendered.layers[0].url, 'blob:tiles-a/atlas.main', 'Map rendering should consume a local lease URL, not the remote source URI');
+  assert(rendered.primaryRendered, 'Primary semantic coverage should allow the renderer to hide the emoji fallback');
+  rendered = YAW_TILESET_RUNTIME.layersForVisual({ tilesetKey: 'terrain-forest', baseTilesetKey: 'terrain-forest', classes: '' });
+  assertEqual(rendered.layers[0].semanticKey, 'terrain-forest', 'Fallback-only semantic aliases should resolve through a reusable atlas tile');
+
+  await YAW_TILESET_RUNTIME.activateModule('tiles-b', { repository, refresh: false });
+  assertEqual(YAW_TILESET_RUNTIME.status().packId, 'pack-b', 'The most recently activated enabled pack should become active');
+  rendered = YAW_TILESET_RUNTIME.layersForVisual({ tilesetKey: 'route-road-vertical', baseTilesetKey: 'terrain-grove', classes: '' });
+  assertEqual(rendered.layers.length, 2, 'A partial override should inherit missing base terrain from the prior enabled pack');
+  assertEqual(rendered.layers[0].slot, 'base', 'Inherited base terrain should remain below the active route override');
+  assertEqual(rendered.layers[0].url, 'blob:tiles-a/atlas.main', 'Inherited semantics should keep their owning pack lease');
+  assertEqual(rendered.layers[1].slot, 'route', 'The active pack should retain semantic layer ordering');
+  assertEqual(rendered.layers[1].url, 'blob:tiles-b/atlas.main', 'The active override should use its own pack lease');
+  rendered = YAW_TILESET_RUNTIME.layersForVisual({ tilesetKey: 'terrain-water', baseTilesetKey: 'terrain-water', classes: '' });
+  assertEqual(rendered.layers[0].url, 'blob:tiles-a/atlas.main', 'A fallback alias may inherit its target semantic from a lower-priority pack');
+  YAW_TILESET_RUNTIME.deactivateModule('tiles-b', { repository, refresh: false });
+  assertEqual(YAW_TILESET_RUNTIME.status().packId, 'pack-a', 'Disabling the active pack should restore the prior enabled candidate');
+  YAW_TILESET_RUNTIME.clear({ repository, refresh: false });
+  assertEqual(releases.length, 2, 'Every acquired atlas lease should release exactly once');
+  assertEqual(YAW_TILESET_RUNTIME.activeCandidate(), null, 'Clearing tilesets should return presentation to bundled fallback');
+});
+
+asyncTest('Module enable and unload activate tileset presentation before releasing media ownership', async () => {
+  const lifecycle = [];
+  const mediaRepository = {
+    attachDatabase() {}, setLogger() {}, async cleanup() {}, close() {},
+    releaseOwner(moduleId) { lifecycle.push(`release:${moduleId}`); },
+    diagnostic() {}, async removeOwner() {}, async installFromSource() {},
+    async listOwner() { return []; }, async metadata() { return null; },
+    async ownerMetadata() { return null; }, async repairOwner(ownerId) { return { ownerId, ok: true, missing: [] }; },
+    async acquire() { throw new Error('Media unavailable'); }, release() { return false; }
+  };
+  const tilesetRuntime = {
+    async activateModule(moduleId) { lifecycle.push(`activate:${moduleId}`); return { active: true }; },
+    deactivateModule(moduleId) { lifecycle.push(`deactivate:${moduleId}`); return true; }
+  };
+  const MODULE_SYSTEM = loadModuleSystemForTest({ mediaRepository, tilesetRuntime });
+  const module = {
+    id: 'tiles-module',
+    manifest: MODULE_SYSTEM._normalizeManifest({ id: 'tiles-module', name: 'Tiles Module', version: '1.0.0', permissions: ['media:read'] }),
+    code: '',
+    enabled: true
+  };
+  await MODULE_SYSTEM.loadModule(module);
+  assertEqual(lifecycle[0], 'activate:tiles-module', 'Enabling a module should activate its installed Tileset Pack presentation');
+  MODULE_SYSTEM.unloadModule(module.id);
+  assertEqual(lifecycle[1], 'deactivate:tiles-module', 'Disabling a module should release its atlas leases through the tileset runtime first');
+  assertEqual(lifecycle[2], 'release:tiles-module', 'Generic owner cleanup should run after Tileset Pack lease cleanup');
 });
 
 asyncTest('Asset Bundle V1 review, install, replacement, and removal are local and reference-safe', async () => {

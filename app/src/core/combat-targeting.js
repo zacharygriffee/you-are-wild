@@ -37,7 +37,7 @@ const YAW_COMBAT_TARGETING = {
             const actor = app.activeActor || app.player;
             if (app.targetSelection.action === 'scavenge') return app._canScavengeCorpse(unit);
             if (unit.CPun <= 0) return false;
-            return unit.disposition === app.DISPOSITION.ENEMY && Boolean(app._combatReachResult?.(actor, unit, app.targetSelection.action)?.canSucceed);
+            return unit.disposition === app.DISPOSITION.ENEMY && Boolean(app._combatReachResult?.(actor, unit, app.targetSelection.action)?.canAttempt);
         }
         if (unit.CPun <= 0 && !app._isCorpse(unit)) return false;
         return unit.disposition !== app.DISPOSITION.PARTY;
@@ -154,7 +154,7 @@ const YAW_COMBAT_TARGETING = {
         if (livingParticipants.length < 2) return false;
         const action = this.syncBaseAction(syncType);
         if (app._isReachSensitiveCombatAction?.(action)) {
-            return livingParticipants.every(unit => app._combatReachResult?.(unit, target, action)?.canSucceed);
+            return livingParticipants.every(unit => app._combatReachResult?.(unit, target, action)?.canAttempt);
         }
         return livingParticipants.every(unit => app._canAttemptCombatTarget(unit, target, action));
     },
@@ -197,6 +197,7 @@ const YAW_COMBAT_TARGETING = {
             const actors = syncActive
                 ? (app._syncParticipants || app._syncSelectedParticipants?.() || [])
                 : [app.activeActor || app.player].filter(Boolean);
+            if (this.reachWarning(app, actors, unit, effectiveAction)) return app._label('target.try', 'Try');
             return app._label('target.pick', 'Pick');
         }
         if (!unit) return app._label('target.pick', 'Pick');

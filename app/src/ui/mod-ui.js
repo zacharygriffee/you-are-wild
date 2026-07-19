@@ -134,6 +134,10 @@ const ModUI = {
 
     async renderAssetBundleReview(review, output) {
         const bundle = review.bundle;
+        const tileset = (bundle.presentations || []).find(presentation => presentation?.type === 'yaw-tileset-pack') || null;
+        const tilesetReview = tileset
+            ? `<dt>${this.escapeHtml(this.label('mod.assetPresentation', 'Presentation'))}</dt><dd>${this.escapeHtml(this.label('mod.assetTilesetPack', 'Tileset Pack V1'))}: ${this.escapeHtml(tileset.name || tileset.id)} • ${Object.keys(tileset.tiles || {}).length} ${this.escapeHtml(this.label('mod.assetTiles', 'tiles'))} • ${tileset.coverage?.missingRequired?.length || 0} ${this.escapeHtml(this.label('mod.assetFallbacks', 'fallbacks'))}</dd>`
+            : '';
         const targetModule = (await MODULE_SYSTEM.getAllModules()).find(module => module.id === bundle.targetModuleId) || null;
         const current = targetModule ? await MODULE_SYSTEM.getModuleAssetBundle(bundle.targetModuleId) : null;
         const integrityNote = review.integrityVerified
@@ -157,6 +161,7 @@ const ModUI = {
                     <dt>${this.escapeHtml(this.label('mod.remoteRating', 'Content rating'))}</dt><dd>${this.escapeHtml(bundle.contentRating)}</dd>
                     <dt>${this.escapeHtml(this.label('mod.assetResources', 'Resources'))}</dt><dd>${bundle.resourceCount} • ${bundle.totalByteLength} bytes</dd>
                     <dt>${this.escapeHtml(this.label('mod.assetRoles', 'Roles'))}</dt><dd>${this.escapeHtml(bundle.roles.join(', '))}</dd>
+                    ${tilesetReview}
                     <dt>${this.escapeHtml(this.label('mod.assetLicense', 'License'))}</dt><dd>${this.escapeHtml(bundle.license)}</dd>
                     <dt>SHA-256</dt><dd><code>${this.escapeHtml(review.integrity)}</code></dd>
                     <dt>${this.escapeHtml(this.label('mod.remoteSize', 'Manifest download'))}</dt><dd>${this.escapeHtml(String(review.byteLength))} bytes</dd>
@@ -481,13 +486,18 @@ const ModUI = {
                 ? `<details style="font-size:11px;color:var(--text-muted);margin-top:5px;"><summary>${this.escapeHtml(this.label('mod.remoteSource', 'Remote source'))}</summary><div style="overflow-wrap:anywhere;margin-top:4px;">${this.escapeHtml(mod.sourceUrl)}</div><div>SHA-256: <code>${this.escapeHtml(mod.integrity)}</code>${mod.integrityVerified ? ` • ${this.escapeHtml(this.label('mod.remotePinned', 'pin verified'))}` : ''}</div></details>`
                 : '';
             const bundle = bundlesByModule[mod.id];
+            const tileset = (bundle?.presentations || []).find(presentation => presentation?.type === 'yaw-tileset-pack') || null;
+            const tilesetStatus = typeof YAW_TILESET_RUNTIME !== 'undefined' ? YAW_TILESET_RUNTIME.status(mod.id) : null;
+            const tilesetDetails = tileset
+                ? `<div style="margin-top:4px;color:${tilesetStatus?.active ? 'var(--accent-primary)' : 'var(--text-muted)'};">${this.escapeHtml(this.label('mod.assetTilesetPack', 'Tileset Pack V1'))}: ${this.escapeHtml(tileset.name || tileset.id)} • ${tilesetStatus?.active ? this.escapeHtml(this.label('mod.assetTilesetActive', 'active')) : this.escapeHtml(this.label('mod.assetTilesetInactive', 'inactive'))} • ${Object.keys(tileset.tiles || {}).length} ${this.escapeHtml(this.label('mod.assetTiles', 'tiles'))} • ${tileset.coverage?.missingRequired?.length || 0} ${this.escapeHtml(this.label('mod.assetFallbacks', 'fallbacks'))}</div>`
+                : '';
             const bundleHealth = bundle?.health?.ok === false
                 ? `<div style="color:var(--accent-warning);margin-top:4px;">${this.escapeHtml(this.label('mod.assetStatusRepair', 'Status: repair needed ({missing} missing)', { missing: bundle.health.missing?.length || Math.max(0, bundle.health.expectedCount - bundle.health.catalogCount) }))}</div>`
                 : bundle
                     ? `<div style="color:var(--accent-primary);margin-top:4px;">${this.escapeHtml(this.label('mod.assetStatusReady', 'Status: verified locally'))}</div>`
                     : '';
             const bundleDetails = bundle
-                ? `<details style="font-size:11px;color:var(--text-muted);margin-top:5px;"><summary>${this.escapeHtml(this.label('mod.assetInstalledBundle', 'Installed asset bundle'))}: ${this.escapeHtml(bundle.name)} v${this.escapeHtml(bundle.version)}</summary><div style="margin-top:4px;">${bundle.resourceCount} ${this.escapeHtml(this.label('mod.assetResourcesLower', 'resources'))} • ${bundle.totalByteLength} bytes • ${this.escapeHtml(bundle.roles?.join(', ') || 'media')}</div><div>${this.escapeHtml(this.label('mod.assetLicense', 'License'))}: ${this.escapeHtml(bundle.license)}</div>${bundleHealth}<div style="overflow-wrap:anywhere;">${this.escapeHtml(bundle.sourceUrl)}</div><div>SHA-256: <code>${this.escapeHtml(bundle.integrity)}</code>${bundle.integrityVerified ? ` • ${this.escapeHtml(this.label('mod.remotePinned', 'pin verified'))}` : ''}</div></details>`
+                ? `<details style="font-size:11px;color:var(--text-muted);margin-top:5px;"><summary>${this.escapeHtml(this.label('mod.assetInstalledBundle', 'Installed asset bundle'))}: ${this.escapeHtml(bundle.name)} v${this.escapeHtml(bundle.version)}</summary><div style="margin-top:4px;">${bundle.resourceCount} ${this.escapeHtml(this.label('mod.assetResourcesLower', 'resources'))} • ${bundle.totalByteLength} bytes • ${this.escapeHtml(bundle.roles?.join(', ') || 'media')}</div><div>${this.escapeHtml(this.label('mod.assetLicense', 'License'))}: ${this.escapeHtml(bundle.license)}</div>${bundleHealth}${tilesetDetails}<div style="overflow-wrap:anywhere;">${this.escapeHtml(bundle.sourceUrl)}</div><div>SHA-256: <code>${this.escapeHtml(bundle.integrity)}</code>${bundle.integrityVerified ? ` • ${this.escapeHtml(this.label('mod.remotePinned', 'pin verified'))}` : ''}</div></details>`
                 : '';
             return `
             <div style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 

@@ -16,6 +16,14 @@ const YAW_LOCAL_MAP = {
         { dx: 1, dy: 1, key: 'se' }
     ],
 
+    targetFacingEdge(dx, dy) {
+        if (dx === 0 && dy === -1) return 'south';
+        if (dx === 1 && dy === 0) return 'west';
+        if (dx === 0 && dy === 1) return 'north';
+        if (dx === -1 && dy === 0) return 'east';
+        return '';
+    },
+
     render(app) {
         if (app.inInterior && app.activeInterior) {
             this.renderInterior(app);
@@ -116,7 +124,8 @@ const YAW_LOCAL_MAP = {
             : 'tabindex="-1"';
         const presence = key === 'center' ? this.centerPresenceHtml(app) : '';
         const stageSurface = key === 'center' ? 'current-tile' : 'traversal-cell';
-        return `<div class="${classes}" data-stage-surface="${stageSurface}" data-stage-layer="tile" data-stage-cell="${key}" data-mobile-play-cell="${key}" data-direction="${key}" ${app._mapTileAttrs(visual)} title="${escapedTitle}" aria-label="${escapedTitle}" ${movementAttrs}><span class="mobile-play-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span>${presence}</div>`;
+        const tileArt = app._mapTileArtHtml(visual);
+        return `<div class="${classes}" data-stage-surface="${stageSurface}" data-stage-layer="tile" data-stage-cell="${key}" data-mobile-play-cell="${key}" data-direction="${key}" ${app._mapTileAttrs(visual)} title="${escapedTitle}" aria-label="${escapedTitle}" ${movementAttrs}>${tileArt}<span class="mobile-play-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span>${presence}</div>`;
     },
 
     renderInterior(app) {
@@ -130,7 +139,14 @@ const YAW_LOCAL_MAP = {
             const isCenter = cell.key === 'center';
             const traversal = isCenter ? null : app._traversalDecision(cell.dx, cell.dy);
             const moveable = Boolean(room) && Boolean(traversal?.allowed);
-            const visual = app._interiorTileVisual(room);
+            const blockedEdge = !isCenter && traversal && !traversal.allowed ? this.targetFacingEdge(cell.dx, cell.dy) : '';
+            const visual = app._interiorTileVisual(room, {
+                x: tx,
+                y: ty,
+                isCurrent: isCenter,
+                blockedEdges: blockedEdge ? [blockedEdge] : [],
+                roomResolver: (x, y) => app.activeInterior.tiles[`${x},${y}`] || null
+            });
             let classes = 'map-tile mobile-play-cell';
             if (isCenter) classes += ' center';
             else if (room?.explored) classes += ` explored${moveable ? ' moveable' : ' blocked'}`;
@@ -170,6 +186,9 @@ const YAW_LOCAL_MAP = {
             const tile = (isVisible && (isExplored || !isCenter)) || isCenter ? app.getTile(tx, ty) : null;
             const visual = app._mapTileVisual(tile, {
                 isCurrent: isCenter,
+                blockedEdges: !isCenter && traversal && !traversal.allowed && this.targetFacingEdge(cell.dx, cell.dy)
+                    ? [this.targetFacingEdge(cell.dx, cell.dy)]
+                    : [],
                 neighborResolver: (nx, ny) => {
                     const vx = nx - cx;
                     const vy = ny - cy;

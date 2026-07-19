@@ -14206,7 +14206,9 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   App.worldMap = new Map([
     ['0,0', forestRoad],
     ['1,0', waterBridge],
-    ['0,1', campTile]
+    ['0,1', campTile],
+    ['0,-1', { ...campTile, x: 0, y: -1, structure: null }],
+    ['-1,0', { ...campTile, x: -1, y: 0, structure: null }]
   ]);
   App.exploredTiles = new Set(['0,0', '1,0', '0,1']);
   App.renderMap();
@@ -14265,6 +14267,59 @@ test('Map route visuals infer corners and intersections from known neighbors', (
   App.renderLargeMap();
   assertContains(elements.get('large-map').innerHTML, 'data-route-shape="corner-ne"', 'Rendered large map should expose inferred corner route shape from known tiles');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-road-corner-ne"', 'Rendered large map should expose inferred corner tileset key from known tiles');
+});
+
+test('Touching road segments merge visually while bridges preserve their axis', () => {
+  const { App } = loadAppForCombat();
+  const road = (x, y, id, connections = []) => ({
+    x,
+    y,
+    biome: 'grove',
+    baseBiome: 'grove',
+    derivedBiome: 'grove',
+    explored: true,
+    creatures: [],
+    overlays: { road: { id, direction: 'north-south', connections } }
+  });
+  const center = road(0, 0, 'road-a', ['north', 'south']);
+  const east = road(1, 0, 'road-b', ['north', 'south']);
+  const north = road(0, -1, 'road-a', ['south']);
+  const south = road(0, 1, 'road-a', ['north']);
+  const tiles = new Map([
+    ['0,0', center],
+    ['1,0', east],
+    ['0,-1', north],
+    ['0,1', south]
+  ]);
+  const resolver = (x, y) => tiles.get(`${x},${y}`) || null;
+  const merged = App._mapTileVisual(center, { neighborResolver: resolver });
+  assertEqual(merged.routeShape, 't-east', 'Touching generated road segments should read as one continuous junction');
+  assertEqual(merged.tilesetKey, 'route-road-t-east', 'Merged road segments should select the matching T-junction art');
+
+  tiles.set('1,0', {
+    ...east,
+    overlays: {
+      road: east.overlays.road,
+      bridge: { direction: 'north-south', connections: ['north', 'south'] }
+    }
+  });
+  const constrained = App._mapTileVisual(center, { neighborResolver: resolver });
+  assertEqual(constrained.routeShape, 'vertical', 'A perpendicular bridge should not create a false road-to-bridge junction');
+
+  tiles.set('1,0', { ...east, water: true, biome: 'water', overlays: {} });
+  const pruned = App._mapTileVisual(center, { neighborResolver: resolver });
+  assertEqual(pruned.routeShape, 'vertical', 'A resolved non-route water tile should remove a stale explicit road seam');
+});
+
+test('Bundled roads share an exact midpoint and edge width across every topology', () => {
+  assertContains(templateContent, '--yaw-road-straight:', 'Bundled roads should define one deterministic straight-road geometry');
+  assertContains(templateContent, "d='M50 0V100'", 'Straight roads should cross both edges on the exact 50% centerline');
+  assertContains(templateContent, "d='M50 0V50H100'", 'Corner roads should turn through the exact tile center');
+  assertContains(templateContent, "d='M0 50H100M50 50V100'", 'T-junction roads should meet at the exact tile center');
+  assertContains(templateContent, "d='M50 0V100M0 50H100'", 'Intersections should cross on exact horizontal and vertical midpoints');
+  assertContains(templateContent, "stroke-width='44'", 'Every road topology should share the same outer edge width');
+  assertContains(templateContent, "stroke-width='32'", 'Every road topology should share the same travel-surface width');
+  assertContains(templateContent, '.yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"]', 'Road correction should remain scoped to the bundled pack');
 });
 
 test('Map route visuals use canonical directional T-junction tileset keys', () => {
@@ -14404,6 +14459,20 @@ test('Bundled building interior skin preserves mod semantics while composing roo
   assertContains(templateContent, '[data-interior-exit-direction="west"]', 'Building interior skin should paint an outward west exit threshold');
   assertContains(templateContent, '.yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"]', 'Bundled miniature corridor suppression should be scoped to the first-party pack');
   assertContains(templateContent, '[data-tileset-semantic-key^="interior-path-"]', 'Interior path semantic layers should remain addressable for replacement tileset packs');
+});
+
+test('Bundled cave and burrow corridors share exact midpoint geometry', () => {
+  assertContains(templateContent, 'Corridor Geometry V1', 'Template should identify the bundled corridor edge contract');
+  assertContains(templateContent, ':is([data-interior-theme="cave-network"], [data-interior-theme="burrow"])', 'Corridor correction should target organic route interiors without changing buildings');
+  assertContains(templateContent, '--yaw-corridor-isolated:', 'Organic interiors should provide a centered isolated chamber treatment');
+  assertContains(templateContent, '--yaw-corridor-straight:', 'Organic interiors should provide deterministic straight corridor geometry');
+  assertContains(templateContent, "d='M50 0V50H100'", 'Organic corridor corners should turn through the exact tile center');
+  assertContains(templateContent, "d='M0 50H100M50 50V100'", 'Organic corridor junctions should meet at exact horizontal and vertical midpoints');
+  assertContains(templateContent, '[data-tileset-semantic-key="interior-path-intersection"]', 'Organic corridor intersections should retain their stable semantic');
+  assertContains(templateContent, ').map-visual-interior-wall {', 'Organic interior gaps should have a dedicated negative-space surface');
+  assertContains(templateContent, 'background: #030405 !important;', 'Bundled organic wall gaps should render as a near-black void');
+  assertContains(templateContent, '[data-tileset-semantic-key^="interior-wall"]', 'Organic void styling should preserve addressable wall semantics');
+  assertContains(templateContent, '[data-tileset-semantic-key^="state-blocked"]', 'Organic void styling should preserve addressable blocked-state semantics');
 });
 
 test('Interior boundary visuals compose every adjacent room edge', () => {
@@ -14554,6 +14623,37 @@ test('Beach biome is derived only near deterministic water', () => {
   assert(inland.biome !== 'beach', 'Far-inland land should not classify as beach');
 });
 
+test('Resource sites compose a transparent marker over terrain and routes', () => {
+  const manifest = loadAssetManifestForTest();
+  const bundled = manifest.bundledTilesetPack();
+  const resourcePresentation = bundled.presentation.tiles['poi-resource-site'];
+  assertEqual(resourcePresentation.layers[0].atlasId, 'overlays', 'Bundled resource markers should use the transparent overlay atlas');
+  assertEqual(resourcePresentation.layers[0].slot, 'marker', 'Bundled resource markers should remain above terrain and route layers');
+  const { App } = loadAppForCombat();
+  const tile = {
+    x: 3,
+    y: 2,
+    biome: 'grove',
+    baseBiome: 'grove',
+    derivedBiome: 'grove',
+    overlays: {
+      road: { id: 'resource-road', connections: ['east'] },
+      poi: { id: 'resource-anchor', category: 'resourceSite', anchor: { x: 3, y: 2 } }
+    }
+  };
+  const visual = App._mapTileVisual(tile, { neighborResolver: () => null });
+  assert(visual.semanticKeys.includes('terrain-grove'), 'Resource sites should retain their underlying terrain semantic');
+  assert(visual.semanticKeys.includes('route-road-end-east'), 'Resource sites should retain a coincident route semantic');
+  assert(visual.semanticKeys.includes('poi-resource-site'), 'Resource sites should add a marker semantic independently of terrain and routes');
+  assertContains(visual.label, 'Resource Site', 'Resource-site map labels should explain the gold marker');
+});
+
+test('Bundled landmarks use a transparent marker without changing the pack seam', () => {
+  assertContains(templateContent, '[data-tileset-semantic-key="poi-landmark"]', 'Bundled landmark presentation should target the stable landmark semantic');
+  assertContains(templateContent, 'background-image: url("data:image/svg+xml,', 'Bundled landmarks should use a transparent code-native marker instead of the opaque atlas crop');
+  assertContains(templateContent, '.yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"]', 'Landmark correction should remain scoped to the first-party pack');
+});
+
 test('Terrain Transition V1 derives outer and diagonal inner shoreline corners', () => {
   const { App } = loadAppForCombat();
   const beach = { x: 0, y: 0, biome: 'beach', baseBiome: 'beach', derivedBiome: 'beach', overlays: {} };
@@ -14577,7 +14677,7 @@ test('Terrain Transition V1 derives outer and diagonal inner shoreline corners',
 });
 
 test('Bundled natural water suppresses literal wall art without removing blocked semantics', () => {
-  const template = fs.readFileSync(path.join(ROOT, 'template.html'), 'utf8');
+  const template = fs.readFileSync(TEMPLATE, 'utf8');
   assertContains(
     template,
     '[data-base-tileset-key="terrain-water"][data-map-kind="biome"]:is([data-blocked-reason="impassable"], [data-blocked-reason="capability"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"]',
@@ -14601,12 +14701,18 @@ test('Road and bridge overlays are deterministic constrained features', () => {
   let roadTile = null;
   let bridgeTile = null;
   let waterWithoutRoad = null;
-  for (let x = -140; x <= 140 && (!roadTile || !bridgeTile || !waterWithoutRoad); x++) {
-    for (let y = -140; y <= 140 && (!roadTile || !bridgeTile || !waterWithoutRoad); y++) {
+  let sampledWaterRoads = 0;
+  for (let x = -140; x <= 140 && (!roadTile || !bridgeTile || !waterWithoutRoad || sampledWaterRoads === 0); x++) {
+    for (let y = -140; y <= 140 && (!roadTile || !bridgeTile || !waterWithoutRoad || sampledWaterRoads === 0); y++) {
       const tile = App.getBaseTile(x, y);
       if (!roadTile && tile.overlays?.road) roadTile = tile;
       if (!bridgeTile && tile.overlays?.bridge) bridgeTile = tile;
       if (!waterWithoutRoad && tile.water && !tile.overlays?.road) waterWithoutRoad = tile;
+      if (tile.water && tile.overlays?.road) {
+        sampledWaterRoads += 1;
+        assert(tile.overlays.bridge, 'Every generated road over deep water should materialize as a valid bridge');
+        assertEqual(tile.traversal.passable, true, 'A retained water crossing should be traversable');
+      }
     }
   }
   assert(roadTile, 'Test seed should produce at least one deterministic road overlay');
@@ -14619,6 +14725,7 @@ test('Road and bridge overlays are deterministic constrained features', () => {
   assertEqual(bridgeTile.biome === 'bridge', false, 'Bridge should be an overlay, not a base biome replacement');
   assert(waterWithoutRoad, 'Test seed should produce a water tile without road overlay');
   assertEqual(Boolean(waterWithoutRoad.overlays?.bridge), false, 'Bridge should not appear without a road overlay');
+  assert(sampledWaterRoads > 0, 'Sampled routes should include at least one valid bridged water crossing');
 });
 
 test('Terrain traversal metadata defines conservative passability and route costs', () => {
@@ -14861,6 +14968,15 @@ test('POI budgets create stable spaced region candidates and route anchors', () 
   const tilePoi = WorldGen.getPoiForTile(seed, version, first.anchor.x, first.anchor.y);
   assert(tilePoi, 'Tile lookup should resolve deterministic POI candidate anchors');
   assertEqual(tilePoi.id, first.id, 'Tile POI lookup should return the matching candidate id');
+  const resource = candidatesA.find(candidate => candidate.category === 'resourceSite');
+  assert(resource, 'Deterministic region should provide a resource-site candidate');
+  const resourceFootprint = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      resourceFootprint.push(WorldGen.getPoiForTile(seed, version, resource.anchor.x + dx, resource.anchor.y + dy));
+    }
+  }
+  assertEqual(resourceFootprint.filter(poi => poi?.id === resource.id).length, 1, 'A resource site should expose one searchable anchor rather than a 3x3 marker and loot carpet');
 });
 
 test('Danger sites render one anchor while retaining bounded surrounding influence', () => {

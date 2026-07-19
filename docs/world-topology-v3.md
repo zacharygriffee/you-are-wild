@@ -5,7 +5,7 @@ Generator v3 separates surface terrain from enterable sites and gives every move
 ## Surface taxonomy
 
 - Region biomes remain surface terrain (`grove`, `forest`, `swamp`, `plains`, `jungle`, `beach`, `cliff`, and `water`).
-- `manor`, `dungeon`, and `cave` are interior themes or enterable structures in v3. Generator v1/v2 saves retain their legacy region catalog.
+- `manor`, `dungeon`, and `cave` are interior themes or enterable structures in v3. They cannot be selected as surface regions in a new v3 world. Generator v1/v2 saves retain their legacy region catalog, so those surface labels identify an older saved world rather than a current generation possibility.
 - Roads, bridges, points of interest, natural barriers, and structures are overlays. They do not replace the underlying biome.
 
 ## Traversal contract
@@ -24,7 +24,7 @@ Movement is cardinal only. `YAW_TRAVERSAL.resolve(app, dx, dy)` is authoritative
 }
 ```
 
-Generated roads and bridges expose reciprocal `connections` arrays. Bridges may only be entered or left along their declared axis. Natural elevation barriers expose blocked cardinal edges in `tile.overlays.barriers`. Water remains blocked unless a bridge or a party traversal capability makes it passable.
+Generated roads and bridges expose reciprocal `connections` arrays. Bridges may only be entered or left along their declared axis. A generated road candidate over deep water is discarded unless the complete span materializes as a valid bridge. Natural elevation barriers expose blocked cardinal edges in `tile.overlays.barriers`. Water remains blocked unless a bridge or a party traversal capability makes it passable.
 
 ## Interiors
 

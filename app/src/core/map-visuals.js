@@ -119,6 +119,16 @@ const YAW_MAP_VISUALS = {
         return Boolean(tile?.overlays?.road || tile?.overlays?.bridge);
     },
 
+    routeTileAcceptsEntry(tile, direction) {
+        if (!this.isRouteVisualTile(tile)) return false;
+        const bridgeConnections = tile?.overlays?.bridge?.connections;
+        if (Array.isArray(bridgeConnections)) return this.normalizedDirections(bridgeConnections).includes(direction);
+        const bridgeDirection = tile?.overlays?.bridge?.direction;
+        if (bridgeDirection === 'north-south') return direction === 'north' || direction === 'south';
+        if (bridgeDirection === 'east-west') return direction === 'east' || direction === 'west';
+        return true;
+    },
+
     shorelineEdges(tile, resolver = null) {
         return this.shorelineTopology(tile, resolver).edges;
     },
@@ -135,13 +145,25 @@ const YAW_MAP_VISUALS = {
 
     routeVisualShape(app, tile, resolver = null) {
         const fallback = tile?.overlays?.bridge?.direction || tile?.overlays?.road?.direction || 'east-west';
-        const explicit = tile?.overlays?.bridge?.connections || tile?.overlays?.road?.connections;
-        if (Array.isArray(explicit)) return this.connectionShape(explicit, 'end');
-        if (!tile || typeof resolver !== 'function' || !Number.isFinite(Number(tile.x)) || !Number.isFinite(Number(tile.y))) return fallback;
+        const bridgeConnections = tile?.overlays?.bridge?.connections;
+        if (Array.isArray(bridgeConnections)) return this.connectionShape(bridgeConnections, fallback);
+        if (!tile || typeof resolver !== 'function' || !Number.isFinite(Number(tile.x)) || !Number.isFinite(Number(tile.y))) {
+            const explicitRoadConnections = tile?.overlays?.road?.connections;
+            return Array.isArray(explicitRoadConnections) ? this.connectionShape(explicitRoadConnections, fallback) : fallback;
+        }
         const x = Number(tile.x);
         const y = Number(tile.y);
+        const explicitRoadConnections = this.normalizedDirections(tile?.overlays?.road?.connections || []);
         const connections = this.directions()
-            .filter(direction => this.isRouteVisualTile(resolver(x + direction.dx, y + direction.dy)))
+            .filter(direction => {
+                const neighbor = resolver(x + direction.dx, y + direction.dy);
+                // A null result means that surface is not currently known, so
+                // retain deterministic topology metadata. A resolved tile is
+                // authoritative and removes stale links into plain water or
+                // another non-route surface.
+                if (!neighbor) return explicitRoadConnections.includes(direction.id);
+                return this.routeTileAcceptsEntry(neighbor, direction.opposite);
+            })
             .map(direction => direction.id);
         return this.connectionShape(connections, fallback);
     },
@@ -172,9 +194,11 @@ const YAW_MAP_VISUALS = {
         const shorelineEdges = shoreline.edges;
         const shorelineCorners = shoreline.corners;
         let icon = biome.icon || '□';
+        let label = biome.name || biomeId;
         let tilesetKey = baseTilesetKey;
         let kind = 'biome';
         let routeShape = null;
+        let hasRoute = false;
         const classes = ['map-visual', `map-visual-${baseBiomeId}`];
         const semanticKeys = [baseTilesetKey];
         if (isBeach && biomeTilesetKey !== baseTilesetKey) semanticKeys.push(biomeTilesetKey);
@@ -190,18 +214,35 @@ const YAW_MAP_VISUALS = {
             icon = '🌉';
             kind = 'bridge';
             routeShape = direction;
+            hasRoute = true;
             classes.push('map-visual-bridge');
         } else if (tile.overlays?.road) {
             routeShape = this.routeVisualShape(app, tile, options.neighborResolver);
             tilesetKey = app.MAP_TILESET_KEYS.roads[routeShape] || app.MAP_TILESET_KEYS.roads[tile.overlays.road.direction] || 'route-road-horizontal';
             icon = '🛤️';
             kind = 'road';
+            hasRoute = true;
             classes.push('map-visual-road', `map-visual-route-${routeShape}`);
-        } else if (tile.overlays?.poi) {
+        }
+        if (hasRoute && !semanticKeys.includes(tilesetKey)) semanticKeys.push(tilesetKey);
+        if (tile.overlays?.poi) {
             const category = tile.overlays.poi.category || 'landmark';
-            tilesetKey = app.MAP_TILESET_KEYS.poi[category] || 'poi-landmark';
-            icon = '◆';
-            kind = 'poi';
+            const poiKey = app.MAP_TILESET_KEYS.poi[category] || 'poi-landmark';
+            const poiLabels = {
+                resourceSite: app._label('ui.poi.resourceSite', 'Resource Site'),
+                restSite: app._label('ui.poi.restSite', 'Rest Site'),
+                dangerSite: app._label('ui.poi.dangerSite', 'Danger Site'),
+                settlement: app._label('ui.poi.settlement', 'Settlement'),
+                landmark: app._label('ui.poi.landmark', 'Landmark'),
+                structure: app._label('ui.poi.structure', 'Structure')
+            };
+            if (!semanticKeys.includes(poiKey)) semanticKeys.push(poiKey);
+            label = `${poiLabels[category] || poiLabels.landmark} · ${label}`;
+            if (!hasRoute) {
+                tilesetKey = poiKey;
+                icon = category === 'resourceSite' ? '💰' : '◆';
+                kind = 'poi';
+            }
             classes.push('map-visual-poi');
         }
         if (tile.structure) {
@@ -258,7 +299,7 @@ const YAW_MAP_VISUALS = {
             immediateDanger,
             semanticKeys: [...new Set(semanticKeys)],
             classes: classes.join(' '),
-            label: biome.name || biomeId,
+            label,
             marker: options.questMarker || options.poi || null,
             hasPaintedAsset: Boolean(asset?.src),
             asset

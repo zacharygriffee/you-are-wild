@@ -107,14 +107,18 @@ doors, adjacent walls, and blocked edges expose cardinal keys such as
 edges, `data-interior-adjacent` carries every room-facing edge on a blocked
 boundary cell, and `data-interior-theme` distinguishes building, burrow, and
 cave-network presentation. Core interior grids remove their overworld gutters
-so edge-to-edge topology art composes as one plan; packs should draw route
-layers through the indicated cell edges and treat exits as localized markers.
+so edge-to-edge topology art composes as one plan. The first-party cave
+and burrow skin uses an exact 50% centerline and shared width across isolated,
+end, straight, corner, T-junction, and intersection variants; replacement
+packs continue to receive the underlying `interior-path-*` semantics and
+should draw route layers through the indicated cell edges while treating exits
+as localized markers.
 The first-party `yaw.default-basic-v1` skin currently composes building floors,
 walls, doorway gaps, and exit thresholds from that metadata and suppresses its
 own miniature path/door/exit atlas layers. Those layers are not removed from
 the DOM or semantic stack, and the suppression is pack-scoped, so an authored
-replacement pack can render them normally. Cave-network presentation remains
-independent.
+replacement pack can render them normally. Organic corridor presentation
+remains independent from the building-room skin.
 
 Coasts use a reusable `terrain-sand` base plus zero or more cardinal
 `shoreline-water-north|east|south|west` semantics. Outer joins use
@@ -138,6 +142,16 @@ anchor tile receives `poi-danger-site`; its bounded surrounding footprint uses
 threat on the tile. This prevents a regional encounter modifier from painting
 every affected cell as the same skull POI, while leaving each layer available
 to partial mod packs.
+
+Resource sites are also single anchors. `poi-resource-site` is a transparent
+marker layer above terrain and routes, and the same anchor owns the Search
+interaction and its consumed state. Neighboring cells do not repeat the marker
+or create additional searchable copies.
+
+`poi-landmark` follows the same marker-over-terrain rule. The bundled skin uses
+a restrained transparent tower badge because the original atlas cell included
+an opaque ground crop; replacement packs remain free to render that semantic
+through their own atlas layer.
 
 Enabled pack candidates are ordered by activation time. For each semantic
 key, the newest pack wins when it provides a renderable layer. A partial pack

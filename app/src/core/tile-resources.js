@@ -52,6 +52,7 @@ const YAW_TILE_RESOURCES = {
         }
         app.renderLog();
         app.renderExplorationActions();
+        app.renderCenterPresence?.();
         app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'quests', 'sceneFeed', 'activityLog'], 'search');
         app.autoSave();
     },

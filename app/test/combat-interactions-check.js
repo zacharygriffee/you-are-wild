@@ -2618,12 +2618,14 @@ async function runCenterResourceSearchFlow(page) {
     contextDescription: document.querySelector('#scene-description')?.textContent || '',
     desktopSearchVisible: Boolean(document.querySelector('#desktop-context-belt button[onclick*="App.search()"]')),
     mobileSearchVisible: Boolean(document.querySelector('#mobile-explore-actions button[onclick*="App.search()"]')),
+    resourcePresence: document.querySelector('#desktop-presence-rail [data-presence-ref^="poi:resourceSite:"]')?.textContent || '',
     centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert(state.contextTitle.includes('Grove') || state.contextTitle.includes('Road') || state.contextTitle.includes('Tile'), 'Center context should continue to own the current tile title');
   assert(state.contextDescription.includes('berry thicket'), 'Center context should describe the searchable resource tile');
   assert.strictEqual(state.desktopSearchVisible, true, 'Desktop context belt should expose Search before resource-site consumption');
   assert.strictEqual(state.mobileSearchVisible, true, 'Mobile location actions should expose Search before resource-site consumption');
+  assert(state.resourcePresence.includes('Resource Site') && state.resourcePresence.includes('Search available'), 'Current-tile presence should identify the resource site and advertise Search');
   assert.strictEqual(state.centerHasActorControls, false, 'Resource-site center context should not expose actor controls');
 
   await search.click();
@@ -2635,6 +2637,7 @@ async function runCenterResourceSearchFlow(page) {
     deltaSearched: App.getTileDelta(4, 0)?.resourceSearched === true,
     desktopSearchVisible: Boolean(document.querySelector('#desktop-context-belt button[onclick*="App.search()"]')),
     mobileSearchVisible: Boolean(document.querySelector('#mobile-explore-actions button[onclick*="App.search()"]')),
+    resourcePresence: document.querySelector('#desktop-presence-rail [data-presence-ref^="poi:resourceSite:"]')?.textContent || '',
     latestLog: App.log[App.log.length - 1]?.text || '',
     latestEvent: App.tileEvents[App.tileEvents.length - 1]?.text || '',
     centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
@@ -2645,6 +2648,7 @@ async function runCenterResourceSearchFlow(page) {
   assert.strictEqual(state.deltaSearched, true, 'Clicking Search should persist resource-site consumption as a tile delta');
   assert.strictEqual(state.desktopSearchVisible, false, 'Consumed resource sites should remove desktop Search');
   assert.strictEqual(state.mobileSearchVisible, false, 'Consumed resource sites should remove mobile Search');
+  assert(state.resourcePresence.includes('Already searched'), 'Consumed resource sites should remain identified instead of silently losing their interaction');
   assert(state.latestLog.includes('You found a '), 'Resource-site Search should report the found item in the log');
   assert(state.latestEvent.includes('You found a '), 'Resource-site Search should report the found item in the tile event feed');
   assert.strictEqual(state.centerHasActorControls, false, 'Resource-site Search should keep center free of actor controls after resolving');
@@ -4215,7 +4219,17 @@ async function runTilesetCrossSurfaceFlow(page) {
       x: 1, y: 0, biome: 'jungle', baseBiome: 'jungle', derivedBiome: 'jungle', displayBiome: 'jungle', explored: true,
       creatures: [], items: [], overlays: { road: { id: 'visual-road', direction: 'east-west', connections: ['west'] }, barriers: [] }
     };
-    App.worldMap = new Map([['0,0', road], ['1,0', east]]);
+    const quiet = (x, y) => ({
+      x, y, biome: 'grove', baseBiome: 'grove', derivedBiome: 'grove', displayBiome: 'grove', explored: true,
+      creatures: [], items: [], overlays: { barriers: [] }
+    });
+    App.worldMap = new Map([
+      ['0,0', road],
+      ['1,0', east],
+      ['0,-1', quiet(0, -1)],
+      ['0,1', quiet(0, 1)],
+      ['-1,0', quiet(-1, 0)]
+    ]);
     App.exploredTiles = new Set(['0,0', '1,0']);
     App.renderMap();
     App.renderLargeMap();

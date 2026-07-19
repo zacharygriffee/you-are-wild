@@ -820,12 +820,125 @@
             opacity: 0 !important;
         }
 
+        /* Corridor Geometry V1: cave networks and burrows retain an organic
+           dark-rock base, but their passable paths use the same exact edge
+           contract as roads. Every arm exits at 50% with one shared width;
+           manifest transforms provide the directional variants. */
+        :is([data-interior-theme="cave-network"], [data-interior-theme="burrow"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] {
+            --yaw-corridor-isolated: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='22' fill='%23090b0c'/%3E%3Ccircle cx='50' cy='50' r='19' fill='%23383e3b'/%3E%3Ccircle cx='50' cy='50' r='14' fill='%23798077'/%3E%3C/svg%3E");
+            --yaw-corridor-straight: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V100' fill='none' stroke='%23090b0c' stroke-width='44'/%3E%3Cpath d='M50 0V100' fill='none' stroke='%23383e3b' stroke-width='38'/%3E%3Cpath d='M50 0V100' fill='none' stroke='%23798077' stroke-width='28'/%3E%3C/svg%3E");
+            --yaw-corridor-end: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V50' fill='none' stroke='%23090b0c' stroke-width='44' stroke-linecap='round'/%3E%3Cpath d='M50 0V50' fill='none' stroke='%23383e3b' stroke-width='38' stroke-linecap='round'/%3E%3Cpath d='M50 0V50' fill='none' stroke='%23798077' stroke-width='28' stroke-linecap='round'/%3E%3C/svg%3E");
+            --yaw-corridor-corner: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%23090b0c' stroke-width='44' stroke-linejoin='round'/%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%23383e3b' stroke-width='38' stroke-linejoin='round'/%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%23798077' stroke-width='28' stroke-linejoin='round'/%3E%3C/svg%3E");
+            --yaw-corridor-t: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%23090b0c' stroke-width='44' stroke-linejoin='round'/%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%23383e3b' stroke-width='38' stroke-linejoin='round'/%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%23798077' stroke-width='28' stroke-linejoin='round'/%3E%3C/svg%3E");
+            --yaw-corridor-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%23090b0c' stroke-width='44'/%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%23383e3b' stroke-width='38'/%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%23798077' stroke-width='28'/%3E%3C/svg%3E");
+        }
+
+        :is([data-interior-theme="cave-network"], [data-interior-theme="burrow"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="interior-path-"] {
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            background-size: 100% 100% !important;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.62));
+        }
+
+        :is([data-interior-theme="cave-network"], [data-interior-theme="burrow"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="interior-path-isolated"] {
+            background-image: var(--yaw-corridor-isolated) !important;
+        }
+
+        :is([data-interior-theme="cave-network"], [data-interior-theme="burrow"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > :is(
+            [data-tileset-semantic-key="interior-path-vertical"],
+            [data-tileset-semantic-key="interior-path-horizontal"]
+        ) { background-image: var(--yaw-corridor-straight) !important; }
+
+        :is([data-interior-theme="cave-network"], [data-interior-theme="burrow"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="interior-path-end-"] {
+            background-image: var(--yaw-corridor-end) !important;
+        }
+
+        :is([data-interior-theme="cave-network"], [data-interior-theme="burrow"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="interior-path-corner-"] {
+            background-image: var(--yaw-corridor-corner) !important;
+        }
+
+        :is([data-interior-theme="cave-network"], [data-interior-theme="burrow"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="interior-path-t-"] {
+            background-image: var(--yaw-corridor-t) !important;
+        }
+
+        :is([data-interior-theme="cave-network"], [data-interior-theme="burrow"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="interior-path-intersection"] {
+            background-image: var(--yaw-corridor-cross) !important;
+        }
+
+        /* Organic interior gaps are void, not repeated wall objects. Keep the
+           blocked wall semantics for traversal and authored packs, but let the
+           bundled cave/burrow skin use quiet negative space around paths. */
+        :is([data-interior-theme="cave-network"], [data-interior-theme="burrow"]).map-visual-interior-wall {
+            background: #030405 !important;
+            box-shadow: inset 0 0 0 1px rgba(94, 105, 102, 0.12) !important;
+        }
+
+        :is([data-interior-theme="cave-network"], [data-interior-theme="burrow"]).map-visual-interior-wall .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > :is(
+            [data-tileset-semantic-key^="interior-wall"],
+            [data-tileset-semantic-key^="state-blocked"]
+        ) {
+            opacity: 0 !important;
+        }
+
         /* Natural water is impassable in the core traversal model, but the
            bundled blocked-edge sprites read as constructed cliff walls. Keep
            the semantic layers in the DOM for rules and replacement packs while
            suppressing that literal artwork only on ordinary water biomes. */
         [data-base-tileset-key="terrain-water"][data-map-kind="biome"]:is([data-blocked-reason="impassable"], [data-blocked-reason="capability"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"] {
             opacity: 0 !important;
+        }
+
+        /* Road Geometry V1. The source road crops do not share a common
+           centerline: corner and junction art exits close to a cell edge and
+           bleeds into neighboring atlas cells. The bundled skin therefore
+           uses exact 50% vector geometry with one 44% outer width and one 32%
+           travel surface. Manifest rotations still produce every direction;
+           authored replacement packs keep their own route artwork. */
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] {
+            --yaw-road-straight: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V100' fill='none' stroke='%23412f1e' stroke-width='44'/%3E%3Cpath d='M50 0V100' fill='none' stroke='%2380603a' stroke-width='38'/%3E%3Cpath d='M50 0V100' fill='none' stroke='%23c49a5f' stroke-width='32'/%3E%3C/svg%3E");
+            --yaw-road-end: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V50' fill='none' stroke='%23412f1e' stroke-width='44' stroke-linecap='round'/%3E%3Cpath d='M50 0V50' fill='none' stroke='%2380603a' stroke-width='38' stroke-linecap='round'/%3E%3Cpath d='M50 0V50' fill='none' stroke='%23c49a5f' stroke-width='32' stroke-linecap='round'/%3E%3C/svg%3E");
+            --yaw-road-corner: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%23412f1e' stroke-width='44' stroke-linejoin='round'/%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%2380603a' stroke-width='38' stroke-linejoin='round'/%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%23c49a5f' stroke-width='32' stroke-linejoin='round'/%3E%3C/svg%3E");
+            --yaw-road-t: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%23412f1e' stroke-width='44' stroke-linejoin='round'/%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%2380603a' stroke-width='38' stroke-linejoin='round'/%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%23c49a5f' stroke-width='32' stroke-linejoin='round'/%3E%3C/svg%3E");
+            --yaw-road-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%23412f1e' stroke-width='44'/%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%2380603a' stroke-width='38'/%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%23c49a5f' stroke-width='32'/%3E%3C/svg%3E");
+        }
+
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            background-size: 100% 100% !important;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.38));
+        }
+
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > :is(
+            [data-tileset-semantic-key="route-road-vertical"],
+            [data-tileset-semantic-key="route-road-horizontal"]
+        ) { background-image: var(--yaw-road-straight) !important; }
+
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-end-"] {
+            background-image: var(--yaw-road-end) !important;
+        }
+
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-corner-"] {
+            background-image: var(--yaw-road-corner) !important;
+        }
+
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-t-"] {
+            background-image: var(--yaw-road-t) !important;
+        }
+
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="route-road-intersection"] {
+            background-image: var(--yaw-road-cross) !important;
+        }
+
+        /* The first-party tower cell was painted against opaque terrain. Keep
+           landmark identity as a marker over the real biome/route stack by
+           replacing only that bundled crop with a compact vector badge. */
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="poi-landmark"] {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 4 96 50 50 96 4 50Z' fill='%2313264a' stroke='%234b84ff' stroke-width='5'/%3E%3Cpath d='M38 72h24v8H32v-8h6Zm5-38h14l5 38H38l5-38Zm-6-9h26v9H37Z' fill='%23dce9ff'/%3E%3Cpath d='M46 41h8v23h-8Z' fill='%237fb2ff'/%3E%3C/svg%3E") !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            background-size: 62% 62% !important;
+            filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.58));
         }
 
         [data-interior-theme="building"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > :is(

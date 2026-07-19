@@ -103,6 +103,19 @@ const YAW_CENTER_CONTEXT = {
                     tone: 'landmark'
                 });
             }
+            if (tile.overlays?.poi?.category === 'resourceSite') {
+                const searched = Boolean(tile.resourceSearched);
+                addPlace({
+                    id: `poi:resourceSite:${tile.overlays.poi.id || `${tile.x},${tile.y}`}`,
+                    name: app._label('ui.poi.resourceSite', 'Resource Site'),
+                    icon: '💰',
+                    meta: searched
+                        ? app._label('ui.poi.resourceSearched', 'Already searched')
+                        : app._label('ui.poi.resourceAvailable', 'Search available'),
+                    tone: searched ? 'resource searched' : 'resource',
+                    intent: searched ? '' : 'search'
+                });
+            }
         };
         if (app.player) add(app.player, 'player', app._label('party.you', 'You'), 'party');
         (app.party || []).forEach(unit => {
@@ -297,6 +310,10 @@ const YAW_CENTER_CONTEXT = {
                 const landmarkName = String(ref).slice('landmark:'.length);
                 if (!tile?.hasLandmark || tile.landmarkName !== landmarkName) return false;
                 name = landmarkName;
+            } else if (String(ref || '').startsWith('poi:resourceSite:')) {
+                if (tile?.overlays?.poi?.category !== 'resourceSite') return false;
+                name = app._label('ui.poi.resourceSite', 'Resource Site');
+                intent = tile.resourceSearched ? 'choose' : 'search';
             }
             app.explorationTargetIds = [];
             app.focusedStageObject = { type: 'place', id: String(ref), name, intent };
@@ -305,7 +322,7 @@ const YAW_CENTER_CONTEXT = {
             app.renderMobileCreatureStrip?.();
             this.renderPresence(app);
             if (typeof document !== 'undefined') {
-                const focusIntent = intent === 'enter' ? 'enter' : '';
+                const focusIntent = ['enter', 'search'].includes(intent) ? intent : '';
                 const selector = focusIntent
                     ? `#mobile-explore-actions [data-command-intent="${focusIntent}"], #desktop-context-belt [data-command-intent="${focusIntent}"]`
                     : '#mobile-explore-actions .action-btn, #desktop-context-belt .action-btn, #mobile-control-belt, #desktop-context-belt';

@@ -14,11 +14,17 @@ The sheet appears usable for a first pass over the current wilderness map:
 - Core terrain: forest, grove/woods, plains, swamp, jungle, cliff/rock, cave/dark ground, water, beach/coast.
 - Route overlays: straight roads, road corners, road intersections, horizontal bridge, vertical bridge.
 - Structures/features: camp, spring/pond, cabin/hut, farm/garden, settlement, cave mouth, ruins/stonework, web, fog/unknown.
-- Markers: generic focus/POI, alert/danger, gold/market, camp/rest, tower/landmark.
+- Markers: generic focus/POI, alert/danger, gold/resource, camp/rest, tower/landmark.
 
 The implementation exposes `data-tileset-key`, `data-base-tileset-key`,
 `data-tileset-semantic-keys`, `data-map-kind`, route shape, interior shape, and
 blocked-edge metadata on mobile, desktop, interior, and large-map cells.
+Resource sites use a single anchor tile. Their gold glyph comes from the
+transparent overlay atlas, composes above terrain and routes, and corresponds
+to the current-tile Search action rather than replacing the biome artwork.
+Landmarks are single anchors as well. The bundled skin replaces its opaque
+tower crop with a compact transparent vector marker; replacement packs still
+receive the ordinary `poi-landmark` semantic and may supply their own artwork.
 Beach cells additionally expose cardinal shoreline edges, inner/outer corner
 joins, and an eight-neighbor water mask over a neutral sand base. Danger-site
 influence is distinct from both its single anchor marker and immediate creature
@@ -29,8 +35,20 @@ the mask CSS is scoped to the bundled pack so authored edge/corner art remains
 unmodified.
 Tileset Pack V1 consumes those semantics through bounded atlas rectangles and
 local Media Repository leases. Route visuals infer straight, corner,
-T-junction, intersection, and cardinal dead-end keys from authoritative
-connections. Interior visuals derive matching path shapes, outward exits,
+T-junction, intersection, and cardinal dead-end keys from cardinally touching
+road cells, including seams between separately generated road segments.
+Bridges remain constrained to their authored north-south or east-west axis.
+Because the accepted road crops were not cell-centered, the bundled skin uses
+deterministic vector-backed road geometry: every route exits at exactly 50% of
+an edge with the same width before manifest rotation. This correction is
+first-party-pack scoped and does not alter authored replacement-pack artwork.
+The accepted organic interior corridor crops had the same alignment problem.
+Bundled cave networks and burrows therefore use a darker vector-backed path
+set with the same exact midpoint contract, including isolated chambers and end
+caps. Non-room cells become near-black negative space instead of repeated wall
+objects, while their blocked/wall semantics remain available to authored
+packs. Building interiors retain their separate room-and-door grammar.
+Interior visuals derive matching path shapes, outward exits,
 building doors, adjacent walls, and blocked edges from deterministic room
 graphs.
 

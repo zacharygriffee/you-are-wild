@@ -574,9 +574,7 @@ const WorldGen = (() => {
                     const dy = Math.abs(y - candidate.anchor.y);
                     const distance = Math.max(dx, dy);
                     if (candidate.category === 'dangerSite' && distance <= 1) dangerMatches.push({ candidate, distance });
-                    const matchesTile = candidate.category === 'dangerSite'
-                        ? distance === 0
-                        : dx <= 1 && dy <= 1;
+                    const matchesTile = distance === 0;
                     if (matchesTile) matches.push({ candidate, distance });
                 }
             }
@@ -650,10 +648,15 @@ const WorldGen = (() => {
     function getRoadOverlay(seed, version, x, y, fields) {
         const road = getRoadOverlayRaw(seed, version, x, y, fields);
         if (!road) return null;
+        const tileFields = fields || getTerrainFields(seed, version, x, y);
+        if (tileFields.water && !getBridgeOverlay(seed, version, x, y, tileFields, road)) return null;
         const connections = [];
         for (const [direction, dx, dy] of [['north', 0, -1], ['east', 1, 0], ['south', 0, 1], ['west', -1, 0]]) {
             const neighbor = getRoadOverlayRaw(seed, version, x + dx, y + dy);
-            if (neighbor?.id === road.id) connections.push(direction);
+            if (neighbor?.id !== road.id) continue;
+            const neighborFields = getTerrainFields(seed, version, x + dx, y + dy);
+            if (neighborFields.water && !getBridgeOverlay(seed, version, x + dx, y + dy, neighborFields, neighbor)) continue;
+            connections.push(direction);
         }
         return { ...road, connections };
     }
@@ -798,8 +801,12 @@ const WorldGen = (() => {
                 derivedBiome = regionBiomes.includes('grove') ? 'grove' : (regionBiomes.find(id => safeStartBiomes.includes(id)) || 'plains');
             }
         }
-        const road = getRoadOverlay(seed, version, x, y, fields);
-        const bridge = getBridgeOverlay(seed, version, x, y, fields, road);
+        const roadCandidate = getRoadOverlay(seed, version, x, y, fields);
+        const bridge = getBridgeOverlay(seed, version, x, y, fields, roadCandidate);
+        // A road sampled over deep water is only meaningful when the complete
+        // span resolves as a traversable bridge. Invalid crossings retain the
+        // water terrain and discard the decorative/cost-reducing road layer.
+        const road = fields.water && !bridge ? null : roadCandidate;
         const barriers = getBarrierEdges(seed, version, x, y, fields, road);
         const poiContext = getPoiContextForTile(seed, version, x, y, regionCell);
         const poi = poiContext.poi;

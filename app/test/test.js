@@ -8517,6 +8517,35 @@ test('Containment gives modest immediate fullness before digestion nutrition', (
   assertEqual(contained.nutritionReliefApplied, 0, 'Immediate fullness should not consume the later digestion nutrition budget');
 });
 
+test('Survivable containment softens terminal prey without changing Fight defeat', () => {
+  const { App } = loadAppForCombat();
+  const prey = makeUnit('Survivor', { id: 'softened-prey', CPun: 100, MPun: 100, size: 2, alive: true, inStomach: true });
+  const predator = makeUnit('Predator', { id: 'softened-holder', hunger: 80, stomach: [prey] });
+  App.player = predator;
+  App.party = [predator];
+  App.creatures = [];
+  App.settings.endoMode = true;
+  App.settings.fatalVore = false;
+  App._processDigestion({ ticks: 20 });
+  assertEqual(prey.digestionState, 'softened', 'Survivable containment should end in a distinct softened state');
+  assertEqual(prey.alive, true, 'Softened prey should remain alive');
+  assertEqual(prey.CPun, 1, 'Softened prey should remain at minimal condition');
+  assertEqual(App._canReleaseFromVitalState(prey), true, 'Softened prey should remain releasable');
+  assertEqual(App.digestContained('party', 0, 'stomach', 0), false, 'Softened prey should not be digested repeatedly');
+
+  const fatalCase = loadAppForCombat();
+  const fatalPrey = makeUnit('Fatal Prey', { id: 'fatal-prey', CPun: 100, MPun: 100, size: 2, alive: true, inStomach: true });
+  const fatalHolder = makeUnit('Fatal Holder', { id: 'fatal-holder', hunger: 80, stomach: [fatalPrey] });
+  fatalCase.App.player = fatalHolder;
+  fatalCase.App.party = [fatalHolder];
+  fatalCase.App.creatures = [];
+  fatalCase.App.settings.endoMode = true;
+  fatalCase.App.settings.fatalVore = true;
+  fatalCase.App._processDigestion({ ticks: 20 });
+  assertEqual(fatalPrey.digestionState, 'terminal', 'Fatal digestion should take precedence over survivable containment');
+  assertEqual(fatalPrey.alive, false, 'Fatal digestion should retain the terminal outcome');
+});
+
 test('Status effects apply damage and expire during processing', () => {
   const { App } = loadAppForCombat();
   const unit = makeUnit('Target', {

@@ -148,6 +148,7 @@ const YAW_UNIT_CONTAINMENT = {
     },
 
     normalizedState(prey) {
+        if (prey?.state === 'softened' || prey?.digestionState === 'softened') return 'softened';
         if (prey?.state === 'terminal' || prey?.digestionState === 'terminal') return 'terminal';
         if (prey?.state === 'digested' || prey?.digestionState === 'digested') return 'digested';
         if (prey?.state === 'released' || prey?.digestionState === 'released') return 'released';
@@ -269,6 +270,7 @@ const YAW_UNIT_CONTAINMENT = {
 
     isTerminalVitalState(record) {
         if (!record) return false;
+        if (this.normalizedState(record) === 'softened') return false;
         return record.state === 'terminal'
             || record.digestionState === 'terminal'
             || (Number.isFinite(record.vitalRemaining) && record.vitalRemaining <= 0)
@@ -428,7 +430,7 @@ const YAW_UNIT_CONTAINMENT = {
                     const vital = Math.round(this.vitalRatio(prey) * 100);
                     const progress = Math.round(prey.progress ?? prey.digestionProgress ?? 0);
                     const canRelease = canManage && this.canReleaseFromVitalState(prey);
-                    const canDigest = canManage && !['terminal', 'digested', 'released', 'passed', 'depleted'].includes(state);
+                    const canDigest = canManage && !['softened', 'terminal', 'digested', 'released', 'passed', 'depleted'].includes(state);
                     const disabledReason = canManage ? '' : combatBlockTitle;
                     const releaseTitle = canRelease
                         ? app._label('containment.releaseTitle', 'Release {name}', { name })
@@ -557,7 +559,7 @@ const YAW_UNIT_CONTAINMENT = {
         const holderTypeArg = app._escapeJsString(holderType);
         const containerArg = app._escapeJsString(container);
         const releaseAvailable = this.canReleaseFromVitalState(prey);
-        const terminal = ['terminal', 'digested', 'released', 'passed', 'depleted'].includes(state);
+        const terminal = ['softened', 'terminal', 'digested', 'released', 'passed', 'depleted'].includes(state);
         const releaseButton = releaseAvailable
             ? `<button class="nav-btn" data-command-surface="container-inspect" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-control="release-contained" title="${app._escapeHtml(app._label('containment.releaseTitle', 'Release {name}', { name: prey.name || app._label('containment.unknownPrey', 'Contained creature') }))}" aria-label="${app._escapeHtml(app._label('containment.releaseTitle', 'Release {name}', { name: prey.name || app._label('containment.unknownPrey', 'Contained creature') }))}" onclick="App.releaseContained('${holderTypeArg}',${holderIndex},'${containerArg}',${containedIndex})">${app._escapeHtml(releaseText)}</button>`
             : '';
@@ -634,7 +636,7 @@ const YAW_UNIT_CONTAINMENT = {
         const prey = list[containedIndex];
         if (!prey) return false;
         this.normalizeRecord(app, holder, prey, container);
-        if (['terminal', 'digested', 'released', 'passed', 'depleted'].includes(this.normalizedState(prey))) {
+        if (['softened', 'terminal', 'digested', 'released', 'passed', 'depleted'].includes(this.normalizedState(prey))) {
             app.log?.push?.({ text: `${prey.name || 'Contained creature'} cannot be digested further.`, type: app.combatState?.active ? 'combat' : 'discovery' });
             this.refreshAfterContainerCommand(app, holderType);
             return false;
@@ -657,6 +659,7 @@ const YAW_UNIT_CONTAINMENT = {
         const summaries = {
             contained: `${targetName} is held in ${holderName}'s stomach.`,
             digesting: `${targetName} weakens while held in ${holderName}'s stomach.`,
+            softened: `${targetName} is fully softened inside ${holderName}, but remains alive and can be released.`,
             released: `${targetName} is released from ${holderName}'s stomach, weakened but alive.`,
             terminal: `${targetName} is fully digested inside ${holderName}. ${holderName} feels restored.`
         };
@@ -712,6 +715,25 @@ const YAW_UNIT_CONTAINMENT = {
     terminalize(app, holder, prey, config) {
         this.normalizeRecord(app, holder, prey, config.key || prey.containerId || 'stomach');
         if (prey.state === 'terminal' && prey.absorptionApplied) return prey;
+        const survivable = Boolean(app?.settings?.endoMode) && !app?.settings?.fatalVore;
+        if (survivable) {
+            prey.state = 'softened';
+            prey.digestionState = 'softened';
+            prey.progress = 100;
+            prey.digestionProgress = 100;
+            prey.vitalRemaining = 1;
+            prey.vitalDamageTaken = Math.max(0, Number(prey.vitalMax || 1) - 1);
+            prey.releaseEligible = true;
+            prey.alive = true;
+            prey.CPun = 1;
+            const deltas = this.applyTerminalAbsorption(app, holder, prey, config);
+            if (!prey.softenedSceneBeatEmitted) {
+                prey.softenedSceneBeatEmitted = true;
+                this.emitContainmentBeat(app, 'softened', holder, prey, { deltas });
+                app?.log?.push?.({ text: `${prey.name} is fully softened inside ${holder.name} and can be released alive.`, type: 'combat' });
+            }
+            return prey;
+        }
         prey.state = 'terminal';
         prey.digestionState = 'terminal';
         prey.progress = 100;
@@ -768,6 +790,7 @@ const YAW_UNIT_CONTAINMENT = {
         const ticks = Math.max(1, Math.floor(Number(options.ticks) || 1));
         for (const prey of (unit[config.key] || [])) {
             this.normalizeRecord(app, unit, prey, config.key);
+            if (this.normalizedState(prey) === 'softened') continue;
             if (this.isTerminalVitalState(prey) && !['released', 'passed', 'depleted'].includes(prey.state)) {
                 this.terminalize(app, unit, prey, config);
                 continue;

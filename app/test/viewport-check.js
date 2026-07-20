@@ -1148,6 +1148,7 @@ async function checkViewport(browser, name, width, height) {
       const game = document.getElementById('screen-game');
       const menu = document.getElementById('screen-menu');
       const dock = document.querySelector('.mobile-panel-dock');
+      const appMenuToggle = document.getElementById('app-menu-toggle');
       const playSurface = document.getElementById('mobile-play-surface');
       const desktopSurface = document.querySelector('.desktop-play-surface');
       const activeSurface = innerWidth <= 1024 ? playSurface : desktopSurface;
@@ -1544,6 +1545,7 @@ async function checkViewport(browser, name, width, height) {
 
     const mobileControls = await page.evaluate(() => {
       const dock = document.querySelector('.mobile-panel-dock');
+      const appMenuToggle = document.getElementById('app-menu-toggle');
       const belt = document.getElementById('mobile-control-belt');
       const map = document.querySelector('.mobile-map-card');
       const tileInfo = document.getElementById('mobile-tile-info');
@@ -1564,6 +1566,8 @@ async function checkViewport(browser, name, width, height) {
       const moveToggle = document.getElementById('mobile-move-toggle');
       const storyHandle = document.querySelector('.mobile-story-handle');
       const topStoryButton = document.querySelector('.mobile-scene-sheet .mobile-story-expand-btn');
+      const tileDetailsButton = document.querySelector('.mobile-tile-details-btn');
+      const dockButtons = Array.from(dock.querySelectorAll('.nav-btn'));
       const dockRect = dock.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
       const mapRect = map.getBoundingClientRect();
@@ -1572,6 +1576,9 @@ async function checkViewport(browser, name, width, height) {
       const latestBeatRect = latestBeat.getBoundingClientRect();
       const storyHandleRect = storyHandle.getBoundingClientRect();
       const topStoryButtonRect = topStoryButton.getBoundingClientRect();
+      const appMenuToggleRect = appMenuToggle.getBoundingClientRect();
+      const tileDetailsButtonRect = tileDetailsButton.getBoundingClientRect();
+      const dockButtonRects = dockButtons.map(button => button.getBoundingClientRect());
       const unitStripsRect = unitStrips.getBoundingClientRect();
       const creatureCardRect = creatureCard.getBoundingClientRect();
       const tileInfoRect = tileInfo.getBoundingClientRect();
@@ -1637,6 +1644,10 @@ async function checkViewport(browser, name, width, height) {
         dockBottom: dockRect.bottom,
         dockLeft: dockRect.left,
         dockRight: dockRect.right,
+        appMenuToggleHeight: appMenuToggleRect.height,
+        tileDetailsButtonVisible: tileDetailsButtonRect.width > 0 && tileDetailsButtonRect.height > 0,
+        tileDetailsButtonHeight: tileDetailsButtonRect.height,
+        minDockButtonHeight: Math.min(...dockButtonRects.map(rect => rect.height)),
         beltPosition: beltStyle.position,
         beltDisplay: beltStyle.display,
         beltTop: beltRect.top,
@@ -1674,6 +1685,7 @@ async function checkViewport(browser, name, width, height) {
         storyHandleMinHeight: parseFloat(storyHandleStyle.minHeight) || 0,
         storyHandleText: storyHandle?.innerText || '',
         topStoryButtonDisplay: topStoryButtonStyle.display,
+        topStoryButtonHeight: topStoryButtonRect.height,
         topStoryButtonLatestBeatOverlap: overlapArea(topStoryButtonRect, latestBeatRect),
         miniMapBottom: miniMapRect.bottom,
         unitStripsTop: unitStripsRect.top,
@@ -1728,6 +1740,7 @@ async function checkViewport(browser, name, width, height) {
         creatureCueVisible: Boolean(cueButton) && getComputedStyle(creatureCue).display !== 'none' && cueRect.width > 0 && cueRect.height > 0,
         creatureCueTop: cueRect.top,
         creatureCueBottom: cueRect.bottom,
+        creatureCueButtonHeight: cueButton?.getBoundingClientRect().height || 0,
         creatureCueInSheet: Boolean(sheet?.querySelector('#mobile-creature-presence-cue')),
         moveToggleHidden: Boolean(moveToggle?.hidden),
         moveToggleHeight: moveToggleRect.height,
@@ -1739,6 +1752,11 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.dockTop >= 0, `${name}: mobile dock should not clip above viewport`);
     assert(mobileControls.dockBottom <= mobileControls.viewportHeight + 1, `${name}: mobile dock should be visible without scrolling`);
     assert(mobileControls.dockLeft >= -1 && mobileControls.dockRight <= mobileControls.viewportWidth + 1, `${name}: mobile dock should stay inside viewport horizontally`);
+    assert(mobileControls.appMenuToggleHeight >= 44, `${name}: mobile app-menu trigger should keep a finger-sized touch target`);
+    if (mobileControls.tileDetailsButtonVisible) {
+      assert(mobileControls.tileDetailsButtonHeight >= 44, `${name}: visible mobile tile details should keep a finger-sized touch target`);
+    }
+    assert(mobileControls.minDockButtonHeight >= 44, `${name}: mobile dock shortcuts should keep finger-sized touch targets`);
     assert.strictEqual(mobileControls.beltPosition, 'fixed', `${name}: mobile context belt should stay viewport-anchored above the fixed dock`);
     assert.notStrictEqual(mobileControls.beltDisplay, 'none', `${name}: populated mobile context belt should be visible`);
     assert.strictEqual(mobileControls.beltHasControls, true, `${name}: populated mobile context belt should mark real controls`);
@@ -1755,6 +1773,7 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileControls.mapContentContained, true, `${name}: mobile 3x3 traversal grid should not be clipped by the traversal card`);
     assert.strictEqual(mobileControls.mapBeforeSceneFeed, true, `${name}: mobile Scene Feed should start after the traversal card, not overlap the map`);
     assert.notStrictEqual(mobileControls.topStoryButtonDisplay, 'none', `${name}: compact story capsule button should be visible on mobile`);
+    assert(mobileControls.topStoryButtonHeight >= 44, `${name}: compact Scene Feed button should keep a finger-sized touch target`);
     assert.strictEqual(mobileControls.topStoryButtonLatestBeatOverlap, 0, `${name}: compact Scene Feed button should reserve space instead of overlapping the latest narrative`);
     assert.strictEqual(mobileControls.storyHandleDisplay, 'none', `${name}: retired floating story handle should not occupy the mobile action zone`);
     assert(/scene|feed|story/i.test(mobileControls.storyHandleText), `${name}: retained mobile scene feed handle markup should stay labeled accessibly`);
@@ -1773,9 +1792,13 @@ async function checkViewport(browser, name, width, height) {
     assert(Math.abs(mobileControls.centerTileHeight - mobileControls.minMovementCellHeight) <= 2, `${name}: mobile current tile should use the same height as movement tiles`);
     assert(mobileControls.centerPresenceCount >= 1, `${name}: mobile current tile should expose clickable presence badges`);
     assert(mobileControls.centerPresenceCount <= 2, `${name}: mobile current tile should summarize dense presence instead of wrapping controls out of the tile`);
-    assert(mobileControls.minCenterPresenceWidth >= 36 && mobileControls.minCenterPresenceHeight >= 36, `${name}: mobile current tile presence badges should remain usable inside the square tile`);
+    assert(mobileControls.minCenterPresenceWidth >= 44 && mobileControls.minCenterPresenceHeight >= 44, `${name}: mobile current tile presence badges should keep finger-sized touch targets inside the square tile`);
     assert(mobileControls.minCenterPresenceFontSize >= 20, `${name}: mobile current tile presence badges should keep readable compact symbols`);
-    assert.strictEqual(mobileControls.centerPresenceInsideTile, true, `${name}: mobile current tile presence badges should stay inside the center tile`);
+    assert.strictEqual(
+      mobileControls.centerPresenceInsideTile,
+      true,
+      `${name}: mobile current tile presence badges should stay inside the center tile (cell=${mobileControls.centerTileWidth}x${mobileControls.centerTileHeight}, presence=${mobileControls.minCenterPresenceWidth}x${mobileControls.minCenterPresenceHeight})`
+    );
     assert(mobileControls.centerTileBottom <= mobileControls.mapBottom + 1, `${name}: mobile current tile should not clip below the Play Surface card`);
     assert(mobileControls.detailButtonCount >= 2, `${name}: mobile party and creature rails should expose explicit Details routes`);
     if (mobileControls.visibleDetailButtonCount > 0) {
@@ -1796,6 +1819,7 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);
     assert.strictEqual(mobileControls.sheetActionButtons, 0, `${name}: presentation sheet should not contain duplicated full action controls`);
     assert.strictEqual(mobileControls.creatureCueVisible, true, `${name}: baseline mobile play should expose a creature cue without opening the full target rail`);
+    assert(mobileControls.creatureCueButtonHeight >= 44, `${name}: baseline mobile creature cue should keep a finger-sized touch target`);
     assert(mobileControls.creatureCueText.includes('Here:'), `${name}: baseline mobile creature cue should summarize the first visible creature`);
     assert.strictEqual(mobileControls.creatureCueInSheet, false, `${name}: mobile creature cue should not reintroduce a HERE block into the presentation sheet`);
     const hingeDelta = (before, after) => Math.abs(Number(before) - Number(after));

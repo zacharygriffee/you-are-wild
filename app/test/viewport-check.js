@@ -1752,7 +1752,7 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileControls.topStoryButtonLatestBeatOverlap, 0, `${name}: compact Scene Feed button should reserve space instead of overlapping the latest narrative`);
     assert.strictEqual(mobileControls.storyHandleDisplay, 'none', `${name}: retired floating story handle should not occupy the mobile action zone`);
     assert(/scene|feed|story/i.test(mobileControls.storyHandleText), `${name}: retained mobile scene feed handle markup should stay labeled accessibly`);
-    assert(mobileControls.mapHeight <= Math.min(340, mobileControls.viewportHeight * 0.5) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
+    assert(mobileControls.mapHeight <= Math.min(350, mobileControls.viewportHeight * 0.5) + 1, `${name}: mobile traversal map frame should not absorb short viewport height`);
     assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the fixed command belt`);
     assert(mobileControls.miniMapBottom <= mobileControls.mapBottom + 1, `${name}: mobile traversal grid should fit inside the Play Surface card`);
     assert(mobileControls.latestBeatTop < mobileControls.beltTop - 1, `${name}: mobile latest Scene Beat preview should stay above the sticky command belt`);
@@ -3154,6 +3154,7 @@ async function checkViewport(browser, name, width, height) {
       const measure = label => ({
         label,
         surface: rectFor(document.getElementById('desktop-play-surface')),
+        grid: rectFor(document.getElementById('desktop-neighborhood-grid')),
         center: rectFor(document.getElementById('desktop-play-cell-center')),
         south: rectFor(document.getElementById('desktop-play-cell-s')),
         sceneFeed: rectFor(document.getElementById('desktop-scene-feed-slot')),
@@ -3253,6 +3254,7 @@ async function checkViewport(browser, name, width, height) {
     });
     ['empty', 'locationAction', 'creature', 'target'].forEach(state => {
       const rects = desktopTraversalRectContract[state];
+      assert(rects.grid.top >= rects.surface.top + 4 && rects.grid.bottom <= rects.surface.bottom - 4, `${name}: desktop 3x3 traversal grid should keep focus-ring clearance inside the play surface when ${state} appears`);
       assert(rects.sceneFeed.top >= rects.south.bottom + 1, `${name}: desktop Scene Feed should stay below the south traversal row when ${state} appears`);
     });
 
@@ -3607,6 +3609,7 @@ async function checkScopedStartupReadiness(browser) {
     await checkViewport(browser, 'narrow mobile 360', 360, 780);
     await checkViewport(browser, 'mobile', 393, 852);
     await checkViewport(browser, 'short mobile', 313, 670);
+    await checkViewport(browser, 'compact tablet landscape', 742, 768);
     await checkViewport(browser, 'tablet portrait', 768, 1024);
     await checkViewport(browser, 'compact desktop', 1100, 768);
     await checkViewport(browser, 'desktop', 1365, 768);

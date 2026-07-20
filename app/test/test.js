@@ -7372,6 +7372,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-control-row {\n                display: none;', 'mobile secondary control row should collapse unless it has visible controls');
   assertContains(template, '.mobile-control-row.has-visible-controls {\n                display: flex;', 'mobile secondary control row should opt into display only for visible actor/target controls');
   assertContains(template, '--mobile-control-belt-compact-height: 112px;', 'mobile control belt should reserve compact space for simple cue/location controls');
+  assertContains(template, '--mobile-map-frame-clearance: 10px;', 'mobile traversal card should reserve clearance below the square 3x3 map');
+  assertContains(template, 'height: calc(var(--mobile-map-height) + var(--mobile-map-frame-clearance));', 'mobile traversal card should include its map-frame clearance in the fixed hinge height');
   assertContains(template, '.mobile-play-surface.has-control-belt.control-belt-expanded', 'mobile play surface should keep consistent dock space for expanded composer states');
   assertContains(template, '.mobile-play-surface.has-control-belt .mobile-map-card', 'mobile active composer states should keep the traversal stage compact enough for inline Scene Feed visibility');
   assertContains(template, '.mobile-play-surface.control-belt-expanded .mobile-map-card', 'mobile expanded composer states should preserve a usable 3x3 stage height');
@@ -7581,6 +7583,7 @@ test('Desktop play surface separates a square 3x3 grid from the location focus p
   assertContains(template, '--desktop-side-rail-width: clamp(144px, 13vw, 164px);', 'desktop stage should define stable compact side rail slots');
   assertContains(template, 'grid-template-columns: minmax(0, var(--desktop-main-stage-width)) var(--desktop-side-rail-width) var(--desktop-side-rail-width);', 'desktop stage should keep the center surface primary and reserve both side rail slots');
   assertContains(template, '--desktop-play-surface-width: min(100%, var(--desktop-main-stage-width, 820px));', 'desktop play surface should inherit the stable main stage width');
+  assertContains(template, '--desktop-play-frame-clearance: 10px;', 'desktop traversal surface should reserve clearance around the square 3x3 map');
   assertContains(template, 'flex: 0 0 var(--desktop-play-surface-height);', 'desktop play surface should keep a stable footprint when lower belts appear');
   assertContains(template, 'justify-content: flex-start;', 'desktop play stack should anchor from the top instead of recentering when belts appear');
   assertContains(template, '.panel-party,\n        .panel-enemies {\n            align-self: start;\n            min-width: 0;\n            max-height: 100%;\n            background: rgba(26, 26, 46, 0.42);', 'desktop side rails should stay width-contained and read as quieter supporting context instead of primary panels');

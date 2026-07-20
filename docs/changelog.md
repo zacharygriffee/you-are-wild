@@ -30,6 +30,7 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Recent Fixes
 
+- The separate Sites wrapper now has a newest-first development changelog and numbered release archive, linked from the Textured/Lightweight chooser. The in-game What's New panel remains the offline current-release summary, and publishing is still an explicit operator action.
 - Feed Contract V1 makes the selected actor the source and the selected target the recipient/consumer. The contextual picker now exposes Tend, Nurse, Offer Self, and Offer Piece; old inverse-direction identifiers remain hidden compatibility aliases, and whole-player capture stays deferred until it has a safe playable recovery loop.
 - Map and Tileset Pack V1 acceptance was rerun against deterministic starts, traversal, interiors, presentation fallbacks, and current artifact sizes; the offline, hosted, and atlas transfer measurements are refreshed for the 0.12.1 development head.
 - Save/load now has regression coverage ensuring half-composed combat group plans reset cleanly while the authoritative round and queue resume.

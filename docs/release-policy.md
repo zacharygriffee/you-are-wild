@@ -45,7 +45,10 @@ request.
 6. Run `npm run full-build`, `npm run audit:branding`, and `git diff --check`.
 7. Verify mobile and desktop system screens, including What's New, Activity
    Log, AI Providers, Mods, and Host Catalog.
-8. Save a rollback-ready hosted version. Publishing remains operator-mediated.
+8. Curate the newest-first Sites archive according to
+   [Sites Changelog and Release Archive](sites-changelog.md), then run its
+   server-render tests.
+9. Save a rollback-ready hosted version. Publishing remains operator-mediated.
 
 ## Version 0.11.0 Compatibility
 

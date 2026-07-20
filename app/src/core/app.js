@@ -5511,7 +5511,7 @@
                 this.cheats[cheat] = !this.cheats[cheat];
                 const isOn = this.cheats[cheat];
                 this.log.push({ text: this._label('cheat.toggled', 'Cheat {name}: {state}', {
-                    name: cheat,
+                    name: this._label(`cheat.${cheat}`, cheat),
                     state: this._label(isOn ? 'cheat.state.on' : 'cheat.state.off', isOn ? 'ON' : 'OFF')
                 }), type: 'discovery' });
                 if (cheat === 'overpowered' && isOn && this.player) {
@@ -5540,6 +5540,7 @@
                         el.style.color = 'var(--text-secondary)';
                         el.style.borderColor = 'var(--border-default)';
                     }
+                    el.setAttribute('aria-pressed', on ? 'true' : 'false');
                 };
                 for (const [k, v] of Object.entries(this.cheats)) {
                     btnStyle(k, v);

@@ -9736,10 +9736,10 @@
 
             <!-- Game Mode -->
             <div style="margin-bottom: 24px;">
-                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Game Mode</h3>
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.gameMode">Game Mode</h3>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Hardcore Mode (delete save on death)</span>
+                        <span data-i18n="settings.hardcore">Hardcore Mode (delete save on death)</span>
                         <input type="checkbox" id="toggle-hardcore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-game-setting" data-setting-key="hardcore" onchange="App.settings.hardcore = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
@@ -9791,13 +9791,13 @@
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.cheats">Cheats</h3>
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-                    <button id="cheat-godMode" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="godMode" onclick="App.toggleCheat('godMode')">🛡️ God Mode</button>
-                    <button id="cheat-neverHungry" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="neverHungry" onclick="App.toggleCheat('neverHungry')">🍽️ Never Hungry</button>
-                    <button id="cheat-canEatAnything" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="canEatAnything" onclick="App.toggleCheat('canEatAnything')">🍴 Eat Anything</button>
-                    <button id="cheat-overpowered" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="overpowered" onclick="App.toggleCheat('overpowered')">💪 Overpowered</button>
+                    <button id="cheat-godMode" class="nav-btn" aria-pressed="false" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="godMode" onclick="App.toggleCheat('godMode')"><span aria-hidden="true">🛡️</span> <span data-i18n="cheat.godMode">God Mode</span></button>
+                    <button id="cheat-neverHungry" class="nav-btn" aria-pressed="false" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="neverHungry" onclick="App.toggleCheat('neverHungry')"><span aria-hidden="true">🍽️</span> <span data-i18n="cheat.neverHungry">Never Hungry</span></button>
+                    <button id="cheat-canEatAnything" class="nav-btn" aria-pressed="false" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="canEatAnything" onclick="App.toggleCheat('canEatAnything')"><span aria-hidden="true">🍴</span> <span data-i18n="cheat.canEatAnything">Eat Anything</span></button>
+                    <button id="cheat-overpowered" class="nav-btn" aria-pressed="false" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="overpowered" onclick="App.toggleCheat('overpowered')"><span aria-hidden="true">💪</span> <span data-i18n="cheat.overpowered">Overpowered</span></button>
                 </div>
                 <div style="margin-top: 8px;">
-                    <button id="cheat-instantWin" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="instant-win" style="width: 100%;" onclick="App.instantWin()">⚡ Instant Win</button>
+                    <button id="cheat-instantWin" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="instant-win" style="width: 100%;" onclick="App.instantWin()"><span aria-hidden="true">⚡</span> <span data-i18n="combat.instantWin">Instant Win</span></button>
                 </div>
                 <div style="margin-top: 8px;">
                     <button id="cheat-playerDeath" class="nav-btn danger" data-command-surface="settings-detail" data-command-mode="system" data-command-control="test-player-death" style="width: 100%;" title="Test player death and recovery" aria-label="Test player death and recovery" data-i18n-title="cheat.playerDeathTitle" data-i18n-aria-label="cheat.playerDeathTitle" onclick="App.confirmPlayerDeathCheat()"><span aria-hidden="true">☠️</span> <span data-i18n="cheat.playerDeath">Test Player Death</span></button>

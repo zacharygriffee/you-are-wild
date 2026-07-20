@@ -34,15 +34,32 @@ const YAW_LOG_VIEW = {
         }
         if (entry?.round && app.combatState?.round) {
             const diff = Math.max(0, app.combatState.round - entry.round);
-            if (diff === 0) return 'this round';
-            return diff === 1 ? '1 round ago' : `${diff} rounds ago`;
+            if (diff === 0) return app._label('ui.log.time.thisRound', 'this round');
+            return diff === 1
+                ? app._label('ui.log.time.roundAgo', '1 round ago')
+                : app._label('ui.log.time.roundsAgo', '{count} rounds ago', { count: diff });
         }
-        if (indexFromEnd <= 0) return 'just now';
-        return indexFromEnd === 1 ? '1 turn ago' : `${indexFromEnd} turns ago`;
+        if (indexFromEnd <= 0) return app._label('ui.log.time.justNow', 'just now');
+        return indexFromEnd === 1
+            ? app._label('ui.log.time.turnAgo', '1 turn ago')
+            : app._label('ui.log.time.turnsAgo', '{count} turns ago', { count: indexFromEnd });
     },
 
     categoryMeta(app, type = 'discovery') {
-        return app.LOG_CATEGORIES[type] || { label: type || 'Discovery', icon: '•' };
+        const meta = app.LOG_CATEGORIES[type] || { label: type || 'Discovery', icon: '•' };
+        const labelKeys = {
+            combat: 'ui.log.combat',
+            discovery: 'ui.log.discovery',
+            loot: 'ui.log.loot',
+            heal: 'ui.log.heal',
+            narration: 'ui.log.narration',
+            error: 'ui.log.error',
+            mod: 'ui.log.mod'
+        };
+        return {
+            ...meta,
+            label: labelKeys[type] ? app._label(labelKeys[type], meta.label) : meta.label
+        };
     },
 
     filteredEntries(app) {

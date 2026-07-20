@@ -174,7 +174,11 @@ const YAW_SETTINGS_FLOW = {
         if (categorySection && categoryList) {
             categorySection.hidden = catalog.categories.length === 0;
             categoryList.innerHTML = catalog.categories.map(category => {
-                const providers = category.providers.map(provider => provider.name).join(', ');
+                const providers = category.providers.map(provider => (
+                    provider.id === 'core'
+                        ? app._label('settings.provider.coreGame', 'Core Game')
+                        : provider.name
+                )).join(', ');
                 const label = category.labelKey ? app._label(category.labelKey, category.label) : category.label;
                 const description = category.descriptionKey ? app._label(category.descriptionKey, category.description) : category.description;
                 const providerText = app._label('settings.categoryProviders', 'Required by {providers}', { providers });
@@ -191,7 +195,11 @@ const YAW_SETTINGS_FLOW = {
             ) && variant.providers.some(provider => provider.core || provider.enabled));
             variantSection.hidden = visibleVariants.length === 0;
             variantList.innerHTML = visibleVariants.map(variant => {
-                const providers = variant.providers.map(provider => provider.name).join(', ');
+                const providers = variant.providers.map(provider => (
+                    provider.id === 'core'
+                        ? app._label('settings.provider.coreGame', 'Core Game')
+                        : provider.name
+                )).join(', ');
                 const label = variant.labelKey ? app._label(variant.labelKey, variant.label) : variant.label;
                 const description = variant.descriptionKey ? app._label(variant.descriptionKey, variant.description) : variant.description;
                 const providerText = app._label('settings.variantProviders', 'Provided by {providers}', { providers });
@@ -273,6 +281,7 @@ const YAW_SETTINGS_FLOW = {
         app.saveSettings();
         app.syncLanguageControl();
         app.applyStaticLocalization();
+        void this.renderContentPolicySettings(app);
         app.syncStartupReadinessUI?.();
         app.renderExplorationActions();
         app.renderParty();

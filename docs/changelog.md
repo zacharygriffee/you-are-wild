@@ -30,6 +30,7 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Recent Fixes
 
+- Switching interface language now rerenders provider-declared gameplay variants instead of leaving stale English metadata. Core-provider attribution, Game Mode, Hardcore, cheat controls, cheat pressed state and feedback, Activity Log category badges, and relative timestamps now participate in the English/Spanish registry.
 - Mobile play controls now preserve 44px touch targets for the app menu, tile details, center-tile presence, creature cue, Scene Feed, and bottom dock. Standard phone layouts give the 3x3 traversal grid enough room to contain both compact presence actions, while very short screens retain a reduced map frame so the latest Scene Beat stays above the command belt.
 - Explicit combat targets now have a reachable localized Confirm action on desktop and mobile. This closes the party-target Feed path without restoring the old automatic wounded-player redirect, while preserving Cancel and multi-step Feed options.
 - Closing Settings and the related system overlays now returns keyboard focus to the visible control that opened the flow. This remains reliable through nested provider/mod screens and across the main menu, character creation, and the live-game app menu.

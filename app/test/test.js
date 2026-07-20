@@ -614,7 +614,7 @@ test('App object is defined', () => {
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.12.0', 'Release manifest should identify the planned public version');
+  assertEqual(releaseInfo.version, '0.12.1', 'Release manifest should identify the current public version');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
   assertContains(buildContent, 'window.YAW_RELEASE = Object.freeze', 'Build should inject release metadata into the generated artifact');
@@ -9787,6 +9787,91 @@ test('Pending player death combat saves remain resumable while a companion can a
   assertEqual(window.YAW_DEFEAT_RECOVERY.isWipedCombatSave(App, loaded), true, 'A wiped pending-death combat snapshot should not resume');
 });
 
+test('Pending companion battles survive save load and settle into persistent recovery', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const first = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App } = first;
+  const player = makeSerializableUnit('You', {
+    id: 'player-pending-roundtrip',
+    CPun: 0,
+    knockedOut: true
+  });
+  const companion = makeSerializableUnit('Harpy', {
+    id: 'companion-pending-roundtrip',
+    CPun: 55,
+    partyRole: 'guard',
+    aiOrder: 'defensive'
+  });
+  const enemy = makeSerializableUnit('Wolfkin', {
+    id: 'enemy-pending-roundtrip',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 35
+  });
+  App.mode = App.GAME_MODE.NORMAL;
+  App.player = player;
+  App.party = [player, companion];
+  App.creatures = [enemy];
+  App.location = { x: 5, y: -6 };
+  App.currentBiome = 'jungle';
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.worldMeta = { worldId: 'pending-defeat-world', seed: 'pending-defeat-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'forest', creatures: [], items: [] }],
+    ['5,-6', { ...App.getBaseTile(5, -6), explored: true, biome: 'jungle', creatures: [enemy], items: [] }]
+  ]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0', '5,-6']);
+  App.combatState = {
+    active: true,
+    round: 4,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 12,
+    turnQueue: [{ unit: companion, initiative: 15 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = companion;
+  App._handlePlayerFall({ cause: 'combat-damage', source: 'roundtrip-test' });
+  assertEqual(App.defeatState.awaitingEncounterSettlement, true, 'Fixture should begin in pending companion-controlled combat');
+
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+  assertEqual(await App._saveToSlotConfirmed('slot1'), true, 'Pending companion battle should save');
+
+  const resumed = loadAppForCombat(() => 0.5, { binary: Binary });
+  resumed.App._dbGet = async () => savedBuffers[0];
+  resumed.App.loadWorldStateFromMapStore = async () => {};
+  resumed.App.autoSave = () => true;
+  assertEqual(await resumed.App.loadFromSlot('slot1'), true, 'Pending companion battle should load');
+  assertEqual(resumed.App.combatState.active, true, 'Load should resume combat instead of skipping to recovery');
+  assertEqual(resumed.App.defeatState.awaitingEncounterSettlement, true, 'Pending settlement metadata should survive reload');
+  assertEqual(resumed.App.party.some(unit => unit.id === 'companion-pending-roundtrip'), true, 'Living companion should remain in the resumed roster');
+  assertEqual(resumed.App.combatState.turnQueue.some(entry => entry.unit?.id === 'companion-pending-roundtrip'), true, 'Living companion should remain in the resumed turn queue');
+
+  const resumedEnemy = resumed.App.creatures.find(unit => unit.id === 'enemy-pending-roundtrip');
+  assert(resumedEnemy, 'Resumed battle should retain its enemy');
+  resumedEnemy.CPun = 0;
+  resumed.App.endCombat('victory');
+  assertEqual(resumed.App.defeatState.encounterSettled, true, 'Resumed companion victory should settle the pending encounter');
+  assertEqual(resumed.App.strandedCompanions[0]?.status, 'stranded', 'Surviving companion should be recorded as stranded after settlement');
+  assertEqual(resumed.App.worldMap.get('5,-6').creatures.some(unit => unit.id === 'companion-pending-roundtrip'), true, 'Settlement should persist the survivor at the defeat tile');
+
+  const settledBuffers = [];
+  resumed.App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  resumed.App._dbPut = async (_store, _key, value) => { settledBuffers.push(value); };
+  assertEqual(await resumed.App._saveToSlotConfirmed('slot1'), true, 'Settled recovery should save before regeneration');
+
+  const recovering = loadAppForCombat(() => 0.5, { binary: Binary });
+  recovering.App._dbGet = async () => settledBuffers[0];
+  recovering.App.loadWorldStateFromMapStore = async () => {};
+  assertEqual(await recovering.App.loadFromSlot('slot1'), true, 'Settled recovery save should load');
+  assertEqual(recovering.App.combatState.active, false, 'Settled recovery should not reopen combat');
+  assertEqual(recovering.App.defeatState.pending, true, 'Settled recovery should remain pending until the player regenerates or ends the run');
+  assertEqual(recovering.App.defeatState.encounterSettled, true, 'Settled encounter metadata should survive the second reload');
+  assertEqual(recovering.App.worldMap.get('5,-6').creatures.some(unit => unit.id === 'companion-pending-roundtrip'), true, 'Stranded survivor placement should survive the second reload');
+});
+
 test('Death bag collection preserves overflow until pack space is available', () => {
   const { App } = loadAppForCombat(() => 0.5);
   App.player = makeUnit('You', { id: 'player-partial-bag', CPun: 30, MPun: 100 });
@@ -9825,6 +9910,70 @@ test('Death bag collection preserves overflow until pack space is available', ()
   assert(App.inventory.some(item => item.id === 'recovery-b'), 'Second deferred item should be recovered');
   assertEqual(tile.deathBags.length, 0, 'The bag should be removed only after all contents are recovered');
   assertEqual(App.player.gold, 6, 'Repeated collection should not duplicate previously recovered gold');
+});
+
+test('Partially collected death bags survive save load without duplicating recovered gold', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const first = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App } = first;
+  App.mode = App.GAME_MODE.NORMAL;
+  App.player = makeSerializableUnit('You', { id: 'player-partial-bag-roundtrip', gold: 2 });
+  App.party = [App.player];
+  App.player.gold = 2;
+  App.inventory = Array.from({ length: App.MAX_INVENTORY }, (_, index) => ({
+    id: `roundtrip-packed-${index}`,
+    name: `Packed item ${index}`,
+    type: 'misc'
+  }));
+  App.location = { x: 3, y: 7 };
+  App.currentBiome = 'plains';
+  App.worldMeta = { worldId: 'partial-bag-world', seed: 'partial-bag-seed', generatorVersion: 2, mapModsHash: 'core' };
+  const tile = {
+    ...App.getBaseTile(3, 7),
+    explored: true,
+    biome: 'plains',
+    creatures: [],
+    items: [],
+    deathBags: [{
+      id: 'death-bag-partial-roundtrip',
+      items: [
+        { id: 'roundtrip-recovery-a', name: 'Recovery A', type: 'misc' },
+        { id: 'roundtrip-recovery-b', name: 'Recovery B', type: 'misc' }
+      ],
+      gold: 7
+    }]
+  };
+  App.worldMap = new Map([['3,7', tile]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['3,7']);
+  App.autoSave = () => true;
+
+  assertEqual(App.collectDeathBag('death-bag-partial-roundtrip'), true, 'Full pack should collect only the available gold before saving');
+  assertEqual(App.player.gold, 9, 'Fixture should recover bag gold exactly once');
+  assertEqual(tile.deathBags[0].gold, 0, 'Collected gold should be removed from the persisted bag state');
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+  assertEqual(await App._saveToSlotConfirmed('slot1'), true, 'Partially collected bag state should save');
+
+  const loaded = loadAppForCombat(() => 0.5, { binary: Binary });
+  loaded.App._dbGet = async () => savedBuffers[0];
+  loaded.App.loadWorldStateFromMapStore = async () => {};
+  loaded.App.autoSave = () => true;
+  assertEqual(await loaded.App.loadFromSlot('slot1'), true, 'Partially collected bag state should load');
+  const restoredTile = loaded.App.worldMap.get('3,7');
+  const restoredBag = restoredTile.deathBags.find(bag => bag.id === 'death-bag-partial-roundtrip');
+  assert(restoredBag, 'Unrecovered bag items should remain after reload');
+  assertEqual(restoredBag.items.length, 2, 'Both capacity-blocked items should survive reload');
+  assertEqual(restoredBag.gold, 0, 'Already recovered gold should remain absent after reload');
+  assertEqual(loaded.App.player.gold, 9, 'Player gold should retain the one recovered amount after reload');
+
+  loaded.App.inventory.splice(-2, 2);
+  assertEqual(loaded.App.collectDeathBag('death-bag-partial-roundtrip'), true, 'Freed pack capacity should recover the remaining items after reload');
+  assertEqual(loaded.App.inventory.some(item => item.id === 'roundtrip-recovery-a'), true, 'First deferred item should recover after reload');
+  assertEqual(loaded.App.inventory.some(item => item.id === 'roundtrip-recovery-b'), true, 'Second deferred item should recover after reload');
+  assertEqual(restoredTile.deathBags.length, 0, 'Bag should disappear only after every deferred item is recovered');
+  assertEqual(loaded.App.player.gold, 9, 'Completing collection after reload must not duplicate gold');
 });
 
 test('Retain recovery policy keeps inventory and gold while still separating companions', () => {
@@ -18973,6 +19122,54 @@ test('Party companions can be dropped off persistently and rejoin without duplic
   assertEqual(App.worldMap.get('2,-3').creatures.some(unit => unit.id === 'companion-drop-off'), false, 'Rejoining should remove the persistent tile placement');
   assertEqual(xpGranted, 0, 'Rejoining an existing companion should not grant recruitment XP again');
   assertContains(App.log[App.log.length - 1].text, 'rejoins your party', 'Rejoining should use distinct player-facing feedback');
+});
+
+test('Dropped-off companions survive save load and rejoin from their persisted tile', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const first = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App } = first;
+  const player = makeSerializableUnit('You', { id: 'player-drop-off-roundtrip' });
+  const companion = makeSerializableUnit('Harpy', {
+    id: 'companion-drop-off-roundtrip',
+    partyRole: 'scout',
+    aiOrder: 'defensive'
+  });
+  App.mode = App.GAME_MODE.NORMAL;
+  App.player = player;
+  App.party = [player, companion];
+  App.location = { x: -4, y: 3 };
+  App.currentBiome = 'grove';
+  App.worldMeta = { worldId: 'drop-off-world', seed: 'drop-off-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map([['-4,3', { ...App.getBaseTile(-4, 3), explored: true, biome: 'grove', creatures: [], items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['-4,3']);
+  App.creatures = [];
+  App.autoSave = () => true;
+
+  assertEqual(App._dropOffPartyMemberConfirmed(1), true, 'Fixture should drop the companion before saving');
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+  assertEqual(await App._saveToSlotConfirmed('slot1'), true, 'Dropped-off companion state should save');
+
+  const loaded = loadAppForCombat(() => 0.5, { binary: Binary });
+  loaded.App._dbGet = async () => savedBuffers[0];
+  loaded.App.loadWorldStateFromMapStore = async () => {};
+  loaded.App.autoSave = () => true;
+  let xpGranted = 0;
+  loaded.App.gainXP = amount => { xpGranted += amount; };
+  assertEqual(await loaded.App.loadFromSlot('slot1'), true, 'Dropped-off companion state should load');
+  assertEqual(loaded.App.party.some(unit => unit.id === 'companion-drop-off-roundtrip'), false, 'Dropped-off companion should not return to the traveling party on load');
+  const persisted = loaded.App.creatures.find(unit => unit.id === 'companion-drop-off-roundtrip');
+  assert(persisted, 'Dropped-off companion should reload on the current tile');
+  assertEqual(persisted.droppedOffCompanion, true, 'Reloaded companion should preserve the explicit rejoin contract');
+  assertEqual(persisted.partyRole, 'scout', 'Reloaded companion should preserve its party role');
+  assertEqual(persisted.aiOrder, 'defensive', 'Reloaded companion should preserve its AI order');
+
+  assertEqual(loaded.App.recruitCreature(persisted), true, 'Reloaded dropped-off companion should rejoin normally');
+  assertEqual(loaded.App.party.some(unit => unit.id === 'companion-drop-off-roundtrip'), true, 'Rejoined companion should return to the party after reload');
+  assertEqual(loaded.App.worldMap.get('-4,3').creatures.some(unit => unit.id === 'companion-drop-off-roundtrip'), false, 'Rejoin should remove the loaded tile placement');
+  assertEqual(xpGranted, 0, 'Rejoining after reload should not grant duplicate recruitment XP');
 });
 
 test('Interior companion drop-off and rejoin persist through the structure origin', () => {

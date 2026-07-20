@@ -5371,6 +5371,19 @@
                 }, 0);
             },
             showScreen(name) {
+                const originScreen = String(this.screen || '');
+                const dialogTarget = this.isOverlayScreen(name) || name === 'save-manager';
+                const dialogOrigin = this.isOverlayScreen(originScreen) || originScreen === 'save-manager';
+                if (dialogTarget && !dialogOrigin && !this.overlayBaseReturnFocus) {
+                    const active = document.activeElement && document.activeElement !== document.body
+                        ? document.activeElement
+                        : null;
+                    this.overlayBaseReturnFocus = originScreen === 'game'
+                        ? document.getElementById('app-menu-toggle') || active
+                        : active;
+                } else if (!dialogTarget) {
+                    this.overlayBaseReturnFocus = null;
+                }
                 this.closeAppMenu();
                 this.screen = name;
                 if (!this.isOverlayScreen(name) && name !== 'save-manager') this.overlayReturnStack = [];
@@ -5426,7 +5439,9 @@
                     this.restoreOverlayReturnFocus(returnFocus, targetScreen);
                     return;
                 }
-                this._restoreFocusTrap();
+                const returnFocus = this.overlayBaseReturnFocus || this._focusTrap?.previous || null;
+                this.overlayBaseReturnFocus = null;
+                this._restoreFocusTrap({ restoreFocus: false });
                 const returnScreen = this.settingsReturnScreen;
                 this.settingsReturnScreen = null;
                 ['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'screen-release', 'screen-activity', 'save-manager'].forEach(id => {
@@ -5440,6 +5455,7 @@
                     document.getElementById('screen-create').classList.add('active');
                     this.screen = 'create';
                     this.syncCreateContentLevel();
+                    this.restoreOverlayReturnFocus(returnFocus, 'create');
                     return;
                 }
                 if (returnScreen === 'menu') {
@@ -5450,6 +5466,7 @@
                     document.getElementById('screen-menu').classList.add('active');
                     this.screen = 'menu';
                     this.refreshContinueButton();
+                    this.restoreOverlayReturnFocus(returnFocus, 'menu');
                     return;
                 }
                 if (returnScreen === 'game') {
@@ -5468,6 +5485,7 @@
                         this.screen = 'menu';
                         this.refreshContinueButton();
                     }
+                    this.restoreOverlayReturnFocus(returnFocus, this.screen);
                     return;
                 }
                 if (this.player && this.player.CPun > 0) {
@@ -5483,6 +5501,7 @@
                     this.screen = 'menu';
                     this.refreshContinueButton();
                 }
+                this.restoreOverlayReturnFocus(returnFocus, this.screen);
             },
             showCharacterStats() {
                 return YAW_HOLDINGS.show(this, this.player, { tab: 'stats' });

@@ -104,7 +104,13 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         if (app.targetSelection?.source === 'combat') {
             const actionLabel = app._uiLabel(app.targetSelection.action || 'action');
             const cancelAction = app._label('target.cancelAction', 'Cancel {action}', { action: actionLabel }) || cancelLabel;
-            return row(app._label('target.controls', 'Target controls'), 'combat-targeting', button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn compact-secondary', cancelAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit"'));
+            const markedTargets = app._combatMarkedTargets?.() || [];
+            const confirmAction = app._label('target.confirmAction', 'Use {action} on selected target', { action: actionLabel });
+            const confirm = markedTargets.length
+                ? button(confirmAction, 'event.stopPropagation();App.confirmCombatTargets()', 'action-btn primary', confirmAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent"')
+                : '';
+            const cancel = button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn compact-secondary', cancelAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit"');
+            return row(app._label('target.controls', 'Target controls'), 'combat-targeting', confirm + cancel);
         }
         return '';
     },

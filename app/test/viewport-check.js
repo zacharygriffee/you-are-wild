@@ -308,6 +308,7 @@ async function checkViewport(browser, name, width, height) {
         height: actionsRect.height
       },
       actionColumnCentered,
+      focusControl: document.activeElement?.getAttribute('data-command-control') || '',
       visibleActions,
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
       viewportWidth: innerWidth,
@@ -330,6 +331,7 @@ async function checkViewport(browser, name, width, height) {
   assert(returnedMenu.actionsBounds.width <= Math.min(400, returnedMenu.viewportWidth) + 1, `${name}: returned menu actions should stay width-bounded`);
   assert(returnedMenu.actionsBounds.left >= -1 && returnedMenu.actionsBounds.right <= returnedMenu.viewportWidth + 1, `${name}: returned menu actions should stay inside the viewport`);
   assert.strictEqual(returnedMenu.actionColumnCentered, true, `${name}: returned menu action column should be horizontally centered`);
+  assert.strictEqual(returnedMenu.focusControl, 'open-settings', `${name}: closing menu Settings should restore keyboard focus to its visible trigger`);
   assert(returnedMenu.visibleActions.length >= 5, `${name}: returned menu should expose primary menu actions`);
   assert(returnedMenu.visibleActions.every(button => button.width >= 44 && button.height >= 44), `${name}: returned menu actions should remain tappable`);
   assert.strictEqual(returnedMenu.pageOverflow, false, `${name}: closing Settings should not introduce menu horizontal overflow`);
@@ -409,6 +411,7 @@ async function checkViewport(browser, name, width, height) {
       contentTappable: Boolean(contentRect && contentRect.width >= 44 && contentRect.height >= 44),
       contentControl: contentButton?.getAttribute('data-command-control') || '',
       contentSurface: contentButton?.getAttribute('data-command-surface') || '',
+      focusControl: document.activeElement?.getAttribute('data-command-control') || '',
       contentLabel: contentLabel?.textContent?.trim() || '',
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     };
@@ -428,6 +431,7 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedCreate.contentTappable, true, `${name}: returned create content-level shortcut should remain tappable`);
   assert.strictEqual(returnedCreate.contentControl, 'open-content-settings', `${name}: returned create content shortcut should keep its command control`);
   assert.strictEqual(returnedCreate.contentSurface, 'character-creation', `${name}: returned create content shortcut should keep setup surface ownership`);
+  assert.strictEqual(returnedCreate.focusControl, 'open-content-settings', `${name}: closing create Settings should restore keyboard focus to its visible trigger`);
   assert(returnedCreate.contentLabel.length > 0, `${name}: returned create content-level label should be populated`);
   assert.strictEqual(returnedCreate.pageOverflow, false, `${name}: closing create Settings should not introduce horizontal overflow`);
 
@@ -1066,6 +1070,7 @@ async function checkViewport(browser, name, width, height) {
       menuDisplay: getComputedStyle(menu).display,
       appMenuOpen: appMenu?.classList.contains('open') || false,
       appMenuExpanded: appMenuToggle?.getAttribute('aria-expanded') || '',
+      focusId: document.activeElement?.id || '',
       dockVisible: Boolean(dock) && getComputedStyle(dock).display !== 'none' && dock.getBoundingClientRect().height > 0,
       surfaceVisible: Boolean(surfaceRect && surfaceRect.width > 0 && surfaceRect.height > 0),
       surfaceInsideViewport: !surfaceRect || (surfaceRect.left >= -1 && surfaceRect.right <= innerWidth + 1),
@@ -1082,6 +1087,7 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedGameSettings.menuDisplay, 'none', `${name}: closing live-game Settings should not restore the main menu`);
   assert.strictEqual(returnedGameSettings.appMenuOpen, false, `${name}: app menu should stay closed after live-game Settings closes`);
   assert.strictEqual(returnedGameSettings.appMenuExpanded, 'false', `${name}: app-menu toggle should stay collapsed after live-game Settings closes`);
+  assert.strictEqual(returnedGameSettings.focusId, 'app-menu-toggle', `${name}: closing live-game Settings should restore keyboard focus to the app-menu trigger`);
   if (width <= 1024) assert.strictEqual(returnedGameSettings.dockVisible, true, `${name}: mobile dock should be visible after live-game Settings closes`);
   assert.strictEqual(returnedGameSettings.surfaceVisible, true, `${name}: play surface should be visible after live-game Settings closes`);
   assert.strictEqual(returnedGameSettings.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after live-game Settings closes`);

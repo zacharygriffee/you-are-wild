@@ -743,11 +743,16 @@ async function runActionMatrix(page) {
 
   await setupCombat(page, { withAlly: true });
   await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('feed')"]`).first().click();
+  const allyCard = page.locator('#party-content .compact-tactical-card').filter({ hasText: 'Ally' }).first();
+  await allyCard.locator('button[data-command-control="focus-target"]').click();
+  const confirmFeed = page.locator('#desktop-context-belt button[data-command-control="confirm-targets"]');
+  await assert.doesNotReject(() => confirmFeed.waitFor({ state: 'visible', timeout: 1000 }), 'Feed should expose confirmation after choosing an explicit party target');
+  await confirmFeed.click();
   state = await page.evaluate(() => ({
     allyPun: App.party.find(p => p.id === 'ally-1')?.CPun,
     advanced: App._advancedTurn === true
   }));
-  assert(state.allyPun > 40, 'Feed should heal the wounded ally through the active party card');
+  assert(state.allyPun > 40, 'Feed should heal the explicitly selected wounded ally through the active party card');
   assert.strictEqual(state.advanced, true, 'Feed should consume the combat turn');
 }
 

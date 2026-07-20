@@ -6575,6 +6575,8 @@ test('Overlay close controls clear active overlay state', () => {
   assertContains(settingsFlowContent, "settingsReturnScreen = 'game'", 'Settings opened from the app menu should store an explicit game return context');
   assertContains(appContent, "returnScreen === 'menu'", 'App returnToGame should honor explicit main-menu settings return context');
   assertContains(appContent, "returnScreen === 'game'", 'App returnToGame should honor explicit live-game settings return context');
+  assertContains(appContent, 'this.overlayBaseReturnFocus || this._focusTrap?.previous || null', 'App overlay close should preserve the visible base-screen trigger across nested dialogs');
+  assertContains(appContent, 'this.restoreOverlayReturnFocus(returnFocus, this.screen);', 'App overlay close should restore focus only after its destination screen is visible');
   assertContains(appContent, "document.getElementById('screen-menu').classList.add('active');", 'App returnToGame should restore active menu state when no game is running');
   assertContains(appContent, "this.screen = 'menu';", 'App returnToGame should restore menu screen state when no game is running');
 });
@@ -23563,9 +23565,10 @@ test('Persisted app settings normalize remaining fields before use and save', ()
   assertEqual(saved.injected, undefined, 'Unknown settings should not persist');
 });
 
-test('Overlays trap focus and restore the opener on close', () => {
+test('Overlays trap focus and restore the opener on close', async () => {
   const { App, elements, document, listeners } = loadAppForCombat();
   const opener = makeElement();
+  opener.offsetParent = {};
   document.activeElement = opener;
   App.showScreen('settings');
   assert(App._focusTrap, 'Settings overlay should activate a focus trap');
@@ -23574,6 +23577,7 @@ test('Overlays trap focus and restore the opener on close', () => {
   listeners.get('keydown')({ key: 'Escape', preventDefault() { prevented = true; } });
   assertEqual(prevented, true, 'Escape should be consumed by the overlay focus trap');
   assertEqual(elements.get('screen-settings').style.display, 'none', 'Escape should close the overlay');
+  await new Promise(resolve => setTimeout(resolve, 0));
   assertEqual(opener.focused, true, 'Closing overlay should restore focus to opener');
 });
 

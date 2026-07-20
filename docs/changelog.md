@@ -30,6 +30,8 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Recent Fixes
 
+- Explicit combat targets now have a reachable localized Confirm action on desktop and mobile. This closes the party-target Feed path without restoring the old automatic wounded-player redirect, while preserving Cancel and multi-step Feed options.
+- Closing Settings and the related system overlays now returns keyboard focus to the visible control that opened the flow. This remains reliable through nested provider/mod screens and across the main menu, character creation, and the live-game app menu.
 - Combat Feed now requires the acting party member to choose one living target before resolution. Self, companion, and opposing-creature targets are supported; the old most-wounded-ally shortcut can no longer silently redirect a companion's Feed to the player, and unavailable variants return to target selection without spending the turn.
 - Flee and death now use separate outcomes. A living player retreat moves the traveling party to a safe adjacent tile and ends as escape without Regenerate; a fleeing companion leaves the party and remains friendly/recoverable on a safe adjacent tile. Known hostile destinations are excluded, source-tile enemies persist, healthy fled saves are not classified as wipes, and no-safe-route attempts remain in combat.
 - Release 0.12.1 documents the defeat-recovery, companion interaction, healing-item, responsive-layout, and interior recovery-bag fixes now included in the public Sites build.

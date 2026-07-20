@@ -14,12 +14,30 @@ const YAW_SUB_ACTIONS = {
             release: { label: 'Release', sfwLabel: 'Free', icon: '⬆️', validate: (a) => App._activeContainedPrey?.(a, 'stomach')?.some(p => p.releaseEligible), execute: 'releasePrey', setting: null }
         },
         feed: {
-            heal: { label: 'Heal', sfwLabel: 'Tend', icon: '💚', validate: (a, t) => t.CPun < t.MPun, execute: 'healAlly', setting: null },
-            breastfeed: { label: 'Nurse', sfwLabel: 'Nurse', icon: '🥛', validate: (a) => a.lactating && !a.lactationCooldown, execute: 'breastfeed', setting: null },
-            sacrifice: { label: 'Sacrifice', sfwLabel: 'Offer', icon: '🐄', validate: (a, t) => (t.livestock || t.willingPrey) && a.size >= t.size - 2 && App._canFitPrey(a, t, 'stomach'), execute: 'sacrificeTo', setting: null },
-            forceFeed: { label: 'Force Feed', sfwLabel: 'Force Feed', icon: '🔗', validate: (a, t, h) => App.settings.forcedFeeding && h && h.length > 0 && a.size >= t.size - 2 && App._canFitPrey(a, t, 'stomach'), execute: 'forceFeed', setting: 'forcedFeeding' },
-            slurp: { label: 'Slurp', sfwLabel: 'Draw', icon: '💧', validate: (a, t) => t.slurpable, execute: 'slurpPortion', setting: null },
-            fragment: { label: 'Break Off', sfwLabel: 'Chip', icon: '🍫', validate: (a, t) => t.breakable, execute: 'fragmentPortion', setting: null }
+            tend: { label: 'Tend', sfwLabel: 'Tend', icon: '💚', validate: (a, t) => Boolean(a && t) && t.CPun < t.MPun, execute: 'tend', setting: null },
+            nurse: { label: 'Nurse', sfwLabel: 'Nurse', icon: '🥛', validate: (a, t) => a !== t && a.lactating && !a.lactationCooldown, execute: 'nurse', setting: null },
+            offerWhole: {
+                label: 'Offer Self', sfwLabel: 'Offer Self', icon: '🐄', execute: 'offerWhole', setting: null,
+                validate: (a, t) => a !== t
+                    && a !== App.player
+                    && !a.mc
+                    && (a.livestock || a.willingPrey)
+                    && App._canFitPrey(t, a, 'stomach')
+            },
+            offerPiece: {
+                label: 'Offer Piece', sfwLabel: 'Offer Piece', icon: '🍫', execute: 'offerPiece', setting: null,
+                validate: (a, t) => {
+                    const renewable = a?.renewableBody || a?.slurpable || a?.breakable || /slime/i.test(String(a?.species || ''));
+                    const reserve = Math.max(2, Math.floor((a?.MPun || 1) * 0.15));
+                    return a !== t && renewable && a.CPun > reserve && (t.CPun < t.MPun || (t.hunger || 0) > 0);
+                }
+            },
+            heal: { label: 'Heal', sfwLabel: 'Tend', icon: '💚', validate: (a, t) => t.CPun < t.MPun, execute: 'healAlly', setting: null, legacy: true },
+            breastfeed: { label: 'Nurse', sfwLabel: 'Nurse', icon: '🥛', validate: (a) => a.lactating && !a.lactationCooldown, execute: 'breastfeed', setting: null, legacy: true },
+            sacrifice: { label: 'Sacrifice', sfwLabel: 'Offer', icon: '🐄', validate: (a, t) => (t.livestock || t.willingPrey) && a.size >= t.size - 2 && App._canFitPrey(a, t, 'stomach'), execute: 'sacrificeTo', setting: null, legacy: true },
+            forceFeed: { label: 'Force Feed', sfwLabel: 'Force Feed', icon: '🔗', validate: (a, t, h) => App.settings.forcedFeeding && h && h.length > 0 && a.size >= t.size - 2 && App._canFitPrey(a, t, 'stomach'), execute: 'forceFeed', setting: 'forcedFeeding', legacy: true },
+            slurp: { label: 'Slurp', sfwLabel: 'Draw', icon: '💧', validate: (a, t) => t.slurpable, execute: 'slurpPortion', setting: null, legacy: true },
+            fragment: { label: 'Break Off', sfwLabel: 'Chip', icon: '🍫', validate: (a, t) => t.breakable, execute: 'fragmentPortion', setting: null, legacy: true }
         },
         fight: {
             attack: { label: 'Attack', sfwLabel: 'Attack', icon: '⚔️', validate: () => true, execute: 'attack', setting: null },
@@ -43,21 +61,24 @@ const YAW_SUB_ACTIONS = {
         }
     },
 
-    defaults: { feast: 'swallow', feed: 'heal', fight: 'attack', fuck: 'seduce', flirt: 'tease', flee: 'run' },
+    defaults: { feast: 'swallow', feed: 'tend', fight: 'attack', fuck: 'seduce', flirt: 'tease', flee: 'run' },
 
     defaultActions() {
         return { ...this.defaults };
     },
 
     getDefault(app, action) {
-        return app.defaultSubActions[action] || action;
+        const selected = app.defaultSubActions[action] || this.defaults[action] || action;
+        return app.SUB_ACTIONS[action]?.[selected]?.legacy === true
+            ? (this.defaults[action] || action)
+            : selected;
     },
 
     available(app, action, actor, target) {
         const subDefs = app.SUB_ACTIONS[action];
         if (!subDefs) return [];
         const holder = app.party.filter(p => p !== actor && p !== target && p.CPun > 0);
-        return Object.entries(subDefs).map(([id, def]) => ({
+        return Object.entries(subDefs).filter(([, def]) => def.legacy !== true).map(([id, def]) => ({
             id,
             label: app._getActionLabel(action, id),
             icon: def.icon,
@@ -81,7 +102,7 @@ const YAW_SUB_ACTIONS = {
         const subDefs = app.SUB_ACTIONS[action];
         if (!subDefs || !subDefs[subAction]) return subAction;
         const fallback = isSFW ? (subDefs[subAction].sfwLabel || subDefs[subAction].label) : subDefs[subAction].label;
-        return isSFW ? fallback : app._label(`subaction.${action}.${subAction}`, fallback);
+        return app._label(`subaction.${action}.${subAction}${isSFW ? '.sfw' : ''}`, fallback);
     }
 };
 

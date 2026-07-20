@@ -24,11 +24,11 @@ blocked edges, structures, and exits may not.
 | Lightweight | `?graphics=emoji` skips bundled atlas registration | Same semantic map and controls through emoji/text. |
 | Partial mod pack | Locally leased overrides compose above lower-priority packs | Missing base/route/state keys inherit; disabling restores the prior candidate. |
 
-Measured development artifacts for 0.12.0-era sources:
+Measured development artifacts for the 0.12.1 development head on 2026-07-20:
 
-- offline single-file build: approximately 7.6 MiB (4.46 MiB gzip);
-- hosted runtime HTML: approximately 2.5 MiB (0.48 MiB gzip);
-- external first-party atlases: approximately 3.9 MiB combined.
+- offline single-file build: 7.58 MiB (4.27 MiB gzip);
+- hosted runtime HTML: 2.52 MiB (0.46 MiB gzip);
+- external first-party atlases: 3.78 MiB combined.
 
 Hosted Lightweight avoids the atlas transfer. Hosted Textured pays it once and
 can reuse normal browser cache; installed mod assets remain content-addressed in

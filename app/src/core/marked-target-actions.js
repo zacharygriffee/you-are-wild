@@ -31,7 +31,9 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 : 'target-bar';
             const defaultSubAction = app.SUB_ACTIONS[key] ? app._getDefaultSubAction(key) : null;
             const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
-            const handler = defaultSubAction
+            const handler = key === 'feed'
+                ? `App.openExplorationTargetSubActionSheet('feed','${actionSource}')`
+                : defaultSubAction
                 ? `App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')`
                 : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
             return {
@@ -106,9 +108,11 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const title = `${app._uiLabel(action)} ${app._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`.trim();
         const defaultSub = app._getDefaultSubAction(action);
         const defaultLabel = app._getActionLabel(action, defaultSub);
+        const defaultOption = subActions.find(sub => sub.id === defaultSub);
+        const defaultDisabled = defaultOption && !defaultOption.available ? ' disabled' : '';
         const surface = app._intentMenuSurface(source);
         let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-intent-source="${app._escapeHtml(commandSource)}" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${app._escapeHtml(action)}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent">`;
-        html += `<button class="action-btn primary" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${app._escapeHtml(defaultLabel)}" aria-label="${app._escapeHtml(defaultLabel)}" onclick="App.resolveExplorationTargetAction('${action}','${String(defaultSub).replace(/'/g, "\\'")}','${commandSource}')">${app._escapeHtml(defaultLabel)}</button>`;
+        html += `<button class="action-btn primary" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${app._escapeHtml(defaultLabel)}" aria-label="${app._escapeHtml(defaultLabel)}"${defaultDisabled} onclick="App.resolveExplorationTargetAction('${action}','${String(defaultSub).replace(/'/g, "\\'")}','${commandSource}')">${app._escapeHtml(defaultLabel)}</button>`;
         subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
             const label = app._escapeHtml(sub.label);
             const disabled = sub.available ? '' : ' disabled';

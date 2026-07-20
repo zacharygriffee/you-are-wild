@@ -2767,6 +2767,7 @@
                         result = `${actorName} release ${prey.name} from their belly, weak and dazed but alive.`;
                         break;
                     }
+                    case 'feed.tend':
                     case 'feed.heal': {
                         const healAmount = Math.floor((actor.Feed || 10) * 2);
                         target.CPun = Math.min(target.MPun, target.CPun + healAmount);
@@ -2775,9 +2776,14 @@
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(healAmount * 0.5));
                         }
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = `${actorName} feed${actorVerb} ${target.name}, restoring ${healAmount} punishment and sating their hunger.`;
+                        result = this._label('feed.tendResult', '{actor} tends {target}, restoring {amount} punishment and easing their hunger.', {
+                            actor: actorName,
+                            target: target.name,
+                            amount: healAmount
+                        });
                         break;
                     }
+                    case 'feed.nurse':
                     case 'feed.breastfeed': {
                         if (!actor.lactating) { result = `${actorName} are not lactating.`; break; }
                         if (actor.lactationCooldown > 0) { result = `${actorName}'s milk is not ready yet.`; break; }
@@ -2787,7 +2793,59 @@
                         target.hunger = Math.max(0, (target.hunger || 0) - 40);
                         actor.lactationCooldown = 3;
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = `${actorName} breastfeed${actorVerb} ${target.name}, warm milk flowing as pleasure and vitality return.`;
+                        result = this._label('feed.nurseResult', '{actor} nurses {target}, restoring vitality and easing their hunger.', {
+                            actor: actorName,
+                            target: target.name
+                        });
+                        break;
+                    }
+                    case 'feed.offerWhole': {
+                        if (actor === target) {
+                            result = this._label('feed.offerWholeSelfBlocked', '{name} cannot offer themself to themself.', { name: actor.name });
+                            break;
+                        }
+                        if (actor === this.player || actor.mc) {
+                            result = this._label('feed.offerWholePlayerDeferred', 'Whole-self offering for the player is not available until living capture has a safe playable recovery loop.');
+                            break;
+                        }
+                        if (!actor.livestock && !actor.willingPrey) {
+                            result = this._label('feed.offerWholeUnwilling', '{name} is not willing to offer themself whole.', { name: actor.name });
+                            break;
+                        }
+                        if (!this._canFitPrey(target, actor, 'stomach')) {
+                            result = this._capacityFailureMessage(target, actor, 'stomach');
+                            break;
+                        }
+                        this._containTargetIn(target, actor, 'stomach', { willingSacrifice: true, feedContract: 'offer-whole' });
+                        this._awardCombatXP(this.XP_REWARDS.feedAlly);
+                        result = this._label('feed.offerWholeResult', '{actor} willingly offers themself to {target} and settles in their belly.', {
+                            actor: actor.name,
+                            target: target.name
+                        });
+                        break;
+                    }
+                    case 'feed.offerPiece': {
+                        const renewable = actor.renewableBody || actor.slurpable || actor.breakable || /slime/i.test(String(actor.species || ''));
+                        const pieceCost = Math.max(2, Math.floor((actor.MPun || 1) * 0.15));
+                        if (!renewable) {
+                            result = this._label('feed.offerPieceUnavailable', '{name} cannot safely offer a renewable piece.', { name: actor.name });
+                            break;
+                        }
+                        if (actor === target || actor.CPun <= pieceCost) {
+                            result = this._label('feed.offerPieceTooWeak', '{name} is too weak to offer a piece right now.', { name: actor.name });
+                            break;
+                        }
+                        const nourishment = Math.max(4, Math.floor((actor.Feed || 10) * 1.5));
+                        actor.CPun = Math.max(1, actor.CPun - pieceCost);
+                        target.CPun = Math.min(target.MPun, target.CPun + nourishment);
+                        target.hunger = Math.max(0, (target.hunger || 0) - Math.max(10, pieceCost));
+                        this._awardCombatXP(this.XP_REWARDS.feedAlly);
+                        result = this._label('feed.offerPieceResult', '{actor} offers a renewable piece to {target}, losing {cost} punishment while restoring {amount}.', {
+                            actor: actor.name,
+                            target: target.name,
+                            cost: pieceCost,
+                            amount: nourishment
+                        });
                         break;
                     }
                     case 'feed.sacrifice': {
@@ -3287,7 +3345,7 @@
             },
 
             _shouldSkipFullFeedTarget(options = {}) {
-                return !options.subAction || ['heal', 'breastfeed'].includes(options.subAction);
+                return !options.subAction || ['tend', 'heal', 'breastfeed'].includes(options.subAction);
             },
 
             _selectGroupFeedSubActionActor(subAction, target, actors = []) {
@@ -3318,7 +3376,7 @@
                     }
                     prey = [target].filter(Boolean);
                 } else if (action === 'feed' && target) {
-                    if (selectedSubAction && !['heal', 'breastfeed'].includes(selectedSubAction)) {
+                    if (selectedSubAction && !['tend', 'heal'].includes(selectedSubAction)) {
                         primaryActor = this._selectGroupFeedSubActionActor(selectedSubAction, target, livingActors) || primaryActor;
                         helpers = livingActors.filter(actor => actor && actor !== primaryActor);
                         recipient = target;
@@ -3452,7 +3510,7 @@
                 if (living.length <= 1) return false;
                 const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
                 const names = living.map(unit => unit.name).join(', ');
-                if (action === 'feed' && selectedSubAction && !['heal', 'breastfeed'].includes(selectedSubAction)) {
+                if (action === 'feed' && selectedSubAction && !['tend', 'heal'].includes(selectedSubAction)) {
                     this.log.push({ text: this._label('feed.noValidTarget', 'No valid target for this feed action.'), type: 'discovery' });
                     this.renderLog();
                     this.renderParty();
@@ -3702,7 +3760,7 @@
                         break;
                     }
                     case 'feed': {
-                        if (selectedSubAction && !['heal', 'breastfeed'].includes(selectedSubAction)) {
+                        if (selectedSubAction && !['tend', 'heal'].includes(selectedSubAction)) {
                             const primary = this._selectGroupFeedSubActionActor(selectedSubAction, target, livingActors);
                             if (!primary) {
                                 result = this._label('feed.noValidTarget', 'No valid target for this feed action.');
@@ -3717,7 +3775,7 @@
                             const candidates = livingActors.filter(actor => actor !== target);
                             const prey = candidates.filter(actor => actor !== this.player && !actor.mc);
                             const helpers = candidates.filter(actor => !prey.includes(actor));
-                            if (selectedSubAction === 'heal' || livingActors.includes(target) || candidates.length === 0 || prey.length === 0) {
+                            if (['tend', 'heal'].includes(selectedSubAction) || livingActors.includes(target) || candidates.length === 0 || prey.length === 0) {
                                 const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
                                 const healAmount = Math.floor(totalFeed * 2);
                                 target.CPun = Math.min(target.MPun, target.CPun + healAmount);

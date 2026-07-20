@@ -8451,7 +8451,7 @@ test('Combat feed uses the current combat actor and explicitly selected target',
   assertEqual(healedTarget, player, 'Current actor feed should target the wounded party member');
   assertEqual(App.lastIntentCommand.source, 'feed-options', 'Feed sub-action should resolve through the feed options command surface');
   assertEqual(App.lastIntentCommand.action, 'feed', 'Feed sub-action should record the feed command action');
-  assertEqual(App.lastIntentCommand.subAction, 'heal', 'Feed sub-action should record the selected sub-action');
+  assertEqual(App.lastIntentCommand.subAction, 'tend', 'Feed sub-action should record the canonical selected sub-action');
   assertEqual(App.lastIntentCommand.actorIds.join(','), 'ally-feed-current', 'Feed sub-action command should preserve the acting combat actor');
   assertEqual(App.lastIntentCommand.targetIds.join(','), 'player-feed-current', 'Feed sub-action command should preserve the chosen feed target');
   assertEqual(App.lastIntentCommand.planMode, 'combat', 'Feed sub-action should route through a combat InteractionPlan');
@@ -8531,6 +8531,10 @@ test('Sub-action registry exists with feast and feed sub-actions', () => {
   assertContains(appContent, 'SUB_ACTIONS:', 'SUB_ACTIONS registry missing');
   assertContains(subActionsContent, "feast: {", 'Feast sub-actions missing');
   assertContains(subActionsContent, "feed: {", 'Feed sub-actions missing');
+  assertContains(subActionsContent, "tend:", 'Canonical Tend sub-action missing');
+  assertContains(subActionsContent, "nurse:", 'Canonical Nurse sub-action missing');
+  assertContains(subActionsContent, "offerWhole:", 'Canonical Offer Self sub-action missing');
+  assertContains(subActionsContent, "offerPiece:", 'Canonical Offer Piece sub-action missing');
   assertContains(subActionsContent, "swallow:", 'Swallow sub-action missing');
   assertContains(subActionsContent, "heal:", 'Heal sub-action missing');
   assertContains(subActionsContent, "breastfeed:", 'Breastfeed sub-action missing');
@@ -8538,6 +8542,94 @@ test('Sub-action registry exists with feast and feed sub-actions', () => {
   assertContains(subActionsContent, "forceFeed:", 'ForceFeed sub-action missing');
   assertContains(subActionsContent, "cockVore:", 'CockVore sub-action missing');
   assertContains(subActionsContent, "unbirth:", 'Unbirth sub-action missing');
+});
+
+test('Feed Contract V1 exposes contextual canonical variants and hides compatibility aliases', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'feed-contract-player' });
+  const consumer = makeUnit('Consumer', { id: 'feed-contract-consumer', CPun: 60, MPun: 100, hunger: 50, size: 7, appetite: 8 });
+  const ordinary = makeUnit('Ordinary', { id: 'feed-contract-ordinary', size: 2 });
+  const willing = makeUnit('Willing', { id: 'feed-contract-willing', size: 2, willingPrey: true });
+  const slime = makeUnit('Slime', { id: 'feed-contract-slime', species: 'slime', size: 2, CPun: 90, MPun: 100, Feed: 20 });
+  App.player = player;
+  App.party = [player, ordinary, willing, slime, consumer];
+
+  assertEqual(App._getDefaultSubAction('feed'), 'tend', 'Feed should default to the unambiguous Tend variant');
+  App.defaultSubActions.feed = 'sacrifice';
+  assertEqual(App._getDefaultSubAction('feed'), 'tend', 'A legacy saved or modded default should fall back to the canonical Feed default');
+  const willingOptions = App._getAvailableSubActions('feed', willing, consumer);
+  assertEqual(willingOptions.some(option => option.id === 'offerWhole' && option.available), true, 'Willing non-player prey should be able to offer themself to the selected consumer');
+  assertEqual(willingOptions.some(option => ['heal', 'breastfeed', 'sacrifice', 'forceFeed', 'slurp', 'fragment'].includes(option.id)), false, 'Canonical picker should hide legacy inverse-direction aliases');
+  const ordinaryOptions = App._getAvailableSubActions('feed', ordinary, consumer);
+  assertEqual(ordinaryOptions.find(option => option.id === 'offerWhole')?.available, false, 'Ordinary creatures should not offer themselves without an authored willingness trait');
+  const playerOptions = App._getAvailableSubActions('feed', player, consumer);
+  assertEqual(playerOptions.find(option => option.id === 'offerWhole')?.available, false, 'Whole-player offering should remain deferred');
+  const slimeOptions = App._getAvailableSubActions('feed', slime, consumer);
+  assertEqual(slimeOptions.find(option => option.id === 'offerPiece')?.available, true, 'Slime-like actors should expose Offer Piece when they have enough condition reserve');
+
+  const productionContent = loadContentSystemForTest();
+  productionContent.setLanguage('es');
+  assertEqual(productionContent.t('subaction.feed.offerWhole.sfw'), 'Ofrecerse', 'Canonical Feed variant labels should localize');
+});
+
+test('Feed Contract V1 resolves whole and renewable-piece offerings in actor-to-target direction', () => {
+  const whole = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'offer-player' });
+  const willing = makeUnit('Willing', { id: 'offer-willing', size: 2, willingPrey: true, role: 'scout', aiOrder: 'support' });
+  const consumer = makeUnit('Consumer', { id: 'offer-consumer', size: 7, appetite: 8, hunger: 70 });
+  whole.App.player = player;
+  whole.App.party = [player, willing, consumer];
+  const wholeText = whole.App._doSubAction('feed', 'offerWhole', willing, consumer, willing.name, 's');
+  assertContains(wholeText, 'offers themself to Consumer', 'Offer Self should describe the selected actor as source and target as consumer');
+  assertEqual(consumer.stomach.length, 1, 'Offer Self should place the actor in the selected target stomach');
+  assertEqual(consumer.stomach[0].name, 'Willing', 'Offer Self should preserve the offered actor identity');
+  assertEqual(whole.App.party.includes(willing), false, 'Whole offering should remove the contained actor from the active party');
+  assertEqual(whole.App.party.includes(consumer), true, 'Whole offering should not remove the selected consumer');
+
+  const piece = loadAppForCombat(() => 0);
+  const slime = makeUnit('Slime', { id: 'piece-slime', species: 'slime', CPun: 80, MPun: 100, Feed: 20 });
+  const recipient = makeUnit('Recipient', { id: 'piece-recipient', CPun: 20, MPun: 100, hunger: 60 });
+  piece.App.player = makeUnit('You', { id: 'piece-player' });
+  piece.App.party = [piece.App.player, slime, recipient];
+  const sourceBefore = slime.CPun;
+  const recipientBefore = recipient.CPun;
+  const hungerBefore = recipient.hunger;
+  piece.App._doSubAction('feed', 'offerPiece', slime, recipient, slime.name, 's');
+  assert(slime.CPun < sourceBefore && slime.CPun >= 1, 'Offer Piece should spend bounded source condition without defeating the source');
+  assert(recipient.CPun > recipientBefore, 'Offer Piece should restore the explicitly selected recipient');
+  assert(recipient.hunger < hungerBefore, 'Offer Piece should ease the explicitly selected recipient hunger');
+  assertEqual(piece.App.party.includes(slime), true, 'Offer Piece should keep the renewable source in the active party');
+});
+
+test('Combat Feed can resolve a companion whole-self offer against the explicitly selected consumer', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'combat-offer-player' });
+  const willing = makeUnit('Willing', { id: 'combat-offer-willing', size: 2, willingPrey: true });
+  const consumer = makeUnit('Consumer', { id: 'combat-offer-consumer', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, size: 7, appetite: 8 });
+  App.player = player;
+  App.party = [player, willing];
+  App.creatures = [consumer];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: willing, initiative: 20 }, { unit: consumer, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = willing;
+  App.nextTurn = function() { this._wholeOfferAdvanced = true; };
+
+  assertEqual(App.executeCombatIntent('feed'), true, 'Combat Feed should enter target-first selection for a willing companion');
+  App.toggleExplorationTarget('creature', consumer.id);
+  assertEqual(App.confirmCombatTargets(), true, 'Combat Feed should resolve against the explicitly selected consumer');
+  assertEqual(App.lastIntentCommand.subAction, 'offerWhole', 'The sole valid canonical variant should be recorded as Offer Self');
+  assertEqual(consumer.stomach.length, 1, 'Selected combat consumer should contain the willing actor');
+  assertEqual(consumer.stomach[0].name, 'Willing', 'Combat Offer Self should preserve the actor identity');
+  assertEqual(App.party.includes(willing), false, 'Contained combat actor should leave the active party');
+  assertEqual(App.party.includes(player), true, 'Combat Offer Self should not redirect containment to the player');
+  assertEqual(App._wholeOfferAdvanced, true, 'Resolved combat Offer Self should advance the turn');
 });
 
 test('Sub-action helpers exist', () => {
@@ -12549,7 +12641,7 @@ test('Intent feast sub-action affects outside-combat resolution and cleanup', ()
   assertContains(App.log.map(entry => entry.text).join('\n'), 'break down', 'Sub-action result should be logged');
 });
 
-test('Intent forceFeed sub-action resolves through outside-combat sub-action engine', () => {
+test('Legacy forceFeed remains callable for compatibility but is hidden from the canonical picker', () => {
   const { App, body } = loadAppForCombat(() => 0);
   const predator = makeUnit('Predator', { id: 'predator-1', size: 8, appetite: 8, Feed: 30 });
   const holder = makeUnit('Holder', { id: 'holder-1', size: 4, Feed: 10 });
@@ -12559,7 +12651,7 @@ test('Intent forceFeed sub-action resolves through outside-combat sub-action eng
   App.creatures = [prey];
   App.settings.forcedFeeding = true;
   App.openIntentSubActionSheet('creature', 'prey-force', 'feed', 'sheet');
-  assertContains(body.innerHTML, "App.selectIntent('creature','prey-force','feed','sheet','forceFeed')", 'Feed sheet should expose forceFeed when a holder is available');
+  assertNotContains(body.innerHTML, "App.selectIntent('creature','prey-force','feed','sheet','forceFeed')", 'Canonical Feed sheet should hide the legacy inverse-direction forceFeed alias');
   App.selectIntent('creature', 'prey-force', 'feed', 'sheet', 'forceFeed');
   assertEqual(App.lastIntentCommand.subAction, 'forceFeed', 'Selected forceFeed sub-action should be recorded');
   assertEqual(predator.stomach.length, 1, 'Selected forceFeed should use the sub-action engine instead of default healing');
@@ -14645,22 +14737,23 @@ test('Marked self-included group feed tends instead of consuming helpers', () =>
   assertContains(App.log[App.log.length - 1].text, 'tend Target together', 'Marked self-included feed should log tending semantics');
 });
 
-test('Marked explicit feed sacrifice does not skip full-health willing party targets', () => {
+test('Marked Feed picker offers actor-to-target whole-self feeding without exposing legacy sacrifice', () => {
   const { App, body } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
   const predator = makeUnit('Predator', { id: 'predator-1', size: 6, appetite: 6, Feed: 30 });
   const prey = makeUnit('Prey', { id: 'prey-1', CPun: 100, MPun: 100, size: 2, willingPrey: true });
-  App.player = predator;
-  App.party = [predator, prey];
-  App.explorationActorIds = ['predator-1'];
-  App.toggleExplorationTarget('party', 'prey-1');
+  App.player = player;
+  App.party = [player, predator, prey];
+  App.explorationActorIds = ['prey-1'];
+  App.toggleExplorationTarget('party', 'predator-1');
   App.openExplorationTargetSubActionSheet('feed', 'target-bar');
-  assertContains(body.innerHTML, "App.resolveExplorationTargetAction('feed','sacrifice','target-bar')", 'Marked feed sheet should expose sacrifice for willing prey target');
-  assertNotContains(body.innerHTML, 'disabled onclick="App.resolveExplorationTargetAction(\'feed\',\'sacrifice\',\'target-bar\')"', 'Available sacrifice should not render disabled');
-  App.resolveExplorationTargetAction('feed', 'sacrifice', 'target-bar');
-  assertEqual(predator.stomach.length, 1, 'Explicit sacrifice should resolve against a full-health willing party target');
+  assertContains(body.innerHTML, "App.resolveExplorationTargetAction('feed','offerWhole','target-bar')", 'Marked Feed sheet should expose Offer Self for the willing selected actor');
+  assertNotContains(body.innerHTML, "App.resolveExplorationTargetAction('feed','sacrifice','target-bar')", 'Marked Feed sheet should hide the legacy inverse-direction sacrifice alias');
+  App.resolveExplorationTargetAction('feed', 'offerWhole', 'target-bar');
+  assertEqual(predator.stomach.length, 1, 'Offer Self should resolve against the selected consumer even when the consumer is at full health');
   assertEqual(predator.stomach[0].name, 'Prey', 'Predator should receive the willing prey');
-  assertEqual(App.party.includes(prey), false, 'Sacrificed party target should leave active party');
-  assertEqual(App.lastIntentCommand.subAction, 'sacrifice', 'Marked feed command should record sacrifice sub-action');
+  assertEqual(App.party.includes(prey), false, 'Offered party actor should leave the active party through containment');
+  assertEqual(App.lastIntentCommand.subAction, 'offerWhole', 'Marked Feed command should record the canonical Offer Self sub-action');
 });
 
 test('Marked mutual feed rejects non-heal sub-actions without tending', () => {

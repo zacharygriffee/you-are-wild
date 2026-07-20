@@ -2,7 +2,7 @@
   "packageType": "yaw-module",
   "packageVersion": 1,
   "packageId": "yaw_example_tileset_v1",
-  "gameVersion": "0.12.1",
+  "gameVersion": "0.12.2",
   "trustBoundary": "trusted-local",
   "module": {
     "manifest": {

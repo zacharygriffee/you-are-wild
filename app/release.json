@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.12.1",
+  "version": "0.12.2",
   "releasedAt": "2026-07-20",
   "channel": "public-preview",
   "saveSchema": 11,
@@ -8,50 +8,52 @@
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Existing 0.10.x through 0.12.0 saves load automatically; new defeat, recovery-bag, and companion-placement state is additive.",
+      "saves": "Existing 0.10.x through 0.12.1 saves load automatically; Feed variants, flee outcomes, and interface refinements do not change the save schema.",
       "mods": "Modules requiring game version 0.10.0 remain compatible. Host and bundled packages declare their own minimum version."
     },
     "es": {
-      "saves": "Las partidas existentes desde 0.10.x hasta 0.12.0 se cargan automaticamente; los nuevos estados de derrota, bolsas de recuperacion y companeros son aditivos.",
+      "saves": "Las partidas existentes desde 0.10.x hasta 0.12.1 se cargan automaticamente; las variantes de Alimentar, los resultados de huida y los ajustes de interfaz no cambian el esquema de guardado.",
       "mods": "Los modulos que requieren la version 0.10.0 siguen siendo compatibles. Los paquetes del host y los incluidos declaran su propia version minima."
     }
   },
   "notes": {
     "en": {
       "added": [
-        "Regular defeat recovery now supports persistent recovery bags or retained inventory, plus an in-game Test Player Death command.",
-        "Companions can be dropped off and later rejoin, while survivors of a player defeat remain at the battle location."
+        "Feed now offers contextual Tend, Nurse, Offer Self, and Offer Piece variants after actor and target selection.",
+        "Living player and companion retreats now relocate to a safe adjacent tile instead of entering the death-recovery flow."
       ],
       "changed": [
-        "Player death no longer cancels a battle while companions can continue; recovery begins after the encounter settles.",
-        "Party-side interactions ignore opposing-row reach barriers, and combat plans can target companions, enemies, or both."
+        "Feed consistently treats the selected actor as the source and the selected target as the recipient or consumer.",
+        "Legacy inverse-direction Feed identifiers remain compatible for old saves and trusted modules but are hidden from the core picker."
       ],
       "fixed": [
-        "Healing items now restore the selected living party member, consume exactly one item, and spend the correct combat turn.",
-        "Group cancellation, companion targeting, recovery controls, desktop stage stability, and interior recovery-bag persistence no longer regress under the covered flows."
+        "Combat Feed confirmation remains reachable on desktop and mobile without silently redirecting a companion action to the player.",
+        "Mobile map clearance, touch targets, overlay focus restoration, localized metadata, and combat-plan reload recovery are covered against regression."
       ],
       "knownIssues": [
         "Browser-direct AI connections still depend on endpoint TLS and CORS support.",
-        "Combat, survival, and longer-save defeat recovery remain active alpha playtest areas.",
+        "Combat balance, survival pacing, and longer-save defeat recovery remain active alpha playtest areas.",
+        "The broader mobile party, enemy, and structure-action flow is scheduled for a future interaction redesign.",
         "The first textured visit transfers approximately 4 MB of atlas media; Lightweight mode avoids that transfer."
       ]
     },
     "es": {
       "added": [
-        "La recuperacion tras una derrota normal ahora ofrece bolsas persistentes o inventario conservado, junto con el comando Probar muerte del jugador.",
-        "Los companeros pueden quedarse en un lugar y volver al grupo; los supervivientes de una derrota permanecen donde termino la batalla."
+        "Alimentar ahora ofrece las variantes contextuales Cuidar, Amamantar, Ofrecerse y Ofrecer porcion despues de elegir actor y objetivo.",
+        "Las huidas de jugadores y companeros vivos ahora los trasladan a una casilla adyacente segura en vez de iniciar la recuperacion por muerte."
       ],
       "changed": [
-        "La muerte del jugador ya no cancela una batalla mientras los companeros puedan continuar; la recuperacion empieza cuando termina el encuentro.",
-        "Las interacciones dentro del mismo grupo ignoran las barreras de alcance entre filas, y los planes pueden elegir companeros, enemigos o ambos."
+        "Alimentar trata de forma consistente al actor elegido como origen y al objetivo elegido como receptor o consumidor.",
+        "Los identificadores antiguos de Alimentar en direccion inversa siguen siendo compatibles con partidas y modulos de confianza, pero ya no aparecen en el selector principal."
       ],
       "fixed": [
-        "Los objetos curativos restauran al miembro vivo seleccionado, consumen exactamente un objeto y gastan el turno de combate correcto.",
-        "La cancelacion grupal, los objetivos companeros, los controles de recuperacion, la estabilidad del escenario y las bolsas dentro de interiores ya no fallan en los flujos cubiertos."
+        "La confirmacion de Alimentar sigue accesible en escritorio y movil sin redirigir silenciosamente la accion de un companero al jugador.",
+        "El espacio del mapa movil, los objetivos tactiles, el retorno del foco, los metadatos traducidos y la recarga de planes de combate estan protegidos contra regresiones."
       ],
       "knownIssues": [
         "Las conexiones directas desde el navegador dependen de TLS y CORS del endpoint.",
-        "El combate, la supervivencia y la recuperacion en partidas largas siguen en pruebas alfa.",
+        "El equilibrio de combate, el ritmo de supervivencia y la recuperacion en partidas largas siguen en pruebas alfa.",
+        "El flujo movil entre grupo, enemigos y acciones de estructuras queda reservado para un futuro rediseno de interaccion.",
         "La primera visita con texturas transfiere aproximadamente 4 MB de atlas; el modo Ligero evita esa transferencia."
       ]
     }

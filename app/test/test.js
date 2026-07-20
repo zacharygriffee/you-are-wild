@@ -614,7 +614,10 @@ test('App object is defined', () => {
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.12.1', 'Release manifest should identify the current public version');
+  assertEqual(releaseInfo.version, '0.12.2', 'Release manifest should identify the current public version');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('Offer Piece')), 'Release notes should describe contextual Feed variants');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('safe adjacent tile')), 'Release notes should distinguish living retreat from death recovery');
+  assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('mobile party')), 'Release notes should disclose the deferred mobile interaction-flow redesign');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
   assertContains(buildContent, 'window.YAW_RELEASE = Object.freeze', 'Build should inject release metadata into the generated artifact');

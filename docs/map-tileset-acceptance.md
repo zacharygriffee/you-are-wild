@@ -24,7 +24,7 @@ blocked edges, structures, and exits may not.
 | Lightweight | `?graphics=emoji` skips bundled atlas registration | Same semantic map and controls through emoji/text. |
 | Partial mod pack | Locally leased overrides compose above lower-priority packs | Missing base/route/state keys inherit; disabling restores the prior candidate. |
 
-Measured development artifacts for the 0.12.1 development head on 2026-07-20:
+Measured development artifacts for the 0.12.2 development head on 2026-07-20:
 
 - offline single-file build: 7.58 MiB (4.27 MiB gzip);
 - hosted runtime HTML: 2.52 MiB (0.46 MiB gzip);

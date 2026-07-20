@@ -121,6 +121,10 @@ all three presentation paths communicate equivalent playable topology.
 
 ## Deferred From This Immediate Plan
 
+- Mobile Interaction Flow V2. Current responsive and accessibility regression
+  gates remain active, but the broader phone workflow needs deliberate design
+  for party/enemy switching and structure actions that stay reachable while a
+  roster panel is open. Do not accumulate competing one-off navigation patches.
 - Ghost/shrine recovery. The resolver and reachable-shrine seam are prepared,
   but ghost abilities, restrictions, and resurrection economy come later.
 - Healer debt, faction rescue, companion extraction quests, gravestones, and

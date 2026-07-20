@@ -12,8 +12,8 @@ The public Sites wrapper owns a newest-first `/changelog` page outside the game 
 ## Update contract
 
 1. Add completed work to the top development entry as it becomes ready for the next Sites build.
-2. Keep the entry labeled `Development head` until that exact game build is staged with the wrapper.
-3. When publishing a numbered version, add its permanent release entry immediately below any newer development work and keep all older entries in descending date/version order.
+2. Keep the entry labeled `Development head` until that exact game build is staged with the wrapper. A staged numbered build may use `vX.Y.Z · Next public preview`; it must not say `Public preview` until the version is deployed.
+3. When publishing a numbered version, change its staged label to `vX.Y.Z · Public preview`, place it immediately below any newer development work, and keep all older entries in descending date/version order.
 4. Copy compatibility claims from the release record or focused release document; do not infer them from commit messages.
 5. Run the Sites server-render tests so the chooser links the archive, entries remain newest-first, and the staged game version matches the wrapper.
 6. Publishing remains an explicit operator action. Preparing, building, testing, or committing the wrapper does not authorize a Sites deployment.

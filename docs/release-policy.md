@@ -81,3 +81,13 @@ request.
   production metadata is stamped with 0.12.1.
 - Hosted Textured and Lightweight choices use the same runtime, save format,
   and module API. The choice only controls first-party atlas acquisition.
+
+## Version 0.12.2 Compatibility
+
+- Existing 0.10.x through 0.12.1 saves load without player migration.
+- Feed variants, living retreat outcomes, and interface refinements do not
+  change the save schema or module API.
+- Existing module minimum-version contracts remain valid; first-party package
+  production metadata is stamped with 0.12.2.
+- The Sites chooser remains the same runtime split between Textured and
+  Lightweight presentation.

@@ -10017,6 +10017,80 @@ test('Pending companion battles survive save load and settle into persistent rec
   assertEqual(recovering.App.worldMap.get('5,-6').creatures.some(unit => unit.id === 'companion-pending-roundtrip'), true, 'Stranded survivor placement should survive the second reload');
 });
 
+test('Uncommitted combat group plans reset safely across save load', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const first = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App } = first;
+  const player = makeSerializableUnit('You', { id: 'player-uncommitted-plan' });
+  const companion = makeSerializableUnit('Harpy', { id: 'ally-uncommitted-plan' });
+  const enemyA = makeSerializableUnit('Wolfkin A', {
+    id: 'enemy-uncommitted-plan-a',
+    disposition: App.DISPOSITION.ENEMY
+  });
+  const enemyB = makeSerializableUnit('Wolfkin B', {
+    id: 'enemy-uncommitted-plan-b',
+    disposition: App.DISPOSITION.ENEMY
+  });
+  App.mode = App.GAME_MODE.NORMAL;
+  App.player = player;
+  App.party = [player, companion];
+  App.creatures = [enemyA, enemyB];
+  App.location = { x: 4, y: 4 };
+  App.currentBiome = 'forest';
+  App.worldMeta = { worldId: 'uncommitted-plan-world', seed: 'uncommitted-plan-seed', generatorVersion: 3, mapModsHash: 'core' };
+  App.worldMap = new Map([['4,4', {
+    ...App.getBaseTile(4, 4),
+    explored: true,
+    biome: 'forest',
+    creatures: [enemyA, enemyB],
+    items: []
+  }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['4,4']);
+  App.combatState = {
+    active: true,
+    round: 3,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [
+      { unit: player, initiative: 18 },
+      { unit: companion, initiative: 15 },
+      { unit: enemyA, initiative: 10 },
+      { unit: enemyB, initiative: 8 }
+    ],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.combatPlanSelection = {
+    active: true,
+    source: 'combat-planner',
+    actorIds: [App._unitSelectionId(player), App._unitSelectionId(companion)],
+    pendingIntent: 'fight',
+    explicitActors: true
+  };
+  App.combatTargetId = App._unitSelectionId(enemyA);
+  App.combatTargetIds = [App._unitSelectionId(enemyA), App._unitSelectionId(enemyB)];
+  App.targetSelection = { action: 'fight', source: 'combat', actorId: App._unitSelectionId(player) };
+
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+  assertEqual(await App._saveToSlotConfirmed('slot1'), true, 'Active combat should save while a group plan is still being composed');
+
+  const loaded = loadAppForCombat(() => 0.5, { binary: Binary });
+  loaded.App._dbGet = async () => savedBuffers[0];
+  loaded.App.loadWorldStateFromMapStore = async () => {};
+  assertEqual(await loaded.App.loadFromSlot('slot1'), true, 'Combat with an uncommitted group plan should load');
+  assertEqual(loaded.App.combatState.active, true, 'The authoritative combat round should survive reload');
+  assertEqual(loaded.App.combatState.round, 3, 'The authoritative combat round number should survive reload');
+  assertEqual(loaded.App.combatState.turnQueue.length, 4, 'The authoritative combat queue should survive reload');
+  assertEqual(loaded.App.combatPlanSelection, null, 'Uncommitted group actors and intent should reset after reload');
+  assertEqual(loaded.App.combatTargetId, null, 'Uncommitted primary target should reset after reload');
+  assertEqual(loaded.App.combatTargetIds.length, 0, 'Uncommitted multi-target marks should reset after reload');
+  assertEqual(loaded.App.targetSelection, null, 'Uncommitted target-picking mode should reset after reload');
+});
+
 test('Death bag collection preserves overflow until pack space is available', () => {
   const { App } = loadAppForCombat(() => 0.5);
   App.player = makeUnit('You', { id: 'player-partial-bag', CPun: 30, MPun: 100 });

@@ -152,10 +152,12 @@ const YAW_COMBAT_ENEMIES = {
                     app.log.push({ text: app._label('combat.godModeSaved', 'God Mode saved you from death!'), type: 'combat' });
                     app.renderLog(); app.nextTurn(); return;
                 }
+                app.log.push({ text: result, type: 'combat' });
+                app._emitCombatAction('enemy_fight', enemy, target, result);
                 const state = app._handlePlayerFall({ cause: 'combat-damage', source: 'enemy-fight' });
                 if (state?.terminal && !state?.awaitingEncounterSettlement) {
-                    app.log.push({ text: app._label('combat.playerFallen', 'You have fallen! Game Over!'), type: 'combat' });
-                    app.renderLog();
+                    // Defeat recovery is rendered synchronously by handlePlayerFall/endCombat.
+                    // Do not run legacy post-defeat rendering over the recovery command surface.
                     return;
                 }
                 app.log.push({ text: app._label(state?.terminal ? 'combat.playerDiedBattleContinues' : 'combat.playerKnockedOut', state?.terminal ? 'You have died. Your companions must finish the battle.' : 'You have been knocked out! Your party must finish the fight...'), type: 'combat' });

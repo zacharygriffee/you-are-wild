@@ -297,8 +297,13 @@
             grid-template-areas: "main party enemies";
             gap: var(--space-md);
             padding: var(--space-md);
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
             overflow: hidden;
             justify-content: center;
+            contain: inline-size;
         }
 
         .stage.target-panel-empty {
@@ -1099,8 +1104,14 @@
 
         .panel-main .panel-content {
             min-height: 0;
+            min-width: 0;
             overflow: hidden;
             padding: 0;
+        }
+
+        .panel-main {
+            min-width: 0;
+            max-width: 100%;
         }
 
         .scene-display {
@@ -1136,7 +1147,9 @@
             width: var(--desktop-play-surface-width);
             height: var(--desktop-play-surface-height);
             flex: 0 0 var(--desktop-play-surface-height);
+            min-width: 0;
             min-height: 0;
+            max-width: 100%;
             max-height: 100%;
             position: relative;
             z-index: 1;
@@ -2209,6 +2222,7 @@
         .desktop-scene-feed-slot {
             width: min(100%, 720px);
             max-width: 100%;
+            min-width: 0;
             margin: 0 auto;
             padding: 8px 10px 10px;
             display: grid;
@@ -2473,6 +2487,7 @@
             overflow: visible;
             text-overflow: clip;
             white-space: normal;
+            overflow-wrap: anywhere;
         }
 
         .story-meta-line {
@@ -3190,6 +3205,7 @@
         .panel-party,
         .panel-enemies {
             align-self: start;
+            min-width: 0;
             max-height: 100%;
             background: rgba(26, 26, 46, 0.42);
             border-color: var(--border-subtle);
@@ -4416,7 +4432,11 @@
             border-top: 1px solid var(--border-default);
             display: flex;
             flex-direction: column;
+            min-width: 0;
+            max-width: 100%;
             min-height: 0;
+            overflow-x: hidden;
+            contain: inline-size;
         }
 
         .log-header {
@@ -4426,6 +4446,9 @@
             padding: var(--space-sm) var(--space-md);
             background: var(--bg-tertiary);
             border-bottom: 1px solid var(--border-default);
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
         }
 
         .log-title {
@@ -4434,6 +4457,9 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-secondary);
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
         }
 
         .log-header-actions {
@@ -4442,6 +4468,8 @@
             align-items: center;
             flex-wrap: wrap;
             justify-content: flex-end;
+            flex: 0 0 auto;
+            min-width: 0;
         }
 
         .log-layout-toggle.active {
@@ -4457,6 +4485,7 @@
         .log-collapsed-summary {
             display: none;
             min-width: 0;
+            max-width: 100%;
             color: var(--text-muted);
             font-size: 11px;
             overflow: hidden;

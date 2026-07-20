@@ -2838,6 +2838,60 @@ async function checkViewport(browser, name, width, height) {
     assert(desktopPanels.surface.width <= 982, `${name}: desktop play surface should cap width instead of expanding with spare side-panel space`);
     assert(desktopPanels.center.width > 0 && desktopPanels.center.height > 0, `${name}: desktop center play tile should be visible`);
 
+    const desktopLongContentStability = await page.evaluate(() => {
+      const app = document.getElementById('app');
+      const stage = document.querySelector('.stage');
+      const main = document.getElementById('panel-main');
+      const summary = document.getElementById('log-collapsed-summary');
+      const sceneFeed = document.getElementById('desktop-scene-feed-latest');
+      const composer = document.getElementById('desktop-command-composer');
+      const sentence = document.getElementById('selection-sentence');
+      const original = {
+        collapsed: app.classList.contains('log-collapsed'),
+        summaryText: summary.textContent,
+        composerHidden: composer.hidden,
+        composerAriaHidden: composer.getAttribute('aria-hidden'),
+        sentenceHtml: sentence.innerHTML
+      };
+      const measure = () => {
+        const mainRect = main.getBoundingClientRect();
+        const stageRect = stage.getBoundingClientRect();
+        return {
+          mainLeft: mainRect.left,
+          mainRight: mainRect.right,
+          stageLeft: stageRect.left,
+          stageRight: stageRect.right,
+          pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+        };
+      };
+      const baseline = measure();
+      const longToken = 'ActorWithAnIntentionallyUnbreakableDisplayName'.repeat(45);
+      const pressure = document.createElement('article');
+      pressure.className = 'scene-beat-stream-item';
+      pressure.innerHTML = `<div class="story-summary">${longToken}</div>`;
+
+      app.classList.add('log-collapsed');
+      summary.textContent = longToken;
+      sceneFeed.appendChild(pressure);
+      composer.hidden = false;
+      composer.setAttribute('aria-hidden', 'false');
+      sentence.innerHTML = `<span class="selection-sentence-part"><span class="selection-sentence-value">${longToken}</span></span>`;
+      const pressured = measure();
+
+      pressure.remove();
+      summary.textContent = original.summaryText;
+      sentence.innerHTML = original.sentenceHtml;
+      composer.hidden = original.composerHidden;
+      if (original.composerAriaHidden === null) composer.removeAttribute('aria-hidden');
+      else composer.setAttribute('aria-hidden', original.composerAriaHidden);
+      app.classList.toggle('log-collapsed', original.collapsed);
+      return { baseline, pressured, viewportWidth: innerWidth };
+    });
+    assert(Math.abs(desktopLongContentStability.pressured.mainLeft - desktopLongContentStability.baseline.mainLeft) <= 1, `${name}: long scene and activity text should not shift the centered desktop stage`);
+    assert(Math.abs(desktopLongContentStability.pressured.stageLeft - desktopLongContentStability.baseline.stageLeft) <= 1, `${name}: long scene and activity text should not resize the desktop stage shell`);
+    assert(desktopLongContentStability.pressured.mainRight <= desktopLongContentStability.viewportWidth + 1, `${name}: long scene and activity text should keep the main play column inside the viewport`);
+    assert.strictEqual(desktopLongContentStability.pressured.pageOverflow, false, `${name}: long scene and activity text should not create horizontal page overflow`);
+
     const desktopCombatSceneLayout = await page.evaluate(() => {
       const tile = App._currentExplorationTile?.();
       const originalCreatures = [...(App.creatures || [])];

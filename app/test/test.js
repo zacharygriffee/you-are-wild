@@ -7583,7 +7583,7 @@ test('Desktop play surface separates a square 3x3 grid from the location focus p
   assertContains(template, '--desktop-play-surface-width: min(100%, var(--desktop-main-stage-width, 820px));', 'desktop play surface should inherit the stable main stage width');
   assertContains(template, 'flex: 0 0 var(--desktop-play-surface-height);', 'desktop play surface should keep a stable footprint when lower belts appear');
   assertContains(template, 'justify-content: flex-start;', 'desktop play stack should anchor from the top instead of recentering when belts appear');
-  assertContains(template, '.panel-party,\n        .panel-enemies {\n            align-self: start;\n            max-height: 100%;\n            background: rgba(26, 26, 46, 0.42);', 'desktop side rails should read as quieter supporting context instead of primary panels');
+  assertContains(template, '.panel-party,\n        .panel-enemies {\n            align-self: start;\n            min-width: 0;\n            max-height: 100%;\n            background: rgba(26, 26, 46, 0.42);', 'desktop side rails should stay width-contained and read as quieter supporting context instead of primary panels');
   assertContains(template, '.panel-party .panel-header,\n        .panel-enemies .panel-header', 'desktop side rail headers should be visually demoted');
   assertContains(template, '.stage.target-panel-empty', 'desktop stage should have an empty-target state');
   assertContains(template, '.stage.target-panel-empty {\n            grid-template-columns: minmax(0, var(--desktop-main-stage-width)) var(--desktop-side-rail-width) var(--desktop-side-rail-width);', 'desktop empty target state should reserve the target rail slot so the 3x3 surface does not shift');
@@ -7887,6 +7887,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     options.setTimeout || (fn => fn()),
     math
   );
+  appWindow.__testContent.locales.en['explore.flirt.successPlayer'] = '{actor} talk with {target}. Their guard lowers. Spirit rises to {current}/{max}.';
+  appWindow.__testContent.locales.es['explore.flirt.successPlayer'] = '{actor} hablas con {target}. Baja la guardia. El animo sube a {current}/{max}.';
   const originalUpdateLanguage = App.updateLanguage.bind(App);
   App.__testLanguage = 'en';
   App.updateLanguage = function(language) {
@@ -9473,6 +9475,54 @@ test('Defeat ends combat into a durable recovery state', () => {
   assertEqual(elements.get('mobile-control-belt').classList.contains('expanded-controls-open'), false, 'Defeat recovery should use compact mobile command-belt reservation');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), true, 'Defeat recovery should reserve mobile command-belt space');
   assertEqual(elements.get('mobile-play-surface').classList.contains('control-belt-expanded'), false, 'Defeat recovery should not reserve expanded composer space');
+});
+
+test('Enemy finishing hit transitions a lone player directly into recovery', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-live-defeat', CPun: 1, MPun: 100, con: 1, combatRow: 'front' });
+  const enemy = makeUnit('Wolfkin', {
+    id: 'enemy-live-defeat',
+    disposition: App.DISPOSITION.ENEMY,
+    Figh: 100,
+    CPun: 100,
+    MPun: 100,
+    combatRow: 'front'
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.location = { x: 2, y: -2 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: enemy, initiative: 10 }, { unit: player, initiative: 1 }],
+    syncActions: []
+  };
+  App._enemyShouldFlee = () => false;
+  App._enemyCallReinforcement = () => false;
+  App._combatScavengeRemains = () => false;
+  App._terrainCausesMiss = () => false;
+  App._targetDodgeRoll = () => 1;
+  App._combatDamageVariance = () => 0;
+  App.autoSave = () => true;
+  let advancedAfterDefeat = false;
+  App.nextTurn = () => { advancedAfterDefeat = true; };
+
+  App.enemyTurn(enemy);
+
+  const logText = App.log.map(entry => entry.text).join('\n');
+  assertEqual(App.combatState.active, false, 'A finishing hit against the lone player should end combat immediately');
+  assertEqual(App.defeatState?.pending, true, 'The finishing hit should create a durable recovery state');
+  assertEqual(advancedAfterDefeat, false, 'Enemy AI should not advance combat after the recovery surface is rendered');
+  assertContains(logText, 'Wolfkin hits You', 'The finishing hit should remain visible in the activity log');
+  assertNotContains(logText, 'Game Over', 'Regular defeat should not append the obsolete Game Over message');
+  assertContains(elements.get('scene-title').textContent, 'Defeat', 'The live scene should transition directly to Defeat');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="regenerate"', 'The live desktop command belt should expose Regenerate immediately');
+  assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-control="regenerate"', 'The live mobile command belt should expose Regenerate immediately');
 });
 
 test('Defeat regeneration restores the safe anchor without clearing defeated tile enemies', () => {
@@ -12599,7 +12649,7 @@ test('Single exploration action result logs localize', () => {
   flirt.App.creatures = [flirtTarget];
   flirt.App.updateLanguage('es');
   flirt.App.outsideActionForCreature('flirt', 'friendly-1');
-  assertContains(flirt.App.log[flirt.App.log.length - 1].text, 'Tu habla con Friendly', 'Single flirt result should localize');
+  assertContains(flirt.App.log[flirt.App.log.length - 1].text, 'Tu hablas con Friendly', 'Player flirt result should use localized second-person grammar');
   assertContains(flirt.App.log[flirt.App.log.length - 1].text, 'Friendly queda convencido', 'Single flirt charmed suffix should localize');
 
   const seduce = loadAppForCombat(() => 0);

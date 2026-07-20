@@ -3975,7 +3975,10 @@
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.3));
                             target.charmed = (target.charmed || 0) + 1;
                             target.Figh = Math.max(1, (target.Figh || 10) - 1);
-                            result = this._label('explore.flirt.success', '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', {
+                            const playerActor = actor === this.player || actor.name === this.player?.name;
+                            result = this._label(playerActor ? 'explore.flirt.successPlayer' : 'explore.flirt.success', playerActor
+                                ? '{actor} talk with {target}. Their guard lowers. Spirit rises to {current}/{max}.'
+                                : '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', {
                                 actor: actorName,
                                 target: target.name,
                                 current: target.CPle,

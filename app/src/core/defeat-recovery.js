@@ -527,7 +527,36 @@ const YAW_DEFEAT_RECOVERY = {
         return !tile || ['water', 'ocean', 'deep-water', 'void'].includes(biome) || tile.passable === false || tile.traversal?.passable === false;
     },
 
+    interiorForDefeatLocation(app, location = null) {
+        if (!location?.interior) return null;
+        const sameActiveInterior = app.activeInterior?.origin
+            && Number(app.activeInterior.origin.x) === Number(location.x)
+            && Number(app.activeInterior.origin.y) === Number(location.y);
+        if (sameActiveInterior) return app.activeInterior;
+        return app.getTile(location.x, location.y)?.interior || null;
+    },
+
+    persistDeathBagTile(app, tile, location = null) {
+        if (!tile) return null;
+        const interior = this.interiorForDefeatLocation(app, location);
+        if (interior?.origin) {
+            const origin = app.getTile(interior.origin.x, interior.origin.y);
+            origin.interior = interior;
+            return app.persistTileDelta(origin.x, origin.y, origin, { reason: 'death-bag' });
+        }
+        return app.persistTileDelta(tile.x, tile.y, tile, { reason: 'death-bag' });
+    },
+
     deathBagTile(app, location = this.defeatLocation(app)) {
+        const interior = this.interiorForDefeatLocation(app, location);
+        if (interior?.tiles) {
+            const exactKey = `${Number(location.interiorX) || 0},${Number(location.interiorY) || 0}`;
+            if (interior.tiles[exactKey]) return interior.tiles[exactKey];
+            const fallbackKey = interior.entryRooms?.default || Object.values(interior.entryRooms || {})[0] || '0,0';
+            if (interior.tiles[fallbackKey]) return interior.tiles[fallbackKey];
+            const firstRoom = Object.values(interior.tiles)[0];
+            if (firstRoom) return firstRoom;
+        }
         const offsets = [[0, 0]];
         for (let radius = 1; radius <= 4; radius++) {
             for (let dx = -radius; dx <= radius; dx++) {
@@ -566,7 +595,7 @@ const YAW_DEFEAT_RECOVERY = {
                         cause: state.cause,
                         sourceLocation: { ...state.defeatedAt }
                     });
-                    app.persistTileDelta(tile.x, tile.y, tile, { reason: 'death-bag' });
+                    this.persistDeathBagTile(app, tile, state.defeatedAt);
                 }
                 app.inventory = retained;
                 if (app.player) app.player.gold = 0;
@@ -590,7 +619,8 @@ const YAW_DEFEAT_RECOVERY = {
         if (app.player) app.player.gold = (Number(app.player.gold) || 0) + gold;
         bag.gold = 0;
         if ((bag.items || []).length === 0) bags.splice(index, 1);
-        app.persistTileDelta(tile.x, tile.y, tile, { reason: 'collect-death-bag' });
+        if (typeof app._persistCurrentExplorationTile === 'function') app._persistCurrentExplorationTile(tile);
+        else app.persistTileDelta(tile.x, tile.y, tile, { reason: 'collect-death-bag' });
         const text = app._label('recovery.deathBagCollected', 'Recovered {items} item(s) and {gold} gold.', { items: taken.length, gold });
         app.log.push({ text, type: 'loot' });
         app._addTileEvent?.(text, 'loot');

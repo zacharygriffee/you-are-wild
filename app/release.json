@@ -1,59 +1,57 @@
 {
   "schema": 1,
-  "version": "0.12.0",
-  "releasedAt": "2026-07-19",
+  "version": "0.12.1",
+  "releasedAt": "2026-07-20",
   "channel": "public-preview",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Existing 0.10.x and 0.11.x saves load automatically; multi-target practice starts at Novice when no prior record exists.",
+      "saves": "Existing 0.10.x through 0.12.0 saves load automatically; new defeat, recovery-bag, and companion-placement state is additive.",
       "mods": "Modules requiring game version 0.10.0 remain compatible. Host and bundled packages declare their own minimum version."
     },
     "es": {
-      "saves": "Las partidas 0.10.x y 0.11.x existentes se cargan automaticamente; la practica de objetivos multiples empieza en Principiante cuando no existe un registro anterior.",
+      "saves": "Las partidas existentes desde 0.10.x hasta 0.12.0 se cargan automaticamente; los nuevos estados de derrota, bolsas de recuperacion y companeros son aditivos.",
       "mods": "Los modulos que requieren la version 0.10.0 siguen siendo compatibles. Los paquetes del host y los incluidos declaran su propia version minima."
     }
   },
   "notes": {
     "en": {
       "added": [
-        "Tileset Pack V1 adds moddable layered terrain, routes, interiors, shoreline transitions, landmarks, and resource overlays while retaining emoji fallback.",
-        "Multi-target Fight practice now progresses from Novice through Master, with equipment, instinct, and area-technique extension hooks.",
-        "The hosted edition offers Textured and Lightweight presentation choices from one shared game runtime."
+        "Regular defeat recovery now supports persistent recovery bags or retained inventory, plus an in-game Test Player Death command.",
+        "Companions can be dropped off and later rejoin, while survivors of a player defeat remain at the battle location."
       ],
       "changed": [
-        "Hunger, digestion, rest, fleeing, survivable containment, roads, beaches, caves, and building interiors have received their first balancing and presentation pass.",
-        "Hosted textures are separate cacheable files; the downloadable HTML remains a self-contained offline build."
+        "Player death no longer cancels a battle while companions can continue; recovery begins after the encounter settles.",
+        "Party-side interactions ignore opposing-row reach barriers, and combat plans can target companions, enemies, or both."
       ],
       "fixed": [
-        "Group interactions support many-to-many targeting and explicit cancellation without turning tactical failures into interface errors.",
-        "Mobile party and creature belts can be swiped horizontally, and startup controls wait for their specific saved-game or media dependencies."
+        "Healing items now restore the selected living party member, consume exactly one item, and spend the correct combat turn.",
+        "Group cancellation, companion targeting, recovery controls, desktop stage stability, and interior recovery-bag persistence no longer regress under the covered flows."
       ],
       "knownIssues": [
         "Browser-direct AI connections still depend on endpoint TLS and CORS support.",
-        "Combat and survival values are still alpha balance and will continue to change.",
+        "Combat, survival, and longer-save defeat recovery remain active alpha playtest areas.",
         "The first textured visit transfers approximately 4 MB of atlas media; Lightweight mode avoids that transfer."
       ]
     },
     "es": {
       "added": [
-        "Tileset Pack V1 agrega terreno, rutas, interiores, costas, puntos de referencia y recursos en capas modificables, conservando los emoji como alternativa.",
-        "La practica de Lucha contra multiples objetivos progresa de Principiante a Maestro, con extensiones para equipo, instintos y tecnicas de area.",
-        "La edicion alojada ofrece presentaciones Con texturas y Ligera desde un solo juego compartido."
+        "La recuperacion tras una derrota normal ahora ofrece bolsas persistentes o inventario conservado, junto con el comando Probar muerte del jugador.",
+        "Los companeros pueden quedarse en un lugar y volver al grupo; los supervivientes de una derrota permanecen donde termino la batalla."
       ],
       "changed": [
-        "Hambre, digestion, descanso, huida, contencion, caminos, playas, cuevas e interiores recibieron su primera revision de equilibrio y presentacion.",
-        "Las texturas alojadas son archivos separados y almacenables en cache; el HTML descargable sigue siendo autonomo y funciona sin conexion."
+        "La muerte del jugador ya no cancela una batalla mientras los companeros puedan continuar; la recuperacion empieza cuando termina el encuentro.",
+        "Las interacciones dentro del mismo grupo ignoran las barreras de alcance entre filas, y los planes pueden elegir companeros, enemigos o ambos."
       ],
       "fixed": [
-        "Las interacciones grupales admiten objetivos muchos-a-muchos y cancelacion explicita sin convertir fallos tacticos en errores de interfaz.",
-        "Las bandas moviles de grupo y criaturas se desplazan horizontalmente, y los controles iniciales esperan solo sus dependencias de partidas o medios."
+        "Los objetos curativos restauran al miembro vivo seleccionado, consumen exactamente un objeto y gastan el turno de combate correcto.",
+        "La cancelacion grupal, los objetivos companeros, los controles de recuperacion, la estabilidad del escenario y las bolsas dentro de interiores ya no fallan en los flujos cubiertos."
       ],
       "knownIssues": [
         "Las conexiones directas desde el navegador dependen de TLS y CORS del endpoint.",
-        "Los valores de combate y supervivencia siguen en equilibrio alfa y continuaran cambiando.",
+        "El combate, la supervivencia y la recuperacion en partidas largas siguen en pruebas alfa.",
         "La primera visita con texturas transfiere aproximadamente 4 MB de atlas; el modo Ligero evita esa transferencia."
       ]
     }

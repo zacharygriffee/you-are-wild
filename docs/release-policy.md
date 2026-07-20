@@ -69,5 +69,12 @@ request.
 - Modules requiring game version 0.10.0 or 0.11.x remain compatible. Tileset
   packs authored against the finalized first-party V1 semantics may declare
   0.12.0 as their minimum version.
+
+## Version 0.12.1 Compatibility
+
+- Existing 0.10.x, 0.11.x, and 0.12.0 saves load without player migration.
+- Defeat, recovery-bag, and companion-placement metadata is additive.
+- Existing module minimum-version contracts remain valid; first-party package
+  production metadata is stamped with 0.12.1.
 - Hosted Textured and Lightweight choices use the same runtime, save format,
   and module API. The choice only controls first-party atlas acquisition.

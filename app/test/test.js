@@ -9609,6 +9609,109 @@ test('Regular defeat strands companions and creates one recoverable death bag', 
   assertEqual(App.worldMap.get('7,-2').deathBags.length, 0, 'Empty recovery bag should be removed');
 });
 
+test('Repeated regular defeats preserve unrecovered bags as separate outcomes', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'player-repeated-bag', CPun: 0, MPun: 100, knockedOut: true });
+  App.party = [App.player];
+  App.settings.inventoryRecovery = 'death-bag';
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.location = { x: 5, y: 5 };
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'forest', creatures: [] }],
+    ['5,5', { ...App.getBaseTile(5, 5), explored: true, biome: 'plains', creatures: [], deathBags: [] }]
+  ]);
+  App.autoSave = () => true;
+
+  App.inventory = [{ id: 'first-loss', name: 'First Loss' }];
+  App.player.gold = 4;
+  App.defeatState = {
+    schemaVersion: 3,
+    resolutionId: 'repeat-first',
+    status: 'dead',
+    pending: true,
+    terminal: true,
+    defeatedAt: { x: 5, y: 5, interior: false },
+    safeAnchor: App.safeAnchor
+  };
+  App.regenerateFromDefeat();
+
+  App.location = { x: 5, y: 5 };
+  App.player.CPun = 0;
+  App.player.knockedOut = true;
+  App.inventory = [{ id: 'second-loss', name: 'Second Loss' }];
+  App.player.gold = 7;
+  App.defeatState = {
+    schemaVersion: 3,
+    resolutionId: 'repeat-second',
+    status: 'dead',
+    pending: true,
+    terminal: true,
+    defeatedAt: { x: 5, y: 5, interior: false },
+    safeAnchor: App.safeAnchor
+  };
+  App.regenerateFromDefeat();
+
+  const bags = App.worldMap.get('5,5').deathBags;
+  assertEqual(bags.length, 2, 'A second defeat before retrieval should preserve the first recovery bag');
+  assertEqual(new Set(bags.map(bag => bag.resolutionId)).size, 2, 'Each defeat should keep a distinct resolution identity');
+  assertEqual(bags.find(bag => bag.resolutionId === 'repeat-first').items[0].id, 'first-loss', 'The first bag should retain its original contents');
+  assertEqual(bags.find(bag => bag.resolutionId === 'repeat-second').items[0].id, 'second-loss', 'The second bag should retain its own contents');
+  assertEqual(bags.reduce((sum, bag) => sum + bag.gold, 0), 11, 'Repeated defeats should neither discard nor duplicate dropped gold');
+});
+
+test('Interior defeat bags remain in the exact room and persist through the origin tile', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'player-interior-bag', CPun: 0, MPun: 100, knockedOut: true });
+  App.party = [App.player];
+  App.inventory = [{ id: 'interior-loss', name: 'Interior Loss' }];
+  App.player.gold = 6;
+  App.settings.inventoryRecovery = 'death-bag';
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.location = { x: 8, y: 8 };
+  const origin = { ...App.getBaseTile(8, 8), explored: true, biome: 'grove', structure: 'cabin', creatures: [], deathBags: [] };
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'forest', creatures: [] }],
+    ['8,8', origin]
+  ]);
+  const interior = App._ensureStructureInterior(origin);
+  const roomKey = Object.keys(interior.tiles).find(key => key !== '0,0');
+  assert(roomKey, 'Interior fixture should include a non-entry room');
+  const [interiorX, interiorY] = roomKey.split(',').map(Number);
+  App.inInterior = true;
+  App.activeInterior = interior;
+  App.interiorLocation = { x: interiorX, y: interiorY };
+  App.creatures = [];
+  App.defeatState = {
+    schemaVersion: 3,
+    resolutionId: 'interior-defeat',
+    status: 'dead',
+    pending: true,
+    terminal: true,
+    defeatedAt: { x: 8, y: 8, interior: true, interiorX, interiorY },
+    safeAnchor: App.safeAnchor
+  };
+  App.autoSave = () => true;
+
+  App.regenerateFromDefeat();
+
+  const room = origin.interior.tiles[roomKey];
+  assertEqual(room.deathBags.length, 1, 'An interior defeat should leave its recovery bag in the defeated room');
+  assertEqual(room.deathBags[0].items[0].id, 'interior-loss', 'The interior bag should retain its dropped item');
+  assertEqual(room.deathBags[0].sourceLocation.interior, true, 'The recovery bag should retain interior provenance');
+  assertEqual(App.tileDeltas.get('8,8').interior.tiles[roomKey].deathBags.length, 1, 'The room bag should persist through the structure origin tile delta');
+  assertEqual(Boolean(App.tileDeltas.get(roomKey)?.deathBags?.length), false, 'Interior room coordinates must not create a synthetic overworld recovery bag');
+
+  App.location = { x: 8, y: 8 };
+  App.inInterior = true;
+  App.activeInterior = origin.interior;
+  App.interiorLocation = { x: interiorX, y: interiorY };
+  App.inventory = [];
+  const bagId = room.deathBags[0].id;
+  assertEqual(App.collectDeathBag(bagId), true, 'The bag should be collectable after returning to the interior room');
+  assertEqual(room.deathBags.length, 0, 'Collecting the interior bag should remove it from the room');
+  assertEqual(App.tileDeltas.get('8,8').interior.tiles[roomKey].deathBags.length, 0, 'Interior bag collection should persist through the origin tile delta');
+});
+
 test('Player death waits for companion combat settlement and leaves survivors at the defeat tile', () => {
   const { App, elements } = loadAppForCombat(() => 0.5);
   const player = makeUnit('You', { id: 'player-settlement', CPun: 0, MPun: 100, knockedOut: true });
@@ -18870,6 +18973,45 @@ test('Party companions can be dropped off persistently and rejoin without duplic
   assertEqual(App.worldMap.get('2,-3').creatures.some(unit => unit.id === 'companion-drop-off'), false, 'Rejoining should remove the persistent tile placement');
   assertEqual(xpGranted, 0, 'Rejoining an existing companion should not grant recruitment XP again');
   assertContains(App.log[App.log.length - 1].text, 'rejoins your party', 'Rejoining should use distinct player-facing feedback');
+});
+
+test('Interior companion drop-off and rejoin persist through the structure origin', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-interior-drop-off' });
+  const companion = makeUnit('Harpy', { id: 'companion-interior-drop-off', partyRole: 'scout', aiOrder: 'defensive' });
+  App.player = player;
+  App.party = [player, companion];
+  App.location = { x: 9, y: -4 };
+  const origin = { ...App.getBaseTile(9, -4), explored: true, biome: 'grove', structure: 'cabin', creatures: [] };
+  App.worldMap = new Map([['9,-4', origin]]);
+  const interior = App._ensureStructureInterior(origin);
+  const roomKey = Object.keys(interior.tiles).find(key => key !== '0,0');
+  assert(roomKey, 'Interior fixture should include a room beyond the entrance');
+  const [interiorX, interiorY] = roomKey.split(',').map(Number);
+  App.inInterior = true;
+  App.activeInterior = interior;
+  App.interiorLocation = { x: interiorX, y: interiorY };
+  App.creatures = [];
+  App.autoSave = () => true;
+  let xpGranted = 0;
+  App.gainXP = amount => { xpGranted += amount; };
+
+  assertEqual(App._dropOffPartyMemberConfirmed(1), true, 'A companion should be droppable in a safe interior room');
+  const placed = interior.tiles[roomKey].creatures.find(unit => unit.id === 'companion-interior-drop-off');
+  assert(placed, 'The dropped companion should remain in the exact interior room');
+  assertEqual(placed.droppedOffAt.interior, true, 'Interior placement metadata should retain its namespace');
+  assertEqual(placed.droppedOffAt.interiorX, interiorX, 'Interior placement should retain room x');
+  assertEqual(placed.droppedOffAt.interiorY, interiorY, 'Interior placement should retain room y');
+  assertEqual(App.tileDeltas.get('9,-4').interior.tiles[roomKey].creatures.some(unit => unit.id === placed.id), true, 'Interior drop-off should persist through the structure origin delta');
+
+  assertEqual(App.recruitCreature(placed), true, 'Returning to the room should allow the companion to rejoin');
+  const rejoined = App.party.find(unit => unit.id === 'companion-interior-drop-off');
+  assert(rejoined, 'The interior companion should return to the traveling party');
+  assertEqual(rejoined.partyRole, 'scout', 'Interior rejoin should preserve the companion role');
+  assertEqual(rejoined.aiOrder, 'defensive', 'Interior rejoin should preserve the AI order');
+  assertEqual(interior.tiles[roomKey].creatures.some(unit => unit.id === placed.id), false, 'Rejoining should remove the companion from the room');
+  assertEqual(App.tileDeltas.get('9,-4').interior.tiles[roomKey].creatures.some(unit => unit.id === placed.id), false, 'Interior rejoin removal should persist through the structure origin delta');
+  assertEqual(xpGranted, 0, 'Interior rejoin should not award recruitment XP again');
 });
 
 test('Party dismissal confirmation and log localize', () => {

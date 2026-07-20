@@ -97,6 +97,7 @@ const YAW_RECRUITMENT_FLOW = {
         app.party.push(target);
         app.creatures = app.creatures.filter(c => c !== target);
         app._syncCurrentTileCreatures?.();
+        app._persistCurrentExplorationTile?.();
         if (rejoining && Array.isArray(app.strandedCompanions)) {
             const targetId = String(app._unitSelectionId?.(target) || target.id || target.name || '');
             app.strandedCompanions = app.strandedCompanions.filter(entry => String(entry?.id || '') !== targetId);

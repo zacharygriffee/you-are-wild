@@ -30,6 +30,7 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Recent Fixes
 
+- Release 0.12.1 documents the defeat-recovery, companion interaction, healing-item, responsive-layout, and interior recovery-bag fixes now included in the public Sites build.
 - Companion Drop Off now leaves an existing ally as a persistent friendly resident of the current safe tile or room; returning exposes a distinct Rejoin action that preserves role and AI order without awarding recruitment XP twice. Ordinary Dismiss remains a separate relationship-breaking action.
 - Player death during combat now removes the player from the turn queue without cancelling an encounter that living companions can still resolve. Recovery remains unavailable until victory, defeat, escape, or disengagement settles; the outcome and companion roster persist through saves, surviving companions remain physically at the defeat location, and regeneration returns the player alone to home.
 - Healing Herb and Strange Mushroom now apply their bounded condition recovery, consume exactly one matching inventory object, and offer an explicit responsive target chooser when companions are present. Healing can target any living party member, caps at that target's maximum, emits localized target-aware feedback, and persists the change. Full-health or defeated targets do not waste the item; combat use is limited to the player's turn and spends that turn. Consumables without an implemented use contract no longer expose a misleading no-op Use button.

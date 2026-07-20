@@ -48,7 +48,8 @@ const YAW_SAVE_MANAGER = {
         const saveTime = app._getSaveTime(slotName);
         const hasData = parseInt(saveTime) > 0;
         const slotLabel = app._label('save.slotLabel', 'Slot {number}', { number: index });
-        const timeStr = hasData ? new Date(parseInt(saveTime)).toLocaleString() : app._label('save.empty', 'Empty');
+        const locale = typeof CONTENT !== 'undefined' && CONTENT?.preferences?.language === 'es' ? 'es-ES' : 'en-US';
+        const timeStr = hasData ? new Date(parseInt(saveTime)).toLocaleString(locale) : app._label('save.empty', 'Empty');
         const slotStatus = hasData ? app._label('save.savedGame', 'Saved game') : app._label('save.openSlot', 'Open slot');
         const hintKey = isNewMode
             ? (hasData ? 'save.slotHint.occupiedNew' : 'save.slotHint.emptyNew')

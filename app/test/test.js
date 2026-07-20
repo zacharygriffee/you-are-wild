@@ -6455,6 +6455,10 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertContains(modUiContent, "this.label('mod.confirmDelete'", 'Mod delete confirmation should localize');
   assertContains(modUiContent, "this.label('mod.noneInstalled'", 'Mod empty state should localize');
   assertContains(modUiContent, "this.label('mod.noDescription'", 'Mod missing-description fallback should localize');
+  assertContains(modUiContent, "toLocaleDateString(this.locale())", 'Mod installation dates should follow the selected game language');
+  assertContains(modUiContent, "this.label('mod.provenance.user'", 'Mod provenance should localize');
+  assertContains(modUiContent, "this.label('mod.settings'", 'Mod settings summary should localize');
+  assertContains(modUiContent, "this.label('mod.controlledByHost'", 'Host-controlled module fallback should localize');
   assertContains(modUiContent, "this.label(key, fallback, { name, message })", 'Mod enable or disable failures should localize and include the policy error');
   assertContains(modUiContent, 'await this.refreshModList();', 'Mod enable failures should refresh list state after rejection');
   assertContains(modUiContent, 'alert(text);', 'Mod enable failures should surface a user-facing alert');
@@ -6759,6 +6763,8 @@ test('New game flow is slot-aware and warns before destructive slot changes', ()
   assertContains(saveSlotFlowContent, "showManager(app, 'new')", 'New game manager helper should render save slots in new-run mode');
   assertContains(appContent, 'YAW_SAVE_SLOT_FLOW.showNewGameManager(this)', 'App new game manager wrapper should delegate slot selection');
   assertContains(saveManagerContent, "saveButton('nav-btn primary'", 'Save manager should generate accessible action buttons');
+  assertContains(saveManagerContent, "CONTENT?.preferences?.language === 'es' ? 'es-ES' : 'en-US'", 'Save timestamps should follow the selected game language');
+  assertContains(saveManagerContent, 'toLocaleString(locale)', 'Save timestamps should use the selected locale explicitly');
   assertContains(saveManagerContent, "app._label('save.toolbarNew'", 'Load manager should expose a localized always-visible New Game entry point');
   assertContains(contentContent, "'save.newRun': 'New Run'", 'Load/save slot manager should expose localized new-run slot takeover');
   assertContains(contentContent, "'save.loadTitle': 'Load Game'", 'Load mode should have localized title copy');

@@ -14,6 +14,10 @@ const ModUI = {
         return fallback;
     },
 
+    locale() {
+        return typeof CONTENT !== 'undefined' && CONTENT?.preferences?.language === 'es' ? 'es-ES' : 'en-US';
+    },
+
     escapeHtml(value) {
         if (typeof App !== 'undefined' && App._escapeHtml) return App._escapeHtml(value);
         return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -463,14 +467,19 @@ const ModUI = {
             const version = this.escapeHtml(manifest.version || '1.0.0');
             const description = this.escapeHtml(manifest.description || this.label('mod.noDescription', 'No description'));
             const type = this.escapeHtml(manifest.type || 'module');
-            const installed = this.escapeHtml(new Date(mod.installedAt).toLocaleDateString());
+            const installed = this.escapeHtml(new Date(mod.installedAt).toLocaleDateString(this.locale()));
             const id = this.escapeHtml(this.jsString(mod.id));
             const statusLabel = this.escapeHtml(this.label(mod.enabled ? 'mod.enabled' : 'mod.disabled', mod.enabled ? 'Enabled' : 'Disabled'));
             const enableTitle = this.escapeHtml(this.label(mod.enabled ? 'mod.disableModule' : 'mod.enableModule', mod.enabled ? 'Disable {name}' : 'Enable {name}', { name: manifest.name || mod.id || 'Module' }));
             const deleteLabel = this.escapeHtml(this.label('mod.delete', 'Delete'));
             const deleteTitle = this.escapeHtml(this.label('mod.deleteModule', 'Delete {name}', { name: manifest.name || mod.id || 'Module' }));
             const controlState = MODULE_SYSTEM.moduleControlState(mod);
-            const provenanceLabel = this.escapeHtml({ host: 'Host supplied', 'built-in': 'Built in', user: 'Player installed', remote: 'URI installed' }[controlState.provenance] || controlState.provenance);
+            const provenanceLabel = this.escapeHtml({
+                host: this.label('mod.provenance.host', 'Host supplied'),
+                'built-in': this.label('mod.provenance.builtIn', 'Built in'),
+                user: this.label('mod.provenance.user', 'Player installed'),
+                remote: this.label('mod.provenance.remote', 'URI installed')
+            }[controlState.provenance] || controlState.provenance);
             const policyLabel = controlState.policyState
                 ? `<span style="font-size:10px;color:var(--accent-primary);text-transform:uppercase;">${this.escapeHtml(controlState.policyState)}</span>`
                 : '';
@@ -478,9 +487,9 @@ const ModUI = {
                 ? `<div style="font-size:11px;color:${controlState.compatibilityReason ? 'var(--accent-danger)' : 'var(--text-muted)'};margin-top:4px;">${this.escapeHtml(controlState.reason)}</div>`
                 : '';
             const toggleAllowed = mod.enabled ? controlState.canDisable : controlState.canEnable;
-            const toggleTitle = toggleAllowed ? enableTitle : this.escapeHtml(controlState.reason || 'Controlled by this host');
+            const toggleTitle = toggleAllowed ? enableTitle : this.escapeHtml(controlState.reason || this.label('mod.controlledByHost', 'Controlled by this host'));
             const settings = (manifest.settings || []).length
-                ? `<details class="mod-settings"><summary>Settings</summary>${manifest.settings.map(setting => this.settingControl(mod.id, setting, valuesByModule[mod.id]?.[setting.key])).join('')}</details>`
+                ? `<details class="mod-settings"><summary>${this.escapeHtml(this.label('mod.settings', 'Settings'))}</summary>${manifest.settings.map(setting => this.settingControl(mod.id, setting, valuesByModule[mod.id]?.[setting.key])).join('')}</details>`
                 : '';
             const sourceDetails = mod.provenance === 'remote'
                 ? `<details style="font-size:11px;color:var(--text-muted);margin-top:5px;"><summary>${this.escapeHtml(this.label('mod.remoteSource', 'Remote source'))}</summary><div style="overflow-wrap:anywhere;margin-top:4px;">${this.escapeHtml(mod.sourceUrl)}</div><div>SHA-256: <code>${this.escapeHtml(mod.integrity)}</code>${mod.integrityVerified ? ` • ${this.escapeHtml(this.label('mod.remotePinned', 'pin verified'))}` : ''}</div></details>`

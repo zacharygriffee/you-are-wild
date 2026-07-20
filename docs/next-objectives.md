@@ -64,7 +64,8 @@ This is the short handoff for unfinished work. Completed implementation history 
 ### Release / Distribution
 
 1. Continue preserving immutable, rollback-ready hosted artifacts through the established Sites version workflow; publishing remains operator-mediated.
-2. Add a browsable archive when more than one player-facing release record exists. The bundled offline surface may continue to prioritize the current release.
+2. Add a Sites-only, newest-first development changelog for rapid updates between formal releases. Keep the in-game What's New surface curated and version-bound; the Sites changelog should distinguish queued versus live changes, expose dates and optional source commits, and be ready to defer to or link into a future public GitHub changelog.
+3. Add a browsable archive when more than one player-facing release record exists. The bundled offline surface may continue to prioritize the current release.
 
 ## Operator-Mediated Decisions
 

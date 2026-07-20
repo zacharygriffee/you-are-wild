@@ -4,11 +4,17 @@
  */
 
 const YAW_COMBAT_TARGETING = {
+    clearMarkedTargets(app) {
+        app.combatTargetId = null;
+        app.combatTargetIds = [];
+        app.explorationTargetIds = (app.explorationTargetIds || []).filter(key => !String(key).startsWith('party:'));
+        return true;
+    },
+
     selectTarget(app, action) {
         const actor = app.activeActor || app.player;
         app.combatCorrectionMessage = null;
-        app.combatTargetId = null;
-        app.combatTargetIds = [];
+        this.clearMarkedTargets(app);
         app.combatPlanSelection = null;
         app.targetSelection = { action, source: 'combat', actorId: actor?.id || actor?.name || 'player' };
         app._clearCenterActionsForCombat();
@@ -18,6 +24,7 @@ const YAW_COMBAT_TARGETING = {
 
     cancelTargetSelection(app) {
         app.combatCorrectionMessage = null;
+        this.clearMarkedTargets(app);
         app._clearTransientInteractionState();
         if (app.combatState.active) app.showActorActions(app._currentCombatActor() || app.activeActor || app.player);
         else {
@@ -60,10 +67,13 @@ const YAW_COMBAT_TARGETING = {
     markedTargets(app) {
         if (!app.combatState?.active) return [];
         const ids = this.targetIds(app);
-        return ids.map(targetId => app.creatures.find(unit => {
+        const enemyTargets = ids.map(targetId => app.creatures.find(unit => {
             if (!unit || unit.CPun <= 0 || unit.disposition !== app.DISPOSITION.ENEMY) return false;
             return app._unitSelectionId(unit) === targetId || String(unit.id || unit.name) === targetId;
         })).filter(Boolean);
+        const partyTargets = (app._getExplorationTargets?.() || [])
+            .filter(unit => app.party.includes(unit) && unit.CPun > 0);
+        return [...new Set([...enemyTargets, ...partyTargets])];
     },
 
     markedTarget(app) {
@@ -72,6 +82,7 @@ const YAW_COMBAT_TARGETING = {
 
     isMarkedTarget(app, unit) {
         if (!unit) return false;
+        if (app.party.includes(unit)) return (app._getExplorationTargets?.() || []).includes(unit);
         const unitIds = [app._unitSelectionId(unit), String(unit.id || unit.name)];
         return this.targetIds(app).some(targetId => unitIds.includes(targetId));
     },
@@ -130,15 +141,14 @@ const YAW_COMBAT_TARGETING = {
             targets,
             action,
             source: 'combat-composer',
-            constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
+            constraints: { requireCurrentTurn: true, hostileOnly: false, checkReach: true, checkRows: true }
         });
         const valid = app._validateInteractionCommand(command);
         if (!valid.ok) {
             app._reportInvalidCombatCommand(command, valid.reason);
             return false;
         }
-        app.combatTargetId = null;
-        app.combatTargetIds = [];
+        this.clearMarkedTargets(app);
         app.targetSelection = null;
         app.combatPlanSelection = null;
         return app._dispatchInteractionCommand(command);

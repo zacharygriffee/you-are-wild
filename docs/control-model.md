@@ -137,13 +137,13 @@ Current implementation:
 
 - Flying or ranged units default to the back row; other units default to the front row when combat starts.
 - `Fight` uses an intent-owned reach profile: melee, ranged, or hybrid depending on actor traits and future action metadata.
-- `Feast` uses a close/contact profile by default and requires front-row contact unless an explicit contact-reach profile says otherwise.
+- `Feast` uses a close/contact profile by default and requires front-row contact across opposing formations unless an explicit contact-reach profile says otherwise. Same-side companions are mutually reachable across their own rows.
 - Talk, Feed, support, and other non-contact social/support intents ignore row reach unless a specific mechanic says otherwise.
-- Play/Seduce is contact-social by default and requires front-row contact until an authored variant says otherwise.
+- Play/Seduce is contact-social by default and requires front-row contact across opposing formations until an authored variant says otherwise. Same-side companions are mutually reachable across their own rows.
 - Flying can bypass rows for Fight/aerial profiles. Flying does not automatically bypass front-row requirements for Feast or Play/Seduce, and flying targets still need flying, anti-flying, or explicit contact reach for contact-style actions.
 - Ranged Fight can reach front-row grounded targets, protected back-row targets, and flying targets from either row. Back-row ranged attackers keep distance and may take small balance modifiers, but ranged is reach access rather than a restriction to back-row targets.
 - Anti-flying actors answer flying targets for relevant physical profiles, but anti-flying does not bypass front-row blockers by itself.
-- Front-row blockers protect back-row units on the same side. Ordinary melee and close/contact actions cannot target a protected back-row unit while living front-row blockers remain.
+- Front-row blockers protect back-row units from actors on the opposing side. They do not block Fight, Talk, Seduce, Feed, or Eat interactions among companions within the same formation.
 - If a side has no living front-row blockers, back-row targets are exposed. Ordinary melee and close/contact actions may reach exposed back-row targets unless a specific action profile says otherwise.
 - Back-row ordinary melee and close/contact actors cannot freely hit front-row targets without a future special reach profile. A valid actor may still commit a tactically impossible attempt: the creature visibly fails in the Scene Feed, pays the action cost, and spends the turn instead of receiving a UI error or correction.
 - If a committed or delayed group plan becomes impossible before resolution, it can fizzle and consume the committed plan through existing group timing, with Scene Feed explaining the failure.
@@ -226,6 +226,14 @@ Inspection mode owns detail views and review surfaces.
 - Present valid primary intents and sub-actions for the current actor/target context.
 - Use the same dispatcher for desktop popovers, mobile sheets, and later radial controls.
 - Keep focus, viewport bounds, high-contrast, reduced-motion, and long-label behavior stable.
+
+### Companion placement and player defeat
+
+- Drop Off is reversible party placement, not dismissal. Outside combat and away from active hostiles, an ally may leave the traveling party while remaining a persistent friendly resident of that exact overworld tile or interior room. Returning offers Rejoin, preserves role and AI order, and does not grant recruitment XP again.
+- Dismiss remains a separate relationship transition. It may clear party ownership and must not be silently treated as reversible roster storage.
+- Player death removes the player from the active queue but does not cancel an encounter while a living, non-fled companion can act. Existing companion controls remain available; later work may add an explicit Auto-resolve command without changing settlement semantics.
+- Recovery controls appear only after the remaining encounter resolves to victory, defeat, flee, or disengagement. The settlement records every companion from the death-time roster, persists surviving companions at the defeat location through the Drop Off/Rejoin contract, retains dead outcomes, and then allows the player to regenerate alone at home.
+- A save made between player death and encounter settlement must resume the companion battle. It must not skip directly to recovery while an eligible companion remains.
 
 ### Display map
 

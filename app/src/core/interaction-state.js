@@ -361,8 +361,7 @@ const YAW_INTERACTION_STATE = {
             }
             if (slot === 'target') {
                 app.combatCorrectionMessage = null;
-                app.combatTargetId = null;
-                app.combatTargetIds = [];
+                app._clearCombatMarkedTargets?.();
                 if (app.syncSelection?.active && app.syncSelection.phase === 'target') app.syncSelection.phase = 'participants';
                 app._renderInteractionState({ exploration: false, toolbelt: true });
                 return true;

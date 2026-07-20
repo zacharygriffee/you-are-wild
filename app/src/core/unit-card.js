@@ -81,6 +81,9 @@ const YAW_UNIT_CARD = {
                 partyManagementControls += `<select class="nav-btn" ${managementAttrs} data-command-control="set-party-ai-order" style="padding:4px 8px;font-size:11px;" title="${orderTitle}" aria-label="${orderAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${options}</select>`;
                 const dismissLabel = app._escapeHtml(app._label('party.dismiss', 'Dismiss'));
                 const dismissTitle = app._escapeHtml(app._label('party.dismissFor', 'Dismiss {name}', { name: unitName }));
+                const dropOffLabel = app._escapeHtml(app._label('party.dropOff', 'Drop Off'));
+                const dropOffTitle = app._escapeHtml(app._label('party.dropOffFor', 'Leave {name} at this location', { name: unitName }));
+                partyManagementControls += `<button class="action-btn" ${managementAttrs} data-command-control="drop-off-party-member" title="${dropOffTitle}" aria-label="${dropOffTitle}" onclick="event.stopPropagation();App.dropOffPartyMember(${index})">${dropOffLabel}</button>`;
                 partyManagementControls += `<button class="action-btn" ${managementAttrs} data-command-control="dismiss-party-member" style="color:var(--accent-danger)" title="${dismissTitle}" aria-label="${dismissTitle}" onclick="event.stopPropagation();App.dismissPartyMember(${index})">${dismissLabel}</button>`;
             }
             if (partyManagementControls) {

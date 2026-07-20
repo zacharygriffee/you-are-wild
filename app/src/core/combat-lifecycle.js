@@ -71,6 +71,7 @@ const YAW_COMBAT_LIFECYCLE = {
 
     endCombat(app, result) {
         const outcome = result === true ? 'victory' : result === false ? 'defeat' : (result || 'victory');
+        let pendingPlayerDeath = Boolean(app.defeatState?.pending && app.defeatState?.terminal);
         if (app.combatState?.sceneExchangeId && app.combatState?.round > 0 && typeof YAW_NARRATION_SYSTEM !== 'undefined') {
             YAW_NARRATION_SYSTEM.closeExchange(app, `${app.combatState.sceneExchangeId}-round-${app.combatState.round}`, { reason: 'combat-ended' });
         }
@@ -84,8 +85,13 @@ const YAW_COMBAT_LIFECYCLE = {
         app.activeActor = null;
         app._clearTransientInteractionState();
         app._clearCombatRefreshSnapshot(app.activeSlot);
+        if (outcome === 'defeat' && !pendingPlayerDeath) {
+            app._markDefeat(outcome);
+            pendingPlayerDeath = Boolean(app.defeatState?.pending && app.defeatState?.terminal);
+        }
+        if (pendingPlayerDeath) app._settleDefeatedEncounter?.(outcome);
         app.party.forEach(p => { p.fledCombat = false; });
-        if (outcome !== 'defeat' && app.player?.knockedOut) {
+        if (!pendingPlayerDeath && outcome !== 'defeat' && app.player?.knockedOut) {
             app.player.knockedOut = false;
             app.player.CPun = Math.max(1, app.player.CPun || 0);
             app._resolvePlayerState?.({ status: 'active', terminal: false, cause: 'rescued-after-combat', source: 'combat-lifecycle' });
@@ -93,7 +99,7 @@ const YAW_COMBAT_LIFECYCLE = {
             app.log.push({ text: app._label('combat.playerComesTo', '{name} comes to after the fight.', { name: app.player.name }), type: 'discovery' });
         }
         if (outcome === 'victory') {
-            app.log.push({ text: app._label('combat.victory', 'Victory! Enemies defeated or subdued.'), type: 'discovery' });
+            app.log.push({ text: app._label(pendingPlayerDeath ? 'combat.companionsVictoryAfterDeath' : 'combat.victory', pendingPlayerDeath ? 'Your companions finish the battle, but you did not survive.' : 'Victory! Enemies defeated or subdued.'), type: pendingPlayerDeath ? 'combat' : 'discovery' });
             const texts = [
                 'The battlefield falls silent.',
                 'Your enemies lie defeated.',
@@ -103,13 +109,13 @@ const YAW_COMBAT_LIFECYCLE = {
             const roll = app._combatStateRoll('combat-victory-scene', app.player, 'victory-text');
             const index = Math.min(texts.length - 1, Math.floor(roll * texts.length));
             app.updateScene('Victory', texts[index], false);
-            app.gainXP(app.combatState.xpEarned || app.XP_REWARDS.defeatEnemy);
-            for (const c of app.creatures) {
+            if (!pendingPlayerDeath) app.gainXP(app.combatState.xpEarned || app.XP_REWARDS.defeatEnemy);
+            for (const c of pendingPlayerDeath ? [] : app.creatures) {
                 if (c.disposition === app.DISPOSITION.FRIENDLY && c.CPun > 0) {
                     app.log.push({ text: `${c.name} looks ready to follow you...`, type: 'discovery' });
                 }
             }
-            app._runPostCombatScavengers();
+            if (!pendingPlayerDeath) app._runPostCombatScavengers();
         } else if (outcome === 'flee') {
             app.log.push({ text: app._label('combat.escapedEncounter', 'You escaped the encounter.'), type: 'move' });
             app.updateScene('Escaped', 'You put distance between yourself and danger.', false);
@@ -119,11 +125,10 @@ const YAW_COMBAT_LIFECYCLE = {
         } else {
             app.log.push({ text: app._label('combat.defeat', 'Defeat...'), type: 'combat' });
             app.updateScene('Defeat', 'Darkness claims you...', false);
-            app._markDefeat(outcome);
         }
-        if (outcome !== 'defeat') app.renderMap();
+        if (!pendingPlayerDeath && outcome !== 'defeat') app.renderMap();
         app.renderLog();
-        if (outcome === 'defeat') {
+        if (pendingPlayerDeath) {
             app.renderParty();
             app.renderCreatures();
             app.showDefeatRecovery();

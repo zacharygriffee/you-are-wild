@@ -41,6 +41,7 @@ const YAW_RECRUITMENT_FLOW = {
         if (!target || app.party.includes(target)) return false;
         const recruitableDisposition = target.disposition === app.DISPOSITION.FRIENDLY || target.disposition === app.DISPOSITION.NEUTRAL;
         if (!recruitableDisposition) return false;
+        if (target.droppedOffCompanion && target.CPun > 0 && !target.knockedOut) return true;
         if (!app._hasBaselineInteractionEligibility(target, 'recruit')) return false;
         const spiritRatio = (target.CPle || 0) / Math.max(1, target.MPle || 100);
         return Boolean(target.recruitReady) || spiritRatio >= 0.85 || this.score(app, actor, target) >= 85;
@@ -84,16 +85,25 @@ const YAW_RECRUITMENT_FLOW = {
             app.renderCreatures();
             return false;
         }
+        const rejoining = Boolean(target.droppedOffCompanion);
         target.disposition = app.DISPOSITION.PARTY;
         target.ally = true;
         target.obedient = true;
         target.CPun = Math.max(1, target.CPun);
+        delete target.droppedOffCompanion;
+        delete target.strandedAfterDefeat;
+        delete target.droppedOffAt;
         app._normalizeUnit(target, { disposition: app.DISPOSITION.PARTY, ally: true, obedient: true });
         app.party.push(target);
         app.creatures = app.creatures.filter(c => c !== target);
-        app.log.push({ text: app._label('recruit.joined', '{name} joins your party!', { name: target.name }), type: 'discovery' });
+        app._syncCurrentTileCreatures?.();
+        if (rejoining && Array.isArray(app.strandedCompanions)) {
+            const targetId = String(app._unitSelectionId?.(target) || target.id || target.name || '');
+            app.strandedCompanions = app.strandedCompanions.filter(entry => String(entry?.id || '') !== targetId);
+        }
+        app.log.push({ text: app._label(rejoining ? 'recruit.rejoined' : 'recruit.joined', rejoining ? '{name} rejoins your party!' : '{name} joins your party!', { name: target.name }), type: 'discovery' });
         app.emitRecruitmentSceneBeat?.(target, actor, 'joined');
-        app.gainXP(app.BALANCE.recruitXP);
+        if (!rejoining) app.gainXP(app.BALANCE.recruitXP);
         app.renderParty();
         app.renderCreatures();
         app.renderLog();

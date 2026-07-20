@@ -140,6 +140,7 @@ const YAW_COMBAT_RULES = {
     reachResult(app, actor, target, action = 'fight') {
         const profile = this.intentReachProfile(app, actor, action);
         const base = String(action || '').replace(/^sync_/, '');
+        const sameSide = this.sameCombatSide(app, actor, target);
         const result = {
             canAttempt: Boolean(actor && target && target.CPun > 0),
             canSucceed: false,
@@ -148,7 +149,8 @@ const YAW_COMBAT_RULES = {
             profile,
             action: base,
             protectedBackRow: false,
-            exposedBackRow: false
+            exposedBackRow: false,
+            sameSide
         };
         if (!result.canAttempt) {
             result.reason = 'invalid-target';
@@ -168,12 +170,12 @@ const YAW_COMBAT_RULES = {
         }
         if (profile === 'contact' || base === 'feast') {
             const hasContactAccess = this.hasContactPermission(actor, target, base);
-            if (actor?.combatRow === 'back' && !hasContactAccess) {
+            if (!sameSide && actor?.combatRow === 'back' && !hasContactAccess) {
                 result.reason = 'contact-needs-front-row';
                 result.counterplay = 'advance-or-social';
                 return result;
             }
-            if (target?.combatRow === 'back') {
+            if (!sameSide && target?.combatRow === 'back') {
                 result.protectedBackRow = this.isBackRowProtected(app, target);
                 result.exposedBackRow = !result.protectedBackRow;
                 if (result.protectedBackRow && !hasContactAccess) {
@@ -190,12 +192,12 @@ const YAW_COMBAT_RULES = {
             result.canSucceed = true;
             return result;
         }
-        if (profile === 'melee' && actor?.combatRow === 'back' && !this.hasSpecialReachAccess(actor, base)) {
+        if (!sameSide && profile === 'melee' && actor?.combatRow === 'back' && !this.hasSpecialReachAccess(actor, base)) {
             result.reason = 'melee-needs-front-row';
             result.counterplay = 'advance-or-social';
             return result;
         }
-        if (target?.combatRow === 'back' && !actor?.flying && !actor?.ranged && !this.hasSpecialReachAccess(actor, base)) {
+        if (!sameSide && target?.combatRow === 'back' && !actor?.flying && !actor?.ranged && !this.hasSpecialReachAccess(actor, base)) {
             result.protectedBackRow = this.isBackRowProtected(app, target);
             result.exposedBackRow = !result.protectedBackRow;
             if (result.protectedBackRow) {

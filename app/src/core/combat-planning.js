@@ -166,8 +166,7 @@ const YAW_COMBAT_PLANNING = {
         app.targetSelection = null;
         const clearTargets = options.clearTargets ?? reason === 'cancel';
         if (clearTargets) {
-            app.combatTargetId = null;
-            app.combatTargetIds = [];
+            app._clearCombatMarkedTargets?.();
         }
         app._renderInteractionState({ exploration: false, toolbelt: true });
         return true;
@@ -312,8 +311,7 @@ const YAW_COMBAT_PLANNING = {
             return false;
         }
         app.targetSelection = null;
-        app.combatTargetId = null;
-        app.combatTargetIds = [];
+        app._clearCombatMarkedTargets?.();
         app.combatPlanSelection = null;
         return app._dispatchInteractionCommand(command);
     }

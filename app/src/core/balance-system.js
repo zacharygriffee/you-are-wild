@@ -208,6 +208,7 @@ const YAW_BALANCE_SYSTEM = {
 
     resolveSpiritThreshold(app, actor, target, action = 'flirt', context = {}) {
         if (!target || !['flirt', 'fuck', 'sync_flirt', 'sync_fuck'].includes(String(action || ''))) return null;
+        if ((app.party || []).includes(target)) return null;
         const state = this.spiritThresholdState(app, target);
         if (!state.reached || state.alreadyResolved) return null;
         const cfg = this.ensure(app);

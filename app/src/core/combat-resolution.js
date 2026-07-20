@@ -51,8 +51,7 @@ const YAW_COMBAT_RESOLUTION = {
             return false;
         }
         app.targetSelection = null;
-        app.combatTargetId = null;
-        app.combatTargetIds = [];
+        app._clearCombatMarkedTargets?.();
         app.renderMobileCombatToolbelt();
         if (targets.length > 1 && ['fight', 'flirt', 'fuck', 'feast'].includes(command.action)) {
             let resolved = false;
@@ -66,7 +65,7 @@ const YAW_COMBAT_RESOLUTION = {
                 : '';
             for (const multiTarget of targets) {
                 if (!app.combatState?.active) break;
-                if (!multiTarget || multiTarget.CPun <= 0 || multiTarget.disposition !== app.DISPOSITION.ENEMY) continue;
+                if (!multiTarget || multiTarget.CPun <= 0) continue;
                 const reach = app._combatReachResult?.(actor, multiTarget, command.action);
                 if (reach?.canAttempt && !reach.canSucceed) {
                     resultLines.push(this.reachFailure(app, command.action, [actor], multiTarget, reach, { suppressStory: true }));
@@ -129,6 +128,7 @@ const YAW_COMBAT_RESOLUTION = {
             }
             const actorName = actor.name === app.player?.name ? 'You' : actor.name;
             const actorVerb = actor.name === app.player?.name ? '' : 's';
+            const targetWasParty = app.party.includes(target);
             let result = '';
             const reach = app._combatReachResult?.(actor, target, action);
             if (reach?.canAttempt && !reach.canSucceed) {
@@ -199,11 +199,16 @@ const YAW_COMBAT_RESOLUTION = {
                 result = `${actorName} hit${actorVerb} ${target.name} for ${dmg} punishment!`;
                 if (target.CPun <= 0) {
                     result += ` ${target.name} collapses!`;
-                    app._awardCombatXP(app.XP_REWARDS.defeatEnemy);
-                    if (app.settings.powerDynamics) {
-                        app._subdueCreature(target, actor, { source: 'combat-fight' });
-                        result += ` ${app._label('combat.subduedRecruitable', '{name} yields and may be recruited.', { name: target.name })}`;
-                    } else app._makeCorpse(target, 'fight');
+                    if (targetWasParty) {
+                        if (target === app.player) app._handlePlayerFall?.({ cause: 'party-combat-damage', source: 'combat-fight' });
+                        else app._dropPartyCorpse?.(target, 'fight');
+                    } else {
+                        app._awardCombatXP(app.XP_REWARDS.defeatEnemy);
+                        if (app.settings.powerDynamics) {
+                            app._subdueCreature(target, actor, { source: 'combat-fight' });
+                            result += ` ${app._label('combat.subduedRecruitable', '{name} yields and may be recruited.', { name: target.name })}`;
+                        } else app._makeCorpse(target, 'fight');
+                    }
                 }
                 break;
             }
@@ -220,18 +225,22 @@ const YAW_COMBAT_RESOLUTION = {
                     target.Figh = Math.max(1, (target.Figh || 10) - 1);
                     result = `${actorName} talk${actorVerb} with ${target.name}! Their guard lowers. Spirit rises to ${target.CPle}/${target.MPle}.`;
                     if (target.charmed >= 3) {
-                        result += ` ${target.name} is utterly charmed and becomes friendly!`;
-                        target.disposition = app.DISPOSITION.FRIENDLY;
+                        result += targetWasParty
+                            ? ` ${target.name} is utterly charmed!`
+                            : ` ${target.name} is utterly charmed and becomes friendly!`;
+                        if (!targetWasParty) target.disposition = app.DISPOSITION.FRIENDLY;
                         target.willing = true;
-                        app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
+                        if (!targetWasParty) app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
                     } else if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
-                        result += ` ${target.name} relaxes and becomes friendly!`;
-                        target.disposition = app.DISPOSITION.FRIENDLY;
+                        result += targetWasParty
+                            ? ` ${target.name} relaxes completely!`
+                            : ` ${target.name} relaxes and becomes friendly!`;
+                        if (!targetWasParty) target.disposition = app.DISPOSITION.FRIENDLY;
                         target.willing = true;
                         target.orgasmed = true;
-                        app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
+                        if (!targetWasParty) app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
                     }
-                    const breakthrough = app._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
+                    const breakthrough = targetWasParty ? null : app._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
                     result = `${target.name} rejects the conversation with ${actorName}!`;
@@ -249,22 +258,24 @@ const YAW_COMBAT_RESOLUTION = {
                     target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
                     result = `${actorName} play${actorVerb} with ${target.name}! Spirit rises to ${target.CPle}/${target.MPle}.`;
                     if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
-                        result += ` ${target.name} relaxes, becoming dazed and friendly!`;
-                        target.disposition = app.DISPOSITION.FRIENDLY;
+                        result += targetWasParty
+                            ? ` ${target.name} relaxes, becoming dazed!`
+                            : ` ${target.name} relaxes, becoming dazed and friendly!`;
+                        if (!targetWasParty) target.disposition = app.DISPOSITION.FRIENDLY;
                         target.willing = true;
                         target.orgasmed = true;
-                        app._awardCombatXP(app.XP_REWARDS.seduceEnemy);
+                        if (!targetWasParty) app._awardCombatXP(app.XP_REWARDS.seduceEnemy);
                         if (app.settings.refractoryPeriod) {
                             target.refractory = true;
                             result += ` They need a moment to catch their breath...`;
                         }
-                        if (actor.name === app.player?.name) {
+                        if (!targetWasParty && actor.name === app.player?.name) {
                             setTimeout(() => {
                                 app._confirmRecruitCreature(target);
                             }, 100);
                         }
                     }
-                    const breakthrough = app._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
+                    const breakthrough = targetWasParty ? null : app._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
                     result = `${target.name} does not want to play!`;

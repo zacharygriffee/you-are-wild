@@ -69,7 +69,10 @@ const YAW_MARKED_TARGET_ACTIONS = {
             };
             buttonEntries.push({ action: 'inspect', html: utilityButton('inspect', 'inspect', '👁️') });
             const actor = primaryActor || app._getExplorationActor();
-            if (app._canRecruit(actor, singleCreatureTarget)) buttonEntries.push({ action: 'recruit', html: utilityButton('recruit', 'recruit', '💕') });
+            if (app._canRecruit(actor, singleCreatureTarget)) {
+                const action = singleCreatureTarget.droppedOffCompanion ? 'rejoin' : 'recruit';
+                buttonEntries.push({ action, html: utilityButton(action, action, action === 'rejoin' ? '👥' : '💕') });
+            }
             if (singleCreatureTarget.quest) {
                 const questAction = singleCreatureTarget.questAccepted ? 'viewQuest' : 'acceptQuest';
                 buttonEntries.push({ action: questAction, html: utilityButton(questAction, 'quest', '📜') });

@@ -2608,6 +2608,10 @@
                 return YAW_COMBAT_TARGETING.toggleMarkedTarget(this, targetId);
             },
 
+            _clearCombatMarkedTargets() {
+                return YAW_COMBAT_TARGETING.clearMarkedTargets(this);
+            },
+
             confirmCombatTargets(actor = this.activeActor || this._currentCombatActor()) {
                 return YAW_COMBAT_TARGETING.confirmMarkedTargetSelection(this, actor);
             },
@@ -2665,14 +2669,21 @@
                 let result = '';
                 switch (action + '.' + subId) {
                     case 'feast.swallow': {
+                        if (actor === target) {
+                            result = this._label('group.feast.selfBlocked', '{target} cannot eat themself. Select another party member as the target.', { target: target.name });
+                            break;
+                        }
+                        const targetWasParty = this.party.includes(target);
                         const canEat = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
                         if (!canEat) { result = `${target.name} is too strong or too big to consume!`; break; }
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
                         this._containTargetIn(actor, target, 'stomach');
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 20);
                         actor.Feas += 1;
-                        this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
-                        this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
+                        if (!targetWasParty) {
+                            this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
+                            this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
+                        }
                         result = `${actorName} eat${actorVerb} ${target.name}! They are held in ${actor.name === this.player?.name ? 'your' : actor.name + "'s"} belly.`;
                         break;
                     }
@@ -3052,6 +3063,14 @@
 
             _dismissPartyMemberConfirmed(index) {
                 return YAW_PARTY_MANAGEMENT.confirmDismiss(this, index);
+            },
+
+            dropOffPartyMember(index) {
+                return YAW_PARTY_MANAGEMENT.dropOff(this, index);
+            },
+
+            _dropOffPartyMemberConfirmed(index) {
+                return YAW_PARTY_MANAGEMENT.confirmDropOff(this, index);
             },
 
             showPartyMemberStats(index) {
@@ -4726,8 +4745,14 @@
             setInventorySort(sort) {
                 return YAW_INVENTORY_PANEL.setSort(this, sort);
             },
-            useItem(itemId) {
-                return YAW_INVENTORY_PANEL.use(this, itemId);
+            requestUseItem(itemId) {
+                return YAW_INVENTORY_PANEL.requestUse(this, itemId);
+            },
+            cancelUseItem() {
+                return YAW_INVENTORY_PANEL.cancelUse(this);
+            },
+            useItem(itemId, targetId = null) {
+                return YAW_INVENTORY_PANEL.use(this, itemId, targetId);
             },
             dropItem(itemId) {
                 return YAW_INVENTORY_PANEL.drop(this, itemId);
@@ -5066,6 +5091,9 @@
             },
             _handlePlayerFall(input = {}) {
                 return YAW_DEFEAT_RECOVERY.handlePlayerFall(this, input);
+            },
+            _settleDefeatedEncounter(outcome = 'defeat') {
+                return YAW_DEFEAT_RECOVERY.settleEncounter(this, outcome);
             },
             canTriggerPlayerDeathCheat() {
                 return YAW_DEFEAT_RECOVERY.canTriggerDebugDeath(this);

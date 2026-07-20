@@ -288,6 +288,7 @@ const YAW_HOLDINGS = {
     renderPackItem(app, item, owner = app.player) {
         const def = app.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
         const canUse = def.effect === 'heal';
+        const choosingTarget = canUse && String(app.holdingsWindow?.pendingItemUseId || '') === String(item.id);
         const canEquip = app._isEquippable(item);
         const itemKey = app._escapeJsString(item.id);
         const name = app._escapeHtml(item.name || app._label('ui.item', 'item'));
@@ -299,7 +300,28 @@ const YAW_HOLDINGS = {
         const dropTitle = app._escapeHtml(app._label('inventory.dropItem', 'Drop {name}', { name: item.name }));
         let html = `<div class="holdings-entry pack-entry" data-holding-kind="pack-item"><div class="holding-entry-main"><div class="holding-entry-name"><span>${app._escapeHtml(def.icon || '?')}</span> ${name}</div>`;
         html += `<div class="holding-entry-meta">${app._escapeHtml(def.type || 'misc')} · ${app._escapeHtml(def.desc || '')}${canEquip ? '<br>' + app._equipmentBonusText(item) : ''}</div></div><div class="holding-entry-actions">`;
-        if (canUse) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="use-item" title="${useTitle}" aria-label="${useTitle}" onclick="App.useItem('${itemKey}')">${useLabel}</button>`;
+        if (canUse && !choosingTarget) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="use-item" title="${useTitle}" aria-label="${useTitle}" onclick="App.requestUseItem('${itemKey}')">${useLabel}</button>`;
+        if (choosingTarget) {
+            const prompt = app._escapeHtml(app._label('inventory.chooseHealingTarget', 'Use {item} on:', { item: item.name }));
+            html += `<div class="holding-use-targets" role="group" aria-label="${prompt}"><span class="holding-entry-meta">${prompt}</span>`;
+            YAW_HOLDINGS.partyOwners(app).forEach(target => {
+                const targetId = app._escapeJsString(YAW_HOLDINGS.ownerId(app, target));
+                const targetName = YAW_HOLDINGS.ownerLabel(app, target);
+                const current = Math.max(0, Number(target?.CPun) || 0);
+                const maximum = Math.max(1, Number(target?.MPun) || current || 1);
+                const defeated = current <= 0;
+                const full = current >= maximum;
+                const disabled = defeated || full;
+                const title = defeated
+                    ? app._label('inventory.cannotHealTarget', '{name} cannot be healed while defeated.', { name: targetName })
+                    : full
+                        ? app._label('inventory.fullCondition', '{name} is already at full condition.', { name: targetName })
+                        : app._label('inventory.useItemOnTarget', 'Use {item} on {name}', { item: item.name, name: targetName });
+                html += `<button class="nav-btn${disabled ? ' disabled' : ''}" data-command-surface="inventory-detail" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-control="use-item-target" data-command-slot="target" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}"${disabled ? ' disabled aria-disabled="true"' : ''} onclick="App.useItem('${itemKey}','${targetId}')">${app._escapeHtml(targetName)} <span class="holding-entry-meta">${current}/${maximum}</span></button>`;
+            });
+            const cancel = app._escapeHtml(app._label('inventory.cancelUse', 'Cancel'));
+            html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="cancel-use-item" data-command-slot="exit" onclick="App.cancelUseItem()">${cancel}</button></div>`;
+        }
         if (canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="equip-item" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${itemKey}')">${equipLabel}</button>`;
         html += `<button class="nav-btn danger" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="drop-item" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button></div></div>`;
         return html;
@@ -682,15 +704,46 @@ const YAW_INVENTORY_PANEL = {
         YAW_HOLDINGS.refresh(app) || app.showInventory();
     },
 
-    use(app, itemId) {
+    requestUse(app, itemId) {
+        const item = (app.inventory || []).find(entry => String(entry?.id) === String(itemId));
+        if (!item || app._getItemDef(item).effect !== 'heal') return false;
+        if (YAW_HOLDINGS.partyOwners(app).length <= 1) return this.use(app, itemId);
+        if (!app.holdingsWindow) YAW_HOLDINGS.show(app, app.player, { tab: 'pack' });
+        app.holdingsWindow = {
+            ...(app.holdingsWindow || {}),
+            pendingItemUseId: String(itemId)
+        };
+        YAW_HOLDINGS.refresh(app);
+        return true;
+    },
+
+    cancelUse(app) {
+        if (!app.holdingsWindow?.pendingItemUseId) return false;
+        delete app.holdingsWindow.pendingItemUseId;
+        YAW_HOLDINGS.refresh(app);
+        return true;
+    },
+
+    use(app, itemId, targetId = null) {
         const index = (app.inventory || []).findIndex(item => String(item?.id) === String(itemId));
         if (index < 0) return false;
         const item = app.inventory[index];
         const def = app._getItemDef(item);
         if (def.effect !== 'heal') return false;
         const player = app._syncPlayerPartyReference?.() || app.player;
+        const target = targetId == null
+            ? player
+            : YAW_HOLDINGS.partyOwners(app).find(unit => YAW_HOLDINGS.ownerId(app, unit) === String(targetId));
         if (!player || player.CPun <= 0 || app.defeatState?.pending) {
             const text = app._label('inventory.cannotHealDefeated', 'A healing item cannot replace defeat recovery.');
+            app.log.push({ text, type: 'heal' });
+            app.renderLog?.();
+            return false;
+        }
+        if (!target || Number(target.CPun) <= 0) {
+            const text = app._label('inventory.cannotHealTarget', '{name} cannot be healed while defeated.', {
+                name: target?.name || app._label('ui.unknown', 'Unknown')
+            });
             app.log.push({ text, type: 'heal' });
             app.renderLog?.();
             return false;
@@ -705,30 +758,40 @@ const YAW_INVENTORY_PANEL = {
                 return false;
             }
         }
-        const current = Math.max(0, Number(player.CPun) || 0);
-        const maximum = Math.max(1, Number(player.MPun) || current || 1);
+        const current = Math.max(0, Number(target.CPun) || 0);
+        const maximum = Math.max(1, Number(target.MPun) || current || 1);
         if (current >= maximum) {
-            const text = app._label('inventory.fullCondition', '{name} is already at full condition.', { name: player.name || app._label('party.you', 'You') });
+            const text = app._label('inventory.fullCondition', '{name} is already at full condition.', { name: YAW_HOLDINGS.ownerLabel(app, target) });
             app.log.push({ text, type: 'heal' });
             app.renderLog?.();
             return false;
         }
         const requested = Math.max(1, Math.floor(Number(def.healAmount ?? def.value) || 1));
         const healed = Math.min(requested, maximum - current);
-        player.CPun = current + healed;
+        target.CPun = current + healed;
         app.inventory.splice(index, 1);
-        const text = app._label('inventory.healed', '{name} uses {item} and recovers {amount} condition.', {
-            name: player.name || app._label('party.you', 'You'),
-            item: item.name || app._label('ui.item', 'item'),
-            amount: healed
-        });
+        const actorName = YAW_HOLDINGS.ownerLabel(app, player);
+        const targetName = YAW_HOLDINGS.ownerLabel(app, target);
+        const text = target === player
+            ? app._label('inventory.healed', '{name} uses {item} and recovers {amount} condition.', {
+                name: actorName,
+                item: item.name || app._label('ui.item', 'item'),
+                amount: healed
+            })
+            : app._label('inventory.healedTarget', '{actor} uses {item} on {target}, restoring {amount} condition.', {
+                actor: actorName,
+                item: item.name || app._label('ui.item', 'item'),
+                target: targetName,
+                amount: healed
+            });
+        if (app.holdingsWindow) delete app.holdingsWindow.pendingItemUseId;
         app.log.push({ text, type: 'heal' });
         app._addTileEvent?.(text, 'heal');
         app.showToast?.({ text, type: 'heal', importance: 'notable', dedupeKey: `inventory-heal:${String(item.id || item.name)}` });
-        if (inCombat) app._emitCombatAction?.('use_item', player, player, text);
-        else app.emitStoryResult?.({ mode: 'adventure', actors: [player], targets: [player], action: 'use-item', subAction: 'heal' }, text, {
+        if (inCombat) app._emitCombatAction?.('use_item', player, target, text);
+        else app.emitStoryResult?.({ mode: 'adventure', actors: [player], targets: [target], action: 'use-item', subAction: 'heal' }, text, {
             resultKind: 'healing',
-            deltas: [{ kind: 'healing', amount: healed, unit: player.name }]
+            deltas: [{ kind: 'healing', amount: healed, unit: target.name }]
         });
         app.renderLog?.();
         app.renderParty?.();

@@ -13,6 +13,7 @@ const YAW_MOBILE_CONTEXT_MENU = {
     const commandControls = {
       stats: 'open-party-stats',
       lead: 'make-leader',
+      dropoff: 'drop-off-party-member',
       dismiss: 'dismiss-party-member',
       close: 'close-detail-menu'
     };
@@ -36,6 +37,7 @@ const YAW_MOBILE_CONTEXT_MENU = {
       if (app._getPartyLeader() !== unit) html += actionButton(app._label('party.makeLeader', 'Make Leader'), 'lead');
       html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${app._escapeHtml(roleLabel)}</span><select class="nav-btn" ${detailAttrs} data-command-control="set-party-role" aria-label="${app._escapeHtml(roleAria)}" title="${app._escapeHtml(roleDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetRole(${index},this.value)">${roleOptions}</select><small>${app._escapeHtml(roleDescription)}</small></label>`;
       html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${app._escapeHtml(orderLabel)}</span><select class="nav-btn" ${detailAttrs} data-command-control="set-party-ai-order" aria-label="${app._escapeHtml(orderAria)}" title="${app._escapeHtml(orderDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetAIOrder(${index},this.value)">${orderOptions}</select><small>${app._escapeHtml(orderDescription)}</small></label>`;
+      html += actionButton(app._label('party.dropOff', 'Drop Off'), 'dropoff');
       html += actionButton(app._label('party.dismiss', 'Dismiss'), 'dismiss', ' danger');
     }
     html += actionButton(app._label('ui.close', 'Close'), 'close');
@@ -54,6 +56,7 @@ const YAW_MOBILE_CONTEXT_MENU = {
     app.closeMobileContextMenu();
     if (action === 'stats') return app.showPartyMemberStats(index);
     if (action === 'lead') return app.setPartyLeader(index);
+    if (action === 'dropoff') return app.dropOffPartyMember(index);
     if (action === 'dismiss') return app.dismissPartyMember(index);
   },
   setPartyRole(app, index, role) {

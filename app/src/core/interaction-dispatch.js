@@ -58,6 +58,7 @@ const YAW_INTERACTION_DISPATCH = {
         if (action === 'loot') return Boolean(app.lootCorpse(targetId));
         if (action === 'scavenge') return Boolean(app.scavengeCorpse(targetId, app._getExplorationActors()));
         if (action === 'recruit') return Boolean(app.recruitCreatureById(targetId));
+        if (action === 'rejoin') return Boolean(app.recruitCreatureById(targetId));
         if (action === 'quest') return Boolean(app.previewQuestFromUnit(targetId));
         if (action === 'trade') return Boolean(app.showTrade(targetId));
         return this.dispatchPanel(app, {

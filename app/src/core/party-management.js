@@ -164,6 +164,85 @@ const YAW_PARTY_MANAGEMENT = {
         return dismissed;
     },
 
+    canDropOff(app, unit) {
+        if (!unit || unit === app.player || unit.mc || app.combatState?.active) return false;
+        const tile = app._currentExplorationTile?.();
+        if (!tile) return false;
+        return !(app.creatures || []).some(candidate => candidate
+            && candidate.disposition === app.DISPOSITION.ENEMY
+            && candidate.CPun > 0
+            && !candidate.knockedOut);
+    },
+
+    placeDroppedOff(app, unit, options = {}) {
+        const tile = app._currentExplorationTile?.();
+        if (!unit || !tile) return null;
+        const location = {
+            x: Number(app.location?.x) || 0,
+            y: Number(app.location?.y) || 0,
+            interior: Boolean(app.inInterior),
+            interiorX: Number(app.interiorLocation?.x) || 0,
+            interiorY: Number(app.interiorLocation?.y) || 0
+        };
+        const placed = app._normalizeUnit({
+            ...unit,
+            disposition: app.DISPOSITION.FRIENDLY,
+            ally: false,
+            mc: false,
+            obedient: true,
+            willing: true,
+            recruitReady: true,
+            droppedOffCompanion: true,
+            strandedAfterDefeat: Boolean(options.strandedAfterDefeat),
+            droppedOffAt: location
+        }, { disposition: app.DISPOSITION.FRIENDLY, ally: false, mc: false, obedient: true, willing: true });
+        const sameUnit = candidate => app._unitSelectionId(candidate) === app._unitSelectionId(placed);
+        app.creatures = app._tileCreatures([...(app.creatures || []).filter(candidate => !sameUnit(candidate)), placed]);
+        tile.creatures = app._tileCreatures([...(tile.creatures || []).filter(candidate => !sameUnit(candidate)), placed]);
+        app._persistCurrentExplorationTile?.(tile);
+        return placed;
+    },
+
+    dropOff(app, index) {
+        const unit = app.party[index];
+        if (!this.canDropOff(app, unit)) {
+            const message = app._label('party.dropOffBlocked', 'Companions can only be dropped off outside combat at a location without active hostiles.');
+            app.log.push({ text: message, type: 'discovery' });
+            app.renderLog?.();
+            return false;
+        }
+        return app.showConfirmDialog({
+            title: app._label('party.dropOff', 'Drop Off'),
+            message: app._label('party.confirmDropOff', 'Leave {name} here? You can return and ask them to rejoin later.', { name: unit.name }),
+            confirmLabel: app._label('party.dropOff', 'Drop Off'),
+            cancelLabel: app._label('ui.cancel', 'Cancel'),
+            onConfirm: () => this.confirmDropOff(app, index)
+        });
+    },
+
+    confirmDropOff(app, index) {
+        const unit = app.party[index];
+        if (!this.canDropOff(app, unit)) return false;
+        app.party.splice(index, 1);
+        const placed = this.placeDroppedOff(app, unit);
+        if (!placed) {
+            app.party.splice(Math.min(index, app.party.length), 0, unit);
+            return false;
+        }
+        app._normalizeExplorationSelections();
+        if (app.partyLeaderId === app._unitSelectionId(unit)) app.partyLeaderId = app._unitSelectionId(app.player);
+        const message = app._label('party.droppedOff', '{name} stays here. Return to this location when you want them to rejoin.', { name: unit.name });
+        app.log.push({ text: message, type: 'discovery' });
+        app._addTileEvent?.(message, 'discovery');
+        app.renderLog();
+        app.renderParty();
+        app.renderCreatures();
+        app.showExplorationActions?.();
+        app.markAutoSaveDirty?.(['manifest', 'party', 'currentTile', 'worldTiles', 'quests', 'sceneFeed', 'activityLog'], 'party-drop-off');
+        app.autoSave();
+        return true;
+    },
+
     dismiss(app, index) {
         const unit = app.party[index];
         if (!unit || unit === app.player || unit.mc) return;

@@ -4,7 +4,7 @@
  */
 
 const YAW_DEFEAT_RECOVERY = {
-    SCHEMA_VERSION: 2,
+    SCHEMA_VERSION: 3,
     PLAYER_STATES: ['active', 'incapacitated', 'captured', 'defeated', 'dead', 'recovering', 'run-ended'],
 
     clone(value, fallback = null) {
@@ -28,11 +28,16 @@ const YAW_DEFEAT_RECOVERY = {
 
     migrateState(app, state = null) {
         if (!state || typeof state !== 'object') return null;
-        if (state.schemaVersion === this.SCHEMA_VERSION) {
+        if (Number(state.schemaVersion) >= 2) {
             return {
                 ...state,
+                schemaVersion: this.SCHEMA_VERSION,
                 pending: Boolean(state.pending),
                 terminal: Boolean(state.terminal),
+                awaitingEncounterSettlement: Boolean(state.awaitingEncounterSettlement),
+                encounterSettled: Boolean(state.encounterSettled),
+                companionsSettled: Boolean(state.companionsSettled),
+                companionRoster: Array.isArray(state.companionRoster) ? this.clone(state.companionRoster, []) : [],
                 status: this.PLAYER_STATES.includes(state.status) ? state.status : (state.pending ? 'dead' : 'active'),
                 cause: this.normalizeCause(state.cause || state.outcome),
                 safeAnchor: this.normalizeAnchor(app, state.safeAnchor || app.safeAnchor),
@@ -62,6 +67,12 @@ const YAW_DEFEAT_RECOVERY = {
         const existing = this.migrateState(app, app.defeatState);
         if (existing?.terminal && existing.pending && terminal && existing.status !== 'run-ended') return existing;
         const now = Number(input.loggedAt) || Date.now();
+        const combatActive = Boolean(app.combatState?.active);
+        const companionRoster = Array.isArray(input.companionRoster)
+            ? this.clone(input.companionRoster, [])
+            : (Array.isArray(existing?.companionRoster) && existing.companionRoster.length
+                ? this.clone(existing.companionRoster, [])
+                : (terminal ? this.clone((app.party || []).filter(unit => unit && unit !== app.player), []) : []));
         app._defeatResolutionSeq = (Number(app._defeatResolutionSeq) || 0) + 1;
         const state = {
             schemaVersion: this.SCHEMA_VERSION,
@@ -75,6 +86,10 @@ const YAW_DEFEAT_RECOVERY = {
             defeatedAt: { ...this.defeatLocation(app), ...(input.defeatedAt || {}) },
             safeAnchor: { ...this.ensureSafeAnchor(app) },
             loggedAt: now,
+            awaitingEncounterSettlement: Boolean(input.awaitingEncounterSettlement ?? (terminal && combatActive)),
+            encounterSettled: Boolean(existing?.encounterSettled),
+            companionsSettled: Boolean(existing?.companionsSettled),
+            companionRoster,
             consequencesApplied: Boolean(existing?.consequencesApplied)
         };
         app.defeatState = state;
@@ -209,9 +224,9 @@ const YAW_DEFEAT_RECOVERY = {
             fatal: true,
             cause: 'debug-cheat',
             source: 'cheat-player-death',
-            ignoreGodMode: true,
-            endCombat: true
+            ignoreGodMode: true
         });
+        if (wasCombat && state?.awaitingEncounterSettlement && app.combatState?.active) app.processTurn?.();
         if (!app.settings?.hardcore && !wasCombat) {
             app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'combat', 'quests', 'sceneFeed', 'activityLog'], 'debug-player-death');
             app.autoSave?.();
@@ -228,11 +243,11 @@ const YAW_DEFEAT_RECOVERY = {
             return { status: 'active', terminal: false, rescued: true };
         }
         const livingAllies = (app.party || []).filter(unit => unit && unit !== app.player && unit.CPun > 0 && !unit.knockedOut && !unit.fledCombat);
-        const fatal = Boolean(input.fatal || app.settings?.hardcore || livingAllies.length === 0);
+        app.player.CPun = 0;
+        app.player.CPle = 0;
+        app.player.knockedOut = true;
+        const fatal = input.nonterminal !== true && !input.captured;
         if (!fatal) {
-            app.player.CPun = 0;
-            app.player.CPle = 0;
-            app.player.knockedOut = true;
             return this.resolve(app, {
                 status: input.captured ? 'captured' : 'incapacitated',
                 terminal: false,
@@ -245,12 +260,14 @@ const YAW_DEFEAT_RECOVERY = {
             terminal: true,
             cause: input.cause,
             source: input.source || 'gameplay',
-            outcome: 'defeat'
+            outcome: 'defeat',
+            awaitingEncounterSettlement: Boolean(app.combatState?.active && livingAllies.length > 0)
         });
         if (app.settings?.hardcore) {
             void this.finalizeHardcore(app, state);
-        } else if (app.combatState?.active && input.endCombat !== false) {
-            app.endCombat('defeat');
+        } else if (app.combatState?.active) {
+            app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'combat', 'quests', 'sceneFeed', 'activityLog'], 'player-death-pending-settlement');
+            if (livingAllies.length === 0) app.endCombat('defeat');
         } else {
             this.showDefeatRecovery(app);
         }
@@ -279,9 +296,17 @@ const YAW_DEFEAT_RECOVERY = {
     },
 
     shouldLoadAsDefeated(_app, loaded = null) {
-        const pending = loaded?.questState?.defeatState?.pending;
-        if (pending) return true;
+        const state = loaded?.questState?.defeatState;
+        const pending = state?.pending;
         const party = Array.isArray(loaded?.party) && loaded.party.length ? loaded.party : [];
+        const livingAllies = party.filter((unit, index) => index > 0 && unit && unit.CPun > 0 && !unit.knockedOut && !unit.fledCombat);
+        if (pending) {
+            const mayResumeEncounter = Boolean(state.awaitingEncounterSettlement
+                && !state.encounterSettled
+                && loaded?.questState?.combatState?.active
+                && livingAllies.length > 0);
+            return !mayResumeEncounter;
+        }
         const playerHp = Number.isFinite(loaded?.playerHp) ? loaded.playerHp : null;
         const playerDown = playerHp !== null && playerHp <= 0;
         const livingParty = party.filter(unit => unit && unit.CPun > 0 && !unit.knockedOut);
@@ -290,8 +315,13 @@ const YAW_DEFEAT_RECOVERY = {
 
     isWipedCombatSave(_app, loaded = null) {
         if (!loaded?.questState?.combatState?.active) return false;
-        if (loaded.questState?.defeatState?.pending) return true;
         const party = Array.isArray(loaded.party) && loaded.party.length ? loaded.party : [];
+        const pendingState = loaded.questState?.defeatState;
+        if (pendingState?.pending) {
+            const livingAllies = party.filter((unit, index) => index > 0 && unit && unit.CPun > 0 && !unit.knockedOut && !unit.fledCombat);
+            if (pendingState.awaitingEncounterSettlement && !pendingState.encounterSettled && livingAllies.length > 0) return false;
+            return true;
+        }
         if (party.length === 0) return Number.isFinite(loaded.playerHp) && loaded.playerHp <= 0;
         return party.every(unit => !unit || unit.CPun <= 0 || unit.knockedOut || unit.fledCombat);
     },
@@ -316,6 +346,7 @@ const YAW_DEFEAT_RECOVERY = {
 
     showDefeatRecovery(app) {
         const state = app.defeatState?.pending ? app.defeatState : this.markDefeat(app, 'defeat');
+        if (app.combatState?.active && state.awaitingEncounterSettlement && !state.encounterSettled) return false;
         const anchor = this.normalizeAnchor(app, state.safeAnchor || app.safeAnchor || this.startAnchor(app));
         const title = app._label('recovery.defeatTitle', 'Defeat');
         const cause = String(state.cause || state.outcome || 'defeat').replace(/[-_]+/g, ' ');
@@ -328,6 +359,63 @@ const YAW_DEFEAT_RECOVERY = {
         app.renderLog();
         app.renderMobileCombatToolbelt();
         this.renderRecoveryControls(app);
+        return true;
+    },
+
+    companionId(app, unit) {
+        return String(app._unitSelectionId?.(unit) || unit?.id || unit?.name || 'companion');
+    },
+
+    settleEncounter(app, outcome = 'defeat') {
+        let state = this.migrateState(app, app.defeatState);
+        if (!state?.terminal || !state.pending) return state;
+        if (state.encounterSettled && state.companionsSettled) return state;
+        const roster = Array.isArray(state.companionRoster) && state.companionRoster.length
+            ? state.companionRoster
+            : this.clone((app.party || []).filter(unit => unit && unit !== app.player), []);
+        const partyById = new Map((app.party || []).filter(unit => unit && unit !== app.player).map(unit => [this.companionId(app, unit), unit]));
+        const localById = new Map((app.creatures || []).filter(Boolean).map(unit => [this.companionId(app, unit), unit]));
+        const existing = Array.isArray(app.strandedCompanions) ? app.strandedCompanions : [];
+        const otherResolutions = existing.filter(entry => entry?.resolutionId !== state.resolutionId);
+        const records = [];
+        for (const snapshot of roster) {
+            const id = this.companionId(app, snapshot);
+            const live = partyById.get(id);
+            const local = localById.get(id);
+            const source = live || local || snapshot;
+            let status = 'missing';
+            if (live?.fledCombat) status = 'fled';
+            else if (live && live.CPun > 0 && !live.knockedOut) status = 'stranded';
+            else if (local && (app._isCorpse?.(local) || local.CPun <= 0)) status = 'dead';
+            else if ((source?.CPun || 0) <= 0 || source?.knockedOut) status = 'dead';
+            const record = {
+                id,
+                resolutionId: state.resolutionId,
+                status,
+                encounterOutcome: String(outcome || 'defeat'),
+                location: { ...state.defeatedAt },
+                unit: this.clone(source, {})
+            };
+            records.push(record);
+            if ((status === 'stranded' || status === 'fled') && typeof YAW_PARTY_MANAGEMENT !== 'undefined') {
+                YAW_PARTY_MANAGEMENT.placeDroppedOff(app, source, { strandedAfterDefeat: true });
+            }
+        }
+        app.strandedCompanions = [...otherResolutions, ...records];
+        state = {
+            ...state,
+            awaitingEncounterSettlement: false,
+            encounterSettled: true,
+            companionsSettled: true,
+            encounterOutcome: String(outcome || 'defeat'),
+            settledAt: Date.now()
+        };
+        app.defeatState = state;
+        app._emitModuleHook?.('onDefeatEncounterSettled', {
+            defeatState: this.clone(state),
+            companions: this.clone(records, [])
+        });
+        return state;
     },
 
     recoveryControlsHtml(app) {
@@ -459,21 +547,7 @@ const YAW_DEFEAT_RECOVERY = {
     applyRegularConsequences(app, state = app.defeatState) {
         state = this.migrateState(app, state);
         if (!state || state.consequencesApplied) return state;
-        const companions = (app.party || []).filter(unit => unit && unit !== app.player);
-        const existing = new Set((app.strandedCompanions || []).map(entry => `${entry.resolutionId}:${entry.id}`));
-        app.strandedCompanions = Array.isArray(app.strandedCompanions) ? app.strandedCompanions : [];
-        for (const unit of companions) {
-            const id = String(app._unitSelectionId?.(unit) || unit.id || unit.name || 'companion');
-            const key = `${state.resolutionId}:${id}`;
-            if (existing.has(key)) continue;
-            app.strandedCompanions.push({
-                id,
-                resolutionId: state.resolutionId,
-                status: unit.CPun > 0 ? 'stranded' : 'dead',
-                location: { ...state.defeatedAt },
-                unit: this.clone(unit, {})
-            });
-        }
+        if (!state.companionsSettled) state = this.settleEncounter(app, state.encounterOutcome || 'noncombat');
         if (app.settings?.inventoryRecovery !== 'retain') {
             const dropped = (app.inventory || []).filter(item => !this.isProtectedItem(item));
             const retained = (app.inventory || []).filter(item => this.isProtectedItem(item));

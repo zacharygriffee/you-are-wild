@@ -4961,7 +4961,7 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(inventoryPanelContent, 'app._persistCurrentExplorationTile(tile)', 'Dropped inventory should persist as tile-local state');
   assertNotContains(inventoryPanelContent, "document.getElementById('scene-description')", 'Inventory helper should not render into center tile content');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.show(this)', 'App showInventory wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_INVENTORY_PANEL.use(this, itemId)', 'App item-use wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INVENTORY_PANEL.use(this, itemId, targetId)', 'App target-aware item-use wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.equip(this, itemId, ownerId)', 'App equip wrapper should delegate to the helper with optional owner routing');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.unequip(this, slot, ownerId)', 'App unequip wrapper should delegate to the helper with optional owner routing');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.drop(this, itemId)', 'App drop wrapper should delegate to the helper');
@@ -8645,7 +8645,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Seleccionar objetivo sincronizado', 'Sync target menu should not render in center scene');
 });
 
-test('Softcore player KO removes player from acting while allies continue', () => {
+test('Softcore player death removes player from acting while allies continue', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { CPun: 5, MPun: 100 });
   const ally = makeUnit('Ally', { CPun: 100 });
@@ -8657,11 +8657,13 @@ test('Softcore player KO removes player from acting while allies continue', () =
   App.nextTurn = function() { this._nextTurnCalled = true; };
   App.updateLanguage('es');
   App.enemyTurn(enemy);
-  assertEqual(player.CPun, 0, 'Softcore KO should set player HP to 0 during combat');
-  assert(player.knockedOut, 'Softcore KO should mark player knockedOut');
+  assertEqual(player.CPun, 0, 'Softcore death should clamp player HP to 0 during combat');
+  assert(player.knockedOut, 'Softcore death should remove the player from the turn queue');
+  assertEqual(App.defeatState.status, 'dead', 'Softcore combat death should create a terminal pending recovery state');
+  assertEqual(App.defeatState.awaitingEncounterSettlement, true, 'Recovery should wait while living allies remain in battle');
   assert(App.combatState.active, 'Combat should continue when allies remain');
-  assert(App._nextTurnCalled, 'Combat should advance after KO');
-  assertContains(App.log.map(entry => entry.text).join('\n'), 'Has quedado fuera de combate! Tu grupo debe terminar la pelea...', 'Player KO feedback should localize');
+  assert(App._nextTurnCalled, 'Combat should advance after player death');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'You have died. Your companions must finish the battle.', 'Player death feedback should remain explicit when the compact test locale omits the new key');
   assertContains(App.log.map(entry => entry.text).join('\n'), 'Tus aliados continuan la pelea...', 'Ally continue feedback should localize');
 });
 
@@ -9557,6 +9559,81 @@ test('Regular defeat strands companions and creates one recoverable death bag', 
   assertEqual(App.worldMap.get('7,-2').deathBags.length, 0, 'Empty recovery bag should be removed');
 });
 
+test('Player death waits for companion combat settlement and leaves survivors at the defeat tile', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-settlement', CPun: 0, MPun: 100, knockedOut: true });
+  const companion = makeUnit('Harpy', { id: 'companion-settlement', CPun: 45, MPun: 60 });
+  const enemy = makeUnit('Wolfkin', { id: 'enemy-settlement', disposition: App.DISPOSITION.ENEMY, CPun: 30, MPun: 30 });
+  App.player = player;
+  App.party = [player, companion];
+  App.creatures = [enemy];
+  App.location = { x: 6, y: 4 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'forest', creatures: [] }],
+    ['6,4', { ...App.getBaseTile(6, 4), explored: true, biome: 'jungle', creatures: [enemy] }]
+  ]);
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 20,
+    turnQueue: [{ unit: companion, initiative: 15 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.autoSave = () => true;
+
+  const state = App._handlePlayerFall({ cause: 'combat-damage', source: 'test-settlement' });
+  assertEqual(state.awaitingEncounterSettlement, true, 'Living companions should defer player recovery');
+  assertEqual(App.combatState.active, true, 'Player death should not stop the unresolved battle');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="regenerate"', 'Recovery commands should remain hidden while combat is unresolved');
+
+  enemy.CPun = 0;
+  App.endCombat('victory');
+
+  assertEqual(App.defeatState.encounterSettled, true, 'Companion victory should settle the pending player-death encounter');
+  assertEqual(App.defeatState.encounterOutcome, 'victory', 'Settlement should retain the actual remaining battle outcome');
+  assertEqual(App.strandedCompanions.length, 1, 'Settlement should record every companion present when the player died');
+  assertEqual(App.strandedCompanions[0].status, 'stranded', 'A surviving companion should be recorded as stranded');
+  const placed = App.worldMap.get('6,4').creatures.find(unit => unit.id === 'companion-settlement');
+  assert(placed, 'A surviving companion should physically remain at the defeat tile');
+  assertEqual(placed.droppedOffCompanion, true, 'A stranded survivor should use the persistent rejoin contract');
+  assertEqual(placed.strandedAfterDefeat, true, 'The placement should retain its defeat origin');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="regenerate"', 'Recovery should become available only after settlement');
+
+  App.regenerateFromDefeat();
+  assertEqual(App.location.x, 0, 'Post-settlement recovery should return the player to home');
+  assertEqual(App.party.length, 1, 'Post-settlement recovery should return without stranded companions');
+  assertEqual(App.worldMap.get('6,4').creatures.some(unit => unit.id === 'companion-settlement'), true, 'Regeneration should not remove the companion from the defeat tile');
+});
+
+test('Pending player death combat saves remain resumable while a companion can act', () => {
+  const { App, window } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-pending-save', CPun: 0, knockedOut: true });
+  const companion = makeUnit('Harpy', { id: 'companion-pending-save', CPun: 30 });
+  const loaded = {
+    playerHp: 0,
+    party: [player, companion],
+    questState: {
+      defeatState: {
+        schemaVersion: 3,
+        status: 'dead',
+        terminal: true,
+        pending: true,
+        awaitingEncounterSettlement: true,
+        encounterSettled: false
+      },
+      combatState: { active: true }
+    }
+  };
+  assertEqual(window.YAW_DEFEAT_RECOVERY.shouldLoadAsDefeated(App, loaded), false, 'A living companion should keep a pending-death combat save in combat');
+  assertEqual(window.YAW_DEFEAT_RECOVERY.isWipedCombatSave(App, loaded), false, 'Refresh recovery should retain a resumable companion battle');
+  companion.CPun = 0;
+  assertEqual(window.YAW_DEFEAT_RECOVERY.shouldLoadAsDefeated(App, loaded), true, 'A wiped companion roster should proceed to recovery');
+  assertEqual(window.YAW_DEFEAT_RECOVERY.isWipedCombatSave(App, loaded), true, 'A wiped pending-death combat snapshot should not resume');
+});
+
 test('Death bag collection preserves overflow until pack space is available', () => {
   const { App } = loadAppForCombat(() => 0.5);
   App.player = makeUnit('You', { id: 'player-partial-bag', CPun: 30, MPun: 100 });
@@ -9636,7 +9713,7 @@ test('Death resolver migrates legacy state and resolves a pending terminal outco
     questState: { defeatState: App.defeatState, safeAnchor: App.safeAnchor }
   });
   assertEqual(migrated, true, 'Legacy pending defeat should still load into recovery');
-  assertEqual(App.defeatState.schemaVersion, 2, 'Legacy defeat should migrate to the V2 schema');
+  assertEqual(App.defeatState.schemaVersion, 3, 'Legacy defeat should migrate to the current schema');
   assertEqual(App.defeatState.status, 'dead', 'Legacy pending defeat should migrate as terminal death');
   const resolutionId = App.defeatState.resolutionId;
   const firstHookCount = hooks.filter(hook => hook.event === 'onDefeat').length;
@@ -13152,6 +13229,147 @@ test('Combat planner allows party members as Feast targets', () => {
   assertContains(App.lastCombatActionResult.result, 'Ally', 'Combat result should name the party target');
 });
 
+test('Normal combat intent targeting resolves Eat against a marked companion', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'intent-party-feast-player', Feas: 60, Flee: 3, size: 8, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'intent-party-feast-ally', Feas: 10, Flee: 1, size: 2, CPun: 100, MPun: 100, combatRow: 'back' });
+  const enemy = makeUnit('Enemy', { id: 'intent-party-feast-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.defaultSubActions.feast = 'swallow';
+  App.combatState = {
+    active: true,
+    round: 4,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
+  assertEqual(App.executeCombatIntent('feast'), true, 'Eat should enter normal combat target selection');
+  assertEqual(App.targetSelection.action, 'feast', 'Eat should remain the selected intent while choosing a party target');
+  assertEqual(App.toggleExplorationTarget('party', ally.id), true, 'The companion Mark control should select a combat target');
+  assertEqual(App._combatMarkedTargets()[0], ally, 'Normal combat targeting should include the marked companion');
+  assertEqual(App.confirmCombatTargets(), true, 'The normal combat target confirmation should resolve against the back-row companion');
+  assertEqual(advanced, 1, 'Eating a companion should spend the current turn');
+  assertEqual(App.party.includes(ally), false, 'The eaten companion should leave the active party surface');
+  assertEqual(player.stomach[0]?.name, 'Ally', 'The eaten companion should remain recoverable in containment');
+  assertEqual(App.explorationTargetIds.some(id => String(id).startsWith('party:')), false, 'Resolved combat actions should clear party target marks');
+});
+
+test('Normal combat intents Fight Talk and Seduce can target companions', () => {
+  for (const action of ['fight', 'flirt', 'fuck']) {
+    const { App } = loadAppForCombat(() => 0);
+    const player = makeUnit('You', {
+      id: `intent-party-${action}-player`,
+      Figh: 25,
+      Flir: 80,
+      Fuck: 80,
+      cha: 20,
+      combatRow: 'back'
+    });
+    const ally = makeUnit('Ally', {
+      id: `intent-party-${action}-ally`,
+      disposition: App.DISPOSITION.PARTY,
+      CPun: 100,
+      MPun: 100,
+      CPle: 0,
+      MPle: 100,
+      wis: 1,
+      con: 20,
+      combatRow: 'front'
+    });
+    const enemy = makeUnit('Enemy', { id: `intent-party-${action}-enemy`, disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+    App.player = player;
+    App.party = [player, ally];
+    App.creatures = [enemy];
+    App.combatState = {
+      active: true,
+      round: 4,
+      currentTurn: 0,
+      processing: false,
+      xpEarned: 0,
+      turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+      syncActions: []
+    };
+    App.activeActor = player;
+    let advanced = 0;
+    App.nextTurn = function() { advanced++; };
+
+    assertEqual(App.executeCombatIntent(action), true, `${action} should enter normal combat target selection`);
+    assertEqual(App.toggleExplorationTarget('party', ally.id), true, `${action} should allow the companion Mark control`);
+    assertEqual(App.confirmCombatTargets(), true, `${action} should resolve from the back row against the marked front-row companion`);
+    assertEqual(advanced, 1, `${action} against a companion should spend the current turn`);
+    assertEqual(App.lastCombatActionResult.target, ally, `${action} should preserve the actual companion target`);
+    assertEqual(App.party.includes(ally), true, `${action} should not accidentally remove a surviving companion`);
+    assertEqual(ally.disposition, App.DISPOSITION.PARTY, `${action} should not convert an existing companion into a recruitable friendly creature`);
+    assertEqual(Boolean(ally.recruitReady), false, `${action} should not mark an existing companion for recruitment`);
+  }
+});
+
+test('A companion taking the current turn can target the player', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'party-target-player', disposition: App.DISPOSITION.PARTY, CPun: 100, MPun: 100, CPle: 0, MPle: 100, wis: 1, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'party-target-actor', disposition: App.DISPOSITION.PARTY, Flir: 80, Fuck: 80, cha: 20, combatRow: 'back' });
+  const enemy = makeUnit('Enemy', { id: 'party-target-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 4,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: ally, initiative: 30 }, { unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = ally;
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
+  assertEqual(App.executeCombatIntent('fuck', ally), true, 'The back-row companion should enter Seduce targeting on their controlled turn');
+  assertEqual(App.toggleExplorationTarget('party', player.id), true, 'The player card should be selectable as the companion target');
+  assertEqual(App.confirmCombatTargets(ally), true, 'The back-row companion should resolve Seduce against the front-row player');
+  assertEqual(App.lastCombatActionResult.actor, ally, 'The acting companion should remain the combat actor');
+  assertEqual(App.lastCombatActionResult.target, player, 'The player should remain the selected party target');
+  assertEqual(advanced, 1, 'The party-on-party interaction should spend the companion turn');
+});
+
+test('One combat action can target a companion and an enemy together', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'mixed-combat-player', Figh: 40, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'mixed-combat-ally', disposition: App.DISPOSITION.PARTY, CPun: 100, MPun: 100, con: 20, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'mixed-combat-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, con: 20, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 4,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.nextTurn = () => {};
+
+  assertEqual(App.executeCombatIntent('fight'), true, 'Fight should enter normal target selection');
+  assertEqual(App.toggleExplorationTarget('party', ally.id), true, 'Fight should mark the companion target');
+  assertEqual(App.toggleCombatTarget(enemy.id), true, 'Fight should also mark the enemy target');
+  assertEqual(App._combatMarkedTargets().length, 2, 'The unified combat target set should retain both sides');
+  assertEqual(App.confirmCombatTargets(), true, 'Mixed-side target confirmation should resolve');
+  assertEqual(ally.CPun < 100, true, 'Mixed-side Fight should affect the companion target');
+  assertEqual(enemy.CPun < 100, true, 'Mixed-side Fight should affect the enemy target');
+});
+
 test('Combat planner routes non-Feast party target actions through the resolver', () => {
   for (const action of ['flirt', 'fuck', 'fight']) {
     const { App } = loadAppForCombat(() => 0);
@@ -14449,6 +14667,59 @@ test('Healing consumables restore capped player condition and consume exactly on
   assertContains(App.log[App.log.length - 1].text, 'already at full condition', 'Blocked use should explain why the item was retained');
 });
 
+test('Healing consumables explicitly target living party members without changing player condition', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-healing-ally', CPun: 100, MPun: 100 });
+  const ally = makeUnit('Harpy', { id: 'ally-healing-item', CPun: 25, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.inventory = [{ id: 'ally-herb', name: 'Healing Herb' }];
+  App.combatState.active = false;
+  let storyInput = null;
+  App.emitStoryResult = input => { storyInput = input; };
+  App.autoSave = () => true;
+
+  assertEqual(App.useItem('ally-herb', 'ally-healing-item'), true, 'A healing consumable should accept an explicit living party target');
+  assertEqual(player.CPun, 100, 'Targeted companion healing should not change the full-condition player');
+  assertEqual(ally.CPun, 55, 'Targeted companion healing should apply the authored recovery amount');
+  assertEqual(App.inventory.length, 0, 'Targeted healing should consume exactly one selected item');
+  assertContains(App.log[App.log.length - 1].text, 'on Harpy', 'Targeted healing feedback should identify the recipient');
+  assertEqual(storyInput.targets[0], ally, 'Exploration healing story context should identify the actual target');
+});
+
+test('Healing item Use opens a shared desktop and mobile target chooser for multi-member parties', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-heal-picker', CPun: 100, MPun: 100 });
+  const ally = makeUnit('Harpy', { id: 'ally-heal-picker', CPun: 20, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.inventory = [{ id: 'picker-herb', name: 'Healing Herb' }];
+  App.showInventory();
+
+  assertEqual(App.requestUseItem('picker-herb'), true, 'Use should enter target selection when more than one party member is present');
+  const html = elements.get('holdings-window-root').innerHTML;
+  assertContains(html, 'Use Healing Herb on:', 'The responsive Holdings window should prompt for a healing target');
+  assertContains(html, "App.useItem('picker-herb','ally-heal-picker')", 'The target chooser should expose the wounded companion');
+  assertContains(html, 'Harpy <span class="holding-entry-meta">20/100</span>', 'The target chooser should show the companion current and maximum condition');
+  assertContains(html, 'You <span class="holding-entry-meta">100/100</span>', 'The target chooser should show the player condition');
+  assertContains(html, 'Use Healing Herb on Harpy', 'The target choice should have an accessible action label');
+  assertContains(html, 'You is already at full condition.', 'Full-condition choices should explain why they are disabled');
+});
+
+test('Healing consumables reject defeated party targets without consuming the item', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-heal-defeated', CPun: 50, MPun: 100 });
+  const ally = makeUnit('Harpy', { id: 'ally-heal-defeated', CPun: 0, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.inventory = [{ id: 'defeated-herb', name: 'Healing Herb' }];
+
+  assertEqual(App.useItem('defeated-herb', 'ally-heal-defeated'), false, 'Ordinary healing items should not bypass defeat recovery for companions');
+  assertEqual(ally.CPun, 0, 'Rejected defeated-target healing should not revive the companion');
+  assertEqual(App.inventory.length, 1, 'Rejected defeated-target healing should retain the item');
+  assertContains(App.log[App.log.length - 1].text, 'cannot be healed while defeated', 'Rejected defeated-target use should explain the recovery boundary');
+});
+
 test('Healing consumables spend the player combat turn and reject other turns', () => {
   const { App } = loadAppForCombat(() => 0.5);
   const player = makeUnit('You', { id: 'player-combat-heal', CPun: 25, MPun: 100 });
@@ -14489,6 +14760,39 @@ test('Healing consumables spend the player combat turn and reject other turns', 
   assertEqual(advanced, 1, 'Rejected out-of-turn use should not advance combat');
 });
 
+test('Combat healing can target a companion and records that target before spending the player turn', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-combat-target-heal', CPun: 100, MPun: 100 });
+  const ally = makeUnit('Harpy', { id: 'ally-combat-target-heal', CPun: 30, MPun: 100 });
+  const enemy = makeUnit('Wolfkin', { id: 'enemy-combat-target-heal', disposition: App.DISPOSITION.ENEMY, CPun: 50, MPun: 50 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.inventory = [{ id: 'combat-target-herb', name: 'Healing Herb' }];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: ally, initiative: 15 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  let emittedTarget = null;
+  let advanced = 0;
+  App._emitCombatAction = (_action, _actor, target) => { emittedTarget = target; };
+  App.closeHoldingsWindow = () => false;
+  App.nextTurn = () => { advanced += 1; };
+  App.autoSave = () => true;
+
+  assertEqual(App.useItem('combat-target-herb', 'ally-combat-target-heal'), true, 'The player should be able to heal a companion on the player combat turn');
+  assertEqual(ally.CPun, 60, 'Combat companion healing should apply the item recovery');
+  assertEqual(player.CPun, 100, 'Combat companion healing should not alter the player condition');
+  assertEqual(emittedTarget, ally, 'Combat action narration should receive the healed companion as target');
+  assertEqual(advanced, 1, 'Targeted combat healing should spend exactly one player turn');
+});
+
 test('Pack only advertises implemented consumable effects', () => {
   const { App, elements } = loadAppForCombat(() => 0.5);
   App.player = makeUnit('You', { id: 'player-item-contract', CPun: 50, MPun: 100 });
@@ -14500,9 +14804,9 @@ test('Pack only advertises implemented consumable effects', () => {
   ];
   App.showInventory();
   const html = elements.get('holdings-window-root').innerHTML;
-  assertContains(html, "App.useItem('usable-herb')", 'Healing items should expose Use');
-  assertNotContains(html, "App.useItem('future-berry')", 'Unimplemented buff items should not expose a no-op Use button');
-  assertNotContains(html, "App.useItem('future-venom')", 'Untargeted damage items should not expose a no-op Use button');
+  assertContains(html, "App.requestUseItem('usable-herb')", 'Healing items should expose Use');
+  assertNotContains(html, "App.requestUseItem('future-berry')", 'Unimplemented buff items should not expose a no-op Use button');
+  assertNotContains(html, "App.requestUseItem('future-venom')", 'Untargeted damage items should not expose a no-op Use button');
 });
 
 test('Dropping carried inventory creates tile-local pickup state', () => {
@@ -18485,6 +18789,37 @@ test('Party management can reorder set leader and dismiss allies', () => {
   assertEqual(App.creatures[0].formerPartyRole, 'guard', 'Dismissed ally should remember their former party role');
   assertEqual(App.worldMap.get('0,0').creatures[0].id, 'ally-b', 'Dismissed ally should persist on the current tile');
   assertContains(App.log[App.log.length - 1].text, 'remains nearby', 'Dismiss log should explain where the ally went');
+});
+
+test('Party companions can be dropped off persistently and rejoin without duplicate recruitment XP', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-drop-off' });
+  const companion = makeUnit('Harpy', { id: 'companion-drop-off', partyRole: 'guard', aiOrder: 'defensive' });
+  App.player = player;
+  App.party = [player, companion];
+  App.location = { x: 2, y: -3 };
+  App.worldMap = new Map([['2,-3', { ...App.getBaseTile(2, -3), explored: true, biome: 'grove', creatures: [] }]]);
+  App.creatures = [];
+  App.autoSave = () => true;
+  let xpGranted = 0;
+  App.gainXP = amount => { xpGranted += amount; };
+
+  assertEqual(App._dropOffPartyMemberConfirmed(1), true, 'Drop Off should remove an eligible companion from the traveling party');
+  assertEqual(App.party.length, 1, 'Only the player should continue traveling after drop-off');
+  const placed = App.creatures.find(unit => unit.id === 'companion-drop-off');
+  assert(placed, 'Dropped-off companion should remain present on the current tile');
+  assertEqual(placed.disposition, App.DISPOSITION.FRIENDLY, 'Dropped-off companion should remain friendly');
+  assertEqual(placed.droppedOffCompanion, true, 'Dropped-off companion should expose the explicit rejoin contract');
+  assertEqual(App.worldMap.get('2,-3').creatures.some(unit => unit.id === 'companion-drop-off'), true, 'Drop-off should persist through tile state');
+  assertEqual(App._canRecruit(player, placed), true, 'A dropped-off companion should always be eligible to rejoin while able to travel');
+
+  assertEqual(App.recruitCreature(placed), true, 'Recruit routing should rejoin a dropped-off companion');
+  assertEqual(App.party.some(unit => unit.id === 'companion-drop-off'), true, 'Rejoined companion should return to the traveling party');
+  assertEqual(App.party.find(unit => unit.id === 'companion-drop-off').partyRole, 'guard', 'Rejoining should preserve the companion role');
+  assertEqual(App.party.find(unit => unit.id === 'companion-drop-off').aiOrder, 'defensive', 'Rejoining should preserve the AI order');
+  assertEqual(App.worldMap.get('2,-3').creatures.some(unit => unit.id === 'companion-drop-off'), false, 'Rejoining should remove the persistent tile placement');
+  assertEqual(xpGranted, 0, 'Rejoining an existing companion should not grant recruitment XP again');
+  assertContains(App.log[App.log.length - 1].text, 'rejoins your party', 'Rejoining should use distinct player-facing feedback');
 });
 
 test('Party dismissal confirmation and log localize', () => {

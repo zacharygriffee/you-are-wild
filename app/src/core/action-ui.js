@@ -36,6 +36,7 @@ const YAW_ACTION_UI = {
 
     priority(key) {
         const order = {
+            rejoin: 5,
             recruit: 10,
             quest: 20,
             acceptQuest: 20,
@@ -79,6 +80,7 @@ const YAW_ACTION_UI = {
             interact: '💋',
             inspect: '👁️',
             recruit: '💕',
+            rejoin: '👥',
             close: '',
             enter: '🚪',
             exit: '↩️',

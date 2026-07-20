@@ -4255,6 +4255,27 @@
             color: var(--accent-danger);
         }
 
+        .holding-use-targets {
+            display: flex;
+            flex: 1 1 100%;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            min-width: min(320px, 100%);
+            padding: 7px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(10, 20, 36, 0.46);
+        }
+
+        .holding-use-targets > .holding-entry-meta {
+            flex: 1 0 100%;
+        }
+
+        .holding-use-targets .nav-btn {
+            min-height: 34px;
+        }
+
         .holdings-footer {
             display: flex;
             justify-content: flex-end;
@@ -4270,6 +4291,15 @@
             .holding-entry-actions,
             .container-entry-actions {
                 justify-content: flex-start;
+            }
+
+            .holding-use-targets {
+                min-width: 0;
+                width: 100%;
+            }
+
+            .holding-use-targets .nav-btn {
+                min-height: 44px;
             }
         }
 

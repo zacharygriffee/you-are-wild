@@ -153,12 +153,12 @@ const YAW_COMBAT_ENEMIES = {
                     app.renderLog(); app.nextTurn(); return;
                 }
                 const state = app._handlePlayerFall({ cause: 'combat-damage', source: 'enemy-fight' });
-                if (state?.terminal) {
+                if (state?.terminal && !state?.awaitingEncounterSettlement) {
                     app.log.push({ text: app._label('combat.playerFallen', 'You have fallen! Game Over!'), type: 'combat' });
                     app.renderLog();
                     return;
                 }
-                app.log.push({ text: app._label('combat.playerKnockedOut', 'You have been knocked out! Your party must finish the fight...'), type: 'combat' });
+                app.log.push({ text: app._label(state?.terminal ? 'combat.playerDiedBattleContinues' : 'combat.playerKnockedOut', state?.terminal ? 'You have died. Your companions must finish the battle.' : 'You have been knocked out! Your party must finish the fight...'), type: 'combat' });
                 app.log.push({ text: app._label('combat.alliesContinue', 'Your allies continue the fight...'), type: 'combat' });
                 app.renderLog();
                 app.renderParty();

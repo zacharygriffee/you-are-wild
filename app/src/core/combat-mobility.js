@@ -32,6 +32,17 @@ const YAW_COMBAT_MOBILITY = {
             app.renderLog();
             return false;
         }
+        const destination = app._fleeDestination?.(actor, { source: 'combat-flee', safeOnly: true }) || null;
+        if (!destination) {
+            app.log.push({
+                text: app._label('combat.flee.noSafeRoute', '{name} cannot find a safe route away from the fight.', {
+                    name: actor.name
+                }),
+                type: 'combat'
+            });
+            app.renderLog();
+            return false;
+        }
         app._clearTransientInteractionState();
         app._applyActionCost?.('flee', actor, enemy, {}, { mode: 'combat', source: 'flee', emitScene: true });
         const fleeChance = 0.6
@@ -41,7 +52,6 @@ const YAW_COMBAT_MOBILITY = {
         const rollKey = isPlayer ? 'combat-player-flee' : 'combat-party-flee';
         const fleeRoll = app._combatStateRoll(rollKey, actor, app._unitSelectionId(enemy));
         if (fleeRoll < Math.max(0.1, Math.min(0.95, fleeChance))) {
-            actor.fledCombat = true;
             app.log.push({
                 text: isPlayer
                     ? app._label('combat.flee.success', 'You flee successfully!')
@@ -49,11 +59,11 @@ const YAW_COMBAT_MOBILITY = {
                 type: 'combat'
             });
             app._emitCombatAction('flee', actor, enemy, 'success');
-            const livingParty = app.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
-            if (livingParty.length === 0) {
-                app.creatures = app.creatures.filter(c => c.disposition !== app.DISPOSITION.ENEMY);
+            if (isPlayer) {
+                app._retreatPartyFromCombat?.(actor, { source: 'combat-flee', destination });
                 app.endCombat('flee');
             } else {
+                app._relocateFleeingPartyMember?.(actor, { source: 'combat-flee', destination });
                 app.renderLog();
                 app.renderParty();
                 app.renderCreatures();

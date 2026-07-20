@@ -110,7 +110,7 @@ Traversal mode owns movement through the world and structure interiors.
 - Desktop and mobile use the same concept. Wider desktop layouts may show more state, but the command model stays aligned with touch-first traversal.
 - Desktop hotkeys are additive direction shortcuts: WASD, arrow keys, or numpad-style movement may trigger the same direction choices exposed by the surrounding 3x3 tiles, without creating a separate desktop-only traversal model.
 - Extra mobile movement controls, such as a micro-pad or joystick, are optional accessibility/reachability aids only. They should stay hidden or setting-gated by default so they do not compete with the 3x3 Play surface and command composer.
-- Combat can temporarily reduce traversal affordances. If the whole party flees, combat returns to directional escape selection on the play surface.
+- Combat can temporarily reduce traversal affordances. A successful player flee immediately retreats the traveling party to one deterministic, traversable adjacent tile or connected room that has no known active hostiles. If no safe route exists, combat remains active instead of chaining directly into another encounter.
 
 ### Battle mode
 
@@ -127,7 +127,7 @@ Active combat also obeys the [Combat Progress Invariant](combat-progress-invaria
 - On mobile, party access belongs in a lower reach-area party strip. The enemy strip sits above the party strip so the player can move from actor selection to target selection without opening unrelated panels.
 - The intent popup, toolbelt, hotbar, or action sheet should appear between or near party/enemy selections when practical, anchored to the selected actor/target context. It may become a compact desktop popover on wide screens, but it should dispatch through the same intent model used outside combat.
 - Desktop battle layout should mirror the same conceptual flow as mobile: party, intent, enemy, and center-stage combat focus remain aligned even when wider panels expose more detail.
-- Flee is party-member dependent. One or more party members may flee while others remain in battle; a full-party flee exits Battle mode and returns to directional escape selection on the play surface.
+- Flee is party-member dependent. A non-player companion who flees leaves active combat and the traveling party, then remains friendly and recoverable on a safe adjacent tile or connected room. A player flee moves the traveling party together, exits Battle mode as an escape rather than a defeat, and never opens death recovery while the player is still alive.
 
 #### Row And Reach Doctrine
 
@@ -169,6 +169,7 @@ The combat UI grammar is:
 - Non-current party members may participate. Once a group plan is committed, those participants are locked into the queued group action and count as having spent their turn.
 - Group combat can mark one or more targets. A multi-target group command is one collective queued effort: every committed participant contributes to every marked target, each participant pays the action cost once, and the plan resolves once at the slowest participant's turn. Profiled Fight scales every participant's contribution independently using target count, that unit's multi-Fight practice, and explicit technique declarations before combining the result per target. The plan records `shape: many-to-many`, `distribution: all`, and an `effectPreview` when an action opts into the shared profile; split, paired, area, chain, or other ability-specific distributions must use explicit plan metadata rather than silently changing this baseline.
 - Combat party targets are valid targets for the normal interaction set. A party member can mark another party member, or themself where the action resolver supports it, for Feast, Talk, Play, Fight, Feed, and future intents. Guardrails should live in action resolution, content/safety policy, and Scene Feed feedback rather than a blanket party-target block.
+- Combat Feed is target-first. The current actor must explicitly choose one living target—self, companion, or opposing creature—before the valid Feed variants are evaluated. Feed must never silently substitute the player, the most wounded ally, or a random enemy for that choice.
 - If every target or a required participant becomes invalid before resolution, the plan fizzles cleanly and emits Activity Log / Scene Feed feedback. An individually unavailable target may drop from the queued target list while remaining valid marks resolve; the plan never retargets automatically and should not interrupt combat with a correction prompt.
 - There is no universal enemy interrupt mechanic yet. Future systems can add interrupt tags, guard behavior, or enemy traits without changing the base group-planning grammar.
 - Internally, current group planning may continue to queue `sync_*` actions through `syncSelection`, `syncActions`, and `queueSyncAction`. Preserve those names and save/load compatibility until a separate mechanics migration deliberately replaces them.

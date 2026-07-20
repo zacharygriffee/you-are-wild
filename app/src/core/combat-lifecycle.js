@@ -82,6 +82,7 @@ const YAW_COMBAT_LIFECYCLE = {
         app.combatState.turnQueue = [];
         app.combatState.currentTurn = 0;
         app.combatState.syncActions = [];
+        app.combatState.pendingFleeOutcome = null;
         app.activeActor = null;
         app._clearTransientInteractionState();
         app._clearCombatRefreshSnapshot(app.activeSlot);

@@ -323,7 +323,7 @@ const YAW_DEFEAT_RECOVERY = {
             return true;
         }
         if (party.length === 0) return Number.isFinite(loaded.playerHp) && loaded.playerHp <= 0;
-        return party.every(unit => !unit || unit.CPun <= 0 || unit.knockedOut || unit.fledCombat);
+        return party.every(unit => !unit || unit.CPun <= 0 || unit.knockedOut);
     },
 
     sanitizeLoadedDefeat(app, loaded = null) {

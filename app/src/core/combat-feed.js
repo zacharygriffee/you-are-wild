@@ -4,34 +4,37 @@
  */
 
 const YAW_COMBAT_FEED = {
-    executeAction(app, actor = app.activeActor || app._currentCombatActor() || app.player) {
+    executeAction(app, actor = app.activeActor || app._currentCombatActor() || app.player, target = null) {
         actor = actor || app.activeActor || app._currentCombatActor() || app.player;
-        const allies = app.party.filter(p => p.CPun > 0 && p.name !== actor.name);
-        const available = app._getAvailableSubActions('feed', actor, null);
-        const validSubs = available.filter(s => s.available);
-        if (allies.some(ally => ally.CPun < ally.MPun) && !validSubs.some(sub => sub.id === 'heal')) {
-            const healDef = app.SUB_ACTIONS.feed && app.SUB_ACTIONS.feed.heal;
-            validSubs.unshift({
-                id: 'heal',
-                label: app._getActionLabel('feed', 'heal'),
-                icon: healDef?.icon || '',
-                available: true,
-                setting: healDef?.setting || null
-            });
+        if (!target || target.CPun <= 0) {
+            app.selectTarget('feed');
+            return true;
         }
+        const available = app._getAvailableSubActions('feed', actor, target);
+        const validSubs = available.filter(s => s.available);
         if (validSubs.length === 0) {
             app.log.push({ text: app._label('feed.noOptions', 'No feed options available right now.'), type: 'combat' });
             app.renderLog();
-            app.nextTurn();
-            return;
+            app.selectTarget('feed');
+            app.combatCorrectionMessage = {
+                text: app._label('feed.noOptionsForTarget', 'No feed option currently works on {name}. Choose another target.', { name: target.name }),
+                reason: 'no-feed-options',
+                action: 'feed',
+                time: Date.now()
+            };
+            app._renderInteractionState?.({ exploration: false, toolbelt: true });
+            return false;
         }
         if (validSubs.length === 1) {
-            app._executeFeedSubAction(validSubs[0].id, actor);
+            app._executeFeedSubAction(validSubs[0].id, actor, target);
             return true;
         }
         app.feedSelection = {
             active: true,
             actorId: app._unitSelectionId(actor),
+            target,
+            targetId: app._unitSelectionId(target),
+            targetType: app.party.includes(target) ? 'party' : (target.disposition === app.DISPOSITION.ENEMY ? 'enemy' : 'creature'),
             subIds: validSubs.map(sub => sub.id)
         };
         app.targetSelection = null;
@@ -42,56 +45,30 @@ const YAW_COMBAT_FEED = {
         return true;
     },
 
-    targetForSubAction(app, subId, actor) {
-        if (subId === 'heal' || subId === 'breastfeed') {
-            const allies = app.party.filter(p => p.CPun > 0 && p.name !== actor.name && p.CPun < p.MPun);
-            if (allies.length === 0) {
-                return { target: null, reason: 'feed.noWoundedAllies', fallback: 'No wounded allies to feed.' };
-            }
-            return { target: allies.reduce((w, a) => (a.CPun / a.MPun < w.CPun / w.MPun) ? a : w, allies[0]) };
-        }
-        if (subId === 'sacrifice') {
-            const prey = app.party.filter(p => p.CPun > 0 && p.name !== actor.name && (p.livestock || p.willingPrey));
-            if (prey.length === 0) {
-                return { target: null, reason: 'feed.noWillingLivestock', fallback: 'No willing livestock to sacrifice.' };
-            }
-            return { target: prey[0] };
-        }
-        if (subId === 'forceFeed') {
-            const enemies = app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0);
-            if (enemies.length === 0) {
-                return { target: null, reason: 'feed.noForceFeedEnemies', fallback: 'No enemies to force-feed.' };
-            }
-            return { target: enemies[0] };
-        }
-        return { target: null, reason: 'feed.noValidTarget', fallback: 'No valid target for this feed action.' };
-    },
-
     failSubAction(app, reason, fallback) {
         app.log.push({ text: app._label(reason || 'feed.noValidTarget', fallback || 'No valid target for this feed action.'), type: 'combat' });
         app.renderLog();
         app.combatState.processing = false;
-        app.nextTurn();
+        app.selectTarget?.('feed');
     },
 
-    executeSubAction(app, subId, actor) {
+    executeSubAction(app, subId, actor, target = app.feedSelection?.target || null) {
         const subDef = app.SUB_ACTIONS.feed && app.SUB_ACTIONS.feed[subId];
         if (!subDef) return false;
         actor = actor || app.activeActor || app._currentCombatActor() || app.player;
         app.defaultSubActions.feed = subId;
-        const targetResult = this.targetForSubAction(app, subId, actor);
-        if (!targetResult.target) {
-            this.failSubAction(app, targetResult.reason, targetResult.fallback);
+        if (!target || target.CPun <= 0) {
+            this.failSubAction(app, 'feed.noValidTarget', 'Choose a living target for this feed action.');
             return false;
         }
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',
             actors: [actor],
-            targets: [targetResult.target],
+            targets: [target],
             action: 'feed',
             subAction: subId,
             source: 'feed-options',
-            targetType: app.party.includes(targetResult.target) ? 'party' : 'enemy',
+            targetType: app.party.includes(target) ? 'party' : (target.disposition === app.DISPOSITION.ENEMY ? 'enemy' : 'creature'),
             timing: 'current-turn',
             constraints: {
                 requireCurrentTurn: true,

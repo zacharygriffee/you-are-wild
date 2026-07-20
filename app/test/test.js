@@ -4392,7 +4392,7 @@ test('Action UI helper module is registered before app code', () => {
   assertContains(actionUiContent, "iconButton(app, key, icon, onclick, extraClass = '', attrs = '')", 'Action UI helper should own icon action buttons');
   assertContains(actionUiContent, 'combatIntentButton(app, key, actor, extraClass = \'\')', 'Action UI helper should own combat intent button selected-state rendering');
   assertContains(actionUiContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="${intent}"', 'Shared combat intent buttons should identify the combat composer surface');
-  assertContains(combatIntentsContent, "source: 'combat-composer'", 'Combat intent dispatcher should identify composer-owned non-target combat utilities');
+  assertContains(combatIntentsContent, "app.selectTarget(action)", 'Combat intent dispatcher should route target-bearing utilities through target selection');
   assertContains(actionUiContent, 'legend(app, keys)', 'Action UI helper should own action legends');
   assertContains(actionUiContent, 'icon(key)', 'Action UI helper should own action icons');
   assertContains(appContent, 'YAW_ACTION_UI.iconButton(this, key, icon, onclick, extraClass, attrs)', 'App icon action wrapper should delegate to the helper');
@@ -4723,16 +4723,16 @@ test('Combat feed helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-feed.js'") < buildContent.indexOf("'src/core/combat-intents.js'"), 'Combat feed should load before combat intents that dispatch feed');
   assert(buildContent.indexOf("'src/core/combat-feed.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat feed helper should load before app.js');
   assertContains(combatFeedContent, 'const YAW_COMBAT_FEED = {', 'Combat feed helper should expose the feed service');
-  assertContains(combatFeedContent, 'executeAction(app, actor = app.activeActor || app._currentCombatActor() || app.player)', 'Combat feed helper should own feed intent execution');
-  assertContains(combatFeedContent, 'executeSubAction(app, subId, actor)', 'Combat feed helper should own feed sub-action execution');
+  assertContains(combatFeedContent, 'executeAction(app, actor = app.activeActor || app._currentCombatActor() || app.player, target = null)', 'Combat feed helper should own target-first feed intent execution');
+  assertContains(combatFeedContent, 'executeSubAction(app, subId, actor, target = app.feedSelection?.target || null)', 'Combat feed helper should own target-bound feed sub-action execution');
   assertContains(combatFeedContent, 'resolveCommand(app, command)', 'Combat feed helper should resolve plan-backed feed sub-action commands');
   assertContains(combatFeedContent, 'app.feedSelection = {', 'Combat feed helper should own feed panel selection state');
   assertContains(combatFeedContent, 'app._renderInteractionState({ exploration: false, toolbelt: true })', 'Combat feed helper should render feed options through panel/toolbelt state');
   assertNotContains(combatFeedContent, 'Math.random', 'Combat feed helper should not use ambient randomness');
   assertNotContains(combatFeedContent, 'random enemy', 'Combat feed helper should not retain stale random-target comments');
   assertNotContains(combatFeedContent, 'simplified', 'Combat feed helper should not retain stale simplified-target comments');
-  assertContains(appContent, 'YAW_COMBAT_FEED.executeAction(this, actor)', 'App feed action wrapper should delegate to combat feed');
-  assertContains(appContent, 'YAW_COMBAT_FEED.executeSubAction(this, subId, actor)', 'App feed sub-action wrapper should delegate to combat feed');
+  assertContains(appContent, 'YAW_COMBAT_FEED.executeAction(this, actor, target)', 'App feed action wrapper should delegate the selected target to combat feed');
+  assertContains(appContent, 'YAW_COMBAT_FEED.executeSubAction(this, subId, actor, target || this.feedSelection?.target || null)', 'App feed sub-action wrapper should preserve the selected feed target');
   assertContains(appContent, 'YAW_COMBAT_FEED.resolveCommand(this, command)', 'App feed command wrapper should delegate plan-backed feed resolution');
 });
 
@@ -4741,7 +4741,7 @@ test('Combat intent helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-intents.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat intent helper should load before app.js');
   assertContains(combatIntentsContent, 'const YAW_COMBAT_INTENTS = {', 'Combat intent helper should expose the combat intent service');
   assertContains(combatIntentsContent, 'execute(app, action, actor = app.activeActor || app._currentCombatActor())', 'Combat intent helper should own combat intent dispatch');
-  assertContains(combatIntentsContent, "app._dispatchPanelInteraction({", 'Combat intent helper should preserve shared dispatcher routing for feed');
+  assertContains(combatIntentsContent, "if (action === 'feed')", 'Combat intent helper should preserve explicit feed routing');
   assertContains(combatIntentsContent, "app.selectTarget(action)", 'Combat intent helper should preserve target-pick actions');
   assertContains(combatIntentsContent, "app.showSyncMenu()", 'Combat intent helper should preserve sync routing');
   assertContains(appContent, 'YAW_COMBAT_INTENTS.execute(this, action, actor)', 'App combat intent wrapper should delegate to the helper');
@@ -8182,6 +8182,11 @@ test('Flee ends combat without granting victory XP', () => {
   assertContains(elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Desktop combat composer should expose combat actions before fleeing');
   App.attemptFlee();
   assertEqual(App.combatState.active, false, 'Flee should end combat');
+  assert(Math.abs(App.location.x) + Math.abs(App.location.y) === 1, 'Successful player flee should retreat to an adjacent tile');
+  assertEqual(App.defeatState, null, 'Successful player flee should not enter death recovery');
+  const sourceTile = App.getTile(0, 0);
+  assert((sourceTile.creatures || []).includes(enemy), 'Player retreat should leave the pursuing enemy on the source tile');
+  assertEqual((App.creatures || []).some(unit => unit.disposition === App.DISPOSITION.ENEMY && unit.CPun > 0), false, 'Player retreat should choose an adjacent tile without active enemies');
   assertEqual(player.xp, 0, 'Flee should not grant victory XP');
   assertContains(App.log[0].text, 'Huyes con exito!', 'Successful flee log should localize');
   assertNotContains(elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Flee should remove stale combat actions from the desktop composer');
@@ -8222,6 +8227,31 @@ test('Flee failure and no-enemy feedback localize', () => {
   assertContains(failed.App.log[failed.App.log.length - 1].text, 'Huida fallida! Fast Enemy te intercepta!', 'Failed flee log should localize');
 });
 
+test('Player flee refuses to chain directly into an occupied hostile tile', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'safe-flee-player', Flee: 100, CPun: 80, MPun: 100 });
+  const enemy = makeUnit('Pursuer', { id: 'safe-flee-pursuer', disposition: App.DISPOSITION.ENEMY, spd: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  for (const [dx, dy, id] of [[0, -1, 'north'], [1, 0, 'east'], [0, 1, 'south'], [-1, 0, 'west']]) {
+    const tile = App.getTile(dx, dy);
+    tile.traversal = { passable: true, traversalCost: 1 };
+    tile.creatures = [makeUnit(`${id} hostile`, { id: `${id}-hostile`, disposition: App.DISPOSITION.ENEMY })];
+    App.persistTileDelta(tile.x, tile.y, tile);
+  }
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: [] };
+  App.activeActor = player;
+
+  assertEqual(App.attemptFlee(player), false, 'Flee should remain unavailable when every traversable adjacent tile has active enemies');
+  assertEqual(App.combatState.active, true, 'Blocked retreat should keep the current encounter active');
+  assertEqual(App.location.x, 0, 'Blocked retreat should not move the player horizontally');
+  assertEqual(App.location.y, 0, 'Blocked retreat should not move the player vertically');
+  assertEqual(App.defeatState, null, 'Blocked retreat should never be treated as death');
+  assertContains(App.log[App.log.length - 1].text, 'safe route', 'Blocked retreat should explain the tactical constraint');
+});
+
 test('Party member Flee removes only that member from active combat', () => {
   const { App } = loadAppForCombat(() => 0);
   App.worldMeta = { seed: 'unit-flee', generatorVersion: 2 };
@@ -8249,7 +8279,12 @@ test('Party member Flee removes only that member from active combat', () => {
   const handled = App.attemptFlee(ally);
   assertEqual(handled, true, 'Ally flee should be handled as a unit action');
   assertEqual(App.combatState.active, true, 'Ally flee should not end combat while the player remains active');
-  assertEqual(ally.fledCombat, true, 'Successful ally flee should remove that ally from active combat');
+  assertEqual(App.party.includes(ally), false, 'Successful ally flee should remove that ally from the traveling party');
+  const fledTile = [...App.worldMap.values()].find(tile => (tile.creatures || []).includes(ally));
+  assert(fledTile, 'Successful ally flee should place that ally on an adjacent tile');
+  assertEqual(ally.disposition, App.DISPOSITION.FRIENDLY, 'Fled ally should remain friendly and recoverable');
+  assertEqual(ally.droppedOffCompanion, true, 'Fled ally should be marked for later pickup');
+  assertEqual(ally.fledCombat, false, 'Relocated ally should not retain a death-like combat exclusion flag');
   assertEqual(player.fledCombat, undefined, 'Successful ally flee should not mark the player as fled');
   assertEqual(App.creatures.includes(enemy), true, 'Enemy should remain in combat after one party member flees');
   assertEqual(App._allyFleeAdvanced, true, 'Successful ally flee should consume that ally turn');
@@ -8285,7 +8320,7 @@ test('Flee applies row modifier without changing deterministic roll keys', () =>
   backCase.App._combatStateRoll = () => 0.55;
   backCase.App.nextTurn = function() { this._backFleeAdvanced = true; };
   backCase.App.attemptFlee(backActor);
-  assertEqual(backActor.fledCombat, true, 'Back-row flee should apply a small bonus');
+  assertEqual(backCase.App.party.includes(backActor), false, 'Back-row flee bonus should let the ally leave the party and relocate');
 });
 
 test('Player flee result is deterministic by combat state', () => {
@@ -8343,14 +8378,15 @@ test('Feed unavailable feedback localizes and does not throw without a selected 
   App.nextTurn = function() { this._feedUnavailableTurnEnded = true; };
   App.updateLanguage('es');
   App.executeFeedAction();
-  assertEqual(App._feedUnavailableTurnEnded, true, 'Unavailable feed action should still advance the turn');
-  assertContains(App.log[App.log.length - 1].text, 'No hay opciones de alimentacion disponibles ahora.', 'Unavailable feed log should localize');
+  assertEqual(App.targetSelection?.action, 'feed', 'Feed without a target should enter target selection');
+  assertEqual(App._feedUnavailableTurnEnded, undefined, 'Choosing Feed without a target should not spend the turn');
 
   App._executeFeedSubAction('heal', player);
-  assertContains(App.log[App.log.length - 1].text, 'No hay aliados heridos para alimentar.', 'No-wounded feed log should localize');
+  assertContains(App.log[App.log.length - 1].text, 'No hay objetivo valido', 'Stale Feed option should return to target selection without throwing');
+  assertEqual(App._feedUnavailableTurnEnded, undefined, 'Stale Feed option should not spend the combat turn');
 });
 
-test('Combat feed defaults to the current combat actor', () => {
+test('Combat feed uses the current combat actor and explicitly selected target', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-feed-current', CPun: 25, MPun: 100 });
   const ally = makeUnit('Ally', { id: 'ally-feed-current', CPun: 100, MPun: 100, Feed: 20 });
@@ -8367,7 +8403,6 @@ test('Combat feed defaults to the current combat actor', () => {
     turnQueue: [{ unit: ally, initiative: 20 }],
     syncActions: []
   };
-  App._getAvailableSubActions = () => [];
   let healedBy = null;
   let healedTarget = null;
   App._doSubAction = (_action, _subId, actor, target) => {
@@ -8378,8 +8413,12 @@ test('Combat feed defaults to the current combat actor', () => {
   };
   App.nextTurn = function() { this._feedAdvanced = true; };
 
-  const result = App.executeFeedAction();
-  assertEqual(result, true, 'Current actor feed should resolve as a valid feed action');
+  const choose = App.executeFeedAction();
+  assertEqual(choose, true, 'Current actor Feed should enter target selection');
+  assertEqual(healedBy, null, 'Feed should not affect anyone before a target is selected');
+  App.toggleExplorationTarget('party', player.id);
+  const result = App.confirmCombatTargets();
+  assertEqual(result, true, 'Current actor feed should resolve against the explicitly selected target');
   assertEqual(healedBy, ally, 'Feed should use the current combat actor when no explicit actor is passed');
   assertEqual(healedTarget, player, 'Current actor feed should target the wounded party member');
   assertEqual(App.lastIntentCommand.source, 'feed-options', 'Feed sub-action should resolve through the feed options command surface');
@@ -8389,6 +8428,66 @@ test('Combat feed defaults to the current combat actor', () => {
   assertEqual(App.lastIntentCommand.targetIds.join(','), 'player-feed-current', 'Feed sub-action command should preserve the chosen feed target');
   assertEqual(App.lastIntentCommand.planMode, 'combat', 'Feed sub-action should route through a combat InteractionPlan');
   assertEqual(App._feedAdvanced, true, 'Current actor feed should consume the turn');
+});
+
+test('Companion combat Feed can explicitly target a living enemy', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'enemy-feed-player', CPun: 20, MPun: 100 });
+  const ally = makeUnit('Ally', { id: 'enemy-feed-ally', Feed: 30 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-feed-target', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = ally;
+  App.nextTurn = function() { this._enemyFeedAdvanced = true; };
+
+  App.executeCombatIntent('feed');
+  App.toggleCombatTarget(enemy.id);
+  assertEqual(App.confirmCombatTargets(), true, 'Companion Feed should accept an explicitly marked living enemy');
+  assert(enemy.CPun > 40, 'Explicit enemy Feed target should receive the selected Feed effect');
+  assertEqual(player.CPun, 20, 'Companion Feed should not silently redirect to the wounded player');
+  assertEqual(App.lastIntentCommand.actorIds.join(','), ally.id, 'Enemy Feed command should preserve the acting companion');
+  assertEqual(App.lastIntentCommand.targetIds.join(','), enemy.id, 'Enemy Feed command should preserve the chosen enemy');
+  assertEqual(App._enemyFeedAdvanced, true, 'Resolved companion Feed should consume the companion turn');
+});
+
+test('Combat Feed target selection includes self and non-hostile local creatures', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'broad-feed-player' });
+  const ally = makeUnit('Ally', { id: 'broad-feed-ally', CPun: 50, MPun: 100, Feed: 30 });
+  const friendly = makeUnit('Friendly', { id: 'broad-feed-friendly', disposition: App.DISPOSITION.FRIENDLY, CPun: 45, MPun: 100 });
+  const enemy = makeUnit('Enemy', { id: 'broad-feed-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [friendly, enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = ally;
+  App.nextTurn = function() {};
+
+  App.executeCombatIntent('feed');
+  App.toggleExplorationTarget('party', ally.id);
+  assertEqual(App.confirmCombatTargets(), true, 'Combat Feed should allow the acting companion to select themself');
+  assert(ally.CPun > 50, 'Self-targeted Feed should affect the selected acting companion');
+
+  App.executeCombatIntent('feed');
+  App.toggleExplorationTarget('creature', friendly.id);
+  assertEqual(App.confirmCombatTargets(), true, 'Combat Feed should allow a living non-hostile local creature target');
+  assert(friendly.CPun > 45, 'Non-hostile local Feed should affect the explicitly selected creature');
 });
 
 test('Action constants include all 6 primary actionables', () => {
@@ -9027,10 +9126,13 @@ test('Fear can skip or force low-health combatants to flee', () => {
   App.party = [scared];
   App.creatures = [makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY })];
   App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: scared, initiative: 10 }], syncActions: [] };
-  App.nextTurn = function() { this._fearSkipped = true; };
   App.processTurn();
-  assertEqual(scared.fledCombat, true, 'Low-health feared unit should flee combat');
-  assertEqual(App._fearSkipped, true, 'Fear flee should consume turn');
+  assertEqual(App.combatState.active, false, 'Low-health feared player should escape combat instead of entering defeat');
+  assertEqual(scared.fledCombat, false, 'Completed fear retreat should clear the transient flee marker');
+  assertEqual(App.defeatState, null, 'Healthy fear retreat should not create a death recovery state');
+  assertEqual(scared.CPun, 20, 'Fear retreat should preserve the living player condition');
+  assert(Math.abs(App.location.x) + Math.abs(App.location.y) === 1, 'Fear retreat should move the player to an adjacent tile');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'escaped', 'Fear retreat should resolve with escape semantics');
 });
 
 test('Fear freeze skip is deterministic by combat state', () => {
@@ -9787,6 +9889,21 @@ test('Pending player death combat saves remain resumable while a companion can a
   assertEqual(window.YAW_DEFEAT_RECOVERY.isWipedCombatSave(App, loaded), true, 'A wiped pending-death combat snapshot should not resume');
 });
 
+test('Healthy fled players are not classified as dead combat saves', () => {
+  const { App, window } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'healthy-fled-save-player', CPun: 35, MPun: 100, fledCombat: true });
+  const loaded = {
+    playerHp: 35,
+    party: [player],
+    questState: {
+      defeatState: null,
+      combatState: { active: true }
+    }
+  };
+  assertEqual(window.YAW_DEFEAT_RECOVERY.shouldLoadAsDefeated(App, loaded), false, 'A living fled player should not load into recovery');
+  assertEqual(window.YAW_DEFEAT_RECOVERY.isWipedCombatSave(App, loaded), false, 'A living fled player should retain an escapable combat refresh state');
+});
+
 test('Pending companion battles survive save load and settle into persistent recovery', async () => {
   const Binary = loadBinaryForTest();
   const savedBuffers = [];
@@ -10222,7 +10339,7 @@ test('Combat action guardrails and flee outcome feedback localize', () => {
   assertContains(App.log[App.log.length - 1].text, 'Escapaste del encuentro.', 'Flee outcome feedback should localize');
 });
 
-test('Combat intent dispatcher preserves feed as party support', () => {
+test('Combat intent Feed waits for an explicit party or enemy target', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-feed-intent', Feed: 20 });
   const ally = makeUnit('Ally', { id: 'ally-feed-intent', CPun: 10, MPun: 100 });
@@ -10242,8 +10359,12 @@ test('Combat intent dispatcher preserves feed as party support', () => {
   App.activeActor = player;
   const result = App.executeCombatIntent('feed');
   assertEqual(result, true, 'Feed intent should dispatch as a valid combat intent');
-  assert(ally.CPun > 10, 'Feed intent should heal a wounded ally instead of selecting an enemy feast target');
-  assertEqual(App.targetSelection, null, 'Feed intent should not enter enemy target-pick mode');
+  assertEqual(ally.CPun, 10, 'Feed intent should not automatically heal the most wounded ally');
+  assertEqual(App.targetSelection?.action, 'feed', 'Feed intent should enter target-pick mode');
+  assertEqual(App.canSelectCreatureTarget(enemy), true, 'Feed target-pick should allow a living enemy target');
+  App.toggleExplorationTarget('party', ally.id);
+  assertEqual(App.confirmCombatTargets(), true, 'Feed should resolve after explicitly selecting a party target');
+  assert(ally.CPun > 10, 'Explicitly selected wounded ally should receive Feed healing');
 });
 
 test('Combat target dispatch uses the clicked unit instead of filtered index drift', () => {
@@ -10282,8 +10403,10 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
     { id: 'heal', label: 'Heal', icon: 'H', available: true },
     { id: 'breastfeed', label: 'Support', icon: 'S', available: true }
   ];
-  const result = App.executeCombatIntent('feed');
-  assertEqual(result, true, 'Feed intent should enter composer feed selection when multiple sub-actions exist');
+  assertEqual(App.executeCombatIntent('feed'), true, 'Feed intent should first enter target selection');
+  App.toggleExplorationTarget('party', ally.id);
+  const result = App.confirmCombatTargets();
+  assertEqual(result, true, 'Feed intent should enter composer feed selection after choosing a target with multiple sub-actions');
   assert(App.feedSelection?.active, 'Feed selection state should be active for composer tray rendering');
   const partyHtml = elements.get('party-content')?.innerHTML || '';
   const composerHtml = elements.get('desktop-context-belt')?.innerHTML || App._renderCombatPanelTray();
@@ -11169,8 +11292,9 @@ test('Timid ally flees instead of attacking when badly outnumbered', () => {
     syncActions: []
   };
   App.allyTurn(ally);
-  assertEqual(ally.fledCombat, true, 'Timid ally should mark itself fled from combat');
+  assertEqual(App.party.includes(ally), false, 'Timid ally should leave the active party when fleeing');
   assert(!App.combatState.turnQueue.some(entry => entry.unit === ally), 'Fled ally should be removed from combat queue');
+  assert([...App.worldMap.values()].some(tile => (tile.creatures || []).includes(ally)), 'Timid ally should be recoverable on an adjacent tile');
   assertEqual(enemies[0].CPun, 100, 'Fled ally should not attack');
 });
 
@@ -11204,7 +11328,7 @@ test('Timid ally combat flee is deterministic by combat state', () => {
     const handled = App._attemptTimidAllyFlee(ally);
     return {
       handled,
-      fled: !!ally.fledCombat,
+      relocated: !App.party.includes(ally) && [...App.worldMap.values()].some(tile => (tile.creatures || []).includes(ally)),
       queueHasAlly: App.combatState.turnQueue.some(entry => entry.unit === ally),
       advanced: !!App._allyFleeAdvanced
     };

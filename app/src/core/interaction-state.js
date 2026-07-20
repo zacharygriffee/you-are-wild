@@ -106,10 +106,10 @@ const YAW_INTERACTION_STATE = {
             return app._buildInteractionPlan({
                 mode: 'combat',
                 actors: [feedActor].filter(Boolean),
-                targets: [],
+                targets: [app.feedSelection.target].filter(Boolean),
                 action: 'feed',
                 source: 'feed-selection',
-                targetType: 'party',
+                targetType: app.feedSelection.targetType || 'party',
                 timing: 'current-turn',
                 constraints: { requireCurrentTurn: true, hostileOnly: false, checkReach: false, checkRows: false },
                 metadata: { phase: 'sub-action', subIds: app.feedSelection.subIds || [] }

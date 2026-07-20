@@ -26,7 +26,21 @@ const YAW_COMBAT_TURNS = {
         const livingEnemiesNow = app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0);
         const livingPartyNow = app.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
         if (livingEnemiesNow.length === 0) { app.endCombat(true); return; }
-        if (livingPartyNow.length === 0) { app.endCombat(false); return; }
+        if (livingPartyNow.length === 0) {
+            const healthyFledPlayer = app.player?.CPun > 0 && !app.player?.knockedOut && app.player?.fledCombat;
+            if (healthyFledPlayer) {
+                const pending = app.combatState?.pendingFleeOutcome || null;
+                const destination = pending?.destination
+                    || app._fleeDestination?.(app.player, { source: pending?.source || 'combat-flee-recovery', safeOnly: true })
+                    || null;
+                if (destination) app._retreatPartyFromCombat?.(app.player, { source: 'combat-flee-recovery', destination });
+                app.combatState.pendingFleeOutcome = null;
+                app.endCombat('flee');
+            } else {
+                app.endCombat(false);
+            }
+            return;
+        }
         const queue = app.combatState.turnQueue;
         if (app.combatState.currentTurn >= queue.length) {
             app._newRound(); return;
@@ -63,6 +77,17 @@ const YAW_COMBAT_TURNS = {
         if (statusSkip) {
             app._pushLog(statusSkip, 'combat', { actor: currentUnit, phase: 'status' });
             this.emitSkippedTurn(app, currentUnit, statusSkip);
+            const pendingFlee = app.combatState?.pendingFleeOutcome;
+            if (pendingFlee?.actor === currentUnit) {
+                app.renderLog();
+                app._retreatPartyFromCombat?.(currentUnit, {
+                    source: pendingFlee.source || 'combat-fear',
+                    destination: pendingFlee.destination
+                });
+                app.combatState.pendingFleeOutcome = null;
+                app.endCombat('flee');
+                return;
+            }
             app.renderLog(); app.nextTurn(); return;
         }
         if (currentUnit.status?.restrained && currentUnit.status.restrained.turns > 0) {

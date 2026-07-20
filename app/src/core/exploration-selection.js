@@ -195,6 +195,11 @@ const YAW_EXPLORATION_SELECTION = {
         if (app.explorationTargetIds.includes(key)) {
             app.explorationTargetIds = app.explorationTargetIds.filter(existing => existing !== key);
         } else {
+            if (app.combatState?.active && app.targetSelection?.source === 'combat' && app.targetSelection.action === 'feed') {
+                app.explorationTargetIds = [];
+                app.combatTargetId = null;
+                app.combatTargetIds = [];
+            }
             app.explorationTargetIds.push(key);
         }
         if (app.combatState?.active) app._renderInteractionState({ exploration: false, toolbelt: true });

@@ -75,8 +75,25 @@ const YAW_COMBAT_STATUS = {
             }
             const lowHp = unit.CPun < unit.MPun * 0.3;
             if (lowHp) {
-                unit.fledCombat = true;
-                if (!(app.party || []).includes(unit)) app._relocateFleeingCreature?.(unit, { source: 'combat-fear' });
+                if ((app.party || []).includes(unit)) {
+                    const destination = app._fleeDestination?.(unit, { source: 'combat-fear', safeOnly: true }) || null;
+                    if (!destination) {
+                        return app._label('combat.status.fearCornered', '{name} panics but cannot find a safe route away!', { name: unit.name });
+                    }
+                    if (unit === app.player) {
+                        unit.fledCombat = true;
+                        app.combatState.pendingFleeOutcome = { actor: unit, destination, source: 'combat-fear' };
+                    } else {
+                        app._relocateFleeingPartyMember?.(unit, { source: 'combat-fear', destination });
+                    }
+                } else {
+                    const destination = app._fleeDestination?.(unit, { source: 'combat-fear' }) || null;
+                    if (!destination) {
+                        return app._label('combat.status.fearCornered', '{name} panics but cannot find a safe route away!', { name: unit.name });
+                    }
+                    unit.fledCombat = true;
+                    app._relocateFleeingCreature?.(unit, { source: 'combat-fear', destination });
+                }
                 return app._label('combat.status.fearFlee', '{name} panics and flees from fear!', { name: unit.name });
             }
             if (app._combatStateRoll('combat-fear-freeze', unit, 'skip') < 0.5) {

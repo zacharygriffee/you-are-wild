@@ -30,6 +30,8 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Recent Fixes
 
+- Combat Feed now requires the acting party member to choose one living target before resolution. Self, companion, and opposing-creature targets are supported; the old most-wounded-ally shortcut can no longer silently redirect a companion's Feed to the player, and unavailable variants return to target selection without spending the turn.
+- Flee and death now use separate outcomes. A living player retreat moves the traveling party to a safe adjacent tile and ends as escape without Regenerate; a fleeing companion leaves the party and remains friendly/recoverable on a safe adjacent tile. Known hostile destinations are excluded, source-tile enemies persist, healthy fled saves are not classified as wipes, and no-safe-route attempts remain in combat.
 - Release 0.12.1 documents the defeat-recovery, companion interaction, healing-item, responsive-layout, and interior recovery-bag fixes now included in the public Sites build.
 - Companion Drop Off now leaves an existing ally as a persistent friendly resident of the current safe tile or room; returning exposes a distinct Rejoin action that preserves role and AI order without awarding recruitment XP twice. Ordinary Dismiss remains a separate relationship-breaking action.
 - Player death during combat now removes the player from the turn queue without cancelling an encounter that living companions can still resolve. Recovery remains unavailable until victory, defeat, escape, or disengagement settles; the outcome and companion roster persist through saves, surviving companions remain physically at the defeat location, and regeneration returns the player alone to home.

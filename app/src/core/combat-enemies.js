@@ -90,10 +90,17 @@ const YAW_COMBAT_ENEMIES = {
             return;
         }
         if (app._enemyShouldFlee(enemy, targets)) {
+            const destination = app._fleeDestination?.(enemy, { source: 'combat-morale' }) || null;
+            if (!destination) {
+                app.log.push({ text: app._label('combat.enemyFleeCornered', '{name} tries to flee but has nowhere to go!', { name: enemy.name }), type: 'combat' });
+                app.renderLog();
+                app.nextTurn();
+                return;
+            }
             app.log.push({ text: app._label('combat.enemyFlees', '{name} flees in terror!', { name: enemy.name }), type: 'combat' });
             enemy.fledCombat = true;
             app._emitCombatAction('enemy_flee', enemy, null, 'fled');
-            app._relocateFleeingCreature(enemy, { source: 'combat-morale' });
+            app._relocateFleeingCreature(enemy, { source: 'combat-morale', destination });
             app.renderCreatures();
             app.renderLog();
             if (app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0).length === 0) {

@@ -320,15 +320,20 @@ const YAW_WORLD_STATE = {
         return revealed;
     },
 
-    relocateFleeingCreature(app, unit, options = {}) {
-        if (!unit || (app.party || []).includes(unit)) return null;
+    fleeDestination(app, unit, options = {}) {
         const directions = Object.values(YAW_TRAVERSAL?.DIRECTIONS || {});
-        const candidates = directions.map(direction => {
+        let candidates = directions.map(direction => {
             const decision = app.inInterior
                 ? YAW_TRAVERSAL.resolveInterior(app, direction.dx, direction.dy)
                 : YAW_TRAVERSAL.resolveOverworld(app, direction.dx, direction.dy);
             return decision?.allowed ? decision : null;
         }).filter(Boolean);
+        if (options.safeOnly) {
+            candidates = candidates.filter(decision => !(decision.tile?.creatures || []).some(candidate => candidate
+                && candidate.CPun > 0
+                && !candidate.knockedOut
+                && candidate.disposition === app.DISPOSITION.ENEMY));
+        }
         const unitId = app._unitSelectionId?.(unit) || unit.id || unit.name || 'creature';
         const roll = app._worldRoll?.(
             'creature-flee-destination',
@@ -339,9 +344,38 @@ const YAW_WORLD_STATE = {
             Number(app.timeHour || 0),
             options.source || 'flee'
         ) ?? 0;
-        const destination = candidates.length
+        return candidates.length
             ? candidates[Math.min(candidates.length - 1, Math.floor(roll * candidates.length))]
             : null;
+    },
+
+    placeAtFleeDestination(app, unit, destination) {
+        if (!unit || !destination) return null;
+        if (app.inInterior) {
+            const room = destination.tile;
+            if (!Array.isArray(room.creatures)) room.creatures = [];
+            if (!room.creatures.includes(unit)) room.creatures.push(unit);
+            if (app.activeInterior?.origin) {
+                const origin = app.getTile(app.activeInterior.origin.x, app.activeInterior.origin.y);
+                origin.interior = app.activeInterior;
+                app.persistTileDelta(origin.x, origin.y, origin);
+            }
+            return { interior: true, x: destination.to.x, y: destination.to.y, direction: destination.direction, tile: room };
+        }
+        const tile = destination.tile || app.getTile(destination.to.x, destination.to.y);
+        if (!Array.isArray(tile.creatures)) tile.creatures = [];
+        if (!tile.creatures.includes(unit)) tile.creatures.push(unit);
+        app.persistTileDelta(tile.x, tile.y, tile);
+        return { interior: false, x: tile.x, y: tile.y, direction: destination.direction, tile };
+    },
+
+    relocateFleeingCreature(app, unit, options = {}) {
+        if (!unit || (app.party || []).includes(unit)) return null;
+        const destination = options.destination || this.fleeDestination(app, unit, options);
+        if (!destination) {
+            unit.fledCombat = false;
+            return null;
+        }
         const queueIndex = (app.combatState?.turnQueue || []).findIndex(entry => entry?.unit === unit);
         app._removeCreatureFromArea(unit);
         if (queueIndex >= 0 && queueIndex <= Number(app.combatState?.currentTurn || 0)) {
@@ -354,18 +388,71 @@ const YAW_WORLD_STATE = {
             hour: Number(app.timeHour || 0),
             source: options.source || 'flee'
         };
+        return this.placeAtFleeDestination(app, unit, destination);
+    },
+
+    relocateFleeingPartyMember(app, unit, options = {}) {
+        if (!unit || unit === app.player || !(app.party || []).includes(unit)) return null;
+        const destination = options.destination || this.fleeDestination(app, unit, { ...options, safeOnly: true });
         if (!destination) return null;
-        if (app.inInterior) {
-            const room = destination.tile;
-            if (!Array.isArray(room.creatures)) room.creatures = [];
-            if (!room.creatures.includes(unit)) room.creatures.push(unit);
-            return { interior: true, x: destination.to.x, y: destination.to.y, direction: destination.direction, tile: room };
+        const partyIndex = app.party.indexOf(unit);
+        app.party.splice(partyIndex, 1);
+        const queueIndex = (app.combatState?.turnQueue || []).findIndex(entry => entry?.unit === unit);
+        app.combatState.turnQueue = (app.combatState.turnQueue || []).filter(entry => entry?.unit !== unit);
+        if (queueIndex >= 0 && queueIndex <= Number(app.combatState?.currentTurn || 0)) {
+            app.combatState.currentTurn = Math.max(-1, Number(app.combatState.currentTurn || 0) - 1);
         }
-        const tile = destination.tile || app.getTile(destination.to.x, destination.to.y);
-        if (!Array.isArray(tile.creatures)) tile.creatures = [];
-        if (!tile.creatures.includes(unit)) tile.creatures.push(unit);
-        app.persistTileDelta(tile.x, tile.y, tile);
-        return { interior: false, x: tile.x, y: tile.y, direction: destination.direction, tile };
+        if (typeof YAW_COMBAT_STATUS !== 'undefined') YAW_COMBAT_STATUS.clearCombatOnlyStatuses([unit]);
+        Object.assign(unit, {
+            disposition: app.DISPOSITION.FRIENDLY,
+            ally: false,
+            mc: false,
+            fledCombat: false,
+            willing: true,
+            recruitReady: true,
+            droppedOffCompanion: true,
+            strandedAfterFlee: true,
+            lastFledAt: {
+                day: Number(app.dayCount || 0),
+                hour: Number(app.timeHour || 0),
+                source: options.source || 'party-flee'
+            }
+        });
+        if (app.partyLeaderId === app._unitSelectionId?.(unit)) app.partyLeaderId = app._unitSelectionId?.(app.player);
+        app._normalizeExplorationSelections?.();
+        return this.placeAtFleeDestination(app, unit, destination);
+    },
+
+    retreatPartyFromCombat(app, actor = app.player, options = {}) {
+        const destination = options.destination || this.fleeDestination(app, actor, { ...options, safeOnly: true });
+        if (!destination) return null;
+        const sourceTile = app._currentExplorationTile?.();
+        if (sourceTile) {
+            sourceTile.creatures = app._tileCreatures?.(app.creatures || []) || [...(app.creatures || [])];
+            app._persistCurrentExplorationTile?.(sourceTile);
+        }
+        if (app.inInterior) {
+            app.interiorLocation = { x: destination.to.x, y: destination.to.y };
+        } else {
+            app.location = { x: destination.to.x, y: destination.to.y };
+            destination.tile.seen = true;
+            destination.tile.explored = true;
+            app.persistTileDelta?.(destination.tile.x, destination.tile.y, destination.tile);
+            const coords = typeof document !== 'undefined' ? document.getElementById?.('coords') : null;
+            if (coords) coords.textContent = `${app.location.x}, ${app.location.y}`;
+        }
+        app.creatures = app._tileCreatures?.(destination.tile?.creatures || []) || [...(destination.tile?.creatures || [])];
+        app.party.forEach(unit => { unit.fledCombat = false; });
+        app.clearTileBoundExplorationTargets?.();
+        app._clearTileEvents?.();
+        app.clearToasts?.({ reason: 'combat-flee' });
+        return {
+            interior: Boolean(app.inInterior),
+            x: destination.to.x,
+            y: destination.to.y,
+            direction: destination.direction,
+            tile: destination.tile
+        };
     }
 };
 

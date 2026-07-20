@@ -56,7 +56,7 @@ Rest is recovery and elapsed time, not food. Eight hours of rest add eight hunge
 
 ## Flee and Submission Outcomes
 
-Successful non-party creature flee relocates the survivor to one deterministic, traversable cardinally adjacent tile or connected interior room. It leaves the current encounter without being deleted from the world. Individual party members can withdraw from active combat, but V1 does not split party membership across multiple map tiles.
+Successful non-party creature flee relocates the survivor to one deterministic, traversable cardinally adjacent tile or connected interior room. It leaves the current encounter without being deleted from the world. A non-player companion who flees likewise leaves the traveling party and remains friendly and recoverable on a safe adjacent tile or room. A living player retreat moves the traveling party together and resolves combat as escape, never death; known hostile destinations are excluded, and a retreat with no safe route remains in the current encounter.
 
 `Survivable containment` is scoped to containment outcomes only. Terminal digestion under that option leaves a fully softened survivor at minimal condition who can still be released; `Fatal digestion` takes precedence when both variants are enabled. Survivable containment never converts an enemy defeated by Fight into a friendly one. With `Power dynamics` disabled, ordinary Fight defeat follows the ordinary defeated/remains path. With `Power dynamics` enabled, a Fight defeat becomes explicit submission: the survivor remains at one condition, becomes friendly and `recruitReady`, and can be recruited through the normal party-cap and eligibility checks.
 

@@ -1604,11 +1604,25 @@
                 return this._isTimid(unit) || temp.fastFlee || temp.passive || (temp.prey && !temp.aggressive);
             },
             _makeCreatureFlee(unit, threat = this.player) {
-                this._relocateFleeingCreature(unit, { threat, source: 'threat-reaction' });
+                const relocated = this._relocateFleeingCreature(unit, { threat, source: 'threat-reaction' });
+                if (!relocated) {
+                    const cornered = this._turnCreatureHostile(unit);
+                    cornered.text = `${unit.name} cannot escape ${threat?.name || 'the threat'} and turns hostile!`;
+                    return cornered;
+                }
                 return { fled: true, text: `${unit.name} panics and flees from ${threat?.name || 'the threat'}!` };
             },
             _relocateFleeingCreature(unit, options = {}) {
                 return YAW_WORLD_STATE.relocateFleeingCreature(this, unit, options);
+            },
+            _fleeDestination(unit, options = {}) {
+                return YAW_WORLD_STATE.fleeDestination(this, unit, options);
+            },
+            _relocateFleeingPartyMember(unit, options = {}) {
+                return YAW_WORLD_STATE.relocateFleeingPartyMember(this, unit, options);
+            },
+            _retreatPartyFromCombat(actor = this.player, options = {}) {
+                return YAW_WORLD_STATE.retreatPartyFromCombat(this, actor, options);
             },
             _removeCreatureFromArea(unit) {
                 if (!unit) return;
@@ -1755,9 +1769,13 @@
                 if (!badlyOutnumbered) return false;
                 const chance = Math.min(1, Math.max(0, (ally.Flee || 10) / 20));
                 if (this._combatStateRoll('combat-ally-flee', ally, 'badly-outnumbered') < chance) {
-                    ally.fledCombat = true;
-                    this.combatState.turnQueue = this.combatState.turnQueue.filter(entry => entry.unit !== ally);
-                    this.combatState.currentTurn = Math.max(-1, this.combatState.currentTurn - 1);
+                    const destination = this._fleeDestination?.(ally, { source: 'combat-ally-flee', safeOnly: true }) || null;
+                    if (!destination) {
+                        this.log.push({ text: this._label('combat.allyFleeFailed', '{name} tries to flee but cannot get away!', { name: ally.name }), type: 'combat' });
+                        this.renderLog();
+                        return false;
+                    }
+                    this._relocateFleeingPartyMember?.(ally, { source: 'combat-ally-flee', destination });
                     this.log.push({ text: this._label('combat.allyFlees', '{name} loses their nerve and flees from the fight!', { name: ally.name }), type: 'combat' });
                     this.renderLog();
                     this.renderParty();
@@ -4274,11 +4292,11 @@
             },
 
             // ===== FEED ACTION =====
-            executeFeedAction(actor = this.activeActor || this._currentCombatActor() || this.player) {
-                return YAW_COMBAT_FEED.executeAction(this, actor);
+            executeFeedAction(actor = this.activeActor || this._currentCombatActor() || this.player, target = null) {
+                return YAW_COMBAT_FEED.executeAction(this, actor, target);
             },
-            _executeFeedSubAction(subId, actor) {
-                return YAW_COMBAT_FEED.executeSubAction(this, subId, actor);
+            _executeFeedSubAction(subId, actor, target = null) {
+                return YAW_COMBAT_FEED.executeSubAction(this, subId, actor, target || this.feedSelection?.target || null);
             },
             _resolveCombatFeedCommand(command) {
                 return YAW_COMBAT_FEED.resolveCommand(this, command);

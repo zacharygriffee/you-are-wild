@@ -19211,6 +19211,113 @@ test('Interior companion drop-off and rejoin persist through the structure origi
   assertEqual(xpGranted, 0, 'Interior rejoin should not award recruitment XP again');
 });
 
+test('Interior companion drop-off survives save load re-entry and persistent rejoin removal', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const first = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App } = first;
+  const player = makeSerializableUnit('You', { id: 'player-interior-roundtrip' });
+  const companion = makeSerializableUnit('Harpy', {
+    id: 'companion-interior-roundtrip',
+    partyRole: 'guard',
+    aiOrder: 'defensive'
+  });
+  App.mode = App.GAME_MODE.NORMAL;
+  App.player = player;
+  App.party = [player, companion];
+  App.location = { x: 11, y: 2 };
+  App.currentBiome = 'grove';
+  App.worldMeta = { worldId: 'interior-drop-world', seed: 'interior-drop-seed', generatorVersion: 3, mapModsHash: 'core' };
+  const origin = { ...App.getBaseTile(11, 2), explored: true, biome: 'grove', structure: 'cabin', creatures: [], items: [] };
+  App.worldMap = new Map([['11,2', origin]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['11,2']);
+  const interior = App._ensureStructureInterior(origin);
+  const targetRoomKey = Object.keys(interior.tiles).find(key => key !== '0,0');
+  assert(targetRoomKey, 'Interior round-trip fixture should include a room beyond the entrance');
+  const [targetX, targetY] = targetRoomKey.split(',').map(Number);
+  App.inInterior = true;
+  App.activeInterior = interior;
+  App.interiorLocation = { x: targetX, y: targetY };
+  App.interiorEntrySurface = { x: 11, y: 2 };
+  App.currentBiome = interior.tiles[targetRoomKey].biome;
+  App.creatures = [];
+  App.autoSave = () => true;
+
+  assertEqual(App._dropOffPartyMemberConfirmed(1), true, 'Fixture should drop the companion in a non-entry interior room');
+  assertEqual(interior.tiles[targetRoomKey].creatures.some(unit => unit.id === 'companion-interior-roundtrip'), true, 'Dropped companion should occupy the selected interior room before saving');
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+  assertEqual(await App._saveToSlotConfirmed('slot1'), true, 'Interior drop-off state should save while the player is inside');
+
+  const loaded = loadAppForCombat(() => 0.5, { binary: Binary });
+  loaded.App._dbGet = async () => savedBuffers[0];
+  loaded.App.loadWorldStateFromMapStore = async () => {};
+  loaded.App.autoSave = () => true;
+  loaded.App._worldChance = () => false;
+  let xpGranted = 0;
+  loaded.App.gainXP = amount => { xpGranted += amount; };
+  assertEqual(await loaded.App.loadFromSlot('slot1'), true, 'Interior drop-off save should load');
+  assertEqual(loaded.App.inInterior, false, 'Reload should safely resume on the structure surface');
+  assertEqual(loaded.App.location.x, 11, 'Reload should preserve the structure origin x coordinate');
+  assertEqual(loaded.App.location.y, 2, 'Reload should preserve the structure origin y coordinate');
+  assertEqual(loaded.App.party.some(unit => unit.id === 'companion-interior-roundtrip'), false, 'Interior companion should remain outside the traveling party after reload');
+
+  loaded.App.enterStructure();
+  assertEqual(loaded.App.inInterior, true, 'Player should be able to re-enter the persisted structure after reload');
+  assertEqual(loaded.App.activeInterior.tiles[targetRoomKey].creatures.some(unit => unit.id === 'companion-interior-roundtrip'), true, 'Exact interior room placement should survive reload before traversal');
+
+  const directionById = {
+    north: { dx: 0, dy: -1 },
+    east: { dx: 1, dy: 0 },
+    south: { dx: 0, dy: 1 },
+    west: { dx: -1, dy: 0 }
+  };
+  const startKey = `${loaded.App.interiorLocation.x},${loaded.App.interiorLocation.y}`;
+  const queue = [{ key: startKey, path: [] }];
+  const visited = new Set([startKey]);
+  let route = null;
+  while (queue.length && !route) {
+    const current = queue.shift();
+    if (current.key === targetRoomKey) {
+      route = current.path;
+      break;
+    }
+    const room = loaded.App.activeInterior.tiles[current.key];
+    for (const directionId of room.connections || []) {
+      const direction = directionById[directionId];
+      const nextKey = `${room.x + direction.dx},${room.y + direction.dy}`;
+      if (visited.has(nextKey) || !loaded.App.activeInterior.tiles[nextKey]) continue;
+      visited.add(nextKey);
+      queue.push({ key: nextKey, path: [...current.path, direction] });
+    }
+  }
+  assert(route, 'Persisted room graph should retain a route to the dropped companion');
+  route.forEach(direction => {
+    assertEqual(loaded.App.moveInterior(direction.dx, direction.dy), true, 'Player should traverse each persisted connection toward the companion');
+  });
+  assertEqual(`${loaded.App.interiorLocation.x},${loaded.App.interiorLocation.y}`, targetRoomKey, 'Traversal should return to the exact drop-off room');
+  const persisted = loaded.App.creatures.find(unit => unit.id === 'companion-interior-roundtrip');
+  assert(persisted, 'Dropped companion should become active when the exact room is reached');
+  assertEqual(loaded.App.recruitCreature(persisted), true, 'Interior companion should rejoin after the reload and return traversal');
+  assertEqual(loaded.App.party.some(unit => unit.id === 'companion-interior-roundtrip'), true, 'Rejoined interior companion should return to the traveling party');
+  assertEqual(loaded.App.activeInterior.tiles[targetRoomKey].creatures.some(unit => unit.id === 'companion-interior-roundtrip'), false, 'Rejoin should remove the exact-room placement');
+  assertEqual(xpGranted, 0, 'Interior rejoin after reload should not grant duplicate recruitment XP');
+
+  const rejoinedBuffers = [];
+  loaded.App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  loaded.App._dbPut = async (_store, _key, value) => { rejoinedBuffers.push(value); };
+  assertEqual(await loaded.App._saveToSlotConfirmed('slot1'), true, 'Rejoined interior state should save');
+
+  const verified = loadAppForCombat(() => 0.5, { binary: Binary });
+  verified.App._dbGet = async () => rejoinedBuffers[0];
+  verified.App.loadWorldStateFromMapStore = async () => {};
+  assertEqual(await verified.App.loadFromSlot('slot1'), true, 'Rejoined interior state should reload');
+  const verifiedOrigin = verified.App.worldMap.get('11,2');
+  assertEqual(verifiedOrigin.interior.tiles[targetRoomKey].creatures.some(unit => unit.id === 'companion-interior-roundtrip'), false, 'Removed interior placement should remain absent after the final reload');
+  assertEqual(verified.App.party.some(unit => unit.id === 'companion-interior-roundtrip'), true, 'Rejoined companion should remain in the party after the final reload');
+});
+
 test('Party dismissal confirmation and log localize', () => {
   const cancelled = loadAppForCombat(() => 0, { confirm: false });
   const player = makeUnit('You', { id: 'player-1' });
@@ -23905,6 +24012,94 @@ test('Sparse save load reconstructs app state and preserves Binary fallback comp
   assertEqual(loaded.App.inventory[0].name, 'Coin', 'Sparse load should restore inventory record');
   assertEqual(loaded.App.storyEvents[0].summary, 'Sparse beat', 'Sparse load should restore Scene Feed record');
   assertEqual(worldLoads, 1, 'Sparse load should restore world deltas through the world store');
+});
+
+test('Long sparse-save recovery history preserves separate bags and stranded companion outcomes', async () => {
+  const harness = loadAppForCombat(() => 0.5);
+  const App = enableRealAutoSaveHarness(harness);
+  const stored = new Map();
+  const worldRecords = new Map();
+  const clone = value => JSON.parse(JSON.stringify(value));
+  const snapshotWorld = () => {
+    for (const [key, tile] of App.tileDeltas || []) worldRecords.set(key, clone(tile));
+    return worldRecords.size;
+  };
+  App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  App._dbPut = async (store, key, value) => stored.set(`${store}:${key}`, value);
+  App.persistWorldStateToMapStore = async () => snapshotWorld();
+  App.persistDirtyWorldTilesToMapStore = async () => snapshotWorld();
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.mode = App.GAME_MODE.NORMAL;
+  App.settings.inventoryRecovery = 'death-bag';
+  App.worldMeta = { worldId: 'sparse-recovery-history', seed: 'sparse-recovery-seed', generatorVersion: 3, mapModsHash: 'core' };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'forest';
+  App.player = makeUnit('You', { id: 'sparse-history-player', gold: 0 });
+  App.party = [App.player];
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'forest', creatures: [], items: [], deathBags: [] }],
+    ['2,0', { ...App.getBaseTile(2, 0), explored: true, biome: 'plains', creatures: [], items: [], deathBags: [] }],
+    ['3,0', { ...App.getBaseTile(3, 0), explored: true, biome: 'grove', creatures: [], items: [], deathBags: [] }]
+  ]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0', '2,0', '3,0']);
+  App.inventory = [];
+  App.creatures = [];
+  await App.autoSave({ immediate: true });
+
+  const persistGeneration = App.autoSave.bind(App);
+  App.autoSave = () => true;
+  const firstCompanion = makeUnit('Harpy', { id: 'sparse-history-harpy', CPun: 45, partyRole: 'guard' });
+  App.party = [App.player, firstCompanion];
+  App.location = { x: 2, y: 0 };
+  App.currentBiome = 'plains';
+  App.creatures = [];
+  App.inventory = [{ id: 'first-history-item', name: 'First History Item', type: 'misc' }];
+  App.player.gold = 3;
+  App.player.CPun = 0;
+  App._handlePlayerFall({ status: 'dead', terminal: true, cause: 'history-first', source: 'sparse-history-test' });
+  App.regenerateFromDefeat();
+  assertEqual(App.strandedCompanions.some(entry => entry.id === 'sparse-history-harpy'), true, 'First recovery should retain the first companion outcome');
+  assertEqual(App.worldMap.get('2,0').deathBags.length, 1, 'First recovery should create its own world bag');
+  await persistGeneration({ immediate: true });
+
+  const secondCompanion = makeUnit('Slimefolk', { id: 'sparse-history-slime', CPun: 50, partyRole: 'support' });
+  App.party = [App.player, secondCompanion];
+  App.location = { x: 3, y: 0 };
+  App.currentBiome = 'grove';
+  App.creatures = [];
+  App.inventory = [{ id: 'second-history-item', name: 'Second History Item', type: 'misc' }];
+  App.player.gold = 5;
+  App.player.CPun = 0;
+  App._handlePlayerFall({ status: 'dead', terminal: true, cause: 'history-second', source: 'sparse-history-test' });
+  App.regenerateFromDefeat();
+  assertEqual(App.strandedCompanions.length, 2, 'Second recovery should preserve both independent companion outcomes');
+  assertEqual(App.worldMap.get('3,0').deathBags.length, 1, 'Second recovery should create a separate world bag');
+  await persistGeneration({ immediate: true });
+
+  const manifest = stored.get('saveManifests:slot1');
+  assert(Number(manifest?.revision || 0) >= 3, 'Sparse history should advance through baseline and both recovery generations');
+  const loaded = loadAppForCombat(() => 0.5);
+  loaded.App._dbGet = async (store, key) => stored.get(`${store}:${key}`) || null;
+  loaded.App.loadWorldStateFromMapStore = async () => {
+    loaded.App.tileDeltas = new Map([...worldRecords.entries()].map(([key, tile]) => [key, clone(tile)]));
+    for (const [key, tile] of loaded.App.tileDeltas) loaded.App.worldMap.set(key, clone(tile));
+    return loaded.App.tileDeltas.size;
+  };
+  assertEqual(await loaded.App.loadFromSlot('slot1'), true, 'Latest sparse recovery generation should load');
+  assertEqual(loaded.App.defeatState, null, 'Completed recoveries should not revive a stale pending defeat state');
+  assertEqual(loaded.App.party.length, 1, 'Latest sparse recovery should still resume with the player alone');
+  assertEqual(loaded.App.strandedCompanions.length, 2, 'Both companion outcome records should survive the longer sparse history');
+  assertEqual(loaded.App.strandedCompanions.some(entry => entry.id === 'sparse-history-harpy'), true, 'First companion outcome should survive later generations');
+  assertEqual(loaded.App.strandedCompanions.some(entry => entry.id === 'sparse-history-slime'), true, 'Second companion outcome should survive reload');
+  assertEqual(loaded.App.worldMap.get('2,0').deathBags[0].items[0].id, 'first-history-item', 'First recovery bag should survive later sparse generations');
+  assertEqual(loaded.App.worldMap.get('2,0').deathBags[0].gold, 3, 'First recovery bag gold should survive later sparse generations');
+  assertEqual(loaded.App.worldMap.get('3,0').deathBags[0].items[0].id, 'second-history-item', 'Second recovery bag should survive sparse reload');
+  assertEqual(loaded.App.worldMap.get('3,0').deathBags[0].gold, 5, 'Second recovery bag gold should survive sparse reload');
+  assertEqual(loaded.App.inventory.length, 0, 'Dropped inventory should not reappear in the player pack after sparse reload');
+  assertEqual(loaded.App.player.gold, 0, 'Dropped gold should not reappear on the player after sparse reload');
 });
 
 test('Sparse save manifest failure preserves dirty domains for retry', async () => {

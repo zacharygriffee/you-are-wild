@@ -25,6 +25,17 @@ This is the short handoff for unfinished work. Completed implementation history 
 
 ## Active Objectives
 
+### Immediate Next — Agent-Authored Mod Contract
+
+After the contextual interaction UI cleanup, harden the public mod contract using the agent-authored `Lace & Desires` package as an acceptance fixture rather than treating its current output as a trusted example.
+
+1. Document the exact content-template key grammar (`category.type.variant`) and list the core request keys that are actually consumed. Registration alone must never imply that a template has a gameplay route.
+2. Separate the legacy `MODS.registerContentTemplate` contract from the Scene Feed template contract, and expose a module-owned Scene Feed registration API instead of telling modules to reach through raw `App` methods.
+3. Either persist provider-declared creation options into a bounded owned character-data namespace or reject unsupported values during review; rendering a choice that character creation discards is not acceptable.
+4. Decide and implement the bounded Play action-variant seam before examples claim that custom Play sub-interactions are supported. Keep Feed/Feast-only registration explicit until then.
+5. Add enable-time diagnostics for template keys with no known consumer, settings/options that cannot persist, and variant declarations that have no executable route.
+6. Repair first-party mod examples so every advertised template, option, and variant is reachable, then rebuild `Lace & Desires` as an end-to-end install/enable/create/interact/reload acceptance fixture.
+
 ### UI
 
 1. Continue UI polish, accessibility, and localization as one workstream.
@@ -40,7 +51,7 @@ This is the short handoff for unfinished work. Completed implementation history 
 3. Use `docs/balance-scenario-baseline.md` for playtest comparisons before retuning hunger, Spirit, action costs, recovery, XP, reward pacing, creature size, containment capacity, or Fight/Play/Feed/Feast/Flee tradeoffs.
 4. Harden multi-creature interaction edge cases only where behavior contradicts `docs/multi-interaction-regression-matrix.md`.
 5. Continue Feed Contract V1 playtesting before extending it. The canonical actor-to-target direction, contextual Tend/Nurse/Offer Self/Offer Piece variants, and hidden compatibility aliases are implemented. Follow-up work must harden authored willingness, livestock defaults, renewable portions, appetite/container/capacity, size, reach, disposition, survival consequences, group distribution, and Scene Feed outcomes without silently changing saves or commands. Coercive or explicit framing remains an opt-in rated provider/variant; core state and default presentation stay neutral.
-6. Design one contextual action-variant orchestrator for `Feed`, `Feast`, `Fight`, and later expandable verbs. Keep the primary action bar compact; after actor/target context is known, dispatch directly when one valid variant exists or open an accessible popover/bottom sheet when several exist. The surface must preview effect, cost, reach/capacity, willingness and content requirements; explain disabled choices; preserve actor/target selections across Back/Cancel; support keyboard and mobile use; retain `InteractionPlan.subAction`; define mixed-validity group behavior; and allow bounded mod-registered variants without arbitrary UI injection.
+6. Continue hardening the contextual action-variant orchestrator. Feed, Feast, and Play now remain stable primary buttons while one accessible submenu groups actor-owned Self variants separately from marked-target variants. Reach, capacity, willingness, and resistance remain clues; physically meaningful commands commit and resolve success or failure through the Scene Feed instead of disappearing as composer errors. Follow-up work should extend the same grammar to Fight, refine pair-by-pair group previews and cost models, preserve Back/Cancel state, and admit mod variants only through validated owned registries.
 7. Later, audit equipment reach, reach traits, snare/grab/pull, area distribution, blockers, and back-row defensive value. Do not expand row mechanics without a design decision.
 8. Design gameplay-bearing SFW body builds separately from stat-oriented traits. Explicit anatomy remains optional-provider gated.
 

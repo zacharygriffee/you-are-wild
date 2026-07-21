@@ -21,7 +21,7 @@ const MODULE_SYSTEM = {
     DEFAULT_HOST_MANIFEST_PATH: 'yaw-host.json',
     REMOTE_PACKAGE_MAX_BYTES: 2 * 1024 * 1024,
     REMOTE_PACKAGE_TIMEOUT_MS: 15000,
-    KNOWN_PERMISSIONS: ['ui.read', 'media:read', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option'],
+    KNOWN_PERMISSIONS: ['ui.read', 'media:read', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option', 'content:add_action_variant'],
     db: null,
     hostManifest: null,
     hostManifestState: { status: 'uninitialized', reason: '', url: '' },
@@ -1832,7 +1832,8 @@ const MODULE_SYSTEM = {
                 species: new Set(),
                 items: new Set(),
                 templates: [],
-                locales: []
+                locales: [],
+                actionVariants: []
             });
         }
         return this.ownedContributions.get(moduleId);
@@ -2080,6 +2081,7 @@ const MODULE_SYSTEM = {
             CONTENT?.restoreLocaleEntries?.(contribution.locale, contribution.previous);
         }
         CONTENT?.unregisterCreationOptions?.(moduleId);
+        if (typeof YAW_SUB_ACTIONS !== 'undefined') YAW_SUB_ACTIONS.unregisterOwner?.(App, moduleId);
 
         this.ownedContributions.delete(moduleId);
     },
@@ -2171,6 +2173,13 @@ const MODULE_SYSTEM = {
                 if (typeof CONTENT === 'undefined' || !CONTENT?.registerCreationOption) throw new Error('Creation option registry is unavailable');
                 self._contributionRecord(moduleId);
                 return CONTENT.registerCreationOption(moduleId, option);
+            },
+
+            registerActionVariant(action, variantId, definition) {
+                self._requirePermission(moduleId, manifest, 'content:add_action_variant');
+                const registered = YAW_SUB_ACTIONS.register(App, action, variantId, definition, { owner: moduleId });
+                self._contributionRecord(moduleId).actionVariants.push({ action: String(action), id: String(variantId) });
+                return registered;
             },
 
             getContext(options = {}) {

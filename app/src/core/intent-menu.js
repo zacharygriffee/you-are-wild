@@ -54,40 +54,93 @@ const YAW_INTENT_MENU = {
         return false;
     },
 
+    variantOptionsHtml(app, resolution, context = {}) {
+        const action = resolution.action;
+        const defaultId = app._getDefaultSubAction(action);
+        const ordered = [...resolution.variants].sort((left, right) => (left.id === defaultId ? -1 : (right.id === defaultId ? 1 : 0)));
+        return ordered.map((variant, index) => {
+            const label = app._escapeHtml(variant.label);
+            const reasonId = `variant-reason-${app._escapeHtml(context.reasonPrefix || resolution.scope || 'target')}-${app._escapeHtml(action)}-${app._escapeHtml(variant.id)}-${index}`;
+            const reason = variant.reason || (variant.status === 'partial'
+                ? app._label('variant.partial', 'Available for {valid} of {total} actor-target pairs.', { valid: variant.validPairCount, total: variant.pairCount })
+                : '');
+            const details = [
+                reason,
+                !reason && variant.hint ? variant.hint : '',
+                variant.cost?.label ? app._label('variant.cost', 'Cost: {cost}.', { cost: variant.cost.label }) : '',
+                ...(!reason && (variant.requirements || []).length
+                    ? [app._label('variant.requirements', 'Requirements: {requirements}.', { requirements: variant.requirements.join(', ') })]
+                    : [])
+            ].filter(Boolean).join(' ');
+            const safeId = app._escapeJsString(variant.id);
+            const selectCall = String(context.selectCall || '').replace(/\{id\}/g, safeId);
+            const disabled = variant.available ? '' : ' disabled aria-disabled="true"';
+            const describedBy = details ? ` aria-describedby="${reasonId}"` : '';
+            const primary = variant.id === defaultId ? ' primary' : '';
+            return `<div class="action-variant-option${variant.available ? '' : ' unavailable'}" data-variant-status="${app._escapeHtml(variant.status)}"${variant.outlook ? ` data-attempt-outlook="${app._escapeHtml(variant.outlook)}"` : ''}><button class="action-btn${primary}" role="menuitem" data-command-surface="action-variant-options" data-command-mode="${app._escapeHtml(context.mode || 'exploration')}" data-command-intent="${app._escapeHtml(`${action}:${variant.id}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${app._escapeHtml(details ? `${variant.label}. ${details}` : variant.label)}" aria-label="${app._escapeHtml(details ? `${variant.label}. ${variant.hint || ''}`.trim() : variant.label)}"${describedBy}${disabled}${variant.available ? ` onclick="${selectCall}"` : ''}>${app._escapeHtml(variant.icon || '')} ${label}</button>${details ? `<span class="action-variant-reason" id="${reasonId}">${app._escapeHtml(details)}</span>` : ''}</div>`;
+        }).join('');
+    },
+
+    openVariantSheet(app, context = {}) {
+        const action = context.action;
+        const actors = (context.actors || []).filter(Boolean);
+        const targets = (context.targets || []).filter(Boolean);
+        const groupContexts = Array.isArray(context.groups) && context.groups.length > 0
+            ? context.groups
+            : [{ scope: context.scope || 'target', selectCall: context.selectCall || '' }];
+        const groups = groupContexts.map(group => ({
+            ...group,
+            resolution: YAW_SUB_ACTIONS.resolve(app, action, {
+                actors,
+                targets,
+                scope: group.scope || 'target',
+                mode: context.mode || 'exploration'
+            })
+        })).filter(group => group.resolution.variants.length > 0);
+        app.closeIntentMenu();
+        const source = String(context.source || 'sheet');
+        const surface = this.surface(source, context.presentation);
+        const title = context.title || `${app._uiLabel(action)} ${targets[0]?.name || ''}`.trim();
+        const options = groups.map(group => {
+            const groupLabel = groups.length > 1 && group.label
+                ? `<div class="action-variant-group-title" role="presentation">${app._escapeHtml(group.label)}</div>`
+                : '';
+            return `<div class="action-variant-group" data-command-scope="${app._escapeHtml(group.scope || 'target')}">${groupLabel}${this.variantOptionsHtml(app, group.resolution, {
+                mode: context.mode || 'exploration',
+                selectCall: group.selectCall || context.selectCall || '',
+                reasonPrefix: group.scope || 'target'
+            })}</div>`;
+        }).join('');
+        const backLabel = app._escapeHtml(app._label('ui.back', 'Back'));
+        const cancelCall = context.cancelCall || 'App.closeIntentMenu()';
+        const html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-intent-source="${app._escapeHtml(source)}" data-command-surface="action-variant-options" data-command-mode="${app._escapeHtml(context.mode || 'exploration')}" data-command-grammar="actor-target-intent" data-command-intent="${app._escapeHtml(action)}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="action-variant-options" data-command-mode="${app._escapeHtml(context.mode || 'exploration')}" data-command-grammar="actor-target-intent">${options}<button class="action-btn" role="menuitem" data-command-control="back-variant" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="${cancelCall}">${backLabel}</button></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+        const menu = document.getElementById(surface.id);
+        this.positionDesktopMenu(menu, context.anchorEvent, surface.presentation === 'desktop');
+        app._activateFocusTrap(menu, { close: () => app.closeIntentMenu() });
+        app._activateOutsideContextDismiss(menu);
+        return groups.length === 1 ? groups[0].resolution : { action, actors, targets, groups };
+    },
+
     openSubActionSheet(app, type, targetRef, action, source = 'sheet', anchorEvent = null) {
         const target = app._intentTarget(type, targetRef);
         if (!target || app._isCorpse(target) || !app.SUB_ACTIONS[action]) {
             return app.selectIntent(type, targetRef, action, source);
         }
-        app.closeIntentMenu();
         const isParty = type === 'party';
-        const actor = app._getExplorationActor();
-        const subActions = app._getAvailableSubActions(action, actor, target);
         const targetArg = isParty ? Number(targetRef) : `'${String(targetRef).replace(/'/g, "\\'")}'`;
         const commandSource = String(source || 'sheet').replace(/'/g, "\\'");
         const sourcePresentation = String(source || 'sheet') === 'radial' ? 'radial' : undefined;
-        const surface = this.surface(source, sourcePresentation);
-        const title = `${app._uiLabel(action)} ${target.name || ''}`.trim();
-        const defaultSub = app._getDefaultSubAction(action);
-        const defaultLabel = app._getActionLabel(action, defaultSub);
-        const defaultOption = subActions.find(sub => sub.id === defaultSub);
-        const defaultDisabled = defaultOption && !defaultOption.available ? ' disabled' : '';
-        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-intent-source="${app._escapeHtml(commandSource)}" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${app._escapeHtml(action)}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent">`;
-        html += `<button class="action-btn primary" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${app._escapeHtml(defaultLabel)}" aria-label="${app._escapeHtml(defaultLabel)}"${defaultDisabled} onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${String(defaultSub).replace(/'/g, "\\'")}')">${app._escapeHtml(defaultLabel)}</button>`;
-        subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
-            const label = app._escapeHtml(sub.label);
-            const disabled = sub.available ? '' : ' disabled';
-            const settingHint = sub.available || !sub.setting ? '' : ` (${sub.setting})`;
-            html += `<button class="action-btn" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${sub.id}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${label}${app._escapeHtml(settingHint)}" aria-label="${label}${app._escapeHtml(settingHint)}"${disabled} onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${String(sub.id).replace(/'/g, "\\'")}')">${sub.icon || ''} ${label}</button>`;
+        return this.openVariantSheet(app, {
+            action,
+            actors: app._getExplorationActors(),
+            targets: [target],
+            source,
+            presentation: sourcePresentation,
+            anchorEvent,
+            title: `${app._uiLabel(action)} ${target.name || ''}`.trim(),
+            selectCall: `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','{id}')`
         });
-        const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
-        html += `<button class="action-btn" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
-        html += '</div></div>';
-        document.body.insertAdjacentHTML('beforeend', html);
-        const menu = document.getElementById(surface.id);
-        this.positionDesktopMenu(menu, anchorEvent, surface.presentation === 'desktop');
-        app._activateFocusTrap(menu, { close: () => app.closeIntentMenu() });
-        app._activateOutsideContextDismiss(menu);
     },
 
     close(app) {

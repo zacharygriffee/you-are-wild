@@ -4,29 +4,31 @@
  */
 
 const YAW_SUB_ACTIONS = {
+    CONTEXTUAL_ACTIONS: new Set(['feed', 'feast']),
+    MAX_VARIANTS_PER_ACTION: 24,
+    MAX_ID_LENGTH: 64,
     definitions: {
         feast: {
-            swallow: { label: 'Swallow', sfwLabel: 'Eat', icon: '🍽️', validate: (a, t) => App._canFitPrey(a, t, 'stomach') && (t.CPun <= t.MPun * 0.3 || (a.Feas > t.Flee && a.size >= t.size - 2)), execute: 'swallowWhole', setting: null },
-            chew: { label: 'Chew', sfwLabel: 'Break Down', icon: '🦷', validate: () => App.settings.chewing, execute: 'chewPrey', setting: 'chewing' },
-            cockVore: { label: 'Capture', sfwLabel: 'Capture', icon: '📦', validate: (a, t) => App.settings.cockVoreEnabled && a.parts === 'cock' && App._canFitPrey(a, t, 'balls'), execute: 'cockVore', setting: 'cockVoreEnabled' },
-            unbirth: { label: 'Engulf', sfwLabel: 'Engulf', icon: '🔮', validate: (a, t) => App.settings.unbirthEnabled && a.parts === 'clit' && App._canFitPrey(a, t, 'womb'), execute: 'unbirth', setting: 'unbirthEnabled' },
-            digest: { label: 'Digest', sfwLabel: 'Break Down', icon: '💀', validate: (a) => App._activeContainedPrey?.(a, 'stomach')?.length > 0, execute: 'digestPrey', setting: null },
-            release: { label: 'Release', sfwLabel: 'Free', icon: '⬆️', validate: (a) => App._activeContainedPrey?.(a, 'stomach')?.some(p => p.releaseEligible), execute: 'releasePrey', setting: null }
+            swallow: { label: 'Swallow', sfwLabel: 'Eat', icon: '🍽️', validate: (a, t) => Boolean(a && t) && a !== t, execute: 'swallowWhole', setting: null, requirements: ['reach', 'capacity', 'willingness'] },
+            chew: { label: 'Chew', sfwLabel: 'Break Down', icon: '🦷', validate: (a, t) => a !== t && App.settings.chewing, execute: 'chewPrey', setting: 'chewing', settingLabelKey: 'settings.variant.chewing', minPosture: 'mature', requirements: ['reach', 'cost'] },
+            cockVore: { label: 'Capture', sfwLabel: 'Capture', icon: '📦', validate: (a, t) => Boolean(a && t) && a !== t && App.settings.cockVoreEnabled && a.parts === 'cock', execute: 'cockVore', setting: 'cockVoreEnabled', settingLabelKey: 'variant.setting.capture', contentCategory: 'explicit.sexual', requirements: ['reach', 'capacity'] },
+            unbirth: { label: 'Engulf', sfwLabel: 'Engulf', icon: '🔮', validate: (a, t) => Boolean(a && t) && a !== t && App.settings.unbirthEnabled && a.parts === 'clit', execute: 'unbirth', setting: 'unbirthEnabled', settingLabelKey: 'variant.setting.engulf', contentCategory: 'explicit.sexual', requirements: ['reach', 'capacity'] },
+            digest: { label: 'Digest', sfwLabel: 'Break Down', icon: '💀', validate: (a) => App._activeContainedPrey?.(a, 'stomach')?.length > 0, execute: 'digestPrey', setting: null, scope: 'self', requirements: ['capacity'] },
+            release: { label: 'Release', sfwLabel: 'Free', icon: '⬆️', validate: (a) => App._activeContainedPrey?.(a, 'stomach')?.some(p => p.releaseEligible), execute: 'releasePrey', setting: null, scope: 'self', requirements: ['willingness'] }
         },
         feed: {
-            tend: { label: 'Tend', sfwLabel: 'Tend', icon: '💚', validate: (a, t) => Boolean(a && t) && t.CPun < t.MPun, execute: 'tend', setting: null },
-            nurse: { label: 'Nurse', sfwLabel: 'Nurse', icon: '🥛', validate: (a, t) => a !== t && a.lactating && !a.lactationCooldown, execute: 'nurse', setting: null },
+            tend: { label: 'Tend', sfwLabel: 'Tend', icon: '💚', validate: (a, t) => Boolean(a && t) && t.CPun < t.MPun, execute: 'tend', setting: null, scope: 'both', requirements: ['reach'] },
+            nurse: { label: 'Nurse', sfwLabel: 'Nurse', icon: '🥛', validate: (a, t) => a !== t && a.lactating && !a.lactationCooldown, execute: 'nurse', setting: null, requirements: ['reach', 'cost'] },
             offerWhole: {
                 label: 'Offer Self', sfwLabel: 'Offer Self', icon: '🐄', execute: 'offerWhole', setting: null,
-                validate: (a, t) => a !== t
+                requirements: ['reach', 'capacity', 'willingness'], validate: (a, t) => a !== t
                     && a !== App.player
                     && !a.mc
                     && (a.livestock || a.willingPrey)
-                    && App._canFitPrey(t, a, 'stomach')
             },
             offerPiece: {
                 label: 'Offer Piece', sfwLabel: 'Offer Piece', icon: '🍫', execute: 'offerPiece', setting: null,
-                validate: (a, t) => {
+                requirements: ['reach', 'cost'], validate: (a, t) => {
                     const renewable = a?.renewableBody || a?.slurpable || a?.breakable || /slime/i.test(String(a?.species || ''));
                     const reserve = Math.max(2, Math.floor((a?.MPun || 1) * 0.15));
                     return a !== t && renewable && a.CPun > reserve && (t.CPun < t.MPun || (t.hunger || 0) > 0);
@@ -45,7 +47,7 @@ const YAW_SUB_ACTIONS = {
             grapple: { label: 'Grapple', sfwLabel: 'Grapple', icon: '🤼', validate: (a, t) => a.str > t.spd, execute: 'grapple', setting: null }
         },
         fuck: {
-            seduce: { label: 'Seduce', sfwLabel: 'Play', icon: '💕', validate: () => true, execute: 'seduce', setting: null },
+            seduce: { label: 'Seduce', sfwLabel: 'Play', icon: '💕', validate: () => true, execute: 'seduce', setting: null, scope: 'both' },
             dominate: { label: 'Dominate', sfwLabel: 'Overpower', icon: '⛓️', validate: (a, t) => App.settings.powerDynamics && a.Fuck > t.Fuck, execute: 'dominate', setting: 'powerDynamics' },
             submit: { label: 'Submit', sfwLabel: 'Yield', icon: '🙇', validate: (a, t) => App.settings.powerDynamics && a.Fuck < t.Fuck, execute: 'submit', setting: 'powerDynamics' }
         },
@@ -74,17 +76,261 @@ const YAW_SUB_ACTIONS = {
             : selected;
     },
 
+    contextPairs(actors = [], targets = []) {
+        const pairs = [];
+        for (const actor of actors.filter(Boolean)) {
+            for (const target of targets.filter(Boolean)) pairs.push({ actor, target });
+        }
+        return pairs;
+    },
+
+    requirementSummary(app, action, id, def, actor, target) {
+        const requirements = Array.isArray(def.requirements) ? def.requirements : [];
+        const labels = {
+            cost: app._label('variant.requirement.cost', 'Cost'),
+            reach: app._label('variant.requirement.reach', 'Reach'),
+            capacity: app._label('variant.requirement.capacity', 'Capacity'),
+            willingness: app._label('variant.requirement.willingness', 'Willingness')
+        };
+        return requirements.map(key => labels[key] || String(key));
+    },
+
+    isVisibleForContent(def) {
+        const content = typeof CONTENT !== 'undefined' ? CONTENT : null;
+        const preferences = content?.preferences || {};
+        if (def.minPosture === 'mature' && Number(preferences.maxTier || 0) < 1 && preferences.posture !== 'mature') return false;
+        if (def.contentCategory && content?.isCategoryEnabled?.(def.contentCategory) !== true) return false;
+        return true;
+    },
+
+    settingLabel(app, def) {
+        const fallback = def.sfwLabel || def.label || app._label('variant.setting.generic', 'this option');
+        return def.settingLabelKey ? app._label(def.settingLabelKey, fallback) : fallback;
+    },
+
+    variantScope(def) {
+        return ['self', 'target', 'both'].includes(def?.scope) ? def.scope : 'target';
+    },
+
+    supportsScope(def, scope = 'target') {
+        const variantScope = this.variantScope(def);
+        return scope === 'self'
+            ? variantScope === 'self' || variantScope === 'both'
+            : variantScope === 'target' || variantScope === 'both';
+    },
+
+    feastAttemptAssessment(app, actor, target, options = {}) {
+        const container = options.container || 'stomach';
+        const requireCapacity = options.requireCapacity !== false;
+        const canFit = !requireCapacity || Boolean(app?._canFitPrey?.(actor, target, container));
+        if (!actor || !target || actor === target) {
+            return {
+                canAttempt: false,
+                succeeds: false,
+                outlook: 'blocked',
+                hint: ''
+            };
+        }
+
+        const targetStatus = target.status || {};
+        const asleep = Boolean(target.asleep || targetStatus.asleep || targetStatus.sleep?.turns > 0);
+        const restrained = Boolean(target.restrained || target.isRestrained || targetStatus.restrained?.turns > 0 || targetStatus.snared || targetStatus.grabbed || targetStatus.stuck);
+        const willing = Boolean(target.willingPrey || target.livestock || target.willing === true);
+        const submissive = Boolean(target.recruitReady || target.submission || target.subdued);
+        const maxCondition = Math.max(1, Number(target.MPun) || 1);
+        const weakened = Number(target.CPun) <= maxCondition * 0.3;
+        const actorSize = Number(actor.size) || 0;
+        const targetSize = Number(target.size) || 0;
+        const sizeGap = actorSize - targetSize;
+        const sizeModifier = Math.max(-20, Math.min(20, sizeGap * 4));
+        const helperBonus = Math.max(0, Number(options.helperBonus) || 0);
+        const actorScore = (Number(actor.Feas) || 10)
+            + 5
+            + helperBonus
+            + sizeModifier
+            + (asleep ? 12 : 0)
+            + (restrained ? 10 : 0)
+            + (submissive ? 10 : 0);
+        const resistance = Number(target.Flee) || 10;
+        const succeeds = Boolean(app?.cheats?.canEatAnything || willing || weakened || actorScore > resistance);
+        const margin = actorScore - resistance;
+        const favorableOpening = (asleep || restrained || submissive) && succeeds;
+        const outlook = !canFit
+            ? 'difficult'
+            : willing || weakened || favorableOpening || margin >= 6
+            ? 'favorable'
+            : (margin >= -5 ? 'uncertain' : 'difficult');
+        let hintKey = `variant.attempt.${outlook}`;
+        let fallback = outlook === 'favorable'
+            ? 'Favorable attempt.'
+            : (outlook === 'uncertain' ? 'Uncertain attempt.' : 'Difficult attempt.');
+        if (!canFit) {
+            hintKey = 'variant.attempt.difficultCapacity';
+            fallback = 'Difficult attempt: the target may not fit.';
+        } else if (willing) {
+            hintKey = 'variant.attempt.favorableWilling';
+            fallback = 'Favorable attempt: the target appears willing.';
+        } else if (weakened) {
+            hintKey = 'variant.attempt.favorableWeakened';
+            fallback = 'Favorable attempt: the target is weakened.';
+        } else if (asleep) {
+            hintKey = 'variant.attempt.favorableAsleep';
+            fallback = 'Favorable opening: the target is asleep.';
+        } else if (restrained) {
+            hintKey = 'variant.attempt.favorableRestrained';
+            fallback = 'Favorable opening: the target is restrained.';
+        } else if (submissive) {
+            hintKey = 'variant.attempt.favorableSubmissive';
+            fallback = 'Favorable opening: the target appears submissive.';
+        } else if (outlook === 'difficult' && sizeGap < 0) {
+            hintKey = 'variant.attempt.difficultLarger';
+            fallback = 'Difficult attempt: the target is larger and resisting.';
+        } else if (outlook === 'difficult') {
+            hintKey = 'variant.attempt.difficultResisting';
+            fallback = 'Difficult attempt: the target is healthy and resisting.';
+        }
+        return {
+            canAttempt: true,
+            succeeds,
+            outlook,
+            hint: app._label(hintKey, fallback),
+            asleep,
+            restrained,
+            willing,
+            submissive,
+            weakened,
+            actorScore,
+            resistance,
+            sizeGap,
+            canFit
+        };
+    },
+
+    unavailableReason(app, action, id, def, actor, target, holder = []) {
+        if (typeof def.unavailableReason === 'function') {
+            try {
+                const reason = def.unavailableReason(actor, target, holder, app);
+                if (reason) return String(reason);
+            } catch (error) {}
+        }
+        if (def.setting && app.settings?.[def.setting] !== true) {
+            return app._label('variant.unavailable.setting', 'Enable {setting} in Settings.', { setting: this.settingLabel(app, def) });
+        }
+        if (!actor || !target) return app._label('variant.unavailable.selection', 'Choose a valid actor and target.');
+        if (action === 'feed') {
+            if (id === 'tend' && target.CPun >= target.MPun) return app._label('variant.unavailable.noInjury', '{name} does not need tending.', { name: target.name });
+            if (id === 'nurse') {
+                if (actor === target) return app._label('variant.unavailable.self', 'This variant needs a different target.');
+                if (!actor.lactating) return app._label('variant.unavailable.capability', '{name} does not have the required capability.', { name: actor.name });
+                if (actor.lactationCooldown) return app._label('variant.unavailable.cooldown', '{name} is not ready yet.', { name: actor.name });
+            }
+            if (id === 'offerWhole') {
+                if (actor === target) return app._label('variant.unavailable.self', 'This variant needs a different target.');
+                if (actor === app.player || actor.mc) return app._label('feed.offerWholePlayerDeferred', 'Whole-self offering for the player is not available yet.');
+                if (!actor.livestock && !actor.willingPrey) return app._label('feed.offerWholeUnwilling', '{name} is not willing to offer themself whole.', { name: actor.name });
+                return app._label('variant.unavailable.capacity', '{name} does not have enough capacity.', { name: target.name });
+            }
+            if (id === 'offerPiece') {
+                const renewable = actor.renewableBody || actor.slurpable || actor.breakable || /slime/i.test(String(actor.species || ''));
+                if (!renewable) return app._label('feed.offerPieceUnavailable', '{name} cannot safely offer a renewable piece.', { name: actor.name });
+                return app._label('feed.offerPieceTooWeak', '{name} is too weak to offer a piece right now.', { name: actor.name });
+            }
+        }
+        if (action === 'feast') {
+            if (id === 'digest') return app._label('variant.unavailable.contained', '{name} has no living prey to digest.', { name: actor.name });
+            if (id === 'release') return app._label('variant.unavailable.release', '{name} has no eligible prey to release.', { name: actor.name });
+            if (actor === target) return app._label('variant.unavailable.self', 'This variant needs a different target.');
+        }
+        const requirements = this.requirementSummary(app, action, id, def, actor, target);
+        return requirements.length
+            ? app._label('variant.unavailable.requirements', 'Requirements not met: {requirements}.', { requirements: requirements.join(', ') })
+            : app._label('variant.unavailable.generic', 'This variant is not available for the current actor and target.');
+    },
+
+    resolve(app, action, context = {}) {
+        const actors = (context.actors || [context.actor]).filter(Boolean);
+        const targets = (context.targets || [context.target]).filter(Boolean);
+        const scope = context.scope === 'self' ? 'self' : 'target';
+        const pairs = scope === 'self'
+            ? actors.map(actor => ({ actor, target: actor }))
+            : this.contextPairs(actors, targets);
+        const subDefs = app.SUB_ACTIONS[action] || {};
+        const holder = app.party.filter(unit => !actors.includes(unit) && !targets.includes(unit) && unit.CPun > 0);
+        const variants = Object.entries(subDefs)
+            .filter(([, def]) => context.includeLegacy === true || def.legacy !== true)
+            .filter(([, def]) => this.isVisibleForContent(def))
+            .filter(([, def]) => this.supportsScope(def, scope))
+            .map(([id, def]) => {
+                const evaluations = pairs.map(pair => {
+                    const reach = context.mode === 'combat' && app._isReachSensitiveCombatAction?.(action)
+                        ? app._combatReachResult?.(pair.actor, pair.target, action)
+                        : null;
+                    const pressure = app._canAffordActionPressure?.(action, pair.actor, { mode: context.mode || 'adventure' }) || { ok: true };
+                    return {
+                        ...pair,
+                        reach,
+                        pressure,
+                        available: this.isAvailable(app, def, pair.actor, pair.target, holder)
+                            && pressure.ok !== false
+                    };
+                });
+                const validPairs = evaluations.filter(entry => entry.available);
+                const invalidPairs = evaluations.filter(entry => !entry.available);
+                const available = validPairs.length > 0;
+                const status = available && invalidPairs.length ? 'partial' : (available ? 'available' : 'unavailable');
+                const failed = invalidPairs[0] || pairs[0] || { actor: actors[0], target: targets[0] };
+                const reason = status === 'available' ? '' : (
+                    failed.pressure?.ok === false
+                        ? String(failed.pressure.text || app._label('variant.unavailable.cost', 'The actor cannot afford this action right now.'))
+                        : this.unavailableReason(app, action, id, def, failed.actor, failed.target, holder)
+                );
+                const attemptAssessments = action === 'feast' && ['swallow', 'chew', 'cockVore', 'unbirth'].includes(id)
+                    ? evaluations.filter(entry => entry.available).map(entry => this.feastAttemptAssessment(app, entry.actor, entry.target, {
+                        container: id === 'cockVore' ? 'balls' : (id === 'unbirth' ? 'womb' : 'stomach'),
+                        requireCapacity: id !== 'chew',
+                        helperBonus: actors
+                            .filter(helper => helper && helper !== entry.actor)
+                            .reduce((sum, helper) => sum + Math.floor((Number(helper.Feas) || 10) * 0.5), 0)
+                    }))
+                    : [];
+                const attemptAssessment = attemptAssessments.find(entry => entry.outlook === 'difficult')
+                    || attemptAssessments.find(entry => entry.outlook === 'uncertain')
+                    || attemptAssessments[0]
+                    || null;
+                return {
+                    id,
+                    label: app._getActionLabel(action, id),
+                    icon: def.icon || '',
+                    available,
+                    status,
+                    reason,
+                    hint: attemptAssessment?.hint || '',
+                    outlook: attemptAssessment?.outlook || '',
+                    requirements: this.requirementSummary(app, action, id, def, failed.actor, failed.target),
+                    cost: def.cost || app._previewActionCost?.(action, failed.actor, failed.target, { mode: context.mode || 'adventure' }) || null,
+                    setting: def.setting || null,
+                    owner: def.owner || 'core',
+                    scope: this.variantScope(def),
+                    validPairCount: validPairs.length,
+                    pairCount: evaluations.length
+                };
+            });
+        const selectable = variants.filter(variant => variant.available);
+        const preferred = context.preferred || this.getDefault(app, action);
+        const selected = selectable.find(variant => variant.id === preferred) || selectable[0] || null;
+        return {
+            action,
+            scope,
+            actors,
+            targets,
+            variants,
+            selected,
+            decision: selectable.length === 0 ? 'unavailable' : (selectable.length === 1 ? 'direct' : 'choose')
+        };
+    },
+
     available(app, action, actor, target) {
-        const subDefs = app.SUB_ACTIONS[action];
-        if (!subDefs) return [];
-        const holder = app.party.filter(p => p !== actor && p !== target && p.CPun > 0);
-        return Object.entries(subDefs).filter(([, def]) => def.legacy !== true).map(([id, def]) => ({
-            id,
-            label: app._getActionLabel(action, id),
-            icon: def.icon,
-            available: this.isAvailable(app, def, actor, target, holder),
-            setting: def.setting
-        }));
+        return this.resolve(app, action, { actors: [actor], targets: [target] }).variants;
     },
 
     isAvailable(app, def, actor, target, holder = []) {
@@ -103,6 +349,48 @@ const YAW_SUB_ACTIONS = {
         if (!subDefs || !subDefs[subAction]) return subAction;
         const fallback = isSFW ? (subDefs[subAction].sfwLabel || subDefs[subAction].label) : subDefs[subAction].label;
         return app._label(`subaction.${action}.${subAction}${isSFW ? '.sfw' : ''}`, fallback);
+    },
+
+    register(app, action, subId, config = {}, options = {}) {
+        const normalizedAction = String(action || '').trim();
+        const normalizedId = String(subId || '').trim();
+        const trustedLegacy = options.trustedLegacy === true;
+        if (!this.CONTEXTUAL_ACTIONS.has(normalizedAction) && !(trustedLegacy && app.SUB_ACTIONS[normalizedAction])) throw new Error('Action variants may only extend Feed or Feast in V1');
+        if (!/^[a-z][a-zA-Z0-9_-]*$/.test(normalizedId) || normalizedId.length > this.MAX_ID_LENGTH) throw new Error('Action variant id is invalid');
+        if (!config || typeof config !== 'object') throw new Error('Action variant definition must be an object');
+        if (typeof config.validate !== 'function' || typeof config.execute !== 'function') throw new Error('Action variants require validate and execute functions');
+        app.SUB_ACTIONS[normalizedAction] = app.SUB_ACTIONS[normalizedAction] || {};
+        if (Object.keys(app.SUB_ACTIONS[normalizedAction]).length >= this.MAX_VARIANTS_PER_ACTION) throw new Error('Action variant limit reached');
+        if (app.SUB_ACTIONS[normalizedAction][normalizedId] && !trustedLegacy) throw new Error(`Action variant ${normalizedAction}.${normalizedId} is already registered`);
+        const boundedString = (value, fallback, limit) => String(value || fallback).trim().slice(0, limit);
+        const requirements = Array.isArray(config.requirements)
+            ? config.requirements.map(String).filter(key => ['cost', 'reach', 'capacity', 'willingness'].includes(key)).slice(0, 4)
+            : [];
+        app.SUB_ACTIONS[normalizedAction][normalizedId] = {
+            label: boundedString(config.label, normalizedId, 80),
+            sfwLabel: boundedString(config.sfwLabel, config.label || normalizedId, 80),
+            icon: boundedString(config.icon, '❓', 16),
+            validate: config.validate,
+            execute: config.execute,
+            unavailableReason: typeof config.unavailableReason === 'function' ? config.unavailableReason : null,
+            setting: null,
+            scope: ['self', 'target', 'both'].includes(config.scope) ? config.scope : 'target',
+            requirements,
+            cost: config.cost && typeof config.cost === 'object' ? { ...config.cost } : null,
+            owner: String(options.owner || 'legacy-runtime').slice(0, 160)
+        };
+        if (config.defaultForAction) app.defaultSubActions[normalizedAction] = normalizedId;
+        return app.SUB_ACTIONS[normalizedAction][normalizedId];
+    },
+
+    unregisterOwner(app, owner) {
+        const normalizedOwner = String(owner || '');
+        for (const action of this.CONTEXTUAL_ACTIONS) {
+            for (const [id, def] of Object.entries(app.SUB_ACTIONS[action] || {})) {
+                if (def.owner === normalizedOwner) delete app.SUB_ACTIONS[action][id];
+            }
+            if (!app.SUB_ACTIONS[action]?.[app.defaultSubActions[action]]) app.defaultSubActions[action] = this.defaults[action];
+        }
     }
 };
 

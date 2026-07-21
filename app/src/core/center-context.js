@@ -523,6 +523,33 @@ const YAW_CENTER_CONTEXT = {
         return `<button class="action-btn composer-exit" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors" data-command-slot="exit" title="${title}" aria-label="${title}" onclick="App.clearExplorationActors()"><span class="action-icon" aria-hidden="true">×</span><span class="action-caption">${label}</span></button>`;
     },
 
+    renderSelfActions(app, source = 'actor-belt') {
+        if (app.combatState?.active) return '';
+        const actorState = app._selectedExplorationActorState?.() || { valid: false, actors: [] };
+        const actors = actorState.valid ? actorState.actors : [];
+        if (actors.length === 0) return '';
+        const hasMarkedTargets = (app._getExplorationTargets?.() || []).length > 0;
+        if (!app.explorationActorSelectionExplicit && !hasMarkedTargets) return '';
+        const entries = [];
+        for (const action of ['feed', 'feast', 'fuck']) {
+            const resolution = app._resolveActionVariants(action, {
+                actors,
+                scope: 'self',
+                mode: 'adventure'
+            });
+            if (resolution.variants.length === 0) continue;
+            const safeSource = app._escapeJsString(source || 'actor-belt');
+            const safeAction = app._escapeJsString(action);
+            const presentation = String(source || '').startsWith('desktop') || source === 'actor-belt' ? 'desktop' : '';
+            const title = app._escapeHtml(app._uiLabel(action));
+            entries.push(`<button class="action-btn contextual-action-btn" data-command-surface="contextual-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-slot="intent" data-command-intent="${app._escapeHtml(action)}" title="${title}" aria-label="${title}" onclick="App.openExplorationSubActionSheet('${safeAction}','${safeSource}','${presentation}')"><span class="action-icon" aria-hidden="true">${app._actionIcon(action)}</span><span class="action-caption">${title}</span></button>`);
+        }
+        if (entries.length === 0) return '';
+        if (source === 'mobile-target') return entries.join('');
+        const label = app._escapeHtml(app._label('variant.contextualActions', 'Interaction actions'));
+        return `<div class="composer-control-group contextual-action-group" data-command-surface="contextual-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" role="group" aria-label="${label}">${entries.join('')}</div>`;
+    },
+
     focusedObjectExitButton(app) {
         if (!app.focusedStageObject?.name) return '';
         const label = app._escapeHtml(app._label('target.clearFocus', 'Clear focus'));
@@ -545,12 +572,13 @@ const YAW_CENTER_CONTEXT = {
         return keys.map(key => this.actionButton(app, key)).join('');
     },
 
-    groupedActionRows(app, { actorExitHtml = '', focusedExitHtml = '', locationHtml = '', includeActorExit = true } = {}) {
+    groupedActionRows(app, { actorExitHtml = '', focusedExitHtml = '', selfHtml = '', locationHtml = '', includeActorExit = true } = {}) {
         const groups = [];
         const exits = `${includeActorExit ? actorExitHtml : ''}${focusedExitHtml}`;
         if (exits) {
             groups.push(`<div class="composer-control-group composer-state-actions" data-command-surface="command-composer" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="selection-exits">${exits}</div>`);
         }
+        if (selfHtml) groups.push(selfHtml);
         if (locationHtml) {
             groups.push(`<div class="composer-control-group location-action-group" data-command-surface="command-composer" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="location-intents">${locationHtml}</div>`);
         }
@@ -564,12 +592,14 @@ const YAW_CENTER_CONTEXT = {
         const locationHtml = this.renderActions(app);
         const actorExitHtml = this.actorExitButton(app);
         const focusedExitHtml = this.focusedObjectExitButton(app);
+        const selfHtml = this.renderSelfActions(app, 'actor-belt');
+        const mobileSelfHtml = this.renderSelfActions(app, 'mobile-target');
         const html = hasMarkedTargets
             ? app._renderExplorationTargetActions('desktop')
-            : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, locationHtml, includeActorExit: true });
+            : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, selfHtml, locationHtml, includeActorExit: true });
         const mobileHtml = hasMarkedTargets
             ? ''
-            : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, locationHtml: hasActorRouting ? '' : locationHtml, includeActorExit: false });
+            : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, selfHtml: mobileSelfHtml, locationHtml: hasActorRouting ? '' : locationHtml, includeActorExit: false });
         const actions = document.getElementById('scene-actions');
         if (actions) {
             actions.innerHTML = '';

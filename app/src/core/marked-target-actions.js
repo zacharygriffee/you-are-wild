@@ -31,8 +31,9 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 : 'target-bar';
             const defaultSubAction = app.SUB_ACTIONS[key] ? app._getDefaultSubAction(key) : null;
             const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
-            const handler = key === 'feed'
-                ? `App.openExplorationTargetSubActionSheet('feed','${actionSource}')`
+            const variantPresentation = String(source || '').startsWith('desktop') ? 'desktop' : '';
+            const handler = ['feed', 'feast', 'fuck'].includes(key)
+                ? `App.openExplorationSubActionSheet('${key}','${actionSource}','${variantPresentation}')`
                 : defaultSubAction
                 ? `App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')`
                 : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
@@ -98,34 +99,42 @@ const YAW_MARKED_TARGET_ACTIONS = {
             : `${previewHtml}${actionRow}`;
     },
 
-    openSubActionSheet(app, action, source = 'target-bar') {
+    openSubActionSheet(app, action, source = 'target-bar', presentation = '') {
         const targets = app._getExplorationTargets();
-        if (targets.length === 0 || !app.SUB_ACTIONS[action]) return app.resolveExplorationTargetAction(action, null, source);
-        app.closeIntentMenu();
-        const actor = app._getExplorationActor();
-        const subActions = app._getAvailableSubActions(action, actor, targets[0]);
+        if (!app.SUB_ACTIONS[action]) return targets.length > 0 ? app.resolveExplorationTargetAction(action, null, source) : false;
+        const actors = app._getExplorationActors();
+        const groups = [];
+        const selfResolution = YAW_SUB_ACTIONS.resolve(app, action, { actors, scope: 'self', mode: 'adventure' });
+        if (selfResolution.variants.length > 0) {
+            groups.push({
+                scope: 'self',
+                label: app._label('variant.scope.self', 'Self'),
+                selectCall: `App.resolveExplorationSelfSubAction('${app._escapeJsString(action)}','{id}','${app._escapeJsString(source || 'actor-belt')}')`
+            });
+        }
+        if (targets.length > 0) {
+            groups.push({
+                scope: 'target',
+                label: app._label('variant.scope.targets', 'Targets'),
+                selectCall: `App.resolveExplorationTargetAction('${app._escapeJsString(action)}','{id}','${app._escapeJsString(source || 'target-bar')}')`
+            });
+        }
+        if (groups.length === 0) return false;
         const commandSource = String(source || 'target-bar').replace(/'/g, "\\'");
-        const title = `${app._uiLabel(action)} ${app._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`.trim();
-        const defaultSub = app._getDefaultSubAction(action);
-        const defaultLabel = app._getActionLabel(action, defaultSub);
-        const defaultOption = subActions.find(sub => sub.id === defaultSub);
-        const defaultDisabled = defaultOption && !defaultOption.available ? ' disabled' : '';
-        const surface = app._intentMenuSurface(source);
-        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-intent-source="${app._escapeHtml(commandSource)}" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${app._escapeHtml(action)}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent">`;
-        html += `<button class="action-btn primary" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${app._escapeHtml(defaultLabel)}" aria-label="${app._escapeHtml(defaultLabel)}"${defaultDisabled} onclick="App.resolveExplorationTargetAction('${action}','${String(defaultSub).replace(/'/g, "\\'")}','${commandSource}')">${app._escapeHtml(defaultLabel)}</button>`;
-        subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
-            const label = app._escapeHtml(sub.label);
-            const disabled = sub.available ? '' : ' disabled';
-            const settingHint = sub.available || !sub.setting ? '' : ` (${sub.setting})`;
-            html += `<button class="action-btn" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${sub.id}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${label}${app._escapeHtml(settingHint)}" aria-label="${label}${app._escapeHtml(settingHint)}"${disabled} onclick="App.resolveExplorationTargetAction('${action}','${String(sub.id).replace(/'/g, "\\'")}','${commandSource}')">${sub.icon || ''} ${label}</button>`;
+        const targetLabel = targets.length > 0
+            ? app._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })
+            : '';
+        const title = `${app._uiLabel(action)} ${targetLabel}`.trim();
+        return YAW_INTENT_MENU.openVariantSheet(app, {
+            action,
+            actors,
+            targets,
+            groups,
+            source,
+            presentation: presentation || undefined,
+            title,
+            selectCall: `App.resolveExplorationTargetAction('${action}','{id}','${commandSource}')`
         });
-        const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
-        html += `<button class="action-btn" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
-        html += '</div></div>';
-        document.body.insertAdjacentHTML('beforeend', html);
-        const menu = document.getElementById(surface.id);
-        app._activateFocusTrap(menu, { close: () => app.closeIntentMenu() });
-        app._activateOutsideContextDismiss(menu);
     }
 };
 

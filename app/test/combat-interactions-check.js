@@ -3065,13 +3065,22 @@ async function runMobileSelectionAndCombatFlow(page) {
     return {
       feedSelection: Boolean(App.feedSelection?.active),
       controls: document.querySelector('#mobile-combat-toolbelt .mobile-combat-phase-controls')?.innerText || '',
-      cancelVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[onclick*="cancelTargetSelection"]'))
+      backVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="back-variant"]'))
     };
   });
   assert.strictEqual(state.feedSelection, true, 'Mobile Feed test should enter feed selection state');
-  assert(state.controls.includes('Cancel Feed'), 'Mobile Feed selection should expose Cancel Feed');
-  assert.strictEqual(state.cancelVisible, true, 'Mobile Feed selection should have a visible cancel');
-  await page.locator(`#mobile-combat-toolbelt button[onclick*="cancelTargetSelection"]`).first().click();
+  assert(state.controls.includes('Back'), 'Mobile Feed selection should expose Back');
+  assert.strictEqual(state.backVisible, true, 'Mobile Feed selection should have a visible Back control');
+  await page.locator(`#mobile-combat-toolbelt button[data-command-control="back-variant"]`).first().click();
+  state = await page.evaluate(() => ({
+    feedSelection: App.feedSelection,
+    targetAction: App.targetSelection?.action || null,
+    targetId: App.combatTargetId
+  }));
+  assert.strictEqual(state.feedSelection, null, 'Mobile variant Back should close the variant picker');
+  assert.strictEqual(state.targetAction, 'feed', 'Mobile variant Back should restore Feed targeting');
+  assert.strictEqual(state.targetId, null, 'Mobile variant Back should preserve the absence of a prior marked target');
+  await page.locator(`#mobile-combat-toolbelt button[data-command-control="cancel-targeting"]`).first().click();
 
   await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
   const mobilePick = page.locator('#mobile-creature-strip button[data-command-control="mark-combat-target"]').first();
@@ -4152,8 +4161,8 @@ async function runCombatProgressInvariantFlow(page) {
       App._renderInteractionState({ exploration: false, toolbelt: true });
     });
     state = await readComposer();
-    assert.strictEqual(state.progress.phase, 'feed-options', `${viewport.name}: empty Feed options should remain a reversible phase`);
-    assert(state.controls.includes('cancel-feed'), `${viewport.name}: empty Feed options should expose a visible cancel exit`);
+    assert.strictEqual(state.progress.phase, 'action-variant-options', `${viewport.name}: empty action variants should remain a reversible phase`);
+    assert(state.controls.includes('back-variant'), `${viewport.name}: empty action variants should expose a visible Back exit`);
 
     await page.evaluate(() => {
       App.cancelTargetSelection();

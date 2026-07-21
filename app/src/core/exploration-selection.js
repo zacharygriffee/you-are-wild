@@ -244,6 +244,52 @@ const YAW_EXPLORATION_SELECTION = {
             clearTargets: true
         });
         return app._dispatchInteractionCommand(command);
+    },
+
+    resolveSelfSubAction(app, action, subAction, source = 'actor-belt') {
+        const def = app.SUB_ACTIONS[action]?.[subAction];
+        if (!def || !YAW_SUB_ACTIONS.supportsScope(def, 'self')) return false;
+        const actorState = this.selectedActorState(app);
+        if (!actorState.valid) return this.reportInvalidActor(app, action);
+        const eligible = actorState.actors.filter(actor => {
+            const resolution = YAW_SUB_ACTIONS.resolve(app, action, {
+                actors: [actor],
+                scope: 'self',
+                preferred: subAction,
+                mode: 'adventure'
+            });
+            return resolution.variants.some(variant => variant.id === subAction && variant.available);
+        });
+        if (eligible.length === 0) {
+            const text = app._label('variant.noSelfOptions', 'No self-directed {action} is available for the selected actor.', {
+                action: app._uiLabel(action).toLowerCase()
+            });
+            app.log.push({ text, type: 'discovery' });
+            app.renderLog();
+            app._renderInteractionState({ exploration: true, toolbelt: false });
+            return false;
+        }
+        app.closeIntentMenu?.();
+        app.lastIntentCommand = {
+            mode: 'adventure',
+            actorIds: eligible.map(actor => actor.id || actor.name),
+            targetIds: eligible.map(actor => actor.id || actor.name),
+            targetType: 'self',
+            action,
+            subAction,
+            source,
+            timing: 'immediate',
+            scope: 'self'
+        };
+        let resolved = false;
+        for (const actor of eligible) {
+            resolved = app.outsideActionOnTarget(action, actor, actor, {
+                subAction,
+                source,
+                allowPartySacrifice: false
+            }) !== false || resolved;
+        }
+        return resolved;
     }
 };
 

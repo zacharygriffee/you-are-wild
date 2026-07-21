@@ -76,7 +76,8 @@ const YAW_COMBAT_RESOLUTION = {
                     advanceTurn: false,
                     suppressStory: true,
                     applyCost: false,
-                    multiEffect
+                    multiEffect,
+                    subAction: command.subAction || null
                 }) !== false;
                 if (targetResolved && app.lastCombatActionResult?.result) resultLines.push(app.lastCombatActionResult.result);
                 meaningfulAttempt = targetResolved || meaningfulAttempt;
@@ -291,7 +292,7 @@ const YAW_COMBAT_RESOLUTION = {
                 break;
             }
             case 'feast': {
-                const subId = app._getDefaultSubAction('feast');
+                const subId = options.subAction || app._getDefaultSubAction('feast');
                 result = app._doSubAction('feast', subId, actor, target, actorName, actorVerb);
                 app._emitSubAction('feast', subId, actor, target, result);
                 break;

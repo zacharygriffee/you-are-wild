@@ -156,6 +156,12 @@
             _getAvailableSubActions(action, actor, target) {
                 return YAW_SUB_ACTIONS.available(this, action, actor, target);
             },
+            _resolveActionVariants(action, context = {}) {
+                return YAW_SUB_ACTIONS.resolve(this, action, context);
+            },
+            _assessFeastAttempt(actor, target, options = {}) {
+                return YAW_SUB_ACTIONS.feastAttemptAssessment(this, actor, target, options);
+            },
             _isSubActionAvailable(def, actor, target, holder = []) {
                 return YAW_SUB_ACTIONS.isAvailable(this, def, actor, target, holder);
             },
@@ -2691,10 +2697,13 @@
                             result = this._label('group.feast.selfBlocked', '{target} cannot eat themself. Select another party member as the target.', { target: target.name });
                             break;
                         }
-                        const targetWasParty = this.party.includes(target);
-                        const canEat = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
-                        if (!canEat) { result = `${target.name} is too strong or too big to consume!`; break; }
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
+                        const targetWasParty = this.party.includes(target);
+                        const attempt = this._assessFeastAttempt(actor, target);
+                        if (!attempt.succeeds) {
+                            result = this._label('feast.attempt.resisted', '{actor} tries to eat {target}, but {target} resists.', { actor: actorName, target: target.name });
+                            break;
+                        }
                         this._containTargetIn(actor, target, 'stomach');
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 20);
                         actor.Feas += 1;
@@ -2706,8 +2715,11 @@
                         break;
                     }
                     case 'feast.chew': {
-                        const canChew = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
-                        if (!canChew) { result = `${target.name} is too strong or too big to chew!`; break; }
+                        const attempt = this._assessFeastAttempt(actor, target, { requireCapacity: false });
+                        if (!attempt.succeeds) {
+                            result = this._label('feast.attempt.chewResisted', '{actor} tries to break down {target}, but {target} resists.', { actor: actorName, target: target.name });
+                            break;
+                        }
                         this._applyVitalDamage(target, target.MPun || target.CPun || 1, { source: 'chew', terminal: false });
                         target.state = 'depleted';
                         target.digestionState = 'depleted';
@@ -2721,9 +2733,12 @@
                     }
                     case 'feast.cockVore': {
                         if (!actor.parts || actor.parts !== 'cock') { result = `${actorName} lack${actorVerb} the required option for that.`; break; }
-                        const canCV = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
-                        if (!canCV) { result = `${target.name} is too strong or too big!`; break; }
                         if (!this._canFitPrey(actor, target, 'balls')) { result = this._capacityFailureMessage(actor, target, 'balls'); break; }
+                        const attempt = this._assessFeastAttempt(actor, target, { container: 'balls' });
+                        if (!attempt.succeeds) {
+                            result = this._label('feast.attempt.captureResisted', '{actor} tries to capture {target}, but {target} breaks free.', { actor: actorName, target: target.name });
+                            break;
+                        }
                         this._containTargetIn(actor, target, 'balls', { inCock: true });
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 15);
                         actor.cum = (actor.cum || 0) + 1;
@@ -2733,9 +2748,12 @@
                     }
                     case 'feast.unbirth': {
                         if (!actor.parts || actor.parts !== 'clit') { result = `${actorName} lack${actorVerb} the required option for that.`; break; }
-                        const canUB = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
-                        if (!canUB) { result = `${target.name} is too strong or too big!`; break; }
                         if (!this._canFitPrey(actor, target, 'womb')) { result = this._capacityFailureMessage(actor, target, 'womb'); break; }
+                        const attempt = this._assessFeastAttempt(actor, target, { container: 'womb' });
+                        if (!attempt.succeeds) {
+                            result = this._label('feast.attempt.engulfResisted', '{actor} tries to engulf {target}, but {target} breaks free.', { actor: actorName, target: target.name });
+                            break;
+                        }
                         this._containTargetIn(actor, target, 'womb', { inWomb: true });
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 15);
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
@@ -2897,7 +2915,21 @@
                         break;
                     }
                     default: {
-                        result = `[Sub-action ${action}.${subId} not yet implemented]`;
+                        if (typeof subDef.execute === 'function') {
+                            try {
+                                const customResult = subDef.execute(actor, target, {
+                                    app: this, action, subAction: subId, actorName, actorVerb
+                                });
+                                result = typeof customResult === 'string'
+                                    ? customResult
+                                    : (customResult?.summary || this._label('variant.executed', '{variant} completed.', { variant: this._getActionLabel(action, subId) }));
+                            } catch (error) {
+                                console.error(`Action variant failed (${action}.${subId}):`, error);
+                                result = this._label('variant.executionFailed', '{variant} could not be completed.', { variant: this._getActionLabel(action, subId) });
+                            }
+                        } else {
+                            result = `[Sub-action ${action}.${subId} not yet implemented]`;
+                        }
                         break;
                     }
                 }
@@ -2930,18 +2962,7 @@
                 return YAW_UNIT_CONTAINMENT.registerContainerProfile(this, profile);
             },
             registerSubAction(action, subId, config) {
-                if (!this.SUB_ACTIONS[action]) this.SUB_ACTIONS[action] = {};
-                this.SUB_ACTIONS[action][subId] = {
-                    label: config.label || subId,
-                    sfwLabel: config.sfwLabel || config.label || subId,
-                    icon: config.icon || '❓',
-                    validate: config.validate || (() => true),
-                    execute: config.execute || (() => {}),
-                    setting: config.setting || null
-                };
-                if (config.defaultForAction) {
-                    this.defaultSubActions[action] = subId;
-                }
+                return YAW_SUB_ACTIONS.register(this, action, subId, config, { owner: 'legacy-runtime', trustedLegacy: true });
             },
             _emitSubAction(action, subId, actor, target, result) {
                 if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM.executeHook) {
@@ -3211,12 +3232,24 @@
                 return YAW_MARKED_TARGET_ACTIONS.render(this, source);
             },
 
-            openExplorationTargetSubActionSheet(action, source = 'target-bar') {
-                return YAW_MARKED_TARGET_ACTIONS.openSubActionSheet(this, action, source);
+            _renderExplorationSelfActions(source = 'actor-belt') {
+                return YAW_CENTER_CONTEXT.renderSelfActions(this, source);
+            },
+
+            openExplorationTargetSubActionSheet(action, source = 'target-bar', presentation = '') {
+                return YAW_MARKED_TARGET_ACTIONS.openSubActionSheet(this, action, source, presentation);
+            },
+
+            openExplorationSubActionSheet(action, source = 'target-bar', presentation = '') {
+                return YAW_MARKED_TARGET_ACTIONS.openSubActionSheet(this, action, source, presentation);
             },
 
             resolveExplorationTargetAction(action, subAction = null, source = 'target-bar') {
                 return YAW_EXPLORATION_SELECTION.resolveTargetAction(this, action, subAction, source);
+            },
+
+            resolveExplorationSelfSubAction(action, subAction, source = 'actor-belt') {
+                return YAW_EXPLORATION_SELECTION.resolveSelfSubAction(this, action, subAction, source);
             },
 
             _getRecruitScore(actor, target) {
@@ -3313,17 +3346,21 @@
                     const helperBonus = candidates
                         .filter(helper => helper !== actor)
                         .reduce((sum, helper) => sum + Math.floor((helper.Feas || 10) * 0.5), 0);
-                    const canOverpower = this.cheats.canEatAnything || (actor.size >= target.size - 2 && (actor.Feas || 10) + helperBonus + 5 > target.Flee);
+                    const assessment = this._assessFeastAttempt(actor, target, { helperBonus });
                     return {
                         actor,
-                        canOverpower,
-                        canFit: this._canFitPrey(actor, target, 'stomach')
+                        assessment,
+                        canOverpower: assessment.succeeds,
+                        canFit: assessment.canAttempt
                     };
-                });
+                }).sort((left, right) => Number(right.canOverpower) - Number(left.canOverpower)
+                    || (right.assessment.actorScore || 0) - (left.assessment.actorScore || 0));
+                const primaryEntry = assessed.find(entry => entry.canFit) || null;
                 return {
-                    primary: assessed.find(entry => entry.canOverpower && entry.canFit)?.actor || null,
-                    canOverpower: assessed.some(entry => entry.canOverpower),
-                    capacityActor: assessed.find(entry => entry.canOverpower)?.actor || candidates[0] || null
+                    primary: primaryEntry?.actor || null,
+                    canOverpower: Boolean(primaryEntry?.canOverpower),
+                    assessment: primaryEntry?.assessment || null,
+                    capacityActor: primaryEntry?.actor || candidates[0] || null
                 };
             },
 
@@ -3818,17 +3855,17 @@
                             break;
                         }
                         const selection = this._selectGroupFeastPrimary(livingActors, target);
-                        if (!selection.canOverpower) {
-                            result = this._label('group.feast.tooStrong', '{target} is too large or strong for {actors} to eat.', { target: target.name, actors: names });
-                            break;
-                        }
                         const primary = selection.primary;
-                        const helpers = livingActors.filter(actor => actor !== primary);
                         const capacityActor = selection.capacityActor || livingActors[0];
-                        if (!this._canFitPrey(primary, target, 'stomach')) {
+                        if (!primary) {
                             result = this._capacityFailureMessage(capacityActor, target, 'stomach');
                             break;
                         }
+                        if (!selection.canOverpower) {
+                            result = this._label('group.feast.resisted', '{actors} try to eat {target}, but {target} resists the group.', { target: target.name, actors: names });
+                            break;
+                        }
+                        const helpers = livingActors.filter(actor => actor !== primary);
                         this._containTargetIn(primary, target, 'stomach');
                         this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                         result = this._label('group.feast.swallow', '{helpers} help {primary} eat {target}.', {
@@ -4021,12 +4058,12 @@
                             affected = false;
                             break;
                         }
-                        const canEatOutside = this.cheats.canEatAnything || (actor.size >= target.size - 2 && actor.Feas + 5 > target.Flee);
-                        if (canEatOutside) {
-                            if (!this._canFitPrey(actor, target, 'stomach')) {
-                                result = this._capacityFailureMessage(actor, target, 'stomach');
-                                break;
-                            }
+                        if (!this._canFitPrey(actor, target, 'stomach')) {
+                            result = this._capacityFailureMessage(actor, target, 'stomach');
+                            break;
+                        }
+                        const attempt = this._assessFeastAttempt(actor, target);
+                        if (attempt.succeeds) {
                             this._containTargetIn(actor, target, 'stomach');
                             this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                             const owner = actor === this.player || actor.name === this.player?.name ? this._label('party.you', 'You') : actor.name;
@@ -4036,8 +4073,7 @@
                                 owner
                             });
                         } else {
-                            result = this._label('explore.feast.tooStrong', '{target} is too large or strong to eat.', { target: target.name });
-                            affected = false;
+                            result = this._label('feast.attempt.resisted', '{actor} tries to eat {target}, but {target} resists.', { actor: actorName, target: target.name });
                         }
                         break;
                     }
@@ -4353,8 +4389,17 @@
             executeFeedAction(actor = this.activeActor || this._currentCombatActor() || this.player, target = null) {
                 return YAW_COMBAT_FEED.executeAction(this, actor, target);
             },
+            executeActionVariant(action, actor = this.activeActor || this._currentCombatActor() || this.player, target = null) {
+                return YAW_COMBAT_FEED.executeVariantAction(this, action, actor, target);
+            },
             _executeFeedSubAction(subId, actor, target = null) {
-                return YAW_COMBAT_FEED.executeSubAction(this, subId, actor, target || this.feedSelection?.target || null);
+                return YAW_COMBAT_FEED.executeSubAction(this, subId, actor, target || this.feedSelection?.target || null, this.feedSelection?.action || 'feed');
+            },
+            _executeActionVariant(subId, actor, target = null) {
+                return YAW_COMBAT_FEED.executeSubAction(this, subId, actor, target || this.feedSelection?.target || null, this.feedSelection?.action || 'feed');
+            },
+            cancelActionVariantSelection() {
+                return YAW_COMBAT_FEED.cancelVariantSelection(this);
             },
             _resolveCombatFeedCommand(command) {
                 return YAW_COMBAT_FEED.resolveCommand(this, command);

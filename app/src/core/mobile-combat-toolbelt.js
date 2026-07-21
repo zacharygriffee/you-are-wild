@@ -17,7 +17,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
             return app._label('combat.sync.selectTarget', 'Select sync target');
         }
         if (app.feedSelection?.active) {
-            return app._label('feed.optionsTitle', 'Feed Options');
+            return app._label('variant.optionsTitle', '{action} Options', { action: app._uiLabel(app.feedSelection.action || 'feed') });
         }
         if (app.combatPlanSelection?.active) {
             return app._label('mobile.combat.markTargets', 'Mark target(s) for {action}.', { action: app._combatPendingIntent?.() ? app._uiLabel(app._combatPendingIntent()) : app._label('ui.chooseAction', 'Choose') });
@@ -92,14 +92,15 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
             return row(app._label('combat.sync.selectTarget', 'Select sync target'), 'sync-targeting', button(cancelSync, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', cancelSync, 'data-command-surface="sync-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-sync" data-command-slot="exit"'));
         }
         if (app.feedSelection?.active) {
-            const feedLabel = app._label('feed.optionsTitle', 'Feed Options');
-            const buttons = (app.feedSelection.subIds || []).map(subId => {
-                const subDef = app.SUB_ACTIONS.feed?.[subId] || {};
-                const subLabel = app._getActionLabel('feed', subId);
-                return button(`${subDef.icon || ''} ${subLabel}`.trim(), `event.stopPropagation();App._executeFeedSubAction('${app._escapeJsString(subId)}', App.activeActor || App._currentCombatActor() || App.player)`, 'action-btn', subLabel, `data-command-surface="feed-options" data-command-mode="combat" data-command-intent="feed:${app._escapeHtml(subId)}" data-command-grammar="actor-target-intent" data-command-slot="intent"`);
+            const action = app.feedSelection.action || 'feed';
+            const feedLabel = app._label('variant.optionsTitle', '{action} Options', { action: app._uiLabel(action) });
+            const resolution = { action, variants: app.feedSelection.variants || YAW_SUB_ACTIONS.resolve(app, action, { actors: [actor], targets: [app.feedSelection.target] }).variants };
+            const options = YAW_INTENT_MENU.variantOptionsHtml(app, resolution, {
+                mode: 'combat',
+                selectCall: `event.stopPropagation();App._executeActionVariant('{id}', App.activeActor || App._currentCombatActor() || App.player)`
             });
-            buttons.push(button(app._label('feed.cancel', 'Cancel Feed'), 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', app._label('feed.cancel', 'Cancel Feed'), 'data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-feed" data-command-slot="exit"'));
-            return row(feedLabel, 'feed-options', buttons.join(''));
+            const back = button(app._label('ui.back', 'Back'), 'event.stopPropagation();App.cancelActionVariantSelection()', 'action-btn', app._label('ui.back', 'Back'), 'data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="back-variant" data-command-slot="exit"');
+            return row(feedLabel, 'action-variant-options', options + back);
         }
         if (app.targetSelection?.source === 'combat') {
             const actionLabel = app._uiLabel(app.targetSelection.action || 'action');

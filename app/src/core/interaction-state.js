@@ -103,16 +103,17 @@ const YAW_INTERACTION_STATE = {
 
         if (app.feedSelection?.active) {
             const feedActor = this.actorById(app, app.feedSelection.actorId) || actor;
+            const variantAction = app.feedSelection.action || 'feed';
             return app._buildInteractionPlan({
                 mode: 'combat',
                 actors: [feedActor].filter(Boolean),
                 targets: [app.feedSelection.target].filter(Boolean),
-                action: 'feed',
-                source: 'feed-selection',
+                action: variantAction,
+                source: 'action-variant-selection',
                 targetType: app.feedSelection.targetType || 'party',
                 timing: 'current-turn',
                 constraints: { requireCurrentTurn: true, hostileOnly: false, checkReach: false, checkRows: false },
-                metadata: { phase: 'sub-action', subIds: app.feedSelection.subIds || [] }
+                metadata: { phase: 'action-variant', subIds: app.feedSelection.subIds || [] }
             });
         }
 
@@ -280,8 +281,8 @@ const YAW_INTERACTION_STATE = {
                 }
             }
         } else if (app.feedSelection?.active) {
-            intentId = 'feed';
-            intentText = app._label('feed.optionsTitle', 'Feed Options');
+            intentId = app.feedSelection.action || 'feed';
+            intentText = app._label('variant.optionsTitle', '{action} Options', { action: app._uiLabel(intentId) });
         } else if (app.targetSelection?.source === 'combat') {
             intentId = app.targetSelection.action || 'choose';
             intentText = this.actionLabel(app, app.targetSelection.action, app._label('ui.chooseAction', 'Choose'));

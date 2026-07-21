@@ -29,17 +29,15 @@ const YAW_PANEL_INTERACTIONS = {
     },
 
     feed(app, actor, label) {
-        const clearLabel = app._escapeHtml(app._label('feed.cancel', 'Cancel Feed'));
-        const title = app._escapeHtml(app._label('feed.optionsTitle', 'Feed Options'));
-        const buttons = (app.feedSelection.subIds || []).map(subId => {
-            const subDef = app.SUB_ACTIONS.feed?.[subId] || {};
-            const subLabel = app._escapeHtml(app._getActionLabel('feed', subId));
-            const intent = app._escapeHtml(`feed:${subId}`);
-            const safeSubId = app._escapeJsString(subId);
-            const icon = subDef.icon || '';
-            return `<button class="action-btn" data-command-surface="feed-options" data-command-mode="combat" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${subLabel}" aria-label="${subLabel}" onclick="App._executeFeedSubAction('${safeSubId}', App.activeActor || App._currentCombatActor() || App.player)">${icon} ${subLabel}</button>`;
-        }).join('');
-        return `<div class="panel-interaction-tray combat-feed-tray" data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent" role="region" aria-label="${title || label}"><div class="target-action-row" data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${title || label}">${buttons}<button class="action-btn" data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-feed" data-command-slot="exit" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
+        const action = app.feedSelection.action || 'feed';
+        const backLabel = app._escapeHtml(app._label('ui.back', 'Back'));
+        const title = app._escapeHtml(app._label('variant.optionsTitle', '{action} Options', { action: app._uiLabel(action) }));
+        const resolution = { action, variants: app.feedSelection.variants || YAW_SUB_ACTIONS.resolve(app, action, { actors: [actor], targets: [app.feedSelection.target] }).variants };
+        const buttons = YAW_INTENT_MENU.variantOptionsHtml(app, resolution, {
+            mode: 'combat',
+            selectCall: `App._executeActionVariant('{id}', App.activeActor || App._currentCombatActor() || App.player)`
+        });
+        return `<div class="panel-interaction-tray combat-feed-tray" data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent" role="region" aria-label="${title || label}"><div class="target-action-row" data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${title || label}">${buttons}<button class="action-btn" data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="back-variant" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="App.cancelActionVariantSelection()">${backLabel}</button></div></div>`;
     },
 
     sync(app, actor, label) {

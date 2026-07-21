@@ -577,7 +577,7 @@ function loadModuleSystemForTest(options = {}) {
   const assetBundleV1 = options.assetBundleV1 || loadMediaSystemForTest().YAW_ASSET_BUNDLE_V1;
   const tilesetPackV1 = options.tilesetPackV1 || loadMediaSystemForTest().YAW_TILESET_PACK_V1;
   const tilesetRuntime = options.tilesetRuntime;
-  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime);
+  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SUB_ACTIONS', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, options.subActions);
   MODULE_SYSTEM._testApp = App;
   return MODULE_SYSTEM;
 }
@@ -4198,18 +4198,16 @@ test('Panel interaction tray helper module is registered before app code', () =>
   assertContains(combatActionsContent, 'app._renderCombatPanelTray?.()', 'Desktop combat composer should reuse combat transient trays');
   assertContains(panelInteractionsContent, 'combat(app)', 'Panel interaction helper should own combat tray rendering');
   assertContains(panelInteractionsContent, 'App.confirmSyncParticipants', 'Combat sync participant tray should expose confirm through the composer');
-  assertContains(panelInteractionsContent, "app._label('feed.cancel', 'Cancel Feed')", 'Desktop feed tray should expose an explicit Cancel Feed exit');
+  assertContains(panelInteractionsContent, "app._label('ui.back', 'Back')", 'Desktop variant tray should expose an explicit Back exit');
   assertContains(panelInteractionsContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Desktop sync trays should expose an explicit Cancel Sync exit');
   assertContains(panelInteractionsContent, 'data-command-grammar="actor-target-intent"', 'Combat transient trays should identify the shared actor-target-intent grammar');
-  assertContains(panelInteractionsContent, 'class="panel-interaction-tray combat-feed-tray" data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Feed tray root should identify feed composer ownership');
+  assertContains(panelInteractionsContent, 'class="panel-interaction-tray combat-feed-tray" data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Variant tray root should identify shared composer ownership');
   assertContains(panelInteractionsContent, 'class="panel-interaction-tray combat-sync-tray" data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync choose tray root should identify sync composer ownership');
   assertContains(panelInteractionsContent, 'class="panel-interaction-tray combat-sync-tray" data-command-surface="${surface}" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync phase tray root should identify the active sync composer surface');
   assertContains(combatActionsContent, 'class="panel-interaction-tray combat-target-tray" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Combat target tray root should identify target-pick composer ownership');
   assertContains(combatActionsContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit"', 'Combat target cancel should identify grammar and exit slot on the button');
-  assertContains(panelInteractionsContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-intent="${intent}"', 'Feed option buttons should identify the feed composer surface');
-  assertContains(panelInteractionsContent, 'data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Feed option buttons should identify the intent slot');
-  assertContains(panelInteractionsContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-feed" data-command-slot="exit"', 'Feed cancel should identify grammar and exit slot on the button');
-  assertContains(panelInteractionsContent, 'data-command-control="cancel-feed" data-command-slot="exit"', 'Feed cancel should identify the exit slot');
+  assertContains(panelInteractionsContent, 'YAW_INTENT_MENU.variantOptionsHtml', 'Combat variant tray should reuse the shared option renderer');
+  assertContains(panelInteractionsContent, 'data-command-control="back-variant" data-command-slot="exit"', 'Variant Back should identify the exit slot');
   assertContains(panelInteractionsContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-intent="${intent}"', 'Sync intent buttons should identify the sync composer surface');
   assertContains(panelInteractionsContent, 'data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Sync intent buttons should identify the intent slot');
   assertContains(panelInteractionsContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-sync" data-command-slot="exit"', 'Sync choose cancel should identify grammar and exit slot on the button');
@@ -4268,17 +4266,15 @@ test('Marked target action helper module is registered before app code', () => {
   assertContains(markedTargetActionsContent, 'render(app, source = \'sheet\')', 'Marked target helper should own selected-target action rendering');
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked target helper should emit composer-tray command metadata for contextual utilities');
   assertContains(markedTargetActionsContent, "['desktop', 'desktop-target', 'composer-tray', 'panel-tray', 'mobile-target'].includes(source)", 'Marked target helper should normalize rendered tray aliases to the composer source');
-  assertContains(markedTargetActionsContent, 'openSubActionSheet(app, action, source = \'target-bar\')', 'Marked target helper should own selected-target sub-action sheets');
+  assertContains(markedTargetActionsContent, 'openSubActionSheet(app, action, source = \'target-bar\', presentation = \'\')', 'Marked target helper should own selected-target sub-action sheets and presentation routing');
   assertContains(markedTargetActionsContent, "App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')", 'Marked target buttons should dispatch through the shared exploration resolver');
   assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}"', 'Marked target intent buttons should identify the target composer surface');
   assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-control="clear-targets"', 'Marked target clear should identify the target composer surface');
   assertContains(markedTargetActionsContent, 'data-command-control="clear-targets" data-command-slot="exit"', 'Marked target clear should identify the exit slot');
-  assertContains(markedTargetActionsContent, 'data-intent-source="${app._escapeHtml(commandSource)}"', 'Marked target sub-action sheet should preserve its command source');
-  assertContains(markedTargetActionsContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}"', 'Marked target sub-action buttons should identify the sub-action composer surface');
-  assertContains(markedTargetActionsContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Marked target sub-action cancel should identify the sub-action composer surface');
-  assertContains(markedTargetActionsContent, 'data-command-control="cancel-sub-action" data-command-slot="exit"', 'Marked target sub-action cancel should identify the exit slot');
+  assertContains(markedTargetActionsContent, 'YAW_INTENT_MENU.openVariantSheet', 'Marked target variants should use the shared accessible surface');
+  assertContains(markedTargetActionsContent, "selectCall: `App.resolveExplorationTargetAction('${action}','{id}','${commandSource}')`", 'Marked target variants should preserve their command source');
   assertContains(appContent, 'YAW_MARKED_TARGET_ACTIONS.render(this, source)', 'App marked-target action wrapper should delegate rendering to the helper');
-  assertContains(appContent, 'YAW_MARKED_TARGET_ACTIONS.openSubActionSheet(this, action, source)', 'App marked-target sub-action wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MARKED_TARGET_ACTIONS.openSubActionSheet(this, action, source, presentation)', 'App marked-target sub-action wrapper should delegate presentation routing to the helper');
 });
 
 test('Recruitment flow helper module is registered before app code', () => {
@@ -4335,7 +4331,7 @@ test('Interaction state helper module is registered before app code', () => {
   assertContains(interactionStateContent, 'currentPlan(app)', 'Interaction state helper should expose current selection state as an InteractionPlan');
   assertContains(interactionStateContent, "source: 'sync-selection'", 'Sync transient state should be represented as a plan source');
   assertContains(interactionStateContent, "source: 'combat-targeting'", 'Combat target-pick state should be represented as a plan source');
-  assertContains(interactionStateContent, "source: 'feed-selection'", 'Feed transient state should be represented as a plan source');
+  assertContains(interactionStateContent, "source: 'action-variant-selection'", 'Contextual variant state should be represented as a shared plan source');
   assertContains(interactionStateContent, 'render(app, options = {})', 'Interaction state helper should own panel/toolbelt refresh orchestration');
   assertContains(interactionStateContent, 'app.renderDesktopCombatComposer?.', 'Interaction state refresh should keep the desktop combat composer in sync');
   assertContains(interactionStateContent, 'renderSelectionSentence(app)', 'Interaction state helper should own actor-target-intent sentence rendering');
@@ -4727,15 +4723,15 @@ test('Combat feed helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-feed.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat feed helper should load before app.js');
   assertContains(combatFeedContent, 'const YAW_COMBAT_FEED = {', 'Combat feed helper should expose the feed service');
   assertContains(combatFeedContent, 'executeAction(app, actor = app.activeActor || app._currentCombatActor() || app.player, target = null)', 'Combat feed helper should own target-first feed intent execution');
-  assertContains(combatFeedContent, 'executeSubAction(app, subId, actor, target = app.feedSelection?.target || null)', 'Combat feed helper should own target-bound feed sub-action execution');
+  assertContains(combatFeedContent, "executeSubAction(app, subId, actor, target = app.feedSelection?.target || null, action = app.feedSelection?.action || 'feed')", 'Combat variant helper should own target-bound Feed and Feast execution');
   assertContains(combatFeedContent, 'resolveCommand(app, command)', 'Combat feed helper should resolve plan-backed feed sub-action commands');
-  assertContains(combatFeedContent, 'app.feedSelection = {', 'Combat feed helper should own feed panel selection state');
+  assertContains(combatFeedContent, 'app.feedSelection = selection', 'Combat variant helper should retain the compatibility selection state');
   assertContains(combatFeedContent, 'app._renderInteractionState({ exploration: false, toolbelt: true })', 'Combat feed helper should render feed options through panel/toolbelt state');
   assertNotContains(combatFeedContent, 'Math.random', 'Combat feed helper should not use ambient randomness');
   assertNotContains(combatFeedContent, 'random enemy', 'Combat feed helper should not retain stale random-target comments');
   assertNotContains(combatFeedContent, 'simplified', 'Combat feed helper should not retain stale simplified-target comments');
   assertContains(appContent, 'YAW_COMBAT_FEED.executeAction(this, actor, target)', 'App feed action wrapper should delegate the selected target to combat feed');
-  assertContains(appContent, 'YAW_COMBAT_FEED.executeSubAction(this, subId, actor, target || this.feedSelection?.target || null)', 'App feed sub-action wrapper should preserve the selected feed target');
+  assertContains(appContent, "YAW_COMBAT_FEED.executeSubAction(this, subId, actor, target || this.feedSelection?.target || null, this.feedSelection?.action || 'feed')", 'App compatibility wrapper should preserve the selected variant action and target');
   assertContains(appContent, 'YAW_COMBAT_FEED.resolveCommand(this, command)', 'App feed command wrapper should delegate plan-backed feed resolution');
 });
 
@@ -4764,17 +4760,14 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, 'intentButtons(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own shared combat intent controls');
   assertContains(mobileCombatToolbeltContent, 'phaseControls(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt should own transient combat phase controls');
   assertContains(mobileCombatToolbeltContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Mobile Sync states should expose a visible Cancel Sync control');
-  assertContains(mobileCombatToolbeltContent, "app._label('feed.cancel', 'Cancel Feed')", 'Mobile Feed states should expose a visible Cancel Feed control');
+  assertContains(mobileCombatToolbeltContent, "app._label('ui.back', 'Back')", 'Mobile variant states should expose a visible Back control');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-intent="${app._escapeHtml(type)}"', 'Mobile Sync action buttons should identify the sync intent surface');
   assertContains(mobileCombatToolbeltContent, 'data-command-mode="combat" data-command-intent="${app._escapeHtml(type)}"', 'Mobile Sync action buttons should identify combat command mode with stable sync intent ids');
   assertContains(mobileCombatToolbeltContent, 'data-command-mode="combat" data-command-intent="${app._escapeHtml(type)}" data-command-grammar="actor-target-intent"', 'Mobile Sync action buttons should identify the shared command grammar on the intent itself');
   assertContains(mobileCombatToolbeltContent, 'data-command-intent="${app._escapeHtml(type)}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Mobile Sync action buttons should identify the intent slot');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-sync" data-command-slot="exit"', 'Mobile Sync choose cancel should identify grammar and exit slot on the button');
-  assertContains(mobileCombatToolbeltContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-intent="feed:${app._escapeHtml(subId)}"', 'Mobile Feed sub-action buttons should identify the feed option surface');
-  assertContains(mobileCombatToolbeltContent, 'data-command-mode="combat" data-command-intent="feed:${app._escapeHtml(subId)}"', 'Mobile Feed sub-action buttons should identify combat command mode with stable sub-action ids');
-  assertContains(mobileCombatToolbeltContent, 'data-command-mode="combat" data-command-intent="feed:${app._escapeHtml(subId)}" data-command-grammar="actor-target-intent"', 'Mobile Feed sub-action buttons should identify the shared command grammar on the intent itself');
-  assertContains(mobileCombatToolbeltContent, 'data-command-intent="feed:${app._escapeHtml(subId)}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Mobile Feed sub-action buttons should identify the intent slot');
-  assertContains(mobileCombatToolbeltContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-feed" data-command-slot="exit"', 'Mobile Feed cancel should identify grammar and exit slot on the button');
+  assertContains(mobileCombatToolbeltContent, 'YAW_INTENT_MENU.variantOptionsHtml', 'Mobile Feed and Feast should reuse the shared variant option renderer');
+  assertContains(mobileCombatToolbeltContent, 'data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="back-variant" data-command-slot="exit"', 'Mobile variant Back should identify grammar and exit slot');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-sync-participants" data-command-slot="actor"', 'Mobile Sync confirm should identify grammar and actor slot on the button');
   assertContains(mobileCombatToolbeltContent, 'data-command-control="confirm-sync-participants" data-command-slot="actor"', 'Mobile Sync confirm should identify the actor slot after participant selection');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-sync" data-command-slot="exit"', 'Mobile Sync participant cancel should identify grammar and exit slot on the button');
@@ -5180,10 +5173,9 @@ test('Intent menu helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_INTENT_MENU.show(this, type, targetRef, source, presentation, anchorEvent)', 'App intent menu renderer should delegate to the helper with optional anchoring');
   assertContains(appContent, 'YAW_INTENT_MENU.openSubActionSheet(this, type, targetRef, action, source, anchorEvent)', 'App intent sub-action sheet should delegate to the helper with optional anchoring');
   assertContains(appContent, 'YAW_INTENT_MENU.close(this)', 'App intent menu close lifecycle should delegate to the helper');
-  assertContains(intentMenuContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}"', 'Intent menu default sub-action should identify the sub-action composer surface');
-  assertContains(intentMenuContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${sub.id}`)}"', 'Intent menu alternate sub-actions should identify the sub-action composer surface');
-  assertContains(intentMenuContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Intent menu cancel should identify the sub-action composer surface');
-  assertContains(intentMenuContent, 'data-command-control="cancel-sub-action" data-command-slot="exit"', 'Intent menu cancel should identify the exit slot');
+  assertContains(intentMenuContent, 'variantOptionsHtml(app, resolution, context = {})', 'Intent menu should own the shared contextual variant renderer');
+  assertContains(intentMenuContent, 'data-command-surface="action-variant-options"', 'Intent menu variants should identify the shared variant surface');
+  assertContains(intentMenuContent, 'data-command-control="back-variant" data-command-slot="exit"', 'Intent menu Back should identify the exit slot');
 });
 
 test('Focus trap helper module is registered before app code', () => {
@@ -7853,6 +7845,12 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       preferences: { posture: 'mature', maxTier: 3, voreEnabled: true, explicitDescriptions: true, enabledCategories: [], gameplayVariants: {}, language: 'en' },
       locales: {
         en: {
+          'ui.back': 'Back',
+          'ui.log.time.justNow': 'just now',
+          'ui.log.time.turnAgo': '1 turn ago',
+          'ui.log.time.turnsAgo': '{count} turns ago',
+          'ui.log.combat': 'Combat',
+          'ui.log.discovery': 'Discovery',
           'action.fight': 'Fight', 'action.flirt': 'Talk', 'action.fuck': 'Play', 'action.feast': 'Eat', 'action.feed': 'Feed', 'action.flee': 'Flee', 'action.moveRow': 'Move Row', 'action.advance': 'Advance', 'action.retreat': 'Retreat', 'action.sync': 'Sync', 'action.skip': 'Skip', 'action.search': 'Search', 'action.rest': 'Rest', 'action.inventory': 'Items', 'action.interact': 'Interact', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge', 'action.scavenged': 'Scavenged',
           'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}', 'inventory.full': 'Inventory is full.', 'inventory.empty': 'Empty.', 'inventory.noItemsMatch': 'No items match the current filter.', 'inventory.titleWithCount': 'Inventory ({count}/{max})', 'inventory.equippedSection': 'Equipped', 'holdings.titleWithInventory': 'Holdings / Inventory ({count}/{max})', 'holdings.umbrella': 'Character / Holdings', 'holdings.tabs': 'Holdings sections', 'holdings.pack': 'Pack / Inventory', 'holdings.containers': 'Containers', 'holdings.ground': 'Here / Ground', 'inventory.equipped': 'Equipped {name}.', 'inventory.unequipped': 'Unequipped {name}.', 'inventory.noEquipment': 'No equipment', 'inventory.noBonus': 'No bonus', 'inventory.effect': 'Effect',
           'item.category': 'Category', 'item.category.all': 'All', 'item.category.consumable': 'Consumable', 'item.category.equipment': 'Equipment', 'item.category.valuable': 'Valuable', 'item.category.material': 'Material', 'item.category.misc': 'Misc', 'item.sort': 'Sort', 'item.sort.name': 'Name', 'item.sort.type': 'Type', 'item.sort.valueDesc': 'Value ↓', 'item.sort.valueAsc': 'Value ↑',
@@ -7870,6 +7868,12 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'target.actors': 'Actors', 'target.primaryActor': 'Primary', 'target.helpers': 'Helpers', 'target.targets': 'Targets', 'target.act': 'Actor', 'target.mark': 'Mark', 'target.pick': 'Pick', 'target.actorRole': 'Actor', 'target.targetRole': 'Target', 'target.markedRole': 'Marked', 'target.selectActorFor': 'Set {name} as actor', 'target.addActorFor': 'Add {name} as actor', 'target.removeActorFor': 'Remove {name} from actors', 'target.markFor': 'Mark {name} as target', 'target.removeTargetFor': 'Remove {name} from targets', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group {action} actions. Current selection has {actorCount} actors and {targetCount} targets.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.pairedActionDone': 'Paired {action} actions resolved: {pairs}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.intentControls': 'Target intent controls', 'target.clearSelected': 'Clear selected targets', 'explore.fight.hit': '{actor} hits {target} for {amount} punishment.', 'explore.fight.subdued': '{target} is subdued.', 'explore.fuck.success': '{actor} plays with {target}. Spirit rises to {current}/{max}.', 'explore.fuck.devoted': '{target} relaxes and becomes completely friendly.', 'explore.fuck.recover': '{target} needs a moment to catch their breath...', 'explore.fuck.resists': '{target} does not want to play.', 'explore.feast.swallow': '{actor} eats {target}. They are held in {owner} belly.', 'explore.feast.tooStrong': '{target} is too large or strong to eat.', 'explore.flirt.success': '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', 'explore.flirt.charmed': '{target} is convinced and becomes friendly!', 'explore.flirt.rebuff': '{target} rejects the conversation!', 'explore.feed.success': '{actor} feeds {target}, restoring {amount} punishment and sating their hunger.', 'explore.recruit.possible': '{target} may be willing to join the party.', 'group.feed.selfBlocked': '{name} cannot feed into themself yet.', 'group.feed.playerBlocked': '{name} cannot be handed off as prey right now.', 'group.feed.partyToConsumer': '{prey} is fed to {consumer} and settles in their belly.', 'group.feed.helpers': '{helpers} help feed {prey} to {target}.', 'group.feed.tend': '{actors} tend {target}, restoring {amount} punishment.', 'group.feed.tendTogether': '{actors} tend {target} together, restoring {amount} punishment.', 'group.feed.creature': '{actors} feed {target}, restoring {amount} punishment.', 'group.fight.roughCollapse': '{name} collapses from the rough play.', 'group.fight.pinned': 'They are pinned but not seriously hurt.', 'group.fight.sparTogether': '{actors} spar together, each taking {amount} punishment.', 'group.mutual.feed': '{actors} tend each other, restoring {amount} punishment where needed.', 'group.mutual.feastBlocked': '{actors} cannot eat themselves as a mutual group. Choose a primary target instead.', 'group.mutual.fight': '{actors} spar as a mutual group, each taking {amount} punishment.', 'group.mutual.social': '{actors} share {action} as a mutual group. Spirit rises for everyone involved.', 'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.', 'group.fight.collapses': '{target} collapses.', 'group.feast.noHelpers': '{target} cannot be reduced without helpers.', 'group.feast.split': '{actors} reduce {target} through vital damage.', 'group.feast.selfBlocked': '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', 'group.feast.tooStrong': '{target} is too large or strong for {actors} to eat.', 'group.feast.swallow': '{helpers} help {primary} eat {target}.', 'group.social.share': '{actors} share {action} with {target}. Spirit spreads through the group; {target} rises to {current}/{max}.', 'group.social.focus': '{actors} focus on {target}. Spirit rises to {current}/{max}.', 'group.social.resists': "{target} resists the group's attention."
         },
         es: {
+          'ui.back': 'Volver',
+          'ui.log.time.justNow': 'ahora mismo',
+          'ui.log.time.turnAgo': 'hace 1 turno',
+          'ui.log.time.turnsAgo': 'hace {count} turnos',
+          'ui.log.combat': 'Combate',
+          'ui.log.discovery': 'Descubrimiento',
           'action.fight': 'Luchar', 'action.flirt': 'Hablar', 'action.fuck': 'Jugar', 'action.feast': 'Comer', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.advance': 'Avanzar', 'action.retreat': 'Retirarse', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.search': 'Buscar', 'action.rest': 'Descansar', 'action.inventory': 'Objetos', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar', 'action.scavenged': 'Rebuscado',
           'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}', 'inventory.full': 'El inventario esta lleno.', 'inventory.empty': 'Vacio.', 'inventory.noItemsMatch': 'No hay articulos que coincidan con el filtro actual.', 'inventory.titleWithCount': 'Inventario ({count}/{max})', 'inventory.equippedSection': 'Equipado', 'holdings.titleWithInventory': 'Inventario / Pertenencias ({count}/{max})', 'holdings.umbrella': 'Personaje / Pertenencias', 'holdings.tabs': 'Secciones de pertenencias', 'holdings.pack': 'Mochila / Inventario', 'holdings.containers': 'Contenedores', 'holdings.ground': 'Aqui / Suelo', 'inventory.equipped': 'Equipaste {name}.', 'inventory.unequipped': 'Desequipaste {name}.', 'inventory.noEquipment': 'Sin equipo', 'inventory.noBonus': 'Sin bonificacion', 'inventory.effect': 'Efecto',
           'item.category': 'Categoria', 'item.category.all': 'Todos', 'item.category.consumable': 'Consumible', 'item.category.equipment': 'Equipo', 'item.category.valuable': 'Valioso', 'item.category.material': 'Material', 'item.category.misc': 'Varios', 'item.sort': 'Ordenar', 'item.sort.name': 'Nombre', 'item.sort.type': 'Tipo', 'item.sort.valueDesc': 'Valor ↓', 'item.sort.valueAsc': 'Valor ↑',
@@ -8460,7 +8464,7 @@ test('Combat feed uses the current combat actor and explicitly selected target',
   assertEqual(result, true, 'Current actor feed should resolve against the explicitly selected target');
   assertEqual(healedBy, ally, 'Feed should use the current combat actor when no explicit actor is passed');
   assertEqual(healedTarget, player, 'Current actor feed should target the wounded party member');
-  assertEqual(App.lastIntentCommand.source, 'feed-options', 'Feed sub-action should resolve through the feed options command surface');
+  assertEqual(App.lastIntentCommand.source, 'action-variant-options', 'Feed sub-action should resolve through the shared variant surface');
   assertEqual(App.lastIntentCommand.action, 'feed', 'Feed sub-action should record the feed command action');
   assertEqual(App.lastIntentCommand.subAction, 'tend', 'Feed sub-action should record the canonical selected sub-action');
   assertEqual(App.lastIntentCommand.actorIds.join(','), 'ally-feed-current', 'Feed sub-action command should preserve the acting combat actor');
@@ -8581,6 +8585,261 @@ test('Feed Contract V1 exposes contextual canonical variants and hides compatibi
   const productionContent = loadContentSystemForTest();
   productionContent.setLanguage('es');
   assertEqual(productionContent.t('subaction.feed.offerWhole.sfw'), 'Ofrecerse', 'Canonical Feed variant labels should localize');
+});
+
+test('Contextual variant resolver reports group validity cost and actionable requirements', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'variant-player' });
+  const ordinary = makeUnit('Ordinary', { id: 'variant-ordinary', size: 2, CPun: 100, MPun: 100 });
+  const willing = makeUnit('Willing', { id: 'variant-willing', size: 2, willingPrey: true, CPun: 100, MPun: 100 });
+  const consumer = makeUnit('Consumer', { id: 'variant-consumer', size: 7, appetite: 8, CPun: 100, MPun: 100 });
+  App.player = player;
+  App.party = [player, ordinary, willing, consumer];
+
+  const resolution = App._resolveActionVariants('feed', { actors: [ordinary, willing], targets: [consumer] });
+  const whole = resolution.variants.find(variant => variant.id === 'offerWhole');
+  const tend = resolution.variants.find(variant => variant.id === 'tend');
+  assertEqual(whole.status, 'partial', 'Mixed actor validity should be explicit instead of hiding the whole variant');
+  assertEqual(whole.available, true, 'A partial group variant should remain selectable for its valid pair');
+  assertEqual(whole.validPairCount, 1, 'Resolver should report the exact valid actor-target pair count');
+  assertEqual(whole.pairCount, 2, 'Resolver should report the exact evaluated actor-target pair count');
+  assertEqual(whole.requirements.includes('Capacity'), true, 'Whole offering should expose capacity requirements');
+  assertEqual(whole.requirements.includes('Willingness'), true, 'Whole offering should expose willingness requirements');
+  assert(whole.cost?.label, 'Contextual variants should include the shared action-cost preview');
+  assertEqual(tend.status, 'unavailable', 'A full-health target should keep Tend visible but unavailable');
+  assertContains(tend.reason, 'does not need tending', 'Unavailable variants should explain the current actor-target failure');
+});
+
+test('Feast variants respect content posture and never expose internal setting keys', () => {
+  const { App, content, body } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'variant-sfw-actor', Feas: 80, size: 8, appetite: 8 });
+  const target = makeUnit('Target', { id: 'variant-sfw-target', CPun: 10, MPun: 100, Flee: 1, size: 2 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  App.settings.chewing = false;
+  App.settings.cockVoreEnabled = false;
+  App.settings.unbirthEnabled = false;
+
+  content.preferences.posture = 'sfw';
+  content.preferences.maxTier = 0;
+  content.preferences.enabledCategories = [];
+  let resolution = App._resolveActionVariants('feast', { actors: [actor], targets: [target] });
+  assertEqual(resolution.variants.some(variant => variant.id === 'chew'), false, 'SFW Feast should hide mature chewing variants');
+  assertEqual(resolution.variants.some(variant => variant.id === 'cockVore' || variant.id === 'unbirth'), false, 'SFW Feast should hide explicit-only variants');
+  App.openExplorationTargetSubActionSheet('feast', 'desktop-target');
+  assertNotContains(body.innerHTML, 'cockVoreEnabled', 'SFW Feast UI should not expose the internal capture setting key');
+  assertNotContains(body.innerHTML, 'unbirthEnabled', 'SFW Feast UI should not expose the internal engulf setting key');
+
+  App.closeIntentMenu();
+  content.preferences.posture = 'mature';
+  content.preferences.maxTier = 1;
+  resolution = App._resolveActionVariants('feast', { actors: [actor], targets: [target] });
+  assertEqual(resolution.variants.some(variant => variant.id === 'chew'), true, 'Mature Feast should expose its posture-appropriate chewing variant');
+  assertEqual(resolution.variants.some(variant => variant.id === 'cockVore' || variant.id === 'unbirth'), false, 'Mature Feast should still hide explicit-only variants without category opt-in');
+  assertNotContains(resolution.variants.find(variant => variant.id === 'chew')?.reason || '', 'chewing', 'Mature unavailable copy should use the public setting label rather than its internal key');
+
+  content.preferences.enabledCategories = ['explicit.sexual'];
+  resolution = App._resolveActionVariants('feast', { actors: [actor], targets: [target] });
+  assertEqual(resolution.variants.some(variant => variant.id === 'cockVore'), true, 'Explicit category opt-in should expose Capture');
+  assertEqual(resolution.variants.some(variant => variant.id === 'unbirth'), true, 'Explicit category opt-in should expose Engulf');
+  assertNotContains(resolution.variants.map(variant => variant.reason).join(' '), 'cockVoreEnabled', 'Explicit unavailable copy should still avoid internal capture identifiers');
+  assertNotContains(resolution.variants.map(variant => variant.reason).join(' '), 'unbirthEnabled', 'Explicit unavailable copy should still avoid internal engulf identifiers');
+});
+
+test('Feast attempts stay selectable while labels preview resistance clues and outcomes resolve after commitment', () => {
+  const resistant = loadAppForCombat(() => 0);
+  const plant = makeUnit('Plantfolk', { id: 'attempt-plant', Feas: 5, size: 3, appetite: 8 });
+  const bunny = makeUnit('Bunnyfolk', { id: 'attempt-bunny', CPun: 100, MPun: 100, Flee: 80, size: 3 });
+  resistant.App.player = plant;
+  resistant.App.party = [plant];
+  resistant.App.creatures = [bunny];
+  let resolution = resistant.App._resolveActionVariants('feast', { actors: [plant], targets: [bunny] });
+  const difficult = resolution.variants.find(variant => variant.id === 'swallow');
+  assertEqual(difficult.available, true, 'A healthy resistant target should not disable a physically possible Eat attempt');
+  assertEqual(difficult.outlook, 'difficult', 'The resolver should classify a heavily resisting target as a difficult attempt');
+  assertContains(difficult.hint, 'resisting', 'The visible attempt hint should explain why the attempt may fail');
+  const failedText = resistant.App._doSubAction('feast', 'swallow', plant, bunny, plant.name, 's');
+  assertContains(failedText, 'tries to eat', 'A committed failed Feast should be narrated as an in-world attempt');
+  assertContains(failedText, 'resists', 'A committed failed Feast should resolve resistance after the attempt');
+  assertEqual(plant.stomach.length, 0, 'A resisted Feast attempt should not contain the target');
+  assertEqual(resistant.App.creatures.includes(bunny), true, 'A resisted target should remain present');
+
+  bunny.asleep = true;
+  bunny.Flee = 20;
+  resolution = resistant.App._resolveActionVariants('feast', { actors: [plant], targets: [bunny] });
+  const sleeping = resolution.variants.find(variant => variant.id === 'swallow');
+  assertEqual(sleeping.available, true, 'An asleep target should remain selectable');
+  assertEqual(sleeping.outlook, 'favorable', 'Sleep should improve the attempt outlook');
+  assertContains(sleeping.hint, 'asleep', 'The attempt label should surface sleep as a favorable clue');
+  const successText = resistant.App._doSubAction('feast', 'swallow', plant, bunny, plant.name, 's');
+  assertContains(successText, 'eat', 'The favorable committed Feast should resolve normally');
+  assertEqual(plant.stomach.some(prey => prey === bunny || prey.id === bunny.id), true, 'A successful Feast should contain the selected target');
+
+  const blocked = loadAppForCombat(() => 0);
+  const tiny = makeUnit('Tiny', { id: 'attempt-tiny', Feas: 99, size: 1, appetite: 0 });
+  const giant = makeUnit('Giant', { id: 'attempt-giant', CPun: 1, MPun: 100, Flee: 1, size: 8 });
+  blocked.App.player = tiny;
+  blocked.App.party = [tiny];
+  blocked.App.creatures = [giant];
+  const capacityVariant = blocked.App._resolveActionVariants('feast', { actors: [tiny], targets: [giant] }).variants.find(variant => variant.id === 'swallow');
+  assertEqual(capacityVariant.available, true, 'A target that cannot physically fit should remain an attemptable Eat choice');
+  assertEqual(capacityVariant.outlook, 'difficult', 'A capacity mismatch should be presented as a difficult attempt');
+  assertContains(capacityVariant.hint, 'not fit', 'The picker should warn about capacity without pre-resolving the attempt');
+  const capacityText = blocked.App._doSubAction('feast', 'swallow', tiny, giant, tiny.name, 's');
+  assertContains(capacityText, 'too full', 'The committed capacity failure should resolve as in-world feedback');
+  assertEqual(blocked.App.creatures.includes(giant), true, 'A failed capacity attempt should leave the target present');
+
+  const combat = loadAppForCombat(() => 0);
+  const combatActor = makeUnit('Plantfolk', { id: 'attempt-combat-plant', Feas: 5, size: 3, appetite: 8, combatRow: 'front' });
+  const combatTarget = makeUnit('Bunnyfolk', { id: 'attempt-combat-bunny', disposition: combat.App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, Flee: 80, size: 3, combatRow: 'front' });
+  combat.App.player = combatActor;
+  combat.App.party = [combatActor];
+  combat.App.creatures = [combatTarget];
+  combat.App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: combatActor, initiative: 20 }, { unit: combatTarget, initiative: 10 }], syncActions: [] };
+  combat.App.activeActor = combatActor;
+  combat.App.nextTurn = function() { this._attemptTurnAdvanced = true; };
+  assertEqual(combat.App.executeActionAgainstTarget('feast', combatActor, combatTarget, { subAction: 'swallow' }), true, 'A resisted combat Feast should still resolve as a committed action');
+  assertContains(combat.App.lastCombatActionResult?.result || '', 'resists', 'Combat should report the resisted attempt in-world');
+  assertEqual(combat.App._attemptTurnAdvanced, true, 'A resisted combat Feast should spend the acting turn');
+  assertEqual(combat.App.creatures.includes(combatTarget), true, 'A resisted combat Feast should leave the target in the encounter');
+
+  const unreachable = loadAppForCombat(() => 0);
+  const backActor = makeUnit('Backline Plantfolk', { id: 'attempt-backline-plant', Feas: 80, size: 8, appetite: 8, combatRow: 'back' });
+  const frontTarget = makeUnit('Front Bunnyfolk', { id: 'attempt-front-bunny', disposition: unreachable.App.DISPOSITION.ENEMY, CPun: 10, MPun: 100, Flee: 1, size: 2, combatRow: 'front' });
+  unreachable.App.player = backActor;
+  unreachable.App.party = [backActor];
+  unreachable.App.creatures = [frontTarget];
+  unreachable.App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: backActor, initiative: 20 }, { unit: frontTarget, initiative: 10 }], syncActions: [] };
+  unreachable.App.activeActor = backActor;
+  unreachable.App.nextTurn = function() { this._reachAttemptAdvanced = true; };
+  const reachVariant = unreachable.App._resolveActionVariants('feast', { actors: [backActor], targets: [frontTarget], mode: 'combat' }).variants.find(variant => variant.id === 'swallow');
+  assertEqual(reachVariant.available, true, 'A protected target should keep Feast attemptable from the picker');
+  assertEqual(unreachable.App.executeActionVariant('feast', backActor, frontTarget), true, 'Committing an unreachable Feast should resolve through combat rather than return a correction error');
+  assertEqual(unreachable.App.lastCombatActionResult?.failedReach, true, 'The committed Feast should record an in-world reach failure');
+  assertEqual(unreachable.App._reachAttemptAdvanced, true, 'An unreachable committed Feast should spend the acting turn');
+});
+
+test('Actor-scoped variants live beneath contextual interaction buttons without requiring a marked target', () => {
+  const { App, body } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'self-variant-actor', CPun: 50, MPun: 100, Feed: 10, Fuck: 80, Flir: 80, stomach: [] });
+  const held = makeUnit('Held Mouse', { id: 'self-variant-held', CPun: 20, MPun: 100, size: 1 });
+  const marked = makeUnit('Bunnyfolk', { id: 'self-variant-marked', CPun: 80, MPun: 100, Flee: 5, size: 2 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [held, marked];
+  App._containTargetIn(actor, held, 'stomach');
+
+  const selfFeast = App._resolveActionVariants('feast', { actors: [actor], scope: 'self' });
+  assertEqual(selfFeast.variants.some(variant => variant.id === 'digest' && variant.available), true, 'Digest should resolve as an available actor-scoped Feast variant');
+  assertEqual(selfFeast.variants.some(variant => variant.id === 'release' && variant.available), true, 'Release should resolve as an available actor-scoped Feast variant');
+  assertEqual(selfFeast.variants.some(variant => variant.id === 'swallow'), false, 'Target-only Feast variants should not leak into the self-action group');
+  const targetFeast = App._resolveActionVariants('feast', { actors: [actor], targets: [marked], scope: 'target' });
+  assertEqual(targetFeast.variants.some(variant => variant.id === 'swallow'), true, 'Target-scoped Feast should preserve Eat');
+  assertEqual(targetFeast.variants.some(variant => variant.id === 'digest' || variant.id === 'release'), false, 'Actor-owned containment controls should not masquerade as marked-target actions');
+  const selfFeed = App._resolveActionVariants('feed', { actors: [actor], scope: 'self' });
+  assertEqual(selfFeed.variants.some(variant => variant.id === 'tend' && variant.available), true, 'A wounded actor should expose self Tend without a target');
+  const selfSeduce = App._resolveActionVariants('fuck', { actors: [actor], scope: 'self' });
+  assertEqual(selfSeduce.variants.some(variant => variant.id === 'seduce' && variant.available), true, 'An actor should expose self Seduce without a target');
+  const targetSeduce = App._resolveActionVariants('fuck', { actors: [actor], targets: [marked], scope: 'target' });
+  assertEqual(targetSeduce.variants.some(variant => variant.id === 'seduce' && variant.available), true, 'Seduce should remain available for marked targets');
+
+  App.explorationActorIds = ['self-variant-actor'];
+  App.explorationActorSelectionExplicit = true;
+  const noTargetHtml = App._renderExplorationSelfActions('actor-belt');
+  assertContains(noTargetHtml, "openExplorationSubActionSheet('feast','actor-belt','desktop')", 'Actor composer should keep Feast as the stable top-level interaction');
+  assertContains(noTargetHtml, "openExplorationSubActionSheet('feed','actor-belt','desktop')", 'Actor composer should keep Feed as the stable top-level interaction');
+  assertContains(noTargetHtml, "openExplorationSubActionSheet('fuck','actor-belt','desktop')", 'Actor composer should keep Play as the stable top-level interaction');
+  assertNotContains(noTargetHtml, 'Self:', 'Actor composer should not leak self variants as peer buttons');
+
+  App.openExplorationSubActionSheet('feast', 'actor-belt', 'desktop');
+  assertContains(body.innerHTML, 'data-command-scope="self"', 'Actor-only Feast should open a self-scoped submenu');
+  assertContains(body.innerHTML, "resolveExplorationSelfSubAction('feast','digest','actor-belt')", 'Actor-only Feast should place Digest beneath Feast');
+  assertContains(body.innerHTML, "resolveExplorationSelfSubAction('feast','release','actor-belt')", 'Actor-only Feast should place Release beneath Feast');
+  assertNotContains(body.innerHTML, "resolveExplorationTargetAction('feast'", 'Actor-only Feast should not invent a target group');
+  App.closeIntentMenu();
+
+  App.explorationTargetIds = ['creature:self-variant-marked'];
+  const markedHtml = App._renderExplorationTargetActions('desktop');
+  assertContains(markedHtml, "openExplorationSubActionSheet('feast'", 'Marked-target composer should retain Feast as one contextual interaction');
+  assertNotContains(markedHtml, 'resolveExplorationSelfSubAction', 'Marked-target composer should not render actor-owned variants beside primary intents');
+  App.openExplorationSubActionSheet('feast', 'desktop', 'desktop');
+  assertContains(body.innerHTML, 'data-command-scope="self"', 'Marked-target Feast should include a clearly grouped self section');
+  assertContains(body.innerHTML, 'data-command-scope="target"', 'Marked-target Feast should include a clearly grouped target section');
+  assertContains(body.innerHTML, "resolveExplorationSelfSubAction('feast','release','desktop')", 'Marked-target Feast should retain actor-owned Release within the submenu');
+  assertContains(body.innerHTML, "resolveExplorationTargetAction('feast','swallow','desktop')", 'Marked-target Feast should retain target Eat within the submenu');
+  App.closeIntentMenu();
+  const spiritBeforeSelfSeduce = actor.CPle;
+  assertEqual(App.resolveExplorationSelfSubAction('fuck', 'seduce', 'desktop'), true, 'Self Seduce should resolve without using the marked creature as its target');
+  assertEqual(actor.CPle > spiritBeforeSelfSeduce, true, 'Self Seduce should apply its social effect to the selected actor');
+  assertEqual(App.explorationTargetIds.join(','), 'creature:self-variant-marked', 'Self Seduce should preserve the independent marked target');
+  assertEqual(App.resolveExplorationSelfSubAction('feast', 'release', 'desktop'), true, 'Actor-owned Release should resolve without using the marked creature as its target');
+  assertEqual(actor.stomach.length, 0, 'Actor-owned Release should use the actor container');
+  assertEqual(App.explorationTargetIds.join(','), 'creature:self-variant-marked', 'Resolving a self action should preserve the independent marked target');
+  assertEqual(App.lastIntentCommand.scope, 'self', 'Self action dispatch should record its explicit scope');
+});
+
+test('Combat Feast variant Back restores the selected target and chosen variant reaches InteractionPlan', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'variant-feast-player', Feas: 80, size: 8, appetite: 8 });
+  const enemy = makeUnit('Enemy', { id: 'variant-feast-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 10, MPun: 100, Flee: 1, size: 2, combatRow: 'front' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.settings.chewing = true;
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: [] };
+  App.activeActor = player;
+  App.nextTurn = function() { this._variantTurnAdvanced = true; };
+
+  App.selectTarget('feast');
+  App.toggleCombatTarget(enemy.id);
+  assertEqual(App.confirmCombatTargets(), true, 'Feast should enter variant selection after target confirmation');
+  assertEqual(App.feedSelection?.action, 'feast', 'Compatibility selection state should preserve the canonical action');
+  assertEqual(App.feedSelection?.variants.some(variant => variant.id === 'swallow' && variant.available), true, 'Feast picker should expose Swallow');
+  assertEqual(App.feedSelection?.variants.some(variant => variant.id === 'chew' && variant.available), true, 'Feast picker should expose enabled Chew');
+  assertEqual(App.cancelActionVariantSelection(), true, 'Back should leave contextual variant selection');
+  assertEqual(App.targetSelection?.action, 'feast', 'Back should restore the pending Feast intent');
+  assertEqual(App._combatMarkedTargets()[0], enemy, 'Back should restore the exact marked target');
+
+  assertEqual(App.confirmCombatTargets(), true, 'Restored target selection should reopen the same variant choice');
+  assertEqual(App._executeActionVariant('chew', player), true, 'Chosen Feast variant should resolve through the shared dispatcher');
+  assertEqual(App.lastIntentCommand.action, 'feast', 'InteractionPlan should preserve the primary action');
+  assertEqual(App.lastIntentCommand.subAction, 'chew', 'InteractionPlan should preserve the selected Feast variant');
+  assertEqual(App.lastIntentCommand.source, 'action-variant-options', 'InteractionPlan should record the shared variant surface');
+  assertEqual(App._variantTurnAdvanced, true, 'A resolved combat variant should spend exactly one turn');
+});
+
+test('Module action variant registration is permissioned bounded owned and executable', () => {
+  const registry = new Function('window', `${subActionsContent}\nreturn YAW_SUB_ACTIONS;`)({});
+  const modules = loadModuleSystemForTest({ subActions: registry });
+  const app = modules._testApp;
+  app.SUB_ACTIONS = { feed: {}, feast: {}, fight: {} };
+  app.defaultSubActions = registry.defaultActions();
+  const definition = {
+    label: 'Share Ration',
+    icon: '🥣',
+    requirements: ['cost', 'reach'],
+    validate: () => true,
+    execute: () => 'Ration shared.'
+  };
+
+  let denied = false;
+  try { modules.createModAPI('denied', { permissions: [] }).registerActionVariant('feed', 'shareRation', definition); } catch (error) { denied = /permission/.test(error.message); }
+  assertEqual(denied, true, 'Modules should need the explicit action-variant permission');
+  const api = modules.createModAPI('variant-module', { permissions: ['content:add_action_variant'] });
+  api.registerActionVariant('feed', 'shareRation', definition);
+  assertEqual(app.SUB_ACTIONS.feed.shareRation.owner, 'variant-module', 'Registered variants should be owned by the contributing module');
+  let bounded = false;
+  try { api.registerActionVariant('fight', 'unsafeFight', definition); } catch (error) { bounded = /Feed or Feast/.test(error.message); }
+  assertEqual(bounded, true, 'V1 module registration should be bounded to Feed and Feast');
+  modules.unloadModule('variant-module');
+  assertEqual(app.SUB_ACTIONS.feed.shareRation, undefined, 'Unloading a module should remove its owned variants');
+
+  const runtime = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'custom-variant-actor' });
+  const target = makeUnit('Target', { id: 'custom-variant-target' });
+  runtime.App.registerSubAction('feed', 'shareRation', definition);
+  assertEqual(runtime.App._doSubAction('feed', 'shareRation', actor, target, actor.name, 's'), 'Ration shared.', 'Registered variant execution should resolve through the sub-action engine');
 });
 
 test('Feed Contract V1 resolves whole and renewable-piece offerings in actor-to-target direction', () => {
@@ -10597,17 +10856,13 @@ test('Combat target dispatch uses the clicked unit instead of filtered index dri
 
 test('Combat feed sub-action picker renders in the desktop composer, not center scene', () => {
   const { App, elements } = loadAppForCombat(() => 0);
-  const player = makeUnit('You', { id: 'player-feed-tray' });
+  const player = makeUnit('You', { id: 'player-feed-tray', lactating: true, lactationCooldown: 0 });
   const ally = makeUnit('Ally', { id: 'ally-feed-tray', CPun: 50, MPun: 100 });
   App.player = player;
   App.party = [player, ally];
   App.creatures = [];
   App.activeActor = player;
   App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }], syncActions: [] };
-  App._getAvailableSubActions = () => [
-    { id: 'heal', label: 'Heal', icon: 'H', available: true },
-    { id: 'breastfeed', label: 'Support', icon: 'S', available: true }
-  ];
   assertEqual(App.executeCombatIntent('feed'), true, 'Feed intent should first enter target selection');
   App.toggleExplorationTarget('party', ally.id);
   const result = App.confirmCombatTargets();
@@ -10617,20 +10872,13 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
   const composerHtml = elements.get('desktop-context-belt')?.innerHTML || App._renderCombatPanelTray();
   const sceneHtml = elements.get('scene-description')?.innerHTML || '';
   assertContains(composerHtml, 'combat-feed-tray', 'Feed options should render in the desktop composer tray');
-  assertContains(composerHtml, 'class="panel-interaction-tray combat-feed-tray" data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Feed options tray root should identify feed composer ownership');
-  assertContains(composerHtml, 'data-command-surface="feed-options"', 'Feed options composer should identify the feed sub-action surface');
-  assertContains(composerHtml, 'data-command-surface="feed-options" data-command-mode="combat"', 'Feed options composer should identify combat command mode');
-  assertContains(composerHtml, 'data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Feed options composer should identify the shared command grammar');
-  assertContains(composerHtml, 'aria-label="Feed Options"', 'Feed options tray should keep an accessible phase label');
-  assertContains(composerHtml, 'data-command-intent="feed:heal"', 'Feed options should expose stable sub-action intent ids');
-  assertContains(composerHtml, 'data-command-mode="combat" data-command-intent="feed:heal"', 'Feed options should expose combat command mode on sub-action intents');
-  assertContains(composerHtml, 'data-command-mode="combat" data-command-intent="feed:heal" data-command-grammar="actor-target-intent"', 'Feed options should identify the shared command grammar on sub-action intents');
-  assertContains(composerHtml, 'data-command-intent="feed:heal" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Feed options should identify sub-action buttons as intent-slot controls');
-  assertContains(composerHtml, 'Heal', 'Feed options tray should expose sub-action controls');
-  assertContains(composerHtml, 'data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-feed"', 'Feed options should tag cancel as a combat-mode exit');
-  assertContains(composerHtml, 'data-command-control="cancel-feed" data-command-slot="exit"', 'Feed options should tag cancel as an exit-slot control');
-  assertContains(composerHtml, 'data-command-control="cancel-feed"', 'Feed options should expose Cancel Feed as a structural exit');
-  assertContains(composerHtml, 'Cancel Feed', 'Feed options tray should expose a mode-specific cancel exit');
+  assertContains(composerHtml, 'class="panel-interaction-tray combat-feed-tray" data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Variant tray root should identify shared composer ownership');
+  assertContains(composerHtml, 'data-command-intent="feed:tend"', 'Feed options should expose stable canonical variant ids');
+  assertContains(composerHtml, 'data-command-intent="feed:nurse"', 'Feed options should expose every currently available canonical variant');
+  assertContains(composerHtml, 'data-command-intent="feed:offerWhole"', 'Disabled canonical variants should remain visible');
+  assertContains(composerHtml, 'aria-disabled="true"', 'Unavailable variants should be exposed accessibly');
+  assertContains(composerHtml, 'data-command-control="back-variant" data-command-slot="exit"', 'Variant Back should be a structural exit');
+  assertContains(composerHtml, 'Back', 'Variant tray should expose a visible Back control');
   assertNotContains(composerHtml, 'selected-target-summary', 'Feed options tray should leave actor intent summary to the composer sentence');
   assertNotContains(partyHtml, 'combat-feed-tray', 'Party panel should not duplicate composer-owned feed options');
   assertNotContains(sceneHtml, 'Feed Options', 'Feed options should not be injected into the center scene');
@@ -12619,15 +12867,12 @@ test('Intent sub-action sheet records selected sub-action while preserving dispa
   App.party = [player];
   App.creatures = [friendly];
   App.openIntentSubActionSheet('creature', 'friendly-sub', 'flirt', 'sheet');
-  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration"', 'Sub-action sheet should identify the exploration composer sub-action surface');
-  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Sub-action sheet should identify the shared command grammar');
+  assertContains(body.innerHTML, 'data-command-surface="action-variant-options" data-command-mode="exploration"', 'Variant sheet should identify the shared exploration surface');
   assertContains(body.innerHTML, 'data-command-intent="flirt"', 'Sub-action sheet container should expose the primary intent id');
-  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="flirt:tease"', 'Default sub-action should expose exploration mode and stable sub-action intent id');
-  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="flirt:tease" data-command-grammar="actor-target-intent"', 'Default sub-action should identify the shared grammar on the sub-action composer surface');
-  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="flirt:dance"', 'Alternate sub-action should expose exploration mode and stable sub-action intent id');
-  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="flirt:dance" data-command-grammar="actor-target-intent"', 'Alternate sub-action should identify the shared grammar on the sub-action composer surface');
-  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Sub-action sheet should expose a structural cancel exit');
-  assertContains(body.innerHTML, 'data-command-control="cancel-sub-action" data-command-slot="exit"', 'Sub-action sheet cancel should identify the exit slot');
+  assertContains(body.innerHTML, 'data-command-intent="flirt:tease"', 'Default variant should expose a stable intent id');
+  assertContains(body.innerHTML, 'data-command-intent="flirt:dance"', 'Alternate variant should expose a stable intent id');
+  assertContains(body.innerHTML, 'data-command-control="back-variant"', 'Variant sheet should expose a structural Back exit');
+  assertContains(body.innerHTML, 'data-command-control="back-variant" data-command-slot="exit"', 'Variant sheet Back should identify the exit slot');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','tease')", 'Sub-action sheet should expose the default sub-action dispatch');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','dance')", 'Sub-action sheet should expose alternate registered sub-actions');
   App.selectIntent('creature', 'friendly-sub', 'flirt', 'sheet', 'dance');
@@ -13096,13 +13341,12 @@ test('Marked target sub-action sheet can resolve explicit group swallow intent',
   App.explorationActorIds = ['helper-1', 'primary-1'];
   App.toggleExplorationTarget('party', 'prey-1');
   App.openExplorationTargetSubActionSheet('feast', 'target-bar');
-  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration"', 'Marked target sub-action sheet should identify the exploration composer sub-action surface');
-  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Marked target sub-action sheet should identify the shared command grammar');
+  assertContains(body.innerHTML, 'data-command-surface="action-variant-options" data-command-mode="exploration"', 'Marked target variant sheet should identify the shared exploration surface');
   assertContains(body.innerHTML, 'data-command-intent="feast"', 'Marked target sub-action sheet container should expose the primary intent id');
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="feast:swallow"', 'Marked target default sub-action should expose exploration mode and stable sub-action intent id');
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="feast:swallow" data-command-grammar="actor-target-intent"', 'Marked target default sub-action should identify the shared command grammar on the intent itself');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Marked target sub-action sheet should expose a structural cancel exit');
-  assertContains(body.innerHTML, 'data-command-control="cancel-sub-action" data-command-slot="exit"', 'Marked target sub-action sheet cancel should identify the exit slot');
+  assertContains(body.innerHTML, 'data-command-control="back-variant"', 'Marked target variant sheet should expose a structural Back exit');
+  assertContains(body.innerHTML, 'data-command-control="back-variant" data-command-slot="exit"', 'Marked target variant Back should identify the exit slot');
   assertContains(body.innerHTML, "App.resolveExplorationTargetAction('feast','swallow','target-bar')", 'Marked target sub-action sheet should dispatch default feast sub-action');
   App.resolveExplorationTargetAction('feast', 'swallow', 'target-bar');
   assertEqual(App.lastIntentCommand.source, 'target-bar', 'Marked target command should record its source');
@@ -14167,7 +14411,7 @@ test('Current InteractionPlan reflects exploration and combat selection side-sta
   App.feedSelection = { active: true, actorId: 'current-plan-player', subIds: ['heal', 'forceFeed'] };
   plan = App._currentInteractionPlan();
   assertEqual(plan.action, 'feed', 'Feed selection should expose a feed InteractionPlan');
-  assertEqual(plan.source, 'feed-selection', 'Feed selection should preserve its plan source');
+  assertEqual(plan.source, 'action-variant-selection', 'Feed selection should expose the shared variant plan source');
   assertEqual(plan.constraints.hostileOnly, false, 'Feed selection should not force hostile-only targeting');
   assertEqual(plan.metadata.subIds.join(','), 'heal,forceFeed', 'Feed selection plan should expose available sub-actions as metadata');
 
@@ -17442,17 +17686,18 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync choose phase should expose a structural cancel control');
 
   App.syncSelection = null;
-  App.feedSelection = { active: true, actorId: 'player-1', subIds: ['heal'] };
+  App.feedSelection = {
+    active: true,
+    action: 'feed',
+    actorId: 'player-1',
+    target: ally,
+    subIds: ['tend'],
+    variants: App._resolveActionVariants('feed', { actors: [player], targets: [ally], mode: 'combat' }).variants
+  };
   App.renderMobileCombatToolbelt();
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="feed-options"', 'Mobile Feed phase should identify the feed options surface');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile Feed phase should identify the shared command grammar');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="feed-options" data-command-mode="combat" data-command-intent="feed:heal"', 'Mobile Feed option buttons should identify the feed options surface');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="feed:heal"', 'Mobile Feed option buttons should identify combat command mode on the sub-action itself');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="feed:heal" data-command-grammar="actor-target-intent"', 'Mobile Feed option buttons should identify the shared command grammar on the sub-action itself');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="feed:heal" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Mobile Feed option buttons should identify the intent slot');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-feed"', 'Mobile Feed phase should expose its cancel exit');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-feed" data-command-slot="exit"', 'Mobile Feed cancel should identify the exit slot');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-feed"', 'Mobile Feed phase should expose a structural cancel control');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="action-variant-options"', 'Mobile Feed phase should identify the shared variant surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="feed:tend"', 'Mobile Feed variant should expose its stable intent id');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="back-variant" data-command-slot="exit"', 'Mobile variant Back should identify the exit slot');
 
   App.syncSelection = { active: true, phase: 'participants', actorId: 'player-1', participantIds: ['player-1', 'ally-mobile'], type: 'sync_fight' };
   App.feedSelection = null;
@@ -19125,8 +19370,8 @@ test('Combat progress state classifies terminal automatic manual and transient p
   App.targetSelection = null;
   App.feedSelection = { active: true, subIds: [] };
   state = App._combatProgressState();
-  assertEqual(state.phase, 'feed-options', 'Feed selection should be classified as a transient phase');
-  assertEqual(state.commands.includes('cancel-feed'), true, 'Feed selection should advertise its restoring exit even with no options');
+  assertEqual(state.phase, 'action-variant-options', 'Feed selection should be classified as the shared variant phase');
+  assertEqual(state.commands.includes('back-variant'), true, 'Variant selection should advertise its restoring Back exit even with no options');
 
   App.feedSelection = null;
   for (const phase of ['choose', 'participants', 'target']) {
@@ -25240,14 +25485,14 @@ test('Desktop marked-target actions stay bounded and dispatch default actions di
   assertContains(html, 'data-command-actor-count="1" data-command-target-count="1"', 'Desktop marked-target action row should expose actor and target counts like the composer sentence');
   assertContains(html, "App.resolveExplorationTargetAction('fight','attack','composer-tray')", 'Desktop marked-target Fight should dispatch the default attack directly through the composer source');
   assertContains(html, 'data-command-intent="fight" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Desktop marked-target Fight should identify itself as an intent-slot control');
-  assertContains(html, "App.resolveExplorationTargetAction('feast','swallow','composer-tray')", 'Desktop marked-target Feast should dispatch the default swallow directly through the composer source');
+  assertContains(html, "App.openExplorationSubActionSheet('feast','composer-tray','desktop')", 'Desktop marked-target Feast should open the shared contextual variant surface with desktop presentation');
   assertNotContains(html, "'desktop-target'", 'Rendered desktop marked-target actions should not emit the legacy desktop-target source');
   assertNotContains(html, 'aria-controls="desktop-intent-menu"', 'Desktop marked-target default actions should not require a popup');
 
   App.openExplorationTargetSubActionSheet('fight', 'desktop-target');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop marked-target sub-actions should use desktop popup');
   assertContains(body.innerHTML, 'data-intent-source="desktop-target"', 'Desktop marked-target sub-actions should preserve their source on the popup');
-  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop marked-target sub-actions should identify the shared command grammar');
+  assertContains(body.innerHTML, 'data-command-surface="action-variant-options" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop marked-target variants should identify the shared command grammar');
   assertContains(body.innerHTML, 'data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Desktop marked-target sub-actions should identify menu items as intent-slot controls');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop marked-target sub-actions should not use mobile sheet');
   assert(App._focusTrap, 'Desktop marked-target sub-actions should activate the shared focus trap');

@@ -44,7 +44,7 @@ const YAW_COMBAT_TARGETING = {
             const actor = app.activeActor || app.player;
             if (app.targetSelection.action === 'scavenge') return app._canScavengeCorpse(unit);
             if (unit.CPun <= 0) return false;
-            if (app.targetSelection.action === 'feed') return true;
+            if (['feed', 'feast'].includes(app.targetSelection.action)) return true;
             return unit.disposition === app.DISPOSITION.ENEMY && Boolean(app._combatReachResult?.(actor, unit, app.targetSelection.action)?.canAttempt);
         }
         if (unit.CPun <= 0 && !app._isCorpse(unit)) return false;
@@ -75,7 +75,7 @@ const YAW_COMBAT_TARGETING = {
         const selectedTargets = app._getExplorationTargets?.() || [];
         const partyTargets = selectedTargets
             .filter(unit => app.party.includes(unit) && unit.CPun > 0);
-        const localFeedTargets = app.targetSelection?.action === 'feed'
+        const localFeedTargets = ['feed', 'feast'].includes(app.targetSelection?.action)
             ? selectedTargets.filter(unit => !app.party.includes(unit) && unit.CPun > 0 && !app._isCorpse?.(unit))
             : [];
         return [...new Set([...enemyTargets, ...partyTargets, ...localFeedTargets])];
@@ -88,7 +88,7 @@ const YAW_COMBAT_TARGETING = {
     isMarkedTarget(app, unit) {
         if (!unit) return false;
         if (app.party.includes(unit)) return (app._getExplorationTargets?.() || []).includes(unit);
-        if (app.targetSelection?.action === 'feed' && (app._getExplorationTargets?.() || []).includes(unit)) return true;
+        if (['feed', 'feast'].includes(app.targetSelection?.action) && (app._getExplorationTargets?.() || []).includes(unit)) return true;
         const unitIds = [app._unitSelectionId(unit), String(unit.id || unit.name)];
         return this.targetIds(app).some(targetId => unitIds.includes(targetId));
     },
@@ -141,16 +141,13 @@ const YAW_COMBAT_TARGETING = {
         if (app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
             return app.queueCombatGroupIntent(action);
         }
-        if (action === 'feed') {
+        if (['feed', 'feast'].includes(action)) {
             if (targets.length !== 1) {
                 app._reportInvalidCombatCommand?.({ action, actors: [actor], targets }, 'single-target-required');
                 return false;
             }
             const target = targets[0];
-            this.clearMarkedTargets(app);
-            app.targetSelection = null;
-            app.combatPlanSelection = null;
-            return YAW_COMBAT_FEED.executeAction(app, actor, target);
+            return YAW_COMBAT_FEED.executeVariantAction(app, action, actor, target);
         }
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',

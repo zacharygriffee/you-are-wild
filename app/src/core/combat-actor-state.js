@@ -56,7 +56,7 @@ const YAW_COMBAT_ACTOR_STATE = {
             return { kind: 'invalid', phase: 'stale-processing', ...base, commands: ['recover-combat'] };
         }
         if (app.feedSelection?.active) {
-            return { kind: 'manual', phase: 'feed-options', ...base, commands: ['cancel-feed'] };
+            return { kind: 'manual', phase: 'action-variant-options', ...base, commands: ['back-variant'] };
         }
         if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             return { kind: 'manual', phase: `sync-${app.syncSelection.phase || 'choose'}`, ...base, commands: ['cancel-sync'] };

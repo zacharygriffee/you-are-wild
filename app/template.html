@@ -3135,6 +3135,11 @@
             flex: 1 1 auto;
         }
 
+        .desktop-context-belt .self-action-group,
+        .desktop-context-belt .contextual-action-group {
+            flex: 0 1 auto;
+        }
+
         .desktop-context-belt .action-btn {
             flex: 0 0 auto;
             min-width: 70px;
@@ -3898,6 +3903,47 @@
             filter: saturate(0.75);
         }
 
+        .mobile-context-menu {
+            position: fixed;
+            left: 12px;
+            right: 12px;
+            bottom: 18px;
+            max-height: calc(100vh - 36px);
+            max-height: calc(100dvh - 36px);
+            overflow: auto;
+            overscroll-behavior: contain;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 220;
+            padding: 10px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .mobile-context-menu-title {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .mobile-context-menu-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .mobile-context-menu-actions .action-btn {
+            flex: 1 1 70px;
+            min-width: 58px;
+        }
+
+        .mobile-context-menu-actions .action-variant-option {
+            flex: 1 1 100%;
+            width: 100%;
+        }
+
         .desktop-intent-menu {
             position: fixed;
             top: 84px;
@@ -3941,6 +3987,62 @@
             overflow: hidden;
             text-overflow: ellipsis;
             overflow-wrap: anywhere;
+        }
+
+        .desktop-intent-menu[data-command-surface="action-variant-options"] .desktop-intent-menu-actions {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .desktop-intent-menu[data-command-surface="action-variant-options"] [data-command-control="back-variant"] {
+            width: 100%;
+            min-height: 38px;
+            align-self: start;
+        }
+
+        .action-variant-option {
+            display: grid;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .action-variant-group {
+            display: grid;
+            gap: 6px;
+            min-width: 0;
+            width: 100%;
+        }
+
+        .action-variant-group + .action-variant-group {
+            border-top: 1px solid var(--border-default);
+            margin-top: 4px;
+            padding-top: 8px;
+        }
+
+        .action-variant-group-title {
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .action-variant-option .action-btn {
+            width: 100%;
+        }
+
+        .action-variant-reason {
+            color: var(--text-muted);
+            font-size: 11px;
+            line-height: 1.25;
+            max-width: 28rem;
+        }
+
+        .action-variant-option.unavailable .action-variant-reason {
+            color: var(--accent-warning, #f6c86b);
+        }
+
+        .target-action-row > .action-variant-option {
+            flex: 0 1 15rem;
         }
 
         .unit-header {
@@ -6899,6 +7001,21 @@
                 display: none;
             }
 
+            .mobile-target-action-tray .self-action-group {
+                display: flex;
+                gap: 6px;
+                overflow-x: auto;
+                overscroll-behavior-x: contain;
+                margin-top: 6px;
+                padding-top: 6px;
+                border-top: 1px solid var(--border-default);
+                scrollbar-width: none;
+            }
+
+            .mobile-target-action-tray .self-action-group::-webkit-scrollbar {
+                display: none;
+            }
+
             .mobile-control-belt.target-controls-open .mobile-control-row.has-visible-controls {
                 display: grid;
                 grid-template-columns: auto minmax(0, 1fr);
@@ -8445,6 +8562,11 @@
             .mobile-context-menu-actions .action-btn {
                 flex: 1 1 70px;
                 min-width: 58px;
+            }
+
+            .mobile-context-menu-actions .action-variant-option {
+                flex: 1 1 100%;
+                width: 100%;
             }
 
             .mobile-context-menu-actions .action-btn.danger {

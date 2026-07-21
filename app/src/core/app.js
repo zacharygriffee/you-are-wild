@@ -442,6 +442,7 @@
                 raccoon: ['claws'], otter: ['fins','tail'],
                 fish: ['fins'], crab: ['claws'], siren: [], troll: [], bandit: [], skeleton: [], goat: ['horns'], eagle: ['wings','claws']
             },
+            SPECIES_BASE_STATS: {},
             SPECIES_ABILITIES: {
                 wolf: { rage: true, menacing: true },
                 fox: { menacing: true },
@@ -1405,7 +1406,7 @@
             },
 
             _getSpeciesBaseStats(sid) {
-                return YAW_SPECIES_SYSTEM.baseStats(sid);
+                return this.SPECIES_BASE_STATS[sid] || YAW_SPECIES_SYSTEM.baseStats(sid);
             },
             _getSpeciesTemperament(sid) {
                 return this.SPECIES_TEMPERAMENT[sid] || { opportunistic: true };
@@ -1885,7 +1886,7 @@
                 unit.int = unit.int ?? unit.stats?.int ?? base.int ?? 10;
                 unit.wis = unit.wis ?? unit.stats?.wis ?? base.wis ?? 10;
                 unit.cha = unit.cha ?? unit.stats?.cha ?? base.cha ?? 10;
-                unit.size = unit.size || 4;
+                unit.size = unit.size || this.SPECIES_SIZE[unit.species] || 4;
                 unit.appetite = unit.appetite || 4;
                 unit.bodyParts = unit.bodyParts || this.SPECIES_DEFAULT_PARTS[unit.species] || [];
                 unit.tags = unit.tags || [species?.name || unit.species || 'Unknown'];

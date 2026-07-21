@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.13.0",
+  "version": "0.14.0",
   "releasedAt": "2026-07-21",
   "channel": "public-preview",
   "saveSchema": 11,
@@ -8,32 +8,33 @@
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Existing 0.10.x through 0.12.3 saves load automatically; exchange-specific narration ownership does not change the save schema.",
-      "mods": "Existing modules remain compatible. The optional claimsExchange narration predicate requires game version 0.13.0 or newer."
+      "saves": "Existing 0.10.x through 0.13.0 saves load automatically; Species Profile V1 adds no required save migration.",
+      "mods": "Existing modules remain compatible. Modules using Species Profile V1 profiles require game version 0.14.0 or newer."
     },
     "es": {
-      "saves": "Las partidas existentes desde 0.10.x hasta 0.12.3 se cargan automaticamente; la propiedad de narracion por intercambio no cambia el esquema de guardado.",
-      "mods": "Los modulos existentes siguen siendo compatibles. El predicado opcional claimsExchange requiere la version 0.13.0 o posterior."
+      "saves": "Las partidas existentes desde 0.10.x hasta 0.13.0 se cargan automaticamente; Species Profile V1 no requiere migracion de partidas.",
+      "mods": "Los modulos existentes siguen siendo compatibles. Los perfiles Species Profile V1 requieren la version 0.14.0 o posterior."
     }
   },
   "notes": {
     "en": {
       "added": [
-        "Narration orchestrators can use claimsExchange to claim only the closed exchanges they understand.",
-        "Exchange predicates receive a bounded, deeply frozen copy of the canonical Scene Beat envelope.",
-        "The Module Doctrine documents exchange-specific ownership, fallthrough, and publication requirements."
+        "Species Profile V1 lets trusted content packs define bounded starting stats, size, difficulty, anatomy, existing abilities, temperament, canon, and encounter placement.",
+        "Elemental Species is supplied by the Sites host as an optional, disabled-by-default pack with Emberkin, Tidekin, and Stonekin.",
+        "Species contributions and their owned encounter entries are removed cleanly when their module is disabled."
       ],
       "changed": [
-        "Narration ownership is resolved once from the closed exchange and shared by every querying module.",
-        "Higher-priority narrators that decline or fail a claim now fall through to eligible lower-priority narrators.",
-        "Narration readiness and exchange interest are separate module contracts."
+        "The character creation species grid refreshes immediately when a species module is enabled or disabled.",
+        "Character creation preserves a valid selection and safely returns to Human when the selected mod species becomes unavailable.",
+        "Player creation and normalization now honor validated species-authored profiles without granting arbitrary mechanics."
       ],
       "fixed": [
-        "A caller-supplied envelope can no longer create or replace canonical ownership for an exchange.",
-        "Malformed narration predicates are rejected instead of silently widening to claim every exchange.",
-        "Nested Scene Beats and policy data cannot be mutated by ownership predicates."
+        "Newly enabled species no longer require a page reload before appearing in character creation.",
+        "Disabling a species pack no longer leaves stale species choices or owned encounter entries behind.",
+        "Invalid or unsupported profile fields are rejected at the module boundary instead of leaking into runtime state."
       ],
       "knownIssues": [
+        "Elemental traits are descriptive; elemental damage and resistance are not yet executable mechanics.",
         "Browser-direct AI connections still depend on endpoint TLS and CORS support.",
         "Combat balance, survival pacing, and longer-save defeat recovery remain active alpha playtest areas.",
         "The broader mobile party, enemy, and structure-action flow is scheduled for a future interaction redesign.",
@@ -42,24 +43,25 @@
     },
     "es": {
       "added": [
-        "Los orquestadores de narracion pueden usar claimsExchange para reclamar solo los intercambios cerrados que entienden.",
-        "Los predicados reciben una copia limitada y profundamente congelada del sobre canonico de Scene Beats.",
-        "La doctrina de modulos documenta propiedad por intercambio, continuidad y requisitos de publicacion."
+        "Species Profile V1 permite que paquetes confiables definan estadisticas iniciales limitadas, tamano, dificultad, anatomia, habilidades existentes, temperamento, canon y encuentros.",
+        "Elemental Species se entrega desde Sites como paquete opcional y desactivado por defecto con Emberkin, Tidekin y Stonekin.",
+        "Las especies y encuentros propios del modulo se eliminan limpiamente al desactivarlo."
       ],
       "changed": [
-        "La propiedad de narracion se resuelve una vez desde el intercambio cerrado y se comparte con cada modulo que consulta.",
-        "Los narradores de mayor prioridad que rechazan o fallan una reclamacion dejan paso a narradores elegibles de menor prioridad.",
-        "La disponibilidad de narracion y el interes en un intercambio ahora son contratos separados."
+        "La seleccion de especies se actualiza inmediatamente al activar o desactivar un modulo de especies.",
+        "La creacion conserva una seleccion valida y vuelve de forma segura a Human si la especie del modulo deja de estar disponible.",
+        "La creacion y normalizacion del jugador respetan perfiles validados sin conceder mecanicas arbitrarias."
       ],
       "fixed": [
-        "Un sobre entregado por el llamador ya no puede crear ni reemplazar la propiedad canonica de un intercambio.",
-        "Los predicados de narracion invalidos se rechazan en vez de ampliarse silenciosamente a todos los intercambios.",
-        "Los Scene Beats anidados y los datos de politica no pueden ser modificados por predicados de propiedad."
+        "Las especies recien activadas ya no requieren recargar la pagina para aparecer.",
+        "Desactivar un paquete ya no deja especies ni encuentros propios obsoletos.",
+        "Los campos de perfil invalidos o incompatibles se rechazan en el limite del modulo."
       ],
       "knownIssues": [
+        "Los rasgos elementales son descriptivos; el dano y la resistencia elemental aun no son mecanicas ejecutables.",
         "Las conexiones directas desde el navegador dependen de TLS y CORS del endpoint.",
         "El equilibrio de combate, el ritmo de supervivencia y la recuperacion en partidas largas siguen en pruebas alfa.",
-        "El flujo movil entre grupo, enemigos y acciones de estructuras queda reservado para un futuro rediseno de interaccion.",
+        "El flujo movil entre grupo, enemigos y acciones de estructuras queda reservado para un futuro rediseno.",
         "La primera visita con texturas transfiere aproximadamente 4 MB de atlas; el modo Ligero evita esa transferencia."
       ]
     }

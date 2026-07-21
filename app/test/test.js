@@ -18,6 +18,7 @@ const NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 
 const EXPLICIT_NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-explicit-narration.yawmod.json');
 const TEMPLATE_NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-template-narration.yawmod.json');
 const NARRATION_DIAGNOSTICS_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-narration-diagnostics.yawmod.json');
+const ELEMENTAL_SPECIES_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-elemental-species.yawmod.json');
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
 const BALANCE_COST_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'balance-cost-doctrine.md');
@@ -619,15 +620,89 @@ test('App object is defined', () => {
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.13.0', 'Release manifest should identify the current public version');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('claimsExchange')), 'Release notes should describe exchange-specific narration ownership');
-  assert(releaseInfo.notes.en.changed.some(note => note.includes('closed exchange')), 'Release notes should describe canonical closed-exchange ownership');
+  assertEqual(releaseInfo.version, '0.14.0', 'Release manifest should identify the current public version');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('Species Profile V1')), 'Release notes should describe the bounded species profile contract');
+  assert(releaseInfo.notes.en.changed.some(note => note.includes('character creation')), 'Release notes should describe live character-creation refresh');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('mobile party')), 'Release notes should disclose the deferred mobile interaction-flow redesign');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
   assertContains(buildContent, 'window.YAW_RELEASE = Object.freeze', 'Build should inject release metadata into the generated artifact');
   assertContains(moduleSystemContent, "GAME_VERSION: window.YAW_RELEASE?.version", 'Module compatibility should consume release metadata');
   assertContains(savePersistenceContent, "gameVersion: window.YAW_RELEASE?.version", 'Sparse save metadata should consume release metadata');
+});
+
+test('Elemental Species package stays within the supported species contribution boundary', () => {
+  const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
+  const manifest = packageData.module.manifest;
+  assertEqual(packageData.gameVersion, '0.14.0', 'Elemental package should target the current game release');
+  assertEqual(manifest.minGameVersion, '0.14.0', 'Elemental package should require the doctrine-tested module surface');
+  assertEqual(manifest.contentRating, 'safe', 'Elemental species identity content should remain safe-rated');
+  assertEqual(manifest.permissions.length, 1, 'Elemental package should request only one capability');
+  assertEqual(manifest.permissions[0], 'content:add_species', 'Elemental package should request only species registration');
+  assertContains(manifest.description, 'Species Profile V1', 'Package review should identify the bounded mechanical contract');
+  assertContains(manifest.description, 'do not create elemental damage or resistance', 'Package review should disclose the remaining mechanics boundary');
+  assertContains(fs.readFileSync(MOD_DOCTRINE, 'utf8'), '### Species Profile V1', 'Doctrine should define the mechanical species contract');
+  new Function('MODS', packageData.module.code);
+});
+
+test('Mod lifecycle refreshes character-creation species choices', () => {
+  assertContains(moduleSystemContent, 'App.initSpeciesGrid?.();', 'Loading or unloading a content mod should refresh species choices');
+  assertContains(createFlowContent, "species.id === app.selectedSpecies", 'Species refresh should preserve a still-valid selected species');
+});
+
+asyncTest('Elemental Species package installs, enables, and unloads three owned species', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+  const App = MODULE_SYSTEM._testApp;
+  for (const id of ['cave', 'cliff', 'water', 'beach', 'swamp', 'entrance']) {
+    App.biomes[id] = { encounterTable: [], friendlyTable: [] };
+  }
+  const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
+  await MODULE_SYSTEM.installModule(packageData);
+  await MODULE_SYSTEM.setModuleEnabled('yaw_elemental_species', true);
+  const species = App.species;
+  assertEqual(species.length, 3, 'Enabling the pack should register exactly three species');
+  assertEqual(species.map(entry => entry.id).join(','), 'emberkin,tidekin,stonekin', 'Elemental species ids should remain stable');
+  assert(species.every(entry => entry.adultEligibility === 'eligible'), 'Elemental species should declare explicit adult eligibility');
+  assertEqual(App.SPECIES_BASE_STATS.emberkin.Figh, 13, 'Emberkin should expose its bounded mechanical base stats');
+  assertEqual(App.SPECIES_ABILITIES.tidekin.swimming, true, 'Tidekin should receive an existing swimming ability');
+  assertEqual(App.SPECIES_SIZE.stonekin, 5, 'Stonekin should receive its authored size');
+  assertEqual(App.SPECIES_CANON.emberkin.bodyPlan, 'elementalfolk', 'Elemental canon should be registered for core consumers');
+  assert(App.biomes.cave.encounterTable.some(entry => entry.id === 'emberkin'), 'Elemental profiles should add owned hostile encounter entries');
+  assert(App.biomes.beach.friendlyTable.some(entry => entry.id === 'tidekin'), 'Elemental profiles should add owned friendly encounter entries');
+  await MODULE_SYSTEM.setModuleEnabled('yaw_elemental_species', false);
+  assertEqual(App.species.length, 0, 'Disabling the pack should remove every owned species contribution');
+  assertEqual(App.SPECIES_BASE_STATS.emberkin, undefined, 'Disabling the pack should remove owned stat profiles');
+  assertEqual(App.SPECIES_ABILITIES.tidekin, undefined, 'Disabling the pack should remove owned ability profiles');
+  assertEqual(App.biomes.cave.encounterTable.length, 0, 'Disabling the pack should remove exact hostile encounter entries');
+  assertEqual(App.biomes.beach.friendlyTable.length, 0, 'Disabling the pack should remove exact friendly encounter entries');
+});
+
+asyncTest('Species Profile V1 rejects unsupported mechanics atomically', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  const App = MODULE_SYSTEM._testApp;
+  App.biomes.grove = { encounterTable: [{ id: 'bunny', weight: 10 }] };
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'bad-profile-species', name: 'Bad Profile Species', version: '1.0.0', permissions: ['content:add_species'] },
+    code: `MODS.addSpecies({ id: 'sparkkin', name: 'Sparkkin', profile: {
+      version: 1,
+      abilities: { lightningDamage: true },
+      encounters: [{ biome: 'grove', table: 'hostile', weight: 5 }]
+    } });`
+  });
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('bad-profile-species', true);
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'unsupported field lightningDamage', 'Unsupported mechanics should identify the rejected profile field');
+  }
+  assertEqual(rejected, true, 'Unsupported profile mechanics should reject module enablement');
+  assertEqual(App.species.length, 0, 'Rejected profile registration should not leave an identity record');
+  assertEqual(App.biomes.grove.encounterTable.length, 1, 'Rejected profile registration should not mutate encounter tables');
+  assertEqual(App.SPECIES_BASE_STATS, undefined, 'Rejected profile registration should not create mechanical registries');
 });
 
 asyncTest('Narrative hooks receive a fresh frozen public envelope', async () => {

@@ -18,6 +18,16 @@ const MODULE_SYSTEM = {
     RUNTIME_ORIGINS: ['file', 'https', 'localhost', 'http'],
     HOST_MANIFEST_SCHEMA: 'yaw-host-modules-v1',
     CONTENT_PROFILE_SCHEMA: 'yaw-content-profile-v1',
+    SPECIES_PROFILE_VERSION: 1,
+    SPECIES_PROFILE_DEFAULT_STATS: Object.freeze({
+        MPun: 100, MPle: 100, Figh: 10, Feas: 10, Flir: 10, Fuck: 10,
+        Flee: 10, Feed: 10, hunger: 40, str: 10, con: 10, spd: 10,
+        int: 10, wis: 10, cha: 10
+    }),
+    SPECIES_PROFILE_BODY_PARTS: Object.freeze(['fangs', 'wings', 'tail', 'claws', 'horns', 'webbing', 'scales', 'fins', 'stinger', 'tentacles', 'pincers']),
+    SPECIES_PROFILE_ABILITIES: Object.freeze(['rage', 'menacing', 'flying', 'ranged', 'constrictor', 'poisonous', 'darkvision', 'bloodsuck', 'swimming', 'floopy', 'enveloped', 'venom', 'antiflying', 'tasty', 'fastFlee', 'small', 'livestock', 'laughing']),
+    SPECIES_PROFILE_TEMPERAMENTS: Object.freeze(['timid', 'prey', 'fastFlee', 'herd', 'livestock', 'aquatic', 'territorial', 'aggressive', 'swarm', 'opportunistic', 'pack', 'nocturnal', 'cunning', 'ambush', 'apex', 'aerial', 'adaptable', 'relentless', 'passive', 'playful', 'enveloping']),
+    SPECIES_PROFILE_INTERACTIONS: Object.freeze(['social', 'party', 'quest', 'merchant', 'recruit', 'sensitiveSocial', 'combat', 'feed', 'feast']),
     DEFAULT_HOST_MANIFEST_PATH: 'yaw-host.json',
     REMOTE_PACKAGE_MAX_BYTES: 2 * 1024 * 1024,
     REMOTE_PACKAGE_TIMEOUT_MS: 15000,
@@ -1815,6 +1825,7 @@ const MODULE_SYSTEM = {
                 }
             }
             
+            App.initSpeciesGrid?.();
             console.log(`Module loaded: ${module.manifest.name}`);
         } catch (e) {
             this.unloadModule(module.id);
@@ -1830,6 +1841,7 @@ const MODULE_SYSTEM = {
             this.ownedContributions.set(moduleId, {
                 biomes: new Map(),
                 species: new Set(),
+                speciesProfiles: [],
                 items: new Set(),
                 templates: [],
                 locales: [],
@@ -1870,6 +1882,117 @@ const MODULE_SYSTEM = {
         } catch (e) {
             throw new Error(`${label} definition must be serializable data`);
         }
+    },
+
+    _assertKnownKeys(value, allowed, label) {
+        for (const key of Object.keys(value || {})) {
+            if (!allowed.includes(key)) throw new Error(`${label} contains unsupported field ${key}`);
+        }
+    },
+
+    _normalizeProfileBooleanMap(value, allowed, label) {
+        if (value == null) return {};
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} must be an object`);
+        this._assertKnownKeys(value, allowed, label);
+        const normalized = {};
+        for (const [key, enabled] of Object.entries(value)) {
+            if (typeof enabled !== 'boolean') throw new Error(`${label}.${key} must be boolean`);
+            if (enabled) normalized[key] = true;
+        }
+        return normalized;
+    },
+
+    _normalizeSpeciesProfile(speciesDef) {
+        if (speciesDef.profile == null) return null;
+        const profile = speciesDef.profile;
+        if (!profile || typeof profile !== 'object' || Array.isArray(profile)) throw new Error('Species profile must be an object');
+        this._assertKnownKeys(profile, ['version', 'baseStats', 'size', 'difficulty', 'bodyParts', 'abilities', 'temperament', 'canon', 'encounters'], 'Species profile');
+        const version = Number(profile.version ?? this.SPECIES_PROFILE_VERSION);
+        if (version !== this.SPECIES_PROFILE_VERSION) throw new Error(`Unsupported species profile version ${profile.version}`);
+
+        const baseStats = { ...this.SPECIES_PROFILE_DEFAULT_STATS };
+        if (profile.baseStats != null) {
+            if (!profile.baseStats || typeof profile.baseStats !== 'object' || Array.isArray(profile.baseStats)) throw new Error('Species profile baseStats must be an object');
+            this._assertKnownKeys(profile.baseStats, Object.keys(baseStats), 'Species profile baseStats');
+            const broadStats = new Set(['MPun', 'MPle']);
+            for (const [key, raw] of Object.entries(profile.baseStats)) {
+                const value = Number(raw);
+                const min = key === 'hunger' ? 0 : (broadStats.has(key) ? 20 : 1);
+                const max = key === 'hunger' ? 100 : (broadStats.has(key) ? 300 : 30);
+                if (!Number.isFinite(value) || value < min || value > max) throw new Error(`Species profile baseStats.${key} must be between ${min} and ${max}`);
+                baseStats[key] = Math.round(value);
+            }
+        }
+
+        const boundedInteger = (raw, fallback, min, max, label) => {
+            const value = Number(raw ?? fallback);
+            if (!Number.isInteger(value) || value < min || value > max) throw new Error(`${label} must be an integer between ${min} and ${max}`);
+            return value;
+        };
+        const size = boundedInteger(profile.size, 4, 1, 8, 'Species profile size');
+        const difficulty = boundedInteger(profile.difficulty, 2, 1, 5, 'Species profile difficulty');
+
+        const bodyParts = profile.bodyParts == null ? [] : profile.bodyParts;
+        if (!Array.isArray(bodyParts) || bodyParts.length > 11) throw new Error('Species profile bodyParts must be an array with at most 11 entries');
+        const normalizedParts = [...new Set(bodyParts.map(part => String(part || '').trim()))];
+        for (const part of normalizedParts) {
+            if (!this.SPECIES_PROFILE_BODY_PARTS.includes(part)) throw new Error(`Species profile bodyParts contains unsupported part ${part}`);
+        }
+
+        const canon = profile.canon == null ? {} : profile.canon;
+        if (!canon || typeof canon !== 'object' || Array.isArray(canon)) throw new Error('Species profile canon must be an object');
+        this._assertKnownKeys(canon, ['sapience', 'bodyPlan', 'baselineInteraction', 'adultEligibility', 'interactionEligibility', 'traits'], 'Species profile canon');
+        const normalizedCanon = {};
+        if (canon.sapience != null) {
+            const sapience = String(canon.sapience);
+            if (!['person', 'spirit', 'animal'].includes(sapience)) throw new Error('Species profile canon.sapience is unsupported');
+            normalizedCanon.sapience = sapience;
+        }
+        if (canon.bodyPlan != null) {
+            const bodyPlan = String(canon.bodyPlan).trim();
+            if (!/^[a-z][a-z0-9-]{0,39}$/.test(bodyPlan)) throw new Error('Species profile canon.bodyPlan must be a bounded identifier');
+            normalizedCanon.bodyPlan = bodyPlan;
+        }
+        if (canon.baselineInteraction != null) {
+            const baseline = String(canon.baselineInteraction);
+            if (!['sapient', 'animal', 'none'].includes(baseline)) throw new Error('Species profile canon.baselineInteraction is unsupported');
+            normalizedCanon.baselineInteraction = baseline;
+        }
+        if (canon.adultEligibility != null) {
+            const eligibility = String(canon.adultEligibility).toLowerCase();
+            if (!['eligible', 'ineligible', 'unknown'].includes(eligibility)) throw new Error('Species profile canon.adultEligibility is unsupported');
+            normalizedCanon.adultEligibility = eligibility;
+        }
+        normalizedCanon.interactionEligibility = this._normalizeProfileBooleanMap(canon.interactionEligibility, this.SPECIES_PROFILE_INTERACTIONS, 'Species profile canon.interactionEligibility');
+        const traits = canon.traits == null ? [] : canon.traits;
+        if (!Array.isArray(traits) || traits.length > 16) throw new Error('Species profile canon.traits must be an array with at most 16 entries');
+        normalizedCanon.traits = [...new Set(traits.map(trait => String(trait || '').trim()).filter(Boolean))];
+        if (normalizedCanon.traits.some(trait => trait.length > 50)) throw new Error('Species profile canon.traits entries must be 50 characters or fewer');
+
+        const encounterDefs = profile.encounters == null ? [] : profile.encounters;
+        if (!Array.isArray(encounterDefs) || encounterDefs.length > 24) throw new Error('Species profile encounters must be an array with at most 24 entries');
+        const encounters = encounterDefs.map((encounter, index) => {
+            if (!encounter || typeof encounter !== 'object' || Array.isArray(encounter)) throw new Error(`Species profile encounters[${index}] must be an object`);
+            this._assertKnownKeys(encounter, ['biome', 'table', 'weight'], `Species profile encounters[${index}]`);
+            const biome = String(encounter.biome || '').trim();
+            const table = String(encounter.table || 'hostile');
+            const weight = boundedInteger(encounter.weight, 5, 1, 100, `Species profile encounters[${index}].weight`);
+            if (!biome || !App.biomes?.[biome]) throw new Error(`Species profile encounter biome ${biome || '(missing)'} is unavailable`);
+            if (!['hostile', 'friendly'].includes(table)) throw new Error(`Species profile encounters[${index}].table must be hostile or friendly`);
+            return { biome, table, weight };
+        });
+
+        return {
+            version,
+            baseStats,
+            size,
+            difficulty,
+            bodyParts: normalizedParts,
+            abilities: this._normalizeProfileBooleanMap(profile.abilities, this.SPECIES_PROFILE_ABILITIES, 'Species profile abilities'),
+            temperament: this._normalizeProfileBooleanMap(profile.temperament, this.SPECIES_PROFILE_TEMPERAMENTS, 'Species profile temperament'),
+            canon: normalizedCanon,
+            encounters
+        };
     },
 
     _assertSerializableData(value, label, stack = new Set()) {
@@ -2037,11 +2160,56 @@ const MODULE_SYSTEM = {
     },
 
     _addOwnedArrayEntry(moduleId, collectionName, value) {
-        const labels = { species: 'Species', items: 'Item' };
+        const labels = { items: 'Item' };
         const entry = this._normalizeDataContribution(value, labels[collectionName] || collectionName);
         App[collectionName] = App[collectionName] || [];
         App[collectionName].push(entry);
         this._contributionRecord(moduleId)[collectionName].add(entry);
+    },
+
+    _addOwnedSpecies(moduleId, speciesDef) {
+        const entry = this._normalizeDataContribution(speciesDef, 'Species');
+        const profile = this._normalizeSpeciesProfile(entry);
+        App.species = App.species || [];
+        if (App.species.some(species => String(species?.id) === entry.id)) {
+            throw new Error(`Species definition id ${entry.id} is already registered`);
+        }
+
+        const record = this._contributionRecord(moduleId);
+        const profileRecord = { id: entry.id, maps: [], encounters: [] };
+        const setMapValue = (mapName, value) => {
+            App[mapName] = App[mapName] || {};
+            profileRecord.maps.push({
+                mapName,
+                existed: Object.prototype.hasOwnProperty.call(App[mapName], entry.id),
+                value: App[mapName][entry.id]
+            });
+            App[mapName][entry.id] = value;
+        };
+
+        App.species.push(entry);
+        record.species.add(entry);
+        if (!profile) return entry;
+        record.speciesProfiles.push(profileRecord);
+
+        setMapValue('SPECIES_BASE_STATS', { ...profile.baseStats });
+        setMapValue('SPECIES_DEFAULT_PARTS', [...profile.bodyParts]);
+        setMapValue('SPECIES_ABILITIES', { ...profile.abilities });
+        setMapValue('SPECIES_DIFFICULTY', profile.difficulty);
+        setMapValue('SPECIES_SIZE', profile.size);
+        setMapValue('SPECIES_TEMPERAMENT', { ...profile.temperament });
+        setMapValue('SPECIES_CANON', { ...profile.canon, traits: [...profile.canon.traits], interactionEligibility: { ...profile.canon.interactionEligibility } });
+
+        for (const encounter of profile.encounters) {
+            const biome = App.biomes[encounter.biome];
+            const property = encounter.table === 'friendly' ? 'friendlyTable' : 'encounterTable';
+            const createdTable = !Array.isArray(biome[property]);
+            if (createdTable) biome[property] = [];
+            const tableEntry = { id: entry.id, weight: encounter.weight };
+            biome[property].push(tableEntry);
+            profileRecord.encounters.push({ biome: encounter.biome, property, entry: tableEntry, createdTable });
+        }
+        return entry;
     },
 
     _addOwnedTemplate(moduleId, category, type, variant, tier, renderer) {
@@ -2070,6 +2238,19 @@ const MODULE_SYSTEM = {
 
         if (Array.isArray(App.species)) {
             App.species = App.species.filter(entry => !record.species.has(entry));
+        }
+        for (const profile of [...record.speciesProfiles].reverse()) {
+            for (const encounter of [...profile.encounters].reverse()) {
+                const biome = App.biomes?.[encounter.biome];
+                if (!biome || !Array.isArray(biome[encounter.property])) continue;
+                biome[encounter.property] = biome[encounter.property].filter(entry => entry !== encounter.entry);
+                if (encounter.createdTable && biome[encounter.property].length === 0) delete biome[encounter.property];
+            }
+            for (const map of [...profile.maps].reverse()) {
+                if (!App[map.mapName]) continue;
+                if (map.existed) App[map.mapName][profile.id] = map.value;
+                else delete App[map.mapName][profile.id];
+            }
         }
         if (Array.isArray(App.items)) {
             App.items = App.items.filter(entry => !record.items.has(entry));
@@ -2130,6 +2311,7 @@ const MODULE_SYSTEM = {
         }
         
         this.activeModules.delete(moduleId);
+        App.initSpeciesGrid?.();
         console.log(`Module unloaded: ${moduleId}`);
     },
     
@@ -2150,7 +2332,7 @@ const MODULE_SYSTEM = {
             
             addSpecies(speciesDef) {
                 self._requirePermission(moduleId, manifest, 'content:add_species');
-                self._addOwnedArrayEntry(moduleId, 'species', speciesDef);
+                return self._addOwnedSpecies(moduleId, speciesDef);
             },
             
             addItem(itemDef) {

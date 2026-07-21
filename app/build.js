@@ -20,6 +20,7 @@ const BUNDLED_TILESET_MATERIALS = path.join(ROOT_DIR, 'media', 'terrain-sand-sea
 const PLACEHOLDER = '<!-- SCRIPTS_PLACEHOLDER -->';
 const GENERATED_BANNER = '<!-- GENERATED FILE. Do not edit directly. Edit app/src and run npm run build. -->';
 const FIRST_PARTY_PACKAGE_MIRRORS = [
+  'you-are-wild-elemental-species.yawmod.json',
   'you-are-wild-explicit-narration.yawmod.json',
   'you-are-wild-explicit.yawmod.json',
   'you-are-wild-narration-diagnostics.yawmod.json',

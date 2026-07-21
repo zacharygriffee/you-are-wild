@@ -167,6 +167,56 @@ Implemented permissions:
 Unknown permissions reject installation. Calling a permissioned API without
 declaring its token fails module enablement and cleans partial contributions.
 
+### Species Profile V1
+
+`content:add_species` permits an owned, serializable identity plus an optional
+bounded mechanical profile:
+
+```js
+MODS.addSpecies({
+  id: 'emberkin',
+  name: 'Emberkin',
+  icon: '🔥',
+  desc: 'Sapient adult elemental person shaped by living flame',
+  adultEligibility: 'eligible',
+  profile: {
+    version: 1,
+    baseStats: { MPun: 110, Figh: 13, con: 12 },
+    size: 4,
+    difficulty: 3,
+    bodyParts: ['scales'],
+    abilities: { ranged: true, menacing: true },
+    temperament: { aggressive: true, territorial: true },
+    canon: {
+      sapience: 'person',
+      bodyPlan: 'elementalfolk',
+      baselineInteraction: 'sapient',
+      adultEligibility: 'eligible',
+      traits: ['person', 'elemental', 'fire']
+    },
+    encounters: [
+      { biome: 'cave', table: 'hostile', weight: 8 },
+      { biome: 'cliff', table: 'friendly', weight: 4 }
+    ]
+  }
+});
+```
+
+Profile fields are consumed by character creation, unit normalization, and
+encounter generation. Omitted base stats use the neutral core baseline;
+omitted size and difficulty default to `4` and `2`. Encounter `table` is
+`hostile` or `friendly`, and every referenced biome must already exist when
+the species is registered. Core rejects unknown profile fields, unknown body
+parts or abilities, out-of-range numbers, duplicate species IDs, and
+unavailable encounter biomes. Registration is atomic, and disabling the
+module removes the species, profile maps, and exact encounter entries it owns.
+
+The V1 ability and temperament keys are deliberately limited to mechanics the
+game already consumes. A label such as `fire` in `canon.traits` is descriptive;
+it does not create fire damage, resistance, new actions, predator/prey rules,
+or perks. Those require a separately documented extension seam. Do not present
+descriptive fields as executable powers.
+
 ### Hook events
 
 The current hook registry accepts exactly:

@@ -4,6 +4,8 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Release 0.14.0 adds Species Profile V1 for bounded species-authored stats, size, anatomy, existing abilities, temperament, canon, and encounter placement. The Sites host supplies the tested Elemental Species pack as optional and disabled by default; character creation refreshes immediately and safely on module enable or disable.
+
 - Modular source builds a generated single-file playable artifact; CI validates and uploads it while `dist/` remains ignored.
 - The 3x3 play surface, compact desktop cards, mobile actor/target rails, composer-owned intents, Scene Feed, Activity Log, and restrained toast layer are implemented.
 - Accessibility foundations include keyboard-operable cards/chips, focus traps, localized accessible names, high contrast, reduced motion, and font scaling.

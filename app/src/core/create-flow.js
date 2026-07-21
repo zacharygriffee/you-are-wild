@@ -6,8 +6,13 @@
 const YAW_CREATE_FLOW = {
     initSpeciesGrid(app) {
         const grid = document.getElementById('species-grid');
+        const selectedSpecies = app.species.some(species => species.id === app.selectedSpecies)
+            ? app.selectedSpecies
+            : 'human';
+        app.selectedSpecies = selectedSpecies;
         if (grid) {
-            grid.innerHTML = app.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-species" data-create-option="${s.id}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
+            grid.innerHTML = app.species.map(s => `<div class="option-card ${s.id === selectedSpecies ? 'selected' : ''}" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-species" data-create-option="${s.id}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
+            if (document.getElementById('species-info')) this.selectSpecies(app, selectedSpecies);
         }
     },
 
@@ -201,7 +206,7 @@ const YAW_CREATE_FLOW = {
             icon: species.icon, gender: app.selectedGender,
             identity: app.selectedGender, parts: hasCock ? 'cock' : (hasClit ? 'clit' : null),
             chest: hasTits ? 'tits' : (hasPecs ? 'pecs' : null), bothParts: hasCock && hasClit,
-            bodyParts: bodyParts, size: 4, appetite: 4,
+            bodyParts: bodyParts, size: app.SPECIES_SIZE[app.selectedSpecies] || 4, appetite: 4,
             level: 1, xp: 0, xpToNext: 100, gold: 0,
             MPun: maxPun, CPun: maxPun, MPle: maxPle, CPle: Math.floor(maxPle * 0.5),
             Figh: baseStats.Figh, Feas: baseStats.Feas, Flir: baseStats.Flir, Fuck: baseStats.Fuck, Flee: baseStats.Flee, Feed: baseStats.Feed,

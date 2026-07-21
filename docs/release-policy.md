@@ -110,3 +110,11 @@ request.
 - Orchestrators that use `claimsExchange` must declare game version 0.13.0 or
   newer; orchestrators that omit it retain the original claim-all behavior.
 - First-party package production metadata is stamped with 0.13.0.
+
+## Version 0.14.0 Compatibility
+
+- Existing 0.10.x through 0.13.0 saves load without player migration.
+- Species Profile V1 is an additive, bounded extension to species contributions;
+  existing species modules that omit a profile retain their original behavior.
+- Modules using Species Profile V1 must declare game version 0.14.0 or newer.
+- First-party package production metadata is stamped with 0.14.0.

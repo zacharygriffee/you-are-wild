@@ -95,3 +95,15 @@ This V1 pass does not implement:
 - party-size upgrade balance
 
 Broader balance should be driven by playtest data after this V1 pressure layer is stable.
+
+## Ordered Balance Backlog
+
+The next balance pass must replace the single generic Feed-cost assumption with
+variant-specific source economics. Feeding oneself or another creature cannot
+produce free recovery: Tend may primarily cost time/hunger, Nurse may consume a
+renewable reserve plus cooldown, Offer Piece must consume condition or vitality
+that represents the offered mass, and future authored variants must declare
+their own bounded source cost. The final mapping remains undecided until an
+interaction-wide matrix compares condition, vitality, hunger, Spirit, cooldown,
+XP, practice, elapsed time, and turn cost for success and committed failure in
+single-, multi-, and group-target forms.

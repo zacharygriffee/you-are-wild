@@ -741,6 +741,24 @@ async function runActionMatrix(page) {
   assert.strictEqual(state.stomachCount, 1, 'Feast should contain a weakened reachable enemy through panel clicks');
   assert.strictEqual(state.enemyVisible, false, 'Feast should remove contained enemy from visible enemies');
 
+  await setupCombat(page, {
+    playerOverrides: { size: 1, appetite: 0, combatRow: 'front' },
+    enemyOverrides: { CPun: 20, MPun: 100, size: 8, combatRow: 'front' }
+  });
+  await clickIntentAndTarget(page, 'feast');
+  state = await page.evaluate(() => ({
+    stomachCount: App.player.stomach.length,
+    enemyVisible: App.creatures.some(c => c.id === 'enemy-1'),
+    advanced: App._advancedTurn === true,
+    sceneFeed: document.querySelector('#desktop-scene-feed-latest')?.textContent || '',
+    correction: App.combatCorrectionMessage
+  }));
+  assert.strictEqual(state.stomachCount, 0, 'A committed over-capacity Feast should not contain the target');
+  assert.strictEqual(state.enemyVisible, true, 'A committed over-capacity Feast should leave the target present');
+  assert.strictEqual(state.advanced, true, 'A committed over-capacity Feast should spend the turn');
+  assert(state.sceneFeed.includes('too full') || state.sceneFeed.includes('tries'), 'A committed over-capacity Feast should resolve through in-world Scene Feed text');
+  assert.strictEqual(state.correction, null, 'A committed over-capacity Feast should not create a composer error');
+
   await setupCombat(page, { withAlly: true });
   await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('feed')"]`).first().click();
   const allyCard = page.locator('#party-content .compact-tactical-card').filter({ hasText: 'Ally' }).first();
@@ -754,6 +772,114 @@ async function runActionMatrix(page) {
   }));
   assert(state.allyPun > 40, 'Feed should heal the explicitly selected wounded ally through the active party card');
   assert.strictEqual(state.advanced, true, 'Feed should consume the combat turn');
+}
+
+async function runContextualVariantComposerFlow(page) {
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await setupAdventure(page);
+  await page.evaluate(() => {
+    App.player.CPun = 50;
+    const held = {
+      id: 'held-self-variant', name: 'Held', species: 'human', icon: 'X',
+      CPun: 20, MPun: 100, CPle: 0, MPle: 100, size: 1,
+      stomach: [], womb: [], balls: [], status: {}, disposition: App.DISPOSITION.FRIENDLY,
+      alive: true, releaseEligible: true
+    };
+    App._containTargetIn(App.player, held, 'stomach');
+    const playerId = App._unitSelectionId(App.player);
+    App.explorationActorIds = [playerId];
+    App.explorationActorId = playerId;
+    App.explorationActorSelectionExplicit = true;
+    App.explorationTargetIds = [];
+    App.renderParty();
+    App.renderCreatures();
+    App.renderExplorationActions();
+  });
+
+  let state = await page.evaluate(() => ({
+    beltText: document.querySelector('#desktop-context-belt')?.innerText || '',
+    directSelfButtons: (document.querySelector('#desktop-context-belt')?.innerText || '').includes('Self:'),
+    contextualButtons: document.querySelectorAll('#desktop-context-belt button.contextual-action-btn').length
+  }));
+  assert.strictEqual(state.directSelfButtons, false, 'Desktop actor-only composer should not expose Self variants as primary peer buttons');
+  assert(state.contextualButtons >= 3, 'Desktop actor-only composer should expose stable Feed, Feast, and Play interaction buttons');
+
+  await page.locator(`#desktop-context-belt button[onclick*="openExplorationSubActionSheet('feast','actor-belt','desktop')"]`).click();
+  state = await page.evaluate(() => {
+    const menu = document.querySelector('#desktop-intent-menu');
+    return {
+      menuText: menu?.innerText || '',
+      scopes: Array.from(menu?.querySelectorAll('.action-variant-group') || []).map(group => group.getAttribute('data-command-scope')),
+      targetRoutes: (menu?.innerHTML || '').includes('resolveExplorationTargetAction'),
+      backVisible: Boolean(menu?.querySelector('[data-command-control="back-variant"]'))
+    };
+  });
+  assert.deepStrictEqual(state.scopes, ['self'], 'Actor-only Feast should open only its Self sub-interactions');
+  assert(state.menuText.includes('Break Down') && state.menuText.includes('Free'), 'Actor-only Feast should expose Digest and Release using active safe labels');
+  assert.strictEqual(state.targetRoutes, false, 'Actor-only Feast should not invent a target route');
+  assert.strictEqual(state.backVisible, true, 'Actor-only Feast should expose a reversible Back control');
+  await page.locator('#desktop-intent-menu [data-command-control="back-variant"]').click();
+
+  await page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="openExplorationSubActionSheet('feast','composer-tray','desktop')"]`).click();
+  state = await page.evaluate(() => {
+    const menu = document.querySelector('#desktop-intent-menu');
+    return {
+      menuText: menu?.innerText || '',
+      scopes: Array.from(menu?.querySelectorAll('.action-variant-group') || []).map(group => group.getAttribute('data-command-scope')),
+      groupLabels: Array.from(menu?.querySelectorAll('.action-variant-group-title') || []).map(label => (label.textContent || '').trim()),
+      selfRoute: (menu?.innerHTML || '').includes("resolveExplorationSelfSubAction('feast'"),
+      targetRoute: (menu?.innerHTML || '').includes("resolveExplorationTargetAction('feast'"),
+      actors: App._getExplorationActors().map(unit => unit.id),
+      targets: [...App.explorationTargetIds]
+    };
+  });
+  assert.deepStrictEqual(state.scopes, ['self', 'target'], 'Targeted Feast should group Self and Targets sub-interactions in one menu');
+  assert.deepStrictEqual(state.groupLabels, ['Self', 'Targets'], 'Targeted Feast should visibly label both submenu scopes');
+  assert.strictEqual(state.selfRoute, true, 'Targeted Feast should retain actor-owned containment routes');
+  assert.strictEqual(state.targetRoute, true, 'Targeted Feast should expose target interaction routes');
+  assert.deepStrictEqual(state.actors, ['player-1'], 'Opening targeted Feast should preserve actor selection');
+  assert.deepStrictEqual(state.targets, ['creature:friendly-1'], 'Opening targeted Feast should preserve target selection');
+  await page.locator('#desktop-intent-menu [data-command-control="back-variant"]').click();
+
+  await page.locator(`#desktop-context-belt button[onclick*="openExplorationSubActionSheet('fuck','composer-tray','desktop')"]`).click();
+  state = await page.evaluate(() => {
+    const menu = document.querySelector('#desktop-intent-menu');
+    return {
+      scopes: Array.from(menu?.querySelectorAll('.action-variant-group') || []).map(group => group.getAttribute('data-command-scope')),
+      selfRoute: (menu?.innerHTML || '').includes("resolveExplorationSelfSubAction('fuck','seduce'"),
+      targetRoute: (menu?.innerHTML || '').includes("resolveExplorationTargetAction('fuck','seduce'")
+    };
+  });
+  assert.deepStrictEqual(state.scopes, ['self', 'target'], 'Targeted Play should use the same Self and Targets grouping contract');
+  assert.strictEqual(state.selfRoute, true, 'Targeted Play should keep its self Play route inside the submenu');
+  assert.strictEqual(state.targetRoute, true, 'Targeted Play should keep its marked-target route inside the submenu');
+  await page.locator('#desktop-intent-menu [data-command-control="back-variant"]').click();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupAdventure(page);
+  await page.evaluate(() => {
+    const playerId = App._unitSelectionId(App.player);
+    App.explorationActorIds = [playerId];
+    App.explorationActorId = playerId;
+    App.explorationActorSelectionExplicit = true;
+    App.renderExplorationActions();
+  });
+  const mobileFeast = page.locator(`#mobile-explore-actions button[onclick*="openExplorationSubActionSheet('feast','mobile-target','')"]`).first();
+  await assert.doesNotReject(() => mobileFeast.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile actor-only Feast should remain visible in the control belt');
+  await mobileFeast.click();
+  state = await page.evaluate(() => ({
+    mobileMenuVisible: Boolean(document.querySelector('#mobile-context-menu')),
+    desktopMenuVisible: Boolean(document.querySelector('#desktop-intent-menu')),
+    selfScope: Boolean(document.querySelector('#mobile-context-menu .action-variant-group[data-command-scope="self"]')),
+    horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  }));
+  assert.strictEqual(state.mobileMenuVisible, true, 'Mobile actor-only Feast should use the mobile submenu presentation');
+  assert.strictEqual(state.desktopMenuVisible, false, 'Mobile actor-only Feast should not open the desktop popover');
+  assert.strictEqual(state.selfScope, true, 'Mobile actor-only Feast should retain the Self scope');
+  assert.strictEqual(state.horizontalOverflow, false, 'Mobile contextual submenu should not introduce page-level horizontal overflow');
+  await page.locator('#mobile-context-menu [data-command-control="back-variant"]').click();
+  await page.setViewportSize({ width: 1365, height: 768 });
 }
 
 async function runReachabilityMatrix(page) {
@@ -836,6 +962,19 @@ async function runReachabilityMatrix(page) {
   }));
   assert.strictEqual(state.stomachCount, 0, 'Unresolved feast target attempt should not contain enemy before selection');
   assert.strictEqual(state.targetSelectionAction, 'feast', 'Unreachable feast target should preserve selected intent until commit');
+  await page.locator('#enemies-content .compact-tactical-card').first().click();
+  state = await page.evaluate(() => ({
+    stomachCount: App.player.stomach.length,
+    targetSelectionAction: App.targetSelection?.action || null,
+    advanced: App._advancedTurn === true,
+    sceneFeed: document.querySelector('#desktop-scene-feed-latest')?.textContent || '',
+    correction: App.combatCorrectionMessage
+  }));
+  assert.strictEqual(state.stomachCount, 0, 'Committed unreachable Feast should not contain the enemy');
+  assert.strictEqual(state.targetSelectionAction, null, 'Committed unreachable Feast should leave target selection');
+  assert.strictEqual(state.advanced, true, 'Committed unreachable Feast should spend the turn');
+  assert(state.sceneFeed.includes('out of reach') || state.sceneFeed.includes('close contact'), 'Committed unreachable Feast should fail through Scene Feed');
+  assert.strictEqual(state.correction, null, 'Committed unreachable Feast should not create a UI error');
 
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
   await clickIntentAndTarget(page, 'flirt');
@@ -4578,6 +4717,7 @@ async function runUriTilesetLifecycleFlow(browser) {
     await runCombatTargetFirstComposerFlow(page);
     await runCombatProgressInvariantFlow(page);
     await runActionMatrix(page);
+    await runContextualVariantComposerFlow(page);
     await runReachabilityMatrix(page);
     await runMultiEnemyCombatTargetingFlow(page);
     await runStaleSyncParticipantFlow(page);

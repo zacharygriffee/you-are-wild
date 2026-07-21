@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "0.12.2",
-  "releasedAt": "2026-07-20",
+  "releasedAt": "2026-07-21",
   "channel": "public-preview",
   "saveSchema": 11,
   "moduleApi": 1,
@@ -20,15 +20,18 @@
     "en": {
       "added": [
         "Feed now offers contextual Tend, Nurse, Offer Self, and Offer Piece variants after actor and target selection.",
-        "Living player and companion retreats now relocate to a safe adjacent tile instead of entering the death-recovery flow."
+        "Living player and companion retreats now relocate to a safe adjacent tile instead of entering the death-recovery flow.",
+        "Feed, Feast, and Play now open one contextual submenu that separates actor-owned Self variants from marked-target variants."
       ],
       "changed": [
         "Feed consistently treats the selected actor as the source and the selected target as the recipient or consumer.",
-        "Legacy inverse-direction Feed identifiers remain compatible for old saves and trusted modules but are hidden from the core picker."
+        "Legacy inverse-direction Feed identifiers remain compatible for old saves and trusted modules but are hidden from the core picker.",
+        "Niche explicit categories are no longer core settings; optional rated modules own their installation and opt-in controls."
       ],
       "fixed": [
         "Combat Feed confirmation remains reachable on desktop and mobile without silently redirecting a companion action to the player.",
-        "Mobile map clearance, touch targets, overlay focus restoration, localized metadata, and combat-plan reload recovery are covered against regression."
+        "Mobile map clearance, touch targets, overlay focus restoration, localized metadata, and combat-plan reload recovery are covered against regression.",
+        "Physically meaningful Feast attempts now commit and resolve through the Scene Feed instead of disappearing as composer errors when reach, capacity, or resistance prevents success."
       ],
       "knownIssues": [
         "Browser-direct AI connections still depend on endpoint TLS and CORS support.",
@@ -40,15 +43,18 @@
     "es": {
       "added": [
         "Alimentar ahora ofrece las variantes contextuales Cuidar, Amamantar, Ofrecerse y Ofrecer porcion despues de elegir actor y objetivo.",
-        "Las huidas de jugadores y companeros vivos ahora los trasladan a una casilla adyacente segura en vez de iniciar la recuperacion por muerte."
+        "Las huidas de jugadores y companeros vivos ahora los trasladan a una casilla adyacente segura en vez de iniciar la recuperacion por muerte.",
+        "Alimentar, Festin y Jugar ahora abren un unico submenu contextual que separa las variantes propias del actor de las dirigidas a objetivos marcados."
       ],
       "changed": [
         "Alimentar trata de forma consistente al actor elegido como origen y al objetivo elegido como receptor o consumidor.",
-        "Los identificadores antiguos de Alimentar en direccion inversa siguen siendo compatibles con partidas y modulos de confianza, pero ya no aparecen en el selector principal."
+        "Los identificadores antiguos de Alimentar en direccion inversa siguen siendo compatibles con partidas y modulos de confianza, pero ya no aparecen en el selector principal.",
+        "Las categorias explicitas especializadas ya no son ajustes centrales; los modulos opcionales clasificados controlan su instalacion y activacion."
       ],
       "fixed": [
         "La confirmacion de Alimentar sigue accesible en escritorio y movil sin redirigir silenciosamente la accion de un companero al jugador.",
-        "El espacio del mapa movil, los objetivos tactiles, el retorno del foco, los metadatos traducidos y la recarga de planes de combate estan protegidos contra regresiones."
+        "El espacio del mapa movil, los objetivos tactiles, el retorno del foco, los metadatos traducidos y la recarga de planes de combate estan protegidos contra regresiones.",
+        "Los intentos fisicamente posibles de Festin ahora se confirman y se resuelven en el relato de escena en vez de desaparecer como errores cuando el alcance, la capacidad o la resistencia impiden el exito."
       ],
       "knownIssues": [
         "Las conexiones directas desde el navegador dependen de TLS y CORS del endpoint.",

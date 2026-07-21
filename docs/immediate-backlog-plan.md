@@ -5,12 +5,12 @@ does not build on ambiguous defeat, save, or world-state behavior. Each slice is
 independently testable and must preserve file-origin play, hosted Textured and
 Lightweight play, existing saves, optional content boundaries, and mod hooks.
 
-## Immediate Next — Agent-Authored Mod Contract Hardening
+## Immediate Next — Public Module Contract Hardening
 
 The interaction composer cleanup is followed immediately by a public mod API
-and doctrine pass. Use the agent-authored `Lace & Desires` package as a failing
-acceptance fixture, not as a canonical module until every declared contribution
-is demonstrably reachable and persistent.
+and doctrine pass. Use neutral maintained fixtures to prove that every declared
+contribution is reachable and persistent. Unreviewed agent-generated packages
+are excluded from doctrine and acceptance.
 
 1. Publish an exact table of content request keys and their
    `category.type.variant` consumers. Reject or warn on registered keys that no
@@ -26,9 +26,9 @@ is demonstrably reachable and persistent.
    grouping, dispatch, save/load, unload cleanup, and content-policy gating.
 5. Emit enable-time diagnostics for unreachable templates, non-persisting
    creation options, and declared variants without executable routes.
-6. Correct misleading first-party examples, then require `Lace & Desires` to
-   pass install, review, enable, character creation, interaction, save/reload,
-   disable, and ownership-cleanup tests.
+6. Correct misleading first-party examples, then require a neutral conformance
+   package to pass install, review, enable, character creation, interaction,
+   save/reload, disable, and ownership-cleanup tests.
 
 Acceptance gate: an independent coding agent can author a working module from
 the public documentation without relying on undocumented key names, raw App

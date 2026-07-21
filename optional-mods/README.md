@@ -1,6 +1,10 @@
-# Optional First-Party Mods
+# Maintained Optional First-Party Modules
 
-Files in this directory are not included in `dist/you-are-wild.html`.
+Files described below are maintained reference packages and are not included in
+`dist/you-are-wild.html`. Other local files in this directory are not endorsed
+examples unless they are explicitly added to this list and covered by tests.
+The canonical authoring contract is `docs/modding.md`; packages demonstrate only
+the APIs they actually use.
 
 `you-are-wild-narration.yawmod.json` is the Simple Narrator reference package.
 It adds provider-neutral SFW/Mature narration orchestration, exposes bounded
@@ -28,10 +32,10 @@ unless all involved characters carry trusted adult-eligibility metadata.
 When it is ready and allowed it exclusively owns the exchange; otherwise the
 standard orchestrator remains available.
 
-The default game exposes an optional Puter user-pays connection in AI Providers.
-Puter handles browser sign-in and no API key enters module settings or save
-data. Its opaque connection lasts for the current browser session and can be
-selected by either provider-backed narration package.
+OpenAI-Compatible profiles are the canonical browser-direct text provider for
+reference narration packages. Puter remains an optional keyless adapter: it
+owns browser sign-in, places no API key in module settings or saves, and exposes
+only an opaque session connection to compatible narration modules.
 
 `you-are-wild-explicit.yawmod.json` is the first-party provider for explicit
 creation options, settings, and narrative. Install it through the local Mod
@@ -39,3 +43,8 @@ Manager, opt into its declared category under Settings, and then enable it.
 
 The package is intentionally separate from the default artifact. Core mechanics
 must remain playable without it.
+
+`example-tileset-pack/` is the maintained code-free Asset Bundle/Tileset Pack
+V1 fixture. It demonstrates reviewed URI resources, local retention, fallback,
+replacement, and removal; it does not imply sprite, animation, audio, video, or
+3D schema support.

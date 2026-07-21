@@ -124,7 +124,8 @@ const YAW_COMBAT_ACTIONS = {
 
     desktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {
         if (!app.combatState?.active) return '';
-        if ((app.syncSelection?.active && !app._isCombatGroupCompose?.()) || app.feedSelection?.active) {
+        if (app.feedSelection?.active) return '';
+        if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             return app._renderCombatPanelTray?.() || '';
         }
         if (app.targetSelection?.source === 'combat') {

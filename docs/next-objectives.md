@@ -25,16 +25,16 @@ This is the short handoff for unfinished work. Completed implementation history 
 
 ## Active Objectives
 
-### Immediate Next — Agent-Authored Mod Contract
+### Immediate Next — Public Module Contract
 
-After the contextual interaction UI cleanup, harden the public mod contract using the agent-authored `Lace & Desires` package as an acceptance fixture rather than treating its current output as a trusted example.
+After the contextual interaction UI cleanup, harden the public module contract against the canonical doctrine and neutral conformance fixtures. Unreviewed agent-generated packages are excluded from both doctrine and acceptance.
 
 1. Document the exact content-template key grammar (`category.type.variant`) and list the core request keys that are actually consumed. Registration alone must never imply that a template has a gameplay route.
 2. Separate the legacy `MODS.registerContentTemplate` contract from the Scene Feed template contract, and expose a module-owned Scene Feed registration API instead of telling modules to reach through raw `App` methods.
 3. Either persist provider-declared creation options into a bounded owned character-data namespace or reject unsupported values during review; rendering a choice that character creation discards is not acceptable.
 4. Decide and implement the bounded Play action-variant seam before examples claim that custom Play sub-interactions are supported. Keep Feed/Feast-only registration explicit until then.
 5. Add enable-time diagnostics for template keys with no known consumer, settings/options that cannot persist, and variant declarations that have no executable route.
-6. Repair first-party mod examples so every advertised template, option, and variant is reachable, then rebuild `Lace & Desires` as an end-to-end install/enable/create/interact/reload acceptance fixture.
+6. Repair maintained first-party module examples so every advertised template, option, and variant is reachable, then build a neutral end-to-end install/enable/create/interact/reload conformance fixture. Do not use unreviewed agent-generated packages as doctrine or acceptance fixtures.
 
 ### UI
 

@@ -2,7 +2,7 @@
   "packageType": "yaw-module",
   "packageVersion": 1,
   "packageId": "yaw_narration_template_first_party",
-  "gameVersion": "0.12.2",
+  "gameVersion": "0.12.3",
   "trustBoundary": "trusted-local",
   "module": {
     "manifest": {

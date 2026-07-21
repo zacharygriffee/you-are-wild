@@ -1,5 +1,8 @@
 # Remote Module Import
 
+This focused transport contract is subordinate to `docs/modding.md`. URI import
+does not add capabilities beyond those accepted by the canonical module runtime.
+
 The Mod Manager supports explicit, player-initiated package import from a URI.
 It auto-detects trusted-local module packages and code-free Asset Bundle V1
 manifests. This is a transport and provenance feature, not a sandbox,

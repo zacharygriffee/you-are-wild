@@ -1,5 +1,8 @@
 # Host-Supplied Modules
 
+This focused contract is subordinate to `docs/modding.md`. Hosting changes
+provenance and policy, not the trusted-local execution boundary.
+
 You Are Wild can optionally discover a same-origin `yaw-host.json` manifest when
 the game runs over HTTP or HTTPS. File-origin builds never request a host
 manifest and continue to support bundled content, IndexedDB modules, and local

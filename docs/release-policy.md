@@ -91,3 +91,13 @@ request.
   production metadata is stamped with 0.12.2.
 - The Sites chooser remains the same runtime split between Textured and
   Lightweight presentation.
+
+## Version 0.12.3 Compatibility
+
+- Existing 0.10.x through 0.12.2 saves load without player migration.
+- The shared combat subinteraction sheet changes presentation state only; the
+  save schema and module API remain unchanged.
+- Existing module minimum-version contracts remain valid; first-party package
+  production metadata is stamped with 0.12.3.
+- The canonical Module Doctrine clarifies the existing runtime contract and
+  does not add an unsupported hook or contribution type.

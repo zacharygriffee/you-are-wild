@@ -19,25 +19,10 @@ const YAW_PANEL_INTERACTIONS = {
         if (!app.combatState?.active) return '';
         const actor = app.activeActor || app._currentCombatActor();
         const label = app._escapeHtml(this.title(app, 'combat'));
-        if (app.feedSelection?.active) {
-            return this.feed(app, actor, label);
-        }
         if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             return this.sync(app, actor, label);
         }
         return '';
-    },
-
-    feed(app, actor, label) {
-        const action = app.feedSelection.action || 'feed';
-        const backLabel = app._escapeHtml(app._label('ui.back', 'Back'));
-        const title = app._escapeHtml(app._label('variant.optionsTitle', '{action} Options', { action: app._uiLabel(action) }));
-        const resolution = { action, variants: app.feedSelection.variants || YAW_SUB_ACTIONS.resolve(app, action, { actors: [actor], targets: [app.feedSelection.target] }).variants };
-        const buttons = YAW_INTENT_MENU.variantOptionsHtml(app, resolution, {
-            mode: 'combat',
-            selectCall: `App._executeActionVariant('{id}', App.activeActor || App._currentCombatActor() || App.player)`
-        });
-        return `<div class="panel-interaction-tray combat-feed-tray" data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent" role="region" aria-label="${title || label}"><div class="target-action-row" data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${title || label}">${buttons}<button class="action-btn" data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="back-variant" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="App.cancelActionVariantSelection()">${backLabel}</button></div></div>`;
     },
 
     sync(app, actor, label) {

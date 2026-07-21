@@ -4392,6 +4392,9 @@
             executeActionVariant(action, actor = this.activeActor || this._currentCombatActor() || this.player, target = null) {
                 return YAW_COMBAT_FEED.executeVariantAction(this, action, actor, target);
             },
+            openCombatActionVariantSheet(presentation = '') {
+                return YAW_COMBAT_FEED.openVariantSheet(this, presentation);
+            },
             _executeFeedSubAction(subId, actor, target = null) {
                 return YAW_COMBAT_FEED.executeSubAction(this, subId, actor, target || this.feedSelection?.target || null, this.feedSelection?.action || 'feed');
             },

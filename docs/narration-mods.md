@@ -1,5 +1,8 @@
 # Narration Mods
 
+This is a focused current contract subordinate to `docs/modding.md`. Historical
+narration implementation plans do not grant additional module capabilities.
+
 Narration mods are optional presentation packages. They consume deterministic
 Scene Beats and publish bounded prose records; they cannot alter combat,
 inventory, statuses, quests, movement, saves, or any other mechanical state.

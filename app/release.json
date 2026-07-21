@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.12.2",
+  "version": "0.12.3",
   "releasedAt": "2026-07-21",
   "channel": "public-preview",
   "saveSchema": 11,
@@ -8,30 +8,30 @@
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Existing 0.10.x through 0.12.1 saves load automatically; Feed variants, flee outcomes, and interface refinements do not change the save schema.",
+      "saves": "Existing 0.10.x through 0.12.2 saves load automatically; the shared subinteraction sheet and documentation refinements do not change the save schema.",
       "mods": "Modules requiring game version 0.10.0 remain compatible. Host and bundled packages declare their own minimum version."
     },
     "es": {
-      "saves": "Las partidas existentes desde 0.10.x hasta 0.12.1 se cargan automaticamente; las variantes de Alimentar, los resultados de huida y los ajustes de interfaz no cambian el esquema de guardado.",
+      "saves": "Las partidas existentes desde 0.10.x hasta 0.12.2 se cargan automaticamente; el submenu compartido y los ajustes de documentacion no cambian el esquema de guardado.",
       "mods": "Los modulos que requieren la version 0.10.0 siguen siendo compatibles. Los paquetes del host y los incluidos declaran su propia version minima."
     }
   },
   "notes": {
     "en": {
       "added": [
-        "Feed now offers contextual Tend, Nurse, Offer Self, and Offer Piece variants after actor and target selection.",
-        "Living player and companion retreats now relocate to a safe adjacent tile instead of entering the death-recovery flow.",
-        "Feed, Feast, and Play now open one contextual submenu that separates actor-owned Self variants from marked-target variants."
+        "Combat Feed and Feast now use the same focused variant sheet as exploration on desktop and mobile.",
+        "The canonical Module Doctrine now documents the supported package envelope, permissions, settings, content posture, host policy, and runtime seams.",
+        "Module-author guidance now distinguishes content registration from event subscriptions and identifies which contribution paths are currently executable."
       ],
       "changed": [
-        "Feed consistently treats the selected actor as the source and the selected target as the recipient or consumer.",
-        "Legacy inverse-direction Feed identifiers remain compatible for old saves and trusted modules but are hidden from the core picker.",
-        "Niche explicit categories are no longer core settings; optional rated modules own their installation and opt-in controls."
+        "Combat subinteraction choices preserve the selected actor and target while the shared sheet is open.",
+        "Back and Escape return from the variant sheet without spending the turn or leaving combat in a stranded option phase.",
+        "Obsolete narration-agent guidance has been removed in favor of one doctrine plus focused, maintained references."
       ],
       "fixed": [
-        "Combat Feed confirmation remains reachable on desktop and mobile without silently redirecting a companion action to the player.",
-        "Mobile map clearance, touch targets, overlay focus restoration, localized metadata, and combat-plan reload recovery are covered against regression.",
-        "Physically meaningful Feast attempts now commit and resolve through the Scene Feed instead of disappearing as composer errors when reach, capacity, or resistance prevents success."
+        "Combat no longer renders Feed or Feast variants as a narrow inline column that can be clipped by the stage.",
+        "Desktop and mobile combat use one accessible dialog contract for variant focus, selection, cancellation, and cleanup.",
+        "Module documentation no longer implies that arbitrary registered locale keys execute as hooks or that asynchronous settings are synchronous values."
       ],
       "knownIssues": [
         "Browser-direct AI connections still depend on endpoint TLS and CORS support.",
@@ -42,19 +42,19 @@
     },
     "es": {
       "added": [
-        "Alimentar ahora ofrece las variantes contextuales Cuidar, Amamantar, Ofrecerse y Ofrecer porcion despues de elegir actor y objetivo.",
-        "Las huidas de jugadores y companeros vivos ahora los trasladan a una casilla adyacente segura en vez de iniciar la recuperacion por muerte.",
-        "Alimentar, Festin y Jugar ahora abren un unico submenu contextual que separa las variantes propias del actor de las dirigidas a objetivos marcados."
+        "Alimentar y Festin en combate ahora usan la misma hoja enfocada de variantes que la exploracion en escritorio y movil.",
+        "La doctrina canonica de modulos ahora documenta el paquete compatible, permisos, ajustes, postura de contenido, politica del host y puntos de extension.",
+        "La guia para autores distingue el registro de contenido de las suscripciones a eventos e identifica las contribuciones que se pueden ejecutar actualmente."
       ],
       "changed": [
-        "Alimentar trata de forma consistente al actor elegido como origen y al objetivo elegido como receptor o consumidor.",
-        "Los identificadores antiguos de Alimentar en direccion inversa siguen siendo compatibles con partidas y modulos de confianza, pero ya no aparecen en el selector principal.",
-        "Las categorias explicitas especializadas ya no son ajustes centrales; los modulos opcionales clasificados controlan su instalacion y activacion."
+        "Las opciones de subinteraccion en combate conservan el actor y el objetivo elegidos mientras la hoja esta abierta.",
+        "Atras y Escape cierran la hoja sin gastar el turno ni dejar el combate atrapado en la fase de opciones.",
+        "La guia antigua del agente de narracion fue eliminada en favor de una doctrina unica y referencias mantenidas."
       ],
       "fixed": [
-        "La confirmacion de Alimentar sigue accesible en escritorio y movil sin redirigir silenciosamente la accion de un companero al jugador.",
-        "El espacio del mapa movil, los objetivos tactiles, el retorno del foco, los metadatos traducidos y la recarga de planes de combate estan protegidos contra regresiones.",
-        "Los intentos fisicamente posibles de Festin ahora se confirman y se resuelven en el relato de escena en vez de desaparecer como errores cuando el alcance, la capacidad o la resistencia impiden el exito."
+        "El combate ya no muestra variantes de Alimentar o Festin en una columna estrecha que puede quedar recortada por el escenario.",
+        "El combate en escritorio y movil usa un solo contrato de dialogo accesible para foco, seleccion, cancelacion y limpieza.",
+        "La documentacion ya no sugiere que claves arbitrarias de idioma funcionen como eventos ni que los ajustes asincronos sean valores sincronos."
       ],
       "knownIssues": [
         "Las conexiones directas desde el navegador dependen de TLS y CORS del endpoint.",

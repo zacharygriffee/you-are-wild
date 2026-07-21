@@ -59,7 +59,12 @@ Current IndexedDB namespaces are `YAW_Saves`, `YAW_Modules`, and `YAW_Worlds`. `
 
 ## Modding Boundary
 
-The current mod lane is trusted-local. Module manifests are validated before IndexedDB storage, hooks are owned by module ID for unload/reload cleanup, and runtime data contributions are module-owned. The marketplace UI uses a local sample-fixture catalog only; built-in content packs are separate handles in `src/core/marketplace.js`. See `docs/modding.md` before changing package install, trust, content rating, or marketplace behavior.
+The current executable mod lane is trusted-local. Module manifests are
+validated before IndexedDB storage, hooks and contributions are owned by module
+ID, and unload removes owned runtime work. `docs/modding.md` is the canonical
+authoring doctrine. Development sample fixtures are not player-facing catalog
+content. `market-screen.js` renders only a validated same-origin Host Catalog;
+`src/core/marketplace.js` retains separate built-in content-pack handles.
 
 HTTP(S) builds may additionally load a same-origin `yaw-host.json` catalog.
 Host packages retain host provenance and policy separately from player-installed

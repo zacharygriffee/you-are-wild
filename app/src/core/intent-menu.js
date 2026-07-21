@@ -117,8 +117,11 @@ const YAW_INTENT_MENU = {
         document.body.insertAdjacentHTML('beforeend', html);
         const menu = document.getElementById(surface.id);
         this.positionDesktopMenu(menu, context.anchorEvent, surface.presentation === 'desktop');
-        app._activateFocusTrap(menu, { close: () => app.closeIntentMenu() });
-        app._activateOutsideContextDismiss(menu);
+        const dismiss = typeof context.onDismiss === 'function'
+            ? context.onDismiss
+            : () => app.closeIntentMenu();
+        app._activateFocusTrap(menu, { close: dismiss });
+        if (context.dismissOnOutside !== false) app._activateOutsideContextDismiss(menu);
         return groups.length === 1 ? groups[0].resolution : { action, actors, targets, groups };
     },
 

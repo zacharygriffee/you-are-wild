@@ -47,6 +47,7 @@ const YAW_COMBAT_FEED = {
         app.targetSelection = null;
         app.combatPlanSelection = null;
         app._renderInteractionState({ exploration: false, toolbelt: true });
+        this.openVariantSheet(app);
         return true;
     },
 
@@ -54,10 +55,41 @@ const YAW_COMBAT_FEED = {
         return this.executeVariantAction(app, 'feed', actor, target);
     },
 
+    openVariantSheet(app, presentation = '') {
+        const selection = app.feedSelection;
+        if (!selection?.active) return false;
+        const actor = app._resolvePanelUnit?.('party', selection.actorId)
+            || app.activeActor
+            || app._currentCombatActor()
+            || app.player;
+        const target = selection.target;
+        if (!actor || !target) return false;
+        const desktop = presentation === 'desktop'
+            || (!presentation && typeof window !== 'undefined' && Number(window.innerWidth || 0) > 1024);
+        const source = desktop ? 'desktop-combat' : 'combat-sheet';
+        const action = selection.action || 'feed';
+        const title = app._label('variant.optionsTitle', '{action} Options', { action: app._uiLabel(action) });
+        return YAW_INTENT_MENU.openVariantSheet(app, {
+            action,
+            actors: [actor],
+            targets: [target],
+            scope: 'target',
+            mode: 'combat',
+            source,
+            presentation: desktop ? 'desktop' : 'sheet',
+            title,
+            selectCall: `App._executeActionVariant('{id}', App.activeActor || App._currentCombatActor() || App.player)`,
+            cancelCall: 'App.cancelActionVariantSelection()',
+            onDismiss: () => app.cancelActionVariantSelection(),
+            dismissOnOutside: false
+        });
+    },
+
     cancelVariantSelection(app) {
         const selection = app.feedSelection;
         if (!selection?.active) return app.cancelTargetSelection?.();
         const resume = selection.resume || {};
+        app.closeIntentMenu?.();
         app.feedSelection = null;
         app.combatCorrectionMessage = null;
         app.targetSelection = resume.targetSelection || {
@@ -83,6 +115,7 @@ const YAW_COMBAT_FEED = {
     executeSubAction(app, subId, actor, target = app.feedSelection?.target || null, action = app.feedSelection?.action || 'feed') {
         const subDef = app.SUB_ACTIONS[action]?.[subId];
         if (!subDef) return false;
+        app.closeIntentMenu?.();
         actor = actor || app.activeActor || app._currentCombatActor() || app.player;
         app.defaultSubActions[action] = subId;
         if (!target || target.CPun <= 0) {

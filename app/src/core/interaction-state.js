@@ -283,6 +283,10 @@ const YAW_INTERACTION_STATE = {
         } else if (app.feedSelection?.active) {
             intentId = app.feedSelection.action || 'feed';
             intentText = app._label('variant.optionsTitle', '{action} Options', { action: app._uiLabel(intentId) });
+            if (app.feedSelection.target) {
+                targetText = this.unitNames(app, [app.feedSelection.target], app._label('target.none', 'None'));
+                targetCount = 1;
+            }
         } else if (app.targetSelection?.source === 'combat') {
             intentId = app.targetSelection.action || 'choose';
             intentText = this.actionLabel(app, app.targetSelection.action, app._label('ui.chooseAction', 'Choose'));

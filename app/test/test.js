@@ -21,6 +21,8 @@ const NARRATION_DIAGNOSTICS_MOD_PACKAGE = path.join(__dirname, '..', '..', 'opti
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
 const BALANCE_COST_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'balance-cost-doctrine.md');
+const MOD_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'modding.md');
+const OBSOLETE_NARRATION_MOD_PLAN = path.join(__dirname, '..', '..', 'docs', 'narration-mod-agent-plan.md');
 const args = process.argv.slice(2);
 const filterArg = args.find(arg => arg.startsWith('--filter='));
 const activeFilter = filterArg ? filterArg.split('=')[1] : 'all';
@@ -254,6 +256,7 @@ const modUiContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'mod-ui.js'), 'utf
 const providerUiContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'provider-ui.js'), 'utf8');
 const buildContent = fs.readFileSync(path.join(__dirname, '..', 'build.js'), 'utf8');
 const templateContent = fs.readFileSync(TEMPLATE, 'utf8');
+const generatedBuildContent = fs.readFileSync(path.join(__dirname, '..', '..', 'dist', 'you-are-wild.html'), 'utf8');
 
 function loadWorldGenForTest() {
   return new Function(`${worldGenerationContent}\nreturn WorldGen;`)();
@@ -614,9 +617,9 @@ test('App object is defined', () => {
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.12.2', 'Release manifest should identify the current public version');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('Offer Piece')), 'Release notes should describe contextual Feed variants');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('safe adjacent tile')), 'Release notes should distinguish living retreat from death recovery');
+  assertEqual(releaseInfo.version, '0.12.3', 'Release manifest should identify the current public version');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('focused variant sheet')), 'Release notes should describe shared combat subinteraction presentation');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('Module Doctrine')), 'Release notes should describe the canonical module author contract');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('mobile party')), 'Release notes should disclose the deferred mobile interaction-flow redesign');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
@@ -655,7 +658,8 @@ test('Narration package is optional and declares bounded provider-neutral settin
   assertEqual(profiles?.options?.length, 3, 'Simple Narrator should expose three narration profiles');
   assertContains(profiles.description, 'Character reactions', 'Narration profile help should explain the character-focused mode');
   assertContains(prompt.description, 'cannot override viewpoint', 'Narration settings should explain that style guidance cannot replace the viewpoint contract');
-  assertNotContains(buildContent, 'optional-mods/you-are-wild-narration.yawmod.json', 'Optional narration package must not enter the default build');
+  assertNotContains(generatedBuildContent, 'yaw_narration_first_party', 'Optional narration package must not enter the default build');
+  assertContains(buildContent, 'FIRST_PARTY_PACKAGE_MIRRORS', 'Release validation should use an explicit first-party package allowlist');
 });
 
 asyncTest('Simple Narrator applies distinct profile contracts across player-viewpoint cases', async () => {
@@ -735,8 +739,8 @@ test('Reference narration packages remain optional and separate provider use fro
   const diagnosticsPackage = JSON.parse(fs.readFileSync(NARRATION_DIAGNOSTICS_MOD_PACKAGE, 'utf8'));
   assert(!templatePackage.module.manifest.permissions.includes('ai:request'), 'Template Narrator should prove narration publication without provider access');
   assertEqual(diagnosticsPackage.module.manifest.settings.find(setting => setting.key === 'enabled')?.default, false, 'Narration Diagnostics should be opt-in');
-  assertNotContains(buildContent, 'you-are-wild-template-narration.yawmod.json', 'Template Narrator must remain outside the default build');
-  assertNotContains(buildContent, 'you-are-wild-narration-diagnostics.yawmod.json', 'Narration Diagnostics must remain outside the default build');
+  assertNotContains(generatedBuildContent, 'yaw_narration_template', 'Template Narrator must remain outside the default build');
+  assertNotContains(generatedBuildContent, 'yaw_narration_diagnostics_first_party', 'Narration Diagnostics must remain outside the default build');
 });
 
 test('Module manifests reject persistent credential-like settings', () => {
@@ -4198,16 +4202,16 @@ test('Panel interaction tray helper module is registered before app code', () =>
   assertContains(combatActionsContent, 'app._renderCombatPanelTray?.()', 'Desktop combat composer should reuse combat transient trays');
   assertContains(panelInteractionsContent, 'combat(app)', 'Panel interaction helper should own combat tray rendering');
   assertContains(panelInteractionsContent, 'App.confirmSyncParticipants', 'Combat sync participant tray should expose confirm through the composer');
-  assertContains(panelInteractionsContent, "app._label('ui.back', 'Back')", 'Desktop variant tray should expose an explicit Back exit');
   assertContains(panelInteractionsContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Desktop sync trays should expose an explicit Cancel Sync exit');
   assertContains(panelInteractionsContent, 'data-command-grammar="actor-target-intent"', 'Combat transient trays should identify the shared actor-target-intent grammar');
-  assertContains(panelInteractionsContent, 'class="panel-interaction-tray combat-feed-tray" data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Variant tray root should identify shared composer ownership');
+  assertNotContains(panelInteractionsContent, 'combat-feed-tray', 'Combat variants should not retain the legacy inline desktop tray');
   assertContains(panelInteractionsContent, 'class="panel-interaction-tray combat-sync-tray" data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync choose tray root should identify sync composer ownership');
   assertContains(panelInteractionsContent, 'class="panel-interaction-tray combat-sync-tray" data-command-surface="${surface}" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync phase tray root should identify the active sync composer surface');
   assertContains(combatActionsContent, 'class="panel-interaction-tray combat-target-tray" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Combat target tray root should identify target-pick composer ownership');
   assertContains(combatActionsContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit"', 'Combat target cancel should identify grammar and exit slot on the button');
-  assertContains(panelInteractionsContent, 'YAW_INTENT_MENU.variantOptionsHtml', 'Combat variant tray should reuse the shared option renderer');
-  assertContains(panelInteractionsContent, 'data-command-control="back-variant" data-command-slot="exit"', 'Variant Back should identify the exit slot');
+  assertContains(combatFeedContent, 'YAW_INTENT_MENU.openVariantSheet', 'Combat variants should reuse the shared exploration submenu renderer');
+  assertContains(combatFeedContent, "cancelCall: 'App.cancelActionVariantSelection()'", 'Combat submenu Back should restore the target-pick phase');
+  assertContains(combatFeedContent, 'dismissOnOutside: false', 'Combat submenu state should not become stranded through an outside dismiss');
   assertContains(panelInteractionsContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-intent="${intent}"', 'Sync intent buttons should identify the sync composer surface');
   assertContains(panelInteractionsContent, 'data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Sync intent buttons should identify the intent slot');
   assertContains(panelInteractionsContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-sync" data-command-slot="exit"', 'Sync choose cancel should identify grammar and exit slot on the button');
@@ -4760,14 +4764,12 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, 'intentButtons(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own shared combat intent controls');
   assertContains(mobileCombatToolbeltContent, 'phaseControls(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt should own transient combat phase controls');
   assertContains(mobileCombatToolbeltContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Mobile Sync states should expose a visible Cancel Sync control');
-  assertContains(mobileCombatToolbeltContent, "app._label('ui.back', 'Back')", 'Mobile variant states should expose a visible Back control');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-intent="${app._escapeHtml(type)}"', 'Mobile Sync action buttons should identify the sync intent surface');
   assertContains(mobileCombatToolbeltContent, 'data-command-mode="combat" data-command-intent="${app._escapeHtml(type)}"', 'Mobile Sync action buttons should identify combat command mode with stable sync intent ids');
   assertContains(mobileCombatToolbeltContent, 'data-command-mode="combat" data-command-intent="${app._escapeHtml(type)}" data-command-grammar="actor-target-intent"', 'Mobile Sync action buttons should identify the shared command grammar on the intent itself');
   assertContains(mobileCombatToolbeltContent, 'data-command-intent="${app._escapeHtml(type)}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Mobile Sync action buttons should identify the intent slot');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-sync" data-command-slot="exit"', 'Mobile Sync choose cancel should identify grammar and exit slot on the button');
-  assertContains(mobileCombatToolbeltContent, 'YAW_INTENT_MENU.variantOptionsHtml', 'Mobile Feed and Feast should reuse the shared variant option renderer');
-  assertContains(mobileCombatToolbeltContent, 'data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="back-variant" data-command-slot="exit"', 'Mobile variant Back should identify grammar and exit slot');
+  assertContains(mobileCombatToolbeltContent, "if (app.feedSelection?.active) {\n            return '';", 'Mobile Feed and Feast variants should defer to the shared submenu instead of rendering inline');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-sync-participants" data-command-slot="actor"', 'Mobile Sync confirm should identify grammar and actor slot on the button');
   assertContains(mobileCombatToolbeltContent, 'data-command-control="confirm-sync-participants" data-command-slot="actor"', 'Mobile Sync confirm should identify the actor slot after participant selection');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-sync" data-command-slot="exit"', 'Mobile Sync participant cancel should identify grammar and exit slot on the button');
@@ -6211,7 +6213,7 @@ test('First-party explicit provider is a valid optional module and is excluded f
   assertEqual(settingKeys.includes('watersports'), false, 'First-party explicit provider should not bind a removed core setting');
   assertEqual(settingsFlowContent.includes("scat"), false, 'Core settings should not own the removed niche-content toggle');
   assertEqual(settingsFlowContent.includes('watersports'), false, 'Core settings should not own the removed niche-content toggle');
-  assertNotContains(buildContent, 'you-are-wild-explicit', 'Default build should not include the optional explicit provider');
+  assertNotContains(generatedBuildContent, 'yaw_content_explicit_provider', 'Default build should not include the optional explicit provider');
   assertNotContains(templateContent, 'explicit.sexual', 'Default HTML template should not hardcode the explicit provider category');
 });
 
@@ -6483,6 +6485,37 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertContains(modUiContent, 'aria-label="${deleteTitle}"', 'Mod delete button should expose accessible localized title');
   assertNotContains(modUiContent, '${mod.manifest.name}', 'Mod names should not be inserted directly into HTML');
   assertNotContains(modUiContent, "${mod.manifest.description || 'No description'}", 'Mod descriptions should not be inserted directly into HTML');
+});
+
+test('Canonical module doctrine matches the implemented package and capability boundary', () => {
+  const doctrine = fs.readFileSync(MOD_DOCTRINE, 'utf8');
+  assertContains(doctrine, '"packageType": "yaw-module"', 'Module doctrine should publish the canonical package type');
+  assertContains(doctrine, '"packageVersion": 1', 'Module doctrine should publish the current package version');
+  assertContains(doctrine, 'The installer still accepts the older bare `{ manifest, code, assets }` shape', 'Module doctrine should distinguish compatibility input from the authoring format');
+  for (const permission of [
+    'ui.read', 'media:read', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide',
+    'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template',
+    'content:add_locale', 'content:add_creation_option', 'content:add_action_variant'
+  ]) {
+    assertContains(moduleSystemContent, `'${permission}'`, `Runtime should declare permission ${permission}`);
+    assertContains(doctrine, `\`${permission}\``, `Module doctrine should document permission ${permission}`);
+  }
+  for (const event of [
+    'onMapGenerate', 'onEncounterStart', 'onCombatAction', 'onDigestionTick', 'onSubActionExecute',
+    'onDefeat', 'onDefeatEncounterSettled', 'onPlayerState', 'onRegenerate', 'onPlayerMove',
+    'onGameStart', 'onGameLoad', 'onGameSave', 'onTick', 'onSceneBeat',
+    'onSceneExchangeClosed', 'onContentPolicyChanged'
+  ]) {
+    assertContains(moduleSystemContent, `${event}: []`, `Runtime should declare hook ${event}`);
+    assertContains(doctrine, `\`${event}\``, `Module doctrine should document hook ${event}`);
+  }
+  assertContains(doctrine, 'currently extends only `feed` and `feast`', 'Doctrine should keep action registration within the implemented V1 boundary');
+  assertContains(doctrine, 'custom Play variants are not a public module capability yet', 'Doctrine should not imply an unimplemented Play variant seam');
+  assertContains(doctrine, '`MODS.getSetting()` and `MODS.setSetting()` are asynchronous', 'Doctrine should make module setting timing explicit');
+  assertContains(doctrine, 'Template registration is not an event subscription', 'Doctrine should distinguish content registration from behavior hooks');
+  assertContains(doctrine, '`required: true` blocks module enablement until opt-in', 'Doctrine should define required and optional category behavior');
+  assertContains(doctrine, 'OpenAI-Compatible profiles are the canonical browser-direct text provider', 'Doctrine should identify the canonical provider path');
+  assert(!fs.existsSync(OBSOLETE_NARRATION_MOD_PLAN), 'Obsolete narration implementation plan should not remain beside current doctrine');
 });
 
 test('Public release notes and run-independent diagnostics are reachable from system navigation', () => {
@@ -10854,8 +10887,8 @@ test('Combat target dispatch uses the clicked unit instead of filtered index dri
   assert(second.CPun < beforeSecond, 'Confirmed target dispatch should damage the clicked enemy id');
 });
 
-test('Combat feed sub-action picker renders in the desktop composer, not center scene', () => {
-  const { App, elements } = loadAppForCombat(() => 0);
+test('Combat feed sub-action picker uses the shared desktop submenu, not an inline composer tray', () => {
+  const { App, elements, body } = loadAppForCombat(() => 0, { window: { innerWidth: 1440, innerHeight: 900 } });
   const player = makeUnit('You', { id: 'player-feed-tray', lactating: true, lactationCooldown: 0 });
   const ally = makeUnit('Ally', { id: 'ally-feed-tray', CPun: 50, MPun: 100 });
   App.player = player;
@@ -10867,19 +10900,21 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
   App.toggleExplorationTarget('party', ally.id);
   const result = App.confirmCombatTargets();
   assertEqual(result, true, 'Feed intent should enter composer feed selection after choosing a target with multiple sub-actions');
-  assert(App.feedSelection?.active, 'Feed selection state should be active for composer tray rendering');
+  assert(App.feedSelection?.active, 'Feed selection state should be active while the shared submenu is open');
   const partyHtml = elements.get('party-content')?.innerHTML || '';
   const composerHtml = elements.get('desktop-context-belt')?.innerHTML || App._renderCombatPanelTray();
   const sceneHtml = elements.get('scene-description')?.innerHTML || '';
-  assertContains(composerHtml, 'combat-feed-tray', 'Feed options should render in the desktop composer tray');
-  assertContains(composerHtml, 'class="panel-interaction-tray combat-feed-tray" data-command-surface="action-variant-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Variant tray root should identify shared composer ownership');
-  assertContains(composerHtml, 'data-command-intent="feed:tend"', 'Feed options should expose stable canonical variant ids');
-  assertContains(composerHtml, 'data-command-intent="feed:nurse"', 'Feed options should expose every currently available canonical variant');
-  assertContains(composerHtml, 'data-command-intent="feed:offerWhole"', 'Disabled canonical variants should remain visible');
-  assertContains(composerHtml, 'aria-disabled="true"', 'Unavailable variants should be exposed accessibly');
-  assertContains(composerHtml, 'data-command-control="back-variant" data-command-slot="exit"', 'Variant Back should be a structural exit');
-  assertContains(composerHtml, 'Back', 'Variant tray should expose a visible Back control');
-  assertNotContains(composerHtml, 'selected-target-summary', 'Feed options tray should leave actor intent summary to the composer sentence');
+  const sentenceHtml = elements.get('selection-sentence')?.innerHTML || '';
+  assertNotContains(composerHtml, 'action-variant-option', 'Combat composer should not inline variant cards');
+  assertContains(sentenceHtml, 'Ally', 'Combat variant selection sentence should preserve the chosen target');
+  assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop combat variants should open the shared desktop intent menu');
+  assertContains(body.innerHTML, 'data-command-surface="action-variant-options" data-command-mode="combat"', 'Combat submenu should identify the shared command surface and combat mode');
+  assertContains(body.innerHTML, 'data-command-intent="feed:tend"', 'Feed submenu should expose stable canonical variant ids');
+  assertContains(body.innerHTML, 'data-command-intent="feed:nurse"', 'Feed submenu should expose every currently available canonical variant');
+  assertContains(body.innerHTML, 'data-command-intent="feed:offerWhole"', 'Disabled canonical variants should remain visible');
+  assertContains(body.innerHTML, 'aria-disabled="true"', 'Unavailable variants should be exposed accessibly');
+  assertContains(body.innerHTML, 'data-command-control="back-variant" data-command-slot="exit"', 'Variant Back should be a structural exit');
+  assertContains(body.innerHTML, 'App.cancelActionVariantSelection()', 'Variant Back should restore combat targeting state');
   assertNotContains(partyHtml, 'combat-feed-tray', 'Party panel should not duplicate composer-owned feed options');
   assertNotContains(sceneHtml, 'Feed Options', 'Feed options should not be injected into the center scene');
 });
@@ -17588,7 +17623,7 @@ test('Combat target selection is rendered on creature panel cards', () => {
 });
 
 test('Mobile combat toolbelt promotes enemy and party strips during targeting', () => {
-  const { App, elements, document } = loadAppForCombat(() => 0);
+  const { App, elements, document, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const ally = makeUnit('Ally', { id: 'ally-mobile' });
   const enemy = makeUnit('Enemy', { id: 'enemy-mobile', disposition: App.DISPOSITION.ENEMY });
@@ -17695,9 +17730,12 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
     variants: App._resolveActionVariants('feed', { actors: [player], targets: [ally], mode: 'combat' }).variants
   };
   App.renderMobileCombatToolbelt();
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="action-variant-options"', 'Mobile Feed phase should identify the shared variant surface');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="feed:tend"', 'Mobile Feed variant should expose its stable intent id');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="back-variant" data-command-slot="exit"', 'Mobile variant Back should identify the exit slot');
+  assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'action-variant-option', 'Mobile Feed phase should not inline variant cards in the toolbelt');
+  App.openCombatActionVariantSheet();
+  assertContains(body.innerHTML, 'id="mobile-context-menu"', 'Mobile combat variants should open the shared context submenu');
+  assertContains(body.innerHTML, 'data-command-surface="action-variant-options" data-command-mode="combat"', 'Mobile combat submenu should identify the shared variant surface');
+  assertContains(body.innerHTML, 'data-command-intent="feed:tend"', 'Mobile Feed submenu should expose its stable intent id');
+  assertContains(body.innerHTML, 'data-command-control="back-variant" data-command-slot="exit"', 'Mobile variant Back should identify the exit slot');
 
   App.syncSelection = { active: true, phase: 'participants', actorId: 'player-1', participantIds: ['player-1', 'ally-mobile'], type: 'sync_fight' };
   App.feedSelection = null;

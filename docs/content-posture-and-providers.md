@@ -39,7 +39,7 @@ different presentation or a specialized variant.
 
 ## Policy Contract
 
-The versioned policy is additive during migration:
+The current versioned policy is:
 
 ```js
 {
@@ -51,8 +51,11 @@ The versioned policy is additive during migration:
 ```
 
 Legacy `maxTier`, `voreEnabled`, `explicitDescriptions`, anatomy fields, and
-runtime setting keys remain readable. Compatibility adapters must not silently
-enable a newly installed explicit provider.
+selected runtime setting keys remain readable for existing saves. They are
+compatibility inputs, not an authoring API. New modules declare categories,
+variants, settings, creation options, and action variants through their owned
+manifest/API contracts. Compatibility adapters must never silently enable a
+newly installed provider.
 
 ## Provider Contract
 
@@ -85,6 +88,12 @@ in Settings, but module enablement remains blocked until every required category
 is enabled. Disabling a category unloads dependent modules through the normal
 module lifecycle.
 
+An optional declaration (`"required": false`) exposes a player-controlled
+category but does not block the provider itself from enabling. Provider authors
+must not describe all of a module as category-gated when only an optional
+adult-tier template depends on that category. The module's `contentRating`
+still sets its whole-package SFW/Mature enablement floor.
+
 Installing a rated module does not make its specialized mechanics part of the
 core settings schema. A module that needs finer consent controls declares its
 own bounded settings in its manifest. Those values remain owned and persisted
@@ -96,20 +105,20 @@ global game settings.
 1. Do not rebalance a mechanic while moving its content ownership.
 2. Do not delete or rename a serialized field in the policy migration.
 3. Add new policy fields before changing UI consumers.
-4. Keep old `adult` manifests loadable as a deprecated explicit-provider alias.
+4. Keep old `adult` manifests loadable as a deprecated explicit-provider alias,
+   but author new modules as `safe` or `mature` plus explicit categories.
 5. Mod contributions must be owned and removable on disable, reload, or delete.
-6. Default templates must always produce readable SFW output without a mod.
+6. Core default templates must always produce readable SFW output without a
+   mod; this does not make an otherwise unreachable module-only template path a
+   supported integration seam.
 7. Generated artifact audits distinguish allowed classification metadata and
    compatibility identifiers from bundled explicit presentation.
 
-## Release Gates
+## Current Boundary
 
-Gates 1-5 are implemented for the initial provider migration. Compatibility
-adapters remain intentionally active under gate 6.
-
-1. Freeze behavior and legacy save fixtures.
-2. Ship the additive policy and provider registry with legacy UI compatibility.
-3. Switch Settings to SFW/Mature posture plus dynamic categories and variants.
-4. Validate a separately distributed first-party explicit provider.
-5. Remove bundled explicit providers from the default HTML.
-6. Retire compatibility adapters only after a documented deprecation window.
+The provider migration is complete: Settings owns SFW/Mature posture, installed
+modules supply dynamic categories/variants, explicit providers are separate
+packages, and the default generated HTML contains no optional explicit package.
+The remaining legacy adapters exist only for save and old-package compatibility.
+They may be retired only with a documented deprecation window, migration tests,
+and a release note. Historical migration phases are not current doctrine.

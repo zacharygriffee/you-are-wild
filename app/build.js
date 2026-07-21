@@ -19,6 +19,13 @@ const BUNDLED_TILESET_OVERLAYS = path.join(ROOT_DIR, 'media', 'basic-tileset-ove
 const BUNDLED_TILESET_MATERIALS = path.join(ROOT_DIR, 'media', 'terrain-sand-seamless-v1.png');
 const PLACEHOLDER = '<!-- SCRIPTS_PLACEHOLDER -->';
 const GENERATED_BANNER = '<!-- GENERATED FILE. Do not edit directly. Edit app/src and run npm run build. -->';
+const FIRST_PARTY_PACKAGE_MIRRORS = [
+  'you-are-wild-explicit-narration.yawmod.json',
+  'you-are-wild-explicit.yawmod.json',
+  'you-are-wild-narration-diagnostics.yawmod.json',
+  'you-are-wild-narration.yawmod.json',
+  'you-are-wild-template-narration.yawmod.json'
+];
 
 function loadRelease() {
   let release;
@@ -43,8 +50,9 @@ function loadRelease() {
   }
   const optionalDir = path.join(ROOT_DIR, 'optional-mods');
   if (fs.existsSync(optionalDir)) {
-    for (const name of fs.readdirSync(optionalDir).filter(name => name.endsWith('.yawmod.json'))) {
+    for (const name of FIRST_PARTY_PACKAGE_MIRRORS) {
       const file = path.join(optionalDir, name);
+      if (!fs.existsSync(file)) throw new Error(`Missing first-party package mirror: ${path.relative(ROOT_DIR, file)}`);
       const packageData = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (packageData.gameVersion && packageData.gameVersion !== release.version) {
         throw new Error(`${path.relative(ROOT_DIR, file)} gameVersion must mirror release.json (${release.version})`);

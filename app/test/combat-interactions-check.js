@@ -3197,20 +3197,39 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.fightVisible, true, 'Mobile target selection should be reachable again after cancelling Sync');
 
   state = await page.evaluate(() => {
-    App.feedSelection = { active: true, actorId: 'player-1', subIds: ['heal'] };
+    const actor = App.player;
+    const target = App.party.find(unit => unit !== actor && unit.CPun > 0);
+    const resolution = YAW_SUB_ACTIONS.resolve(App, 'feed', { actors: [actor], targets: [target], mode: 'combat' });
+    App.feedSelection = {
+      active: true,
+      action: 'feed',
+      actorId: App._unitSelectionId(actor),
+      target,
+      targetId: App._unitSelectionId(target),
+      targetType: 'party',
+      subIds: resolution.variants.filter(variant => variant.available).map(variant => variant.id),
+      variants: resolution.variants,
+      resume: {
+        targetSelection: { action: 'feed', source: 'combat', actorId: actor.id || actor.name || 'player' },
+        combatTargetId: null,
+        combatTargetIds: [],
+        explorationTargetIds: []
+      }
+    };
     App.targetSelection = null;
     App.syncSelection = null;
     App.renderMobileCombatToolbelt();
+    App.openCombatActionVariantSheet('mobile');
     return {
       feedSelection: Boolean(App.feedSelection?.active),
-      controls: document.querySelector('#mobile-combat-toolbelt .mobile-combat-phase-controls')?.innerText || '',
-      backVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="back-variant"]'))
+      controls: document.querySelector('#mobile-context-menu')?.innerText || '',
+      backVisible: Boolean(document.querySelector('#mobile-context-menu button[data-command-control="back-variant"]'))
     };
   });
   assert.strictEqual(state.feedSelection, true, 'Mobile Feed test should enter feed selection state');
   assert(state.controls.includes('Back'), 'Mobile Feed selection should expose Back');
   assert.strictEqual(state.backVisible, true, 'Mobile Feed selection should have a visible Back control');
-  await page.locator(`#mobile-combat-toolbelt button[data-command-control="back-variant"]`).first().click();
+  await page.locator(`#mobile-context-menu button[data-command-control="back-variant"]`).first().click();
   state = await page.evaluate(() => ({
     feedSelection: App.feedSelection,
     targetAction: App.targetSelection?.action || null,
@@ -4262,7 +4281,11 @@ async function runCombatProgressInvariantFlow(page) {
   const readComposer = async () => page.evaluate(() => {
     const mobile = innerWidth <= 1024;
     const root = document.getElementById(mobile ? 'mobile-combat-toolbelt' : 'desktop-command-composer');
-    const visibleButtons = Array.from(root?.querySelectorAll('button') || []).filter(button => {
+    const variantMenu = document.getElementById(mobile ? 'mobile-context-menu' : 'desktop-intent-menu');
+    const visibleButtons = [
+      ...Array.from(root?.querySelectorAll('button') || []),
+      ...Array.from(variantMenu?.querySelectorAll('button') || [])
+    ].filter(button => {
       const rect = button.getBoundingClientRect();
       const style = getComputedStyle(button);
       return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
@@ -4296,15 +4319,34 @@ async function runCombatProgressInvariantFlow(page) {
 
     await page.evaluate(() => {
       App.cancelTargetSelection();
-      App.feedSelection = { active: true, subIds: [] };
+      const actor = App.player;
+      const target = App.party.find(unit => unit !== actor && unit.CPun > 0);
+      const resolution = YAW_SUB_ACTIONS.resolve(App, 'feed', { actors: [actor], targets: [target], mode: 'combat' });
+      App.feedSelection = {
+        active: true,
+        action: 'feed',
+        actorId: App._unitSelectionId(actor),
+        target,
+        targetId: App._unitSelectionId(target),
+        targetType: 'party',
+        subIds: resolution.variants.filter(variant => variant.available).map(variant => variant.id),
+        variants: resolution.variants,
+        resume: {
+          targetSelection: { action: 'feed', source: 'combat', actorId: actor.id || actor.name || 'player' },
+          combatTargetId: null,
+          combatTargetIds: [],
+          explorationTargetIds: []
+        }
+      };
       App._renderInteractionState({ exploration: false, toolbelt: true });
+      App.openCombatActionVariantSheet(innerWidth > 1024 ? 'desktop' : '');
     });
     state = await readComposer();
-    assert.strictEqual(state.progress.phase, 'action-variant-options', `${viewport.name}: empty action variants should remain a reversible phase`);
-    assert(state.controls.includes('back-variant'), `${viewport.name}: empty action variants should expose a visible Back exit`);
+    assert.strictEqual(state.progress.phase, 'action-variant-options', `${viewport.name}: action variants should remain a reversible phase`);
+    assert(state.controls.includes('back-variant'), `${viewport.name}: action variant submenu should expose a visible Back exit`);
 
     await page.evaluate(() => {
-      App.cancelTargetSelection();
+      App.cancelActionVariantSelection();
       App.syncSelection = { active: true, phase: 'participants', actorId: App.player.id, participantIds: [App.player.id], type: 'sync_fight' };
       App._renderInteractionState({ exploration: false, toolbelt: true });
     });

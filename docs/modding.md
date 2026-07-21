@@ -1,283 +1,316 @@
-# Modding
+# Module Doctrine
 
-Content posture, optional provider ownership, and compatibility rules are
-defined in [Content Posture And Optional Providers](content-posture-and-providers.md).
-AI transport profiles, capabilities, and credential boundaries are defined in
-[AI Providers](ai-providers.md).
-Backend-neutral media acquisition, persistence, lease resolution, and provider
-priority are defined in [Media Repository And Provider Priority](media-repository.md).
-Code-free URI asset packaging, review, quotas, replacement, repair, and cleanup
-are defined in [Asset Bundle V1](asset-bundle-v1.md).
-The bounded map-presentation contract is defined in
-[Tileset Pack V1](tileset-pack-v1.md), with an end-to-end localhost/HTTPS
-fixture and replacement walkthrough in
-`optional-mods/example-tileset-pack/README.md`.
-The narration-specific lifecycle, prompt hierarchy, and reference packages are
-defined in [Narration Mods](narration-mods.md).
+This document is the canonical authoring contract for You Are Wild modules.
+It describes the capabilities that exist in the current runtime, not planned
+APIs. Historical plans, release notes, changelogs, and generated examples are
+not doctrine.
 
-The current module system is a trusted-local mod lane. Installed module code runs in the same page context and should be treated as code the player deliberately chose to trust.
+## Authority And Scope
 
-Curated same-origin hosting, module provenance, host policy, runtime-origin
-requirements, and save content locks are defined in
-[Host-Supplied Modules](host-modules.md). That host lane does not change the
-trust boundary for public community packages.
+When documentation disagrees, use this order:
 
-Explicit URI acquisition, review, digest recording, and local-copy behavior are
-defined in [Remote Module Import](remote-modules.md). URI import uses this same
-trusted-local execution boundary and does not make remote code sandboxed.
+1. Runtime validation and ownership in `app/src/core/module-system.js`,
+   `app/src/core/sub-actions.js`, and their tests.
+2. This document.
+3. Focused current contracts linked below.
+4. Maintained first-party packages in `optional-mods/`.
 
-## Source Of Truth
+Planning documents may describe future work but cannot grant a permission,
+hook, package field, action seam, or security property. Examples demonstrate
+only the APIs they actually call. Do not infer general support from legacy
+fields retained for save or package compatibility.
 
-Maintained module code lives in:
+Focused contracts:
 
-- `app/src/core/module-system.js`
-- `app/src/ui/mod-ui.js`
-- `app/src/ui/market-screen.js`
+- [Content posture and optional providers](content-posture-and-providers.md)
+- [Host-supplied modules](host-modules.md)
+- [Remote module import](remote-modules.md)
+- [AI providers](ai-providers.md)
+- [Narration mods](narration-mods.md)
+- [Media repository](media-repository.md)
+- [Asset Bundle V1](asset-bundle-v1.md)
+- [Tileset Pack V1](tileset-pack-v1.md)
 
-Without a host manifest, the player-facing Mod Manager exposes trusted local
-file import, explicit URI package review, and installed modules. Development sample fixtures and the
-example-module generator remain internal test utilities rather than public
-controls. With a same-origin host manifest, a **Host Catalog** entry appears for
-the curated packages described in [Host-Supplied Modules](host-modules.md). It
-is not an arbitrary remote community marketplace and should not be presented as
-one until a stronger package, permissions, signature, and sandbox model exists.
+## Trust Boundary
 
-Catalog entries should declare and display `contentRating` metadata so players can see whether a pack is safe or requires a higher content tier before install or enablement.
+All executable modules currently use the `trusted-local` boundary. Their code
+runs in the game page after an explicit install or host-policy decision. File
+import, URI import, and host supply change provenance and acquisition policy;
+they do not create isolation. Permission checks prevent accidental use of
+unsupported APIs and make review clearer, but they are not a security sandbox.
 
-## Manifest Fields
+Only install executable packages whose code you trust. A digest proves which
+bytes were reviewed or fetched; it does not prove author identity. Runtime code
+must never claim that session-only provider credentials are protected from a
+deliberately malicious same-page module.
 
-`MODULE_SYSTEM.installModule()` validates and normalizes manifests before storage:
+## Canonical Package Envelope
 
-- `id`: required, letters/numbers/underscore/hyphen only
-- `name`: required
-- `version`: required
-- `type`: optional, defaults to `feature_pack`
-- `contentRating`: optional, one of `safe`, `mature`, `adult`; defaults to `safe`
-- `contentCategories`: optional array of category IDs or declarations; required categories must be opted into before enablement
-- `gameplayVariants`: optional array of variant IDs or declarations shown dynamically in Settings
-- `permissions`: optional string array; entries must be token-like identifiers using letters, numbers, `_`, `-`, `.`, or `:`
-- `dependencies`: optional string array; entries use the same token rules as permissions
-- `minGameVersion` or `gameVersion`: optional minimum game version such as `0.10.0`; `gameVersion` is normalized into `minGameVersion`
-- `trustBoundary`: optional, defaults to `trusted-local`; other trust boundaries are rejected until a stronger sandbox/package model exists
+New executable packages must use the version-one envelope:
 
-Malformed modules should fail before they are written to IndexedDB. Repeated permissions or dependencies are deduplicated during normalization.
-
-Module package code must be a string and must pass syntax validation against the same trusted-local wrapper used at runtime before the package is stored or enabled. Package `assets` metadata must be a JSON-style serializable object; executable fields, circular references, symbols, `undefined`, `bigint`, non-finite numbers, arrays as the root asset payload, and other unsupported values are rejected before storage. Already-stored malformed packages are revalidated on enable and remain disabled if validation fails.
-
-Module settings use namespaced keys under the module ID. Setting keys must be non-empty token strings using letters, numbers, underscores, hyphens, dots, or colons. Setting values must be JSON-style serializable data and are copied before storage so later in-memory mutation does not change persisted settings. Every write path, including direct `MODS.setSetting()`, rejects credential-like names, nested credential fields, bearer/private-key material, and common API-key shapes. Startup removes legacy setting records that violate this rule. Ordinary module settings and game saves are never credential stores.
-
-Dependencies are module IDs. A module cannot depend on itself, and a module can only be enabled when every declared dependency is installed and enabled. Disabling or deleting a module disables enabled dependents so stored enabled state and runtime hooks/contributions do not drift.
-
-Installing a package with the same module ID replaces the stored package as disabled. If the previous package was active, its hooks and runtime contributions are unloaded and enabled dependents are disabled before the replacement can be enabled explicitly.
-
-Game-version compatibility is enforced at install and enable time. A module that declares a `minGameVersion` newer than the current game build is rejected before storage through the normal installer, and an already-stored module with a newer requirement cannot be enabled.
-
-## Runtime Contributions
-
-Hooks registered through `MODS.registerHook()` are tagged with the loading module ID. Disabling, deleting, or reloading a module removes that module's owned hooks so behavior does not duplicate during the same session.
-
-Supported hook events include `onMapGenerate`, `onEncounterStart`, `onCombatAction`, `onPlayerMove`, `onGameStart`, `onGameLoad`, `onGameSave`, `onTick`, `onSceneBeat`, `onSceneExchangeClosed`, and `onContentPolicyChanged`. Unknown hook event names and non-finite priorities fail module enablement before the hook is registered. Narration modules must clear private pending queues and cancel requests on both `onGameStart` and `onGameLoad`.
-
-Runtime data added through `MODS.addBiome()`, `MODS.addSpecies()`, and `MODS.addItem()` is also owned by the loading module. Disabling, deleting, or reloading a module removes those owned additions. If a module temporarily replaces an existing biome ID, unloading the module restores the previous biome definition.
-
-Biome, species, and item contributions must be object data with a non-empty `id`. Species and item contributions are copied as JSON-style serializable data before they enter the live registries, so circular references, function-backed fields, symbols, `undefined`, `bigint`, and non-finite numbers reject enablement and leave the module disabled.
-
-Equipment or unit data can opt into the core multi-target Fight contract with `multiTargetTechnique`. Existing definitions receive no inferred bonus. A technique may use `{ action: 'fight', recovery: 0.25, maxTargets: 3 }`, reference a registered core technique id such as `sweep`, or declare `{ action: 'fight', area: true }` for a genuine full-effect area attack. `recovery` supplements the acting unit's learned multi-Fight mastery and is clamped at full effect; `maxTargets` limits where that technique bonus applies. Unit data may also list ids or definitions in `multiTargetTechniques`. Unrecognized and unprofiled actions retain their existing resolution instead of inheriting Fight dilution.
-
-Species that should participate in baseline party, recruit, social, quest, merchant, feed, eat, or mature-capable interaction systems must declare person-like canon metadata such as `sapience: 'person'` or `baselineInteraction: 'sapient'`, a non-`animal` `bodyPlan`, and appropriate `interactionEligibility` flags. Species explicitly classified as ordinary animals with `sapience: 'animal'`, `bodyPlan: 'animal'`, `baselineInteraction: 'animal'`, or `modOnlyAnimal: true` do not inherit those baseline person-like interaction lanes even if a mod sets individual eligibility flags. They can still exist as authored/modded creatures, but interactions must be added deliberately by the mod rather than leaking through core defaults.
-
-Explicit narration additionally requires structured `adultEligibility` metadata with status `eligible` and a non-unknown authority. Core-authored species migrate to species-canon eligibility. Explicitly ineligible life stages override every legacy flag. Mod species remain `unknown` unless trusted species/unit metadata opts them in. The legacy `adultEligible` boolean migrates into the structured record for save compatibility but should not be authored in new content.
-
-Mutating runtime registries requires declared permissions:
-
-- `MODS.getContext(options)` requires `ui.read`
-- `MODS.media.list()`, `metadata()`, `acquire()`, and `release()` require `media:read`
-- `MODS.addBiome()` requires `world:add_biome`
-- `MODS.addSpecies()` requires `content:add_species`
-- `MODS.addItem()` requires `content:add_item`
-- `MODS.registerContentTemplate()` requires `content:add_template`
-- `MODS.registerLocaleEntries()` requires `content:add_locale`
-- `MODS.registerCreationOption()` requires `content:add_creation_option`
-
-If a module calls one of these APIs without the matching permission, enablement fails, partial runtime contributions are cleaned up, and the module remains disabled in storage.
-
-## Runtime Media Leases
-
-Media Repository V1 keeps binary payloads and their provider details outside
-module code. A module declaring `media:read` may list its installed resources,
-inspect normalized metadata, and acquire an opaque session lease:
-
-```js
-const resources = await MODS.media.list();
-const portrait = await MODS.media.acquire('portrait.hero');
-image.src = portrait.url;
-
-// Release when the presentation no longer uses the resource.
-MODS.media.release(portrait.leaseId);
+```json
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "example_module",
+  "gameVersion": "0.12.2",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "example_module",
+      "name": "Example Module",
+      "version": "1.0.0",
+      "description": "A concise player-facing description.",
+      "type": "feature_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.12.2",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": ["file", "https", "localhost", "http"],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": true
+      },
+      "permissions": [],
+      "dependencies": [],
+      "settings": []
+    },
+    "code": "MODS.log('Example module enabled.');",
+    "assets": {}
+  }
+}
 ```
 
-The returned URL is session-scoped and must not be saved. Core releases every
-remaining lease when the module unloads. Replacing or deleting a module removes
-its catalog ownership, and content-addressed payloads are deleted only after
-their final owner is gone.
+The installer still accepts the older bare `{ manifest, code, assets }` shape
+for compatibility. It is not the authoring format for new distributable mods.
+`packageId` must match `module.manifest.id`. `gameVersion` records the packager;
+`minGameVersion` is the actual runtime compatibility floor.
 
-Installation is host-managed rather than module-controlled. The installer may
-call `MODULE_SYSTEM.installModuleMedia(moduleId, descriptors, options)` after a
-module package is installed. HTTP acquisition requires explicit SHA-256, MIME,
-and byte-length metadata and permits HTTPS or HTTP loopback only. Bytes are
-copied into the selected durable store; modules do not hotlink the source URI.
-The initial `auto` route prefers IndexedDB. A configured endpoint/sidecar may be
-registered through the repository and selected explicitly as a source/store.
+### Manifest fields
 
-## Public Narrative Context
+- `id`, `name`, and `version` are required. IDs use letters, numbers,
+  underscores, and hyphens.
+- `type` defaults to `feature_pack` and is descriptive metadata.
+- `contentRating` is `safe` or `mature` for new modules. `adult` remains a
+  deprecated package alias that also requires `explicit.sexual`; do not author
+  new packages around an Adult core posture.
+- `contentCategories` and `gameplayVariants` declare provider-owned policy.
+  Categories that are `required` must be opted into before enablement.
+- `permissions` must contain only the implemented tokens listed below.
+- `dependencies` contains module IDs. Dependencies must be installed and
+  enabled first.
+- `minGameVersion` is a numeric version such as `0.12.2`. `gameVersion` inside
+  a legacy manifest is normalized only as a compatibility alias.
+- `runtimeRequirements` may declare `origins`, `network`, `secureContext`, and
+  `hotToggleSafe`. Omitting it permits every current origin, no network or
+  secure-context requirement, and restart-required toggling during a run.
+- `settings` contains bounded declarative controls. It is not a secret store.
+- `trustBoundary` must be `trusted-local`.
 
-Narrative and optional LLM-facing modules should call `MODS.getContext({ limit })` instead of reading `App`, save records, DOM text, or compatibility fields directly. The returned JSON-serializable contract is versioned through `context.version` and currently contains:
+Module `code` must be a string that passes syntax validation. Module `assets`
+is bounded JSON-style metadata, not an executable object or a binary store.
+Circular data, functions, symbols, `undefined`, `bigint`, and non-finite numbers
+are rejected.
 
-- active mode and content policy, including `posture`, `enabledCategories`, and enabled `gameplayVariants`
-- safe location/tile summary
-- public party and nearby-unit summaries
-- bounded quest summaries
-- bounded Scene Beat summaries
-- bounded Activity Log summaries
+## Installation, Provenance, And Lifecycle
 
-The limit is clamped to 1-50 entries. Public unit summaries intentionally omit anatomy compatibility fields, containers, inventory, raw status payloads, save internals, credentials, and executable values. A narrative module can retain the returned snapshot, but must not treat it as a mutable reference to core state.
+There are four provenance values:
+
+- `user`: reviewed local file import;
+- `remote`: explicit HTTPS or loopback URI review followed by a local
+  IndexedDB copy;
+- `host`: a package curated by the current same-origin host manifest;
+- `built-in`: a host/game-owned package record.
+
+Installed packages start disabled unless host policy says otherwise. Replacing
+an ID unloads its owned runtime work, disables dependents, stores the new
+package as disabled, and requires a fresh enable. Disabling, replacing, or
+deleting a module removes its hooks, timers, provider adapters, narration
+records/orchestrators, action variants, registry contributions, media leases,
+and declared settings/actions through the owning lifecycle.
+
+Host `required`, `defaultEnabled`, `optional`, and `forbidden` states apply only
+to that hosted game. File-origin builds do not discover `yaw-host.json` and
+remain playable with built-in content and locally retained modules.
+
+URI import is review-and-copy, not hotlinking or automatic updating. Cross-origin
+fetches still depend on browser CORS. Query strings, fragments, credentials,
+redirects, oversized packages, invalid UTF-8/JSON, and mismatched optional pins
+are rejected.
+
+## Runtime API And Permissions
+
+Module code receives the `MODS` API plus tracked timers and safe language
+intrinsics. Author against `MODS`; do not read or mutate `App`, DOM markup,
+IndexedDB records, provider internals, or generated prose as application state.
+The same-page trust boundary may make globals observable, but observation is
+not a stable API contract.
+
+Implemented permissions:
+
+| Permission | Capability |
+| --- | --- |
+| `ui.read` | `MODS.getContext()` bounded public context |
+| `media:read` | list, inspect, acquire, and release owned media leases |
+| `scene:read_narrative` | bounded narration context and extensions |
+| `scene:narrate` | owned narration publication and orchestration |
+| `ai:request` | request an existing opaque provider connection |
+| `ai:provide` | register a trusted provider adapter and session connection |
+| `world:add_biome` | add or temporarily replace an owned biome definition |
+| `content:add_species` | add owned serializable species data |
+| `content:add_item` | add owned serializable item data |
+| `content:add_template` | register owned content templates |
+| `content:add_locale` | register owned locale entries |
+| `content:add_creation_option` | register owned creation choices |
+| `content:add_action_variant` | register an owned Feed or Feast variant |
+
+Unknown permissions reject installation. Calling a permissioned API without
+declaring its token fails module enablement and cleans partial contributions.
+
+### Hook events
+
+The current hook registry accepts exactly:
+
+- `onMapGenerate`, `onEncounterStart`, `onCombatAction`;
+- `onDigestionTick`, `onSubActionExecute`;
+- `onDefeat`, `onDefeatEncounterSettled`, `onPlayerState`, `onRegenerate`;
+- `onPlayerMove`, `onGameStart`, `onGameLoad`, `onGameSave`, `onTick`;
+- `onSceneBeat`, `onSceneExchangeClosed`, `onContentPolicyChanged`.
+
+Unknown hook names reject registration. Hooks and tracked timers are removed on
+unload. A hook is notification or a documented extension seam, not permission
+to bypass authoritative resolution. Narrative hooks receive copied/frozen
+envelopes after deterministic state commits; save hydration does not replay
+them.
+
+## Action Variant Contract
+
+The public registration seam currently extends only `feed` and `feast`:
 
 ```js
-const context = MODS.getContext({ limit: 12 });
-MODS.log(JSON.stringify({
-  mode: context.mode,
-  location: context.location.tile,
-  latestBeat: context.sceneBeats.at(-1) || null
-}));
+MODS.registerActionVariant('feed', 'exampleOffer', {
+  label: 'Offer Example',
+  sfwLabel: 'Offer Example',
+  icon: '🎁',
+  scope: 'target',
+  requirements: ['reach', 'cost'],
+  validate(actor, target) {
+    return Boolean(actor && target && actor !== target);
+  },
+  execute(actor, target) {
+    return { ok: true, actorId: actor.id, targetId: target.id };
+  }
+});
 ```
 
-Core remains authoritative. A model response may provide presentation, continuity notes, or optional prose, but it cannot become the only record of a mechanical result.
+Definitions require executable `validate` and `execute` functions. `scope` is
+`self`, `target`, or `both`; requirements are limited to `cost`, `reach`,
+`capacity`, and `willingness`. IDs are bounded and owned, and unload removes
+them. A module may not replace an existing variant.
 
-### Narration Events And API
+The UI also presents core Play self/target choices through the contextual menu,
+but custom Play variants are not a public module capability yet. Do not declare
+or document a Play, Fight, Talk, or Flee variant until the runtime registry
+explicitly supports it. Manifest `gameplayVariants` are policy toggles, not
+executable action variants.
 
-Narration modules declare `scene:read_narrative`, `scene:narrate`, and, when
-needed, `ai:request`. Core dispatches copied, deeply frozen envelopes through
-`onSceneBeat`, `onSceneExchangeClosed`, and `onContentPolicyChanged` only after
-the deterministic beat or policy update is committed. Hydrating a save does not
-replay these hooks.
+Ordinary tactical uncertainty should resolve after commitment through an
+`ActionOutcome` and Scene Beat. A mod should use `validate` for structural
+eligibility and use result logic for attempts that can meaningfully fail; it
+should not turn resistance, reach pressure, or unfavorable odds into raw UI
+errors merely to prevent an attempt.
 
-Use `MODS.getNarrationContext({ beatId, exchangeId, recentBeatLimit,
-activityLimit })` for bounded actors, consequences, policy, location, quests,
-and recent continuity. Publish generated prose separately with
-`MODS.publishNarration()`, then complete it through `MODS.updateNarration()`.
-Modules can modify only their own records. Ready records persist; pending
-requests do not. Current policy is reapplied whenever records render.
-Mode, location, and time are taken from the recorded target exchange rather
-than current play state. Recent beats are also bounded at the target, so a
-delayed request cannot see events that happened later.
+## Settings And Content Ownership
 
-Tile-aware narrators may call
-`MODS.getCachedTileNarration({ scope, targetId, variant })` before publishing a
-request and `MODS.cacheTileNarration(narrationId, { variant })` after their own
-record becomes ready. These methods only resolve targets carrying a core
-`tileNarrativeState` fingerprint. Core bounds the cache to 32 policy-eligible
-presentation entries; the module supplies a stable variant token whenever its
-voice, profile, instructions, or output contract changes. Arbitrary action
-narration is never placed in the tile cache.
+Supported setting types are `boolean`, `select`, bounded `number`, bounded
+`string`, `provider_connection`, and `action`. Only declared settings render.
+Keys and values are namespaced under the module ID, copied before persistence,
+and deleted with the module. Credential-like keys or values are rejected.
 
-Focused narration context also exposes `viewpoint`. Its `player` field is a
-bounded public narrative-unit summary, `participation` is `actor`, `target`,
-`self`, `observer`, `mixed`, or `unknown`, and `beatRoles` retains the derived
-role for each target beat. A spectating player is deliberately not added to
-`characters`; that collection continues to mean actual actors and targets.
-Player identity is captured in the target Scene Beat context snapshot so
-provider latency cannot shift the viewpoint to later game state.
+Use module-owned settings for specialized or niche controls. Do not add a core
+setting merely so one optional module can operate. Content categories default
+off, cannot enable themselves, and unload dependent modules when disabled.
+Core supports SFW and Mature postures; explicit presentation and specialized
+explicit mechanics remain opt-in, category-gated module content.
 
-Orchestration packages register through `MODS.registerNarrationOrchestrator()`
-and check `await MODS.ownsNarrationExchange(envelope)` before publishing. Core
-selects one ready owner by policy and priority. This prevents standard and
-category-specific packages from narrating the same exchange.
+`MODS.getSetting()` and `MODS.setSetting()` are asynchronous and return
+Promises. Await them in asynchronous hooks and action handlers. A synchronous
+content-template renderer cannot branch directly on `MODS.getSetting()`; doing
+so tests the truthiness of a Promise rather than the stored value. Either keep
+the renderer deterministic from its supplied context or explicitly maintain
+module-owned cached state with a documented refresh lifecycle.
 
-`MODS.ai.generate()` accepts a capability, opaque session connection id,
-profile id, bounded `instructions`, structured input, timeout, and character limit. It returns plain
-text and non-secret provider/model metadata. Provider modules declare
-`ai:provide`, register an adapter, and create session connections only after
-their own authorization flow. Credential-like fields are rejected from both
-manifest settings, public setting writes, and connection metadata. The dedicated
-AI Providers panel owns profile setup. Puter is keyless from the game's
-perspective; the OpenAI-Compatible adapter holds API keys and additional header
-values only in its private in-memory session vault. Saved profiles contain
-non-secret endpoint/model/protocol metadata and restore disconnected.
+Template registration is not an event subscription. A template contributes
+only to the exact content path that the game or another documented extension
+seam resolves. Inventing a new template path does not make it run after an
+action. Use an implemented hook or action-variant seam when behavior must be
+triggered, and use templates only for paths whose consumer is known and tested.
 
-Manifest `settings` declarations support `boolean`, `select`, bounded `number`,
-bounded `string`, `provider_connection`, and `action`. Only declared controls
-render in the Mod Manager. `provider_connection` declares a capability such as
-`text.generate`, stores an opaque profile id, lists compatible connected or
-reconnectable profiles, and links to AI Providers. There is deliberately no
-persistent secret setting type.
+Manifest `contentRating` is the minimum posture required to enable the whole
+module. A `mature` module therefore cannot promise SFW availability merely
+because it registers a safe-tier fallback. For content categories,
+`required: true` blocks module enablement until opt-in; `required: false` merely
+advertises an optional category and does not by itself suppress the module's
+other contributions. Stability Rule 6 protects core fallback content; it does
+not require every arbitrary module-only template key to add an unused safe tier.
 
-A bounded string declaration may set `multiline: true` and `rows` to render an
-accessible textarea. Multiline values are normalized to LF line endings and
-are limited to 2,000 characters. Use this for mod-authored instructions or
-other prose configuration, never credentials. AI instructions are validated
-again by the provider manager before any adapter is invoked.
+Compatibility fields and internal action IDs may remain readable for old saves.
+New modules must use declared policy, public APIs, and structured eligibility
+metadata instead of writing legacy global switches.
 
-## Narrative And Structural Mod Lanes
+## AI And Narration
 
-Mod work should be classified before implementation:
+OpenAI-Compatible profiles are the canonical browser-direct text provider.
+Puter remains an optional keyless adapter, not the default mod contract. Mods
+select only an opaque `provider_connection` with the required capability.
+Credentials and secret header values belong exclusively to the AI Providers
+session vault and never to a manifest, module setting, save, log, context, or
+URL.
 
-- **Narrative/presentation mods** consume existing structured gameplay data and render it differently. They may register content templates, Scene Feed templates, safe summaries, Activity Log exporters, or optional LLM bridge output. They should read `SceneBeat`, `InteractionPlan`, `ActionOutcome`, Activity Log entries, content preferences, and public unit/tile summaries rather than parsing rendered prose as state.
-- **Structural/gameplay mods** add or alter game data and mechanics. They may register species, biomes, items, quest templates, encounter hooks, combat/action hooks, or balance constants through explicit APIs and permissions. They must preserve save compatibility boundaries, content-tier policy, and sapient/person-like interaction eligibility gates.
-- **Asset/content-pack mods** may now use Asset Bundle V1 for code-free,
-  locally retained media attached to an installed `media:read` module. The
-  bundle handles provenance, content rating, relative URIs, hashes, quotas,
-  fallbacks, ownership, licensing, replacement, and cleanup. Tileset Pack V1
-  is the first separate presentation contract: a bundle may declare one
-  bounded code-free atlas mapping, and enabling its target module activates
-  that mapping with lower-priority pack and emoji fallback. Sprite atlases
-  remain a future independent presentation contract.
+Narration is presentation-only. Consume Scene Beats and bounded narration
+context, preserve the captured player viewpoint and deterministic facts, and
+publish owned records separately. Generated text cannot become the only record
+of a mechanic or mutate authoritative state. Orchestrators must cancel private
+work on unload, policy change, game start, and game load.
 
-Optional LLM-facing mods are narrative consumers, not core dependencies. Core gameplay must remain deterministic and readable without a model call, network request, or remote service. If a module prepares data for an LLM, it should emit bounded structured context from Scene Beats, Activity history, safe map summaries, quest state, and public unit metadata. It must not require hidden raw save internals, credentials, or unreviewed remote package behavior.
+## Media And Code-Free Packs
 
-Feature-expansion proposals should explicitly choose one of three destinations before coding:
+Executable module packages do not embed arbitrary binary payloads in runtime
+code. Asset Bundle V1 describes reviewed, individually hashed resources copied
+into durable storage. Modules with `media:read` receive session leases whose
+URLs must not be persisted. Tileset Pack V1 is the only current map-presentation
+consumer. Sprite, animation, audio, video, and 3D schemas are future contracts,
+not implied by Asset Bundle V1.
 
-- **Core game:** mechanics or UI required for the baseline loop, save compatibility, accessibility, localization, or safety policy.
-- **First-party optional mod/content pack:** desirable expansion that should be installable or toggleable without increasing core complexity.
-- **Third-party mod seam:** documented API capability where the project supplies hooks and examples, but does not own the feature content or balance.
+## Authoring Checklist
 
-## Body Features And Optional Anatomy Providers
+Before calling a module complete:
 
-The default/SFW game describes player-facing creation choices as traits, builds, capacities, and visible features. Core does not create hidden anatomy defaults. Optional providers may contribute body-option controls, but those choices remain optional unless a separate mechanic explicitly requires them. Do not expose explicit anatomy words in the static creation UI or SFW stats/inspection surfaces.
+1. Use the canonical `yaw-module` envelope and a unique stable ID.
+2. Set the lowest honest content rating and declare every required category.
+3. Request only permissions the code actually uses.
+4. Declare an accurate minimum game version and runtime requirements.
+5. Keep settings bounded, namespaced, credential-free, and removable.
+6. Use only documented `MODS` APIs and current hook names.
+7. Keep mechanics deterministic without remote services; keep AI optional.
+8. Verify install, enable, use, disable, re-enable, replacement, deletion, and
+   save/reload behavior.
+9. Verify SFW/Mature policy changes, file/localhost/HTTPS origins as declared,
+   and desktop/mobile surfaces affected by the module.
+10. Ensure every advertised option has an executable route and every owned
+    contribution disappears cleanly on unload.
 
-Internal lower/chest compatibility IDs remain stable so existing saves and mechanics continue to load. Rendered labels pass through category-aware localization. An explicit provider owns new explicit labels, creation options, and templates, and its module remains blocked until the player selects Mature posture and opts into its required category.
+## Deferred Boundaries
 
-When expanding build/body gameplay, prefer SFW mechanics in core first: capacity, appetite, size, mobility, intimidation, charm, visibility, equipment fit, and trait interactions. Explicit anatomy mechanics belong in category-gated optional providers unless a future doctrine change deliberately changes core posture.
+The following are not current module capabilities:
 
-## Content Rating
+- a sandboxed community marketplace or verified publisher identity;
+- automatic URI updates or runtime hotlinking;
+- custom Play/Fight/Talk/Flee action-variant registration;
+- arbitrary save-schema mutation or direct mechanical control from narration;
+- sprite, animation, audio, video, or 3D presentation schemas;
+- persistent provider credentials in mods;
+- archive installation without separate unpacking and path-safety contracts.
 
-Content ratings are compatibility metadata for install and broad posture policy. The core UI exposes `sfw` and `mature` postures. Optional categories and gameplay variants are declared by providers and rendered dynamically in Settings. Explicit material must not be introduced into core defaults, and templates unavailable under active policy must fall back rather than returning empty output.
-
-Stored content preferences are normalized on load and before save. Unknown keys are dropped, tiers are clamped to known values, booleans must be real booleans, filter tags are tokenized, and unknown languages fall back to English. Module/content policy checks should use the normalized `CONTENT.preferences` object instead of reading raw storage.
-
-Modules can be installed at any declared content rating so their policy declarations are discoverable. Safe modules can enable under either posture. Mature modules require Mature posture. Legacy `adult` manifests remain loadable as a deprecated alias that implicitly requires the `explicit.sexual` category; there is no built-in Adult posture button.
-
-When the player lowers content settings, already-enabled modules are rechecked against the active policy. Modules above the selected policy are disabled, unloaded, and have their owned hooks removed while allowed modules remain active.
-
-Built-in content-pack handles exposed through `window.CONTENT_PACKS` contain baseline and non-explicit examples only. Explicit first-party content is distributed as an optional module and is not included in the generated HTML.
-
-Content templates registered through `CONTENT.registerTemplate(category, type, variant, templates)` use tokenized category/type/variant keys. The internal `adult` template slot remains a compatibility/provider lane, not a third core posture. Provider modules normally contribute individual tiers through `MODS.registerContentTemplate()`. Malformed registrations reject before mutating the registry.
-
-## Future Community Marketplace Requirements
-
-Development-only sample fixtures and example generators are not player-facing
-marketplace entries. Local builds expose trusted file import and installed
-module management. A Host Catalog control exists only after a valid host
-catalog loads; initialization failures are recorded in the run-independent
-Activity Log while local modules remain usable.
-
-Direct URI import now supplies bounded acquisition, package validation,
-permission/content-rating review, digest verification or recording, local
-IndexedDB installation, and explicit replacement/removal. It does not provide
-community discovery or establish author identity. Before presenting a public
-community marketplace, add:
-
-- publisher signing and identity/reputation checks beyond user-supplied hashes
-- richer dependency discovery and conflict resolution
-- stronger runtime isolation, such as an iframe or Worker capability boundary
-- moderation/reporting and revocation policy
-- asset archive budgets, provenance/licensing metadata, and blob cleanup rules
+Add these only by changing runtime validation, tests, and this doctrine
+together.

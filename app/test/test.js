@@ -656,7 +656,7 @@ asyncTest('Elemental Species package installs, enables, and unloads three owned 
   MODULE_SYSTEM.db = fakeDb.db;
   const App = MODULE_SYSTEM._testApp;
   for (const id of ['cave', 'cliff', 'water', 'beach', 'swamp', 'entrance']) {
-    App.biomes[id] = { encounterTable: [], friendlyTable: [] };
+    App.biomes[id] = { encounterTable: [{ id: `${id}-baseline`, weight: 100 }], friendlyTable: [] };
   }
   const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
   await MODULE_SYSTEM.installModule(packageData);
@@ -670,12 +670,18 @@ asyncTest('Elemental Species package installs, enables, and unloads three owned 
   assertEqual(App.SPECIES_SIZE.stonekin, 5, 'Stonekin should receive its authored size');
   assertEqual(App.SPECIES_CANON.emberkin.bodyPlan, 'elementalfolk', 'Elemental canon should be registered for core consumers');
   assert(App.biomes.cave.encounterTable.some(entry => entry.id === 'emberkin'), 'Elemental profiles should add owned hostile encounter entries');
-  assert(App.biomes.beach.friendlyTable.some(entry => entry.id === 'tidekin'), 'Elemental profiles should add owned friendly encounter entries');
+  assert(App.biomes.beach.encounterTable.some(entry => entry.id === 'tidekin'), 'Tidekin should be discoverable from the active beach encounter pool');
+  assert(App.biomes.swamp.encounterTable.some(entry => entry.id === 'tidekin'), 'Tidekin should be discoverable from the active swamp encounter pool');
+  assert(App.biomes.cliff.encounterTable.some(entry => entry.id === 'stonekin'), 'Stonekin should be discoverable from the active cliff encounter pool');
+  const elementalEntries = Object.values(App.biomes).flatMap(biome => biome.encounterTable || []).filter(entry => ['emberkin', 'tidekin', 'stonekin'].includes(entry.id));
+  assert(elementalEntries.length >= 7, 'Every authored elemental biome placement should enter an active encounter pool');
+  assert(elementalEntries.every(entry => entry.weight <= 2), 'Elemental encounters should remain rare relative to baseline biome weights');
+  assert(Object.values(App.biomes).every(biome => !(biome.friendlyTable || []).some(entry => ['emberkin', 'tidekin', 'stonekin'].includes(entry.id))), 'Elemental availability should not depend on the unused friendly-only encounter path');
   await MODULE_SYSTEM.setModuleEnabled('yaw_elemental_species', false);
   assertEqual(App.species.length, 0, 'Disabling the pack should remove every owned species contribution');
   assertEqual(App.SPECIES_BASE_STATS.emberkin, undefined, 'Disabling the pack should remove owned stat profiles');
   assertEqual(App.SPECIES_ABILITIES.tidekin, undefined, 'Disabling the pack should remove owned ability profiles');
-  assertEqual(App.biomes.cave.encounterTable.length, 0, 'Disabling the pack should remove exact hostile encounter entries');
+  assertEqual(App.biomes.cave.encounterTable.length, 1, 'Disabling the pack should remove exact hostile encounter entries without changing the baseline table');
   assertEqual(App.biomes.beach.friendlyTable.length, 0, 'Disabling the pack should remove exact friendly encounter entries');
 });
 

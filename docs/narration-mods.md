@@ -151,7 +151,29 @@ guidance. Fixed contracts are never truncated to make room for custom prose.
 Reference orchestrators collect `onSceneBeat` envelopes and make at most one
 publication or provider request when `onSceneExchangeClosed` fires. Before
 publishing, each package calls `await MODS.ownsNarrationExchange(envelope)`.
-Priority and active policy select exactly one owner.
+
+`registerNarrationOrchestrator` accepts two gates:
+
+- `isActive(policy)`: module-wide readiness. Return whether the package is
+  ready to narrate anything at all under the active policy (provider connected,
+  toggle on, eligibility confirmed). It never inspects a specific exchange.
+- `claimsExchange(envelope)`: exchange-specific interest. Return `true` only
+  when the package wants to narrate that particular closed exchange. Core
+  deep-freezes the bounded envelope before evaluating predicates, so one
+  module's predicate cannot mutate the beats or policy another module reads.
+  Declare the predicate as a function; a non-function value is rejected at
+  registration and never silently widened to claim-all. An omitted predicate
+  claims every otherwise-eligible exchange, preserving the original behavior.
+
+Core closes each exchange by resolving and caching a single owner before
+dispatching `onSceneExchangeClosed`, and every module querying that exchange
+reads the same cached result. Ownership is decided from the closed exchange
+core recorded; a module cannot change the outcome by handing
+`ownsNarrationExchange` a different envelope. Priority applies only among
+orchestrators that actually claim that exchange: a high-priority orchestrator
+that declines (or whose predicate throws) is skipped, and evaluation continues
+to lower-priority candidates. Modules must still call
+`await MODS.ownsNarrationExchange(envelope)` before publishing.
 
 Pending, unavailable, failed, cancelled, or disabled narration leaves the
 deterministic Scene Beat summaries directly visible. Ready narration becomes

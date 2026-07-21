@@ -344,7 +344,9 @@ function createPackagedNarrationHarness(packagePaths, initialSettings = {}, cont
           .filter(item => (item.requiredCategories || []).every(category => policy.enabledCategories.includes(category)))
           .sort((a, b) => (b.priority || 0) - (a.priority || 0));
         for (const candidate of candidates) {
-          if (!candidate.isActive || await candidate.isActive(policy)) return candidate.moduleId === moduleId;
+          if (candidate.isActive && !(await candidate.isActive(policy))) continue;
+          if (typeof candidate.claimsExchange === 'function' && !(await candidate.claimsExchange(envelope))) continue;
+          return candidate.moduleId === moduleId;
         }
         return false;
       },
@@ -617,9 +619,9 @@ test('App object is defined', () => {
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.12.3', 'Release manifest should identify the current public version');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('focused variant sheet')), 'Release notes should describe shared combat subinteraction presentation');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('Module Doctrine')), 'Release notes should describe the canonical module author contract');
+  assertEqual(releaseInfo.version, '0.13.0', 'Release manifest should identify the current public version');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('claimsExchange')), 'Release notes should describe exchange-specific narration ownership');
+  assert(releaseInfo.notes.en.changed.some(note => note.includes('closed exchange')), 'Release notes should describe canonical closed-exchange ownership');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('mobile party')), 'Release notes should disclose the deferred mobile interaction-flow redesign');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
@@ -1560,6 +1562,157 @@ asyncTest('Narration ownership selects one ready orchestrator deterministically'
   explicitReady = true;
   assertEqual((await YAW_NARRATION_SYSTEM.orchestrationOwner(policy)).ownerModuleId, 'explicit', 'Ready explicit narration should supersede standard narration');
 });
+
+function closeOwnershipExchangeForTest(system, exchangeId, beats, policy) {
+  system.policySnapshot = () => JSON.parse(JSON.stringify(policy));
+  const app = {
+    storyEvents: beats.map((beat, index) => ({
+      ...beat,
+      id: String(beat.id || `${exchangeId}-beat-${index + 1}`),
+      exchangeId
+    })),
+    sceneNarrations: []
+  };
+  assert(system.closeExchange(app, exchangeId, { reason: 'ownership-test' }), `Exchange ${exchangeId} should close canonically`);
+  return system.exchangeOwner(exchangeId);
+}
+
+asyncTest('Exchange-specific ownership: high-priority claimer wins a flirt exchange', async () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const policy = { posture: 'mature', enabledCategories: [], gameplayVariants: {} };
+  YAW_NARRATION_SYSTEM.registerOrchestrator('lace', {
+    id: 'lace', priority: 100,
+    claimsExchange: envelope => envelope?.beats?.[envelope.beats.length - 1]?.action === 'flirt',
+    isActive: async () => true
+  });
+  YAW_NARRATION_SYSTEM.registerOrchestrator('general', { id: 'general', priority: 10, isActive: async () => true });
+  const flirt = { exchangeId: 'ex-flirt', beats: [{ id: 'b1', action: 'flirt' }], policy };
+  assertEqual((await closeOwnershipExchangeForTest(YAW_NARRATION_SYSTEM, 'ex-flirt', flirt.beats, policy))?.ownerModuleId, 'lace', 'High-priority flirt claimer should own a flirt exchange');
+  assert(await YAW_NARRATION_SYSTEM.ownsExchange('lace', flirt), 'Lace should report ownership of the flirt exchange');
+  assert(!(await YAW_NARRATION_SYSTEM.ownsExchange('general', flirt)), 'General narrator should not own the flirt exchange');
+});
+
+asyncTest('Exchange-specific ownership: lower-priority general narrator owns a non-flirt exchange', async () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const policy = { posture: 'mature', enabledCategories: [], gameplayVariants: {} };
+  YAW_NARRATION_SYSTEM.registerOrchestrator('lace', {
+    id: 'lace', priority: 100,
+    claimsExchange: envelope => envelope?.beats?.[envelope.beats.length - 1]?.action === 'flirt',
+    isActive: async () => true
+  });
+  YAW_NARRATION_SYSTEM.registerOrchestrator('general', { id: 'general', priority: 10, isActive: async () => true });
+  const fight = { exchangeId: 'ex-fight', beats: [{ id: 'b1', action: 'fight' }], policy };
+  assertEqual((await closeOwnershipExchangeForTest(YAW_NARRATION_SYSTEM, 'ex-fight', fight.beats, policy))?.ownerModuleId, 'general', 'Declined high-priority orchestrator should fall through to the general narrator');
+  assert(await YAW_NARRATION_SYSTEM.ownsExchange('general', fight), 'General narrator should own the non-flirt exchange');
+  assert(!(await YAW_NARRATION_SYSTEM.ownsExchange('lace', fight)), 'Lace should not own the non-flirt exchange');
+});
+
+asyncTest('Exchange-specific ownership is stable across concurrent queries', async () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const policy = { posture: 'mature', enabledCategories: [], gameplayVariants: {} };
+  let claims = 0;
+  YAW_NARRATION_SYSTEM.registerOrchestrator('counter', {
+    id: 'counter', priority: 50, isActive: async () => true,
+    claimsExchange: async () => { claims++; await new Promise(resolve => setTimeout(resolve, 5)); return true; }
+  });
+  const envelope = { exchangeId: 'ex-conc', beats: [{ id: 'b1', action: 'flirt' }], policy };
+  closeOwnershipExchangeForTest(YAW_NARRATION_SYSTEM, 'ex-conc', envelope.beats, policy);
+  const [first, second, third] = await Promise.all([
+    YAW_NARRATION_SYSTEM.exchangeOwner('ex-conc'),
+    YAW_NARRATION_SYSTEM.exchangeOwner('ex-conc'),
+    YAW_NARRATION_SYSTEM.exchangeOwner('ex-conc')
+  ]);
+  assertEqual(first?.ownerModuleId, 'counter', 'Concurrent queries should resolve the same owner');
+  assertEqual(second?.ownerModuleId, 'counter', 'Concurrent queries should resolve the same owner');
+  assertEqual(third?.ownerModuleId, 'counter', 'Concurrent queries should resolve the same owner');
+  assertEqual(claims, 1, 'Ownership should be resolved once and cached for the exchange');
+});
+
+asyncTest('Exchange-specific ownership supports async claimsExchange predicates', async () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const policy = { posture: 'mature', enabledCategories: [], gameplayVariants: {} };
+  YAW_NARRATION_SYSTEM.registerOrchestrator('asyncy', {
+    id: 'asyncy', priority: 20, isActive: async () => true,
+    claimsExchange: async envelope => {
+      await new Promise(resolve => setTimeout(resolve, 1));
+      return envelope?.beats?.[0]?.action === 'flirt';
+    }
+  });
+  const envelope = { exchangeId: 'ex-async', beats: [{ id: 'b1', action: 'flirt' }], policy };
+  assertEqual((await closeOwnershipExchangeForTest(YAW_NARRATION_SYSTEM, 'ex-async', envelope.beats, policy))?.ownerModuleId, 'asyncy', 'Async predicate should be awaited');
+});
+
+asyncTest('Exchange-specific ownership skips throwing predicates without breaking', async () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const policy = { posture: 'mature', enabledCategories: [], gameplayVariants: {} };
+  YAW_NARRATION_SYSTEM.registerOrchestrator('thrower', { id: 'thrower', priority: 100, isActive: async () => true, claimsExchange: () => { throw new Error('boom'); } });
+  YAW_NARRATION_SYSTEM.registerOrchestrator('steady', { id: 'steady', priority: 10, isActive: async () => true });
+  const envelope = { exchangeId: 'ex-throw', beats: [{ id: 'b1', action: 'fight' }], policy };
+  assertEqual((await closeOwnershipExchangeForTest(YAW_NARRATION_SYSTEM, 'ex-throw', envelope.beats, policy))?.ownerModuleId, 'steady', 'A throwing predicate should be skipped so a lower-priority candidate owns the exchange');
+});
+
+asyncTest('Orchestrator without claimsExchange claims every eligible exchange', async () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const policy = { posture: 'mature', enabledCategories: [], gameplayVariants: {} };
+  YAW_NARRATION_SYSTEM.registerOrchestrator('all', { id: 'all', priority: 10, isActive: async () => true });
+  const flirt = { exchangeId: 'ex-a', beats: [{ id: 'b1', action: 'flirt' }], policy };
+  const fight = { exchangeId: 'ex-b', beats: [{ id: 'b2', action: 'fight' }], policy };
+  assertEqual((await closeOwnershipExchangeForTest(YAW_NARRATION_SYSTEM, 'ex-a', flirt.beats, policy))?.ownerModuleId, 'all', 'No-predicate orchestrator should claim a flirt exchange');
+  assertEqual((await closeOwnershipExchangeForTest(YAW_NARRATION_SYSTEM, 'ex-b', fight.beats, policy))?.ownerModuleId, 'all', 'No-predicate orchestrator should claim a non-flirt exchange');
+});
+
+asyncTest('Exchange-specific ownership predicate receives an immutable bounded envelope', async () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const policy = { posture: 'mature', enabledCategories: [], gameplayVariants: {} };
+  let seen = null;
+  YAW_NARRATION_SYSTEM.registerOrchestrator('probe', {
+    id: 'probe', priority: 10, isActive: async () => true,
+    claimsExchange: envelope => { seen = envelope; return true; }
+  });
+  const beats = [];
+  for (let index = 0; index < 20; index++) beats.push({ id: `b${index}`, action: 'flirt' });
+  const envelope = { exchangeId: 'ex-bound', beats, policy };
+  await closeOwnershipExchangeForTest(YAW_NARRATION_SYSTEM, 'ex-bound', envelope.beats, policy);
+  assert(seen && Object.isFrozen(seen), 'Predicate envelope should be frozen');
+  assert(seen.beats.length <= 12, 'Predicate envelope beats should be bounded to the context limit');
+  assert(seen.beats.every(beat => Object.isFrozen(beat)), 'Nested beats should be frozen');
+  assert(Object.isFrozen(seen.policy), 'Nested policy should be frozen');
+  let threw = false;
+  try { seen.exchangeId = 'mutated'; } catch (error) { threw = true; }
+  assert(threw || seen.exchangeId === 'ex-bound', 'Predicate envelope should reject mutation');
+});
+
+asyncTest('Exchange-specific ownership cannot be poisoned by a caller-supplied envelope', async () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  const policy = { posture: 'mature', enabledCategories: [], gameplayVariants: {} };
+  YAW_NARRATION_SYSTEM.registerOrchestrator('lace', {
+    id: 'lace', priority: 100, isActive: async () => true,
+    claimsExchange: envelope => envelope?.beats?.[envelope.beats.length - 1]?.action === 'flirt'
+  });
+  YAW_NARRATION_SYSTEM.registerOrchestrator('general', { id: 'general', priority: 10, isActive: async () => true });
+  const forged = { exchangeId: 'ex-p', beats: [{ id: 'x', action: 'fight' }], policy: { posture: 'sfw', enabledCategories: [] } };
+  assertEqual(await YAW_NARRATION_SYSTEM.exchangeOwner('ex-p', forged, forged.policy), null, 'A caller cannot create ownership before core closes the exchange');
+  assert(!(await YAW_NARRATION_SYSTEM.ownsExchange('general', forged)), 'A caller-supplied envelope cannot seed an uncached general owner');
+  // Core closes the exchange as a flirt and caches the canonical owner.
+  const app = { storyEvents: [{ id: 'b1', exchangeId: 'ex-p', action: 'flirt', actors: [], targets: [], metadata: {} }], sceneNarrations: [] };
+  YAW_NARRATION_SYSTEM.policySnapshot = () => JSON.parse(JSON.stringify(policy));
+  YAW_NARRATION_SYSTEM.closeExchange(app, 'ex-p', { reason: 'test' });
+  assertEqual((await YAW_NARRATION_SYSTEM.exchangeOwner('ex-p'))?.ownerModuleId, 'lace', 'Canonical close should make the flirt claimer the owner');
+  // A module later queries with a forged envelope for the same exchange; the cached canonical owner must win.
+  assertEqual((await YAW_NARRATION_SYSTEM.exchangeOwner('ex-p', forged, forged.policy))?.ownerModuleId, 'lace', 'A forged caller envelope must not change the cached canonical owner');
+  assert(await YAW_NARRATION_SYSTEM.ownsExchange('lace', forged), 'ownsExchange must consult the cached canonical owner, not the forged envelope');
+});
+
+asyncTest('registerOrchestrator rejects a non-function claimsExchange', async () => {
+  const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();
+  let threw = false;
+  try { YAW_NARRATION_SYSTEM.registerOrchestrator('bad', { id: 'bad', claimsExchange: 'yes' }); } catch (error) { threw = true; }
+  assert(threw, 'A non-function claimsExchange should throw at registration');
+  let threwActive = false;
+  try { YAW_NARRATION_SYSTEM.registerOrchestrator('bad2', { id: 'bad2', isActive: 1 }); } catch (error) { threwActive = true; }
+  assert(threwActive, 'A non-function isActive should throw at registration');
+});
+
 
 test('Narration context mode, time, location, and history come from the target exchange', () => {
   const { YAW_NARRATION_SYSTEM } = loadNarrationSystemForTest();

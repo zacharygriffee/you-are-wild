@@ -101,3 +101,12 @@ request.
   production metadata is stamped with 0.12.3.
 - The canonical Module Doctrine clarifies the existing runtime contract and
   does not add an unsupported hook or contribution type.
+
+## Version 0.13.0 Compatibility
+
+- Existing 0.10.x through 0.12.3 saves load without player migration.
+- Exchange-specific narration ownership is an additive module contract and does
+  not change the save schema or invalidate existing narration orchestrators.
+- Orchestrators that use `claimsExchange` must declare game version 0.13.0 or
+  newer; orchestrators that omit it retain the original claim-all behavior.
+- First-party package production metadata is stamped with 0.13.0.

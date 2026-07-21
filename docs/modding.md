@@ -273,6 +273,18 @@ publish owned records separately. Generated text cannot become the only record
 of a mechanic or mutate authoritative state. Orchestrators must cancel private
 work on unload, policy change, game start, and game load.
 
+`registerNarrationOrchestrator` separates two concerns: `isActive(policy)` is
+module-wide readiness under the active policy, and `claimsExchange(envelope)`
+declares interest in one closed exchange. The predicate must be a function (a
+non-function value is rejected); omitting it claims every otherwise-eligible
+exchange (the original behavior). Core resolves one owner per closed exchange
+and caches it before dispatching `onSceneExchangeClosed`, and predicates
+receive a deep-frozen bounded copy so they cannot mutate each other's input.
+Priority applies only among orchestrators that claim that exchange, and a
+declined or throwing predicate falls through to lower-priority candidates.
+Modules still call `await MODS.ownsNarrationExchange(envelope)` before
+publishing.
+
 ## Media And Code-Free Packs
 
 Executable module packages do not embed arbitrary binary payloads in runtime

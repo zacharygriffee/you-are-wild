@@ -2281,7 +2281,7 @@ const MODULE_SYSTEM = {
                     }
                     YAW_NARRATION_SYSTEM.clearOperationalErrors(moduleId);
                 }
-                return YAW_NARRATION_SYSTEM.ownsOrchestration(moduleId, envelope.policy || undefined);
+                return YAW_NARRATION_SYSTEM.ownsExchange(moduleId, envelope);
             },
 
             registerAIProvider(providerId, adapter) {

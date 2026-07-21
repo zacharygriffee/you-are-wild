@@ -18,6 +18,8 @@ const YAW_NARRATION_SYSTEM = {
     fallbackTimers: new Map(),
     hookTimers: new Set(),
     closedExchanges: new Set(),
+    exchangeOwnership: new Map(),
+    exchangeEnvelopes: new Map(),
     runtimeGeneration: 0,
 
     copy(value, fallback = null) {
@@ -142,6 +144,8 @@ const YAW_NARRATION_SYSTEM = {
         this.fallbackTimers.clear();
         this.hookTimers.clear();
         this.closedExchanges.clear();
+        this.exchangeOwnership.clear();
+        this.exchangeEnvelopes.clear();
         this.operationalErrors.clear();
         if (typeof YAW_AI_PROVIDER_MANAGER !== 'undefined') YAW_AI_PROVIDER_MANAGER.resetRuntime(reason);
         if (clearRecords && app) {
@@ -188,6 +192,8 @@ const YAW_NARRATION_SYSTEM = {
             reason: String(options.reason || 'explicit-boundary'),
             policy: this.policySnapshot()
         }, null);
+        this.exchangeEnvelopes.set(id, this._boundedExchangeEnvelope(envelope));
+        this._resolveClosedExchangeOwnership(id);
         this.scheduleHook('onSceneExchangeClosed', envelope);
         return true;
     },
@@ -618,16 +624,23 @@ const YAW_NARRATION_SYSTEM = {
         const owner = this.token(ownerModuleId, 'Orchestrator owner');
         const id = this.token(input.id || owner, 'Orchestrator id');
         const requiredCategories = [...new Set((input.requiredCategories || []).map(category => this.token(category, 'Orchestrator category')))];
+        if (input.isActive !== undefined && input.isActive !== null && typeof input.isActive !== 'function') {
+            throw new Error('Orchestrator isActive must be a function');
+        }
+        if (input.claimsExchange !== undefined && input.claimsExchange !== null && typeof input.claimsExchange !== 'function') {
+            throw new Error('Orchestrator claimsExchange must be a function');
+        }
         const record = {
             ownerModuleId: owner,
             id,
             priority: Number.isFinite(Number(input.priority)) ? Number(input.priority) : 0,
             minPosture: input.minPosture === 'mature' ? 'mature' : 'sfw',
             requiredCategories,
-            isActive: typeof input.isActive === 'function' ? input.isActive : null
+            isActive: typeof input.isActive === 'function' ? input.isActive : null,
+            claimsExchange: typeof input.claimsExchange === 'function' ? input.claimsExchange : null
         };
         this.orchestrators.set(`${owner}:${id}`, record);
-        return this.copy({ ...record, isActive: undefined });
+        return this.copy({ ...record, isActive: undefined, claimsExchange: undefined });
     },
 
     removeOrchestrators(ownerModuleId) {
@@ -657,6 +670,100 @@ const YAW_NARRATION_SYSTEM = {
 
     async ownsOrchestration(ownerModuleId, policy = this.policySnapshot()) {
         return (await this.orchestrationOwner(policy))?.ownerModuleId === String(ownerModuleId);
+    },
+
+    _deepFreeze(value) {
+        if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+        Object.freeze(value);
+        Object.values(value).forEach(child => this._deepFreeze(child));
+        return value;
+    },
+
+    _boundedExchangeEnvelope(envelope = {}) {
+        const source = envelope && typeof envelope === 'object' ? envelope : {};
+        const beats = (Array.isArray(source.beats) ? source.beats : [])
+            .slice(-this.MAX_CONTEXT_BEATS)
+            .map(beat => this.copy(beat, null))
+            .filter(Boolean);
+        return this.copy({
+            version: source.version ?? this.VERSION,
+            eventId: String(source.eventId || ''),
+            exchangeId: String(source.exchangeId || ''),
+            beatIds: (Array.isArray(source.beatIds) ? source.beatIds : []).map(String).slice(-this.MAX_CONTEXT_BEATS),
+            beats,
+            reason: String(source.reason || ''),
+            policy: this.copy(source.policy || this.policySnapshot(), this.policySnapshot())
+        }, null);
+    },
+
+    async _claimsExchange(orchestrator, frozenEnvelope) {
+        if (orchestrator.claimsExchange == null) return true;
+        if (typeof orchestrator.claimsExchange !== 'function') {
+            console.error(`Narration exchange claim skipped (${orchestrator.id}): claimsExchange must be a function`);
+            return false;
+        }
+        try {
+            return (await orchestrator.claimsExchange(frozenEnvelope)) === true;
+        } catch (error) {
+            console.error(`Narration exchange claim failed (${orchestrator.id}):`, error);
+            return false;
+        }
+    },
+
+    async _exchangeOwnerFromCandidates(orchestrators, envelope, policy) {
+        const frozenEnvelope = this._deepFreeze(this._boundedExchangeEnvelope(envelope));
+        const candidates = orchestrators
+            .filter(orchestrator => orchestrator.minPosture !== 'mature' || policy.posture === 'mature')
+            .filter(orchestrator => orchestrator.requiredCategories.every(category => policy.enabledCategories.includes(category)))
+            .sort((left, right) => (right.priority - left.priority)
+                || left.ownerModuleId.localeCompare(right.ownerModuleId)
+                || left.id.localeCompare(right.id));
+        for (const orchestrator of candidates) {
+            if (orchestrator.isActive) {
+                let active = false;
+                try {
+                    active = (await orchestrator.isActive(this.copy(policy, {}))) === true;
+                } catch (error) {
+                    console.error(`Narration orchestrator readiness failed (${orchestrator.id}):`, error);
+                }
+                if (!active) continue;
+            }
+            if (!(await this._claimsExchange(orchestrator, frozenEnvelope))) continue;
+            return { ownerModuleId: orchestrator.ownerModuleId, orchestratorId: orchestrator.id };
+        }
+        return null;
+    },
+
+    _resolveClosedExchangeOwnership(exchangeId) {
+        const id = String(exchangeId || '').trim();
+        if (!id) return Promise.resolve(null);
+        if (this.exchangeOwnership.has(id)) return this.exchangeOwnership.get(id);
+        const canonical = this.exchangeEnvelopes.get(id) || null;
+        if (!canonical) return Promise.resolve(null);
+        const orchestrators = [...this.orchestrators.values()];
+        const policySnapshot = this.copy(canonical.policy, this.policySnapshot());
+        const promise = this._exchangeOwnerFromCandidates(orchestrators, canonical, policySnapshot)
+            .catch(error => {
+                console.error(`Narration exchange ownership failed (${id}):`, error);
+                return null;
+            });
+        this.exchangeOwnership.set(id, promise);
+        if (this.exchangeOwnership.size > 200) this.exchangeOwnership.delete(this.exchangeOwnership.keys().next().value);
+        if (this.exchangeEnvelopes.size > 200) this.exchangeEnvelopes.delete(this.exchangeEnvelopes.keys().next().value);
+        return promise;
+    },
+
+    async exchangeOwner(exchangeId) {
+        const id = String(exchangeId || '').trim();
+        if (!id || !this.exchangeOwnership.has(id)) return null;
+        return this.exchangeOwnership.get(id);
+    },
+
+    async ownsExchange(ownerModuleId, envelope = {}) {
+        const exchangeId = String(envelope?.exchangeId || '').trim();
+        if (!exchangeId) return this.ownsOrchestration(ownerModuleId, envelope?.policy || this.policySnapshot());
+        const owner = await this.exchangeOwner(exchangeId);
+        return owner?.ownerModuleId === String(ownerModuleId);
     },
 
     targetContextSnapshot(targets = []) {

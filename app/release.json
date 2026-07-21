@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.12.3",
+  "version": "0.13.0",
   "releasedAt": "2026-07-21",
   "channel": "public-preview",
   "saveSchema": 11,
@@ -8,30 +8,30 @@
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Existing 0.10.x through 0.12.2 saves load automatically; the shared subinteraction sheet and documentation refinements do not change the save schema.",
-      "mods": "Modules requiring game version 0.10.0 remain compatible. Host and bundled packages declare their own minimum version."
+      "saves": "Existing 0.10.x through 0.12.3 saves load automatically; exchange-specific narration ownership does not change the save schema.",
+      "mods": "Existing modules remain compatible. The optional claimsExchange narration predicate requires game version 0.13.0 or newer."
     },
     "es": {
-      "saves": "Las partidas existentes desde 0.10.x hasta 0.12.2 se cargan automaticamente; el submenu compartido y los ajustes de documentacion no cambian el esquema de guardado.",
-      "mods": "Los modulos que requieren la version 0.10.0 siguen siendo compatibles. Los paquetes del host y los incluidos declaran su propia version minima."
+      "saves": "Las partidas existentes desde 0.10.x hasta 0.12.3 se cargan automaticamente; la propiedad de narracion por intercambio no cambia el esquema de guardado.",
+      "mods": "Los modulos existentes siguen siendo compatibles. El predicado opcional claimsExchange requiere la version 0.13.0 o posterior."
     }
   },
   "notes": {
     "en": {
       "added": [
-        "Combat Feed and Feast now use the same focused variant sheet as exploration on desktop and mobile.",
-        "The canonical Module Doctrine now documents the supported package envelope, permissions, settings, content posture, host policy, and runtime seams.",
-        "Module-author guidance now distinguishes content registration from event subscriptions and identifies which contribution paths are currently executable."
+        "Narration orchestrators can use claimsExchange to claim only the closed exchanges they understand.",
+        "Exchange predicates receive a bounded, deeply frozen copy of the canonical Scene Beat envelope.",
+        "The Module Doctrine documents exchange-specific ownership, fallthrough, and publication requirements."
       ],
       "changed": [
-        "Combat subinteraction choices preserve the selected actor and target while the shared sheet is open.",
-        "Back and Escape return from the variant sheet without spending the turn or leaving combat in a stranded option phase.",
-        "Obsolete narration-agent guidance has been removed in favor of one doctrine plus focused, maintained references."
+        "Narration ownership is resolved once from the closed exchange and shared by every querying module.",
+        "Higher-priority narrators that decline or fail a claim now fall through to eligible lower-priority narrators.",
+        "Narration readiness and exchange interest are separate module contracts."
       ],
       "fixed": [
-        "Combat no longer renders Feed or Feast variants as a narrow inline column that can be clipped by the stage.",
-        "Desktop and mobile combat use one accessible dialog contract for variant focus, selection, cancellation, and cleanup.",
-        "Module documentation no longer implies that arbitrary registered locale keys execute as hooks or that asynchronous settings are synchronous values."
+        "A caller-supplied envelope can no longer create or replace canonical ownership for an exchange.",
+        "Malformed narration predicates are rejected instead of silently widening to claim every exchange.",
+        "Nested Scene Beats and policy data cannot be mutated by ownership predicates."
       ],
       "knownIssues": [
         "Browser-direct AI connections still depend on endpoint TLS and CORS support.",
@@ -42,19 +42,19 @@
     },
     "es": {
       "added": [
-        "Alimentar y Festin en combate ahora usan la misma hoja enfocada de variantes que la exploracion en escritorio y movil.",
-        "La doctrina canonica de modulos ahora documenta el paquete compatible, permisos, ajustes, postura de contenido, politica del host y puntos de extension.",
-        "La guia para autores distingue el registro de contenido de las suscripciones a eventos e identifica las contribuciones que se pueden ejecutar actualmente."
+        "Los orquestadores de narracion pueden usar claimsExchange para reclamar solo los intercambios cerrados que entienden.",
+        "Los predicados reciben una copia limitada y profundamente congelada del sobre canonico de Scene Beats.",
+        "La doctrina de modulos documenta propiedad por intercambio, continuidad y requisitos de publicacion."
       ],
       "changed": [
-        "Las opciones de subinteraccion en combate conservan el actor y el objetivo elegidos mientras la hoja esta abierta.",
-        "Atras y Escape cierran la hoja sin gastar el turno ni dejar el combate atrapado en la fase de opciones.",
-        "La guia antigua del agente de narracion fue eliminada en favor de una doctrina unica y referencias mantenidas."
+        "La propiedad de narracion se resuelve una vez desde el intercambio cerrado y se comparte con cada modulo que consulta.",
+        "Los narradores de mayor prioridad que rechazan o fallan una reclamacion dejan paso a narradores elegibles de menor prioridad.",
+        "La disponibilidad de narracion y el interes en un intercambio ahora son contratos separados."
       ],
       "fixed": [
-        "El combate ya no muestra variantes de Alimentar o Festin en una columna estrecha que puede quedar recortada por el escenario.",
-        "El combate en escritorio y movil usa un solo contrato de dialogo accesible para foco, seleccion, cancelacion y limpieza.",
-        "La documentacion ya no sugiere que claves arbitrarias de idioma funcionen como eventos ni que los ajustes asincronos sean valores sincronos."
+        "Un sobre entregado por el llamador ya no puede crear ni reemplazar la propiedad canonica de un intercambio.",
+        "Los predicados de narracion invalidos se rechazan en vez de ampliarse silenciosamente a todos los intercambios.",
+        "Los Scene Beats anidados y los datos de politica no pueden ser modificados por predicados de propiedad."
       ],
       "knownIssues": [
         "Las conexiones directas desde el navegador dependen de TLS y CORS del endpoint.",

@@ -36,7 +36,7 @@ const YAW_SETTINGS_FLOW = {
         return {
             powerDynamics: false, endoMode: false, slowDigestion: false,
             fatalVore: false, chewing: false, allTheWayThrough: false,
-            hardcore: false, scat: false, watersports: false,
+            hardcore: false,
             boneCrushing: false, unwillingWarnings: false,
             statAbsorption: false, refractoryPeriod: false,
             sameSpeciesBonus: false, fluidEnabled: false,
@@ -50,7 +50,7 @@ const YAW_SETTINGS_FLOW = {
     booleanKeys() {
         return [
             'powerDynamics', 'endoMode', 'slowDigestion', 'fatalVore', 'chewing',
-            'allTheWayThrough', 'hardcore', 'scat', 'watersports', 'boneCrushing',
+            'allTheWayThrough', 'hardcore', 'boneCrushing',
             'unwillingWarnings', 'statAbsorption', 'refractoryPeriod', 'sameSpeciesBonus',
             'fluidEnabled', 'cockVoreEnabled', 'unbirthEnabled', 'forcedFeeding',
             'highContrast', 'reducedMotion'
@@ -103,7 +103,7 @@ const YAW_SETTINGS_FLOW = {
     enforceContentTierSettings(app) {
         const posture = CONTENT?.preferences?.posture || (app._tierValue(CONTENT?.preferences?.maxTier) >= 1 ? 'mature' : 'sfw');
         const matureSettings = ['fatalVore', 'statAbsorption', 'chewing', 'allTheWayThrough', 'powerDynamics', 'forcedFeeding', 'boneCrushing', 'unwillingWarnings'];
-        const explicitSettings = ['fluidEnabled', 'scat', 'watersports', 'cockVoreEnabled', 'unbirthEnabled', 'refractoryPeriod'];
+        const explicitSettings = ['fluidEnabled', 'cockVoreEnabled', 'unbirthEnabled', 'refractoryPeriod'];
         const explicitAllowed = CONTENT?.isCategoryEnabled?.('explicit.sexual') === true;
         if (!explicitAllowed) {
             CONTENT.setPreference('explicitDescriptions', false);

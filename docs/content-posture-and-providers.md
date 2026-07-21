@@ -30,6 +30,7 @@ the game is intended for children.
 | Explicit descriptions and sexually framed narrative | Explicit provider | Keep provider text outside the default artifact and verify parity through the optional-package browser flow. |
 | Sexual anatomy and anatomy-specific routes | Explicit provider | Preserve legacy save fields; provider owns new UI, labels, and options. |
 | Sexual physiology, fluids, refractory behavior | Explicit provider | Provider setting may adapt a legacy mechanic key during compatibility. |
+| Niche explicit themes and fetish-specific mechanics | Dedicated optional mod | Do not add core toggles or advertise them through the generic first-party provider. The mod owns its namespaced settings; installation, enablement, category opt-in, and any mod-authored toggle remain explicit player choices. |
 | Accessibility, localization, difficulty, party rules | Core system | Never gate behind content posture. |
 
 Ambiguous mechanics are classified by what their rules reward and require, not
@@ -83,6 +84,12 @@ Provider categories default off. Installed providers may advertise categories
 in Settings, but module enablement remains blocked until every required category
 is enabled. Disabling a category unloads dependent modules through the normal
 module lifecycle.
+
+Installing a rated module does not make its specialized mechanics part of the
+core settings schema. A module that needs finer consent controls declares its
+own bounded settings in its manifest. Those values remain owned and persisted
+under the module id and are removed with the module rather than migrating into
+global game settings.
 
 ## Stability Rules
 

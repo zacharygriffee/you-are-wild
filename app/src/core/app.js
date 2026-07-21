@@ -852,7 +852,7 @@
             settings: {
                 powerDynamics: false, endoMode: false, slowDigestion: false,
                 fatalVore: false, chewing: false, allTheWayThrough: false,
-                hardcore: false, scat: false, watersports: false,
+                hardcore: false,
                 boneCrushing: false, unwillingWarnings: false,
                 statAbsorption: false, refractoryPeriod: false,
                 sameSpeciesBonus: false, fluidEnabled: false,

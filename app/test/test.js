@@ -6206,11 +6206,19 @@ test('Built-in content pack source is separate from sample module catalog', () =
 
 test('First-party explicit provider is a valid optional module and is excluded from the default build', () => {
   const providerPackage = JSON.parse(fs.readFileSync(explicitProviderPath, 'utf8'));
+  const variantIds = providerPackage.module.manifest.gameplayVariants.map(variant => variant.id);
+  const settingKeys = providerPackage.module.manifest.gameplayVariants.map(variant => variant.settingKey);
   assertEqual(providerPackage.packageType, 'yaw-module', 'Optional explicit provider should use the module package envelope');
   assertEqual(providerPackage.module.manifest.contentRating, 'mature', 'Explicit provider should use Mature posture plus a category instead of a core Adult posture');
   assert(providerPackage.module.manifest.contentCategories.some(category => category.id === 'explicit.sexual' && category.required !== false), 'Explicit provider should declare a required explicit.sexual category');
   assert(providerPackage.module.manifest.permissions.includes('content:add_template'), 'Explicit provider should declare template contribution permission');
   assert(providerPackage.module.manifest.permissions.includes('content:add_creation_option'), 'Explicit provider should declare creation-option contribution permission');
+  assertEqual(variantIds.includes('explicit.content.scat'), false, 'First-party explicit provider should not advertise mod-owned niche content as a core-compatible gameplay variant');
+  assertEqual(variantIds.includes('explicit.content.watersports'), false, 'First-party explicit provider should not advertise mod-owned niche content as a core-compatible gameplay variant');
+  assertEqual(settingKeys.includes('scat'), false, 'First-party explicit provider should not bind a removed core setting');
+  assertEqual(settingKeys.includes('watersports'), false, 'First-party explicit provider should not bind a removed core setting');
+  assertEqual(settingsFlowContent.includes("scat"), false, 'Core settings should not own the removed niche-content toggle');
+  assertEqual(settingsFlowContent.includes('watersports'), false, 'Core settings should not own the removed niche-content toggle');
   assertNotContains(buildContent, 'you-are-wild-explicit', 'Default build should not include the optional explicit provider');
   assertNotContains(templateContent, 'explicit.sexual', 'Default HTML template should not hardcode the explicit provider category');
 });

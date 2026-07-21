@@ -44,20 +44,6 @@
         "category": "explicit.sexual"
       },
       {
-        "id": "explicit.content.scat",
-        "label": "Scat content",
-        "settingKey": "scat",
-        "minPosture": "mature",
-        "category": "explicit.sexual"
-      },
-      {
-        "id": "explicit.content.watersports",
-        "label": "Watersports content",
-        "settingKey": "watersports",
-        "minPosture": "mature",
-        "category": "explicit.sexual"
-      },
-      {
         "id": "explicit.containment.reserve",
         "label": "Anatomy-specific reserve containment",
         "settingKey": "cockVoreEnabled",

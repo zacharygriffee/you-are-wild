@@ -124,6 +124,12 @@ Single-actor and group commands use the same registry. Group commands retain
 slowest-participant timing, and multi-target commands retain deterministic
 target order. A module does not receive a combat execution callback.
 
+Every selected technique pays the ordinary Fight hunger cost once for each
+committed actor command. It does not add a hidden per-target charge or a
+variant-specific surcharge. Techniques commit combat turns but, like other
+non-travel interactions, do not advance the world clock. These values are
+reported by `YAW_BALANCE_SYSTEM.interactionMatrix(App)`.
+
 ## Saves, Ownership, And Unload
 
 Profiles are module-owned runtime registrations, not unit save data. Queued

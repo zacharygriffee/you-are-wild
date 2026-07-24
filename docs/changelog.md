@@ -4,6 +4,12 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Interaction Balance Matrix schema v3 now inventories Basic Attack and every
+  registered Combat Technique V1 profile, including normal once-per-command
+  Fight hunger cost, reach, equipment requirements, damage shaping, area
+  distribution, and status. It also makes the existing world-clock boundary
+  explicit: ordinary interactions commit turns without advancing hours, while
+  traversal, Search, and Rest retain their authored elapsed-time costs.
 - Generator V4 is now the default for new runs while recorded older worlds
   retain their versioned layout. The inner 3×3 is a deterministic passable
   Grove with no random encounter, hostile structure, danger-site influence,

@@ -385,6 +385,11 @@ const YAW_BALANCE_SYSTEM = {
 
     interactionMatrix(app) {
         const cfg = this.ensure(app);
+        const techniqueRegistry = app?.combatTechniqueRegistry
+            || (typeof YAW_COMBAT_TECHNIQUES !== 'undefined' ? YAW_COMBAT_TECHNIQUES : null);
+        const techniqueProfiles = techniqueRegistry?.profiles?.values
+            ? [...techniqueRegistry.profiles.values()]
+            : [];
         const rewards = {
             defeatEnemy: Number(app?.XP_REWARDS?.defeatEnemy ?? 50),
             consumeEnemy: Number(app?.XP_REWARDS?.consumeEnemy ?? 75),
@@ -426,8 +431,59 @@ const YAW_BALANCE_SYSTEM = {
             },
             ...details
         });
+        const fightVariants = [{
+            id: 'fight.basic',
+            action: 'fight',
+            variant: 'basic',
+            owner: 'core',
+            source: {
+                hunger: Number(cfg.costs.fight ?? 0),
+                variantHungerSurcharge: 0,
+                charge: 'once-per-committed-actor-command'
+            },
+            reach: 'actor-default',
+            equipment: null,
+            target: {
+                damage: 'ordinary deterministic Fight damage',
+                area: { maxTargets: 8, distribution: 'split', recovery: 'multi-Fight practice' },
+                status: null
+            },
+            timeHours: 0,
+            turn: 'committed-attempt'
+        }, ...techniqueProfiles.map(profile => ({
+            id: `fight.${profile.key}`,
+            action: 'fight',
+            variant: profile.key,
+            owner: profile.owner,
+            source: {
+                hunger: Number(cfg.costs.fight ?? 0),
+                variantHungerSurcharge: 0,
+                charge: 'once-per-committed-actor-command'
+            },
+            reach: profile.reach || 'actor-default',
+            equipment: {
+                required: Boolean(profile.equipment?.required),
+                anyTags: [...(profile.equipment?.anyTags || [])],
+                allTags: [...(profile.equipment?.allTags || [])],
+                slots: [...(profile.equipment?.slots || [])]
+            },
+            target: {
+                damage: {
+                    multiplier: Number(profile.damage?.multiplier ?? 1),
+                    flat: Number(profile.damage?.flat ?? 0)
+                },
+                area: {
+                    maxTargets: Number(profile.area?.maxTargets ?? 1),
+                    distribution: profile.area?.distribution || 'split',
+                    recovery: Number(profile.area?.recovery ?? 0)
+                },
+                status: profile.status ? { ...profile.status } : null
+            },
+            timeHours: 0,
+            turn: 'committed-attempt'
+        }))];
         return {
-            schemaVersion: 2,
+            schemaVersion: 3,
             semantics: {
                 hunger: 'higher-is-hungrier',
                 condition: 'CPun/MPun',
@@ -437,6 +493,21 @@ const YAW_BALANCE_SYSTEM = {
                 committedFailure: 'cost-and-turn',
                 multiTargetCost: 'once-per-actor-command',
                 groupCost: 'once-per-participant-command'
+            },
+            clockPolicy: {
+                nonTravelInteractionHours: 0,
+                actions: {
+                    fight: 0,
+                    flirt: 0,
+                    fuck: 0,
+                    feed: 0,
+                    feast: 0,
+                    flee: 0
+                },
+                travel: 'authored traversal cost',
+                search: 1,
+                rest: 8,
+                invariant: 'turn commitment and world-clock advancement are separate ledgers'
             },
             commands: [
                 command('fight', {
@@ -548,7 +619,7 @@ const YAW_BALANCE_SYSTEM = {
                     target: { spirit: 'floor(charm*0.5) on success' },
                     reward: { xpOnEnemyResolution: rewards.seduceEnemy }
                 })
-            ],
+            ].concat(fightVariants),
             digestion: {
                 passiveBaseRate: 5,
                 passiveSlowRate: 2,
@@ -569,9 +640,7 @@ const YAW_BALANCE_SYSTEM = {
                 invariant: 'rate-changes-delivery-time-not-total-nutrition'
             },
             unresolved: [
-                'authored mass-ledger replacement for Offer Piece condition proxy',
-                'Fight sub-variant cost/effect declarations',
-                'explicit elapsed-time policy for non-travel interactions'
+                'authored mass-ledger replacement for Offer Piece condition proxy'
             ]
         };
     },

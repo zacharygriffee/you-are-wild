@@ -4357,14 +4357,24 @@ test('Balance scenario multi-target measurements stay aligned with runtime maste
   assertEqual(App._multiInteractionScaleValue(40, areaRuntime), areaRow.effectPerTarget, 'Authored area report effect should match runtime scaling');
 });
 
-test('Interaction balance matrix exposes current resource ownership and unresolved tuning seams', () => {
+test('Interaction balance matrix exposes current resource ownership technique declarations and clock policy', () => {
   const balance = loadBalanceSystemForTest();
+  const profile = {
+    key: 'matrix-pack:sweep',
+    owner: 'matrix-pack',
+    reach: 'hybrid',
+    equipment: { required: true, anyTags: ['sweeping'], allTags: [], slots: ['hands'] },
+    damage: { multiplier: 1.25, flat: 2 },
+    area: { maxTargets: 3, distribution: 'full', recovery: 0.25 },
+    status: { effect: 'stun', chance: 0.5, turns: 1, power: 1 }
+  };
   const app = {
     BALANCE_V1: {},
-    XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 50, flirtEnemy: 50, feedAlly: 20, feedEnemy: 25 }
+    XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 50, flirtEnemy: 50, feedAlly: 20, feedEnemy: 25 },
+    combatTechniqueRegistry: { profiles: new Map([[profile.key, profile]]) }
   };
   const matrix = balance.interactionMatrix(app);
-  assertEqual(matrix.schemaVersion, 2, 'Interaction matrix should expose a versioned machine-readable contract');
+  assertEqual(matrix.schemaVersion, 3, 'Interaction matrix should expose the technique-aware machine-readable contract');
   assertEqual(matrix.semantics.multiTargetCost, 'once-per-actor-command', 'Matrix should record command-level multi-target costs');
   assertEqual(matrix.semantics.groupCost, 'once-per-participant-command', 'Matrix should record participant-level group costs');
   assertEqual(matrix.commands.find(entry => entry.id === 'fight').outcomes.committedFailure.charge, true, 'Matrix should distinguish a charged committed failure from a free blocked selection');
@@ -4383,7 +4393,20 @@ test('Interaction balance matrix exposes current resource ownership and unresolv
   assertEqual(matrix.combatPressure.starving.fleePenalty, 0.15, 'Matrix should expose the Starving Flee chance penalty');
   assertContains(matrix.combatPressure.invariant, 'does-not-lower-constitution', 'Matrix should preserve the no-extra-one-hit-death invariant');
   assertEqual(matrix.variants.find(entry => entry.id === 'feed.nurse')?.source?.resource?.key, 'core:nurse', 'Matrix should expose the implemented Nurse resource source');
+  assertEqual(matrix.variants.find(entry => entry.id === 'fight.basic')?.source?.hunger, 3, 'Basic Fight should declare the normal once-per-command hunger cost');
+  const sweep = matrix.variants.find(entry => entry.id === 'fight.matrix-pack:sweep');
+  assertEqual(sweep.source.hunger, 3, 'An authored Fight technique should retain the normal Fight hunger cost');
+  assertEqual(sweep.source.variantHungerSurcharge, 0, 'Combat Technique V1 should disclose that it does not add a hidden hunger surcharge');
+  assertEqual(sweep.reach, 'hybrid', 'Technique matrix rows should declare their command-specific reach');
+  assertEqual(sweep.target.damage.multiplier, 1.25, 'Technique matrix rows should declare bounded damage shaping');
+  assertEqual(sweep.target.area.distribution, 'full', 'Technique matrix rows should declare area distribution');
+  assertEqual(sweep.target.status.effect, 'stun', 'Technique matrix rows should declare their bounded status effect');
+  assertEqual(matrix.clockPolicy.nonTravelInteractionHours, 0, 'Ordinary interactions should explicitly commit turns without advancing the world clock');
+  assertEqual(matrix.clockPolicy.search, 1, 'Search should retain its explicit one-hour world-clock cost');
+  assertContains(matrix.clockPolicy.invariant, 'separate ledgers', 'The matrix should distinguish turn commitment from elapsed time');
   assert(matrix.unresolved.some(entry => entry.includes('mass-ledger')), 'Matrix should preserve Offer Piece mass-source tuning as unresolved');
+  assert(!matrix.unresolved.some(entry => entry.includes('Fight sub-variant')), 'Fight technique declarations should no longer remain unresolved');
+  assert(!matrix.unresolved.some(entry => entry.includes('elapsed-time')), 'The current non-travel clock policy should no longer remain unresolved');
   assert(!matrix.unresolved.some(entry => entry.includes('hunger-scaled passive digestion')), 'Implemented hunger scaling should no longer remain in the unresolved list');
 });
 

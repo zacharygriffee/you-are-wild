@@ -29,6 +29,24 @@ does not authorize retuning the values it reports.
 The runtime matrix contains the formulas, ownership, shape policy, and current
 Feed/Feast variant rows. Tests must change with any contract change.
 
+## Fight technique accounting
+
+The schema-v3 matrix includes Basic Attack and every currently registered
+Combat Technique V1 profile. A technique declares its command-specific reach,
+equipment requirements, damage shaping, target cap, split/full distribution,
+recovery, and optional status. Every technique currently pays the ordinary
+Fight hunger cost once per committed actor command; Combat Technique V1 does
+not add a hidden per-target cost or variant surcharge.
+
+## World-clock policy
+
+Turn commitment and elapsed world time are separate ledgers. Fight, Talk, Play,
+Feed, Feast, and Flee currently advance the combat/adventure command flow but
+add zero hours to the world clock. Travel uses its authored traversal cost,
+Search advances one hour, and Rest advances eight hours. A future action may
+declare a different elapsed-time cost, but it must do so explicitly rather than
+inheriting turn commitment as time.
+
 ## Hunger combat pressure
 
 Hunger affects combat performance without changing Constitution or maximum
@@ -81,7 +99,8 @@ fast digestion.
 
 ## Verification boundary
 
-Executable scenarios cover matrix schema/resource ownership, selected-target
+Executable scenarios cover matrix schema/resource ownership, Fight technique
+cost/effect declarations, the explicit world-clock policy, selected-target
 combat Feed, species-derived livestock willingness, ordinary-prey refusal,
 renewable-piece condition cost, Nurse cooldown distribution, Offer Self
 containment/removal, sequential group capacity, support reach across either

@@ -8,6 +8,37 @@ const YAW_HOLDINGS = {
         return document.getElementById('holdings-window-root');
     },
 
+    captureReturnFocus() {
+        if (typeof document === 'undefined') return null;
+        const active = document.activeElement;
+        if (!active || active === document.body) return null;
+        return {
+            control: active.getAttribute?.('data-command-control') || '',
+            surface: active.getAttribute?.('data-command-surface') || '',
+            slot: active.getAttribute?.('data-command-slot') || ''
+        };
+    },
+
+    restoreReturnFocus(token = null) {
+        if (!token || typeof document === 'undefined') return false;
+        const candidates = Array.from(document.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+        const visible = candidates.filter(element => {
+            if (!element?.isConnected || element.disabled || element.closest?.('#holdings-window-root')) return false;
+            const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+            const rect = element.getBoundingClientRect?.();
+            return (!style || (style.display !== 'none' && style.visibility !== 'hidden'))
+                && (!rect || rect.width > 0 || rect.height > 0);
+        });
+        const exact = element => (!token.control || element.getAttribute('data-command-control') === token.control)
+            && (!token.surface || element.getAttribute('data-command-surface') === token.surface)
+            && (!token.slot || element.getAttribute('data-command-slot') === token.slot);
+        const byControl = element => token.control && element.getAttribute('data-command-control') === token.control;
+        const target = visible.find(exact) || visible.find(byControl);
+        if (!target?.focus) return false;
+        try { target.focus({ preventScroll: true }); } catch (_error) { target.focus(); }
+        return true;
+    },
+
     tabs() {
         return ['stats', 'equipment', 'pack', 'containers', 'ground'];
     },
@@ -273,8 +304,9 @@ const YAW_HOLDINGS = {
         const ownerMeta = app._escapeHtml(app._label('holdings.equippedBy', 'Equipped by {name}', { name: ownerName }));
         let html = `<section class="holdings-section" data-holding-section="equipped"><div class="holdings-section-title">${equippedLabel}</div>`;
         html += `<div class="holding-entry-meta">${ownerMeta}: ${app._equipmentSummary(owner)}</div><div class="holding-entry-actions">`;
+        const recoveryLocked = YAW_RECOVERY_MODES?.restricts?.(app, 'inventory') === true;
         section.entries.forEach(({ slot, label, item }) => {
-            if (!item) return;
+            if (!item || recoveryLocked) return;
             const unequipTitle = app._escapeHtml(this.isPlayerOwner(app, owner)
                 ? app._label('inventory.unequipSlot', 'Unequip {slot}', { slot: label })
                 : app._label('holdings.unequipSlotFromOwner', 'Unequip {slot} from {name}', { slot: label, name: ownerName }));
@@ -285,8 +317,14 @@ const YAW_HOLDINGS = {
         return html;
     },
 
+    itemTypeLabel(app, type = 'misc') {
+        const token = String(type || 'misc').trim().toLowerCase() || 'misc';
+        const fallback = token.charAt(0).toUpperCase() + token.slice(1);
+        return app._label(`item.category.${token}`, fallback);
+    },
+
     renderPackItem(app, item, owner = app.player) {
-        const def = app.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
+        const def = app.ITEMS[item.name] || { icon: '?', desc: app._label('item.unknown', 'Unknown') };
         const canUse = def.effect === 'heal';
         const choosingTarget = canUse && String(app.holdingsWindow?.pendingItemUseId || '') === String(item.id);
         const canEquip = app._isEquippable(item);
@@ -298,10 +336,11 @@ const YAW_HOLDINGS = {
         const useTitle = app._escapeHtml(app._label('inventory.useItem', 'Use {name}', { name: item.name }));
         const equipTitle = app._escapeHtml(app._label('inventory.equipItem', 'Equip {name}', { name: item.name }));
         const dropTitle = app._escapeHtml(app._label('inventory.dropItem', 'Drop {name}', { name: item.name }));
+        const recoveryLocked = YAW_RECOVERY_MODES?.restricts?.(app, 'inventory') === true;
         let html = `<div class="holdings-entry pack-entry" data-holding-kind="pack-item"><div class="holding-entry-main"><div class="holding-entry-name"><span>${app._escapeHtml(def.icon || '?')}</span> ${name}</div>`;
-        html += `<div class="holding-entry-meta">${app._escapeHtml(def.type || 'misc')} · ${app._escapeHtml(def.desc || '')}${canEquip ? '<br>' + app._equipmentBonusText(item) : ''}</div></div><div class="holding-entry-actions">`;
-        if (canUse && !choosingTarget) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="use-item" title="${useTitle}" aria-label="${useTitle}" onclick="App.requestUseItem('${itemKey}')">${useLabel}</button>`;
-        if (choosingTarget) {
+        html += `<div class="holding-entry-meta">${app._escapeHtml(this.itemTypeLabel(app, def.type))} · ${app._escapeHtml(def.desc || '')}${canEquip ? '<br>' + app._equipmentBonusText(item) : ''}</div></div><div class="holding-entry-actions">`;
+        if (!recoveryLocked && canUse && !choosingTarget) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="use-item" title="${useTitle}" aria-label="${useTitle}" onclick="App.requestUseItem('${itemKey}')">${useLabel}</button>`;
+        if (!recoveryLocked && choosingTarget) {
             const prompt = app._escapeHtml(app._label('inventory.chooseHealingTarget', 'Use {item} on:', { item: item.name }));
             html += `<div class="holding-use-targets" role="group" aria-label="${prompt}"><span class="holding-entry-meta">${prompt}</span>`;
             YAW_HOLDINGS.partyOwners(app).forEach(target => {
@@ -322,8 +361,9 @@ const YAW_HOLDINGS = {
             const cancel = app._escapeHtml(app._label('inventory.cancelUse', 'Cancel'));
             html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="cancel-use-item" data-command-slot="exit" onclick="App.cancelUseItem()">${cancel}</button></div>`;
         }
-        if (canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="equip-item" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${itemKey}')">${equipLabel}</button>`;
-        html += `<button class="nav-btn danger" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="drop-item" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button></div></div>`;
+        if (!recoveryLocked && canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="equip-item" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${itemKey}')">${equipLabel}</button>`;
+        if (!recoveryLocked) html += `<button class="nav-btn danger" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="drop-item" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button>`;
+        html += `</div></div>`;
         return html;
     },
 
@@ -485,13 +525,15 @@ const YAW_HOLDINGS = {
     open(app, owner = app.player, options = {}) {
         const root = this.root();
         if (!root) return false;
+        const returnFocus = app.holdingsWindow?.returnFocus || this.captureReturnFocus();
         owner = owner || this.selectedOwner(app) || app.player;
         const tab = this.tabs().includes(options.tab || app.holdingsWindow?.tab) ? (options.tab || app.holdingsWindow?.tab) : 'stats';
         owner = this.ownerForTab(app, owner, tab);
         app.holdingsWindow = {
             tab,
             ownerType: 'party',
-            ownerId: this.ownerId(app, owner)
+            ownerId: this.ownerId(app, owner),
+            returnFocus
         };
         app._restoreCenterContextIfPanelDetailLeaked?.();
         const actions = document.getElementById('scene-actions');
@@ -509,6 +551,7 @@ const YAW_HOLDINGS = {
 
     close(app) {
         const root = this.root();
+        const returnFocus = app.holdingsWindow?.returnFocus || null;
         app.holdingsWindow = null;
         app._restoreFocusTrap?.({ restoreFocus: false });
         if (root) {
@@ -526,6 +569,7 @@ const YAW_HOLDINGS = {
             app.renderExplorationActions?.();
             app._renderInteractionState?.({ exploration: true, toolbelt: false });
         }
+        this.restoreReturnFocus(returnFocus);
         return false;
     },
 
@@ -576,22 +620,30 @@ const YAW_HOLDINGS = {
     showPerkSelection(app) {
         const root = this.root();
         if (!root || !app.player) return false;
-        app.holdingsWindow = { tab: 'stats', detail: 'perks', ownerId: app.player.id || app.player.name || 'player' };
+        app.holdingsWindow = {
+            ...(app.holdingsWindow || {}),
+            tab: 'stats',
+            detail: 'perks',
+            ownerId: app.player.id || app.player.name || 'player',
+            returnFocus: app.holdingsWindow?.returnFocus || this.captureReturnFocus()
+        };
         app._restoreCenterContextIfPanelDetailLeaked?.();
         app.closeIntentMenu?.();
         app.closePanelDetails?.('party');
         app.closePanelDetails?.('enemies');
         const titleLabel = app._escapeHtml(app._label('perk.choose', 'Choose Perk'));
+        const descriptionLabel = app._escapeHtml(app._label('holdings.perkDescription', 'Choose an available perk, or return to character stats.'));
         const backLabel = app._escapeHtml(app._label('perk.back', 'Back'));
         const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
         root.hidden = false;
         root.innerHTML = `
             <div class="holdings-backdrop" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" onclick="App.closeHoldingsWindow()"></div>
-            <section class="holdings-window" role="dialog" aria-modal="true" aria-labelledby="holdings-window-title" data-surface-role="holdings-window" data-command-surface="holdings-window" data-command-mode="exploration" data-command-grammar="holdings-management">
+            <section class="holdings-window" role="dialog" aria-modal="true" aria-labelledby="holdings-window-title" aria-describedby="holdings-window-description" data-surface-role="holdings-window" data-command-surface="holdings-window" data-command-mode="exploration" data-command-grammar="holdings-management">
                 <header class="holdings-window-header">
                     <div>
                         <div class="holdings-window-eyebrow">${app._escapeHtml(app._label('holdings.umbrella', 'Character / Holdings'))}</div>
                         <h2 id="holdings-window-title">${titleLabel}</h2>
+                        <p id="holdings-window-description" class="holding-entry-meta">${descriptionLabel}</p>
                     </div>
                     <div class="holdings-window-actions">
                         <button class="nav-btn" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="back-to-stats" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="App.showCharacterStats()">${backLabel}</button>
@@ -626,6 +678,7 @@ const YAW_HOLDINGS = {
         const titleText = app._label('holdings.titleWithInventory', 'Holdings / Inventory ({count}/{max})', { count, max: app.MAX_INVENTORY });
         const closeLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
         const title = app._escapeHtml(titleText);
+        const description = app._escapeHtml(app._label('holdings.windowDescription', 'Review and manage character stats, equipment, pack, and containers.'));
         const tabButtons = this.tabs().map(tabId => {
             const selected = tab === tabId;
             const label = app._escapeHtml(this.tabLabel(app, tabId));
@@ -634,11 +687,12 @@ const YAW_HOLDINGS = {
         root.hidden = false;
         root.innerHTML = `
             <div class="holdings-backdrop" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" onclick="App.closeHoldingsWindow()"></div>
-            <section class="holdings-window" role="dialog" aria-modal="true" aria-labelledby="holdings-window-title" data-surface-role="holdings-window" data-command-surface="holdings-window" data-command-mode="exploration" data-command-grammar="holdings-management">
+            <section class="holdings-window" role="dialog" aria-modal="true" aria-labelledby="holdings-window-title" aria-describedby="holdings-window-description" data-surface-role="holdings-window" data-command-surface="holdings-window" data-command-mode="exploration" data-command-grammar="holdings-management">
                 <header class="holdings-window-header">
                     <div>
                         <div class="holdings-window-eyebrow">${app._escapeHtml(app._label('holdings.umbrella', 'Character / Holdings'))}</div>
                         <h2 id="holdings-window-title">${title}</h2>
+                        <p id="holdings-window-description" class="holding-entry-meta">${description}</p>
                     </div>
                     <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
                 </header>
@@ -666,24 +720,30 @@ const YAW_HOLDINGS = {
         if (!detail || !root) return false;
         const owner = holderType === 'party' ? (app.party || [])[Number(holderIndex)] : this.selectedOwner(app);
         app.holdingsWindow = {
+            ...(app.holdingsWindow || {}),
             tab: 'containers',
             detail: 'contained',
             ownerType: 'party',
-            ownerId: this.ownerId(app, owner || app.player)
+            ownerId: this.ownerId(app, owner || app.player),
+            returnFocus: app.holdingsWindow?.returnFocus || this.captureReturnFocus()
         };
         const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
+        const description = app._escapeHtml(app._label('holdings.containedDescription', 'Review this contained creature and its available actions.'));
         root.hidden = false;
         root.innerHTML = `
             <div class="holdings-backdrop" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" onclick="App.closeHoldingsWindow()"></div>
-            <section class="holdings-window" role="dialog" aria-modal="true" aria-labelledby="holdings-window-title" data-surface-role="holdings-window" data-command-surface="holdings-window" data-command-mode="exploration">
+            <section class="holdings-window" role="dialog" aria-modal="true" aria-labelledby="holdings-window-title" aria-describedby="holdings-window-description" data-surface-role="holdings-window" data-command-surface="holdings-window" data-command-mode="exploration">
                 <header class="holdings-window-header">
-                    <div><div class="holdings-window-eyebrow">${app._escapeHtml(this.tabLabel(app, 'containers'))}</div><h2 id="holdings-window-title">${app._escapeHtml(detail.title)}</h2></div>
+                    <div><div class="holdings-window-eyebrow">${app._escapeHtml(this.tabLabel(app, 'containers'))}</div><h2 id="holdings-window-title">${app._escapeHtml(detail.title)}</h2><p id="holdings-window-description" class="holding-entry-meta">${description}</p></div>
                     <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
                 </header>
                 <div class="holdings-window-body">${detail.html}</div>
             </section>`;
         document.getElementById('app')?.classList?.add('holdings-window-open');
         this.setUnderlyingInert(true);
+        const dialog = root.querySelector('.holdings-window');
+        app._activateFocusTrap?.(dialog, { close: () => app.closeHoldingsWindow() });
+        try { root.querySelector('.holdings-close')?.focus({ preventScroll: true }); } catch (e) { root.querySelector('.holdings-close')?.focus(); }
         return true;
     }
 };
@@ -705,6 +765,7 @@ const YAW_INVENTORY_PANEL = {
     },
 
     requestUse(app, itemId) {
+        if (YAW_RECOVERY_MODES?.restricts?.(app, 'inventory')) return false;
         const item = (app.inventory || []).find(entry => String(entry?.id) === String(itemId));
         if (!item || app._getItemDef(item).effect !== 'heal') return false;
         if (YAW_HOLDINGS.partyOwners(app).length <= 1) return this.use(app, itemId);
@@ -725,6 +786,7 @@ const YAW_INVENTORY_PANEL = {
     },
 
     use(app, itemId, targetId = null) {
+        if (YAW_RECOVERY_MODES?.restricts?.(app, 'inventory')) return false;
         const index = (app.inventory || []).findIndex(item => String(item?.id) === String(itemId));
         if (index < 0) return false;
         const item = app.inventory[index];
@@ -807,6 +869,7 @@ const YAW_INVENTORY_PANEL = {
     },
 
     equip(app, itemId, ownerId = null) {
+        if (YAW_RECOVERY_MODES?.restricts?.(app, 'inventory')) return false;
         // Pack UI is player-only for now. ownerId remains as a legacy/internal compatibility seam
         // until companion equipment gets a deliberate management flow separate from Pack.
         const owner = YAW_HOLDINGS.ownerById(app, ownerId || app.holdingsWindow?.ownerId);
@@ -836,6 +899,7 @@ const YAW_INVENTORY_PANEL = {
     },
 
     unequip(app, slot, ownerId = null) {
+        if (YAW_RECOVERY_MODES?.restricts?.(app, 'inventory')) return false;
         const owner = YAW_HOLDINGS.ownerById(app, ownerId || app.holdingsWindow?.ownerId);
         if (!owner?.equipment || !owner.equipment[slot]) return;
         if (app.inventory.length >= app.MAX_INVENTORY) {
@@ -859,6 +923,7 @@ const YAW_INVENTORY_PANEL = {
     },
 
     drop(app, itemId) {
+        if (YAW_RECOVERY_MODES?.restricts?.(app, 'inventory')) return false;
         const index = app.inventory.findIndex(item => String(item?.id) === String(itemId));
         if (index === -1) return false;
         const tile = app._currentExplorationTile();

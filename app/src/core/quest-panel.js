@@ -8,8 +8,9 @@ const YAW_QUEST_PANEL = {
         return (quest.objectives || []).map(objective => {
             const done = objective.complete ? '✓' : '•';
             const checkpoint = app._nextQuestCheckpoint(objective);
-            const next = checkpoint ? ` → ${checkpoint.label} (${checkpoint.x}, ${checkpoint.y})` : '';
-            return `${done} ${app._escapeHtml(objective.label || app._questObjectiveLabel(objective))} (${objective.progress || 0}/${objective.required || 1})${app._escapeHtml(next)}`;
+            const checkpointIndex = checkpoint ? Math.max(0, (objective.checkpoints || []).indexOf(checkpoint)) : 0;
+            const next = checkpoint ? ` → ${app._questCheckpointLabel(checkpoint, checkpointIndex)} (${checkpoint.x}, ${checkpoint.y})` : '';
+            return `${done} ${app._escapeHtml(app._questObjectiveDisplayLabel(objective))} (${objective.progress || 0}/${objective.required || 1})${app._escapeHtml(next)}`;
         }).join('<br>');
     },
 
@@ -19,7 +20,7 @@ const YAW_QUEST_PANEL = {
         return objective.checkpoints.map((checkpoint, index) => {
             const state = checkpoint.complete ? 'complete' : (next === checkpoint ? 'current' : 'pending');
             const marker = state === 'complete' ? '✓' : (state === 'current' ? '→' : '•');
-            const label = checkpoint.label || app._label('quest.checkpoint', 'Checkpoint');
+            const label = app._questCheckpointLabel(checkpoint, index);
             const stateLabel = app._questCheckpointStateLabel(state);
             const bg = state === 'current' ? 'var(--bg-elevated)' : 'transparent';
             const border = state === 'current' ? 'var(--accent-primary)' : (state === 'complete' ? 'var(--accent-success)' : 'var(--border-subtle)');
@@ -143,7 +144,10 @@ const YAW_QUEST_PANEL = {
     },
 
     markerPreview(app, marker, objective) {
-        const label = marker.label || objective.label || app._questObjectiveLabel(objective);
+        const checkpointIndex = Math.max(0, (objective?.checkpoints || []).indexOf(marker));
+        const label = marker?.generatedLabel
+            ? app._questCheckpointLabel(marker, checkpointIndex)
+            : marker.label || app._questObjectiveDisplayLabel(objective);
         return app._label('quest.markerPreview', 'Marker: {label} ({x}, {y})', { label, x: marker.x, y: marker.y });
     },
 
@@ -173,7 +177,8 @@ const YAW_QUEST_PANEL = {
         visibleQuests.forEach(quest => {
             const needsTurnIn = quest.status === 'completed' && quest.turnInRequired && !quest.rewardClaimed;
             const status = app._escapeHtml(app._questStatusLabel(quest));
-            html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${app._escapeHtml(quest.title)} <span style="font-size:11px;color:var(--text-muted)">[${status}]</span></div>`;
+            const questTitle = app._questTitleLabel(quest);
+            html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${app._escapeHtml(questTitle)} <span style="font-size:11px;color:var(--text-muted)">[${status}]</span></div>`;
             if (quest.description) html += `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${app._escapeHtml(quest.description)}</div>`;
             html += `<div style="font-size:12px;color:var(--text-primary);margin-top:8px;line-height:1.6">${app._questProgressText(quest)}</div>`;
             for (const objective of quest.objectives || []) {
@@ -183,7 +188,7 @@ const YAW_QUEST_PANEL = {
                 html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || app._escapeHtml(app._questMarkerPreview(marker, objective))}</div>`;
                 if (marker && quest.status === 'active') {
                     const showMapLabel = app._escapeHtml(app._label('quest.showOnMap', 'Show On Map'));
-                    const showMapTitle = app._escapeHtml(app._label('quest.showOnMapFor', 'Show {name} on map', { name: quest.title }));
+                    const showMapTitle = app._escapeHtml(app._label('quest.showOnMapFor', 'Show {name} on map', { name: questTitle }));
                     html += `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="show-quest-route" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showMapTitle}" aria-label="${showMapTitle}" onclick="App.focusQuestOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}','${String(objective.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showMapLabel}</button>`;
                 }
             }
@@ -193,11 +198,11 @@ const YAW_QUEST_PANEL = {
                     const guidance = app._questCheckpointGuidance(turnInMarker);
                     html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${app._escapeHtml(app._questTurnInPreview(turnInMarker))}${guidance ? ` · ${app._escapeHtml(guidance)}` : ''}</div>`;
                     const showTurnInLabel = app._escapeHtml(app._label('quest.showTurnIn', 'Show Turn-In'));
-                    const showTurnInTitle = app._escapeHtml(app._label('quest.showTurnInFor', 'Show turn-in for {name}', { name: quest.title }));
+                    const showTurnInTitle = app._escapeHtml(app._label('quest.showTurnInFor', 'Show turn-in for {name}', { name: questTitle }));
                     html += `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="show-quest-turn-in-route" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showTurnInTitle}" aria-label="${showTurnInTitle}" onclick="App.focusQuestTurnInOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showTurnInLabel}</button>`;
                 }
                 const turnInLabel = app._escapeHtml(app._label('quest.turnIn', 'Turn In'));
-                const turnInTitle = app._escapeHtml(app._label('quest.turnInQuest', 'Turn in {name}', { name: quest.title }));
+                const turnInTitle = app._escapeHtml(app._label('quest.turnInQuest', 'Turn in {name}', { name: questTitle }));
                 html += `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="turn-in-quest" data-command-intent="turnInQuest" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${turnInTitle}" aria-label="${turnInTitle}" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">${turnInLabel}</button>`;
             }
             html += `</div>`;

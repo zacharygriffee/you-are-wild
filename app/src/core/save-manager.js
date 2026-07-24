@@ -11,11 +11,10 @@ const YAW_SAVE_MANAGER = {
         const titleKey = isNewMode ? 'save.newTitle' : (isSaveMode ? 'save.saveTitle' : 'save.loadTitle');
         const title = app._label(titleKey, isNewMode ? 'Choose New Game Slot' : (isSaveMode ? 'Save Game' : 'Load Game'));
         const saveManager = document.getElementById('save-manager');
-        if (saveManager) saveManager.setAttribute('aria-label', title);
         const saveButton = (classes, label, titleText, onclick, style = '', attrs = '', control = 'slot-action') => `<button class="${classes}" data-command-surface="save-manager" data-command-mode="system" data-command-control="${app._escapeHtml(control)}" title="${app._escapeHtml(titleText)}" aria-label="${app._escapeHtml(titleText)}"${style ? ` style="${style}"` : ''}${attrs ? ` ${attrs}` : ''}${onclick ? ` onclick="${onclick}"` : ''}>${app._escapeHtml(label)}</button>`;
         const descriptionKey = isNewMode ? 'save.newDescription' : (isSaveMode ? 'save.saveDescription' : 'save.loadDescription');
         const description = app._label(descriptionKey, isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : (isSaveMode ? 'Choose the slot that will continue this run. Auto-save will keep updating the saved slot; the previous active slot stops progressing.' : 'Choose a save to load, start a new run in a slot, or delete one slot.'));
-        let html = '<div class="save-manager-shell" data-command-surface="save-manager" data-command-mode="system"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + app._escapeHtml(title) + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + app._escapeHtml(description) + '</p>';
+        let html = '<div class="save-manager-shell" data-command-surface="save-manager" data-command-mode="system"><h1 id="save-manager-title" style="color:var(--accent-primary);margin-bottom:8px;">' + app._escapeHtml(title) + '</h1><p id="save-manager-description" style="color:var(--text-muted);margin-bottom:16px;">' + app._escapeHtml(description) + '</p>';
         if (app.saveManagerStatus) {
             const statusClass = app.saveManagerStatus.kind === 'error' ? ' error' : '';
             html += '<div class="save-manager-status' + statusClass + '" role="status" aria-live="polite">' + app._escapeHtml(app.saveManagerStatus.message) + '</div>';

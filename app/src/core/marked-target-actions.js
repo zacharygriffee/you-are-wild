@@ -5,6 +5,7 @@
 
 const YAW_MARKED_TARGET_ACTIONS = {
     render(app, source = 'sheet') {
+        if (YAW_RECOVERY_MODES?.isJourney?.(app)) return '';
         const targets = app._getExplorationTargets();
         if (targets.length === 0 || app.combatState.active) return '';
         const actorState = app._selectedExplorationActorState();
@@ -76,11 +77,11 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 const action = singleCreatureTarget.droppedOffCompanion ? 'rejoin' : 'recruit';
                 buttonEntries.push({ action, html: utilityButton(action, action, action === 'rejoin' ? '👥' : '💕') });
             }
-            if (singleCreatureTarget.quest) {
+            if (singleCreatureTarget.quest && app._isServiceAvailable(singleCreatureTarget)) {
                 const questAction = singleCreatureTarget.questAccepted ? 'viewQuest' : 'acceptQuest';
                 buttonEntries.push({ action: questAction, html: utilityButton(questAction, 'quest', '📜') });
             }
-            if (singleCreatureTarget.disposition === app.DISPOSITION.MERCHANT) buttonEntries.push({ action: 'trade', html: utilityButton('trade', 'trade', '🪙') });
+            if (singleCreatureTarget.disposition === app.DISPOSITION.MERCHANT && app._isServiceAvailable(singleCreatureTarget)) buttonEntries.push({ action: 'trade', html: utilityButton('trade', 'trade', '🪙') });
         }
         const buttonHtml = app._sortActionEntries(buttonEntries).map(entry => entry.html).join('');
         const clearLabel = app._escapeHtml(app._t('target.clear'));

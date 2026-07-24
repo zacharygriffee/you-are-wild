@@ -3178,6 +3178,24 @@
             padding: 5px 4px;
         }
 
+        .desktop-context-belt .combat-target-tray {
+            flex: 1 1 320px;
+            width: min(100%, 640px);
+        }
+
+        .desktop-context-belt .combat-target-tray .target-action-row {
+            grid-template-columns: repeat(2, minmax(140px, 1fr));
+            width: 100%;
+        }
+
+        .desktop-context-belt .combat-target-tray .target-action-row > .action-btn {
+            max-width: none;
+            padding-inline: 10px;
+            overflow: visible;
+            overflow-wrap: anywhere;
+            text-overflow: clip;
+        }
+
         .desktop-context-belt .target-action-row .action-icon {
             display: block;
             margin-bottom: 2px;
@@ -3928,6 +3946,15 @@
             font-size: 13px;
         }
 
+        .mobile-context-menu-description,
+        .action-variant-dialog-description {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 11px;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+
         .mobile-context-menu-actions {
             display: flex;
             gap: 6px;
@@ -4041,6 +4068,45 @@
             color: var(--accent-warning, #f6c86b);
         }
 
+        .action-variant-pair-preview {
+            min-width: 0;
+            padding: 5px 7px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            font-size: 10px;
+            line-height: 1.3;
+            overflow-wrap: anywhere;
+        }
+
+        .action-variant-pair-heading {
+            color: var(--text-secondary);
+            font-weight: 800;
+            margin-bottom: 3px;
+        }
+
+        .action-variant-pair-preview ul {
+            margin: 0;
+            padding-inline-start: 18px;
+            display: grid;
+            gap: 2px;
+        }
+
+        .action-variant-pair-preview [data-variant-pair-status="unavailable"] {
+            color: var(--accent-warning, #f6c86b);
+        }
+
+        .action-variant-pair-overflow,
+        .action-variant-actor-costs {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .action-variant-actor-costs {
+            margin-top: 4px;
+        }
+
         .target-action-row > .action-variant-option {
             flex: 0 1 15rem;
         }
@@ -4057,6 +4123,69 @@
             flex: 0 0 auto;
             line-height: 1.2;
             margin-top: 2px;
+        }
+
+        @keyframes yaw-sprite-strip {
+            from { transform: translateX(0); }
+            to { transform: translateX(var(--yaw-sprite-shift, 0)); }
+        }
+
+        .yaw-unit-visual {
+            position: relative;
+            display: inline-flex;
+            width: 1.45em;
+            height: 1.45em;
+            max-width: 100%;
+            overflow: hidden;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            isolation: isolate;
+        }
+
+        .yaw-unit-sprite-viewport {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            overflow: hidden;
+            transform: translate(-50%, -50%);
+        }
+
+        .yaw-unit-sprite-frame {
+            position: absolute;
+            inset: 0 auto 0 0;
+            height: 100%;
+            background-repeat: no-repeat;
+            will-change: transform;
+        }
+
+        .yaw-unit-visual.has-sprite .yaw-unit-icon-fallback {
+            display: none;
+        }
+
+        .unit-icon .yaw-unit-visual {
+            width: 32px;
+            height: 32px;
+        }
+
+        .micro-avatar .yaw-unit-visual,
+        .presentation-corner-badge .yaw-unit-visual,
+        .center-presence-icon .yaw-unit-visual,
+        .mobile-chip-name .yaw-unit-visual {
+            width: 1.5em;
+            height: 1.5em;
+        }
+
+        body.reduced-motion .yaw-unit-sprite-frame {
+            animation: none !important;
+            transform: translateX(0) !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .yaw-unit-sprite-frame {
+                animation: none !important;
+                transform: translateX(0) !important;
+            }
         }
 
         .unit-avatar {
@@ -5458,6 +5587,13 @@
             color: var(--accent-primary);
             font-size: 20px;
             line-height: 1.2;
+        }
+
+        .transaction-header .holding-entry-meta,
+        .holdings-window-header .holding-entry-meta {
+            margin: 4px 0 0;
+            max-width: 62ch;
+            overflow-wrap: anywhere;
         }
 
         .transaction-eyebrow,
@@ -9101,6 +9237,143 @@
                 display: none;
             }
 
+            .mobile-roster-sheet {
+                position: fixed;
+                left: max(8px, calc((100vw - 430px) / 2 + 8px));
+                right: max(8px, calc((100vw - 430px) / 2 + 8px));
+                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 12px);
+                z-index: 90;
+                display: grid;
+                grid-template-rows: auto auto minmax(0, 1fr);
+                max-height: min(56dvh, 520px);
+                min-height: 0;
+                border: 1px solid var(--border-strong);
+                border-radius: var(--radius-lg);
+                background: rgba(26, 26, 46, 0.985);
+                box-shadow: var(--shadow-lg);
+                overflow: hidden;
+            }
+
+            .mobile-roster-sheet[hidden] {
+                display: none;
+            }
+
+            .mobile-play-surface.has-control-belt .mobile-roster-sheet {
+                bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-compact-height) + env(safe-area-inset-bottom) + 18px);
+                max-height: min(43dvh, 420px);
+            }
+
+            .mobile-play-surface.combat-active .mobile-roster-sheet {
+                bottom: calc(var(--mobile-dock-height) + min(268px, 40dvh) + env(safe-area-inset-bottom) + 18px);
+                max-height: min(38dvh, 360px);
+            }
+
+            .mobile-roster-header {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 10px;
+                padding: 10px 10px 8px;
+                border-bottom: 1px solid var(--border-subtle);
+            }
+
+            .mobile-roster-header > div {
+                display: grid;
+                gap: 3px;
+                min-width: 0;
+            }
+
+            .mobile-roster-header strong {
+                color: var(--text-primary);
+                font-size: 13px;
+            }
+
+            .mobile-roster-header span {
+                color: var(--text-muted);
+                font-size: 11px;
+                line-height: 1.3;
+            }
+
+            .mobile-roster-close {
+                flex: 0 0 44px;
+                width: 44px;
+                min-width: 44px;
+                min-height: 44px;
+                padding: 0;
+            }
+
+            .mobile-roster-tabs {
+                display: flex;
+                gap: 6px;
+                padding: 8px 10px;
+                overflow-x: auto;
+                scrollbar-width: none;
+            }
+
+            .mobile-roster-tabs::-webkit-scrollbar {
+                display: none;
+            }
+
+            .mobile-roster-tabs .nav-btn {
+                flex: 1 0 auto;
+                min-width: 72px;
+                min-height: 44px;
+                padding: 7px 10px;
+            }
+
+            .mobile-roster-tabs .nav-btn.selected,
+            .mobile-roster-tabs .nav-btn[aria-selected="true"] {
+                border-color: var(--accent-primary);
+                background: rgba(0, 212, 170, 0.14);
+                color: var(--accent-primary);
+            }
+
+            .mobile-roster-content {
+                min-height: 0;
+                overflow: auto;
+                overscroll-behavior: contain;
+                padding: 4px 10px 12px;
+                display: grid;
+                grid-template-columns: 1fr;
+                align-content: start;
+                gap: 8px;
+            }
+
+            .mobile-roster-content > .mobile-unit-chip {
+                width: 100%;
+                max-width: none;
+                min-height: 80px;
+                box-sizing: border-box;
+            }
+
+            .mobile-roster-empty {
+                margin: 0;
+                padding: 16px 8px;
+                color: var(--text-muted);
+                text-align: center;
+                font-size: 12px;
+            }
+
+            .mobile-roster-detail {
+                min-width: 0;
+                overflow-wrap: anywhere;
+            }
+
+            .mobile-roster-detail-toolbar {
+                position: sticky;
+                top: 0;
+                z-index: 1;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 4px 0 8px;
+                background: rgba(26, 26, 46, 0.985);
+            }
+
+            .mobile-roster-detail-toolbar .nav-btn {
+                min-height: 44px;
+            }
+
             /* Panel backdrop overlay when panel is open */
             .panel-backdrop {
                 display: none;
@@ -9121,6 +9394,10 @@
         @media (min-width: 1025px) {
             .mobile-panel-dock {
                 display: none;
+            }
+
+            .mobile-roster-sheet {
+                display: none !important;
             }
 
             .panel-backdrop {
@@ -9338,7 +9615,7 @@
                     <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-settings" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.openSettingsFromMenu()">
                         ⚙️ <span data-i18n="ui.menu.settings">Settings</span>
                     </button>
-                    <button id="menu-mods" class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-mods" disabled aria-disabled="true" aria-busy="true" title="Loading installed mods" aria-label="Loading installed mods" onclick="App.showModScreen()">
+                    <button id="menu-mods" class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-mods" disabled aria-disabled="true" aria-busy="true" title="Loading installed mods" aria-label="Loading installed mods" data-i18n-title="startup.loadingMods" data-i18n-aria-label="startup.loadingMods" onclick="App.showModScreen()">
                         📦 <span data-i18n="ui.menu.mods">Mods</span>
                     </button>
                     <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-help" title="Open tutorial" aria-label="Open tutorial" data-i18n-title="ui.menu.tutorialTitle" data-i18n-aria-label="ui.menu.tutorialTitle" onclick="App.showTutorial()">
@@ -9413,17 +9690,17 @@
                 </div>
                 <div class="accordion-body" id="body-gender" style="display:none;">
                     <div class="option-grid" id="gender-grid">
-                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="female" data-value="female" onclick="App.selectGender('female');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                        <div class="option-card" role="button" tabindex="0" aria-pressed="false" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="female" data-value="female" onclick="App.selectGender('female')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♀️</div>
                             <div class="option-label" data-i18n="create.gender.female">Female</div>
                             <div class="option-desc" data-i18n="create.gender.femaleDesc">Play as female</div>
                         </div>
-                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="male" data-value="male" onclick="App.selectGender('male');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                        <div class="option-card" role="button" tabindex="0" aria-pressed="false" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="male" data-value="male" onclick="App.selectGender('male')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♂️</div>
                             <div class="option-label" data-i18n="create.gender.male">Male</div>
                             <div class="option-desc" data-i18n="create.gender.maleDesc">Play as male</div>
                         </div>
-                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="nonbinary" data-value="nonbinary" onclick="App.selectGender('nonbinary');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                        <div class="option-card" role="button" tabindex="0" aria-pressed="false" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="nonbinary" data-value="nonbinary" onclick="App.selectGender('nonbinary')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">⚧</div>
                             <div class="option-label" data-i18n="create.gender.nonbinary">Non-Binary</div>
                             <div class="option-desc" data-i18n="create.gender.nonbinaryDesc">Other gender identity</div>
@@ -9464,22 +9741,22 @@
                 </div>
                 <div class="accordion-body" id="body-preferences" style="display:none;">
                     <div class="option-grid" id="preference-grid">
-                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="female" data-value="female" onclick="App.selectEncounterPreference('female')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                        <div class="option-card" role="button" tabindex="0" aria-pressed="false" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="female" data-value="female" onclick="App.selectEncounterPreference('female')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♀️</div>
                             <div class="option-label" data-i18n="create.preference.females">Females</div>
                             <div class="option-desc" data-i18n="create.preference.bias">75% bias</div>
                         </div>
-                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="male" data-value="male" onclick="App.selectEncounterPreference('male')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                        <div class="option-card" role="button" tabindex="0" aria-pressed="false" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="male" data-value="male" onclick="App.selectEncounterPreference('male')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♂️</div>
                             <div class="option-label" data-i18n="create.preference.males">Males</div>
                             <div class="option-desc" data-i18n="create.preference.bias">75% bias</div>
                         </div>
-                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="nonbinary" data-value="nonbinary" onclick="App.selectEncounterPreference('nonbinary')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                        <div class="option-card" role="button" tabindex="0" aria-pressed="false" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="nonbinary" data-value="nonbinary" onclick="App.selectEncounterPreference('nonbinary')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">⚧</div>
                             <div class="option-label" data-i18n="create.preference.nonbinary">Non-Binary</div>
                             <div class="option-desc" data-i18n="create.preference.bias">75% bias</div>
                         </div>
-                        <div class="option-card selected" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="any" data-value="any" onclick="App.selectEncounterPreference('any')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                        <div class="option-card selected" role="button" tabindex="0" aria-pressed="true" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="any" data-value="any" onclick="App.selectEncounterPreference('any')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">🎲</div>
                             <div class="option-label" data-i18n="create.preference.any">Any</div>
                             <div class="option-desc" data-i18n="create.preference.evenMix">Even mix</div>
@@ -9523,10 +9800,12 @@
     </div>
 
     <!-- TUTORIAL OVERLAY -->
-    <div id="tutorial-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 26, 0.95); z-index: 1000; align-items: center; justify-content: center;">
+    <div id="tutorial-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="tutorial-title" aria-describedby="tutorial-content" data-command-surface="tutorial" data-command-mode="system" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 26, 0.95); z-index: 1000; align-items: center; justify-content: center;">
         <div style="max-width: 600px; padding: 40px; background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); text-align: center;">
-            <h2 id="tutorial-title" style="color: var(--accent-primary); margin-bottom: 16px;">Welcome</h2>
-            <p id="tutorial-content" style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 32px;">Tutorial content here</p>
+            <div aria-live="polite" aria-atomic="true">
+                <h2 id="tutorial-title" style="color: var(--accent-primary); margin-bottom: 16px;">Welcome</h2>
+                <p id="tutorial-content" style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 32px;">Tutorial content here</p>
+            </div>
             <div style="display: flex; gap: 16px; justify-content: center;">
                 <button class="nav-btn" data-command-surface="tutorial" data-command-mode="system" data-command-control="skip-tutorial" data-i18n="ui.tutorial.skip" onclick="skipTutorial()">Skip Tutorial</button>
                 <button class="nav-btn" data-command-surface="tutorial" data-command-mode="system" data-command-control="next-tutorial" style="background: var(--accent-primary); color: var(--bg-primary);" data-i18n="ui.tutorial.next" onclick="nextTutorial()">Next →</button>
@@ -9550,7 +9829,7 @@
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-load-slots" title="Open load slots" aria-label="Open load slots" data-i18n-title="ui.nav.loadTitle" data-i18n-aria-label="ui.nav.loadTitle" onclick="App.closeAppMenu(); App.showSaveManager('load')">📂 <span data-i18n="save.load">Load</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-settings" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.openSettingsFromGame()">⚙️ <span data-i18n="ui.menu.settings">Settings</span></button>
                         <button class="nav-btn" role="menuitem" data-ai-integration-entry data-command-surface="app-system" data-command-mode="system" data-command-control="open-ai-providers" title="Open AI providers" aria-label="Open AI providers" data-i18n-title="provider.openTitle" data-i18n-aria-label="provider.openTitle" onclick="App.closeAppMenu(); App.showAIProviderScreen()">✦ <span data-i18n="provider.title">AI Providers</span></button>
-                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-holdings" title="Open holdings" aria-label="Open holdings" onclick="App.closeAppMenu(); App.showCharacterStats()">📊 <span>Holdings</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-holdings" title="Open holdings" aria-label="Open holdings" data-i18n-title="ui.nav.holdingsTitle" data-i18n-aria-label="ui.nav.holdingsTitle" onclick="App.closeAppMenu(); App.showCharacterStats()">📊 <span data-i18n="ui.holdings">Holdings</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-activity-log" title="Open activity log" aria-label="Open activity log" data-i18n-title="ui.activityLog.open" data-i18n-aria-label="ui.activityLog.open" onclick="App.closeAppMenu(); App.showActivityLogScreen()">📜 <span data-i18n="ui.activityLog">Activity Log</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-release-notes" title="Open what's new" aria-label="Open what's new" data-i18n-title="release.openTitle" data-i18n-aria-label="release.openTitle" onclick="App.closeAppMenu(); App.showReleaseNotes()">✨ <span data-i18n="release.whatsNew">What's New</span></button>
                         <button class="nav-btn" role="menuitem" data-host-catalog-entry hidden data-command-surface="app-system" data-command-mode="system" data-command-control="open-market" title="Open host catalog" aria-label="Open host catalog" data-i18n-title="market.openHostCatalogTitle" data-i18n-aria-label="market.openHostCatalogTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></button>
@@ -9612,10 +9891,10 @@
 	                                </div>
 	                                <div class="mini-map" id="mobile-mini-map" role="group" aria-label="3x3 traversal surface" data-i18n-aria-label="ui.playSurfaceTraversal" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
 	                            </div>
-                                <div class="mobile-tile-details-sheet" id="mobile-tile-details-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="mobile-tile-details-title" hidden>
+                                <div class="mobile-tile-details-sheet" id="mobile-tile-details-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="mobile-tile-details-title" aria-describedby="mobile-tile-details-content" hidden>
                                     <div class="mobile-tile-details-header">
-                                        <span id="mobile-tile-details-title">Tile Details</span>
-                                        <button class="nav-btn" data-command-surface="tile-details" data-command-mode="navigation" data-command-control="close-tile-details" title="Close tile details" aria-label="Close tile details">×</button>
+                                        <span id="mobile-tile-details-title" data-i18n="ui.tileDetails">Tile Details</span>
+                                        <button class="nav-btn" data-command-surface="tile-details" data-command-mode="navigation" data-command-control="close-tile-details" title="Close tile details" aria-label="Close tile details" data-i18n-title="ui.closeTileDetails" data-i18n-aria-label="ui.closeTileDetails">×</button>
                                     </div>
                                     <div class="mobile-tile-details-content" id="mobile-tile-details-content"></div>
                                 </div>
@@ -9662,13 +9941,13 @@
 		                            <div class="mobile-scene-sheet" data-surface-role="story">
 		                                <div class="mobile-scene-header">
                                             <div class="mobile-scene-title" id="mobile-scene-title" data-stage-layer="story-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</div>
-                                            <button class="nav-btn mobile-new-beat-indicator scene-new-beat-indicator" id="mobile-new-beat-indicator" data-command-surface="story-controls" data-command-mode="story" data-command-control="jump-new-scene-beat" title="Jump to newest scene beat" aria-label="Jump to newest scene beat" hidden>New</button>
-                                            <button class="nav-btn mobile-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Scene</button>
+                                            <button class="nav-btn mobile-new-beat-indicator scene-new-beat-indicator" id="mobile-new-beat-indicator" data-command-surface="story-controls" data-command-mode="story" data-command-control="jump-new-scene-beat" title="Jump to newest scene beat" aria-label="Jump to newest scene beat" data-i18n="scene.newBeat" data-i18n-title="scene.exchange.jumpNewest" data-i18n-aria-label="scene.exchange.jumpNewest" hidden>New</button>
+                                            <button class="nav-btn mobile-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed" data-i18n="scene.kicker" data-i18n-title="scene.openFeed" data-i18n-aria-label="scene.openFeed">Scene</button>
                                         </div>
 		                                <div class="mobile-scene-description" id="mobile-scene-description" data-stage-layer="story-passage" data-i18n="ui.scene.wildernessIntro">
 		                                    You find yourself in an untamed land where predators roam and only the strong survive.
 		                                </div>
-                                        <div class="story-latest mobile-story-latest scene-beat-stream" id="mobile-story-latest" data-surface-role="scene-feed-latest" data-scene-indicator-id="mobile-new-beat-indicator" role="log" aria-live="off" aria-relevant="additions" aria-label="Scene feed, newest exchanges first"></div>
+                                        <div class="story-latest mobile-story-latest scene-beat-stream" id="mobile-story-latest" data-surface-role="scene-feed-latest" data-scene-indicator-id="mobile-new-beat-indicator" role="log" aria-live="off" aria-relevant="additions" aria-label="Scene feed, newest exchanges first" data-i18n-aria-label="scene.exchange.feedLabel"></div>
 		                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" data-stage-layer="event-feed" aria-live="polite"></div>
 	                                <details class="mobile-activity-log" id="mobile-activity-log" data-surface-role="history-drawer">
 	                                    <summary class="mobile-activity-log-summary" data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-mobile-history" aria-label="Open activity log" data-i18n-aria-label="ui.activityLog.open">
@@ -9678,18 +9957,34 @@
 	                                    <div class="mobile-log-list" id="mobile-log-list" aria-live="polite" aria-relevant="additions text"></div>
 	                                </details>
 	                            </div>
-                                <button class="nav-btn mobile-story-handle" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Scene</button>
+                                <button class="nav-btn mobile-story-handle" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed" data-i18n="scene.kicker" data-i18n-title="scene.openFeed" data-i18n-aria-label="scene.openFeed">Scene</button>
 	                            <div class="mobile-panel-dock" data-surface-role="drawer-shortcuts" data-command-surface="drawer-shortcuts" data-command-mode="navigation" aria-label="Mobile panel shortcuts" data-i18n-aria-label="ui.mobilePanels">
 	                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-holdings" title="Holdings" aria-label="Holdings" data-i18n-title="ui.holdings" data-i18n-aria-label="ui.holdings" onclick="App.showCharacterStats()">📊 <span class="mobile-panel-dock-label" data-i18n="ui.holdings">Holdings</span></button>
 	                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-review-map" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">🗺️ <span class="mobile-panel-dock-label" data-i18n="ui.map">Map</span></button>
-                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-actor-rail" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="App.toggleMobilePartyRail()">👥 <span class="mobile-panel-dock-label" data-i18n="ui.party">Party</span></button>
-	                                <button class="nav-btn" id="mobile-creatures-dock-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-target-rail" title="Creatures" aria-label="Creatures" data-i18n-title="ui.creatures" data-i18n-aria-label="ui.creatures" onclick="App.toggleMobileCreatureRail()">⚔️ <span class="mobile-panel-dock-label" data-i18n="ui.creatures">Creatures</span><span class="mobile-panel-dock-badge" id="mobile-creature-dock-badge" hidden aria-hidden="true"></span></button>
+	                                <button class="nav-btn" id="mobile-creatures-dock-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-roster" title="Roster" aria-label="Roster" data-i18n-title="ui.roster" data-i18n-aria-label="ui.roster" aria-haspopup="dialog" aria-expanded="false" aria-controls="mobile-roster-sheet" onclick="App.toggleMobileRoster()">👥 <span class="mobile-panel-dock-label" data-i18n="ui.roster">Roster</span><span class="mobile-panel-dock-badge" id="mobile-creature-dock-badge" hidden aria-hidden="true"></span></button>
 	                            </div>
+                                <section class="mobile-roster-sheet" id="mobile-roster-sheet" data-surface-role="roster-sheet" role="dialog" aria-modal="false" aria-hidden="true" aria-labelledby="mobile-roster-title" aria-describedby="mobile-roster-description" hidden>
+                                    <div class="mobile-roster-header">
+                                        <div>
+                                            <strong id="mobile-roster-title" data-i18n="ui.roster">Roster</strong>
+                                            <span id="mobile-roster-description" data-i18n="ui.rosterDescription">Choose actors and targets. Place and combat actions remain in the composer.</span>
+                                        </div>
+                                        <button type="button" class="nav-btn mobile-roster-close" data-command-surface="roster" data-command-mode="navigation" data-command-control="close-roster" data-command-slot="exit" title="Close roster" aria-label="Close roster" data-i18n-title="ui.closeRoster" data-i18n-aria-label="ui.closeRoster" onclick="App.closeMobileRoster()">×</button>
+                                    </div>
+                                    <div class="mobile-roster-tabs" id="mobile-roster-tabs" role="tablist" aria-label="Roster views" data-i18n-aria-label="ui.rosterViews" onkeydown="App.handleMobileRosterTabKeydown(event)">
+                                        <button type="button" class="nav-btn" id="mobile-roster-tab-party" role="tab" data-roster-tab="party" aria-controls="mobile-roster-tabpanel" aria-selected="true" tabindex="0" data-i18n="ui.party" onclick="App.setMobileRosterTab('party')">Party</button>
+                                        <button type="button" class="nav-btn" id="mobile-roster-tab-here" role="tab" data-roster-tab="here" aria-controls="mobile-roster-tabpanel" aria-selected="false" tabindex="-1" data-i18n="ui.here" onclick="App.setMobileRosterTab('here')">Here</button>
+                                        <button type="button" class="nav-btn" id="mobile-roster-tab-items" role="tab" data-roster-tab="items" aria-controls="mobile-roster-tabpanel" aria-selected="false" tabindex="-1" data-i18n="ui.items" onclick="App.setMobileRosterTab('items')">Items</button>
+                                        <button type="button" class="nav-btn" id="mobile-roster-tab-allies" role="tab" data-roster-tab="allies" aria-controls="mobile-roster-tabpanel" aria-selected="false" tabindex="-1" data-i18n="ui.allies" onclick="App.setMobileRosterTab('allies')">Allies</button>
+                                        <button type="button" class="nav-btn" id="mobile-roster-tab-enemies" role="tab" data-roster-tab="enemies" aria-controls="mobile-roster-tabpanel" aria-selected="false" tabindex="-1" data-i18n="ui.enemies" onclick="App.setMobileRosterTab('enemies')">Enemies</button>
+                                    </div>
+                                    <div class="mobile-roster-content" id="mobile-roster-tabpanel" role="tabpanel" aria-labelledby="mobile-roster-tab-party" tabindex="0" onclick="App.handleMobileRosterSelection(event)"></div>
+                                </section>
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
                             <div class="desktop-scene-scroll" id="desktop-scene-scroll" data-surface-role="scene-scroll">
-                            <div class="desktop-play-surface" id="desktop-play-surface" data-surface-role="play-traversal" aria-label="Current play surface">
-                                <div class="desktop-neighborhood-grid" id="desktop-neighborhood-grid" role="group" aria-label="3 by 3 traversal grid" data-surface-role="traversal-grid">
+                            <div class="desktop-play-surface" id="desktop-play-surface" data-surface-role="play-traversal" aria-label="Current play surface" data-i18n-aria-label="ui.currentPlaySurface">
+                                <div class="desktop-neighborhood-grid" id="desktop-neighborhood-grid" role="group" aria-label="3 by 3 traversal grid" data-i18n-aria-label="ui.traversalGrid" data-surface-role="traversal-grid">
                                     <div class="desktop-play-cell" id="desktop-play-cell-nw"></div>
                                     <div class="desktop-play-cell" id="desktop-play-cell-n"></div>
                                     <div class="desktop-play-cell" id="desktop-play-cell-ne"></div>
@@ -9715,16 +10010,16 @@
                             <div class="desktop-presence-rail" id="desktop-presence-rail" data-surface-role="presence-rail" aria-live="polite"></div>
                             <div class="desktop-scene-feed-slot" id="desktop-scene-feed-slot" data-surface-role="scene-feed">
                                 <div class="scene-feed-header">
-                                    <span class="desktop-story-kicker">Scene</span>
+                                    <span class="desktop-story-kicker" data-i18n="scene.kicker">Scene</span>
                                     <div class="scene-feed-header-actions">
-                                        <button class="nav-btn scene-new-beat-indicator" id="desktop-new-beat-indicator" data-command-surface="story-controls" data-command-mode="story" data-command-control="jump-new-scene-beat" title="Jump to newest scene beat" aria-label="Jump to newest scene beat" hidden>New</button>
-                                        <button class="nav-btn desktop-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Feed</button>
+                                        <button class="nav-btn scene-new-beat-indicator" id="desktop-new-beat-indicator" data-command-surface="story-controls" data-command-mode="story" data-command-control="jump-new-scene-beat" title="Jump to newest scene beat" aria-label="Jump to newest scene beat" data-i18n="scene.newBeat" data-i18n-title="scene.exchange.jumpNewest" data-i18n-aria-label="scene.exchange.jumpNewest" hidden>New</button>
+                                        <button class="nav-btn desktop-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed" data-i18n="scene.feedButton" data-i18n-title="scene.openFeed" data-i18n-aria-label="scene.openFeed">Feed</button>
                                     </div>
                                 </div>
-                                <div class="story-latest scene-beat-stream" id="desktop-scene-feed-latest" data-surface-role="scene-feed-latest" data-scene-indicator-id="desktop-new-beat-indicator" role="log" aria-live="off" aria-relevant="additions" aria-label="Scene feed, newest exchanges first"></div>
+                                <div class="story-latest scene-beat-stream" id="desktop-scene-feed-latest" data-surface-role="scene-feed-latest" data-scene-indicator-id="desktop-new-beat-indicator" role="log" aria-live="off" aria-relevant="additions" aria-label="Scene feed, newest exchanges first" data-i18n-aria-label="scene.exchange.feedLabel"></div>
                             </div>
                             </div>
-                            <div class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden>
+                            <div class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" data-i18n-aria-label="ui.commandComposer" aria-hidden="true" hidden>
                                 <div class="selection-sentence" id="selection-sentence" role="status" aria-live="polite" aria-atomic="true"></div>
                                 <div class="desktop-context-belt" id="desktop-context-belt" data-surface-role="command-composer" aria-label="Location actions" data-i18n-aria-label="ui.locationActions"></div>
                             </div>
@@ -9734,14 +10029,15 @@
                 </div>
 
                 <div class="visually-hidden" id="scene-feed-announcer" role="status" aria-live="polite" aria-atomic="true"></div>
-                <div class="story-sheet" id="story-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="story-sheet-title" hidden>
+                <div class="story-sheet" id="story-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="story-sheet-title" aria-describedby="story-sheet-description" hidden>
                     <div class="story-sheet-window">
                         <div class="story-sheet-header">
                             <div>
-                                <span class="story-sheet-kicker">Scene Feed</span>
-                                <h2 id="story-sheet-title">Recent Scene Beats</h2>
+                                <span class="story-sheet-kicker" data-i18n="scene.feedTitle">Scene Feed</span>
+                                <h2 id="story-sheet-title" data-i18n="scene.recentBeats">Recent Scene Beats</h2>
+                                <p class="visually-hidden" id="story-sheet-description" data-i18n="scene.feedDescription">Review recent scene beats, newest first.</p>
                             </div>
-                            <button class="nav-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="close-story-sheet" title="Close scene feed" aria-label="Close scene feed">×</button>
+                            <button class="nav-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="close-story-sheet" title="Close scene feed" aria-label="Close scene feed" data-i18n-title="scene.closeFeed" data-i18n-aria-label="scene.closeFeed">×</button>
                         </div>
                         <div class="story-sheet-list" id="story-sheet-list" aria-live="polite"></div>
                     </div>
@@ -9820,10 +10116,10 @@
 
 
     <!-- SETTINGS OVERLAY -->
-    <div id="screen-settings" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div id="screen-settings" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-describedby="settings-description">
         <div style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <h1 id="settings-title" style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ <span data-i18n="settings.title">Settings</span></h1>
-            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="settings.description">Safe content is the default. Select a higher content level to reveal additional settings.</p>
+            <p id="settings-description" style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="settings.description">Safe content is the default. Select a higher content level to reveal additional settings.</p>
 
             <!-- Language -->
             <div style="margin-bottom: 24px;">
@@ -9869,6 +10165,13 @@
                         <select id="setting-inventory-recovery" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-game-setting" data-setting-key="inventoryRecovery" onchange="App.settings.inventoryRecovery = this.value; App.saveSettings()">
                             <option value="death-bag" data-i18n="settings.inventoryRecovery.deathBag">Drop a recovery bag</option>
                             <option value="retain" data-i18n="settings.inventoryRecovery.retain">Retain inventory</option>
+                        </select>
+                    </label>
+                    <label style="display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                        <span data-i18n="settings.recoveryMode">Defeat recovery</span>
+                        <select id="setting-recovery-mode" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-game-setting" data-setting-key="recoveryMode" aria-label="Defeat recovery mode" data-i18n-aria-label="settings.recoveryMode" onchange="App.settings.recoveryMode = this.value; App.saveSettings()">
+                            <option value="core:regenerate">✨ Regenerate</option>
+                            <option value="core:ghost">👻 Ghost pilgrimage</option>
                         </select>
                     </label>
                 </div>
@@ -9934,12 +10237,12 @@
     </div>
 
     <!-- AI PROVIDERS OVERLAY -->
-    <div id="screen-providers" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="ai-provider-title">
+    <div id="screen-providers" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="ai-provider-title" aria-describedby="ai-provider-description">
         <main class="ai-provider-shell" aria-labelledby="ai-provider-title">
             <div class="ai-provider-header">
                 <div>
                     <h1 id="ai-provider-title" style="color: var(--accent-primary);" data-i18n="provider.title">AI Providers</h1>
-                    <p style="color: var(--text-muted);" data-i18n="provider.subtitle">Manage AI services and session credentials used by optional game features.</p>
+                    <p id="ai-provider-description" style="color: var(--text-muted);" data-i18n="provider.subtitle">Manage AI services and session credentials used by optional game features.</p>
                 </div>
                 <div class="provider-actions"><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="close-ai-providers" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button></div>
             </div>
@@ -9949,7 +10252,7 @@
     </div>
 
     <!-- RELEASE NOTES OVERLAY -->
-    <div id="screen-release" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="release-notes-title">
+    <div id="screen-release" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="release-notes-title" aria-describedby="release-notes-version">
         <main class="system-screen-shell" aria-labelledby="release-notes-title">
             <div class="system-screen-header">
                 <div><h1 id="release-notes-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="release.whatsNew">What's New</h1><span class="release-version-badge" id="release-notes-version">v0.14.0</span></div>
@@ -9960,10 +10263,10 @@
     </div>
 
     <!-- RUN-INDEPENDENT ACTIVITY LOG OVERLAY -->
-    <div id="screen-activity" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="system-activity-title">
+    <div id="screen-activity" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="system-activity-title" aria-describedby="system-activity-description">
         <main class="system-screen-shell" aria-labelledby="system-activity-title">
             <div class="system-screen-header">
-                <div><h1 id="system-activity-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="ui.activityLog">Activity Log</h1><p style="color:var(--text-muted);margin:0;" data-i18n="log.systemDescription">Diagnostics are available before, during, and after a run.</p></div>
+                <div><h1 id="system-activity-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="ui.activityLog">Activity Log</h1><p id="system-activity-description" style="color:var(--text-muted);margin:0;" data-i18n="log.systemDescription">Diagnostics are available before, during, and after a run.</p></div>
                 <button class="nav-btn" type="button" data-command-control="close-activity-log" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
             </div>
             <div class="system-log-toolbar" role="toolbar" aria-label="Activity log controls" data-i18n-aria-label="ui.log.controls">
@@ -9982,13 +10285,13 @@
     </div>
 
     <!-- MODS OVERLAY -->
-    <div id="screen-mods" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="mod-manager-title">
+    <div id="screen-mods" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="mod-manager-title" aria-describedby="mod-manager-description">
         <div style="width:100%;max-width: 800px; box-sizing:border-box; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
                 <h1 id="mod-manager-title" style="color: var(--accent-primary); margin: 0;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" data-command-slot="exit" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button></div>
             </div>
-            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="mod.subtitle">Install, enable, and manage game modules.</p>
+            <p id="mod-manager-description" style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="mod.subtitle">Install, enable, and manage game modules.</p>
 
             <!-- Install -->
             <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
@@ -9996,16 +10299,16 @@
                     📁 <span data-i18n="mod.import">Import Mod</span>
                     <input type="file" accept=".json,.js" style="display: none;" onchange="ModUI.handleFileSelect(event)">
                 </label>
-                <button class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="import-module-uri" data-i18n="mod.remoteImport" data-i18n-title="mod.remoteImportTitle" data-i18n-aria-label="mod.remoteImportTitle" title="Import module or asset bundle from URI" aria-label="Import module or asset bundle from URI" onclick="ModUI.toggleRemoteImport()">🌐 Import from URI</button>
+                <button id="remote-module-import-toggle" class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="import-module-uri" data-i18n="mod.remoteImport" data-i18n-title="mod.remoteImportTitle" data-i18n-aria-label="mod.remoteImportTitle" title="Import module or asset bundle from URI" aria-label="Import module or asset bundle from URI" aria-controls="remote-module-import" aria-expanded="false" onclick="ModUI.toggleRemoteImport()">🌐 Import from URI</button>
                 <button class="nav-btn" data-host-catalog-entry hidden data-command-surface="module-manager" data-command-mode="system" data-command-control="open-market" title="Open host catalog" aria-label="Open host catalog" data-i18n-title="market.openHostCatalogTitle" data-i18n-aria-label="market.openHostCatalogTitle" onclick="App.showMarketScreen()">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></button>
             </div>
 
-            <section id="remote-module-import" hidden aria-labelledby="remote-module-import-title" style="border:1px solid var(--border-default);background:var(--bg-secondary);border-radius:var(--radius-sm);padding:14px;margin:-12px 0 24px;">
+            <section id="remote-module-import" hidden aria-hidden="true" aria-labelledby="remote-module-import-title" style="border:1px solid var(--border-default);background:var(--bg-secondary);border-radius:var(--radius-sm);padding:14px;margin:-12px 0 24px;">
                 <h2 id="remote-module-import-title" style="font-size:16px;margin:0 0 8px;" data-i18n="mod.remoteImportTitle">Import module or asset bundle from URI</h2>
                 <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;" data-i18n="mod.remoteImportHelp">Review a module or code-free Asset Bundle V1 manifest from HTTPS, or HTTP localhost for development. Confirmed resources are verified and stored locally; redirects and runtime hotlinks are not allowed.</p>
                 <label style="display:block;margin-bottom:8px;"><span data-i18n="mod.remoteUri">Package URI</span><input id="remote-module-uri" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://example.test/mod.yawmod.json" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;"></label>
                 <label style="display:block;margin-bottom:10px;"><span data-i18n="mod.remoteExpectedIntegrity">Expected SHA-256 (optional)</span><input id="remote-module-integrity" type="text" autocomplete="off" spellcheck="false" maxlength="96" placeholder="64 hexadecimal characters" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;"></label>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button id="remote-module-review-button" class="nav-btn" type="button" data-i18n="mod.remoteReview" onclick="ModUI.reviewRemoteUri()">Review package</button><button class="nav-btn" type="button" data-i18n="ui.cancel" onclick="ModUI.toggleRemoteImport(false)">Cancel</button></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button id="remote-module-review-button" class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="review-module-uri" data-i18n="mod.remoteReview" onclick="ModUI.reviewRemoteUri()">Review package</button><button class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="cancel-import-module-uri" data-command-slot="exit" data-i18n="ui.cancel" onclick="ModUI.toggleRemoteImport(false)">Cancel</button></div>
                 <div id="remote-module-review" aria-live="polite"></div>
             </section>
 
@@ -10017,13 +10320,13 @@
     </div>
 
     <!-- MARKETPLACE OVERLAY -->
-    <div id="screen-market" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="host-catalog-title">
+    <div id="screen-market" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="host-catalog-title" aria-describedby="host-catalog-description">
         <div id="market-content" data-command-surface="marketplace" data-command-mode="system" style="width:100%;max-width: 1200px; box-sizing:border-box; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
                 <h1 id="host-catalog-title" style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></h1>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="nav-btn" type="button" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close host catalog" aria-label="Close host catalog" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button></div>
             </div>
-            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="market.subtitle">Modules supplied and governed by this game host.</p>
+            <p id="host-catalog-description" style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="market.subtitle">Modules supplied and governed by this game host.</p>
             <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap;">
                 <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-installed-modules" title="Open installed modules" aria-label="Open installed modules" data-i18n="market.myModules" data-i18n-title="market.myModulesTitle" data-i18n-aria-label="market.myModulesTitle" onclick="ModUI.showModScreen()">My Modules</button>
                 <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close host catalog" aria-label="Close host catalog" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
@@ -10032,7 +10335,7 @@
     </div>
 
     <!-- SAVE MANAGER OVERLAY -->
-    <div id="save-manager" class="screen screen-overlay" role="dialog" aria-modal="true" aria-label="Save slots">
+    <div id="save-manager" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="save-manager-title" aria-describedby="save-manager-description">
         <div id="save-manager-content" class="save-manager-shell">
             <!-- Populated by renderSaveManager() -->
         </div>

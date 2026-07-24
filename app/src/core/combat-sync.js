@@ -239,6 +239,7 @@ const YAW_COMBAT_SYNC = {
             actors: participants,
             targets,
             action: syncType,
+            subAction: command?.subAction || null,
             source: command?.source || 'sync-composer',
             targetType: 'enemy',
             shape: targets.length > 1 ? 'many-to-many' : 'many-to-one',
@@ -262,10 +263,15 @@ const YAW_COMBAT_SYNC = {
         app._syncCurrentTileCreatures();
         app.combatState.syncActions.push({
             type: syncType, participants: participants, target: targets[0], targets,
+            techniqueKey: command?.subAction || null,
             resolveAtIndex: slowestIdx, resolved: false, round: app.combatState.round,
             plan
         });
-        app.log.push({ text: `${participants.map(p => p.name).join(', ')} prepare a ${syncType.replace('sync_', '')} on ${targets.map(unit => unit.name).join(', ')}! Resolves when the slowest participant acts.`, type: 'combat' });
+        app.log.push({ text: app._label('combat.sync.prepared', '{participants} prepare {action} against {targets}! It resolves when the slowest participant acts.', {
+            participants: participants.map(p => p.name).join(', '),
+            action: app._label(`combat.sync.action.${app._syncBaseAction(syncType)}`, app._syncBaseAction(syncType)),
+            targets: targets.map(unit => unit.name).join(', ')
+        }), type: 'combat' });
         const consumeCurrentTurn = command?.metadata?.consumeCurrentTurn !== false;
         for (const p of participants) {
             const qEntry = app.combatState.turnQueue.find(q => q.unit === p);
@@ -288,7 +294,9 @@ const YAW_COMBAT_SYNC = {
         sync.resolved = true;
         const incapacitated = (sync.participants || []).filter(p => !p || p.CPun <= 0 || p.knockedOut || p.fledCombat);
         if (incapacitated.length > 0) {
-            app.log.push({ text: app._label('combat.sync.failedIncapacitated', 'Sync failed! {names} cannot participate.', { names: incapacitated.map(p => p?.name || 'Unknown').join(', ') }), type: 'combat' });
+            app.log.push({ text: app._label('combat.sync.failedIncapacitated', 'Sync failed! {names} cannot participate.', {
+                names: incapacitated.map(p => p?.name || app._label('ui.unknown', 'Unknown')).join(', ')
+            }), type: 'combat' });
             app.renderLog();
             app.nextTurn();
             return;
@@ -305,9 +313,21 @@ const YAW_COMBAT_SYNC = {
         sync.targets = queuedTargets;
         sync.target = queuedTargets[0];
         const baseAction = app._syncBaseAction(sync.type);
+        const technique = baseAction === 'fight' && typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+            ? YAW_COMBAT_TECHNIQUES.selected(app, sync.participants || [], sync.techniqueKey || sync.plan?.subAction || 'basic', queuedTargets.length)
+            : null;
+        if (baseAction === 'fight' && technique === false) {
+            const result = app._label('combat.technique.groupUnavailable', 'The group can no longer perform the prepared combat technique.');
+            app.log.push({ text: result, type: 'combat' });
+            app.renderLog();
+            app.nextTurn();
+            return result;
+        }
         if (app._isReachSensitiveCombatAction?.(baseAction)) {
             for (const target of queuedTargets) {
-                const reachResults = (sync.participants || []).map(unit => app._combatReachResult?.(unit, target, baseAction)).filter(Boolean);
+                const reachResults = (sync.participants || []).map(unit => app._combatReachResult?.(unit, target, baseAction, {
+                    techniqueKey: sync.techniqueKey || sync.plan?.subAction
+                })).filter(Boolean);
                 if (reachResults.length !== (sync.participants || []).length || !reachResults.every(result => result.canSucceed)) {
                     const reach = reachResults.find(result => result?.canAttempt && !result.canSucceed) || reachResults[0] || null;
                     for (const participant of sync.participants || []) {
@@ -338,7 +358,9 @@ const YAW_COMBAT_SYNC = {
             });
         }
         const fightEffects = baseAction === 'fight'
-            ? new Map((sync.participants || []).map(participant => [participant, app._multiInteractionEffect?.(participant, 'fight', queuedTargets.length)]))
+            ? new Map((sync.participants || []).map(participant => [participant, app._multiInteractionEffect?.(participant, 'fight', queuedTargets.length, {
+                techniqueKey: sync.techniqueKey || sync.plan?.subAction
+            })]))
             : new Map();
         const spreadText = baseAction === 'fight'
             ? app._multiInteractionOutcomeText?.('fight', sync.participants || [], queuedTargets)
@@ -347,6 +369,7 @@ const YAW_COMBAT_SYNC = {
         for (let targetIndex = 0; targetIndex < queuedTargets.length; targetIndex++) {
             const target = queuedTargets[targetIndex];
             sync.target = target;
+            const participantNames = sync.participants.map(participant => participant.name).join(', ');
             let result = '';
             switch (sync.type) {
             case 'sync_fuck': {
@@ -363,10 +386,13 @@ const YAW_COMBAT_SYNC = {
                     sync.target.willing = true;
                     sync.target.orgasmed = true;
                     app._awardCombatXP(app.XP_REWARDS.seduceEnemy);
-                    result = `${sync.participants.map(p => p.name).join(' and ')} play with ${sync.target.name}! They relax completely.`;
+                    result = app._label('combat.sync.playComplete', '{participants} play with {target}! They relax completely.', {
+                        participants: participantNames,
+                        target: sync.target.name
+                    });
                     if (app.settings.refractoryPeriod) {
                         sync.target.refractory = true;
-                        result += ` They need a moment to catch their breath...`;
+                        result += ` ${app._label('combat.action.catchBreath', 'They need a moment to catch their breath...')}`;
                     }
                     setTimeout(() => {
                         app._confirmRecruitCreature(sync.target);
@@ -375,16 +401,19 @@ const YAW_COMBAT_SYNC = {
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else if (totalCharm > resist) {
                     sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
-                    result = `${sync.participants.map(p => p.name).join(' and ')} play with ${sync.target.name}! They are dazed but not fully relaxed.`;
+                    result = app._label('combat.sync.playPartial', '{participants} play with {target}! They are dazed but not fully relaxed.', {
+                        participants: participantNames,
+                        target: sync.target.name
+                    });
                     if (sync.target.CPle >= sync.target.MPle * 0.8 && oldPle < sync.target.MPle * 0.8) {
-                        result += ` ${sync.target.name} needs a moment to catch their breath!`;
+                        result += ` ${app._label('combat.sync.targetCatchBreath', '{target} needs a moment to catch their breath!', { target: sync.target.name })}`;
                         sync.target.orgasmed = true;
                         if (app.settings.refractoryPeriod) sync.target.refractory = true;
                     }
                     const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
-                    result = `${sync.target.name} does not want to play with the group!`;
+                    result = app._label('combat.sync.playRejected', '{target} does not want to play with the group!', { target: sync.target.name });
                 }
                 break;
             }
@@ -402,34 +431,63 @@ const YAW_COMBAT_SYNC = {
                     sync.target.disposition = app.DISPOSITION.FRIENDLY;
                     sync.target.willing = true;
                     app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
-                    result = `${sync.participants.map(p => p.name).join(' and ')} talk ${sync.target.name} into standing down! They are convinced.`;
+                    result = app._label('combat.sync.talkConvinced', '{participants} talk {target} into standing down! They are convinced.', {
+                        participants: participantNames,
+                        target: sync.target.name
+                    });
                     const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else if (totalCharm > resist) {
                     sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
                     sync.target.charmed = (sync.target.charmed || 0) + 1;
                     sync.target.Figh = Math.max(1, (sync.target.Figh || 10) - 1);
-                    result = `${sync.participants.map(p => p.name).join(' and ')} talk with ${sync.target.name}, softening their guard. Spirit rises to ${sync.target.CPle}/${sync.target.MPle}.`;
+                    result = app._label('combat.sync.talkSoftened', '{participants} talk with {target}, softening their guard. Spirit rises to {current}/{max}.', {
+                        participants: participantNames,
+                        target: sync.target.name,
+                        current: sync.target.CPle,
+                        max: sync.target.MPle
+                    });
                     const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
-                    result = `${sync.target.name} resists the group's combined charm!`;
+                    result = app._label('combat.sync.talkResisted', "{target} resists the group's combined charm!", { target: sync.target.name });
                 }
                 break;
             }
             case 'sync_fight': {
                 const totalStr = sync.participants.reduce((sum, participant) => {
-                    const contribution = participant.Figh || 0;
+                    const rawContribution = participant.Figh || 0;
+                    const contribution = typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+                        ? YAW_COMBAT_TECHNIQUES.damageValue(rawContribution, technique)
+                        : rawContribution;
                     const effect = fightEffects.get(participant);
                     return sum + contribution * (effect?.scale ?? 1);
                 }, 0);
                 const def = app._effectiveCon(sync.target);
                 const dmg = Math.max(1, Math.floor(totalStr - def * 0.5 + app._combatDamageVariance(sync.participants[0], sync.target, `sync-fight:${sync.participants.map(p => app._unitSelectionId(p)).join('|')}`, 10)));
                 sync.target.CPun -= dmg;
-                result = `${sync.participants.map(p => p.name).join(' and ')} gang up on ${sync.target.name}, dealing ${dmg} punishment!`;
+                const techniqueStatus = technique ? app._applyTechniqueStatus?.(sync.participants[0], sync.target, technique, dmg) : false;
+                result = technique
+                    ? app._label('combat.sync.techniqueHit', '{participants} combine {technique} against {target}, dealing {amount} punishment!', {
+                        participants: participantNames,
+                        technique: YAW_COMBAT_TECHNIQUES.label(app, technique),
+                        target: sync.target.name,
+                        amount: dmg
+                    })
+                    : app._label('combat.sync.fightHit', '{participants} gang up on {target}, dealing {amount} punishment!', {
+                        participants: participantNames,
+                        target: sync.target.name,
+                        amount: dmg
+                    });
+                if (techniqueStatus) {
+                    result += ` ${app._label('combat.action.techniqueStatus', '{target} is affected by {status}.', {
+                        target: sync.target.name,
+                        status: YAW_COMBAT_TECHNIQUES.statusLabel(app, technique.status.effect)
+                    })}`;
+                }
                 meaningfulAttempt = true;
                 if (sync.target.CPun <= 0) {
-                    result += ` ${sync.target.name} is overwhelmed and collapses!`;
+                    result += ` ${app._label('combat.sync.fightCollapse', '{target} is overwhelmed and collapses!', { target: sync.target.name })}`;
                     app._awardCombatXP(app.XP_REWARDS.defeatEnemy);
                     if (app.settings.powerDynamics) {
                         app._subdueCreature(sync.target, sync.participants[0], { source: 'group-fight' });
@@ -449,9 +507,13 @@ const YAW_COMBAT_SYNC = {
                     }
                     app._containTargetIn(eater, sync.target, 'stomach');
                     app._awardCombatXP(app.XP_REWARDS.consumeEnemy);
-                    result = `${sync.participants.map(p => p.name).join(' and ')} force ${sync.target.name} into ${eater.name}'s stomach!`;
+                    result = app._label('combat.sync.feedSuccess', "{participants} force {target} into {eater}'s stomach!", {
+                        participants: participantNames,
+                        target: sync.target.name,
+                        eater: eater.name
+                    });
                 } else {
-                    result = `${sync.target.name} is too strong to be force-fed!`;
+                    result = app._label('combat.sync.feedResisted', '{target} is too strong to be force-fed!', { target: sync.target.name });
                 }
                 break;
             }

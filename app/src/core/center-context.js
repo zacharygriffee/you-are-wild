@@ -6,6 +6,7 @@
 const YAW_CENTER_CONTEXT = {
     presenceEntries(app) {
         if (app.combatState?.active) return [];
+        if (YAW_RECOVERY_MODES?.isJourney?.(app)) return [];
         const entries = [];
         const seen = new Set();
         const seenUnits = new Set();
@@ -175,7 +176,7 @@ const YAW_CENTER_CONTEXT = {
     presenceChip(app, entry) {
         const unit = entry.unit || {};
         const name = app._escapeHtml(unit.name || app._label('ui.unknown', 'Unknown'));
-        const icon = app._escapeHtml(unit.icon || '👤');
+        const icon = app._unitArtHtml(unit, unit.icon || '👤', { className: 'presence-sprite' });
         const meta = entry.meta ? `<span class="center-presence-meta">${app._escapeHtml(entry.meta)}</span>` : '';
         if (entry.type === 'items') {
             const focusTitle = app._escapeHtml(app._label('action.takeItems', 'Take Items'));

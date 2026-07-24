@@ -48,6 +48,8 @@ const YAW_MERCHANT_SYSTEM = {
             stockTable,
             stock: this.stockFromTable(app, stockTable),
             stockLastRefreshDay: app.dayCount || 0,
+            serviceOrigin: YAW_UNIT_CONTAINMENT.overworldServiceOrigin(tile, structureId),
+            serviceSuspended: false,
             tags: [sp?.name || sid, 'Merchant', app.biomes[biomeId]?.name || biomeId],
             expanded: false,
             hero: false,
@@ -156,7 +158,9 @@ const YAW_MERCHANT_SYSTEM = {
     },
 
     findById(app, targetId) {
-        const merchant = app.creatures.find(c => c.disposition === app.DISPOSITION.MERCHANT && String(c.id || c.name) === String(targetId));
+        const merchant = app.creatures.find(c => c.disposition === app.DISPOSITION.MERCHANT
+            && String(c.id || c.name) === String(targetId)
+            && YAW_UNIT_CONTAINMENT.serviceAvailable(app, c));
         return this.refreshStock(app, merchant);
     }
 };

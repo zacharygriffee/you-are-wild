@@ -89,8 +89,8 @@ const YAW_UNIT_CARD_STATUS = {
             const role = app._getPartyRole(unit);
             if (role && role !== 'companion') add(`role-${role}`, app._partyRoleLabel(role), 'role');
         } else {
-            if (unit.disposition === app.DISPOSITION.MERCHANT) add('merchant', app._label('disposition.merchant', 'Merchant'), 'special');
-            else if (unit.quest) add('quest', app._label('disposition.quest', 'Quest'), 'special');
+            if (unit.disposition === app.DISPOSITION.MERCHANT && app._isServiceAvailable(unit)) add('merchant', app._label('disposition.merchant', 'Merchant'), 'special');
+            else if (unit.quest && app._isServiceAvailable(unit)) add('quest', app._label('disposition.quest', 'Quest'), 'special');
             else if (unit.disposition === app.DISPOSITION.FRIENDLY) add('friendly', app._label('disposition.friendly', 'Friendly'), 'relation');
             else if (unit.disposition === app.DISPOSITION.NEUTRAL) add('neutral', app._label('disposition.neutral', 'Neutral'), 'relation');
             else if (unit.disposition === app.DISPOSITION.ENEMY) add('hostile', app._label('disposition.hostile', 'Hostile'), 'danger');

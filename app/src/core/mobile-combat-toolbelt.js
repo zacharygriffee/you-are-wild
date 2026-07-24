@@ -98,7 +98,9 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
             const actionLabel = app._uiLabel(app.targetSelection.action || 'action');
             const cancelAction = app._label('target.cancelAction', 'Cancel {action}', { action: actionLabel }) || cancelLabel;
             const markedTargets = app._combatMarkedTargets?.() || [];
-            const confirmAction = app._label('target.confirmAction', 'Use {action} on selected target', { action: actionLabel });
+            const confirmAction = markedTargets.length > 1
+                ? app._label('target.confirmAction.count', 'Use {action} on {count} selected targets', { action: actionLabel, count: markedTargets.length })
+                : app._label('target.confirmAction', 'Use {action} on selected target', { action: actionLabel });
             const confirm = markedTargets.length
                 ? button(confirmAction, 'event.stopPropagation();App.confirmCombatTargets()', 'action-btn primary', confirmAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent"')
                 : '';

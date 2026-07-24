@@ -106,14 +106,14 @@ const YAW_UNIT_SELECTION = {
         return role;
     },
 
-    detailLabel(app, unit, expanded = false) {
+    detailLabel(app, unit, expanded = false, fallbackName = null) {
         const key = expanded ? 'unit.cardHideDetails' : 'unit.cardShowDetails';
         const fallback = expanded ? 'Hide details for {name}' : 'Show details for {name}';
-        return app._label(key, fallback, { name: unit?.name || 'unit' });
+        return app._label(key, fallback, { name: unit?.name || fallbackName || app._label('unit.generic', 'unit') });
     },
 
-    focusAttrs(app, unit, expanded = false) {
-        const focusTitle = app._escapeHtml(this.detailLabel(app, unit, expanded));
+    focusAttrs(app, unit, expanded = false, fallbackName = null) {
+        const focusTitle = app._escapeHtml(this.detailLabel(app, unit, expanded, fallbackName));
         const state = expanded ? 'expanded' : 'collapsed';
         return `role="button" tabindex="0" data-card-purpose="detail-toggle" data-card-state="${state}" title="${focusTitle}" aria-label="${focusTitle}" aria-expanded="${expanded ? 'true' : 'false'}"`;
     },

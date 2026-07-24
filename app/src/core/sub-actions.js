@@ -4,13 +4,14 @@
  */
 
 const YAW_SUB_ACTIONS = {
-    CONTEXTUAL_ACTIONS: new Set(['feed', 'feast']),
+    CONTEXTUAL_ACTIONS: new Set(['feed', 'feast', 'fuck']),
     MAX_VARIANTS_PER_ACTION: 24,
     MAX_ID_LENGTH: 64,
+    MAX_PAIR_PREVIEWS: 8,
     definitions: {
         feast: {
             swallow: { label: 'Swallow', sfwLabel: 'Eat', icon: '🍽️', validate: (a, t) => Boolean(a && t) && a !== t, execute: 'swallowWhole', setting: null, requirements: ['reach', 'capacity', 'willingness'] },
-            chew: { label: 'Chew', sfwLabel: 'Break Down', icon: '🦷', validate: (a, t) => a !== t && App.settings.chewing, execute: 'chewPrey', setting: 'chewing', settingLabelKey: 'settings.variant.chewing', minPosture: 'mature', requirements: ['reach', 'cost'] },
+            chew: { label: 'Chew', sfwLabel: 'Break Down', icon: '🦷', validate: (a, t) => a !== t && App.settings.chewing, execute: 'chewPrey', setting: 'chewing', settingLabelKey: 'settings.variant.chewing', hintKey: 'feast.chewHint', hint: 'Terminal attempt: success depletes all remaining vitality and leaves remains.', minPosture: 'mature', requirements: ['reach', 'cost'] },
             cockVore: { label: 'Capture', sfwLabel: 'Capture', icon: '📦', validate: (a, t) => Boolean(a && t) && a !== t && App.settings.cockVoreEnabled && a.parts === 'cock', execute: 'cockVore', setting: 'cockVoreEnabled', settingLabelKey: 'variant.setting.capture', contentCategory: 'explicit.sexual', requirements: ['reach', 'capacity'] },
             unbirth: { label: 'Engulf', sfwLabel: 'Engulf', icon: '🔮', validate: (a, t) => Boolean(a && t) && a !== t && App.settings.unbirthEnabled && a.parts === 'clit', execute: 'unbirth', setting: 'unbirthEnabled', settingLabelKey: 'variant.setting.engulf', contentCategory: 'explicit.sexual', requirements: ['reach', 'capacity'] },
             digest: { label: 'Digest', sfwLabel: 'Break Down', icon: '💀', validate: (a) => App._activeContainedPrey?.(a, 'stomach')?.length > 0, execute: 'digestPrey', setting: null, scope: 'self', requirements: ['capacity'] },
@@ -18,7 +19,19 @@ const YAW_SUB_ACTIONS = {
         },
         feed: {
             tend: { label: 'Tend', sfwLabel: 'Tend', icon: '💚', validate: (a, t) => Boolean(a && t) && t.CPun < t.MPun, execute: 'tend', setting: null, scope: 'both', requirements: ['reach'] },
-            nurse: { label: 'Nurse', sfwLabel: 'Nurse', icon: '🥛', validate: (a, t) => a !== t && a.lactating && !a.lactationCooldown, execute: 'nurse', setting: null, requirements: ['reach', 'cost'] },
+            nurse: {
+                label: 'Nurse',
+                sfwLabel: 'Nurse',
+                icon: '🥛',
+                validate: (a, t) => a !== t
+                    && a.lactating
+                    && !a.lactationCooldown
+                    && (YAW_RESOURCE_LEDGER.state(a, 'core:nurse')?.current || 0) >= 1,
+                execute: 'nurse',
+                setting: null,
+                requirements: ['reach', 'cost'],
+                cost: (app, actor) => YAW_RESOURCE_LEDGER.cost(app, actor, 'core:nurse', 1)
+            },
             offerWhole: {
                 label: 'Offer Self', sfwLabel: 'Offer Self', icon: '🐄', execute: 'offerWhole', setting: null,
                 requirements: ['reach', 'capacity', 'willingness'], validate: (a, t) => a !== t
@@ -93,6 +106,17 @@ const YAW_SUB_ACTIONS = {
             willingness: app._label('variant.requirement.willingness', 'Willingness')
         };
         return requirements.map(key => labels[key] || String(key));
+    },
+
+    variantCost(app, action, def, actor, target, mode = 'adventure') {
+        if (typeof def?.cost === 'function') {
+            try {
+                return def.cost(app, actor, target) || null;
+            } catch (error) {
+                return null;
+            }
+        }
+        return def?.cost || app._previewActionCost?.(action, actor, target, { mode }) || null;
     },
 
     isVisibleForContent(def) {
@@ -223,6 +247,13 @@ const YAW_SUB_ACTIONS = {
                 if (actor === target) return app._label('variant.unavailable.self', 'This variant needs a different target.');
                 if (!actor.lactating) return app._label('variant.unavailable.capability', '{name} does not have the required capability.', { name: actor.name });
                 if (actor.lactationCooldown) return app._label('variant.unavailable.cooldown', '{name} is not ready yet.', { name: actor.name });
+                const reserve = YAW_RESOURCE_LEDGER.state(actor, 'core:nurse');
+                if (!reserve || reserve.current < 1) {
+                    return app._label('variant.unavailable.resource', '{name} does not have enough {resource}.', {
+                        name: actor.name,
+                        resource: YAW_RESOURCE_LEDGER.label(app, 'core:nurse')
+                    });
+                }
             }
             if (id === 'offerWhole') {
                 if (actor === target) return app._label('variant.unavailable.self', 'This variant needs a different target.');
@@ -261,17 +292,31 @@ const YAW_SUB_ACTIONS = {
             .filter(([, def]) => this.isVisibleForContent(def))
             .filter(([, def]) => this.supportsScope(def, scope))
             .map(([id, def]) => {
+                const helperBonus = actors
+                    .filter(Boolean)
+                    .reduce((sum, helper) => sum + Math.floor((Number(helper.Feas) || 10) * 0.5), 0);
                 const evaluations = pairs.map(pair => {
                     const reach = context.mode === 'combat' && app._isReachSensitiveCombatAction?.(action)
                         ? app._combatReachResult?.(pair.actor, pair.target, action)
                         : null;
                     const pressure = app._canAffordActionPressure?.(action, pair.actor, { mode: context.mode || 'adventure' }) || { ok: true };
+                    const available = this.isAvailable(app, def, pair.actor, pair.target, holder)
+                        && pressure.ok !== false;
+                    const attempt = available && action === 'feast' && ['swallow', 'chew', 'cockVore', 'unbirth'].includes(id)
+                        ? this.feastAttemptAssessment(app, pair.actor, pair.target, {
+                            container: id === 'cockVore' ? 'balls' : (id === 'unbirth' ? 'womb' : 'stomach'),
+                            requireCapacity: id !== 'chew',
+                            helperBonus: Math.max(0, helperBonus - Math.floor((Number(pair.actor?.Feas) || 10) * 0.5))
+                        })
+                        : null;
+                    const cost = this.variantCost(app, action, def, pair.actor, pair.target, context.mode || 'adventure');
                     return {
                         ...pair,
                         reach,
                         pressure,
-                        available: this.isAvailable(app, def, pair.actor, pair.target, holder)
-                            && pressure.ok !== false
+                        available,
+                        attempt,
+                        cost
                     };
                 });
                 const validPairs = evaluations.filter(entry => entry.available);
@@ -284,19 +329,48 @@ const YAW_SUB_ACTIONS = {
                         ? String(failed.pressure.text || app._label('variant.unavailable.cost', 'The actor cannot afford this action right now.'))
                         : this.unavailableReason(app, action, id, def, failed.actor, failed.target, holder)
                 );
-                const attemptAssessments = action === 'feast' && ['swallow', 'chew', 'cockVore', 'unbirth'].includes(id)
-                    ? evaluations.filter(entry => entry.available).map(entry => this.feastAttemptAssessment(app, entry.actor, entry.target, {
-                        container: id === 'cockVore' ? 'balls' : (id === 'unbirth' ? 'womb' : 'stomach'),
-                        requireCapacity: id !== 'chew',
-                        helperBonus: actors
-                            .filter(helper => helper && helper !== entry.actor)
-                            .reduce((sum, helper) => sum + Math.floor((Number(helper.Feas) || 10) * 0.5), 0)
-                    }))
-                    : [];
+                const attemptAssessments = evaluations.map(entry => entry.attempt).filter(Boolean);
                 const attemptAssessment = attemptAssessments.find(entry => entry.outlook === 'difficult')
                     || attemptAssessments.find(entry => entry.outlook === 'uncertain')
                     || attemptAssessments[0]
                     || null;
+                const pairPreviews = evaluations.slice(0, this.MAX_PAIR_PREVIEWS).map(entry => {
+                    const actorName = entry.actor?.name || app._label('ui.unknown', 'Unknown');
+                    const targetName = entry.target?.name || app._label('ui.unknown', 'Unknown');
+                    const pairReason = entry.available
+                        ? (entry.attempt?.hint || app._label('variant.pair.ready', 'Ready'))
+                        : (
+                            entry.pressure?.ok === false
+                                ? String(entry.pressure.text || app._label('variant.unavailable.cost', 'The actor cannot afford this action right now.'))
+                                : this.unavailableReason(app, action, id, def, entry.actor, entry.target, holder)
+                        );
+                    return {
+                        actorId: app._unitSelectionId?.(entry.actor) || entry.actor?.id || actorName,
+                        actorName,
+                        targetId: app._unitSelectionId?.(entry.target) || entry.target?.id || targetName,
+                        targetName,
+                        available: entry.available,
+                        outlook: entry.attempt?.outlook || '',
+                        reason: pairReason,
+                        label: app._label(
+                            entry.available ? 'variant.pair.available' : 'variant.pair.unavailable',
+                            entry.available ? '{actor} to {target}: {reason}.' : '{actor} to {target}: Unavailable — {reason}',
+                            { actor: actorName, target: targetName, reason: pairReason }
+                        ),
+                        cost: entry.cost?.label || ''
+                    };
+                });
+                const actorCosts = [];
+                const costedActors = new Set();
+                for (const entry of evaluations) {
+                    if (!entry.actor || costedActors.has(entry.actor)) continue;
+                    costedActors.add(entry.actor);
+                    actorCosts.push({
+                        actorId: app._unitSelectionId?.(entry.actor) || entry.actor?.id || entry.actor?.name || '',
+                        actorName: entry.actor?.name || app._label('ui.unknown', 'Unknown'),
+                        cost: entry.cost?.label || ''
+                    });
+                }
                 return {
                     id,
                     label: app._getActionLabel(action, id),
@@ -304,15 +378,21 @@ const YAW_SUB_ACTIONS = {
                     available,
                     status,
                     reason,
-                    hint: attemptAssessment?.hint || '',
+                    hint: [
+                        attemptAssessment?.hint || '',
+                        def.hintKey ? app._label(def.hintKey, def.hint || '') : (def.hint || '')
+                    ].filter(Boolean).join(' '),
                     outlook: attemptAssessment?.outlook || '',
                     requirements: this.requirementSummary(app, action, id, def, failed.actor, failed.target),
-                    cost: def.cost || app._previewActionCost?.(action, failed.actor, failed.target, { mode: context.mode || 'adventure' }) || null,
+                    cost: this.variantCost(app, action, def, failed.actor, failed.target, context.mode || 'adventure'),
                     setting: def.setting || null,
                     owner: def.owner || 'core',
                     scope: this.variantScope(def),
                     validPairCount: validPairs.length,
-                    pairCount: evaluations.length
+                    pairCount: evaluations.length,
+                    pairPreviews,
+                    pairPreviewOverflow: Math.max(0, evaluations.length - pairPreviews.length),
+                    actorCosts
                 };
             });
         const selectable = variants.filter(variant => variant.available);
@@ -352,10 +432,11 @@ const YAW_SUB_ACTIONS = {
     },
 
     register(app, action, subId, config = {}, options = {}) {
-        const normalizedAction = String(action || '').trim();
+        const requestedAction = String(action || '').trim();
+        const normalizedAction = requestedAction === 'play' ? 'fuck' : requestedAction;
         const normalizedId = String(subId || '').trim();
         const trustedLegacy = options.trustedLegacy === true;
-        if (!this.CONTEXTUAL_ACTIONS.has(normalizedAction) && !(trustedLegacy && app.SUB_ACTIONS[normalizedAction])) throw new Error('Action variants may only extend Feed or Feast in V1');
+        if (!this.CONTEXTUAL_ACTIONS.has(normalizedAction) && !(trustedLegacy && app.SUB_ACTIONS[normalizedAction])) throw new Error('Action variants may only extend Feed, Feast, or Play in V1');
         if (!/^[a-z][a-zA-Z0-9_-]*$/.test(normalizedId) || normalizedId.length > this.MAX_ID_LENGTH) throw new Error('Action variant id is invalid');
         if (!config || typeof config !== 'object') throw new Error('Action variant definition must be an object');
         if (typeof config.validate !== 'function' || typeof config.execute !== 'function') throw new Error('Action variants require validate and execute functions');

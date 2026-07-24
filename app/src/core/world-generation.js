@@ -261,7 +261,7 @@ const WorldGen = (() => {
         if (tile.overlays?.dangerInfluence && tile.overlays?.poi?.category !== 'dangerSite') markers.push('Danger influence');
         if (tile.structure) markers.push('Structure');
         if (tile.hasLandmark) markers.push('Landmark');
-        if (Array.isArray(tile.creatures) && tile.creatures.some(creature => creature?.disposition === 'merchant' || creature?.merchant || creature?.stock)) markers.push('Merchant');
+        if (Array.isArray(tile.creatures) && tile.creatures.some(creature => creature?.serviceSuspended !== true && (creature?.disposition === 'merchant' || creature?.merchant || creature?.stock))) markers.push('Merchant');
         if (context.questRelevant) markers.push('Quest');
         return {
             biome: biomeId,

@@ -19,10 +19,13 @@ const EXPLICIT_NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optiona
 const TEMPLATE_NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-template-narration.yawmod.json');
 const NARRATION_DIAGNOSTICS_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-narration-diagnostics.yawmod.json');
 const ELEMENTAL_SPECIES_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-elemental-species.yawmod.json');
+const NEUTRAL_CONFORMANCE_MOD_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'neutral-conformance.yawmod.json');
+const NEUTRAL_CONFORMANCE_LOCALE_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'neutral-conformance-locale-pack.yawmod.json');
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
 const BALANCE_COST_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'balance-cost-doctrine.md');
 const MOD_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'modding.md');
+const MOBILE_FLOW_DECISION = path.join(__dirname, '..', '..', 'docs', 'mobile-interaction-flow-v2-decision.md');
 const OBSOLETE_NARRATION_MOD_PLAN = path.join(__dirname, '..', '..', 'docs', 'narration-mod-agent-plan.md');
 const args = process.argv.slice(2);
 const filterArg = args.find(arg => arg.startsWith('--filter='));
@@ -99,8 +102,8 @@ function section(name, filterName) {
   }
 }
 
-if (!['all', 'core', 'ui'].includes(activeFilter)) {
-  console.error(`Unknown filter "${activeFilter}". Expected one of: all, core, ui.`);
+if (!['all', 'core', 'ui', 'media'].includes(activeFilter)) {
+  console.error(`Unknown filter "${activeFilter}". Expected one of: all, core, ui, media.`);
   process.exit(1);
 }
 
@@ -144,6 +147,7 @@ const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'de
 const localMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'local-map.js'), 'utf8');
 const tileResourcesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-resources.js'), 'utf8');
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
+const recoveryModesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'recovery-modes.js'), 'utf8');
 const defeatRecoveryContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'defeat-recovery.js'), 'utf8');
 const logViewContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'log-view.js'), 'utf8');
 const storyEventsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'story-events.js'), 'utf8');
@@ -151,6 +155,8 @@ const balanceSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'balance
 const tileEventFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-event-feed.js'), 'utf8');
 const structureNavigationContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'structure-navigation.js'), 'utf8');
 const movementFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'movement-flow.js'), 'utf8');
+const resourceLedgerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'resource-ledger.js'), 'utf8');
+const combatTechniqueContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-techniques.js'), 'utf8');
 const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-actions.js'), 'utf8');
 const uiTextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'ui-text.js'), 'utf8');
 const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
@@ -244,6 +250,8 @@ const mediaRepositoryContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'media
 const assetBundleV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'asset-bundle-v1.js'), 'utf8');
 const tilesetPackV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'tileset-pack-v1.js'), 'utf8');
 const tilesetRuntimeContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tileset-runtime.js'), 'utf8');
+const spritePackV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'sprite-pack-v1.js'), 'utf8');
+const spriteRuntimeContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sprite-runtime.js'), 'utf8');
 const narrationSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'narration-system.js'), 'utf8');
 const puterProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'puter-provider.js'), 'utf8');
 const openAICompatibleProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'openai-compatible-provider.js'), 'utf8');
@@ -571,20 +579,32 @@ function loadModuleSystemForTest(options = {}) {
     biomes: {},
     species: [],
     items: [],
+    settings: { recoveryMode: 'core:regenerate' },
     log: [],
-    renderLog() {}
+    renderLog() {},
+    saveSettings() {},
+    renderRecoveryModeOptions() {}
   };
   const CONTENT = options.CONTENT || { preferences: { maxTier: 0, explicitDescriptions: false } };
   const mediaRepository = options.mediaRepository || {
     attachDatabase() {}, setLogger() {}, async cleanup() {}, close() {}, releaseOwner() {},
+    unregisterProviderOwner() {}, registerAdapter() { throw new Error('Media provider adapters unavailable'); },
     async removeOwner() {}, async installFromSource() {}, async listOwner() { return []; },
     async metadata() { return null; }, async ownerMetadata() { return null; }, async repairOwner(ownerId) { return { ownerId, ok: true, missing: [] }; }, async acquire() { throw new Error('Media unavailable'); }, release() { return false; }
   };
   const assetBundleV1 = options.assetBundleV1 || loadMediaSystemForTest().YAW_ASSET_BUNDLE_V1;
   const tilesetPackV1 = options.tilesetPackV1 || loadMediaSystemForTest().YAW_TILESET_PACK_V1;
   const tilesetRuntime = options.tilesetRuntime;
-  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SUB_ACTIONS', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, options.subActions);
+  const spritePackV1 = options.spritePackV1 || loadMediaSystemForTest().YAW_SPRITE_PACK_V1;
+  const spriteRuntime = options.spriteRuntime;
+  const resourceLedger = options.resourceLedger || new Function('window', `${resourceLedgerContent}\nreturn YAW_RESOURCE_LEDGER;`)({});
+  const combatTechniques = options.combatTechniques || new Function('window', `${combatTechniqueContent}\nreturn YAW_COMBAT_TECHNIQUES;`)({});
+  const recoveryModes = options.recoveryModes || new Function('window', `${recoveryModesContent}\nreturn YAW_RECOVERY_MODES;`)({});
+  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SPRITE_PACK_V1', 'YAW_SPRITE_RUNTIME', 'YAW_SUB_ACTIONS', 'YAW_STORY_EVENTS', 'YAW_RESOURCE_LEDGER', 'YAW_COMBAT_TECHNIQUES', 'YAW_RECOVERY_MODES', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, spritePackV1, spriteRuntime, options.subActions, options.storyEvents, resourceLedger, combatTechniques, recoveryModes);
   MODULE_SYSTEM._testApp = App;
+  MODULE_SYSTEM._testResourceLedger = resourceLedger;
+  MODULE_SYSTEM._testCombatTechniques = combatTechniques;
+  MODULE_SYSTEM._testRecoveryModes = recoveryModes;
   return MODULE_SYSTEM;
 }
 
@@ -598,10 +618,10 @@ function loadMediaSystemForTest(options = {}) {
     urlApi.createObjectURL = () => `blob:test-${++urlState.sequence}`;
     urlApi.revokeObjectURL = url => urlState.revoked.push(url);
   }
-  const source = [mediaContractContent, mediaIndexedDbStoreContent, mediaHttpProvidersContent, mediaRepositoryContent, assetBundleV1Content, tilesetPackV1Content, tilesetRuntimeContent].join('\n');
+  const source = [mediaContractContent, mediaIndexedDbStoreContent, mediaHttpProvidersContent, mediaRepositoryContent, assetBundleV1Content, tilesetPackV1Content, tilesetRuntimeContent, spritePackV1Content, spriteRuntimeContent].join('\n');
   return new Function(
     'globalThis', 'window', 'fetch', 'navigator', 'URL', 'Blob', 'AbortController', 'setTimeout', 'clearTimeout',
-    `${source}\nreturn { YAW_MEDIA_CONTRACT, YAWIndexedDBMediaStore, YAWHttpMediaSource, YAWEndpointMediaStore, YAWMediaRepository, YAW_ASSET_BUNDLE_V1, YAW_TILESET_PACK_V1, YAW_TILESET_RUNTIME };`
+    `${source}\nreturn { YAW_MEDIA_CONTRACT, YAWIndexedDBMediaStore, YAWHttpMediaSource, YAWEndpointMediaStore, YAWMediaRepository, YAW_ASSET_BUNDLE_V1, YAW_TILESET_PACK_V1, YAW_TILESET_RUNTIME, YAW_SPRITE_PACK_V1, YAW_SPRITE_RUNTIME };`
   )(
     globalObject,
     window,
@@ -1423,6 +1443,13 @@ test('AI Providers has a dedicated credential-safe UI and provider-backed settin
   assertContains(providerUiContent, 'file_origin_local_only', 'Provider UI should distinguish file-origin local-only mode');
   assertContains(providerUiContent, 'http://localhost:11434/v1', 'File-origin provider UI should offer the Ollama-compatible local endpoint');
   assertContains(providerUiContent, 'id="openai-provider-max-completion-tokens"', 'Provider editor should expose a per-profile completion-token ceiling');
+  assertContains(providerUiContent, 'id="openai-provider-form" class="provider-editor" aria-labelledby="openai-provider-editor-title"', 'Provider editor should reference a visible localized heading');
+  assertContains(providerUiContent, 'data-command-control="add-provider-connection"', 'Provider editor should expose a stable Add Connection command');
+  assertContains(providerUiContent, 'data-command-control="edit-provider-connection"', 'Provider profiles should expose a stable Edit Connection command');
+  assertContains(providerUiContent, 'data-command-control="cancel-provider-editor" data-command-slot="exit"', 'Provider editor Cancel should expose stable exit metadata');
+  assertContains(providerUiContent, 'this.captureEditorReturnFocus(nextProfileId)', 'Provider editor should capture its logical opener before rerendering');
+  assertContains(providerUiContent, 'this.restoreEditorFocus()', 'Provider editor should restore logical focus after Cancel or successful Save');
+  assertContains(providerUiContent, "if (action === 'save') this.focusEditor()", 'Provider save failures should leave focus in the rerendered editor');
   assertContains(providerUiContent, 'New profiles default to 8,192; high reasoning may need 16,384 or more', 'Provider editor should explain the reasoning-budget tradeoff');
   assertContains(providerUiContent, 'maxCompletionTokens:', 'Provider form submission should retain the configured completion-token ceiling');
   assertContains(providerUiContent, 'The 30-second default gives reasoning-heavy models time to finish', 'Provider editor should explain the reasoning-friendly timeout default');
@@ -1441,6 +1468,8 @@ test('AI Providers has a dedicated credential-safe UI and provider-backed settin
   assertContains(contentSystemContent, "'provider.error.activityLog'", 'Provider Activity Log failures should be localized');
   assertContains(contentSystemContent, "'provider.maxCompletionTokensHelp'", 'Completion-token reasoning guidance should be localized');
   assertContains(contentSystemContent, "'provider.timeoutHelp'", 'Provider timeout guidance should be localized');
+  assertContains(contentSystemContent, "'provider.editor.addTitle'", 'Provider editor add heading should be localized');
+  assertContains(contentSystemContent, "'provider.editor.editTitle'", 'Provider editor edit heading should be localized');
   assertContains(contentSystemContent, "'provider.fileOriginLocalOnly'", 'File-origin local-only guidance should be localized');
   assertContains(providerUiContent, "'image.generate'", 'Provider UI should be ready to label future image capabilities');
   assertNotContains(modUiContent, 'puter-provider-title', 'Mod Manager should no longer own provider connection controls');
@@ -2541,7 +2570,9 @@ asyncTest('Host manifest preloads curated modules and enforces provenance policy
   const required = modules.find(module => module.id === 'host-rules');
   assert(required && required.enabled, 'Required host module should preload and enable');
   assertEqual(required.provenance, 'host', 'Preloaded module should retain host provenance');
-  assertEqual(MODULE_SYSTEM.moduleControlState(required).lockedEnabled, true, 'Required host module should be locked enabled');
+  const requiredControl = MODULE_SYSTEM.moduleControlState(required);
+  assertEqual(requiredControl.lockedEnabled, true, 'Required host module should be locked enabled');
+  assertEqual(requiredControl.reasonKey, 'mod.control.required', 'Required host lock should expose a stable localization key');
   assertEqual(MODULE_SYSTEM.getHostCatalog().find(module => module.id === 'host-optional').installed, false, 'Optional host module should remain installable from the catalog');
 
   let rejected = false;
@@ -2593,6 +2624,9 @@ asyncTest('Module runtime requirements preserve file play and gate secure server
     runtimeRequirements: { origins: ['https', 'localhost'], secureContext: true, network: true }
   });
   assertContains(MODULE_SYSTEM._runtimeCompatibilityBlockReason(hosted), 'runtime origins', 'Server-only modules should explain file incompatibility');
+  const compatibility = MODULE_SYSTEM._runtimeCompatibilityBlock(hosted);
+  assertEqual(compatibility.key, 'mod.compatibility.origins', 'Runtime incompatibility should expose a stable localization key');
+  assertEqual(compatibility.vars.origins, 'https, localhost', 'Runtime incompatibility should expose bounded origin variables');
 });
 
 asyncTest('Host package integrity and same-origin catalog boundaries are enforced', async () => {
@@ -3367,12 +3401,251 @@ asyncTest('Module content provider contributions are permissioned, owned, and re
   assertEqual(CONTENT.getContent('test.provider'), 'provider text', 'Enabled provider should contribute content templates');
   assertEqual(CONTENT.locales.en['test.provider.label'], 'Provider Label', 'Enabled provider should contribute locale entries');
   assertEqual(CONTENT.getCreationOptions()[0].provider, 'content-provider', 'Enabled provider should own its creation choices');
+  const diagnostics = MODULE_SYSTEM.getModuleDiagnostics('content-provider');
+  assertEqual(diagnostics.length, 1, 'Unreachable legacy content templates should produce one enable-time diagnostic');
+  assertEqual(diagnostics[0].code, 'unreachable_content_template', 'Template diagnostics should expose a stable machine-readable code');
+  assertContains(diagnostics[0].contribution, 'test.provider.default', 'Template diagnostics should identify the unreachable request key');
 
   await MODULE_SYSTEM.setModuleEnabled('content-provider', false);
   assertEqual(CONTENT.templateTier('test', 'provider', 'default', 'safe'), null, 'Disabling provider should remove its template tier');
   assertEqual(CONTENT.locales.en['test.provider.label'], originalLabel, 'Disabling provider should restore prior locale state');
   assertEqual(CONTENT.getCreationOptions().length, 0, 'Disabling provider should remove its creation choices');
   assertEqual(CONTENT.policyProviders.get('content-provider').enabled, false, 'Disabled provider should remain discoverable for category settings');
+  assertEqual(MODULE_SYSTEM.getModuleDiagnostics('content-provider').length, 0, 'Disabling a provider should remove its runtime diagnostics');
+});
+
+asyncTest('Locale Pack V1 validates dependency versions namespaces diagnostics and unload fallback', async () => {
+  const CONTENT = loadContentSystemForTest();
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT });
+  MODULE_SYSTEM.GAME_VERSION = '0.14.0';
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  const App = MODULE_SYSTEM._testApp;
+  let refreshes = 0;
+  App.refreshLanguagePresentation = () => { refreshes++; };
+
+  await MODULE_SYSTEM.installModule({
+    manifest: {
+      id: 'locale_target',
+      name: 'Locale Target',
+      version: '1.2.0',
+      permissions: ['content:add_locale']
+    },
+    code: `MODS.registerLocaleEntries('en', {
+      'locale_target.one': 'One',
+      'locale_target.two': 'Two'
+    });`
+  });
+  await MODULE_SYSTEM.installModule({
+    manifest: {
+      id: 'locale_pack',
+      name: 'Locale Pack',
+      version: '1.0.0',
+      dependencies: ['locale_target'],
+      permissions: ['content:add_locale']
+    },
+    code: `MODS.registerLocale({
+      id: 'qps-ploc',
+      displayName: 'Pseudo Locale',
+      fallback: 'en',
+      targets: [{ moduleId: 'locale_target', minVersion: '1.1.0' }]
+    });
+    MODS.registerLocaleEntries('qps-ploc', {
+      'locale_target.one': '[One]',
+      'locale_target.old': '[Old]'
+    }, { target: 'locale_target' });`
+  });
+
+  await MODULE_SYSTEM.setModuleEnabled('locale_target', true);
+  await MODULE_SYSTEM.setModuleEnabled('locale_pack', true);
+  CONTENT.setLanguage('qps-ploc');
+  assertEqual(CONTENT.t('locale_target.one'), '[One]', 'Locale pack should translate its declared target namespace');
+  assertEqual(CONTENT.t('locale_target.two'), 'Two', 'Missing target translations should fall back to the target English entry');
+  const diagnostics = MODULE_SYSTEM.getModuleDiagnostics('locale_pack');
+  assertEqual(diagnostics.some(entry => entry.code === 'locale_missing_keys' && entry.count === 1), true, 'Locale pack diagnostics should summarize missing target keys');
+  assertEqual(diagnostics.some(entry => entry.code === 'locale_obsolete_keys' && entry.count === 1), true, 'Locale pack diagnostics should summarize obsolete target keys');
+
+  await MODULE_SYSTEM.setModuleEnabled('locale_target', false, { bypassLifecycle: true });
+  const storedPack = (await MODULE_SYSTEM.getAllModules()).find(module => module.id === 'locale_pack');
+  assertEqual(storedPack.enabled, false, 'Disabling a translated dependency should disable its locale pack dependent');
+  assertEqual(CONTENT.localeDefinition('qps-ploc'), null, 'Dependency unload should remove the owned locale definition');
+  assertEqual(CONTENT.preferences.language, 'en', 'Dependency unload should move the selected language to its fallback');
+  assert(refreshes >= 3, 'Locale load and unload should refresh the language presentation');
+});
+
+asyncTest('Locale Pack V1 rejects undeclared namespaces and incompatible target versions', async () => {
+  const CONTENT = loadContentSystemForTest();
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT });
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'locale_base', name: 'Locale Base', version: '1.0.0' },
+    code: ''
+  });
+  await MODULE_SYSTEM.setModuleEnabled('locale_base', true);
+
+  await MODULE_SYSTEM.installModule({
+    manifest: {
+      id: 'bad_locale_version',
+      name: 'Bad Locale Version',
+      version: '1.0.0',
+      dependencies: ['locale_base'],
+      permissions: ['content:add_locale']
+    },
+    code: `MODS.registerLocale({ id: 'qps-ver', displayName: 'Version Test', fallback: 'en', targets: [{ moduleId: 'locale_base', minVersion: '2.0.0' }] });`
+  });
+  let rejected = false;
+  try { await MODULE_SYSTEM.setModuleEnabled('bad_locale_version', true); } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'requires locale_base 2.0.0 or newer', 'Incompatible translation targets should report the required dependency version');
+  }
+  assertEqual(rejected, true, 'Locale packs should reject incompatible target versions');
+  assertEqual(CONTENT.localeDefinition('qps-ver'), null, 'Rejected locale packs should not retain partial locale definitions');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: {
+      id: 'bad_locale_namespace',
+      name: 'Bad Locale Namespace',
+      version: '1.0.0',
+      dependencies: ['locale_base'],
+      permissions: ['content:add_locale']
+    },
+    code: `MODS.registerLocale({ id: 'qps-key', displayName: 'Key Test', fallback: 'en', targets: ['locale_base'] });
+      MODS.registerLocaleEntries('qps-key', { 'other_module.label': 'Wrong' }, { target: 'locale_base' });`
+  });
+  rejected = false;
+  try { await MODULE_SYSTEM.setModuleEnabled('bad_locale_namespace', true); } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'locale_base. namespace', 'Cross-module translations should require the target namespace');
+  }
+  assertEqual(rejected, true, 'Locale packs should reject keys outside their declared module namespace');
+  assertEqual(CONTENT.localeDefinition('qps-key'), null, 'Namespace rejection should roll back the partially registered locale');
+});
+
+asyncTest('Module Scene Feed templates are permissioned namespaced and removed on unload', async () => {
+  const storyEvents = new Function('YAW_NARRATION_SYSTEM', `${storyEventsContent}\nreturn YAW_STORY_EVENTS;`)(undefined);
+  const MODULE_SYSTEM = loadModuleSystemForTest({ storyEvents });
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  const App = MODULE_SYSTEM._testApp;
+  App.sceneTemplates = [];
+
+  await MODULE_SYSTEM.installModule({
+    manifest: {
+      id: 'scene-template-provider',
+      name: 'Scene Template Provider',
+      version: '1.0.0',
+      permissions: ['scene:add_template']
+    },
+    code: `MODS.registerSceneTemplate({ id: 'fight-summary', mode: 'combat', action: 'fight', priority: 80, summary: '{actors} challenges {targets}.' });`
+  });
+  await MODULE_SYSTEM.setModuleEnabled('scene-template-provider', true);
+  assertEqual(App.sceneTemplates.length, 1, 'Enabled module should register one Scene Feed template');
+  assertEqual(App.sceneTemplates[0].id, 'scene-template-provider:fight-summary', 'Public Scene Feed template ids should be namespaced by module');
+  assertEqual(App.sceneTemplates[0].owner, 'scene-template-provider', 'Scene Feed template ownership should be explicit');
+  await MODULE_SYSTEM.setModuleEnabled('scene-template-provider', false);
+  assertEqual(App.sceneTemplates.length, 0, 'Disabling the module should remove its Scene Feed templates');
+});
+
+asyncTest('Neutral module conformance fixture survives install use reload disable delete and reinstall', async () => {
+  const CONTENT = loadContentSystemForTest();
+  const storyEvents = new Function('YAW_NARRATION_SYSTEM', `${storyEventsContent}\nreturn YAW_STORY_EVENTS;`)(undefined);
+  const subActions = new Function('window', `${subActionsContent}\nreturn YAW_SUB_ACTIONS;`)({});
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT, storyEvents, subActions });
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  const App = MODULE_SYSTEM._testApp;
+  App.sceneTemplates = [];
+  App._label = (key, fallback, vars = {}) => String(fallback || '').replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
+  App.SUB_ACTIONS = { feed: {}, feast: {}, fight: {}, fuck: {} };
+  App.defaultSubActions = subActions.defaultActions();
+  const packageData = JSON.parse(fs.readFileSync(NEUTRAL_CONFORMANCE_MOD_PACKAGE, 'utf8'));
+
+  await MODULE_SYSTEM.installModule(packageData);
+  await MODULE_SYSTEM.setModuleEnabled('yaw_neutral_conformance', true);
+  const option = CONTENT.getCreationOptions().find(entry => entry.id === 'sun-crest');
+  assertEqual(option.provider, 'yaw_neutral_conformance', 'Conformance creation option should retain provider ownership');
+  assertEqual(CONTENT.locales.es['yaw_neutral_conformance.creation.crest'], 'Cresta solar', 'Conformance locale entry should register under its stable module namespace');
+  const actor = { id: 'actor', name: 'Aster' };
+  const target = { id: 'target', name: 'Briar' };
+  const result = App.SUB_ACTIONS.fuck.shareGreeting.execute(actor, target);
+  assertContains(result.summary, 'Aster shares a friendly greeting with Briar', 'Conformance Play variant should execute');
+  assertEqual(App.sceneTemplates[0].owner, 'yaw_neutral_conformance', 'Conformance Scene Feed template should be owned');
+  const rendered = storyEvents.renderSceneBeat(App, {
+    mode: 'adventure',
+    actors: [actor],
+    targets: [target],
+    action: 'shareGreeting'
+  }, {
+    contentTier: 0,
+    summary: 'Fallback greeting remains readable.'
+  });
+  assertEqual(rendered.metadata.templateId, 'yaw_neutral_conformance:friendly-greeting', 'Conformance Scene Feed template should match a real interaction outcome');
+  assertContains(rendered.summary, 'Aster shares a friendly greeting with Briar', 'Conformance Scene Feed template should render owned deterministic text');
+
+  const Binary = loadBinaryForTest();
+  const player = makeSerializableUnit('You', { creationOptions: { [option.provider]: { [option.id]: option.value } } });
+  const loaded = Binary.loadGame(Binary.saveGame({ player, party: [player], location: { x: 0, y: 0 }, currentBiome: 'forest' }));
+  assertEqual(loaded.questState.playerCompatibility.creationOptions.yaw_neutral_conformance['sun-crest'], 'sunburst', 'Conformance creation selection should survive save reload');
+
+  MODULE_SYSTEM.unloadModule('yaw_neutral_conformance');
+  await MODULE_SYSTEM.loadEnabledModules();
+  assertEqual(App.SUB_ACTIONS.fuck.shareGreeting.owner, 'yaw_neutral_conformance', 'Enabled conformance contributions should restore after runtime reload');
+  await MODULE_SYSTEM.setModuleEnabled('yaw_neutral_conformance', false);
+  assertEqual(App.SUB_ACTIONS.fuck.shareGreeting, undefined, 'Conformance Play variant should unload cleanly');
+  assertEqual(App.sceneTemplates.length, 0, 'Conformance Scene Feed template should unload cleanly');
+  assertEqual(CONTENT.getCreationOptions().length, 0, 'Conformance creation option should unload cleanly');
+
+  await MODULE_SYSTEM.deleteModule('yaw_neutral_conformance');
+  assertEqual((await MODULE_SYSTEM.getAllModules()).some(module => module.id === 'yaw_neutral_conformance'), false, 'Deleting the conformance fixture should remove its installed package');
+  assertEqual(MODULE_SYSTEM.activeModules.has('yaw_neutral_conformance'), false, 'Deleting the conformance fixture should leave no active runtime');
+
+  const reinstalled = await MODULE_SYSTEM.installModule(packageData);
+  assertEqual(reinstalled.enabled, false, 'A freshly reinstalled conformance package should remain disabled until explicitly enabled');
+  assertEqual(App.SUB_ACTIONS.fuck.shareGreeting, undefined, 'Reinstall alone should not activate an owned Play variant');
+  await MODULE_SYSTEM.setModuleEnabled('yaw_neutral_conformance', true);
+  assertEqual(App.SUB_ACTIONS.fuck.shareGreeting.owner, 'yaw_neutral_conformance', 'Explicit enable after reinstall should restore the owned Play variant');
+  assertEqual(App.sceneTemplates.length, 1, 'Explicit enable after reinstall should restore exactly one owned Scene Feed template');
+  await MODULE_SYSTEM.deleteModule('yaw_neutral_conformance');
+  assertEqual(App.SUB_ACTIONS.fuck.shareGreeting, undefined, 'Deleting an enabled reinstalled fixture should remove its Play variant');
+  assertEqual(App.sceneTemplates.length, 0, 'Deleting an enabled reinstalled fixture should remove its Scene Feed template');
+  assertEqual(CONTENT.getCreationOptions().length, 0, 'Deleting an enabled reinstalled fixture should remove its creation option');
+});
+
+asyncTest('Locale Pack V1 conformance fixture installs selects reloads and unloads with its target', async () => {
+  const CONTENT = loadContentSystemForTest();
+  const storyEvents = new Function('YAW_NARRATION_SYSTEM', `${storyEventsContent}\nreturn YAW_STORY_EVENTS;`)(undefined);
+  const subActions = new Function('window', `${subActionsContent}\nreturn YAW_SUB_ACTIONS;`)({});
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT, storyEvents, subActions });
+  MODULE_SYSTEM.GAME_VERSION = '0.14.0';
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+  const App = MODULE_SYSTEM._testApp;
+  App.sceneTemplates = [];
+  App.SUB_ACTIONS = { feed: {}, feast: {}, fight: {}, fuck: {} };
+  App.defaultSubActions = subActions.defaultActions();
+  await MODULE_SYSTEM.installModule(JSON.parse(fs.readFileSync(NEUTRAL_CONFORMANCE_MOD_PACKAGE, 'utf8')));
+  await MODULE_SYSTEM.installModule(JSON.parse(fs.readFileSync(NEUTRAL_CONFORMANCE_LOCALE_PACKAGE, 'utf8')));
+  await MODULE_SYSTEM.setModuleEnabled('yaw_neutral_conformance', true);
+  await MODULE_SYSTEM.setModuleEnabled('yaw_neutral_conformance_locale', true);
+  CONTENT.setLanguage('qps-ncon');
+  assertEqual(CONTENT.t('yaw_neutral_conformance.creation.crest'), '[Sun Crest]', 'Conformance locale pack should translate its dependency namespace');
+  assertEqual(MODULE_SYSTEM.getModuleDiagnostics('yaw_neutral_conformance_locale').length, 0, 'Complete conformance locale fixture should have no missing or obsolete keys');
+
+  const storedPreferences = CONTENT.__testStorage.get('yaw-content-prefs');
+  const refreshedContent = loadContentSystemForTest({ 'yaw-content-prefs': storedPreferences });
+  const refreshedStoryEvents = new Function('YAW_NARRATION_SYSTEM', `${storyEventsContent}\nreturn YAW_STORY_EVENTS;`)(undefined);
+  const refreshedSubActions = new Function('window', `${subActionsContent}\nreturn YAW_SUB_ACTIONS;`)({});
+  const refreshedModules = loadModuleSystemForTest({ CONTENT: refreshedContent, storyEvents: refreshedStoryEvents, subActions: refreshedSubActions });
+  refreshedModules.GAME_VERSION = '0.14.0';
+  refreshedModules.db = fakeDb.db;
+  const refreshedApp = refreshedModules._testApp;
+  refreshedApp.sceneTemplates = [];
+  refreshedApp.SUB_ACTIONS = { feed: {}, feast: {}, fight: {}, fuck: {} };
+  refreshedApp.defaultSubActions = refreshedSubActions.defaultActions();
+  await refreshedModules.loadEnabledModules();
+  assertEqual(refreshedContent.preferences.language, 'qps-ncon', 'Enabled locale selection should restore after runtime module reload');
+  assertEqual(refreshedContent.t('yaw_neutral_conformance.action.shareGreeting'), '[Share Greeting]', 'Reloaded locale pack should restore owned translations after its dependency');
+
+  await refreshedModules.setModuleEnabled('yaw_neutral_conformance', false, { bypassLifecycle: true });
+  assertEqual(refreshedContent.preferences.language, 'en', 'Disabling the translated module should safely fall back to English');
+  assertEqual(refreshedContent.localeDefinition('qps-ncon'), null, 'Disabling a translated module should unload its dependent locale definition');
 });
 
 asyncTest('Persisted enabled modules restore their runtime hooks after refresh', async () => {
@@ -3669,9 +3942,10 @@ asyncTest('Startup readiness keeps domains independent and retries failed work',
   );
   let resolveSaves;
   const savesWork = new Promise(resolve => { resolveSaves = resolve; });
-  readiness.start('saves', () => savesWork, { label: 'saved games' });
-  readiness.start('bundledAssets', async () => ({ terrainUrl: 'blob:test' }), { label: 'visual assets', blocking: false });
+  readiness.start('saves', () => savesWork, { label: 'saved games', labelKey: 'startup.domain.saves' });
+  readiness.start('bundledAssets', async () => ({ terrainUrl: 'blob:test' }), { label: 'visual assets', labelKey: 'startup.domain.bundledAssets', blocking: false });
   assertEqual(readiness.state('saves').status, 'pending', 'Delayed save discovery should remain independently pending');
+  assertEqual(readiness.snapshot('saves').labelKey, 'startup.domain.saves', 'Readiness snapshots should expose stable locale label keys');
   await readiness.state('bundledAssets').promise;
   assertEqual(readiness.state('bundledAssets').status, 'ready', 'Unrelated visual preparation should resolve without waiting for saves');
   resolveSaves('slot2');
@@ -3683,12 +3957,21 @@ asyncTest('Startup readiness keeps domains independent and retries failed work',
     attempts++;
     if (attempts === 1) throw new Error('temporary module failure');
     return ['example-module'];
-  }, { label: 'mods' });
+  }, { label: 'mods', labelKey: 'startup.domain.modules' });
   await readiness.state('modules').promise;
   assertEqual(readiness.state('modules').status, 'error', 'Domain failures should be retained without rejecting unrelated startup work');
   await readiness.retry('modules');
   assertEqual(readiness.state('modules').status, 'ready', 'Retry should rerun the failed domain factory');
   assertEqual(readiness.state('modules').attempts, 2, 'Retry should preserve an observable attempt count');
+  assertEqual(readiness.state('modules').labelKey, 'startup.domain.modules', 'Retry should preserve the stable locale label key');
+  await readiness.start('timeoutFixture', () => new Promise(() => {}), {
+    label: 'visual assets',
+    labelKey: 'startup.domain.bundledAssets',
+    timeoutMs: 1
+  });
+  assertEqual(readiness.state('timeoutFixture').error?.code, 'startup_timeout', 'Readiness timeouts should expose a stable error code for localized presentation');
+  assertEqual(readiness.state('timeoutFixture').error?.domain, 'timeoutFixture', 'Readiness timeout metadata should preserve its stable domain id');
+  assertEqual(readiness.state('timeoutFixture').error?.timeoutMs, 1, 'Readiness timeout metadata should preserve its configured ceiling');
   assert(marks.includes('yaw-startup:saves:start') && marks.includes('yaw-startup:saves:end'), 'Readiness should mark the start and end of each domain');
   assert(measures.includes('yaw-startup:saves'), 'Readiness should publish a duration measure for diagnostics');
 });
@@ -3792,11 +4075,17 @@ test('Balance system applies conservative hunger pressure and relief', () => {
 
 test('Balance scenario baseline reports deterministic survival and digestion pacing', () => {
   const balance = loadBalanceSystemForTest();
-  const app = { BALANCE_V1: {} };
+  const app = {
+    BALANCE_V1: {},
+    XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 50, flirtEnemy: 50, feedAlly: 20 }
+  };
   const report = balance.scenarioBaseline(app);
+  assertEqual(report.schemaVersion, 2, 'Scenario report should expose a versioned measurement contract');
   assertEqual(report.commandsToHungryFromSated.move, 70, 'Seventy ordinary moves should reach the hungry threshold from sated');
   assertEqual(report.commandsToHungryFromSated.fight, 24, 'Twenty-four Fight commands should cross the hungry threshold from sated');
   assertEqual(report.commandsToHungryFromSated.fuck, 18, 'Eighteen Play commands should cross the hungry threshold from sated');
+  assertEqual(report.commandsToStarvingFromSated.feast, 43, 'Forty-three Feast contacts should cross the starving threshold from sated');
+  assertEqual(report.commandsToStarvingFromSated.flee, 29, 'Twenty-nine Flee attempts should cross the starving threshold from sated');
   assertEqual(report.emptyRest.restsToHungry, 9, 'Nine empty rests should cross the hungry threshold');
   assertEqual(report.emptyRest.hoursToHungry, 72, 'Empty-rest hunger pacing should report elapsed hours');
   const fastLarge = report.digestion.find(entry => entry.size === 6 && entry.rate === 5);
@@ -3805,6 +4094,94 @@ test('Balance scenario baseline reports deterministic survival and digestion pac
   assertEqual(slowLarge.ticks, 50, 'Slow digestion should complete in fifty ticks');
   assertEqual(fastLarge.nutrition, slowLarge.nutrition, 'Fast and slow digestion should preserve equal total nutrition');
   assert(fastLarge.netRestHunger < 0, 'A large fast-digesting meal should more than offset one rest hunger cost');
+  const actions = Object.fromEntries(report.referenceScenario.actions.map(entry => [entry.id, entry]));
+  assertEqual(actions.fight.effectPerCommand, 40, 'Reference Fight should report deterministic damage per command');
+  assertEqual(actions.fight.committedCommands, 3, 'Reference Fight should report commands to resolve a full-condition target');
+  assertEqual(actions.flirt.committedCommands, 8, 'Reference Talk should report commands to reach the Spirit threshold');
+  assertEqual(actions.fuck.committedCommands, 5, 'Reference Play should report commands to reach the Spirit threshold');
+  assertEqual(actions.feed.committedCommands, 3, 'Reference Feed should report commands to restore a fully depleted target');
+  assertEqual(actions.feed.xpPerResolvedEncounter, 20, 'Reference Tend should cap support XP across one full target restoration pool');
+  assertContains(actions.feed.rewardMode, 'no-self-reward', 'Reference Tend should disclose its no-self-reward boundary');
+  assertEqual(actions.feast.xpPerResolvedEncounter, 75, 'Reference Feast should report consumption reward');
+  assertEqual(actions.flee.xpPerResolvedEncounter, 0, 'Reference Flee should report no reward');
+  const rows = report.referenceScenario.multiTargetFight;
+  assertEqual(rows.find(entry => entry.tier === 'novice' && entry.targetCount === 2 && !entry.areaTechnique).effectPerTarget, 20, 'Novice two-target Fight should report half effect');
+  assertEqual(rows.find(entry => entry.tier === 'practiced' && entry.targetCount === 4).effectPerTarget, 13, 'Practiced four-target Fight should expose its rounded current contribution');
+  assertEqual(rows.find(entry => entry.tier === 'skilled' && entry.targetCount === 4).effectPerTarget, 19, 'Skilled four-target Fight should expose its current contribution');
+  assertEqual(rows.find(entry => entry.tier === 'expert' && entry.targetCount === 4).effectPerTarget, 28, 'Expert four-target Fight should expose its current contribution');
+  assertEqual(rows.find(entry => entry.tier === 'master' && entry.targetCount === 4).effectPerTarget, 40, 'Master four-target Fight should recover full effect');
+  assertEqual(rows.find(entry => entry.areaTechnique).effectPerTarget, 40, 'Authored area technique reference should preserve full effect');
+});
+
+test('Balance scenario multi-target measurements stay aligned with runtime mastery tiers', () => {
+  const balance = loadBalanceSystemForTest();
+  const { App } = loadAppForCombat(() => 0);
+  const report = balance.scenarioBaseline(App);
+  const actor = makeUnit('Reference', { id: 'balance-reference', Figh: 40 });
+  App.player = actor;
+  App.party = [actor];
+  App._normalizeUnit(actor);
+  for (const row of report.referenceScenario.multiTargetFight.filter(entry => !entry.areaTechnique)) {
+    actor.multiActionPractice.multi.fight.xp = row.practiceXp;
+    const runtime = App._multiInteractionEffect(actor, 'fight', row.targetCount);
+    assertEqual(runtime.percent, row.percent, `${row.tier} ${row.targetCount}-target report percent should match the runtime profile`);
+    assertEqual(App._multiInteractionScaleValue(40, runtime), row.effectPerTarget, `${row.tier} ${row.targetCount}-target report effect should match runtime scaling`);
+  }
+  actor.multiTargetTechniques = ['areaAttack'];
+  const areaRow = report.referenceScenario.multiTargetFight.find(entry => entry.areaTechnique);
+  const areaRuntime = App._multiInteractionEffect(actor, 'fight', areaRow.targetCount);
+  assertEqual(areaRuntime.percent, areaRow.percent, 'Authored area report percent should match runtime technique behavior');
+  assertEqual(App._multiInteractionScaleValue(40, areaRuntime), areaRow.effectPerTarget, 'Authored area report effect should match runtime scaling');
+});
+
+test('Interaction balance matrix exposes current resource ownership and unresolved tuning seams', () => {
+  const balance = loadBalanceSystemForTest();
+  const app = {
+    BALANCE_V1: {},
+    XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 50, flirtEnemy: 50, feedAlly: 20, feedEnemy: 25 }
+  };
+  const matrix = balance.interactionMatrix(app);
+  assertEqual(matrix.schemaVersion, 1, 'Interaction matrix should expose a versioned machine-readable contract');
+  assertEqual(matrix.semantics.multiTargetCost, 'once-per-actor-command', 'Matrix should record command-level multi-target costs');
+  assertEqual(matrix.semantics.groupCost, 'once-per-participant-command', 'Matrix should record participant-level group costs');
+  assertEqual(matrix.commands.find(entry => entry.id === 'fight').outcomes.committedFailure.charge, true, 'Matrix should distinguish a charged committed failure from a free blocked selection');
+  assertEqual(matrix.commands.find(entry => entry.id === 'fight').source.hunger, 3, 'Fight row should derive its current actor hunger cost from balance settings');
+  assertEqual(matrix.commands.find(entry => entry.publicAction === 'play').source.hunger, 4, 'Play row should expose the public/internal action mapping and current cost');
+  assertEqual(matrix.variants.find(entry => entry.id === 'feed.tend').target.hunger, 0, 'Tend should declare condition-only care without nutrition');
+  assertEqual(matrix.variants.find(entry => entry.id === 'feed.tend').target.spirit, 0, 'Tend should not silently restore Spirit');
+  assertEqual(matrix.variants.find(entry => entry.id === 'feed.tend').reward.selfTarget, 0, 'Tend should declare that self-care awards no support XP');
+  assertContains(matrix.variants.find(entry => entry.id === 'feed.offerPiece').source.condition, 'MPun*0.15', 'Offer Piece should declare its source-owned condition cost');
+  assertEqual(matrix.variants.find(entry => entry.id === 'feast.digest').scope, 'self', 'Digest should be recorded as a self-scoped Feast variant');
+  assertEqual(matrix.variants.find(entry => entry.id === 'fuck.seduce').scope, 'both', 'Play should record its shared self/target action route');
+  assertEqual(matrix.digestion.hungerScaling.multipliers.satiated, 0.8, 'Matrix should expose the bounded satiated digestion multiplier');
+  assertEqual(matrix.digestion.hungerScaling.multipliers.starving, 1.4, 'Matrix should expose the bounded starving digestion multiplier');
+  assertEqual(matrix.variants.find(entry => entry.id === 'feed.nurse')?.source?.resource?.key, 'core:nurse', 'Matrix should expose the implemented Nurse resource source');
+  assert(matrix.unresolved.some(entry => entry.includes('mass-ledger')), 'Matrix should preserve Offer Piece mass-source tuning as unresolved');
+  assert(!matrix.unresolved.some(entry => entry.includes('hunger-scaled passive digestion')), 'Implemented hunger scaling should no longer remain in the unresolved list');
+});
+
+test('Passive stomach digestion uses bounded hunger bands without erasing slow mode', () => {
+  const { App, window } = loadAppForCombat();
+  assertEqual(App._digestionRateState({ hunger: 10 }, 5).rate, 4, 'Very sated holders should digest at eighty percent of the fast base rate');
+  assertEqual(App._digestionRateState({ hunger: 50 }, 5).rate, 5, 'Ordinary hunger should preserve the fast base rate');
+  assertEqual(App._digestionRateState({ hunger: 70 }, 5).rate, 6, 'Hungry holders should digest modestly faster');
+  assertEqual(App._digestionRateState({ hunger: 90 }, 5).rate, 7, 'Starving holders should use the capped urgent rate');
+  assertEqual(App._digestionRateState({ hunger: 10 }, 2).rate, 1.6, 'Satiated slow digestion should retain its distinct lower pace');
+  assertEqual(App._digestionRateState({ hunger: 90 }, 2).rate, 2.8, 'Even urgent slow digestion should remain below the ordinary fast rate');
+
+  const satedPrey = makeUnit('Sated Prey', { id: 'sated-rate-prey', CPun: 100, MPun: 100, size: 2, alive: true, inStomach: true });
+  const hungryPrey = makeUnit('Hungry Prey', { id: 'hungry-rate-prey', CPun: 100, MPun: 100, size: 2, alive: true, inStomach: true });
+  const sated = makeUnit('Sated Holder', { id: 'sated-rate-holder', hunger: 10, stomach: [satedPrey] });
+  const hungry = makeUnit('Hungry Holder', { id: 'hungry-rate-holder', hunger: 90, stomach: [hungryPrey] });
+  App.player = sated;
+  App.party = [sated, hungry];
+  App.creatures = [];
+  App.settings.slowDigestion = false;
+  const paceHtml = window.YAW_UNIT_CONTAINMENT.renderContainerInventory(App, hungry, 'party', 1);
+  assertContains(paceHtml, 'Digestion pace: Urgent (7%/tick)', 'Container UI should expose the current hunger-scaled digestion pace');
+  App._processDigestion();
+  assertEqual(satedPrey.digestionProgress, 4, 'Very sated stomach progress should advance at the bounded slower rate');
+  assertEqual(hungryPrey.digestionProgress, 7, 'Starving stomach progress should advance at the bounded urgent rate');
 });
 
 test('Rest increases hunger while accelerated digestion can provide size-scaled relief', () => {
@@ -4031,6 +4408,71 @@ test('Group action resolution charges each participant once and fizzle does not 
   assertEqual(helper.hunger, 40, 'Invalid/fizzled group plan should not silently charge the helper');
 });
 
+test('Direct and synchronized combat outcomes use the active locale', () => {
+  const direct = loadAppForCombat(() => 0);
+  const player = makeUnit('Zpig', { id: 'localized-combat-player', Figh: 40, Flir: 40, Fuck: 40, cha: 20 });
+  const fightTarget = makeUnit('Lobo', { id: 'localized-fight-target', disposition: direct.App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  const talkTarget = makeUnit('Liebre', { id: 'localized-talk-target', disposition: direct.App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 });
+  const playTarget = makeUnit('Zorro', { id: 'localized-play-target', disposition: direct.App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 });
+  direct.App.player = player;
+  direct.App.party = [player];
+  direct.App.creatures = [fightTarget, talkTarget, playTarget];
+  direct.App.combatState.active = true;
+  direct.App.activeActor = player;
+  direct.App.nextTurn = function() {};
+  direct.App._combatReachResult = () => ({ canAttempt: true, canSucceed: true, profile: 'ranged' });
+  direct.App._terrainCausesMiss = () => false;
+  direct.App._combatActionRating = () => 40;
+  direct.App._effectiveCon = () => 0;
+  direct.App._combatDamageVariance = () => 0;
+  direct.App._physicalDamageMultiplier = () => 1;
+  direct.App.updateLanguage('es');
+
+  direct.App.executeActionAgainstTarget('fight', player, fightTarget);
+  assertContains(direct.App.lastCombatActionResult.result, 'Tu golpeas a Lobo y causas 40 de castigo!', 'Player Fight result should localize player grammar instead of exposing the saved player name');
+  direct.App.executeActionAgainstTarget('flirt', player, talkTarget);
+  assertContains(direct.App.lastCombatActionResult.result, 'Tu hablas con Liebre! Baja la guardia.', 'Player Talk result should localize the direct combat outcome');
+  direct.App.executeActionAgainstTarget('fuck', player, playTarget);
+  assertContains(direct.App.lastCombatActionResult.result, 'Tu juegas con Zorro!', 'Player Play result should localize the direct combat outcome');
+
+  const synced = loadAppForCombat(() => 0);
+  const lead = makeUnit('Lider', { id: 'localized-sync-lead', Flir: 0, cha: 0, Figh: 10 });
+  const helper = makeUnit('Ayudante', { id: 'localized-sync-helper', Flir: 0, cha: 0, Figh: 10 });
+  const syncTarget = makeUnit('Objetivo', { id: 'localized-sync-target', disposition: synced.App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, CPle: 0, MPle: 100, wis: 9 });
+  synced.App.player = lead;
+  synced.App.party = [lead, helper];
+  synced.App.creatures = [syncTarget];
+  synced.App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    syncActions: [],
+    turnQueue: [lead, helper, syncTarget].map((unit, index) => ({ unit, initiative: 20 - index }))
+  };
+  synced.App.nextTurn = function() {};
+  synced.App.updateLanguage('es');
+  synced.App._resolveSyncAction({ type: 'sync_flirt', participants: [lead, helper], target: syncTarget, resolved: false });
+  assertContains(synced.App.log[synced.App.log.length - 1].text, 'Lider, Ayudante hablan con Objetivo y bajan su guardia.', 'Synchronized Talk outcome should use the active locale');
+});
+
+test('Combat headings, map summaries, and Scene Feed deltas use the active locale', () => {
+  const { App, window } = loadAppForCombat(() => 0);
+  const player = makeUnit('Zpig', { id: 'localized-derived-player' });
+  const creature = makeUnit('Liebre', { id: 'localized-map-creature' });
+  App.player = player;
+  App.party = [player];
+  App.combatState = { active: true, round: 3, currentTurn: 0, turnQueue: [{ unit: player }] };
+  App.updateLanguage('es');
+
+  assertEqual(App._combatTurnTitle(player), 'Ronda 3 - turno de Zpig', 'Combat turn heading should resolve through the active locale');
+  assertEqual(App._largeMapPoiLabel({ creatures: [creature], items: [] }), '1 criatura', 'Large-map singular creature summary should localize');
+  assertEqual(App._largeMapPoiLabel({ creatures: [creature, makeUnit('Zorro')], items: [] }), '2 criaturas', 'Large-map plural creature summary should localize');
+  assertEqual(App._largeMapPoiLabel({ creatures: [], items: [{ name: 'Hierba' }, { name: 'Piedra' }] }), '2 objetos', 'Large-map item summary should localize');
+  assertEqual(window.YAW_STORY_EVENTS.deltaLabel(App, { kind: 'damage', amount: 7 }), '7 de castigo', 'Scene Feed punishment delta should localize');
+  assertEqual(window.YAW_STORY_EVENTS.deltaLabel(App, { kind: 'healing', amount: 4 }), '4 de castigo restaurado', 'Scene Feed healing delta should localize');
+  assertEqual(window.YAW_STORY_EVENTS.deltaLabel(App, { kind: 'spirit', current: 12, max: 20 }), 'Animo 12/20', 'Scene Feed Spirit delta should localize');
+});
+
 test('Committed unreachable and ordinary missed combat attempts both cost once', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', { id: 'cost-failure-player', hunger: 20, Figh: 40 });
@@ -4178,6 +4620,55 @@ test('Balance doctrine documents V1 scope and deferred work', () => {
   assertContains(controlModelContent, 'Balance / Cost Doctrine V1', 'Control model should link the balance doctrine');
 });
 
+test('Feed decision records implemented Tend separately from deferred nutrition reserves', () => {
+  const decision = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'feed-source-economy-decision.md'), 'utf8');
+  const placement = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'feature-placement.md'), 'utf8');
+  assertContains(decision, 'Historical problem proven by the pre-decision matrix', 'Feed decision should label the former free-nutrition behavior as historical');
+  assertContains(decision, 'The current matrix no longer has that behavior.', 'Feed decision should not imply the resolved exploit remains active');
+  assertContains(decision, 'Hunger and Spirit relief were removed from Tend', 'Feed decision should record the implemented condition-only boundary');
+  assertContains(placement, 'Feed extensions and nutrition-bearing reserves', 'Feature placement should retain only unresolved Feed extensions');
+  assertNotContains(placement, 'Whether Feed becomes actor-to-target whole/portion offering', 'Feature placement should not reopen the accepted Feed direction');
+});
+
+test('Backlog completion audit maps preservation invariants and operator gates to evidence', () => {
+  const audit = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'backlog-completion-audit.md'), 'utf8');
+  assertContains(audit, '## Cross-cutting invariant ledger', 'Backlog audit should expose a requirement-level preservation ledger');
+  for (const invariant of [
+    'Downloaded `file://` play remains viable',
+    'Existing saves remain readable where compatibility is required',
+    'Content boundaries remain provider-owned',
+    'Module contributions are owned and unload cleanly',
+    'Core mechanics stay deterministic and service-independent',
+    'Responsive commands and recovery remain usable and perceivable',
+    'Map topology remains playable independently of artwork',
+    'Delivery mutations require explicit authority'
+  ]) {
+    assertContains(audit, invariant, `Backlog audit should retain evidence for: ${invariant}`);
+  }
+  assertContains(audit, '## Deferred decision ledger', 'Backlog audit should distinguish deferred design choices from missing implementation');
+  for (const decision of [
+    'Mobile Interaction Flow V2',
+    'Concrete new media providers',
+    'New row/reach rules'
+  ]) {
+    assertContains(audit, decision, `Backlog audit should retain the operator gate for: ${decision}`);
+  }
+  assertContains(audit, 'Resource Ledger V1, Combat Technique V1, Recovery Mode V1', 'Completed mechanics contracts should move into the proved optional-contract foundation');
+  assertNotContains(audit, '| Ghost/shrine recovery |', 'Implemented Ghost recovery should no longer remain in the deferred decision ledger');
+  assertNotContains(audit, '| Sprite Pack contract |', 'Implemented Sprite Pack V1 should no longer remain in the deferred decision ledger');
+  assertContains(audit, 'no test or build command stages, commits, pushes, versions, or deploys', 'Backlog audit should preserve explicit delivery authorization gates');
+});
+
+test('Accepted Mobile Interaction Flow V2 keeps roster navigation separate from core command ownership', () => {
+  const decision = fs.readFileSync(MOBILE_FLOW_DECISION, 'utf8');
+  assertContains(decision, 'Status: **accepted 2026-07-23', 'Mobile flow should record the accepted operator decision');
+  assertContains(decision, 'Unified Roster Sheet Plus Persistent Context Composer', 'Mobile flow should name the recommended information architecture');
+  assertContains(decision, 'Place actions remain in the persistent context composer', 'Roster navigation must not absorb structure and tile commands');
+  assertContains(decision, 'Combat reuses the same roster shell but does not move intent confirmation', 'Roster reuse must preserve authoritative combat command ownership');
+  assertContains(decision, 'V1 must not offer dock-button, traversal-grid, Scene Feed, combat-confirmation,', 'Initial UI slots should exclude core-authoritative surfaces');
+  assertContains(decision, 'modules do not receive arbitrary DOM insertion', 'UI contribution doctrine should remain declarative rather than arbitrary HTML');
+});
+
 test('World state helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/world-state.js'", 'World state helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/world-state.js'") < buildContent.indexOf("'src/core/app.js'"), 'World state helper should load before app.js');
@@ -4282,6 +4773,11 @@ test('Create flow helper module is registered before app code', () => {
   assertContains(createFlowContent, 'validate(app)', 'Create flow helper should own character validation');
   assertContains(createFlowContent, 'randomize(app)', 'Create flow helper should own random character draft setup');
   assertContains(createFlowContent, 'createCharacter(app)', 'Create flow helper should own new-run initialization');
+  assertContains(createFlowContent, 'speciesText(app, species, field =', 'Create flow should support authored locale keys with safe text fallback');
+  assertContains(createFlowContent, 'aria-pressed="${selected ? \'true\' : \'false\'}"', 'Dynamic create choices should expose their pressed state');
+  assertContains(createFlowContent, 'app._escapeHtml(this.speciesText(app, species', 'Module-supplied species presentation should be escaped before rendering');
+  assertContains(createFlowContent, "app._label('create.defaultTraits'", 'Species details should localize the default-traits label');
+  assertContains(createFlowContent, "app._label('create.none'", 'Species details should localize an empty trait set');
   assertContains(createFlowContent, 'if (!app.validateCharacterCreation()) return;', 'Create flow should stop invalid starts');
   assertContains(createFlowContent, 'app.exploreTile(0, 0)', 'Create flow should initialize the starting tile');
   assertContains(createFlowContent, 'app.revealVisibleTiles(0, 0', 'Create flow should reveal the starting sight radius for the large map');
@@ -4292,6 +4788,9 @@ test('Create flow helper module is registered before app code', () => {
 });
 
 test('Defeat recovery helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/recovery-modes.js'", 'Recovery mode registry should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/center-context.js'") < buildContent.indexOf("'src/core/recovery-modes.js'"), 'Recovery modes should load after center context helpers');
+  assert(buildContent.indexOf("'src/core/recovery-modes.js'") < buildContent.indexOf("'src/core/defeat-recovery.js'"), 'Recovery modes should load before defeat recovery');
   assertContains(buildContent, "'src/core/defeat-recovery.js'", 'Defeat recovery helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/center-context.js'") < buildContent.indexOf("'src/core/defeat-recovery.js'"), 'Defeat recovery should load after center context helpers');
   assert(buildContent.indexOf("'src/core/defeat-recovery.js'") < buildContent.indexOf("'src/core/combat-lifecycle.js'"), 'Defeat recovery should load before combat lifecycle');
@@ -4306,6 +4805,9 @@ test('Defeat recovery helper module is registered before app code', () => {
   assertContains(defeatRecoveryContent, 'canSetSafeAnchor(app)', 'Defeat recovery should own safe-place eligibility');
   assertContains(defeatRecoveryContent, "app._emitModuleHook('onDefeat'", 'Defeat recovery should emit a defeat module hook');
   assertContains(defeatRecoveryContent, "app._emitModuleHook('onRegenerate'", 'Defeat recovery should emit a regenerate module hook');
+  assertContains(recoveryModesContent, 'const YAW_RECOVERY_MODES = {', 'Recovery Mode V1 should expose its bounded registry');
+  assertContains(appContent, 'YAW_DEFEAT_RECOVERY.beginSelectedRecovery(this)', 'App recovery command should resolve the selected recovery mode');
+  assertContains(appContent, 'YAW_DEFEAT_RECOVERY.resurrectFromJourney(this)', 'App should expose shrine resurrection through defeat recovery');
   assertContains(appContent, 'YAW_DEFEAT_RECOVERY.markDefeat(this, outcome)', 'App defeat wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_DEFEAT_RECOVERY.regenerate(this)', 'App regeneration wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_DEFEAT_RECOVERY.canSetSafeAnchor(this)', 'App safe-place eligibility wrapper should delegate to the helper');
@@ -4395,8 +4897,8 @@ test('Unit selection helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/unit-selection.js'", 'Unit selection helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/unit-selection.js'") < buildContent.indexOf("'src/core/app.js'"), 'Unit selection helper should load before app.js');
   assertContains(unitSelectionContent, 'const YAW_UNIT_SELECTION = {', 'Unit selection helper should expose the selection service');
-  assertContains(unitSelectionContent, 'focusAttrs(app, unit, expanded = false)', 'Unit selection helper should own detail-toggle semantics');
-  assertContains(unitSelectionContent, 'detailLabel(app, unit, expanded = false)', 'Unit selection helper should own collapsed/expanded detail labels');
+  assertContains(unitSelectionContent, 'focusAttrs(app, unit, expanded = false, fallbackName = null)', 'Unit selection helper should own detail-toggle semantics');
+  assertContains(unitSelectionContent, 'detailLabel(app, unit, expanded = false, fallbackName = null)', 'Unit selection helper should own collapsed/expanded detail labels');
   assertContains(unitSelectionContent, 'data-card-purpose="detail-toggle"', 'Unit card containers should identify detail toggling instead of actor/target selection');
   assertContains(unitSelectionContent, 'stateAttrs(app, unit, type)', 'Unit selection helper should own card-level selected-state metadata');
   assertContains(unitSelectionContent, 'data-selection-roles="${roleList}" data-selection-state="selected"', 'Selected unit card roots should expose their selection roles');
@@ -4422,7 +4924,7 @@ test('Unit selection helper module is registered before app code', () => {
   assertContains(unitSelectionContent, 'data-selection-control="combat-target" data-selection-mode="combat-pick" data-selection-state="${active ? \'pickable\' : \'blocked\'}" data-command-slot="target"', 'Combat target controls should identify the target slot');
   assertContains(appContent, 'YAW_UNIT_SELECTION.roles(this, unit, type)', 'App unit selection role wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.stateAttrs(this, unit, type)', 'App unit selected-state wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_UNIT_SELECTION.focusAttrs(this, unit, expanded)', 'App unit focus wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_UNIT_SELECTION.focusAttrs(this, unit, expanded, fallbackName)', 'App unit focus wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.actionRowAttrs(this, scope, unit)', 'App unit action row wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.controlAttrs(this, kind, active)', 'App selection control wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.chips(this, unit, type)', 'App selection chip wrapper should delegate to the helper');
@@ -4768,8 +5270,8 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatRulesContent, 'applyTerrainRoundEffects(app, living)', 'Combat rules helper should own terrain round effects');
   assertNotContains(combatRulesContent, 'Math.random', 'Combat rules helper should not use ambient randomness');
   assertContains(appContent, 'YAW_COMBAT_RULES.effectiveSpeed(this, unit)', 'App effective speed wrapper should delegate to combat rules');
-  assertContains(appContent, 'YAW_COMBAT_RULES.reachResult(this, actor, target, action)', 'App structured reach wrapper should delegate to combat rules');
-  assertContains(appContent, 'YAW_COMBAT_RULES.canReachCombatTarget(this, actor, target, action)', 'App reach wrapper should delegate to combat rules');
+  assertContains(appContent, 'YAW_COMBAT_RULES.reachResult(this, actor, target, action, options)', 'App structured reach wrapper should delegate to combat rules');
+  assertContains(appContent, 'YAW_COMBAT_RULES.canReachCombatTarget(this, actor, target, action, options)', 'App reach wrapper should delegate to combat rules');
   assertContains(appContent, 'YAW_COMBAT_RULES.applyTerrainRoundEffects(this, living)', 'App terrain effects wrapper should delegate to combat rules');
   assertContains(buildContent, "'src/core/combat-status.js'", 'Combat status helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/combat-status.js'") < buildContent.indexOf("'src/core/combat-actions.js'"), 'Combat status should load before combat action helpers');
@@ -4961,7 +5463,7 @@ test('Combat feed helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-feed.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat feed helper should load before app.js');
   assertContains(combatFeedContent, 'const YAW_COMBAT_FEED = {', 'Combat feed helper should expose the feed service');
   assertContains(combatFeedContent, 'executeAction(app, actor = app.activeActor || app._currentCombatActor() || app.player, target = null)', 'Combat feed helper should own target-first feed intent execution');
-  assertContains(combatFeedContent, "executeSubAction(app, subId, actor, target = app.feedSelection?.target || null, action = app.feedSelection?.action || 'feed')", 'Combat variant helper should own target-bound Feed and Feast execution');
+  assertContains(combatFeedContent, "executeSubAction(app, subId, actor, target = app.feedSelection?.target || null, action = app.feedSelection?.action || 'feed', options = {})", 'Combat variant helper should own target-bound Feed, Feast, and Fight execution');
   assertContains(combatFeedContent, 'resolveCommand(app, command)', 'Combat feed helper should resolve plan-backed feed sub-action commands');
   assertContains(combatFeedContent, 'app.feedSelection = selection', 'Combat variant helper should retain the compatibility selection state');
   assertContains(combatFeedContent, 'app._renderInteractionState({ exploration: false, toolbelt: true })', 'Combat feed helper should render feed options through panel/toolbelt state');
@@ -5424,6 +5926,30 @@ test('Focus trap helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_FOCUS_TRAP.restore(this, options)', 'App focus trap restore should delegate to the helper');
 });
 
+test('Focus trap excludes hidden, inert, and negative-tab descendants', () => {
+  const { App } = loadAppForCombat();
+  const container = makeElement();
+  const visible = makeElement();
+  const hidden = makeElement();
+  const cssHidden = makeElement();
+  const ariaHidden = makeElement();
+  const negativeTab = makeElement();
+  const inertChild = makeElement();
+  const inertParent = makeElement();
+  [visible, hidden, cssHidden, ariaHidden, negativeTab].forEach(element => { element.parentElement = container; });
+  hidden.hidden = true;
+  cssHidden.style.display = 'none';
+  ariaHidden.setAttribute('aria-hidden', 'true');
+  negativeTab.setAttribute('tabindex', '-1');
+  inertParent.parentElement = container;
+  inertParent.setAttribute('inert', '');
+  inertChild.parentElement = inertParent;
+  container.querySelectorAll = () => [visible, hidden, cssHidden, ariaHidden, negativeTab, inertChild];
+  const focusables = App._focusableChildren(container);
+  assertEqual(focusables.length, 1, 'Focus trap should retain only operable visible descendants');
+  assertEqual(focusables[0], visible, 'Focus trap should retain the visible descendant');
+});
+
 test('Mobile context menu helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/mobile-context-menu.js'", 'Mobile context menu helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/mobile-context-menu.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile context menu helper should load before app.js');
@@ -5687,6 +6213,8 @@ test('Local map helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/desktop-play-surface.js'") < buildContent.indexOf("'src/core/local-map.js'"), 'Desktop play surface helper should load before local map refresh coordination');
   assertContains(localMapContent, 'const YAW_LOCAL_MAP = {', 'Local map helper should expose the local map service');
   assertContains(localMapContent, 'renderInterior(app)', 'Local map helper should own interior local-map rendering');
+  assertContains(localMapContent, "app._label('location.insideName'", 'Desktop interior coordinates should localize their context label');
+  assertContains(localMapContent, "app._label('location.insideCoordinates'", 'Mobile interior coordinates should localize their context label');
   assertContains(localMapContent, 'renderOverworld(app)', 'Local map helper should own overworld local-map rendering');
   assertContains(localMapContent, "document.getElementById('mobile-mini-map')", 'Local map helper should target the mobile local map only');
   assertContains(localMapContent, 'centerPresenceHtml(app)', 'Local map helper should render compact center-cell presence');
@@ -6052,11 +6580,13 @@ test('Binary save uses live top-level stats when nested stats are stale', () => 
   assertEqual(loaded.party[1].stats.spd, 26, 'Serialized ally unit should preserve live top-level SPD');
 });
 
-test('Binary save compatibility metadata preserves multi-action practice', () => {
+test('Binary save compatibility metadata preserves multi-action practice and module creation choices', () => {
   const Binary = loadBinaryForTest();
   const player = makeSerializableUnit('You', {
     id: 'binary-practice-player',
-    multiActionPractice: { multi: { fight: { xp: 73, commands: 9, contextKey: 'combat:test', contextGain: 4 } } }
+    multiActionPractice: { multi: { fight: { xp: 73, commands: 9, contextKey: 'combat:test', contextGain: 4 } } },
+    creationOptions: { 'test-provider': { 'crest-style': 'ember' } },
+    resourceLedger: { 'test-provider:ember': { current: 2, progress: 1 } }
   });
   const loaded = Binary.loadGame(Binary.saveGame({
     player,
@@ -6065,6 +6595,8 @@ test('Binary save compatibility metadata preserves multi-action practice', () =>
     currentBiome: 'forest'
   }));
   assertEqual(loaded.questState.partyMultiActionPractice[0].multi.fight.xp, 73, 'Binary export/import metadata should preserve Fight practice even though the legacy unit codec is fixed');
+  assertEqual(loaded.questState.playerCompatibility.creationOptions['test-provider']['crest-style'], 'ember', 'Binary compatibility metadata should preserve bounded provider-owned creation choices');
+  assertEqual(loaded.questState.partyResourceLedgers[0]['test-provider:ember'].current, 2, 'Binary compatibility metadata should preserve namespaced unit resource state outside the fixed legacy unit codec');
 });
 
 test('Binary save/load preserves full world tile state', () => {
@@ -6237,6 +6769,8 @@ test('Biome intro content covers grove and safe unknown fallbacks', () => {
   const unknown = CONTENT.biomeIntro('crystal-bog');
   assertContains(unknown, 'Crystal Bog', 'Unknown biome fallback should render a readable biome label');
   assertNotContains(unknown, '[Missing content', 'Unknown biome fallback should not leak missing content markers');
+  CONTENT.setLanguage('es');
+  assertEqual(CONTENT.biomeIntro('crystal-bog'), 'Observas Crystal Bog. La zona esta tranquila por ahora.', 'Unknown biome fallback sentence should use the active locale while preserving the authored biome identifier');
   assertContains(CONTENT.getContent('quest.missing'), '[Missing content: quest.missing]', 'Non-biome missing content should remain visible for development');
 });
 
@@ -6291,6 +6825,31 @@ test('Content preference loading normalizes stored policy values', () => {
   assertEqual(malformed.preferences.posture, malformed.POSTURES.SFW, 'Malformed preference JSON should reset to SFW posture');
   assertEqual(malformed.preferences.voreEnabled, true, 'Malformed preference JSON should retain neutral core consumption');
   assertEqual(JSON.parse(malformed.__testStorage.get('yaw-content-prefs')).maxTier, malformed.TIERS.SAFE, 'Malformed preference JSON should be overwritten with safe defaults');
+});
+
+test('Locale Pack V1 restores a pending module locale and falls back safely on unload', () => {
+  const CONTENT = loadContentSystemForTest({
+    'yaw-content-prefs': JSON.stringify({ language: 'qps-ploc' })
+  });
+  assertEqual(CONTENT.preferences.language, 'en', 'An unavailable stored module locale should use English during startup');
+  assertEqual(CONTENT.pendingLanguage, 'qps-ploc', 'A valid unavailable locale id should remain pending for module restoration');
+
+  CONTENT.registerLocale('pseudo-pack', {
+    id: 'qps-ploc',
+    displayName: 'Pseudo Locale',
+    fallback: 'en',
+    targets: [{ moduleId: 'core', minVersion: '0.14.0' }]
+  });
+  CONTENT.registerLocaleEntries('qps-ploc', { 'settings.language': '[Language]' });
+  assertEqual(CONTENT.preferences.language, 'qps-ploc', 'Registering the pending owned locale should restore the player selection');
+  assertEqual(CONTENT.t('settings.language'), '[Language]', 'Owned locale entries should override the fallback locale');
+  assertEqual(CONTENT.t('action.fight'), 'Fight', 'Missing owned locale entries should fall back to English');
+  assertEqual(CONTENT.localeCatalog().some(locale => locale.id === 'qps-ploc'), true, 'Owned locales should appear in the dynamic locale catalog');
+
+  const removal = CONTENT.unregisterLocale('qps-ploc', 'pseudo-pack');
+  assertEqual(removal.languageChanged, true, 'Unloading the selected locale should report a language transition');
+  assertEqual(CONTENT.preferences.language, 'en', 'Unloading the selected locale should return to its available fallback');
+  assertEqual(CONTENT.localeCatalog().some(locale => locale.id === 'qps-ploc'), false, 'Unloaded locale definitions should leave the dynamic catalog');
 });
 
 test('Content policy catalog deduplicates provider declarations and persists category and variant choices', () => {
@@ -6596,6 +7155,12 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'ui.details': 'Detalles'", 'Spanish compact rail details label missing');
   assertContains(contentContent, "'ui.openPartyDetails': 'Abrir detalles del grupo'", 'Spanish party details route label missing');
   assertContains(contentContent, "'ui.openCreatureDetails': 'Abrir detalles de criaturas'", 'Spanish creature details route label missing');
+  assertContains(contentContent, "'unit.generic': 'unit'", 'English generic unit fallback missing');
+  assertContains(contentContent, "'unit.partyMember': 'party member'", 'English party-member fallback missing');
+  assertContains(contentContent, "'unit.creature': 'creature'", 'English creature fallback missing');
+  assertContains(contentContent, "'unit.generic': 'unidad'", 'Spanish generic unit fallback missing');
+  assertContains(contentContent, "'unit.partyMember': 'miembro del grupo'", 'Spanish party-member fallback missing');
+  assertContains(contentContent, "'unit.creature': 'criatura'", 'Spanish creature fallback missing');
   assertContains(contentContent, "'mod.loading': 'Loading modules...'", 'English module loading fallback missing');
   assertContains(contentContent, "'mod.loading': 'Cargando modulos...'", 'Spanish module loading fallback missing');
 });
@@ -6608,6 +7173,52 @@ test('Maintained locales expose matching translation keys', () => {
   const missingEnglish = spanish.filter(key => !Object.prototype.hasOwnProperty.call(CONTENT.locales.en || {}, key));
   assertEqual(missingSpanish.join(','), '', `Spanish locale is missing keys: ${missingSpanish.join(', ')}`);
   assertEqual(missingEnglish.join(','), '', `English locale is missing keys: ${missingEnglish.join(', ')}`);
+});
+
+test('Every literal core label key is registered in maintained locales', () => {
+  const CONTENT = loadContentSystemForTest();
+  const registered = new Set(Object.keys(CONTENT.locales.en || {}));
+  const sourceDirectories = [path.join(SRC_DIR, 'core'), path.join(SRC_DIR, 'ui')];
+  const used = new Map();
+  sourceDirectories.forEach(directory => {
+    fs.readdirSync(directory).filter(name => name.endsWith('.js')).forEach(name => {
+      const file = path.join(directory, name);
+      const source = fs.readFileSync(file, 'utf8');
+      const pattern = /\._label\(\s*(['"])([^'"]+)\1/g;
+      let match;
+      while ((match = pattern.exec(source))) {
+        if (!used.has(match[2])) used.set(match[2], []);
+        used.get(match[2]).push(path.relative(SRC_DIR, file));
+      }
+    });
+  });
+  const missing = [...used.keys()].filter(key => !registered.has(key)).sort();
+  const detail = missing.map(key => `${key} (${[...new Set(used.get(key))].join(', ')})`).join('; ');
+  assertEqual(missing.join(','), '', `Literal core label keys must not rely on English fallback-only presentation: ${detail}`);
+});
+
+test('Core UI source does not bypass localization with direct English literals', () => {
+  const sourceDirectories = [path.join(SRC_DIR, 'core'), path.join(SRC_DIR, 'ui')];
+  const violations = [];
+  const patterns = [
+    { kind: 'dialog', pattern: /\b(?:alert|confirm|prompt)\(\s*['"][^'"]*[A-Za-z]/ },
+    { kind: 'DOM text', pattern: /\.(?:textContent|innerText)\s*=\s*['"][^'"]*[A-Za-z]/ },
+    { kind: 'Activity Log', pattern: /(?:this\.|app\.)log\.push\(\s*\{\s*text\s*:\s*[`'"][^`'"]*[A-Za-z]/ },
+    { kind: 'Activity Log', pattern: /(?:this\.|app\.)log\s*=\s*\[\s*\{\s*text\s*:\s*[`'"][^`'"]*[A-Za-z]/ },
+    { kind: 'Activity Log', pattern: /\._pushLog\(\s*[`'"][^`'"]*[A-Za-z]/ },
+    { kind: 'interaction result', pattern: /(?:^\s*|[;{]\s*)result\s*=\s*[`'"][^`'"]*[A-Za-z]/ }
+  ];
+  sourceDirectories.forEach(directory => {
+    fs.readdirSync(directory).filter(name => name.endsWith('.js')).forEach(name => {
+      const file = path.join(directory, name);
+      fs.readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+        patterns.forEach(({ kind, pattern }) => {
+          if (pattern.test(line)) violations.push(`${path.relative(SRC_DIR, file)}:${index + 1} ${kind}`);
+        });
+      });
+    });
+  });
+  assertEqual(violations.join(','), '', `Direct player-facing literals must use maintained labels: ${violations.join('; ')}`);
 });
 
 // === TEMPLATE TESTS ===
@@ -6629,6 +7240,8 @@ test('Template has all screen divs', () => {
   assertContains(template, 'id="screen-market"', 'market screen missing');
   assertContains(template, 'id="tutorial-overlay"', 'tutorial overlay missing');
   assertContains(template, 'id="save-manager"', 'save manager missing');
+  assertContains(template, 'id="menu-mods"', 'main menu module control missing');
+  assertContains(template, 'data-i18n-title="startup.loadingMods" data-i18n-aria-label="startup.loadingMods"', 'Initial module-readiness control should localize both visible tooltip and accessible name');
 });
 
 test('Template has all panels', () => {
@@ -6698,6 +7311,7 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertContains(modUiContent, "this.label('mod.provenance.user'", 'Mod provenance should localize');
   assertContains(modUiContent, "this.label('mod.settings'", 'Mod settings summary should localize');
   assertContains(modUiContent, "this.label('mod.controlledByHost'", 'Host-controlled module fallback should localize');
+  assertContains(modUiContent, 'controlState.reasonKey', 'Host compatibility and policy reasons should localize from stable reason metadata');
   assertContains(modUiContent, "this.label(key, fallback, { name, message })", 'Mod enable or disable failures should localize and include the policy error');
   assertContains(modUiContent, 'await this.refreshModList();', 'Mod enable failures should refresh list state after rejection');
   assertContains(modUiContent, 'alert(text);', 'Mod enable failures should surface a user-facing alert');
@@ -6727,9 +7341,10 @@ test('Canonical module doctrine matches the implemented package and capability b
   assertContains(doctrine, '"packageVersion": 1', 'Module doctrine should publish the current package version');
   assertContains(doctrine, 'The installer still accepts the older bare `{ manifest, code, assets }` shape', 'Module doctrine should distinguish compatibility input from the authoring format');
   for (const permission of [
-    'ui.read', 'media:read', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide',
+    'ui.read', 'media:read', 'scene:add_template', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide',
     'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template',
-    'content:add_locale', 'content:add_creation_option', 'content:add_action_variant'
+    'content:add_locale', 'content:add_creation_option', 'content:add_action_variant',
+    'mechanics:add_resource_profile', 'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'
   ]) {
     assertContains(moduleSystemContent, `'${permission}'`, `Runtime should declare permission ${permission}`);
     assertContains(doctrine, `\`${permission}\``, `Module doctrine should document permission ${permission}`);
@@ -6743,8 +7358,8 @@ test('Canonical module doctrine matches the implemented package and capability b
     assertContains(moduleSystemContent, `${event}: []`, `Runtime should declare hook ${event}`);
     assertContains(doctrine, `\`${event}\``, `Module doctrine should document hook ${event}`);
   }
-  assertContains(doctrine, 'currently extends only `feed` and `feast`', 'Doctrine should keep action registration within the implemented V1 boundary');
-  assertContains(doctrine, 'custom Play variants are not a public module capability yet', 'Doctrine should not imply an unimplemented Play variant seam');
+  assertContains(doctrine, 'extends `feed`, `feast`, and `play`', 'Doctrine should keep action registration within the implemented boundary');
+  assertContains(doctrine, '`play` maps', 'Doctrine should document the public Play spelling');
   assertContains(doctrine, '`MODS.getSetting()` and `MODS.setSetting()` are asynchronous', 'Doctrine should make module setting timing explicit');
   assertContains(doctrine, 'Template registration is not an event subscription', 'Doctrine should distinguish content registration from behavior hooks');
   assertContains(doctrine, '`required: true` blocks module enablement until opt-in', 'Doctrine should define required and optional category behavior');
@@ -6769,10 +7384,18 @@ test('Public release notes and run-independent diagnostics are reachable from sy
 
 test('Host Catalog UI uses localized safe rendering while samples remain internal fixtures', () => {
   assertContains(template, '<h1 id="host-catalog-title" style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></h1>', 'Host Catalog fallback should expose an accessible server-supplied catalog heading');
+  assertContains(marketScreenContent, '<h1 id="host-catalog-title"', 'Runtime Host Catalog should preserve the dialog heading relationship after replacing fallback markup');
+  assertContains(marketScreenContent, '<p id="host-catalog-description"', 'Runtime Host Catalog should preserve the dialog description relationship after replacing fallback markup');
   assertContains(template, 'data-i18n="market.subtitle">Modules supplied and governed by this game host.</p>', 'Host Catalog fallback description should opt into localization');
   assertContains(template, 'title="Close host catalog" aria-label="Close host catalog" data-i18n="ui.close" data-i18n-title="market.closeTitle"', 'Host Catalog should expose a persistent localized close button');
   assertNotContains(template, 'data-command-control="browse-marketplace-samples"', 'Player UI should not expose the development sample browser');
   assertContains(template, 'id="market-content" data-command-surface="marketplace" data-command-mode="system"', 'Marketplace fallback should identify itself as a system surface');
+  assertContains(template, 'id="remote-module-import-toggle"', 'URI importer should expose a stable disclosure trigger');
+  assertContains(template, 'aria-controls="remote-module-import" aria-expanded="false"', 'URI importer trigger should identify its controlled collapsed region');
+  assertContains(template, 'id="remote-module-import" hidden aria-hidden="true" aria-labelledby="remote-module-import-title"', 'URI importer should start outside the visible and accessibility flows');
+  assertContains(modUiContent, "trigger?.setAttribute('aria-expanded', open ? 'true' : 'false')", 'URI importer should synchronize its disclosure state');
+  assertContains(modUiContent, 'this.remoteImportReturnFocus = active', 'URI importer should retain its logical opener');
+  assertContains(modUiContent, 'target?.focus?.()', 'Closing URI importer should restore logical opener focus');
   assertContains(template, 'data-command-control="open-installed-modules"', 'Marketplace fallback installed-modules control should be classified');
   assertContains(template, 'data-command-control="close-marketplace"', 'Marketplace fallback close controls should be classified');
   assertContains(template, 'data-command-control="close-marketplace" data-command-slot="exit"', 'Marketplace fallback close controls should identify the canonical exit slot');
@@ -6789,6 +7412,9 @@ test('Host Catalog UI uses localized safe rendering while samples remain interna
   assertContains(marketScreenContent, "description: 'Fixture stub for the safe biome-pack install path'", 'Marketplace sample entries should use explicit fixture descriptions');
   assertContains(marketScreenContent, "this.label('market.search'", 'Marketplace search placeholder should localize');
   assertContains(marketScreenContent, "this.label('market.installSampleModule'", 'Marketplace sample install button title should localize');
+  assertContains(marketScreenContent, "this.label('market.installHostModule'", 'Host Catalog install button title should localize');
+  assertContains(marketScreenContent, 'mod.compatibilityReasonKey', 'Host Catalog compatibility reasons should localize from stable reason metadata');
+  assertContains(marketScreenContent, "this.label('market.runtimeOrigins'", 'Host Catalog runtime-origin summary should localize');
   assertContains(marketScreenContent, "this.label('market.closeTitle'", 'Marketplace dynamic close title should localize');
   assertContains(marketScreenContent, 'onclick="returnToGame()"', 'Marketplace dynamic view should keep a close button after rerender');
   assertContains(marketScreenContent, "this.label('market.preparingSample'", 'Marketplace sample preparation log should localize without implying download');
@@ -7046,6 +7672,7 @@ test('New game flow is slot-aware and warns before destructive slot changes', ()
   assertContains(template, '.save-slot-card.empty', 'Empty save slots should have distinct styling');
   assertContains(template, '.save-manager-toolbar', 'Save manager should style its top-level New Game action');
   assertContains(template, 'id="save-manager" class="screen screen-overlay" role="dialog" aria-modal="true"', 'Save manager should behave as a modal dialog');
+  assertContains(template, 'aria-labelledby="save-manager-title" aria-describedby="save-manager-description"', 'Save manager should relate its modal name and description to visible localized copy');
   assertContains(template, '#save-manager.screen', 'Save manager overlay styles should be explicit');
   assertContains(template, 'height: 100dvh', 'Save manager should use dynamic viewport height on mobile');
   assertContains(template, 'overflow: hidden', 'Save manager overlay should keep scrolling inside the dialog surface');
@@ -7177,11 +7804,16 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertNotContains(settingsNavContent, "App.showScreen('settings')", 'Injected settings nav should not bypass settings return context');
   assertContains(settingsNavContent, "setAttribute('data-i18n-aria-label', 'ui.menu.settingsTitle')", 'Injected settings nav button should localize accessible label');
   assertContains(settingsNavContent, "setAttribute('data-i18n-title', 'ui.menu.settingsTitle')", 'Injected settings nav button should localize title');
+  assertContains(settingsNavContent, "App._label('ui.menu.settingsTitle', 'Open settings')", 'Injected settings nav should resolve its initial accessible name in the active locale');
   assertContains(marketNavContent, "if (document.getElementById('app-menu')) return;", 'Injected market nav should be fallback-only when the app menu exists');
+  assertContains(marketNavContent, "setAttribute('data-command-surface', 'app-system')", 'Injected market nav should identify as a system route');
+  assertContains(marketNavContent, "setAttribute('data-command-control', 'open-market')", 'Injected market nav should identify its market route');
   assertContains(marketNavContent, "setAttribute('data-i18n-aria-label', 'ui.menu.marketTitle')", 'Injected market nav button should localize accessible label');
   assertContains(marketNavContent, "setAttribute('data-i18n-title', 'ui.menu.marketTitle')", 'Injected market nav button should localize title');
   assertContains(marketNavContent, "marketBtn.onclick = () => App.showMarketScreen()", 'Injected market nav should use the shared overlay route');
   assertContains(modUiContent, "if (document.getElementById('app-menu')) return;", 'Injected mods nav should be fallback-only when the app menu exists');
+  assertContains(modUiContent, "setAttribute('data-command-surface', 'app-system')", 'Injected mods nav should identify as a system route');
+  assertContains(modUiContent, "setAttribute('data-command-control', 'open-mods')", 'Injected mods nav should identify its module-manager route');
   assertContains(modUiContent, "setAttribute('data-i18n-aria-label', 'ui.menu.modsTitle')", 'Injected mods nav button should localize accessible label');
   assertContains(modUiContent, "setAttribute('data-i18n-title', 'ui.menu.modsTitle')", 'Injected mods nav button should localize title');
   assertContains(template, 'aria-label="Show details for all party cards"', 'Party panel detail control should expose accessible label');
@@ -7189,6 +7821,30 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, 'aria-label="Export visible log entries"', 'Log export control should expose accessible label');
   assertContains(template, 'aria-label="Show combat log entries"', 'Combat log filter should expose accessible label');
   assertContains(template, 'aria-label="Open activity log"', 'Mobile activity log summary should expose accessible label');
+});
+
+test('App menu keyboard navigation returns focus to its trigger', () => {
+  const { App, document } = loadAppForCombat();
+  const menu = document.getElementById('app-menu');
+  const toggle = document.getElementById('app-menu-toggle');
+  const save = makeElement();
+  const load = makeElement();
+  save.setAttribute('data-command-control', 'open-save-slots');
+  load.setAttribute('data-command-control', 'open-load-slots');
+  save.focus = () => { document.activeElement = save; };
+  load.focus = () => { document.activeElement = load; };
+  toggle.focus = () => { document.activeElement = toggle; };
+  menu.querySelectorAll = () => [save, load];
+  App.setAppMenuOpen(true);
+  document.activeElement = save;
+  let prevented = false;
+  App.handleAppMenuKey({ key: 'ArrowDown', preventDefault() { prevented = true; }, stopPropagation() {} });
+  assertEqual(document.activeElement, load, 'ArrowDown should move focus to the next app-menu command');
+  assertEqual(prevented, true, 'App-menu arrow navigation should consume the keyboard event');
+  App.handleAppMenuKey({ key: 'Escape', preventDefault() {}, stopPropagation() {} });
+  assertEqual(menu.classList.contains('open'), false, 'Escape should close the app menu');
+  assertEqual(toggle.getAttribute('aria-expanded'), 'false', 'Escape should collapse the app-menu trigger state');
+  assertEqual(document.activeElement, toggle, 'Escape should return focus to the app-menu trigger');
 });
 
 test('Static setup review and system controls identify non-composer surfaces', () => {
@@ -7482,11 +8138,12 @@ test('Create screen encounter preferences use dynamic identity percentages', () 
   assertContains(template, 'id="encounter-weight-nonbinary"', 'non-binary encounter percentage control missing');
   assertContains(template, "App.selectEncounterPreference('nonbinary')", 'non-binary preference preset missing');
   assertContains(template, 'data-command-control="select-encounter-preference" data-create-option="any" data-value="any" onclick="App.selectEncounterPreference(\'any\')"', 'Any preset should route through the preference helper');
-  assertContains(template, '<div class="option-card selected" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="any"', 'Any should be the default preferred-encounter preset');
+  assertContains(template, '<div class="option-card selected" role="button" tabindex="0" aria-pressed="true" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="any"', 'Any should be the default preferred-encounter preset');
   assertContains(appContent, 'selectedEncounterWeights: { female: 34, male: 33, nonbinary: 33 }', 'default encounter weights should be explicit');
   assertContains(encounterPreferencesContent, "preset(value)", 'encounter preset helper missing');
   assertContains(encounterPreferencesContent, "pickIdentity(rollValue", 'encounter identity picker missing');
   assertContains(encounterPreferencesContent, "updateWeight(app, key, value)", 'encounter percentage update helper missing');
+  assertContains(encounterPreferencesContent, "card.setAttribute('aria-pressed', selected ? 'true' : 'false')", 'Encounter preference presets should synchronize pressed state');
   assertContains(createFlowContent, "app.encounterWeights = app._normalizeEncounterWeights(app.selectedEncounterWeights)", 'created character should persist selected encounter weights');
   assertContains(serContent, 'encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null', 'encounter weights should persist in save metadata');
 });
@@ -7500,7 +8157,7 @@ test('Species accordion is the default expanded section', () => {
 });
 
 test('Create setup option cards are tagged and keyboard operable', () => {
-  assertContains(template, 'role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity"', 'static create option cards should be classified as setup buttons');
+  assertContains(template, 'role="button" tabindex="0" aria-pressed="false" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity"', 'static create option cards should be classified as setup buttons with selection state');
   assertContains(template, 'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click()}"', 'static create option cards should support keyboard activation');
   assertContains(createFlowContent, 'data-command-control="select-species"', 'dynamic species option cards should be classified as setup controls');
   assertContains(createFlowContent, 'data-command-control="toggle-trait"', 'dynamic trait option cards should be classified as setup controls');
@@ -7525,7 +8182,7 @@ test('Mobile game shell prevents horizontal overflow', () => {
   assertNotContains(template, 'right: -85vw', 'mobile panels should not sit at negative viewport offsets');
 });
 
-test('Mobile panels and actions expose map party and enemies', () => {
+test('Mobile panels and actions expose map holdings and the unified roster', () => {
   assertContains(template, 'transform: translateX(-110%)', 'mobile map panel should use transform overlay');
   assertContains(template, 'transform: translateY(120%)', 'mobile side panels should use bottom-sheet transform overlay');
   assertNotContains(centerContextContent, "stats: 'App.showCharacterStats()'", 'shared context action helper should not own drawer shortcut handlers');
@@ -7537,11 +8194,18 @@ test('Mobile panels and actions expose map party and enemies', () => {
   const mobileDockStart = template.indexOf('<div class="mobile-panel-dock"');
   const mobileDockHtml = template.slice(mobileDockStart, template.indexOf('</div>', mobileDockStart));
   assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-review-map"', 'Mobile dock should identify the review-map drawer route');
-  assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-actor-rail"', 'Mobile dock should identify the compact actor rail route');
-  assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-target-rail"', 'Mobile dock should identify the compact target rail route');
+  assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-roster"', 'Mobile dock should expose one unified roster route');
+  assertNotContains(mobileDockHtml, 'data-command-control="toggle-actor-rail"', 'Mobile dock should not retain a separate Party destination');
+  assertNotContains(mobileDockHtml, 'data-command-control="toggle-target-rail"', 'Mobile dock should not retain a separate Creatures destination');
   assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-holdings"', 'Mobile dock should identify the focused holdings route');
-  assertContains(template, "onclick=\"App.toggleMobileCreatureRail()\"", 'mobile dock should expose compact creatures rail');
-  assertContains(template, 'id="mobile-creature-dock-badge"', 'mobile dock should expose a compact creature count badge');
+  assertContains(template, "onclick=\"App.toggleMobileRoster()\"", 'mobile dock should expose the unified roster sheet');
+  assertContains(template, 'id="mobile-creature-dock-badge"', 'mobile roster route should expose a compact local-presence badge');
+  assertContains(template, 'id="mobile-roster-sheet"', 'Mobile shell should include one bounded roster sheet');
+  assertContains(template, 'data-roster-tab="party"', 'Exploration roster should expose Party');
+  assertContains(template, 'data-roster-tab="here"', 'Exploration roster should expose Here');
+  assertContains(template, 'data-roster-tab="items"', 'Exploration roster should support conditional Items');
+  assertContains(template, 'data-roster-tab="allies"', 'Combat roster should expose Allies');
+  assertContains(template, 'data-roster-tab="enemies"', 'Combat roster should expose Enemies');
   assertContains(template, 'class="nav-btn mobile-strip-details-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" data-drawer-role="actors" data-return-rail="actor" data-command-slot="details" title="Open party details" aria-label="Open party details" data-i18n-title="ui.openPartyDetails" data-i18n-aria-label="ui.openPartyDetails" data-i18n="ui.details"', 'Mobile party rail should expose full party management as an explicit Details route with return metadata');
   assertContains(template, 'class="nav-btn mobile-strip-details-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer" data-drawer-role="targets" data-return-rail="target" data-command-slot="details" title="Open creature details" aria-label="Open creature details" data-i18n-title="ui.openCreatureDetails" data-i18n-aria-label="ui.openCreatureDetails" data-i18n="ui.details"', 'Mobile creature rail should expose full creature details as an explicit Details route with return metadata');
   assertContains(template, '.mobile-strip-details-btn', 'Mobile rail Details routes should use a reusable tap-target class');
@@ -7610,7 +8274,12 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.combat-correction-message', 'Combat correction feedback should have a visible composer style');
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
   assertContains(template, 'class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent"', 'Desktop command composer shell should own sentence and controls structurally');
-  assertContains(template, 'id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden', 'Desktop command composer shell should start hidden until it has real controls');
+  assertContains(template, 'id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" data-i18n-aria-label="ui.commandComposer" aria-hidden="true" hidden', 'Desktop command composer shell should start hidden with a localized accessible name until it has real controls');
+  assertContains(template, 'id="mobile-tile-details-title" data-i18n="ui.tileDetails"', 'Mobile tile-detail heading should use the maintained locale registry');
+  assertContains(template, 'data-command-control="close-tile-details" title="Close tile details" aria-label="Close tile details" data-i18n-title="ui.closeTileDetails" data-i18n-aria-label="ui.closeTileDetails"', 'Mobile tile-detail close control should localize its accessible name');
+  assertContains(template, 'id="mobile-story-latest" data-surface-role="scene-feed-latest" data-scene-indicator-id="mobile-new-beat-indicator" role="log" aria-live="off" aria-relevant="additions" aria-label="Scene feed, newest exchanges first" data-i18n-aria-label="scene.exchange.feedLabel"', 'Mobile Scene Feed stream should localize its accessible name');
+  assertContains(template, 'id="desktop-scene-feed-latest" data-surface-role="scene-feed-latest" data-scene-indicator-id="desktop-new-beat-indicator" role="log" aria-live="off" aria-relevant="additions" aria-label="Scene feed, newest exchanges first" data-i18n-aria-label="scene.exchange.feedLabel"', 'Desktop Scene Feed stream should localize its accessible name');
+  assertContains(template, 'id="story-sheet-title" data-i18n="scene.recentBeats"', 'Expanded Scene Feed should localize its dialog heading');
   assertContains(template, '.desktop-command-composer .selection-sentence', 'Desktop command composer should scope the command sentence inside the composer shell');
   assertContains(template, '.desktop-command-composer .desktop-context-belt', 'Desktop command composer should scope the action belt inside the composer shell');
   assertContains(template, 'class="desktop-scene-scroll" id="desktop-scene-scroll" data-surface-role="scene-scroll"', 'Desktop battle and narrative content should share an addressable scroll region');
@@ -7772,7 +8441,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-combat-context-strip', 'combat scene summary should become compact non-duplicating turn context on mobile');
   assertContains(template, '.mobile-activity-log[open]', 'mobile activity log should expand as an overlay drawer instead of pushing story, stage, or combat controls');
   assertContains(sceneShellContent, "if (mobileActions) mobileActions.style.display = 'none';", 'mobile combat should not show an empty bottom action bar');
-  assertContains(mobileUnitStripsContent, "app.combatState?.active\n            ? app._label('ui.enemies', 'Enemies')", 'mobile combat creature strip should be labeled as enemies');
+  assertContains(mobileUnitStripsContent, 'creatureCollectionPresentation(app, living', 'mobile creature strip should derive a state-aware localized collection label');
+  assertContains(mobileUnitStripsContent, "let panelKey = app.combatState?.active ? 'ui.enemies' : 'ui.creatures';", 'mobile combat creature strip should default to the Enemies label');
   assertNotContains(mobileUnitStripsContent, "strip.innerHTML = `${app._renderPanelInteractionTray()}", 'mobile marked-target actions should not render only inside the hidden party strip');
   assertContains(mobileUnitStripsContent, "targetTray.innerHTML = inCombat ? '' : app._renderExplorationTargetActions('mobile-target')", 'mobile marked-target actions should render into the visible exploration control belt');
   assertContains(mobileUnitStripsContent, "const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0", 'mobile actor strip should appear when marked targets need actor selection');
@@ -7832,7 +8502,7 @@ test('Desktop play surface separates a square 3x3 grid from the location focus p
   assertContains(template, 'id="desktop-play-surface"', 'desktop play surface missing');
   assertContains(template, 'id="desktop-play-surface" data-surface-role="play-traversal"', 'desktop play surface should share the traversal surface role with mobile');
   assertContains(template, 'id="desktop-play-cell-center"', 'desktop play surface should have a center tile');
-  assertContains(template, 'id="desktop-neighborhood-grid" role="group" aria-label="3 by 3 traversal grid"', 'desktop play surface should expose a dedicated square traversal grid');
+  assertContains(template, 'id="desktop-neighborhood-grid" role="group" aria-label="3 by 3 traversal grid" data-i18n-aria-label="ui.traversalGrid"', 'desktop play surface should expose a localized dedicated square traversal grid');
   assertContains(template, 'id="desktop-map-cell-center" aria-current="location"', 'desktop traversal grid should expose a visual current-location cell');
   assertContains(template, 'id="desktop-context-belt"', 'desktop play surface should expose a context action belt below the 3x3 surface');
   assertContains(template, 'id="desktop-context-belt" data-surface-role="command-composer"', 'desktop context belt should identify as the command composer surface');
@@ -7961,7 +8631,7 @@ function makeElement() {
     click() { this.clicked = true; },
     focus() { this.focused = true; },
     setAttribute(name, value) { attributes.set(name, String(value)); },
-    getAttribute(name) { return attributes.get(name) || null; },
+    getAttribute(name) { return attributes.has(name) ? attributes.get(name) : null; },
     hasAttribute(name) { return attributes.has(name); },
     removeAttribute(name) { attributes.delete(name); },
     contains(target) { return target === this || target?.parentNode === this; },
@@ -8053,6 +8723,11 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     'mobile-creature-strip',
     'mobile-creatures-dock-btn',
     'mobile-creature-dock-badge',
+    'mobile-roster-sheet',
+    'mobile-roster-title',
+    'mobile-roster-description',
+    'mobile-roster-tabs',
+    'mobile-roster-tabpanel',
     'party-content',
     'enemies-content',
     'panel-enemies',
@@ -8092,7 +8767,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${balanceSystemContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${spritePackV1Content}\n${spriteRuntimeContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${recoveryModesContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${balanceSystemContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${resourceLedgerContent}\n${combatTechniqueContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -8113,16 +8788,150 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       locales: {
         en: {
           'ui.back': 'Back',
+          'ui.details': 'Details',
+          'scene.kicker': 'Scene',
+          'scene.openFeed': 'Open scene feed',
+          'scene.feedButton': 'Feed',
+          'scene.feedDescription': 'Review recent scene beats, newest first.',
+          'ui.largeMap.unknownTile': 'Unknown',
+          'ui.largeMap.knownArea': 'Known area',
+          'ui.largeMap.questMarker': 'Quest',
+          'ui.largeMap.noPoints': 'No discovered points of interest nearby.',
           'ui.log.time.justNow': 'just now',
           'ui.log.time.turnAgo': '1 turn ago',
           'ui.log.time.turnsAgo': '{count} turns ago',
           'ui.log.combat': 'Combat',
           'ui.log.discovery': 'Discovery',
+          'ui.partyActionsFor': 'Party actions for {name}',
+          'ui.partyActionsDescription': "Manage {name}'s holdings, party role, and companion actions.",
+          'holdings.perkDescription': 'Choose an available perk, or return to character stats.',
+          'transaction.tradeDescription': 'Review wares, prices, and inventory with {name}.',
+          'transaction.questDescription': 'Review available and active quests from {name}.',
+          'quest.objectiveLabel': '{action} {target}',
+          'quest.objective.target': 'target',
+          'quest.objective.find': 'Find',
+          'quest.objective.defeat': 'Defeat',
+          'quest.objective.consume': 'Consume',
+          'quest.objective.seduce': 'Seduce',
+          'quest.objective.travel': 'Travel to',
+          'quest.objective.escort': 'Escort to',
+          'quest.untitled': 'Untitled Quest',
+          'quest.giverFallback': 'Quest giver',
+          'quest.checkpointNumber': 'Checkpoint {index}',
+          'feed.offerWholeResult': '{actor} willingly offers themself to {target} and settles in their belly.',
+          'feed.tendResult.player': '{actor} tend {target}, restoring {amount} punishment.',
+          'feed.tendResult.named': '{actor} tends {target}, restoring {amount} punishment.',
+          'feed.nurseUnavailable.player': '{actor} cannot nurse right now.',
+          'feed.nurseUnavailable.named': '{actor} cannot nurse right now.',
+          'feed.nurseCooldown.player': '{actor} cannot nurse again yet.',
+          'feed.nurseCooldown.named': '{actor} cannot nurse again yet.',
+          'feed.nurseResult.player': '{actor} nurse {target}, restoring vitality and easing their hunger.',
+          'feed.nurseResult.named': '{actor} nurses {target}, restoring vitality and easing their hunger.',
+          'feed.offerPieceResult': 'A renewable piece from {actor} restores {amount} punishment to {target}, at a cost of {cost} punishment to {actor}.',
+          'variant.unavailable.actorCapability.player': '{name} do not have the required capability.',
+          'variant.unavailable.actorCapability.named': '{name} does not have the required capability.',
+          'feed.legacy.sacrificeRefused': '{target} refuses to be offered to {actor}.',
+          'feed.legacy.tooSmall.player': '{actor} are too small to hold {target}.',
+          'feed.legacy.tooSmall.named': '{actor} is too small to hold {target}.',
+          'feed.legacy.sacrificeResult': '{target} willingly offers themself to {actor} and settles in their belly.',
+          'feed.legacy.noHolder': 'No one is available to restrain {target}.',
+          'feed.legacy.forceResult.player': '{holder} restrains {target} while {actor} force the handoff, placing them in your belly against their will.',
+          'feed.legacy.forceResult.named': "{holder} restrains {target} while {actor} forces the handoff, placing them in {actor}'s belly against their will.",
+          'feed.legacy.drawUnavailable': '{target} cannot provide renewable nourishment.',
+          'feed.legacy.drawResult.player': '{actor} draw vitality from {target}, leaving them weakened but whole.',
+          'feed.legacy.drawResult.named': '{actor} draws vitality from {target}, leaving them weakened but whole.',
+          'feed.legacy.fragmentUnavailable': '{target} cannot provide a renewable fragment.',
+          'feed.legacy.fragmentResult.player': '{actor} reduce vitality from {target} as nourishment. {target} is diminished but remains whole.',
+          'feed.legacy.fragmentResult.named': '{actor} reduces vitality from {target} as nourishment. {target} is diminished but remains whole.',
+          'feast.swallowResult.player': '{actor} eat {target}! They are held in your belly.',
+          'feast.swallowResult.named': "{actor} eats {target}! They are held in {owner}'s belly.",
+          'feast.digestUnavailable.player': '{actor} have no one held in your belly.',
+          'feast.digestUnavailable.named': '{actor} has no one held in their belly.',
+          'feast.digestResult.player': '{actor} actively digest {target}, fully breaking them down.',
+          'feast.digestResult.named': '{actor} actively digests {target}, fully breaking them down.',
+          'feast.releaseUnavailable.player': '{actor} have no living prey to release.',
+          'feast.releaseUnavailable.named': '{actor} has no living prey to release.',
+          'feast.releaseLog': "{target} is released from {holder}'s stomach at reduced condition.",
+          'feast.releaseResult.player': '{actor} release {target} from your belly, weak and dazed but alive.',
+          'feast.releaseResult.named': '{actor} releases {target} from their belly, weak and dazed but alive.',
+          'containment.holderFallback': 'holder',
+          'containment.targetFallback': 'the contained creature',
+          'capacity.owner.unknown': 'their',
+          'capacity.actor.unknown': 'Someone',
+          'capacity.target.unknown': 'the target',
+          'combat.flee.threatFallback': 'the threat',
+          'combat.flee.cannotEscape': '{name} cannot escape {threat} and turns hostile!',
+          'combat.flee.panicsFrom': '{name} panics and flees from {threat}!',
+          'combat.flee.turnsHostile': '{name} turns hostile!',
+          'combat.flee.corneredHostile': '{name} is cornered and turns hostile!',
+          'combat.turnTitle': "Round {round} - {actor}'s turn",
+          'scene.delta.punishment': '{amount} punishment',
+          'scene.delta.healing': '{amount} punishment restored',
+          'scene.delta.spirit': 'Spirit {current}/{max}',
+          'scene.delta.spiritChanged': 'Spirit changed',
+          'scene.delta.stateChanged': 'State changed',
+          'ui.largeMap.creatureCountOne': '{count} creature',
+          'ui.largeMap.creatureCountMany': '{count} creatures',
+          'ui.largeMap.itemCountOne': '{count} item',
+          'ui.largeMap.itemCountMany': '{count} items',
+          'log.welcomeWorld': 'Welcome to the world, {name}.',
+          'search.foundItem': 'You found a {item}!',
+          'search.explored': 'You explore the area. {description}',
+          'search.nothing': 'Nothing of interest here.',
+          'combat.action.fightMiss.player': '{actor} miss {target}.',
+          'combat.action.fightMiss.named': '{actor} misses {target}.',
+          'combat.action.fightHit.player': '{actor} hit {target} for {amount} punishment!',
+          'combat.action.fightHit.named': '{actor} hits {target} for {amount} punishment!',
+          'combat.action.talkSuccess.player': '{actor} talk with {target}! Their guard lowers. Spirit rises to {current}/{max}.',
+          'combat.action.talkSuccess.named': '{actor} talks with {target}! Their guard lowers. Spirit rises to {current}/{max}.',
+          'combat.action.talkRejected': '{target} rejects the conversation with {actor}!',
+          'combat.action.playSuccess.player': '{actor} play with {target}! Spirit rises to {current}/{max}.',
+          'combat.action.playSuccess.named': '{actor} plays with {target}! Spirit rises to {current}/{max}.',
+          'combat.action.playRejected': '{target} does not want to play!',
+          'combat.sync.talkSoftened': '{participants} talk with {target}, softening their guard. Spirit rises to {current}/{max}.',
+          'combat.sync.talkResisted': "{target} resists the group's combined charm!",
+          'combat.sync.fightHit': '{participants} gang up on {target}, dealing {amount} punishment!',
+          'corpse.partyRemainsDropped': "{name}'s remains fall to the ground.",
+          'corpse.decayedOne': 'A corpse decays into nothing.',
+          'corpse.decayedMany': '{count} corpses decay into nothing.',
+          'containment.releaseCurrentActorOnly': '{container}: only the current combat actor can release contained creatures.',
+          'containment.digestCurrentActorOnly': '{container}: only the current combat actor can digest contained creatures.',
+          'containment.releaseUnavailable': '{name} cannot be released now.',
+          'containment.releaseLog': "{target} is released from {holder}'s {container} at reduced condition.",
+          'containment.digestFurtherUnavailable': '{target} cannot be digested further.',
+          'containment.digestLog': '{holder} digests {target} in {container}.',
+          'containment.softenedLog': '{target} is fully softened inside {holder} and can be released alive.',
+          'containment.terminalLog': '{target} reaches terminal digestion inside {holder}.',
+          'containment.integrity': 'Integrity',
+          'containment.vitality': 'Vitality',
+          'containment.progress': 'Progress',
+          'containment.integrity.intact': 'Intact',
+          'containment.integrity.damaged': 'Damaged',
+          'containment.releaseEligible': 'Release',
+          'containment.state.contained': 'Contained',
+          'containment.state.digesting': 'Digesting',
+          'containment.state.softened': 'Softened',
+          'containment.state.terminal': 'Terminal',
+          'containment.state.digested': 'Digested',
+          'containment.state.released': 'Released',
+          'containment.state.passed': 'Passed',
+          'containment.state.depleted': 'Depleted',
+          'containment.summary': '{state} · {vitality} {ratio}% · {release}',
+          'containment.summary.releasable': 'Releasable',
+          'containment.summary.notReleasable': 'Not releasable',
+          'containment.detailSummary': '{target} in {container}: {progress}% · {vitality} {ratio}% · {release}',
+          'ui.yes': 'Yes',
+          'ui.no': 'No',
+          'containment.beat.contained': "{target} is held in {holder}'s stomach.",
+          'containment.beat.digesting': "{target} weakens while held in {holder}'s stomach.",
+          'containment.beat.softened': '{target} is fully softened inside {holder}, but remains alive and can be released.',
+          'containment.beat.released': "{target} is released from {holder}'s stomach, weakened but alive.",
+          'containment.beat.terminal': '{target} is fully digested inside {holder}. {holder} feels restored.',
           'action.fight': 'Fight', 'action.flirt': 'Talk', 'action.fuck': 'Play', 'action.feast': 'Eat', 'action.feed': 'Feed', 'action.flee': 'Flee', 'action.moveRow': 'Move Row', 'action.advance': 'Advance', 'action.retreat': 'Retreat', 'action.sync': 'Sync', 'action.skip': 'Skip', 'action.search': 'Search', 'action.rest': 'Rest', 'action.inventory': 'Items', 'action.interact': 'Interact', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge', 'action.scavenged': 'Scavenged',
           'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}', 'inventory.full': 'Inventory is full.', 'inventory.empty': 'Empty.', 'inventory.noItemsMatch': 'No items match the current filter.', 'inventory.titleWithCount': 'Inventory ({count}/{max})', 'inventory.equippedSection': 'Equipped', 'holdings.titleWithInventory': 'Holdings / Inventory ({count}/{max})', 'holdings.umbrella': 'Character / Holdings', 'holdings.tabs': 'Holdings sections', 'holdings.pack': 'Pack / Inventory', 'holdings.containers': 'Containers', 'holdings.ground': 'Here / Ground', 'inventory.equipped': 'Equipped {name}.', 'inventory.unequipped': 'Unequipped {name}.', 'inventory.noEquipment': 'No equipment', 'inventory.noBonus': 'No bonus', 'inventory.effect': 'Effect',
-          'item.category': 'Category', 'item.category.all': 'All', 'item.category.consumable': 'Consumable', 'item.category.equipment': 'Equipment', 'item.category.valuable': 'Valuable', 'item.category.material': 'Material', 'item.category.misc': 'Misc', 'item.sort': 'Sort', 'item.sort.name': 'Name', 'item.sort.type': 'Type', 'item.sort.valueDesc': 'Value ↓', 'item.sort.valueAsc': 'Value ↑',
-          'trade.title': '{name} Trade', 'trade.gold': 'Gold: {gold}', 'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}', 'trade.needGold': 'You need {price} gold to buy {name}.', 'trade.confirmBuy': 'Buy {name} for {price} gold?', 'trade.purchaseCancelled': 'Purchase cancelled: {name}.', 'trade.bought': 'Bought {name} for {price} gold.', 'trade.sold': 'Sold {name} for {price} gold.', 'trade.noStockMatches': 'No stock matches the current filter.', 'trade.noItemsToSell': 'No items to sell.', 'trade.noInventoryMatches': 'No inventory items match the current filter.',
-          'quest.title': 'Quests', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}', 'quest.status.active': 'Active', 'quest.status.completed': 'Completed', 'quest.status.turnIn': 'Turn In', 'quest.noneActive': 'No active quests.', 'quest.noneMatchFilter': 'No quests match the current filter.', 'quest.alreadyInLog': '{title} is already in your quest log.', 'quest.accepted': 'Quest accepted: {title}.', 'quest.completed': 'Quest completed: {title}.', 'quest.completedTurnIn': 'Quest completed: {title}. Return to {giver} for your reward.', 'quest.defaultGiver': 'the quest giver', 'quest.notReadyTurnIn': 'That quest is not ready to turn in.', 'quest.alreadyTurnedIn': '{title} has already been turned in.', 'quest.turnedIn': 'Quest turned in: {title}.', 'quest.noObjectiveMarker': 'No map marker is available for that quest objective.', 'quest.mapFocusedObjective': 'Map focused on {title}: {label}.', 'quest.noTurnInLocation': 'No turn-in location is available for that quest.', 'quest.mapFocusedTurnIn': 'Map focused on {title} turn-in: {label}.', 'quest.checkpoint': 'Checkpoint', 'quest.checkpoint.complete': 'Complete', 'quest.checkpoint.current': 'Current', 'quest.checkpoint.pending': 'Pending', 'quest.checkpointAria': '{state} checkpoint {index}: {label} at {x}, {y}{guidance}', 'quest.youAreHere': 'You are here', 'quest.direction.north': '{count} north', 'quest.direction.south': '{count} south', 'quest.direction.east': '{count} east', 'quest.direction.west': '{count} west', 'quest.step.singular': 'step', 'quest.step.plural': 'steps', 'quest.guidance': '{distance} {stepLabel} {directions}', 'quest.terrainKnownRoute': 'known route crosses {parts}', 'quest.terrainRoad': '{count} road', 'quest.terrainBridge': '{count} bridge', 'quest.terrainRough': '{count} rough terrain', 'quest.markerPreview': 'Marker: {label} ({x}, {y})', 'quest.turnInPreview': 'Turn in with {label} ({x}, {y})',
+          'item.category': 'Category', 'item.category.all': 'All', 'item.category.consumable': 'Consumable', 'item.category.equipment': 'Equipment', 'item.category.valuable': 'Valuable', 'item.category.material': 'Material', 'item.category.misc': 'Misc', 'item.sort': 'Sort', 'item.sort.name': 'Name', 'item.sort.type': 'Type', 'item.sort.valueDesc': 'Value ↓', 'item.sort.valueAsc': 'Value ↑', 'item.unknown': 'Unknown',
+          'trade.title': '{name} Trade', 'trade.gold': 'Gold: {gold}', 'trade.quantity': 'Qty {count}', 'trade.goldCompact': '{amount}g', 'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}', 'trade.needGold': 'You need {price} gold to buy {name}.', 'trade.confirmBuy': 'Buy {name} for {price} gold?', 'trade.purchaseCancelled': 'Purchase cancelled: {name}.', 'trade.bought': 'Bought {name} for {price} gold.', 'trade.sold': 'Sold {name} for {price} gold.', 'trade.noStockMatches': 'No stock matches the current filter.', 'trade.noItemsToSell': 'No items to sell.', 'trade.noInventoryMatches': 'No inventory items match the current filter.',
+          'quest.title': 'Quests', 'quest.windowTitle': '{name} Quests', 'quest.window.available': 'Available', 'quest.window.accepted': 'Accepted', 'quest.window.completed': 'Completed', 'quest.window.none': 'None', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}', 'quest.status.active': 'Active', 'quest.status.completed': 'Completed', 'quest.status.turnIn': 'Turn In', 'quest.noneActive': 'No active quests.', 'quest.noneMatchFilter': 'No quests match the current filter.', 'quest.alreadyInLog': '{title} is already in your quest log.', 'quest.accepted': 'Quest accepted: {title}.', 'quest.completed': 'Quest completed: {title}.', 'quest.completedTurnIn': 'Quest completed: {title}. Return to {giver} for your reward.', 'quest.defaultGiver': 'the quest giver', 'quest.notReadyTurnIn': 'That quest is not ready to turn in.', 'quest.alreadyTurnedIn': '{title} has already been turned in.', 'quest.turnedIn': 'Quest turned in: {title}.', 'quest.noObjectiveMarker': 'No map marker is available for that quest objective.', 'quest.mapFocusedObjective': 'Map focused on {title}: {label}.', 'quest.noTurnInLocation': 'No turn-in location is available for that quest.', 'quest.mapFocusedTurnIn': 'Map focused on {title} turn-in: {label}.', 'quest.checkpoint': 'Checkpoint', 'quest.checkpoint.complete': 'Complete', 'quest.checkpoint.current': 'Current', 'quest.checkpoint.pending': 'Pending', 'quest.checkpointAria': '{state} checkpoint {index}: {label} at {x}, {y}{guidance}', 'quest.youAreHere': 'You are here', 'quest.direction.north': '{count} north', 'quest.direction.south': '{count} south', 'quest.direction.east': '{count} east', 'quest.direction.west': '{count} west', 'quest.step.singular': 'step', 'quest.step.plural': 'steps', 'quest.guidance': '{distance} {stepLabel} {directions}', 'quest.terrainKnownRoute': 'known route crosses {parts}', 'quest.terrainRoad': '{count} road', 'quest.terrainBridge': '{count} bridge', 'quest.terrainRough': '{count} rough terrain', 'quest.markerPreview': 'Marker: {label} ({x}, {y})', 'quest.turnInPreview': 'Turn in with {label} ({x}, {y})', 'transaction.summary.npc': 'NPC', 'transaction.summary.location': 'Location', 'transaction.summary.gold': 'Gold', 'transaction.summary.inventory': 'Inventory',
           'perk.choose': 'Choose Perk', 'perk.chooseCount': 'Choose Perk ({count})', 'perk.pending': 'Pending choices: {count}', 'perk.trees': 'Perk trees', 'perk.filter.all': 'All', 'perk.chooseNamed': 'Choose {name}', 'perk.back': 'Back', 'perk.respec': 'Respec Perks', 'perk.debugGrant': 'Debug +1 Perk Choice', 'perk.closeStats': 'Close', 'perk.levelUp': 'Level up! You are now level {level}. All stats increased!', 'perk.chooseNew': 'Choose a new perk from the perk tree.', 'perk.notAvailable': 'That perk is not available yet.', 'perk.chosen': 'Perk chosen: {name}. {description}', 'perk.noneToRespec': 'No perks selected to respec.', 'perk.confirmRespec': 'Reset selected perks and refund their choices?', 'perk.respecDoneOne': 'Perks reset. Refunded {count} choice.', 'perk.respecDoneMany': 'Perks reset. Refunded {count} choices.',
           'ui.close': 'Close', 'ui.cancel': 'Cancel', 'ui.actionLegend': 'Action legend', 'ui.menu.newGame': 'New Game', 'ui.menu.newGameTitle': 'Start a new game', 'ui.returnToMenu': 'Return to Menu', 'ui.menu.tutorialTitle': 'Open tutorial', 'ui.nav.holdingsTitle': 'Open holdings', 'ui.holdings': 'Holdings', 'ui.tutorial.skip': 'Skip Tutorial', 'ui.tutorial.next': 'Next ->', 'ui.tutorial.welcome.title': 'Welcome', 'ui.tutorial.welcome.content': 'You are wild in a strange living world. Explore, learn your limits, and grow stronger. Choose your risks carefully.', 'ui.tutorial.combat.title': 'Combat', 'ui.tutorial.combat.content': 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Sync actions let multiple allies act together.', 'ui.tutorial.feast.title': 'Eat', 'ui.tutorial.feast.content': 'Eat weakened targets to hold them safely. Capacity matters, and optional modules can add alternate outcomes.', 'ui.tutorial.party.title': 'Party', 'ui.tutorial.party.content': 'Recruit willing creatures, assign roles, choose AI orders, and manage who acts in exploration or combat.', 'ui.tutorial.ready.title': 'Ready', 'ui.tutorial.ready.content': 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.', 'ui.log.search': 'Search log', 'ui.log.visibleCount': '{count} visible entries', 'ui.log.visibleCount.one': '1 visible entry', 'ui.toast.notifications': 'Notifications', 'ui.toast.dismiss': 'Dismiss notification', 'settings.title': 'Settings', 'settings.interfaceLanguage': 'Interface Language', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions', 'ui.tacticalStatus': 'Tactical status', 'ui.unitTraits': 'Unit traits', 'unit.cardShowDetails': 'Show details for {name}', 'unit.cardHideDetails': 'Hide details for {name}', 'ui.exploration': 'Exploration', 'ui.chooseAction': 'Choose your next action.', 'ui.actorActing': '{name} is acting...', 'mobile.combat.actor': '{name} to act', 'mobile.combat.chooseAction': 'Choose an action, then tap a target.', 'mobile.combat.enemyTurn': '{name} is acting.', 'mobile.combat.pickTarget': 'Pick a target for {action}.', 'mobile.combat.status': 'Round {round} · Turn {turn}/{total}', 'mobile.combat.targeting': 'Targeting: {action}', 'ui.welcomeLog': 'Welcome to You Are Wild', 'ui.scene.wildernessTitle': 'The Wilderness', 'ui.scene.wildernessIntro': 'You find yourself in an untamed land where predators roam and only the strong survive.', 'ui.scene.wildernessAmbient': 'The air is thick with the scent of pine and the distant calls of creatures unknown.', 'ui.log.createdCharacter': 'Created your character. The journey begins...', 'ui.area': 'Area', 'ui.enemies': 'Enemies', 'ui.creatures': 'Creatures', 'ui.noCreaturesPresent': 'No creatures present', 'ui.noCreaturesHere': 'No creatures here', 'target.chooseFromPanel': 'Select a target from the creature panel.', 'target.cancelAction': 'Cancel {action}', 'log.movedTo': 'Moved to {x}, {y} ({biome})', 'log.inCombatCannotMove': 'You are in combat! Use Flee to escape.', 'log.discoveredLandmark': 'Discovered {name}!', 'log.restUnavailable': 'There is no safe place to rest here.', 'log.rested': 'Rested and recovered.', 'log.noEntriesMatchFilter': 'No log entries match the current filter.', 'recruit.partyFull': 'Party is full! Cannot recruit {name}', 'recruit.notReady': '{name} is not ready to join the party.', 'recruit.joined': '{name} joins your party!', 'recruit.confirmSubmissive': '{name} is ready to follow. Recruit them to your party?', 'feed.optionsTitle': 'Feed Options', 'feed.noOptions': 'No feed options available right now.', 'feed.noWoundedAllies': 'No wounded allies to feed.', 'feed.noWillingLivestock': 'No willing livestock to sacrifice.', 'feed.noForceFeedEnemies': 'No enemies to force-feed.', 'feed.noValidTarget': 'No valid target for this feed action.',
           'disposition.hostile': 'Hostile', 'disposition.friendly': 'Friendly', 'disposition.neutral': 'Neutral', 'disposition.quest': 'Quest', 'disposition.merchant': 'Merchant', 'disposition.remains': 'Remains', 'unit.trait.asleep': 'Asleep', 'unit.trait.poisoned': 'Poison', 'unit.trait.burning': 'Burning', 'unit.trait.bleeding': 'Bleeding', 'unit.trait.stunned': 'Stunned', 'unit.trait.frozen': 'Frozen', 'unit.trait.fear': 'Fear', 'unit.trait.restrained': 'Restrained', 'unit.trait.wounded': 'Wounded', 'unit.trait.hungry': 'Hungry', 'unit.trait.flying': 'Flying', 'unit.trait.darkvision': 'Darkvision', 'combat.row': 'Row', 'combat.row.front': 'Front', 'combat.row.back': 'Back', 'combat.group': 'Group', 'combat.turnOrder': 'Turn order', 'combat.status.current': '{name} is the current combat actor at turn {order}.', 'combat.status.queued': '{name} is queued at turn {order}.', 'combat.status.queuedActed': '{name} is queued at turn {order} and has already acted this round.', 'combat.panelActions': 'Combat actions', 'combat.status.syncParticipant': '{name} is participant in queued group {action} resolving at turn {order}.', 'combat.status.syncTarget': '{name} is target of queued group {action} resolving at turn {order}.', 'combat.status.canTarget': '{name} can be selected as the {action} target.', 'combat.status.cannotTarget': '{name} cannot be selected as the {action} target.', 'combat.status.choosingTarget': '{name} is choosing a {action} target.', 'combat.moveRowLog': '{name} moves to the {row} row.', 'combat.advanceLog': '{name} advances to the front row.', 'combat.retreatLog': '{name} retreats to the back row.', 'combat.cannotReachTarget': '{actor} cannot reach {target} from here.', 'combat.flee.noEnemies': 'No enemies to flee from!', 'combat.flee.success': 'You flee successfully!', 'combat.flee.failed': 'Flee failed! {name} intercepts you!', 'combat.godModeSaved': 'God Mode saved you from death!', 'combat.playerFallen': 'You have fallen! Game Over!', 'combat.hardcoreSaveDeleted': 'HARDCORE MODE: Your save has been deleted.', 'combat.playerKnockedOut': 'You have been knocked out! Your party must finish the fight...', 'combat.partyWipedOut': 'Your party has been wiped out!', 'combat.alliesContinue': 'Your allies continue the fight...', 'combat.playerComesTo': '{name} comes to after the fight.', 'combat.victory': 'Victory! Enemies defeated or subdued.', 'combat.escapedEncounter': 'You escaped the encounter.', 'combat.defeat': 'Defeat...', 'combat.confirmReturnToMenu': 'Defeat! Return to menu?', 'recovery.regenerate': 'Regenerate', 'recovery.endGame': 'End Game', 'combat.notInCombat': 'Not in combat!', 'combat.instantWin': 'Instant Win', 'combat.instantWinTitle': 'Instantly defeat all enemies', 'combat.instantWinNotInCombat': 'Not in combat! Instant Win only works during combat.', 'combat.instantWinRequiresOverpowered': 'Instant Win requires Overpowered mode.', 'combat.instantWinSuccess': 'Instant Win! All enemies are defeated.', 'combat.allyScavenges': "{ally} scavenges {target}'s remains after the fight.", 'combat.scavengeRemains': '{actor} uses {count} portion(s) from {target}.', 'corpse.portionsRemaining': '{count} portions left', 'corpse.depleted': 'Scavenged', 'combat.allyHolds': '{name} holds position.', 'combat.allyCannotReach': '{name} cannot reach any target.', 'combat.enemyReinforces': '{enemy} calls for help! {reinforcement} joins the fight.', 'combat.enemyRage': '{name} enters a rage!', 'combat.enemyFlees': '{name} flees in terror!', 'combat.status.poisoned': '{name} is poisoned!', 'combat.status.constricted': '{actor} constricts {target}! They are restrained.', 'combat.status.enveloped': '{actor} envelops {target}!', 'combat.status.stunned': '{name} is stunned and loses their turn!', 'combat.status.frozen': '{name} is frozen in place and loses their turn!', 'combat.status.asleep': '{name} is asleep and cannot act!', 'combat.status.fearFlee': '{name} panics and flees from fear!', 'combat.status.fearFrozen': '{name} freezes in fear and loses their turn!', 'combat.status.recovering': '{name} is recovering and skips their turn.', 'combat.status.restrainedSkip': '{name} is restrained and cannot act!', 'combat.status.stuck': '{name} is stuck in the terrain and loses their turn!', 'combat.allyFlees': '{name} loses their nerve and flees from the fight!', 'combat.allyFleeFailed': '{name} tries to flee but cannot get away!', 'combat.allyTooAroused': '{name} is too distracted to act!', 'combat.enemyCannotReach': '{enemy} cannot reach {target}.', 'cheat.toggled': 'Cheat {name}: {state}', 'cheat.state.on': 'ON', 'cheat.state.off': 'OFF', 'cheat.overpoweredMaxed': 'Overpowered! All stats maxed.', 'combat.waitForTurn': 'Wait for your turn!', 'combat.notYourTurn': 'Not your turn!', 'combat.sync.chooseAction': 'Choose Sync Action', 'combat.sync.noAllies': 'No allies available for sync.', 'combat.sync.action.fuck': 'Group Play', 'combat.sync.action.flirt': 'Group Talk', 'combat.sync.action.fight': 'Group Fight', 'combat.sync.action.feed': 'Group Feed', 'combat.sync.participantRole': 'Participant', 'combat.sync.selectParticipants': 'Select participants for sync', 'combat.sync.selectParticipantFor': 'Select {name} for sync', 'combat.sync.confirmParticipants': 'Confirm Participants', 'combat.sync.needParticipants': 'Need at least 2 participants for a sync action.', 'combat.sync.selectTarget': 'Select sync target', 'combat.sync.selectTargetFor': 'Select {name} as sync target', 'combat.sync.failedNoQueue': 'Sync failed! Participants are no longer in the turn queue.', 'combat.sync.failedIncapacitated': 'Sync failed! {names} cannot participate.', 'capacity.stomach': 'Belly', 'capacity.womb': 'Inner', 'capacity.balls': 'Reserve', 'capacity.owner.your': 'Your', 'capacity.owner.named': "{name}'s", 'capacity.tooFull': '{owner} {container} is too full for {target}!', 'structure.noStructure': 'There is no structure to enter here.', 'structure.entered': 'Entered {name}.', 'structure.exited': 'Exited {name}.', 'structure.movedInside': 'Moved inside {name} to {x}, {y}.', 'structure.fallbackName': 'the structure', 'structure.wallBlocked': 'A wall blocks the way.',
@@ -8132,20 +8941,154 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.newRun': 'New Run', 'save.load': 'Load', 'save.save': 'Save', 'save.delete': 'Delete', 'save.close': 'Close', 'save.action.newGame': 'Choose a slot for a new game', 'save.action.useEmpty': 'Start new game in {slot}', 'save.action.overwrite': 'Overwrite {slot} with a new game', 'save.action.newRun': 'Start a new run in {slot}', 'save.action.load': 'Load {slot}', 'save.action.save': 'Save and continue in {slot}', 'save.action.delete': 'Delete {slot}',
           'settings.confirmClearAllData': 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?', 'settings.clearAllDataDone': 'All data cleared. Refresh the page to start fresh.', 'settings.clearAllDataFailed': 'Failed to clear all data: {message}',
           'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', 'save.confirm.manualOverwrite': 'Overwrite {slot} with the current game and continue auto-saving there? This cannot be undone.', 'save.confirm.deleteSlot': 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', 'save.confirmDeleteAll': 'Delete ALL save data? This cannot be undone!', 'save.error.noGame': 'No game to save!', 'save.error.noSave': 'No save in {slot}', 'save.success.saved': 'Game saved to {slot}. Auto-save now updates this slot.', 'save.success.deletedAll': 'All saves deleted.', 'save.recoveredOnLoad': 'You were revived from the brink of defeat. Welcome back, {name}.', 'save.error.saveFailed': 'Save failed: {message}', 'save.error.loadFailed': 'Load failed: {message}', 'save.error.deleteFailed': 'Delete failed: {message}', 'save.error.deleteAllFailed': 'Delete saves failed: {message}', 'save.recovery.prompt': 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:', 'save.recovery.deleted': 'Save deleted.', 'save.recovery.backupDownloaded': 'Backup downloaded. Save remains intact.',
-          'target.actors': 'Actors', 'target.primaryActor': 'Primary', 'target.helpers': 'Helpers', 'target.targets': 'Targets', 'target.act': 'Actor', 'target.mark': 'Mark', 'target.pick': 'Pick', 'target.actorRole': 'Actor', 'target.targetRole': 'Target', 'target.markedRole': 'Marked', 'target.selectActorFor': 'Set {name} as actor', 'target.addActorFor': 'Add {name} as actor', 'target.removeActorFor': 'Remove {name} from actors', 'target.markFor': 'Mark {name} as target', 'target.removeTargetFor': 'Remove {name} from targets', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group {action} actions. Current selection has {actorCount} actors and {targetCount} targets.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.pairedActionDone': 'Paired {action} actions resolved: {pairs}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.intentControls': 'Target intent controls', 'target.clearSelected': 'Clear selected targets', 'explore.fight.hit': '{actor} hits {target} for {amount} punishment.', 'explore.fight.subdued': '{target} is subdued.', 'explore.fuck.success': '{actor} plays with {target}. Spirit rises to {current}/{max}.', 'explore.fuck.devoted': '{target} relaxes and becomes completely friendly.', 'explore.fuck.recover': '{target} needs a moment to catch their breath...', 'explore.fuck.resists': '{target} does not want to play.', 'explore.feast.swallow': '{actor} eats {target}. They are held in {owner} belly.', 'explore.feast.tooStrong': '{target} is too large or strong to eat.', 'explore.flirt.success': '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', 'explore.flirt.charmed': '{target} is convinced and becomes friendly!', 'explore.flirt.rebuff': '{target} rejects the conversation!', 'explore.feed.success': '{actor} feeds {target}, restoring {amount} punishment and sating their hunger.', 'explore.recruit.possible': '{target} may be willing to join the party.', 'group.feed.selfBlocked': '{name} cannot feed into themself yet.', 'group.feed.playerBlocked': '{name} cannot be handed off as prey right now.', 'group.feed.partyToConsumer': '{prey} is fed to {consumer} and settles in their belly.', 'group.feed.helpers': '{helpers} help feed {prey} to {target}.', 'group.feed.tend': '{actors} tend {target}, restoring {amount} punishment.', 'group.feed.tendTogether': '{actors} tend {target} together, restoring {amount} punishment.', 'group.feed.creature': '{actors} feed {target}, restoring {amount} punishment.', 'group.fight.roughCollapse': '{name} collapses from the rough play.', 'group.fight.pinned': 'They are pinned but not seriously hurt.', 'group.fight.sparTogether': '{actors} spar together, each taking {amount} punishment.', 'group.mutual.feed': '{actors} tend each other, restoring {amount} punishment where needed.', 'group.mutual.feastBlocked': '{actors} cannot eat themselves as a mutual group. Choose a primary target instead.', 'group.mutual.fight': '{actors} spar as a mutual group, each taking {amount} punishment.', 'group.mutual.social': '{actors} share {action} as a mutual group. Spirit rises for everyone involved.', 'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.', 'group.fight.collapses': '{target} collapses.', 'group.feast.noHelpers': '{target} cannot be reduced without helpers.', 'group.feast.split': '{actors} reduce {target} through vital damage.', 'group.feast.selfBlocked': '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', 'group.feast.tooStrong': '{target} is too large or strong for {actors} to eat.', 'group.feast.swallow': '{helpers} help {primary} eat {target}.', 'group.social.share': '{actors} share {action} with {target}. Spirit spreads through the group; {target} rises to {current}/{max}.', 'group.social.focus': '{actors} focus on {target}. Spirit rises to {current}/{max}.', 'group.social.resists': "{target} resists the group's attention."
+          'target.actors': 'Actors', 'target.primaryActor': 'Primary', 'target.helpers': 'Helpers', 'target.targets': 'Targets', 'target.act': 'Actor', 'target.mark': 'Mark', 'target.pick': 'Pick', 'target.actorRole': 'Actor', 'target.targetRole': 'Target', 'target.markedRole': 'Marked', 'target.selectActorFor': 'Set {name} as actor', 'target.addActorFor': 'Add {name} as actor', 'target.removeActorFor': 'Remove {name} from actors', 'target.markFor': 'Mark {name} as target', 'target.removeTargetFor': 'Remove {name} from targets', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group {action} actions. Current selection has {actorCount} actors and {targetCount} targets.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.pairedActionDone': 'Paired {action} actions resolved: {pairs}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.intentControls': 'Target intent controls', 'target.clearSelected': 'Clear selected targets', 'explore.fight.hit': '{actor} hits {target} for {amount} punishment.', 'explore.fight.subdued': '{target} is subdued.', 'explore.fuck.success': '{actor} plays with {target}. Spirit rises to {current}/{max}.', 'explore.fuck.devoted': '{target} relaxes and becomes completely friendly.', 'explore.fuck.recover': '{target} needs a moment to catch their breath...', 'explore.fuck.resists': '{target} does not want to play.', 'explore.feast.swallow': '{actor} eats {target}. They are held in {owner} belly.', 'explore.feast.tooStrong': '{target} is too large or strong to eat.', 'explore.flirt.success': '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', 'explore.flirt.charmed': '{target} is convinced and becomes friendly!', 'explore.flirt.rebuff': '{target} rejects the conversation!', 'explore.feed.success': '{actor} tends {target}, restoring {amount} punishment.', 'explore.recruit.possible': '{target} may be willing to join the party.', 'group.feed.selfBlocked': '{name} cannot feed into themself yet.', 'group.feed.playerBlocked': '{name} cannot be handed off as prey right now.', 'group.feed.partyToConsumer': '{prey} is fed to {consumer} and settles in their belly.', 'group.feed.helpers': '{helpers} help feed {prey} to {target}.', 'group.feed.tend': '{actors} tend {target}, restoring {amount} punishment.', 'group.feed.tendTogether': '{actors} tend {target} together, restoring {amount} punishment.', 'group.feed.creature': '{actors} tend {target}, restoring {amount} punishment.', 'group.fight.roughCollapse': '{name} collapses from the rough play.', 'group.fight.pinned': 'They are pinned but not seriously hurt.', 'group.fight.sparTogether': '{actors} spar together, each taking {amount} punishment.', 'group.mutual.feed': '{actors} tend each other, restoring {amount} punishment where needed.', 'group.mutual.feastBlocked': '{actors} cannot eat themselves as a mutual group. Choose a primary target instead.', 'group.mutual.fight': '{actors} spar as a mutual group, each taking {amount} punishment.', 'group.mutual.social': '{actors} share {action} as a mutual group. Spirit rises for everyone involved.', 'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.', 'group.fight.collapses': '{target} collapses.', 'group.feast.noHelpers': '{target} cannot be reduced without helpers.', 'group.feast.split': '{actors} reduce {target} through vital damage.', 'group.feast.selfBlocked': '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', 'group.feast.tooStrong': '{target} is too large or strong for {actors} to eat.', 'group.feast.swallow': '{helpers} help {primary} eat {target}.', 'group.social.share': '{actors} share {action} with {target}. Spirit spreads through the group; {target} rises to {current}/{max}.', 'group.social.focus': '{actors} focus on {target}. Spirit rises to {current}/{max}.', 'group.social.resists': "{target} resists the group's attention."
         },
         es: {
           'ui.back': 'Volver',
+          'ui.details': 'Detalles',
+          'scene.kicker': 'Escena',
+          'scene.openFeed': 'Abrir cronica de escena',
+          'scene.feedButton': 'Cronica',
+          'scene.feedDescription': 'Revisa los eventos de escena recientes, comenzando por el mas nuevo.',
+          'ui.largeMap.unknownTile': 'Desconocido',
+          'ui.largeMap.knownArea': 'Area conocida',
+          'ui.largeMap.questMarker': 'Mision',
+          'ui.largeMap.noPoints': 'No hay puntos de interes descubiertos cerca.',
           'ui.log.time.justNow': 'ahora mismo',
           'ui.log.time.turnAgo': 'hace 1 turno',
           'ui.log.time.turnsAgo': 'hace {count} turnos',
           'ui.log.combat': 'Combate',
           'ui.log.discovery': 'Descubrimiento',
+          'ui.partyActionsFor': 'Acciones del grupo para {name}',
+          'ui.partyActionsDescription': 'Administra las pertenencias, el rol de grupo y las acciones de compañero de {name}.',
+          'holdings.perkDescription': 'Elige una ventaja disponible o vuelve a los atributos del personaje.',
+          'transaction.tradeDescription': 'Revisa mercancías, precios e inventario con {name}.',
+          'transaction.questDescription': 'Revisa las misiones disponibles y activas de {name}.',
+          'quest.objectiveLabel': '{action} {target}',
+          'quest.objective.target': 'objetivo',
+          'quest.objective.find': 'Encontrar',
+          'quest.objective.defeat': 'Derrotar',
+          'quest.objective.consume': 'Consumir',
+          'quest.objective.seduce': 'Seducir',
+          'quest.objective.travel': 'Viajar a',
+          'quest.objective.escort': 'Escoltar a',
+          'quest.untitled': 'Mision sin titulo',
+          'quest.giverFallback': 'Persona de mision',
+          'quest.checkpointNumber': 'Punto de ruta {index}',
+          'feed.offerWholeResult': '{actor} se ofrece voluntariamente a {target} y se acomoda en su barriga.',
+          'feed.tendResult.player': '{actor} atiendes a {target} y restauras {amount} de castigo.',
+          'feed.tendResult.named': '{actor} atiende a {target} y restaura {amount} de castigo.',
+          'feed.nurseUnavailable.player': '{actor} no puedes amamantar ahora.',
+          'feed.nurseUnavailable.named': '{actor} no puede amamantar ahora.',
+          'feed.nurseCooldown.player': '{actor} aun no puedes volver a amamantar.',
+          'feed.nurseCooldown.named': '{actor} aun no puede volver a amamantar.',
+          'feed.nurseResult.player': '{actor} amamantas a {target}, restauras su vitalidad y alivias su hambre.',
+          'feed.nurseResult.named': '{actor} amamanta a {target}, restaura su vitalidad y alivia su hambre.',
+          'feed.offerPieceResult': 'Una porcion renovable de {actor} restaura {amount} de castigo a {target}, con un coste de {cost} de castigo para {actor}.',
+          'variant.unavailable.actorCapability.player': '{name} no tienes la capacidad necesaria.',
+          'variant.unavailable.actorCapability.named': '{name} no tiene la capacidad necesaria.',
+          'feed.legacy.sacrificeRefused': '{target} rechaza ser ofrecido a {actor}.',
+          'feed.legacy.tooSmall.player': '{actor} eres demasiado pequeno para retener a {target}.',
+          'feed.legacy.tooSmall.named': '{actor} es demasiado pequeno para retener a {target}.',
+          'feed.legacy.sacrificeResult': '{target} se ofrece voluntariamente a {actor} y se acomoda en su barriga.',
+          'feed.legacy.noHolder': 'No hay nadie disponible para inmovilizar a {target}.',
+          'feed.legacy.forceResult.player': '{holder} inmoviliza a {target} mientras {actor} fuerzas la entrega y lo colocas en tu barriga contra su voluntad.',
+          'feed.legacy.forceResult.named': '{holder} inmoviliza a {target} mientras {actor} fuerza la entrega y lo coloca en su barriga contra su voluntad.',
+          'feed.legacy.drawUnavailable': '{target} no puede proporcionar alimento renovable.',
+          'feed.legacy.drawResult.player': '{actor} extraes vitalidad de {target}, que queda debilitado pero entero.',
+          'feed.legacy.drawResult.named': '{actor} extrae vitalidad de {target}, que queda debilitado pero entero.',
+          'feed.legacy.fragmentUnavailable': '{target} no puede proporcionar un fragmento renovable.',
+          'feed.legacy.fragmentResult.player': '{actor} reduces la vitalidad de {target} como alimento. {target} queda disminuido pero entero.',
+          'feed.legacy.fragmentResult.named': '{actor} reduce la vitalidad de {target} como alimento. {target} queda disminuido pero entero.',
+          'feast.swallowResult.player': '{actor} comes a {target}! Queda retenido en tu barriga.',
+          'feast.swallowResult.named': '{actor} come a {target}! Queda retenido en la barriga de {owner}.',
+          'feast.digestUnavailable.player': '{actor} no tienes a nadie retenido en tu barriga.',
+          'feast.digestUnavailable.named': '{actor} no tiene a nadie retenido en su barriga.',
+          'feast.digestResult.player': '{actor} digieres activamente a {target} hasta consumirlo por completo.',
+          'feast.digestResult.named': '{actor} digiere activamente a {target} hasta consumirlo por completo.',
+          'feast.releaseUnavailable.player': '{actor} no tienes ninguna presa viva que liberar.',
+          'feast.releaseUnavailable.named': '{actor} no tiene ninguna presa viva que liberar.',
+          'feast.releaseLog': '{target} es liberado del estomago de {holder} en condicion reducida.',
+          'feast.releaseResult.player': '{actor} liberas a {target} de tu barriga, debil y aturdido, pero vivo.',
+          'feast.releaseResult.named': '{actor} libera a {target} de su barriga, debil y aturdido, pero vivo.',
+          'containment.holderFallback': 'contenedor',
+          'containment.targetFallback': 'la criatura contenida',
+          'capacity.owner.unknown': 'su',
+          'capacity.actor.unknown': 'Alguien',
+          'capacity.target.unknown': 'el objetivo',
+          'combat.flee.threatFallback': 'la amenaza',
+          'combat.flee.cannotEscape': '{name} no puede escapar de {threat} y se vuelve hostil!',
+          'combat.flee.panicsFrom': '{name} entra en panico y huye de {threat}!',
+          'combat.flee.turnsHostile': '{name} se vuelve hostil!',
+          'combat.flee.corneredHostile': '{name} queda acorralado y se vuelve hostil!',
+          'combat.turnTitle': 'Ronda {round} - turno de {actor}',
+          'scene.delta.punishment': '{amount} de castigo',
+          'scene.delta.healing': '{amount} de castigo restaurado',
+          'scene.delta.spirit': 'Animo {current}/{max}',
+          'scene.delta.spiritChanged': 'El animo cambio',
+          'scene.delta.stateChanged': 'El estado cambio',
+          'ui.largeMap.creatureCountOne': '{count} criatura',
+          'ui.largeMap.creatureCountMany': '{count} criaturas',
+          'ui.largeMap.itemCountOne': '{count} objeto',
+          'ui.largeMap.itemCountMany': '{count} objetos',
+          'log.welcomeWorld': 'Te damos la bienvenida al mundo, {name}.',
+          'search.foundItem': 'Encontraste {item}!',
+          'search.explored': 'Exploras la zona. {description}',
+          'search.nothing': 'No hay nada de interes aqui.',
+          'combat.action.fightMiss.player': '{actor} fallas contra {target}.',
+          'combat.action.fightMiss.named': '{actor} falla contra {target}.',
+          'combat.action.fightHit.player': '{actor} golpeas a {target} y causas {amount} de castigo!',
+          'combat.action.fightHit.named': '{actor} golpea a {target} y causa {amount} de castigo!',
+          'combat.action.talkSuccess.player': '{actor} hablas con {target}! Baja la guardia. El animo sube a {current}/{max}.',
+          'combat.action.talkSuccess.named': '{actor} habla con {target}! Baja la guardia. El animo sube a {current}/{max}.',
+          'combat.action.talkRejected': '{target} rechaza la conversacion con {actor}!',
+          'combat.action.playSuccess.player': '{actor} juegas con {target}! El animo sube a {current}/{max}.',
+          'combat.action.playSuccess.named': '{actor} juega con {target}! El animo sube a {current}/{max}.',
+          'combat.action.playRejected': '{target} no quiere jugar!',
+          'combat.sync.talkSoftened': '{participants} hablan con {target} y bajan su guardia. El animo sube a {current}/{max}.',
+          'combat.sync.talkResisted': '{target} resiste el encanto combinado del grupo!',
+          'combat.sync.fightHit': '{participants} atacan juntos a {target} y causan {amount} de castigo!',
+          'corpse.partyRemainsDropped': 'Los restos de {name} caen al suelo.',
+          'corpse.decayedOne': 'Unos restos se descomponen por completo.',
+          'corpse.decayedMany': '{count} restos se descomponen por completo.',
+          'containment.releaseCurrentActorOnly': '{container}: solo el actor de combate actual puede liberar criaturas contenidas.',
+          'containment.digestCurrentActorOnly': '{container}: solo el actor de combate actual puede digerir criaturas contenidas.',
+          'containment.releaseUnavailable': '{name} no se puede liberar ahora.',
+          'containment.releaseLog': '{target} es liberado del contenedor {container} de {holder} en condicion reducida.',
+          'containment.digestFurtherUnavailable': '{target} no puede seguir digiriendose.',
+          'containment.digestLog': '{holder} digiere a {target} en el contenedor {container}.',
+          'containment.softenedLog': '{target} queda completamente ablandado dentro de {holder} y puede liberarse con vida.',
+          'containment.terminalLog': '{target} llega a la digestion terminal dentro de {holder}.',
+          'containment.integrity': 'Integridad',
+          'containment.vitality': 'Vitalidad',
+          'containment.progress': 'Progreso',
+          'containment.integrity.intact': 'Intacta',
+          'containment.integrity.damaged': 'Danada',
+          'containment.releaseEligible': 'Liberar',
+          'containment.state.contained': 'Contenida',
+          'containment.state.digesting': 'En digestion',
+          'containment.state.softened': 'Ablandada',
+          'containment.state.terminal': 'Terminal',
+          'containment.state.digested': 'Digerida',
+          'containment.state.released': 'Liberada',
+          'containment.state.passed': 'Expulsada',
+          'containment.state.depleted': 'Agotada',
+          'containment.summary': '{state} · {vitality} {ratio}% · {release}',
+          'containment.summary.releasable': 'Liberable',
+          'containment.summary.notReleasable': 'No liberable',
+          'containment.detailSummary': '{target} en {container}: {progress}% · {vitality} {ratio}% · {release}',
+          'ui.yes': 'Si',
+          'ui.no': 'No',
+          'containment.beat.contained': '{target} queda retenido en el estomago de {holder}.',
+          'containment.beat.digesting': '{target} se debilita mientras permanece en el estomago de {holder}.',
+          'containment.beat.softened': '{target} queda completamente ablandado dentro de {holder}, pero sigue vivo y puede ser liberado.',
+          'containment.beat.released': '{target} es liberado del estomago de {holder}, debilitado pero vivo.',
+          'containment.beat.terminal': '{target} es digerido por completo dentro de {holder}. {holder} se siente restaurado.',
           'action.fight': 'Luchar', 'action.flirt': 'Hablar', 'action.fuck': 'Jugar', 'action.feast': 'Comer', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.advance': 'Avanzar', 'action.retreat': 'Retirarse', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.search': 'Buscar', 'action.rest': 'Descansar', 'action.inventory': 'Objetos', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar', 'action.scavenged': 'Rebuscado',
           'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}', 'inventory.full': 'El inventario esta lleno.', 'inventory.empty': 'Vacio.', 'inventory.noItemsMatch': 'No hay articulos que coincidan con el filtro actual.', 'inventory.titleWithCount': 'Inventario ({count}/{max})', 'inventory.equippedSection': 'Equipado', 'holdings.titleWithInventory': 'Inventario / Pertenencias ({count}/{max})', 'holdings.umbrella': 'Personaje / Pertenencias', 'holdings.tabs': 'Secciones de pertenencias', 'holdings.pack': 'Mochila / Inventario', 'holdings.containers': 'Contenedores', 'holdings.ground': 'Aqui / Suelo', 'inventory.equipped': 'Equipaste {name}.', 'inventory.unequipped': 'Desequipaste {name}.', 'inventory.noEquipment': 'Sin equipo', 'inventory.noBonus': 'Sin bonificacion', 'inventory.effect': 'Efecto',
-          'item.category': 'Categoria', 'item.category.all': 'Todos', 'item.category.consumable': 'Consumible', 'item.category.equipment': 'Equipo', 'item.category.valuable': 'Valioso', 'item.category.material': 'Material', 'item.category.misc': 'Varios', 'item.sort': 'Ordenar', 'item.sort.name': 'Nombre', 'item.sort.type': 'Tipo', 'item.sort.valueDesc': 'Valor ↓', 'item.sort.valueAsc': 'Valor ↑',
-          'trade.title': 'Comercio con {name}', 'trade.gold': 'Oro: {gold}', 'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}', 'trade.needGold': 'Necesitas {price} de oro para comprar {name}.', 'trade.confirmBuy': 'Comprar {name} por {price} de oro?', 'trade.purchaseCancelled': 'Compra cancelada: {name}.', 'trade.bought': 'Compraste {name} por {price} de oro.', 'trade.sold': 'Vendiste {name} por {price} de oro.', 'trade.noStockMatches': 'No hay existencias que coincidan con el filtro actual.', 'trade.noItemsToSell': 'No hay articulos para vender.', 'trade.noInventoryMatches': 'No hay articulos de inventario que coincidan con el filtro actual.',
-          'quest.title': 'Misiones', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}', 'quest.status.active': 'Activa', 'quest.status.completed': 'Completada', 'quest.status.turnIn': 'Entregar', 'quest.noneActive': 'No hay misiones activas.', 'quest.noneMatchFilter': 'No hay misiones que coincidan con el filtro actual.', 'quest.alreadyInLog': '{title} ya esta en tu registro de misiones.', 'quest.accepted': 'Mision aceptada: {title}.', 'quest.completed': 'Mision completada: {title}.', 'quest.completedTurnIn': 'Mision completada: {title}. Vuelve con {giver} para recibir tu recompensa.', 'quest.defaultGiver': 'quien dio la mision', 'quest.notReadyTurnIn': 'Esa mision aun no esta lista para entregar.', 'quest.alreadyTurnedIn': '{title} ya fue entregada.', 'quest.turnedIn': 'Mision entregada: {title}.', 'quest.noObjectiveMarker': 'No hay marcador de mapa disponible para ese objetivo de mision.', 'quest.mapFocusedObjective': 'Mapa enfocado en {title}: {label}.', 'quest.noTurnInLocation': 'No hay ubicacion de entrega disponible para esa mision.', 'quest.mapFocusedTurnIn': 'Mapa enfocado en entrega de {title}: {label}.', 'quest.checkpoint': 'Punto de ruta', 'quest.checkpoint.complete': 'Completado', 'quest.checkpoint.current': 'Actual', 'quest.checkpoint.pending': 'Pendiente', 'quest.checkpointAria': '{state} punto de ruta {index}: {label} en {x}, {y}{guidance}', 'quest.youAreHere': 'Estas aqui', 'quest.direction.north': '{count} norte', 'quest.direction.south': '{count} sur', 'quest.direction.east': '{count} este', 'quest.direction.west': '{count} oeste', 'quest.step.singular': 'paso', 'quest.step.plural': 'pasos', 'quest.guidance': '{distance} {stepLabel} {directions}', 'quest.terrainKnownRoute': 'la ruta conocida cruza {parts}', 'quest.terrainRoad': '{count} camino', 'quest.terrainBridge': '{count} puente', 'quest.terrainRough': '{count} terreno dificil', 'quest.markerPreview': 'Marcador: {label} ({x}, {y})', 'quest.turnInPreview': 'Entregar con {label} ({x}, {y})',
+          'item.category': 'Categoria', 'item.category.all': 'Todos', 'item.category.consumable': 'Consumible', 'item.category.equipment': 'Equipo', 'item.category.valuable': 'Valioso', 'item.category.material': 'Material', 'item.category.misc': 'Varios', 'item.sort': 'Ordenar', 'item.sort.name': 'Nombre', 'item.sort.type': 'Tipo', 'item.sort.valueDesc': 'Valor ↓', 'item.sort.valueAsc': 'Valor ↑', 'item.unknown': 'Desconocido',
+          'trade.title': 'Comercio con {name}', 'trade.gold': 'Oro: {gold}', 'trade.quantity': 'Cant. {count}', 'trade.goldCompact': '{amount} oro', 'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}', 'trade.needGold': 'Necesitas {price} de oro para comprar {name}.', 'trade.confirmBuy': 'Comprar {name} por {price} de oro?', 'trade.purchaseCancelled': 'Compra cancelada: {name}.', 'trade.bought': 'Compraste {name} por {price} de oro.', 'trade.sold': 'Vendiste {name} por {price} de oro.', 'trade.noStockMatches': 'No hay existencias que coincidan con el filtro actual.', 'trade.noItemsToSell': 'No hay articulos para vender.', 'trade.noInventoryMatches': 'No hay articulos de inventario que coincidan con el filtro actual.',
+          'quest.title': 'Misiones', 'quest.windowTitle': 'Misiones de {name}', 'quest.window.available': 'Disponibles', 'quest.window.accepted': 'Aceptadas', 'quest.window.completed': 'Completadas', 'quest.window.none': 'Ninguna', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}', 'quest.status.active': 'Activa', 'quest.status.completed': 'Completada', 'quest.status.turnIn': 'Entregar', 'quest.noneActive': 'No hay misiones activas.', 'quest.noneMatchFilter': 'No hay misiones que coincidan con el filtro actual.', 'quest.alreadyInLog': '{title} ya esta en tu registro de misiones.', 'quest.accepted': 'Mision aceptada: {title}.', 'quest.completed': 'Mision completada: {title}.', 'quest.completedTurnIn': 'Mision completada: {title}. Vuelve con {giver} para recibir tu recompensa.', 'quest.defaultGiver': 'quien dio la mision', 'quest.notReadyTurnIn': 'Esa mision aun no esta lista para entregar.', 'quest.alreadyTurnedIn': '{title} ya fue entregada.', 'quest.turnedIn': 'Mision entregada: {title}.', 'quest.noObjectiveMarker': 'No hay marcador de mapa disponible para ese objetivo de mision.', 'quest.mapFocusedObjective': 'Mapa enfocado en {title}: {label}.', 'quest.noTurnInLocation': 'No hay ubicacion de entrega disponible para esa mision.', 'quest.mapFocusedTurnIn': 'Mapa enfocado en entrega de {title}: {label}.', 'quest.checkpoint': 'Punto de ruta', 'quest.checkpoint.complete': 'Completado', 'quest.checkpoint.current': 'Actual', 'quest.checkpoint.pending': 'Pendiente', 'quest.checkpointAria': '{state} punto de ruta {index}: {label} en {x}, {y}{guidance}', 'quest.youAreHere': 'Estas aqui', 'quest.direction.north': '{count} norte', 'quest.direction.south': '{count} sur', 'quest.direction.east': '{count} este', 'quest.direction.west': '{count} oeste', 'quest.step.singular': 'paso', 'quest.step.plural': 'pasos', 'quest.guidance': '{distance} {stepLabel} {directions}', 'quest.terrainKnownRoute': 'la ruta conocida cruza {parts}', 'quest.terrainRoad': '{count} camino', 'quest.terrainBridge': '{count} puente', 'quest.terrainRough': '{count} terreno dificil', 'quest.markerPreview': 'Marcador: {label} ({x}, {y})', 'quest.turnInPreview': 'Entregar con {label} ({x}, {y})', 'transaction.summary.npc': 'PNJ', 'transaction.summary.location': 'Ubicacion', 'transaction.summary.gold': 'Oro', 'transaction.summary.inventory': 'Inventario',
           'perk.choose': 'Elegir mejora', 'perk.chooseCount': 'Elegir mejora ({count})', 'perk.pending': 'Opciones pendientes: {count}', 'perk.trees': 'Arboles de mejoras', 'perk.filter.all': 'Todas', 'perk.chooseNamed': 'Elegir {name}', 'perk.back': 'Volver', 'perk.respec': 'Reiniciar mejoras', 'perk.debugGrant': 'Debug +1 opcion de mejora', 'perk.closeStats': 'Cerrar', 'perk.levelUp': 'Subiste de nivel! Ahora eres nivel {level}. Todas las estadisticas aumentaron!', 'perk.chooseNew': 'Elige una nueva mejora del arbol de mejoras.', 'perk.notAvailable': 'Esa mejora aun no esta disponible.', 'perk.chosen': 'Mejora elegida: {name}. {description}', 'perk.noneToRespec': 'No hay mejoras seleccionadas para reiniciar.', 'perk.confirmRespec': 'Reiniciar mejoras seleccionadas y reembolsar sus opciones?', 'perk.respecDoneOne': 'Mejoras reiniciadas. Se reembolso {count} opcion.', 'perk.respecDoneMany': 'Mejoras reiniciadas. Se reembolsaron {count} opciones.',
           'ui.close': 'Cerrar', 'ui.cancel': 'Cancelar', 'ui.actionLegend': 'Leyenda de acciones', 'ui.menu.newGame': 'Nueva partida', 'ui.menu.newGameTitle': 'Iniciar una partida nueva', 'ui.returnToMenu': 'Volver al menu', 'ui.menu.tutorialTitle': 'Abrir tutorial', 'ui.nav.holdingsTitle': 'Abrir pertenencias', 'ui.holdings': 'Pertenencias', 'ui.tutorial.skip': 'Saltar tutorial', 'ui.tutorial.next': 'Siguiente ->', 'ui.tutorial.welcome.title': 'Bienvenida', 'ui.tutorial.welcome.content': 'Eres salvaje en un mundo vivo y extrano. Explora, aprende tus limites y hazte mas fuerte. Elige tus riesgos con cuidado.', 'ui.tutorial.combat.title': 'Combate', 'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Hablar, Comer, Jugar, Alimentar o Huir. Las acciones sincronizadas permiten que varios aliados actuen juntos.', 'ui.tutorial.feast.title': 'Comer', 'ui.tutorial.feast.content': 'Come objetivos debilitados para retenerlos de forma segura. La capacidad importa, y los modulos opcionales pueden agregar resultados alternativos.', 'ui.tutorial.party.title': 'Grupo', 'ui.tutorial.party.content': 'Recluta criaturas dispuestas, asigna roles, elige ordenes de IA y gestiona quien actua durante exploracion o combate.', 'ui.tutorial.ready.title': 'Listo', 'ui.tutorial.ready.content': 'Empieza a explorar cuando estes listo. Usa los paneles de mapa, grupo y criaturas para mantener el flujo manejable.', 'ui.log.search': 'Buscar registro', 'ui.log.visibleCount': '{count} entradas visibles', 'ui.log.visibleCount.one': '1 entrada visible', 'ui.toast.notifications': 'Notificaciones', 'ui.toast.dismiss': 'Descartar notificacion', 'settings.title': 'Ajustes', 'settings.interfaceLanguage': 'Idioma de interfaz', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo', 'ui.tacticalStatus': 'Estado tactico', 'ui.unitTraits': 'Rasgos de unidad', 'unit.cardShowDetails': 'Mostrar detalles de {name}', 'unit.cardHideDetails': 'Ocultar detalles de {name}', 'ui.exploration': 'Exploracion', 'ui.chooseAction': 'Elige tu proxima accion.', 'ui.actorActing': '{name} esta actuando...', 'mobile.combat.actor': '{name} actua', 'mobile.combat.chooseAction': 'Elige una accion y luego toca un objetivo.', 'mobile.combat.enemyTurn': '{name} esta actuando.', 'mobile.combat.pickTarget': 'Elige un objetivo en la fila enemiga para {action}.', 'mobile.combat.status': 'Ronda {round} · Turno {turn}/{total}', 'mobile.combat.targeting': 'Objetivo: {action}', 'ui.welcomeLog': 'Bienvenido a You Are Wild', 'ui.scene.wildernessTitle': 'La Naturaleza', 'ui.scene.wildernessIntro': 'Te encuentras en una tierra indomita donde acechan depredadores y solo sobreviven los fuertes.', 'ui.scene.wildernessAmbient': 'El aire esta cargado de aroma a pino y llamadas lejanas de criaturas desconocidas.', 'ui.log.createdCharacter': 'Creaste tu personaje. El viaje comienza...', 'ui.area': 'Area', 'ui.enemies': 'Enemigos', 'ui.creatures': 'Criaturas', 'ui.noCreaturesPresent': 'No hay criaturas presentes', 'ui.noCreaturesHere': 'No hay criaturas aqui', 'target.chooseFromPanel': 'Selecciona un objetivo desde el panel de criaturas.', 'target.cancelAction': 'Cancelar {action}', 'log.movedTo': 'Movimiento a {x}, {y} ({biome})', 'log.inCombatCannotMove': 'Estas en combate! Usa Huir para escapar.', 'log.discoveredLandmark': 'Descubriste {name}!', 'log.restUnavailable': 'No hay un lugar seguro para descansar aqui.', 'log.rested': 'Descansaste y te recuperaste.', 'log.noEntriesMatchFilter': 'No hay entradas de registro que coincidan con el filtro actual.', 'recruit.partyFull': 'El grupo esta lleno! No se puede reclutar a {name}', 'recruit.notReady': '{name} aun no esta listo para unirse al grupo.', 'recruit.joined': '{name} se une a tu grupo!', 'recruit.confirmSubmissive': '{name} esta listo para seguirte. Reclutarlo para tu grupo?', 'feed.optionsTitle': 'Opciones de alimentacion', 'feed.noOptions': 'No hay opciones de alimentacion disponibles ahora.', 'feed.noWoundedAllies': 'No hay aliados heridos para alimentar.', 'feed.noWillingLivestock': 'No hay ganado dispuesto para sacrificar.', 'feed.noForceFeedEnemies': 'No hay enemigos para forzar alimentacion.', 'feed.noValidTarget': 'No hay objetivo valido para esta accion de alimentar.',
           'disposition.hostile': 'Hostil', 'disposition.friendly': 'Amistoso', 'disposition.neutral': 'Neutral', 'disposition.quest': 'Mision', 'disposition.merchant': 'Mercader', 'disposition.remains': 'Restos', 'unit.trait.asleep': 'Dormido', 'unit.trait.poisoned': 'Veneno', 'unit.trait.burning': 'Ardiendo', 'unit.trait.bleeding': 'Sangrando', 'unit.trait.stunned': 'Aturdido', 'unit.trait.frozen': 'Congelado', 'unit.trait.fear': 'Miedo', 'unit.trait.restrained': 'Inmovilizado', 'unit.trait.wounded': 'Herido', 'unit.trait.hungry': 'Hambriento', 'unit.trait.flying': 'Volador', 'unit.trait.darkvision': 'Vision nocturna', 'combat.row': 'Fila', 'combat.row.front': 'Frente', 'combat.row.back': 'Retaguardia', 'combat.group': 'Grupo', 'combat.turnOrder': 'Orden de turno', 'combat.status.current': '{name} es el actor de combate actual en el turno {order}.', 'combat.status.queued': '{name} esta en cola para el turno {order}.', 'combat.status.queuedActed': '{name} esta en cola para el turno {order} y ya actuo esta ronda.', 'combat.panelActions': 'Acciones de combate', 'combat.status.syncParticipant': '{name} participa en el grupo {action} en cola que se resolvera en el turno {order}.', 'combat.status.syncTarget': '{name} es objetivo del grupo {action} en cola que se resolvera en el turno {order}.', 'combat.status.canTarget': '{name} puede seleccionarse como objetivo de {action}.', 'combat.status.cannotTarget': '{name} no puede seleccionarse como objetivo de {action}.', 'combat.status.choosingTarget': '{name} esta eligiendo un objetivo de {action}.', 'combat.moveRowLog': '{name} se mueve a la fila {row}.', 'combat.advanceLog': '{name} avanza a la vanguardia.', 'combat.retreatLog': '{name} se retira a la retaguardia.', 'combat.cannotReachTarget': '{actor} no puede alcanzar a {target} desde aqui.', 'combat.flee.noEnemies': 'No hay enemigos de los que huir!', 'combat.flee.success': 'Huyes con exito!', 'combat.flee.failed': 'Huida fallida! {name} te intercepta!', 'combat.godModeSaved': 'El modo dios te salvo de la derrota!', 'combat.playerFallen': 'Has caido! Fin de la partida!', 'combat.hardcoreSaveDeleted': 'MODO EXTREMO: Tu partida guardada fue borrada.', 'combat.playerKnockedOut': 'Has quedado fuera de combate! Tu grupo debe terminar la pelea...', 'combat.partyWipedOut': 'Tu grupo fue derrotado por completo!', 'combat.alliesContinue': 'Tus aliados continuan la pelea...', 'combat.playerComesTo': '{name} despierta despues de la pelea.', 'combat.victory': 'Victoria! Los enemigos fueron derrotados o sometidos.', 'combat.escapedEncounter': 'Escapaste del encuentro.', 'combat.defeat': 'Derrota...', 'combat.confirmReturnToMenu': 'Derrota! Volver al menu?', 'recovery.regenerate': 'Regenerar', 'recovery.endGame': 'Terminar partida', 'combat.notInCombat': 'No estas en combate!', 'combat.instantWin': 'Victoria instantanea', 'combat.instantWinTitle': 'Derrotar al instante a todos los enemigos', 'combat.instantWinNotInCombat': 'No estas en combate! Victoria instantanea solo funciona durante combate.', 'combat.instantWinRequiresOverpowered': 'Victoria instantanea requiere modo Sobrepotenciado.', 'combat.instantWinSuccess': 'Victoria instantanea! Todos los enemigos fueron derrotados.', 'combat.allyScavenges': '{ally} rebusca los restos de {target} despues del combate.', 'combat.scavengeRemains': '{actor} usa {count} porcion(es) de {target}.', 'corpse.portionsRemaining': '{count} porciones restantes', 'corpse.depleted': 'Rebuscado', 'combat.allyHolds': '{name} mantiene la posicion.', 'combat.allyCannotReach': '{name} no puede alcanzar ningun objetivo.', 'combat.enemyReinforces': '{enemy} pide ayuda! {reinforcement} se une al combate.', 'combat.enemyRage': '{name} entra en furia!', 'combat.enemyFlees': '{name} huye aterrorizado!', 'combat.status.poisoned': '{name} queda envenenado!', 'combat.status.constricted': '{actor} constrine a {target}! Queda inmovilizado.', 'combat.status.enveloped': '{actor} envuelve a {target}!', 'combat.status.stunned': '{name} queda aturdido y pierde su turno!', 'combat.status.frozen': '{name} queda congelado y pierde su turno!', 'combat.status.asleep': '{name} esta dormido y no puede actuar!', 'combat.status.fearFlee': '{name} entra en panico y huye por miedo!', 'combat.status.fearFrozen': '{name} se paraliza de miedo y pierde su turno!', 'combat.status.recovering': '{name} se esta recuperando y pierde su turno.', 'combat.status.restrainedSkip': '{name} esta inmovilizado y no puede actuar!', 'combat.status.stuck': '{name} queda atrapado en el terreno y pierde su turno!', 'combat.allyFlees': '{name} pierde el valor y huye del combate!', 'combat.allyFleeFailed': '{name} intenta huir pero no logra escapar!', 'combat.allyTooAroused': '{name} esta demasiado distraido para actuar!', 'combat.enemyCannotReach': '{enemy} no puede alcanzar a {target}.', 'cheat.toggled': 'Truco {name}: {state}', 'cheat.state.on': 'ACTIVADO', 'cheat.state.off': 'DESACTIVADO', 'cheat.overpoweredMaxed': 'Sobrepotenciado! Todas las estadisticas al maximo.', 'combat.waitForTurn': 'Espera tu turno!', 'combat.notYourTurn': 'No es tu turno!', 'combat.sync.chooseAction': 'Elegir accion sincronizada', 'combat.sync.noAllies': 'No hay aliados disponibles para sincronizar.', 'combat.sync.action.fuck': 'Juego grupal', 'combat.sync.action.flirt': 'Conversacion grupal', 'combat.sync.action.fight': 'Ataque grupal', 'combat.sync.action.feed': 'Alimentacion grupal', 'combat.sync.participantRole': 'Participante', 'combat.sync.selectParticipants': 'Seleccionar participantes para sincronizar', 'combat.sync.selectParticipantFor': 'Seleccionar {name} para sincronizar', 'combat.sync.confirmParticipants': 'Confirmar participantes', 'combat.sync.needParticipants': 'Necesitas al menos 2 participantes para una accion sincronizada.', 'combat.sync.selectTarget': 'Seleccionar objetivo sincronizado', 'combat.sync.selectTargetFor': 'Seleccionar {name} como objetivo sincronizado', 'combat.sync.failedNoQueue': 'Sincronizacion fallida! Los participantes ya no estan en la cola de turnos.', 'combat.sync.failedIncapacitated': 'Sincronizacion fallida! {names} no puede participar.', 'capacity.stomach': 'Barriga', 'capacity.womb': 'Interior', 'capacity.balls': 'Reserva', 'capacity.owner.your': 'Tu', 'capacity.owner.named': 'De {name}', 'capacity.tooFull': '{owner} {container} esta demasiado lleno para {target}!', 'structure.noStructure': 'No hay una estructura para entrar aqui.', 'structure.entered': 'Entraste en {name}.', 'structure.exited': 'Saliste de {name}.', 'structure.movedInside': 'Movimiento dentro de {name} a {x}, {y}.', 'structure.fallbackName': 'la estructura', 'structure.wallBlocked': 'Una pared bloquea el camino.',
@@ -8155,7 +9098,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.newRun': 'Nueva partida', 'save.load': 'Cargar', 'save.save': 'Guardar', 'save.delete': 'Borrar', 'save.close': 'Cerrar', 'save.action.newGame': 'Elegir un slot para una partida nueva', 'save.action.useEmpty': 'Iniciar partida nueva en {slot}', 'save.action.overwrite': 'Sobrescribir {slot} con una partida nueva', 'save.action.newRun': 'Iniciar una nueva partida en {slot}', 'save.action.load': 'Cargar {slot}', 'save.action.save': 'Guardar y continuar en {slot}', 'save.action.delete': 'Borrar {slot}',
           'settings.confirmClearAllData': 'ADVERTENCIA: Esto borrara todas las partidas, modulos y datos del juego. Esta accion no se puede deshacer. Continuar?', 'settings.clearAllDataDone': 'Todos los datos fueron borrados. Actualiza la pagina para empezar de nuevo.', 'settings.clearAllDataFailed': 'Error al borrar todos los datos: {message}',
           'save.confirm.newGameOverwrite': 'Iniciar partida nueva en {slot}? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'save.confirm.manualOverwrite': 'Sobrescribir {slot} con la partida actual y continuar autoguardando ahi? Esta accion no se puede deshacer.', 'save.confirm.deleteSlot': 'Borrar el slot {slot}? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'save.confirmDeleteAll': 'Borrar TODOS los datos de partidas? Esta accion no se puede deshacer!', 'save.error.noGame': 'No hay partida para guardar!', 'save.error.noSave': 'No hay partida en {slot}', 'save.success.saved': 'Partida guardada en {slot}. El autoguardado ahora actualiza este slot.', 'save.success.deletedAll': 'Todas las partidas fueron borradas.', 'save.recoveredOnLoad': 'Te recuperaste al borde de la derrota. Bienvenido de vuelta, {name}.', 'save.error.saveFailed': 'Error al guardar: {message}', 'save.error.loadFailed': 'Error al cargar: {message}', 'save.error.deleteFailed': 'Error al borrar: {message}', 'save.error.deleteAllFailed': 'Error al borrar partidas: {message}', 'save.recovery.prompt': 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:', 'save.recovery.deleted': 'Partida borrada.', 'save.recovery.backupDownloaded': 'Respaldo descargado. La partida queda intacta.',
-          'target.actors': 'Actores', 'target.primaryActor': 'Principal', 'target.helpers': 'Ayudantes', 'target.targets': 'Objetivos', 'target.act': 'Actor', 'target.mark': 'Marcar', 'target.pick': 'Elegir', 'target.actorRole': 'Actor', 'target.targetRole': 'Objetivo', 'target.markedRole': 'Marcado', 'target.selectActorFor': 'Asignar {name} como actor', 'target.addActorFor': 'Agregar {name} como actor', 'target.removeActorFor': 'Quitar {name} de los actores', 'target.markFor': 'Marcar {name} como objetivo', 'target.removeTargetFor': 'Quitar {name} de los objetivos', 'target.selectAs': 'Seleccionar {name} como objetivo de {action}', 'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}', 'target.selectedSummary': 'Objetivos de exploracion seleccionados', 'target.chooseOneActor': 'Elige un actor para acciones multiobjetivo de {action}, o un objetivo para acciones grupales de {action}. La seleccion actual tiene {actorCount} actores y {targetCount} objetivos.', 'target.cannotHandleMultiple': '{name} no puede manejar {count} objetivos con {action} todavia.', 'target.multiActionDone': '{name} termina una accion multiobjetivo de {action} sobre {targets}.', 'target.multiActionNone': '{name} no encuentra objetivos validos para multiobjetivo de {action}.', 'target.pairedActionDone': 'Acciones emparejadas de {action} resueltas: {pairs}.', 'target.skippedFullTargets': 'Objetivos llenos omitidos: {targets}.', 'target.clear': 'Limpiar', 'target.count': '{count} objetivo', 'target.count_plural': '{count} objetivos', 'target.intentControls': 'Controles de intencion de objetivo', 'target.clearSelected': 'Limpiar objetivos', 'explore.fight.hit': '{actor} golpea a {target} por {amount} de castigo.', 'explore.fight.subdued': '{target} queda sometido.', 'explore.fuck.success': '{actor} juega con {target}. El animo sube a {current}/{max}.', 'explore.fuck.devoted': '{target} se relaja y queda completamente amistoso.', 'explore.fuck.recover': '{target} necesita un momento para respirar...', 'explore.fuck.resists': '{target} no quiere jugar.', 'explore.feast.swallow': '{actor} come a {target}. Queda en la barriga de {owner}.', 'explore.feast.tooStrong': '{target} es demasiado grande o fuerte para comer.', 'explore.flirt.success': '{actor} habla con {target}. Baja la guardia. El animo sube a {current}/{max}.', 'explore.flirt.charmed': '{target} queda convencido y se vuelve amistoso!', 'explore.flirt.rebuff': '{target} rechaza la conversacion!', 'explore.feed.success': '{actor} alimenta a {target}, restaurando {amount} de castigo y saciando su hambre.', 'explore.recruit.possible': '{target} podria estar dispuesto a unirse al grupo.', 'group.feed.selfBlocked': '{name} no puede alimentarse a si mismo todavia.', 'group.feed.playerBlocked': '{name} no puede ser entregado como presa ahora.', 'group.feed.partyToConsumer': '{prey} es alimentado a {consumer} y queda en su barriga.', 'group.feed.helpers': '{helpers} ayudan a alimentar {prey} a {target}.', 'group.feed.tend': '{actors} atienden a {target}, restaurando {amount} de castigo.', 'group.feed.tendTogether': '{actors} atienden juntos a {target}, restaurando {amount} de castigo.', 'group.feed.creature': '{actors} alimentan a {target}, restaurando {amount} de castigo.', 'group.fight.roughCollapse': '{name} cae por el juego brusco.', 'group.fight.pinned': 'Quedan inmovilizados sin heridas serias.', 'group.fight.sparTogether': '{actors} practican combate juntos, cada uno recibe {amount} de castigo.', 'group.mutual.feed': '{actors} se atienden entre si, restaurando {amount} de castigo donde hace falta.', 'group.mutual.feastBlocked': '{actors} no pueden comerse a si mismos como grupo mutuo. Elige un objetivo principal.', 'group.mutual.fight': '{actors} practican combate como grupo mutuo, cada uno recibe {amount} de castigo.', 'group.mutual.social': '{actors} comparten {action} como grupo mutuo. El animo sube para todos los involucrados.', 'group.fight.playFight': '{actors} juegan a pelear con {target} por {amount} de castigo.', 'group.fight.collapses': '{target} cae.', 'group.feast.noHelpers': '{target} no puede reducirse sin ayudantes.', 'group.feast.split': '{actors} reducen la vitalidad de {target}.', 'group.feast.selfBlocked': '{target} no puede comerse a si mismo. Selecciona otros miembros del grupo como actores para este objetivo, o selecciona solo a {target} para comer otro objetivo.', 'group.feast.tooStrong': '{target} es demasiado grande o fuerte para que {actors} lo coman.', 'group.feast.swallow': '{helpers} ayudan a {primary} a comer a {target}.', 'group.social.share': '{actors} comparten {action} con {target}. El animo se extiende por el grupo; {target} sube a {current}/{max}.', 'group.social.focus': '{actors} se enfocan en {target}. El animo sube a {current}/{max}.', 'group.social.resists': '{target} resiste la atencion del grupo.'
+          'target.actors': 'Actores', 'target.primaryActor': 'Principal', 'target.helpers': 'Ayudantes', 'target.targets': 'Objetivos', 'target.act': 'Actor', 'target.mark': 'Marcar', 'target.pick': 'Elegir', 'target.actorRole': 'Actor', 'target.targetRole': 'Objetivo', 'target.markedRole': 'Marcado', 'target.selectActorFor': 'Asignar {name} como actor', 'target.addActorFor': 'Agregar {name} como actor', 'target.removeActorFor': 'Quitar {name} de los actores', 'target.markFor': 'Marcar {name} como objetivo', 'target.removeTargetFor': 'Quitar {name} de los objetivos', 'target.selectAs': 'Seleccionar {name} como objetivo de {action}', 'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}', 'target.selectedSummary': 'Objetivos de exploracion seleccionados', 'target.chooseOneActor': 'Elige un actor para acciones multiobjetivo de {action}, o un objetivo para acciones grupales de {action}. La seleccion actual tiene {actorCount} actores y {targetCount} objetivos.', 'target.cannotHandleMultiple': '{name} no puede manejar {count} objetivos con {action} todavia.', 'target.multiActionDone': '{name} termina una accion multiobjetivo de {action} sobre {targets}.', 'target.multiActionNone': '{name} no encuentra objetivos validos para multiobjetivo de {action}.', 'target.pairedActionDone': 'Acciones emparejadas de {action} resueltas: {pairs}.', 'target.skippedFullTargets': 'Objetivos llenos omitidos: {targets}.', 'target.clear': 'Limpiar', 'target.count': '{count} objetivo', 'target.count_plural': '{count} objetivos', 'target.intentControls': 'Controles de intencion de objetivo', 'target.clearSelected': 'Limpiar objetivos', 'explore.fight.hit': '{actor} golpea a {target} por {amount} de castigo.', 'explore.fight.subdued': '{target} queda sometido.', 'explore.fuck.success': '{actor} juega con {target}. El animo sube a {current}/{max}.', 'explore.fuck.devoted': '{target} se relaja y queda completamente amistoso.', 'explore.fuck.recover': '{target} necesita un momento para respirar...', 'explore.fuck.resists': '{target} no quiere jugar.', 'explore.feast.swallow': '{actor} come a {target}. Queda en la barriga de {owner}.', 'explore.feast.tooStrong': '{target} es demasiado grande o fuerte para comer.', 'explore.flirt.success': '{actor} habla con {target}. Baja la guardia. El animo sube a {current}/{max}.', 'explore.flirt.charmed': '{target} queda convencido y se vuelve amistoso!', 'explore.flirt.rebuff': '{target} rechaza la conversacion!', 'explore.feed.success': '{actor} atiende a {target} y restaura {amount} de castigo.', 'explore.recruit.possible': '{target} podria estar dispuesto a unirse al grupo.', 'group.feed.selfBlocked': '{name} no puede alimentarse a si mismo todavia.', 'group.feed.playerBlocked': '{name} no puede ser entregado como presa ahora.', 'group.feed.partyToConsumer': '{prey} es alimentado a {consumer} y queda en su barriga.', 'group.feed.helpers': '{helpers} ayudan a alimentar {prey} a {target}.', 'group.feed.tend': '{actors} atienden a {target}, restaurando {amount} de castigo.', 'group.feed.tendTogether': '{actors} atienden juntos a {target}, restaurando {amount} de castigo.', 'group.feed.creature': '{actors} atienden a {target}, restaurando {amount} de castigo.', 'group.fight.roughCollapse': '{name} cae por el juego brusco.', 'group.fight.pinned': 'Quedan inmovilizados sin heridas serias.', 'group.fight.sparTogether': '{actors} practican combate juntos, cada uno recibe {amount} de castigo.', 'group.mutual.feed': '{actors} se atienden entre si, restaurando {amount} de castigo donde hace falta.', 'group.mutual.feastBlocked': '{actors} no pueden comerse a si mismos como grupo mutuo. Elige un objetivo principal.', 'group.mutual.fight': '{actors} practican combate como grupo mutuo, cada uno recibe {amount} de castigo.', 'group.mutual.social': '{actors} comparten {action} como grupo mutuo. El animo sube para todos los involucrados.', 'group.fight.playFight': '{actors} juegan a pelear con {target} por {amount} de castigo.', 'group.fight.collapses': '{target} cae.', 'group.feast.noHelpers': '{target} no puede reducirse sin ayudantes.', 'group.feast.split': '{actors} reducen la vitalidad de {target}.', 'group.feast.selfBlocked': '{target} no puede comerse a si mismo. Selecciona otros miembros del grupo como actores para este objetivo, o selecciona solo a {target} para comer otro objetivo.', 'group.feast.tooStrong': '{target} es demasiado grande o fuerte para que {actors} lo coman.', 'group.feast.swallow': '{helpers} ayudan a {primary} a comer a {target}.', 'group.social.share': '{actors} comparten {action} con {target}. El animo se extiende por el grupo; {target} sube a {current}/{max}.', 'group.social.focus': '{actors} se enfocan en {target}. El animo sube a {current}/{max}.', 'group.social.resists': '{target} resiste la atencion del grupo.'
         }
       },
       setPreference(key, value) { this.preferences[key] = value; },
@@ -8211,11 +9154,13 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       en: {
         'ui.tutorial.combat.content': 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Select actors, mark targets, choose an intent, then commit group plans. Each intent owns its reach: social actions can cross rows, while physical attempts may fail and explain why in the Scene Feed.',
         'structure.notEnterable': 'There is no interior to enter here.',
+        'capacity.tooFull': '{actor} tries, but {owner} {container} is too full for {target}.',
         'target.manyToManyActionDone': '{actors} act together with {targets}: {results}'
       },
       es: {
         'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Hablar, Comer, Jugar, Alimentar o Huir. Selecciona actores, marca objetivos, elige una intencion y confirma planes grupales. Cada intencion tiene su propio alcance: las acciones sociales pueden cruzar filas, mientras que los intentos fisicos pueden fallar y explicarse en la Scene Feed.',
         'structure.notEnterable': 'No hay un interior para entrar aqui.',
+        'capacity.tooFull': '{actor} lo intenta, pero no hay espacio para {target} en {owner} {container}.',
         'target.manyToManyActionDone': '{actors} actuan juntos con {targets}: {results}'
       }
     };
@@ -8337,6 +9282,44 @@ test('Static shell localization updates text and accessibility attributes', () =
   assertEqual(ariaEl.getAttribute('aria-label'), 'Idioma de interfaz', 'Static aria-label should localize on language change');
   assertEqual(placeholderEl.getAttribute('placeholder'), 'Buscar registro', 'Static placeholder should localize on language change');
   assertContains(App._actionLegend(['fight', 'feed']), 'aria-label="Leyenda de acciones"', 'Action legend label should localize');
+});
+
+test('Language selector renders the live locale catalog instead of a fixed core list', () => {
+  const { App, elements, content } = loadAppForCombat();
+  content.localeCatalog = () => [
+    { id: 'en', displayName: 'English' },
+    { id: 'qps-ploc', displayName: 'Pseudo <Locale>' }
+  ];
+  content.preferences.language = 'qps-ploc';
+  App.syncLanguageControl();
+  const selector = elements.get('setting-language');
+  assertContains(selector.innerHTML, 'value="qps-ploc"', 'Dynamic locale definitions should appear in the language selector');
+  assertContains(selector.innerHTML, 'Pseudo &lt;Locale&gt;', 'Module-owned locale names should be escaped before rendering');
+  assertEqual(selector.value, 'qps-ploc', 'The active module locale should remain selected after the catalog refresh');
+});
+
+test('Scene, compact tile, and large-map secondary controls localize at render time', () => {
+  const { App, elements, window } = loadAppForCombat();
+  App.updateLanguage('es');
+
+  const storyHtml = window.YAW_COMBAT_SCENE.latestStoryHtml(App);
+  assertContains(storyHtml, '>Escena<', 'Scene strip kicker should use the active locale');
+  assertContains(storyHtml, 'aria-label="Abrir cronica de escena"', 'Scene strip opener should expose a localized accessible name');
+  assertContains(storyHtml, '>Cronica</button>', 'Scene strip opener should use a localized visible label');
+
+  const currentTile = App.getTile(App.location.x, App.location.y);
+  const tileHtml = window.YAW_MAP_VISUALS.compactTileInfoHtml(App, currentTile);
+  assertContains(tileHtml, '>Detalles</button>', 'Compact tile control should localize its visible Details label');
+
+  App.largeMapRadius = 4;
+  App.largeMapOffset = { x: 0, y: 0 };
+  App.exploredTiles = new Set();
+  App.worldMap = new Map();
+  App.quests = [];
+  App.creatures = [];
+  App.renderLargeMap();
+  assertContains(elements.get('large-map').innerHTML, 'aria-label="Desconocido', 'Unknown large-map tiles should expose localized accessible names');
+  assertContains(elements.get('large-map-pois').innerHTML, 'No hay puntos de interes descubiertos cerca.', 'Large-map empty state should use the active locale');
 });
 
 test('Instant Win is gated behind Overpowered cheat', () => {
@@ -8740,6 +9723,56 @@ test('Combat feed uses the current combat actor and explicitly selected target',
   assertEqual(App._feedAdvanced, true, 'Current actor feed should consume the turn');
 });
 
+test('Low-level combat Feed fallback affects the selected target rather than redirecting to the actor', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Healer', { id: 'direct-feed-actor', CPun: 55, MPun: 100, CPle: 30, MPle: 100, hunger: 10, Feed: 20 });
+  const target = makeUnit('Wounded', { id: 'direct-feed-target', CPun: 20, MPun: 100, CPle: 0, MPle: 100, hunger: 50 });
+  App.player = actor;
+  App.party = [actor, target];
+  App.creatures = [];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: actor, initiative: 20 }], syncActions: [] };
+  App.activeActor = actor;
+  App.nextTurn = function() { this._directFeedAdvanced = true; };
+
+  assertEqual(App.executeActionAgainstTarget('feed', actor, target), true, 'Direct combat Feed fallback should resolve');
+  assertEqual(actor.CPun, 55, 'Direct combat Feed should not heal the acting unit unless it was explicitly selected as the target');
+  assertEqual(actor.hunger, 11, 'Direct combat Feed should charge the acting unit once');
+  assertEqual(target.CPun, 60, 'Direct combat Feed should heal the selected target');
+  assertEqual(target.hunger, 50, 'Direct combat Tend should not create nutrition without an explicit source');
+  assertEqual(target.CPle, 0, 'Direct combat Tend should remain condition-only care');
+  assertEqual(App.combatState.xpEarned, 8, 'Direct combat Tend XP should be bounded by the meaningful share of condition restored');
+  assertContains(App.lastCombatActionResult.result, 'Wounded', 'Direct combat Feed Scene result should name the selected target');
+  assertEqual(App._directFeedAdvanced, true, 'Resolved direct Feed should consume the combat turn');
+});
+
+test('Tend support XP is bounded by net condition restored and cannot be farmed through self-care', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Healer', { id: 'tend-xp-actor', CPun: 20, MPun: 100, Feed: 20, hunger: 30 });
+  const ally = makeUnit('Ally', { id: 'tend-xp-ally', CPun: 20, MPun: 100, CPle: 5, MPle: 100, hunger: 70 });
+  App.player = actor;
+  App.party = [actor, ally];
+  App.combatState = { active: true, xpEarned: 0, turnQueue: [] };
+
+  const first = App._resolveTendEffect(actor, ally);
+  const second = App._resolveTendEffect(actor, ally);
+  assertEqual(first.restoredCondition, 40, 'Tend should restore condition from the actor Feed stat');
+  assertEqual(second.restoredCondition, 40, 'Repeated Tend should restore only remaining missing condition');
+  assertEqual(App.combatState.xpEarned, 16, 'Two meaningful Tend commands should award only the condition bands crossed');
+  assertEqual(ally.hunger, 70, 'Repeated Tend should never change target hunger');
+  assertEqual(ally.CPle, 5, 'Repeated Tend should never change target Spirit');
+
+  const final = App._resolveTendEffect(actor, ally);
+  assertEqual(final.restoredCondition, 0, 'Tend against full condition should have no net effect');
+  assertEqual(final.xpAwarded, 0, 'No-op Tend should award no XP');
+  assertEqual(App.combatState.xpEarned, 16, 'No-op Tend should not change accumulated support XP');
+
+  const beforeSelfXP = App.combatState.xpEarned;
+  const self = App._resolveTendEffect(actor, actor);
+  assert(self.restoredCondition > 0, 'Self Tend should remain valid condition care');
+  assertEqual(self.xpAwarded, 0, 'Self Tend should award no support XP');
+  assertEqual(App.combatState.xpEarned, beforeSelfXP, 'Self Tend should not change accumulated support XP');
+});
+
 test('Companion combat Feed can explicitly target a living enemy', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'enemy-feed-player', CPun: 20, MPun: 100 });
@@ -8826,6 +9859,124 @@ test('Sub-action registry exists with feast and feed sub-actions', () => {
   assertContains(subActionsContent, "unbirth:", 'Unbirth sub-action missing');
 });
 
+test('Resource Ledger V1 is built before sub-actions and app normalization', () => {
+  assertContains(buildContent, "'src/core/resource-ledger.js'", 'Resource ledger should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/resource-ledger.js'") < buildContent.indexOf("'src/core/sub-actions.js'"), 'Resource ledger should load before contextual variants');
+  assert(buildContent.indexOf("'src/core/resource-ledger.js'") < buildContent.indexOf("'src/core/app.js'"), 'Resource ledger should load before unit normalization and action resolution');
+});
+
+test('Resource Ledger V1 bounds renewal spending and dormant unknown state', () => {
+  const ledger = new Function('window', `${resourceLedgerContent}\nreturn YAW_RESOURCE_LEDGER;`)({});
+  const unit = {
+    species: 'human',
+    lactating: true,
+    resourceLedger: {
+      'core:nurse': { current: 999, progress: 999 },
+      'missing:reserve': { current: 12, progress: 7 },
+      invalid: { current: 5 }
+    }
+  };
+  ledger.normalizeUnit(unit);
+  assertEqual(unit.resourceLedger['core:nurse'].current, 3, 'Active resource values should clamp to authored capacity');
+  assertEqual(unit.resourceLedger['core:nurse'].progress, 2, 'Active regeneration progress should clamp below its interval');
+  assertEqual(unit.resourceLedger['missing:reserve'].current, 12, 'Dormant namespaced state should survive without becoming an active capability');
+  assertEqual(unit.resourceLedger.invalid, undefined, 'Malformed unnamespaced entries should be discarded');
+  assertEqual(ledger.spend(unit, 'core:nurse', 2), 2, 'Resource spend should return the amount actually committed');
+  assertEqual(ledger.state(unit, 'core:nurse').current, 1, 'Resource spend should update canonical unit state');
+  assertEqual(ledger.spend(unit, 'core:nurse', 2), 0, 'Resource spend should be atomic when the reserve is insufficient');
+  ledger.spend(unit, 'core:nurse', 1);
+  unit.resourceLedger['core:nurse'].progress = 0;
+  ledger.tick(unit, 'digestion', 2);
+  assertEqual(ledger.state(unit, 'core:nurse').current, 0, 'Renewal should wait for the authored interval');
+  ledger.tick(unit, 'digestion', 1);
+  assertEqual(ledger.state(unit, 'core:nurse').current, 1, 'Renewal should grant only the authored amount at the authored interval');
+});
+
+test('Combat Technique V1 is built before combat variants reach and resolution', () => {
+  assertContains(buildContent, "'src/core/combat-techniques.js'", 'Combat technique registry should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/combat-techniques.js'") < buildContent.indexOf("'src/core/sub-actions.js'"), 'Combat techniques should load before contextual variant orchestration');
+  assert(buildContent.indexOf("'src/core/combat-techniques.js'") < buildContent.indexOf("'src/core/combat-rules.js'"), 'Combat techniques should load before reach resolution');
+  assert(buildContent.indexOf("'src/core/combat-techniques.js'") < buildContent.indexOf("'src/core/combat-resolution.js'"), 'Combat techniques should load before damage and status resolution');
+});
+
+test('Combat Technique V1 bounds profiles and resolves equipment reach area damage and status data', () => {
+  const techniques = new Function('window', `${combatTechniqueContent}\nreturn YAW_COMBAT_TECHNIQUES;`)({});
+  const profile = techniques.register('test-pack', 'sweepingArc', {
+    label: 'Sweeping Arc',
+    description: 'A broad weapon arc.',
+    icon: '🌀',
+    eligibility: { abilities: ['trained'] },
+    equipment: { required: true, anyTags: ['sweeping'], slots: ['hands'] },
+    reach: 'ranged',
+    damage: { multiplier: 1.25, flat: 2 },
+    area: { maxTargets: 3, distribution: 'full', recovery: 0.5 },
+    status: { effect: 'stun', chance: 0.5, turns: 1, power: 1 }
+  });
+  assert(Object.isFrozen(profile), 'Combat technique root should be frozen');
+  assert(Object.isFrozen(profile.area), 'Combat technique nested area profile should be frozen');
+  assert(Object.isFrozen(profile.status), 'Combat technique nested status profile should be frozen');
+  const app = {
+    ITEMS: { 'Arc Blade': { name: 'Arc Blade', type: 'equipment', slot: 'hands', techniqueTags: ['sweeping'] } },
+    _getItemDef(item) { return this.ITEMS[item.name] || item; },
+    _label(_key, fallback, vars = {}) {
+      return String(fallback).replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
+    }
+  };
+  const trained = { species: 'human', abilities: { trained: true }, equipment: { hands: { name: 'Arc Blade' } } };
+  const untrained = { species: 'human', abilities: {}, equipment: { hands: { name: 'Arc Blade' } } };
+  assertEqual(techniques.eligible(app, trained, profile), true, 'Authored ability and equipment tags should activate the technique');
+  assertEqual(techniques.eligible(app, untrained, profile), false, 'Missing authored capability should keep the technique unavailable');
+  assertEqual(techniques.reachProfile(app, trained, profile.key), 'ranged', 'Selected technique should provide its explicit reach profile');
+  assertEqual(techniques.multiTargetSpec(app, trained, profile.key, 3).fullEffect, true, 'Full-area technique should opt into full multi-target effect');
+  assertEqual(techniques.multiTargetSpec(app, trained, profile.key, 4), null, 'Area target cap should reject oversized selections');
+  assertEqual(techniques.damageValue(10, profile), 14, 'Technique damage should apply bounded multiplier and flat shaping deterministically');
+  let rejected = false;
+  try {
+    techniques.register('test-pack', 'unsafe', { damage: { multiplier: 99 }, inventedField: true });
+  } catch (error) {
+    rejected = /unsupported field|damage.multiplier/.test(error.message);
+  }
+  assertEqual(rejected, true, 'Unknown or out-of-range combat technique data should reject registration');
+});
+
+test('Recovery Mode V1 bounds profiles localization and shrine restrictions', () => {
+  const registry = new Function('window', `${recoveryModesContent}\nreturn YAW_RECOVERY_MODES;`)({});
+  assertEqual(registry.available().length, 2, 'Core should provide immediate regeneration and ghost pilgrimage');
+  assertEqual(registry.profile('core:regenerate').resolution, 'immediate', 'Default recovery should remain immediate');
+  assertEqual(registry.profile('core:ghost').resolution, 'shrine', 'Ghost recovery should require a shrine journey');
+  const profile = registry.register('test-recovery', 'pilgrimage', {
+    label: 'Moon pilgrimage',
+    labelKey: 'test-recovery.recovery.moon',
+    descriptionKey: 'test-recovery.recovery.moon.description',
+    resolution: 'shrine',
+    entry: 'defeat-site',
+    inventory: 'death-bag',
+    traversal: 'ethereal',
+    restrictions: ['combat', 'inventory', 'interactions', 'structures'],
+    vitalityPercent: 25
+  });
+  assert(Object.isFrozen(profile), 'Recovery mode root should be frozen');
+  assert(Object.isFrozen(profile.restrictions), 'Recovery mode nested restrictions should be frozen');
+  assertEqual(profile.key, 'test-recovery:pilgrimage', 'Recovery mode should retain namespaced ownership');
+  assertEqual(profile.vitalityPercent, 25, 'Recovery mode should retain bounded resurrection vitality');
+
+  let rejected = false;
+  try {
+    registry.register('test-recovery', 'unsafe', { resolution: 'shrine', restrictions: ['inventory'] });
+  } catch (error) {
+    rejected = /restrict combat/.test(error.message);
+  }
+  assertEqual(rejected, true, 'Shrine recovery should be unable to expose combat before resurrection');
+
+  rejected = false;
+  try {
+    registry.register('test-recovery', 'bad-locale', { labelKey: 'another-owner.label' });
+  } catch (error) {
+    rejected = /owning module namespace/.test(error.message);
+  }
+  assertEqual(rejected, true, 'Module recovery locale keys should remain in their owning namespace');
+});
+
 test('Feed Contract V1 exposes contextual canonical variants and hides compatibility aliases', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'feed-contract-player' });
@@ -8854,8 +10005,29 @@ test('Feed Contract V1 exposes contextual canonical variants and hides compatibi
   assertEqual(productionContent.t('subaction.feed.offerWhole.sfw'), 'Ofrecerse', 'Canonical Feed variant labels should localize');
 });
 
-test('Contextual variant resolver reports group validity cost and actionable requirements', () => {
+test('Compatibility interaction outcomes localize without entering the canonical picker', () => {
   const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('Zpig', { id: 'localized-legacy-player', size: 6, CPun: 80, MPun: 100, Feed: 20 });
+  const unwilling = makeUnit('Objetivo', { id: 'localized-legacy-unwilling', size: 2 });
+  const renewable = makeUnit('Slime', { id: 'localized-legacy-renewable', species: 'slime', size: 2, slurpable: true, CPun: 80, MPun: 100 });
+  const named = makeUnit('Actor', { id: 'localized-legacy-named', size: 6 });
+  App.player = player;
+  App.party = [player, named];
+  App.creatures = [unwilling, renewable];
+  App.updateLanguage('es');
+
+  const refused = App._doSubAction('feed', 'sacrifice', player, unwilling, 'Zpig', '');
+  assertEqual(refused, 'Objetivo rechaza ser ofrecido a Tu.', 'Legacy Offer compatibility failure should use the active locale and player label');
+  const drawn = App._doSubAction('feed', 'slurp', player, renewable, 'Zpig', '');
+  assertContains(drawn, 'Tu extraes vitalidad de Slime', 'Legacy Draw compatibility result should preserve localized player grammar');
+  const missingCapability = App._doSubAction('feast', 'cockVore', named, unwilling, 'Actor', 's');
+  assertEqual(missingCapability, 'Actor no tiene la capacidad necesaria.', 'Gated legacy Feast capability failure should localize without naming explicit anatomy');
+  const canonical = App._getAvailableSubActions('feed', player, unwilling);
+  assertEqual(canonical.some(option => ['sacrifice', 'forceFeed', 'slurp', 'fragment'].includes(option.id)), false, 'Localizing compatibility routes must not expose them in the canonical Feed picker');
+});
+
+test('Contextual variant resolver reports group validity cost and actionable requirements', () => {
+  const { App, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'variant-player' });
   const ordinary = makeUnit('Ordinary', { id: 'variant-ordinary', size: 2, CPun: 100, MPun: 100 });
   const willing = makeUnit('Willing', { id: 'variant-willing', size: 2, willingPrey: true, CPun: 100, MPun: 100 });
@@ -8873,8 +10045,36 @@ test('Contextual variant resolver reports group validity cost and actionable req
   assertEqual(whole.requirements.includes('Capacity'), true, 'Whole offering should expose capacity requirements');
   assertEqual(whole.requirements.includes('Willingness'), true, 'Whole offering should expose willingness requirements');
   assert(whole.cost?.label, 'Contextual variants should include the shared action-cost preview');
+  assertEqual(whole.pairPreviews.length, 2, 'Group variants should expose one bounded preview per evaluated pair');
+  assertEqual(whole.pairPreviews.find(pair => pair.actorId === ordinary.id)?.available, false, 'Pair preview should identify the ineligible source without hiding the group option');
+  assertContains(whole.pairPreviews.find(pair => pair.actorId === ordinary.id)?.label || '', 'Ordinary to Consumer', 'Pair preview should name the exact actor and target');
+  assertEqual(whole.pairPreviews.find(pair => pair.actorId === willing.id)?.available, true, 'Pair preview should identify the eligible source');
+  assertEqual(whole.actorCosts.length, 2, 'Group variants should report one cost entry per actor rather than one cost per pair');
+  assertEqual(whole.actorCosts.every(entry => Boolean(entry.cost)), true, 'Each group actor should retain an actionable cost preview');
   assertEqual(tend.status, 'unavailable', 'A full-health target should keep Tend visible but unavailable');
   assertContains(tend.reason, 'does not need tending', 'Unavailable variants should explain the current actor-target failure');
+
+  App.explorationActorIds = [ordinary.id, willing.id];
+  App.explorationTargetIds = [`party:${consumer.id}`];
+  App.openExplorationTargetSubActionSheet('feed', 'desktop-target');
+  assertContains(body.innerHTML, 'class="action-variant-pair-preview"', 'Group contextual UI should render the bounded pair preview');
+  assertContains(body.innerHTML, 'data-variant-pair-count="2"', 'Group contextual UI should expose the complete evaluated pair count');
+  assertContains(body.innerHTML, 'Pair preview', 'Group contextual UI should label the pair-level explanation');
+  assertContains(body.innerHTML, 'Ordinary to Consumer', 'Group contextual UI should identify the ineligible actor-target pair');
+  assertContains(body.innerHTML, 'Willing to Consumer', 'Group contextual UI should identify the eligible actor-target pair');
+  assertContains(body.innerHTML, 'Actor costs:', 'Group contextual UI should explain once-per-actor costs');
+
+  const extraActors = [ordinary, willing, makeUnit('Third Actor', { id: 'variant-third-actor' })];
+  const extraTargets = [
+    consumer,
+    makeUnit('Second Target', { id: 'variant-second-target', CPun: 50, MPun: 100 }),
+    makeUnit('Third Target', { id: 'variant-third-target', CPun: 40, MPun: 100 })
+  ];
+  const bounded = App._resolveActionVariants('feed', { actors: extraActors, targets: extraTargets }).variants.find(variant => variant.id === 'tend');
+  assertEqual(bounded.pairCount, 9, 'Three-by-three contextual plans should evaluate every pair');
+  assertEqual(bounded.pairPreviews.length, 8, 'Pair explanations should stay bounded in the command surface');
+  assertEqual(bounded.pairPreviewOverflow, 1, 'Bounded pair previews should disclose omitted pair explanations');
+  assertEqual(bounded.actorCosts.length, 3, 'A three-actor plan should still report one cost per actor');
 });
 
 test('Feast variants respect content posture and never expose internal setting keys', () => {
@@ -8903,6 +10103,7 @@ test('Feast variants respect content posture and never expose internal setting k
   content.preferences.maxTier = 1;
   resolution = App._resolveActionVariants('feast', { actors: [actor], targets: [target] });
   assertEqual(resolution.variants.some(variant => variant.id === 'chew'), true, 'Mature Feast should expose its posture-appropriate chewing variant');
+  assertContains(resolution.variants.find(variant => variant.id === 'chew')?.hint || '', 'depletes all remaining vitality', 'Chew should disclose its terminal vitality consequence before commitment');
   assertEqual(resolution.variants.some(variant => variant.id === 'cockVore' || variant.id === 'unbirth'), false, 'Mature Feast should still hide explicit-only variants without category opt-in');
   assertNotContains(resolution.variants.find(variant => variant.id === 'chew')?.reason || '', 'chewing', 'Mature unavailable copy should use the public setting label rather than its internal key');
 
@@ -9047,7 +10248,7 @@ test('Actor-scoped variants live beneath contextual interaction buttons without 
 });
 
 test('Combat Feast variant Back restores the selected target and chosen variant reaches InteractionPlan', () => {
-  const { App } = loadAppForCombat(() => 0);
+  const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'variant-feast-player', Feas: 80, size: 8, appetite: 8 });
   const enemy = makeUnit('Enemy', { id: 'variant-feast-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 10, MPun: 100, Flee: 1, size: 2, combatRow: 'front' });
   App.player = player;
@@ -9073,14 +10274,92 @@ test('Combat Feast variant Back restores the selected target and chosen variant 
   assertEqual(App.lastIntentCommand.action, 'feast', 'InteractionPlan should preserve the primary action');
   assertEqual(App.lastIntentCommand.subAction, 'chew', 'InteractionPlan should preserve the selected Feast variant');
   assertEqual(App.lastIntentCommand.source, 'action-variant-options', 'InteractionPlan should record the shared variant surface');
+  assertEqual(App._isCorpse(enemy), true, 'Terminal combat Chew should convert the target into remains');
+  assertEqual(enemy.source, 'chew', 'Chew remains should preserve their cause for presentation and persistence');
+  assertEqual(App.combatState.turnQueue.some(entry => entry.unit === enemy), false, 'Terminal combat Chew should remove the depleted target from the living turn queue');
+  assertEqual(App.creatures.filter(unit => unit.disposition === App.DISPOSITION.ENEMY && App._isLivingCreature(unit)).includes(enemy), false, 'Terminal combat Chew should not leave a zero-condition hostile card');
+  App.renderCreatures();
+  assertEqual(elements.get('enemies-title').textContent, 'Remains', 'Terminal combat Chew should retitle the desktop target panel when only remains persist');
+  assertEqual(elements.get('mobile-creature-title').textContent, 'Remains', 'Terminal combat Chew should retitle the mobile target rail even before combat teardown finishes');
+  assertContains(elements.get('enemies-content').innerHTML, '<span class="unit-meta-badge">Remains</span>', 'Terminal combat Chew should render a recoverable remains card');
+  assertNotContains(elements.get('enemies-content').innerHTML, '<span class="unit-meta-badge hostile">Hostile</span>', 'Terminal combat Chew should not render the depleted unit as hostile');
+  assertContains(elements.get('mobile-creatures-dock-btn').getAttribute('aria-label'), 'Remains: 1 here', 'Terminal combat Chew should expose the responsive remains destination accessibly');
+  assertEqual(elements.get('mobile-creatures-dock-btn').classList.contains('danger'), false, 'Terminal combat Chew should clear the enemy danger treatment from a remains-only dock');
   assertEqual(App._variantTurnAdvanced, true, 'A resolved combat variant should spend exactly one turn');
+});
+
+test('Combat Technique V1 appears beneath Fight and reaches deterministic damage area status and command resolution', () => {
+  const runtime = loadAppForCombat(() => 0);
+  const { App, body, window } = runtime;
+  const player = makeUnit('You', {
+    id: 'technique-player',
+    Figh: 20,
+    combatRow: 'back',
+    abilities: { trained: true },
+    equipment: { hands: { name: 'Arc Blade' } }
+  });
+  const enemy = makeUnit('Enemy', {
+    id: 'technique-enemy',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 100,
+    MPun: 100,
+    con: 10,
+    combatRow: 'front'
+  });
+  App.ITEMS['Arc Blade'] = {
+    name: 'Arc Blade',
+    type: 'equipment',
+    slot: 'hands',
+    techniqueTags: ['sweeping']
+  };
+  const profile = window.YAW_COMBAT_TECHNIQUES.register('test-techniques', 'sweep', {
+    label: 'Sweeping Arc',
+    description: 'A broad trained weapon arc.',
+    eligibility: { abilities: ['trained'] },
+    equipment: { required: true, anyTags: ['sweeping'], slots: ['hands'] },
+    reach: 'ranged',
+    damage: { multiplier: 1.25, flat: 2 },
+    area: { maxTargets: 3, distribution: 'full' },
+    status: { effect: 'stun', chance: 1, turns: 1 }
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.nextTurn = function() { this._techniqueTurnAdvanced = true; };
+
+  const basicSpread = App._multiInteractionEffect(player, 'fight', 3, { techniqueKey: 'basic' });
+  const areaSpread = App._multiInteractionEffect(player, 'fight', 3, { techniqueKey: profile.key });
+  assertEqual(basicSpread.percent, 33, 'Basic novice Fight should retain distributed multi-target effect');
+  assertEqual(areaSpread.percent, 100, 'Authored full-area technique should retain full effect within its target cap');
+  assertEqual(App._combatReachResult(player, enemy, 'fight', { techniqueKey: profile.key }).profile, 'ranged', 'Technique reach should override the actor baseline only for the selected command');
+
+  App.selectTarget('fight');
+  App.toggleCombatTarget(enemy.id);
+  assertEqual(App.confirmCombatTargets(), true, 'Fight should enter technique selection after target confirmation');
+  assertEqual(App.feedSelection?.action, 'fight', 'Shared variant state should preserve Fight');
+  assertContains(body.innerHTML, 'Sweeping Arc', 'Fight submenu should render eligible module techniques');
+  const before = enemy.CPun;
+  assertEqual(App._executeActionVariant(profile.key, player), true, 'Selected Fight technique should dispatch through the shared command path');
+  assertEqual(App.lastIntentCommand.subAction, profile.key, 'InteractionPlan should retain the namespaced technique key');
+  assert(enemy.CPun < before, 'Selected technique should resolve deterministic combat damage');
+  assertEqual(enemy.status.stun?.source, `technique:${profile.key}`, 'Selected technique should apply only its bounded authored status profile');
+  assertEqual(App._techniqueTurnAdvanced, true, 'Technique resolution should consume one combat turn');
 });
 
 test('Module action variant registration is permissioned bounded owned and executable', () => {
   const registry = new Function('window', `${subActionsContent}\nreturn YAW_SUB_ACTIONS;`)({});
   const modules = loadModuleSystemForTest({ subActions: registry });
   const app = modules._testApp;
-  app.SUB_ACTIONS = { feed: {}, feast: {}, fight: {} };
+  app.SUB_ACTIONS = { feed: {}, feast: {}, fight: {}, fuck: {} };
   app.defaultSubActions = registry.defaultActions();
   const definition = {
     label: 'Share Ration',
@@ -9097,8 +10376,10 @@ test('Module action variant registration is permissioned bounded owned and execu
   api.registerActionVariant('feed', 'shareRation', definition);
   assertEqual(app.SUB_ACTIONS.feed.shareRation.owner, 'variant-module', 'Registered variants should be owned by the contributing module');
   let bounded = false;
-  try { api.registerActionVariant('fight', 'unsafeFight', definition); } catch (error) { bounded = /Feed or Feast/.test(error.message); }
-  assertEqual(bounded, true, 'V1 module registration should be bounded to Feed and Feast');
+  try { api.registerActionVariant('fight', 'unsafeFight', definition); } catch (error) { bounded = /Feed, Feast, or Play/.test(error.message); }
+  assertEqual(bounded, true, 'Module registration should remain bounded to contextual actions');
+  api.registerActionVariant('play', 'shareMoment', { ...definition, label: 'Share Moment' });
+  assertEqual(app.SUB_ACTIONS.fuck.shareMoment.owner, 'variant-module', 'Public Play variants should register against the internal Play intent');
   modules.unloadModule('variant-module');
   assertEqual(app.SUB_ACTIONS.feed.shareRation, undefined, 'Unloading a module should remove its owned variants');
 
@@ -9107,6 +10388,174 @@ test('Module action variant registration is permissioned bounded owned and execu
   const target = makeUnit('Target', { id: 'custom-variant-target' });
   runtime.App.registerSubAction('feed', 'shareRation', definition);
   assertEqual(runtime.App._doSubAction('feed', 'shareRation', actor, target, actor.name, 's'), 'Ration shared.', 'Registered variant execution should resolve through the sub-action engine');
+});
+
+test('Module resource profiles are permissioned owned bounded and dormant on unload', () => {
+  const modules = loadModuleSystemForTest();
+  const unit = { species: 'mosskin', resourceLedger: {} };
+  let denied = false;
+  try {
+    modules.createModAPI('denied-resource', { permissions: [] }).registerResourceProfile('sap', { capacity: 4 });
+  } catch (error) {
+    denied = /permission/.test(error.message);
+  }
+  assertEqual(denied, true, 'Modules should need the explicit resource-profile permission');
+
+  const api = modules.createModAPI('resource-module', { permissions: ['mechanics:add_resource_profile'] });
+  const profile = api.registerResourceProfile('sap', {
+    label: 'sap reserve',
+    capacity: 4,
+    regeneration: { trigger: 'rest', every: 2, amount: 1 },
+    eligibility: { species: ['mosskin'] }
+  });
+  assertEqual(profile.key, 'resource-module:sap', 'Public registration should return a namespaced resource key');
+  assertEqual(api.resources.read(unit, 'sap').current, 0, 'New and legacy units should start without a free reserve');
+  assertEqual(api.resources.grant(unit, 'sap', 3), 3, 'Owning module should grant only its own active resource');
+  assertEqual(api.resources.spend(unit, 'sap', 2), 2, 'Owning module should spend its own resource');
+  assertEqual(api.resources.read(unit, 'sap').current, 1, 'Public reads should expose bounded current and capacity state');
+  modules.unloadModule('resource-module');
+  assertEqual(modules._testResourceLedger.profile('resource-module:sap'), null, 'Module unload should remove the active owned profile');
+  assertEqual(unit.resourceLedger['resource-module:sap'].current, 1, 'Module unload should preserve dormant save state for safe re-enable');
+  assertEqual(api.resources.read(unit, 'sap'), null, 'Dormant state should not remain an executable capability while its owner is unloaded');
+});
+
+test('Module combat techniques are permissioned namespaced owned and removed with queued work on unload', () => {
+  const modules = loadModuleSystemForTest();
+  const app = modules._testApp;
+  app.combatState = {
+    active: true,
+    syncActions: [
+      { techniqueKey: 'technique-module:arc', resolved: false },
+      { techniqueKey: null, resolved: false }
+    ]
+  };
+  let denied = false;
+  try {
+    modules.createModAPI('denied-technique', { permissions: [] }).registerCombatTechnique('arc', { label: 'Arc' });
+  } catch (error) {
+    denied = /permission/.test(error.message);
+  }
+  assertEqual(denied, true, 'Modules should need the explicit combat-technique permission');
+  const api = modules.createModAPI('technique-module', { permissions: ['mechanics:add_combat_technique'] });
+  const profile = api.registerCombatTechnique('arc', {
+    label: 'Arc',
+    equipment: { anyTags: ['arc-weapon'] },
+    reach: 'hybrid',
+    area: { maxTargets: 3, distribution: 'full' },
+    status: { effect: 'fear', chance: 0.25, turns: 2 }
+  });
+  assertEqual(profile.key, 'technique-module:arc', 'Public combat technique registration should return a namespaced key');
+  assertEqual(modules._testCombatTechniques.profile(profile.key)?.owner, 'technique-module', 'Registered combat technique should retain module ownership');
+  app.feedSelection = { active: true, action: 'fight', subIds: ['basic', profile.key] };
+  app.closeIntentMenu = () => { app._techniqueMenuClosed = true; };
+  modules.unloadModule('technique-module');
+  assertEqual(modules._testCombatTechniques.profile(profile.key), null, 'Module unload should remove its active combat technique');
+  assertEqual(app.combatState.syncActions.length, 1, 'Module unload should cancel queued work that depends on its technique');
+  assertEqual(app.combatState.syncActions[0].techniqueKey, null, 'Module unload should preserve unrelated basic queued combat');
+  assertEqual(app.feedSelection, null, 'Module unload should close an open Fight submenu that references its technique');
+  assertEqual(app._techniqueMenuClosed, true, 'Module unload should remove the owned technique presentation immediately');
+});
+
+test('Module recovery modes are permissioned owned and safely fall back on unload', () => {
+  const modules = loadModuleSystemForTest();
+  const app = modules._testApp;
+  let denied = false;
+  try {
+    modules.createModAPI('denied-recovery', { permissions: [] }).registerRecoveryMode('pilgrimage', {
+      resolution: 'shrine',
+      restrictions: ['combat']
+    });
+  } catch (error) {
+    denied = /permission/.test(error.message);
+  }
+  assertEqual(denied, true, 'Modules should need the explicit recovery-mode permission');
+
+  const api = modules.createModAPI('recovery-module', { permissions: ['mechanics:add_recovery_mode'] });
+  const profile = api.registerRecoveryMode('pilgrimage', {
+    label: 'Pilgrimage',
+    resolution: 'shrine',
+    traversal: 'ethereal',
+    restrictions: ['combat', 'inventory', 'interactions']
+  });
+  assertEqual(profile.key, 'recovery-module:pilgrimage', 'Public recovery registration should return a namespaced key');
+  app.settings.recoveryMode = profile.key;
+  app.defeatState = {
+    pending: true,
+    terminal: true,
+    status: 'recovering',
+    recoveryPhase: 'journey',
+    recoveryModeKey: profile.key
+  };
+  app.closeIntentMenu = () => { app._recoveryMenuClosed = true; };
+  modules.unloadModule('recovery-module');
+  assertEqual(modules._testRecoveryModes.profile(profile.key), null, 'Module unload should remove its active recovery profile');
+  assertEqual(app.settings.recoveryMode, 'core:regenerate', 'Module unload should restore the default recovery setting');
+  assertEqual(app.defeatState.recoveryModeKey, 'core:regenerate', 'An in-progress owned journey should fall back to the default recovery mode');
+  assertEqual(app.defeatState.recoveryPhase, 'prompt', 'An unavailable journey should return to an explicit recovery prompt');
+  assertEqual(app.defeatState.status, 'dead', 'An unavailable journey should no longer leave the player in ghost state');
+  assertEqual(app._recoveryMenuClosed, true, 'Unloading the active recovery owner should close transient recovery UI');
+});
+
+asyncTest('Module action variants follow manifest content policy and unload on policy downgrade', async () => {
+  const CONTENT = loadContentSystemForTest();
+  const registry = new Function('window', `${subActionsContent}\nreturn YAW_SUB_ACTIONS;`)({});
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT, subActions: registry });
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  const App = MODULE_SYSTEM._testApp;
+  App.SUB_ACTIONS = { feed: {}, feast: {}, fight: {}, fuck: {} };
+  App.defaultSubActions = registry.defaultActions();
+
+  await MODULE_SYSTEM.installModule({
+    manifest: {
+      id: 'rated-variant-module',
+      name: 'Rated Variant Module',
+      version: '1.0.0',
+      contentRating: 'mature',
+      contentCategories: [{ id: 'optional.rated.greeting', label: 'Rated Greeting', required: true }],
+      permissions: ['content:add_action_variant']
+    },
+    code: `MODS.registerActionVariant('play', 'ratedGreeting', {
+      label: 'Rated Greeting',
+      sfwLabel: 'Rated Greeting',
+      scope: 'target',
+      requirements: ['reach'],
+      validate(actor, target) { return Boolean(actor && target); },
+      execute(actor, target) { return { ok: true, summary: actor.name + ' greets ' + target.name + '.' }; }
+    });`
+  });
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('rated-variant-module', true);
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'higher content tier', 'Rated action variant module should report its posture gate');
+  }
+  assertEqual(rejected, true, 'Mature action variants should not register under the SFW posture');
+  assertEqual(App.SUB_ACTIONS.fuck.ratedGreeting, undefined, 'Rejected module enable should not leave a partial action variant');
+
+  CONTENT.setPosture('mature');
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('rated-variant-module', true);
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'optional.rated.greeting', 'Rated action variant module should report its required category');
+  }
+  assertEqual(rejected, true, 'Required action-variant category should need explicit opt-in');
+  assertEqual(App.SUB_ACTIONS.fuck.ratedGreeting, undefined, 'Category rejection should not leave a partial action variant');
+
+  CONTENT.setCategoryEnabled('optional.rated.greeting', true);
+  await MODULE_SYSTEM.setModuleEnabled('rated-variant-module', true);
+  assertEqual(App.SUB_ACTIONS.fuck.ratedGreeting.owner, 'rated-variant-module', 'Allowed rated action variant should retain module ownership');
+
+  CONTENT.setCategoryEnabled('optional.rated.greeting', false);
+  const disabled = await MODULE_SYSTEM.enforceContentPolicy();
+  assertEqual(disabled.length, 1, 'Policy downgrade should disable the rated action variant module');
+  assertEqual(disabled[0].id, 'rated-variant-module', 'Policy downgrade should report the rated action variant owner');
+  assertEqual(App.SUB_ACTIONS.fuck.ratedGreeting, undefined, 'Policy downgrade should unload the owned action variant');
+  const stored = (await MODULE_SYSTEM.getAllModules()).find(module => module.id === 'rated-variant-module');
+  assertEqual(stored.enabled, false, 'Policy downgrade should persist the rated action variant module as disabled');
 });
 
 test('Feed Contract V1 resolves whole and renewable-piece offerings in actor-to-target direction', () => {
@@ -9138,6 +10587,144 @@ test('Feed Contract V1 resolves whole and renewable-piece offerings in actor-to-
   assertEqual(piece.App.party.includes(slime), true, 'Offer Piece should keep the renewable source in the active party');
 });
 
+test('Canonical Feed variants keep Spanish player and named-actor grammar localized', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', {
+    id: 'localized-feed-player',
+    Feed: 20,
+    CPun: 80,
+    MPun: 100,
+    renewableBody: true,
+    lactating: false,
+    lactationCooldown: 0
+  });
+  const companion = makeUnit('Nodriza', { id: 'localized-feed-companion', Feed: 15, lactating: false, lactationCooldown: 0 });
+  const target = makeUnit('Liebre', { id: 'localized-feed-target', CPun: 20, MPun: 100, hunger: 70 });
+  App.player = player;
+  App.party = [player, companion, target];
+  App.updateLanguage('es');
+  const playerGrammar = App._actorNameAndVerb(player);
+
+  const tendResult = App._doSubAction('feed', 'tend', player, target, playerGrammar.actorName, playerGrammar.actorVerb);
+  assertContains(tendResult, 'Tu atiendes a Liebre', 'Player Tend result should use Spanish second-person grammar');
+  assertContains(App._doSubAction('feed', 'nurse', player, target, playerGrammar.actorName, playerGrammar.actorVerb), 'Tu no puedes amamantar', 'Unavailable player Nurse result should use Spanish second-person grammar');
+  player.lactating = true;
+  player.lactationCooldown = 1;
+  assertContains(App._doSubAction('feed', 'nurse', player, target, playerGrammar.actorName, playerGrammar.actorVerb), 'Tu aun no puedes', 'Player Nurse cooldown should remain localized');
+  player.lactationCooldown = 0;
+  player.resourceLedger = { 'core:nurse': { current: 1, progress: 0 } };
+  assertContains(App._doSubAction('feed', 'nurse', player, target, playerGrammar.actorName, playerGrammar.actorVerb), 'Tu amamantas a Liebre', 'Successful player Nurse result should use Spanish second-person grammar');
+
+  const pieceResult = App._doSubAction('feed', 'offerPiece', player, target, playerGrammar.actorName, playerGrammar.actorVerb);
+  assertContains(pieceResult, 'Una porcion renovable de Tu', 'Offer Piece should use the localized player name in neutral Spanish sentence structure');
+  assertNotContains(pieceResult, 'offers', 'Spanish Offer Piece should not fall back to English');
+
+  const companionGrammar = App._actorNameAndVerb(companion);
+  assertContains(App._doSubAction('feed', 'nurse', companion, target, companionGrammar.actorName, companionGrammar.actorVerb), 'Nodriza no puede amamantar', 'Named Nurse failure should use Spanish third-person grammar');
+});
+
+test('Nurse requires renewable reserve previews its cost and spends exactly one charge', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const nurse = App._normalizeUnit(makeUnit('Nurse', {
+    id: 'ledger-nurse',
+    lactating: true,
+    lactationCooldown: 0,
+    Feed: 10,
+    CPun: 100,
+    MPun: 100
+  }));
+  const recipient = App._normalizeUnit(makeUnit('Recipient', {
+    id: 'ledger-recipient',
+    CPun: 10,
+    MPun: 100,
+    hunger: 90
+  }));
+  App.player = nurse;
+  App.party = [nurse, recipient];
+
+  let variant = App._getAvailableSubActions('feed', nurse, recipient).find(option => option.id === 'nurse');
+  assertEqual(variant.available, false, 'A capability flag alone should not create free Nurse output');
+  assertContains(variant.reason, 'nourishment reserve', 'Unavailable Nurse preview should identify the depleted source ledger');
+
+  App._processDigestion();
+  App._processDigestion();
+  assertEqual(nurse.resourceLedger['core:nurse'].current, 0, 'Nurse reserve should not renew before its authored interval');
+  App._processDigestion();
+  variant = App._getAvailableSubActions('feed', nurse, recipient).find(option => option.id === 'nurse');
+  assertEqual(variant.available, true, 'A renewed Nurse reserve should make the canonical variant available');
+  assertContains(variant.cost.label, '1 nourishment reserve (1/3)', 'Nurse preview should disclose the exact resource source, spend, and ceiling');
+
+  const beforeCondition = recipient.CPun;
+  const beforeHunger = recipient.hunger;
+  const result = App._doSubAction('feed', 'nurse', nurse, recipient, nurse.name, 's');
+  assertContains(result, 'nurse Recipient', 'A funded Nurse attempt should resolve through canonical narrative output');
+  assert(recipient.CPun > beforeCondition, 'Nurse output should restore condition from the amount actually spent');
+  assert(recipient.hunger < beforeHunger, 'Nurse output should ease hunger from the amount actually spent');
+  assertEqual(nurse.resourceLedger['core:nurse'].current, 0, 'Nurse should spend exactly one renewable charge');
+  assertEqual(nurse.lactationCooldown, 3, 'Nurse should retain its independent bounded cooldown');
+});
+
+test('Feed Contract V1 derives livestock willingness from species canon', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const consumer = App._normalizeUnit(makeUnit('Consumer', { id: 'livestock-consumer', species: 'dragon', size: 7, appetite: 8 }));
+  for (const species of ['cow', 'pig', 'sheep']) {
+    const livestock = App._normalizeUnit(makeUnit(`${species}folk`, { id: `livestock-${species}`, species, size: 2 }));
+    assertEqual(livestock.livestock, true, `${species} species defaults should author livestock willingness`);
+    const options = App._getAvailableSubActions('feed', livestock, consumer);
+    assertEqual(options.find(option => option.id === 'offerWhole')?.available, true, `${species} livestock should expose canonical Offer Self without a runtime willingness mutation`);
+  }
+  const ordinary = App._normalizeUnit(makeUnit('Horsefolk', { id: 'ordinary-horse', species: 'horse', size: 2 }));
+  assertEqual(ordinary.livestock, undefined, 'A prey temperament alone should not silently become livestock willingness');
+  assertEqual(App._getAvailableSubActions('feed', ordinary, consumer).find(option => option.id === 'offerWhole')?.available, false, 'Ordinary prey should still require authored willingness');
+});
+
+test('Explicit group Offer Self distributes eligible actors and narrates capacity limits', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'group-offer-player' });
+  const willingA = makeUnit('Willing A', { id: 'group-offer-a', size: 2, willingPrey: true });
+  const willingB = makeUnit('Willing B', { id: 'group-offer-b', size: 2, willingPrey: true });
+  const willingC = makeUnit('Willing C', { id: 'group-offer-c', size: 2, willingPrey: true });
+  const ordinary = makeUnit('Ordinary', { id: 'group-offer-ordinary', size: 2 });
+  const consumer = makeUnit('Consumer', { id: 'group-offer-consumer', size: 4, appetite: 1, hunger: 70 });
+  App.player = player;
+  App.party = [player, willingA, willingB, willingC, ordinary, consumer];
+  App.storyEvents = [];
+
+  const resolved = App.outsideGroupActionOnTarget('feed', consumer, [willingA, ordinary, willingB, willingC], { subAction: 'offerWhole' });
+  assertEqual(resolved, true, 'Explicit group Offer Self should resolve its eligible actor-to-consumer pairs');
+  assertEqual(consumer.stomach.length, 2, 'Sequential group offering should respect the consumer capacity after each accepted actor');
+  assertEqual(consumer.stomach.map(prey => prey.name).join(','), 'Willing A,Willing B', 'Eligible actors should distribute deterministically in selected order');
+  assertEqual(App.party.includes(willingA), false, 'First accepted source should leave active play through containment');
+  assertEqual(App.party.includes(willingB), false, 'Second accepted source should leave active play through containment');
+  assertEqual(App.party.includes(willingC), true, 'Over-capacity willing source should remain active');
+  assertEqual(App.party.includes(ordinary), true, 'Actor without authored willingness should remain active and should not be treated as prey');
+  assertContains(App.log[App.log.length - 1].text, 'too full for Willing C', 'Group outcome should narrate the capacity-limited source rather than silently dropping it');
+  assertNotContains(App.log[App.log.length - 1].text, 'Ordinary', 'Ineligible ordinary helper should not be narrated as an offered source');
+  assertEqual(App.latestSceneBeat.action, 'feed', 'Group Offer Self should leave a durable Feed Scene Beat');
+  assertEqual(App.latestSceneBeat.actorNames.join(', '), 'Willing A, Ordinary, Willing B, Willing C', 'Coalesced group Scene outcome should preserve the selected actor set');
+  assertEqual(App.latestSceneBeat.targetNames.join(', '), 'Consumer', 'Coalesced group Scene outcome should preserve the selected consumer');
+});
+
+test('Explicit group Nurse distributes each ready source without changing Feed direction', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'group-nurse-player' });
+  const nurseA = makeUnit('Nurse A', { id: 'group-nurse-a', lactating: true, lactationCooldown: 0, Feed: 10, resourceLedger: { 'core:nurse': { current: 1, progress: 0 } } });
+  const nurseB = makeUnit('Nurse B', { id: 'group-nurse-b', lactating: true, lactationCooldown: 0, Feed: 20, resourceLedger: { 'core:nurse': { current: 1, progress: 0 } } });
+  const unavailable = makeUnit('Unavailable', { id: 'group-nurse-unavailable', lactating: false, Feed: 50 });
+  const recipient = makeUnit('Recipient', { id: 'group-nurse-recipient', CPun: 10, MPun: 100, CPle: 5, MPle: 100, hunger: 90 });
+  App.player = player;
+  App.party = [player, nurseA, nurseB, unavailable, recipient];
+
+  App.outsideGroupActionOnTarget('feed', recipient, [nurseA, unavailable, nurseB], { subAction: 'nurse' });
+  assertEqual(recipient.CPun, 100, 'Every eligible Nurse source should restore the selected recipient in actor order');
+  assertEqual(recipient.hunger, 10, 'Each eligible Nurse source should apply its bounded hunger relief to the recipient');
+  assertEqual(nurseA.lactationCooldown, 3, 'First eligible source should spend its authored cooldown');
+  assertEqual(nurseB.lactationCooldown, 3, 'Second eligible source should spend its authored cooldown');
+  assertEqual(unavailable.lactationCooldown || 0, 0, 'Ineligible source should not spend a cooldown or be substituted as the target');
+  assertContains(App.log[App.log.length - 1].text, 'Nurse A nurses Recipient', 'Group Nurse outcome should identify the first eligible source and recipient');
+  assertContains(App.log[App.log.length - 1].text, 'Nurse B nurses Recipient', 'Group Nurse outcome should identify the second eligible source and recipient');
+});
+
 test('Combat Feed can resolve a companion whole-self offer against the explicitly selected consumer', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'combat-offer-player' });
@@ -9166,7 +10753,30 @@ test('Combat Feed can resolve a companion whole-self offer against the explicitl
   assertEqual(consumer.stomach[0].name, 'Willing', 'Combat Offer Self should preserve the actor identity');
   assertEqual(App.party.includes(willing), false, 'Contained combat actor should leave the active party');
   assertEqual(App.party.includes(player), true, 'Combat Offer Self should not redirect containment to the player');
+  assertEqual(App.combatState.turnQueue.some(entry => entry.unit === willing), false, 'Contained combat actor should leave the living turn queue');
+  assertEqual(App.latestSceneBeat.action, 'feed', 'Combat Offer Self should emit a durable Feed Scene outcome');
   assertEqual(App._wholeOfferAdvanced, true, 'Resolved combat Offer Self should advance the turn');
+});
+
+test('Combat Feed support can target either side across rows while preserving explicit targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Support', { id: 'feed-reach-actor', Feed: 20, combatRow: 'back' });
+  const ally = makeUnit('Ally', { id: 'feed-reach-ally', CPun: 20, MPun: 100, combatRow: 'front' });
+  const blocker = makeUnit('Blocker', { id: 'feed-reach-blocker', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'feed-reach-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 20, MPun: 100, combatRow: 'back' });
+  App.player = actor;
+  App.party = [actor, ally];
+  App.creatures = [blocker, enemy];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: actor, initiative: 20 }, { unit: blocker, initiative: 15 }, { unit: enemy, initiative: 10 }], syncActions: [] };
+  App.activeActor = actor;
+  App.nextTurn = function() {};
+
+  assertEqual(App._combatReachResult(actor, ally, 'feed').profile, 'support', 'Feed should retain its authored support reach profile');
+  assertEqual(App._combatReachResult(actor, ally, 'feed').canSucceed, true, 'Same-side Feed should ignore row separation');
+  assertEqual(App._combatReachResult(actor, enemy, 'feed').canSucceed, true, 'Support Feed should keep an explicitly selected enemy reachable despite an intervening hostile row');
+  App.executeActionAgainstTarget('feed', actor, enemy);
+  assertEqual(enemy.CPun, 60, 'Cross-row Feed should affect the explicitly selected enemy rather than redirecting to an ally');
+  assertEqual(ally.CPun, 20, 'Cross-row enemy Feed should not alter the wounded ally');
 });
 
 test('Sub-action helpers exist', () => {
@@ -9445,6 +11055,21 @@ test('Killed party allies drop as tile corpses instead of staying in party', () 
   assert(App.worldMap.get('0,0').creatures.includes(ally), 'Dropped corpse should persist on current tile');
 });
 
+test('Dropped party remains feedback localizes independently of enemy AI', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { CPun: 100, MPun: 100 });
+  const ally = makeUnit('Ally', { CPun: 0, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [] }]]);
+  App.combatState = { active: true, turnQueue: [{ unit: player }, { unit: ally }] };
+  App.updateLanguage('es');
+  App._dropPartyCorpse(ally, 'fight');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'Los restos de Ally caen al suelo.', 'Dropped companion remains feedback should localize');
+});
+
 test('Corpse decay removes expired remains from tile creatures', () => {
   const { App } = loadAppForCombat(() => 0);
   const corpse = makeUnit('Decaying', { disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100, decayTurns: 1 });
@@ -9453,14 +11078,46 @@ test('Corpse decay removes expired remains from tile creatures', () => {
   App.creatures = [corpse];
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [corpse] }]]);
+  App.updateLanguage('es');
   App._processCorpseDecay();
   assert(!App.creatures.includes(corpse), 'Expired corpse should be removed from active creatures');
   assert(!App.worldMap.get('0,0').creatures.includes(corpse), 'Expired corpse should be removed from tile creatures');
+  assertContains(App.log[App.log.length - 1].text, 'Unos restos se descomponen por completo.', 'Singular corpse decay should localize');
+
+  const first = makeUnit('First', { disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100, decayTurns: 1 });
+  const second = makeUnit('Second', { disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100, decayTurns: 1 });
+  App.creatures = [first, second];
+  App.worldMap.get('0,0').creatures = [first, second];
+  App._processCorpseDecay();
+  assertContains(App.log[App.log.length - 1].text, '2 restos se descomponen por completo.', 'Plural corpse decay should localize with its count');
+});
+
+test('Exploration flee and hostile-reaction outcomes localize', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.updateLanguage('es');
+  App.player = makeUnit('Tu');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [] }]]);
+  const creature = makeUnit('Liebre', { disposition: App.DISPOSITION.NEUTRAL });
+  const threat = makeUnit('Lobo');
+
+  App._relocateFleeingCreature = () => true;
+  const fled = App._makeCreatureFlee(creature, threat);
+  assertEqual(fled.text, 'Liebre entra en panico y huye de Lobo!', 'Successful exploration flee should localize');
+
+  App._relocateFleeingCreature = () => false;
+  const cornered = App._makeCreatureFlee(creature, null);
+  assertEqual(cornered.text, 'Liebre no puede escapar de la amenaza y se vuelve hostil!', 'Blocked exploration flee should localize its generic threat fallback');
+
+  const hostile = App._turnCreatureHostile(makeUnit('Ciervo', { disposition: App.DISPOSITION.NEUTRAL }));
+  assertEqual(hostile.text, 'Ciervo se vuelve hostil!', 'Direct hostile reaction should localize');
 });
 
 test('Stat absorption accumulates fractional digestion progress', () => {
   const { App } = loadAppForCombat();
   const predator = makeUnit('Predator', {
+    hunger: 50,
     str: 10,
     con: 10,
     Figh: 10,
@@ -9479,6 +11136,7 @@ test('Stat absorption accumulates fractional digestion progress', () => {
 test('Digestion container configs preserve per-container drain behavior', () => {
   const { App } = loadAppForCombat();
   const predator = makeUnit('Predator', {
+    hunger: 50,
     stomach: [makeUnit('Stomach Prey', { CPun: 100, MPun: 100, alive: true, inStomach: true, statDrain: null })],
     womb: [makeUnit('Womb Prey', { CPun: 100, MPun: 100, alive: true, inWomb: true, statDrain: null })],
     balls: [makeUnit('Balls Prey', { CPun: 100, MPun: 100, alive: true, inCock: true, statDrain: null })]
@@ -9841,9 +11499,24 @@ test('Container capacity blocks stomach overfill', () => {
   });
   const prey = makeUnit('Prey', { size: 2, CPun: 1, MPun: 100, Flee: 1 });
   const result = App._doSubAction('feast', 'swallow', predator, prey, 'Predator', 's');
-  assertContains(result, 'De Predator Barriga esta demasiado lleno para Prey!', 'Over-capacity swallow should localize full belly feedback');
+  assertContains(result, 'Predator lo intenta, pero no hay espacio para Prey en De Predator Barriga.', 'Over-capacity swallow should localize full belly feedback');
   assertEqual(predator.stomach.length, 1, 'Blocked swallow should not add prey');
   assertEqual(prey.CPun, 1, 'Blocked swallow should not remove prey');
+});
+
+test('Container capacity failure localizes nameless actor and target fallbacks', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.updateLanguage('es');
+  const spanish = App._capacityFailureMessage({}, {}, 'stomach');
+  assertContains(spanish, 'Alguien', 'Nameless capacity actor should use the Spanish maintained fallback');
+  assertContains(spanish, 'el objetivo', 'Nameless capacity target should use the Spanish maintained fallback');
+  assertNotContains(spanish, 'Someone', 'Spanish capacity feedback should not leak the English actor fallback');
+  assertNotContains(spanish, 'target', 'Spanish capacity feedback should not leak the English target fallback');
+
+  App.updateLanguage('en');
+  const english = App._capacityFailureMessage({}, {}, 'stomach');
+  assertContains(english, 'Someone', 'Nameless capacity actor should re-resolve through the English locale');
+  assertContains(english, 'the target', 'Nameless capacity target should re-resolve through the English locale');
 });
 
 test('Container capacity allows prey that fits', () => {
@@ -9863,7 +11536,7 @@ test('Cock vore and unbirth use reduced orifice capacities', () => {
   const tooLarge = makeUnit('Large Prey', { size: 4, CPun: 1, MPun: 100, Flee: 1 });
   const small = makeUnit('Small Prey', { size: 3, CPun: 1, MPun: 100, Flee: 1 });
   const blocked = App._doSubAction('feast', 'cockVore', actor, tooLarge, 'Actor', 's');
-  assertContains(blocked, 'De Actor Reserva esta demasiado lleno para Large Prey!', 'Reserve capacity feedback should localize');
+  assertContains(blocked, 'Actor lo intenta, pero no hay espacio para Large Prey en De Actor Reserva.', 'Reserve capacity feedback should localize');
   const allowed = App._doSubAction('feast', 'cockVore', actor, small, 'Actor', 's');
   assertContains(allowed, 'cockVore:Small Prey', 'Small prey should resolve through provider-ready result content');
   assertEqual(actor.balls.length, 1, 'Allowed cock vore should add prey to balls');
@@ -9985,6 +11658,19 @@ test('SFW-created characters omit optional fields while legacy save values remai
   assertContains(holdingsHtml(created.elements), 'Lower Anatomy:', 'Explicit provider category should reveal preserved optional body detail fields');
 });
 
+test('New-character welcome entry uses the active locale', () => {
+  const created = loadAppForCombat(() => 0.5);
+  created.document.getElementById('char-name').value = 'Luna';
+  created.App.setContentTier('safe');
+  created.App.selectSpecies('human');
+  created.App.selectGender('female');
+  created.App.updateLanguage('es');
+  created.App.autoSave = () => {};
+  created.App.createCharacter();
+
+  assertEqual(created.App.log[0].text, 'Te damos la bienvenida al mundo, Luna.', 'New-character Activity Log welcome should localize');
+});
+
 test('Active tile creature damage and combat state survive save and load', async () => {
   const Binary = loadBinaryForTest();
   const savedBuffers = [];
@@ -10051,7 +11737,11 @@ test('Active tile creature damage and combat state survive save and load', async
 test('Loading combat on an enemy turn resumes the turn instead of freezing', async () => {
   const Binary = loadBinaryForTest();
   const savedBuffers = [];
-  const { App } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App, window: savedWindow } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const savedTechnique = savedWindow.YAW_COMBAT_TECHNIQUES.register('save-tech', 'formation', {
+    label: 'Formation Strike',
+    area: { maxTargets: 2, distribution: 'full' }
+  });
   const player = makeUnit('You', { id: 'player-load-resume', Figh: 20 });
   const enemy = makeUnit('Harpy', {
     id: 'enemy-load-resume',
@@ -10321,6 +12011,56 @@ test('Defeat regeneration restores the safe anchor without clearing defeated til
   assertEqual(App.worldMap.get('7,-2').creatures[0].id, 'enemy-regenerate', 'Regenerate should not clear enemies from the defeat tile');
   assertEqual(autoSaveCalls, 1, 'Regenerate should autosave resumed exploration state');
   assert(hooks.some(hook => hook.event === 'onRegenerate'), 'Regenerate should emit an onRegenerate module hook');
+});
+
+test('Ghost recovery journeys from the defeat site and resurrects only at the safe shrine', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-ghost-recovery', CPun: 0, MPun: 100, knockedOut: true });
+  const enemy = makeUnit('Wolfkin', { id: 'ghost-recovery-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 20, MPun: 20 });
+  App.player = player;
+  App.party = [player];
+  App.inventory = [{ id: 'ghost-keepsake', name: 'Keepsake' }];
+  App.settings.recoveryMode = 'core:ghost';
+  App.settings.inventoryRecovery = 'retain';
+  App.location = { x: 1, y: 0 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'forest', creatures: [] }],
+    ['1,0', { ...App.getBaseTile(1, 0), explored: true, biome: 'water', passable: false, creatures: [enemy] }]
+  ]);
+  App.defeatState = {
+    schemaVersion: 3,
+    resolutionId: 'ghost-recovery',
+    status: 'dead',
+    pending: true,
+    terminal: true,
+    recoveryModeKey: 'core:ghost',
+    recoveryPhase: 'prompt',
+    defeatedAt: { x: 1, y: 0, interior: false },
+    safeAnchor: App.safeAnchor,
+    companionsSettled: true,
+    encounterSettled: true,
+    consequencesApplied: false
+  };
+  App.autoSave = () => true;
+
+  assertEqual(App.beginDefeatRecovery(), true, 'Selected ghost recovery should begin a journey');
+  assertEqual(App._isRecoveryJourney(), true, 'Ghost recovery should enter the durable journey phase');
+  assertEqual(App.location.x, 1, 'Ghost recovery should begin at the defeat site');
+  assertEqual(App.player.recoveryGhost, true, 'Journey player should carry explicit ghost state');
+  assertEqual(App.inventory[0].id, 'ghost-keepsake', 'Retain policy should be applied exactly once before the journey');
+  assertEqual(App.startCombat([enemy]), false, 'Ghost recovery should block combat');
+  assertEqual(App.resurrectFromRecovery(), false, 'Resurrection should fail away from the safe shrine');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'Return to The Beginning', 'Journey controls should explain the required destination');
+
+  assertEqual(App.move(-1, 0), true, 'Ethereal recovery should cross an otherwise blocked route');
+  assertEqual(App.location.x, 0, 'Ghost movement should reach the safe shrine');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="resurrect"', 'The safe shrine should expose resurrection');
+  assertEqual(App.resurrectFromRecovery(), true, 'The safe shrine should complete recovery');
+  assertEqual(App.defeatState, null, 'Resurrection should clear the durable defeat state');
+  assertEqual(Boolean(App.player.recoveryGhost), false, 'Resurrection should clear ghost state');
+  assertEqual(App.player.CPun, 1, 'Resurrection should restore the authored minimum vitality');
+  assertEqual(App.inventory.length, 1, 'Completing the journey should not apply inventory consequences twice');
 });
 
 test('Regular defeat strands companions and creates one recoverable death bag', () => {
@@ -10872,6 +12612,65 @@ test('Death resolver migrates legacy state and resolves a pending terminal outco
   assertEqual(hooks.filter(hook => hook.event === 'onDefeat').length, firstHookCount, 'Repeated terminal resolution should not emit a duplicate defeat hook');
 });
 
+test('Player-state resolver preserves a noncombat module cause without widening it into defeat', () => {
+  const { App, hooks } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'player-module-state', CPun: 30, MPun: 100 });
+  App.party = [App.player];
+  App.location = { x: 2, y: 3 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+
+  const state = App._resolvePlayerState({
+    status: 'captured',
+    terminal: false,
+    cause: 'module:hazard-pack:snare',
+    source: 'module:hazard-pack'
+  });
+
+  assertEqual(state.status, 'captured', 'A module-authored noncombat state should preserve its explicit status');
+  assertEqual(state.terminal, false, 'A captured module state should remain nonterminal');
+  assertEqual(state.pending, false, 'A nonterminal module state should not open defeat recovery');
+  assertEqual(state.cause, 'module-hazard-pack-snare', 'Module cause namespaces should normalize into a stable diagnostic token');
+  assertEqual(state.source, 'module:hazard-pack', 'The diagnostic source should preserve its authored namespace');
+  const stateHook = hooks.find(hook => hook.event === 'onPlayerState');
+  assertEqual(stateHook?.payload?.state?.cause, 'module-hazard-pack-snare', 'The player-state hook should receive the normalized module cause');
+  assertEqual(hooks.some(hook => hook.event === 'onDefeat'), false, 'A nonterminal module state must not emit a defeat hook');
+});
+
+test('Environment terminal causes survive recovery consequences and death-bag creation', () => {
+  const { App, hooks } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-environment-fall', CPun: 30, MPun: 100 });
+  const companion = makeUnit('Harpy', { id: 'companion-environment-fall', CPun: 25, MPun: 50 });
+  App.player = player;
+  App.party = [player, companion];
+  App.inventory = [{ id: 'environment-drop', name: 'Travel Pack' }];
+  App.settings.inventoryRecovery = 'death-bag';
+  App.location = { x: 6, y: 4 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'forest', creatures: [] }],
+    ['6,4', { ...App.getBaseTile(6, 4), explored: true, biome: 'plains', creatures: [], deathBags: [] }]
+  ]);
+  App.autoSave = () => true;
+
+  const state = App._handlePlayerFall({
+    fatal: true,
+    cause: 'environment:lava-flow',
+    source: 'environment-hazard'
+  });
+
+  assertEqual(state.status, 'dead', 'A fatal environment outcome should use the shared terminal state');
+  assertEqual(state.cause, 'environment-lava-flow', 'The terminal state should preserve a normalized environment cause');
+  assertEqual(state.source, 'environment-hazard', 'The terminal state should preserve its environment source');
+  assertEqual(state.awaitingEncounterSettlement, false, 'A noncombat environment fall should not wait for combat settlement');
+  assertEqual(hooks.find(hook => hook.event === 'onDefeat')?.payload?.defeatState?.cause, 'environment-lava-flow', 'The defeat hook should expose the environment cause');
+
+  assertEqual(App.regenerateFromDefeat(), true, 'The environment outcome should use regular recovery');
+  const bag = App.worldMap.get('6,4').deathBags[0];
+  assertEqual(bag?.cause, 'environment-lava-flow', 'The recovery bag should retain the environment cause for diagnostics and future presentation');
+  assertEqual(bag?.items?.[0]?.id, 'environment-drop', 'Regular environment recovery should preserve ordinary death-bag consequences');
+  assertEqual(App.strandedCompanions[0]?.id, 'companion-environment-fall', 'Noncombat environment defeat should preserve the normal stranded-companion baseline');
+});
+
 test('Hardcore finalization deletes only the active full and sparse slot data', async () => {
   const { App, window } = loadAppForCombat(() => 0.5);
   App.player = makeUnit('You', { id: 'player-hardcore', CPun: 0, MPun: 100 });
@@ -10967,7 +12766,11 @@ test('Defeated combat refresh snapshots are rejected and cleared', () => {
 test('Queued sync combat actions survive save load and resolve with restored units', async () => {
   const Binary = loadBinaryForTest();
   const savedBuffers = [];
-  const { App } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App, window } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const savedTechnique = window.YAW_COMBAT_TECHNIQUES.register('save-tech', 'formation', {
+    label: 'Formation Strike',
+    area: { maxTargets: 2, distribution: 'full' }
+  });
   const player = makeUnit('You', { id: 'player-sync-save', Figh: 40 });
   const ally = makeUnit('Ally', { id: 'ally-sync-save', Figh: 30 });
   const enemy = makeUnit('Ratfolk', {
@@ -11007,6 +12810,7 @@ test('Queued sync combat actions survive save load and resolve with restored uni
     ],
     syncActions: [{
       type: 'sync_fight',
+      techniqueKey: savedTechnique.key,
       participants: [player, ally],
       target: enemy,
       targets: [enemy, secondEnemy],
@@ -11025,9 +12829,14 @@ test('Queued sync combat actions survive save load and resolve with restored uni
   assertEqual(loaded.questState.combatState.syncActions[0].participantIds.join(','), 'player-sync-save,ally-sync-save', 'Saved sync action should preserve participant IDs');
   assertEqual(loaded.questState.combatState.syncActions[0].targetId, 'enemy-sync-save', 'Saved sync action should preserve target ID');
   assertEqual(loaded.questState.combatState.syncActions[0].targetIds.join(','), 'enemy-sync-save,enemy-sync-save-second', 'Saved sync action should preserve every group target ID');
+  assertEqual(loaded.questState.combatState.syncActions[0].techniqueKey, savedTechnique.key, 'Saved sync action should preserve its namespaced combat technique');
   assertEqual(loaded.questState.combatState.syncActions[0].resolveAtIndex, 1, 'Saved sync action should preserve delayed resolution turn');
 
   const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
+  loadedApp.window.YAW_COMBAT_TECHNIQUES.register('save-tech', 'formation', {
+    label: 'Formation Strike',
+    area: { maxTargets: 2, distribution: 'full' }
+  });
   loadedApp.App._dbGet = async () => savedBuffers[0];
   loadedApp.App.loadWorldStateFromMapStore = async () => {};
   const restored = await loadedApp.App.loadFromSlot('slot1');
@@ -11038,6 +12847,7 @@ test('Queued sync combat actions survive save load and resolve with restored uni
     assertEqual(sync.participants[1], loadedApp.App.party[1], 'Loaded sync participant should reference restored ally object');
     assertEqual(sync.target, loadedApp.App.creatures[0], 'Loaded sync target should reference restored enemy object');
     assertEqual(sync.targets[1], loadedApp.App.creatures[1], 'Loaded sync target list should reference every restored enemy object');
+    assertEqual(sync.techniqueKey, savedTechnique.key, 'Loaded sync action should retain its active combat technique');
     const enemyPunishmentBeforeSync = loadedApp.App.creatures[0].CPun;
     const secondPunishmentBeforeSync = loadedApp.App.creatures[1].CPun;
     loadedApp.App.processTurn();
@@ -11123,7 +12933,7 @@ test('Combat target dispatch uses the clicked unit instead of filtered index dri
 
 test('Combat feed sub-action picker uses the shared desktop submenu, not an inline composer tray', () => {
   const { App, elements, body } = loadAppForCombat(() => 0, { window: { innerWidth: 1440, innerHeight: 900 } });
-  const player = makeUnit('You', { id: 'player-feed-tray', lactating: true, lactationCooldown: 0 });
+  const player = makeUnit('You', { id: 'player-feed-tray', lactating: true, lactationCooldown: 0, resourceLedger: { 'core:nurse': { current: 1, progress: 0 } } });
   const ally = makeUnit('Ally', { id: 'ally-feed-tray', CPun: 50, MPun: 100 });
   App.player = player;
   App.party = [player, ally];
@@ -11358,6 +13168,105 @@ test('Contained combat targets stay contained after save and load', async () => 
   assertEqual(loadedApp.App.combatState.active, false, 'Combat should not resume when the only enemy is contained');
 });
 
+test('Contained quest and merchant state survives save load and release without service resets', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const { App } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const holder = makeUnit('You', { id: 'service-save-holder', size: 10, appetite: 10 });
+  const giver = makeUnit('Human Guide', {
+    id: 'service-save-giver',
+    disposition: App.DISPOSITION.QUEST_GIVER,
+    quest: {
+      id: 'service-save-quest',
+      title: 'Persistent Service',
+      objectives: [{ type: 'find', required: 1 }],
+      reward: { xp: 10 }
+    }
+  });
+  const merchant = makeUnit('Human Merchant', {
+    id: 'service-save-merchant',
+    disposition: App.DISPOSITION.MERCHANT,
+    stockTable: 'general',
+    stockLastRefreshDay: 0,
+    stock: [{ id: 'service-save-herb', name: 'Healing Herb', price: 10, qty: 0 }]
+  });
+  App.player = holder;
+  App.party = [holder];
+  App.creatures = [giver, merchant];
+  App.quests = [];
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'grove';
+  App.dayCount = 0;
+  App.worldMeta = { worldId: 'service-save-world', seed: 'service-save-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [giver, merchant], items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.acceptQuestFromUnit(giver.id);
+  App._containTargetIn(holder, giver, 'stomach');
+  App._containTargetIn(holder, merchant, 'stomach');
+  assertEqual(holder.stomach.length, 2, 'Both service NPCs should be contained before saving');
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+  assertEqual(await App._saveToSlotConfirmed('slot1'), true, 'Service containment save should complete');
+
+  const loaded = loadAppForCombat(() => 0.5, { binary: Binary });
+  loaded.App._dbGet = async () => savedBuffers[0];
+  loaded.App.loadWorldStateFromMapStore = async () => {};
+  assertEqual(await loaded.App.loadFromSlot('slot1'), true, 'Service containment save should load');
+  assertEqual(loaded.App.player.stomach.length, 2, 'Both service NPCs should remain contained after load');
+  const savedGiver = loaded.App.player.stomach.find(unit => unit.id === giver.id);
+  const savedMerchant = loaded.App.player.stomach.find(unit => unit.id === merchant.id);
+  assertEqual(savedGiver.questAccepted, true, 'Contained quest giver should preserve issued state through save/load');
+  assertEqual(savedGiver.quest.status, 'active', 'Contained quest giver should preserve quest status through save/load');
+  assertEqual(savedMerchant.stock[0].qty, 0, 'Contained merchant should preserve depleted stock through save/load');
+
+  loaded.App._doSubAction('feast', 'release', loaded.App.player, loaded.App.player, 'You', '');
+  loaded.App._doSubAction('feast', 'release', loaded.App.player, loaded.App.player, 'You', '');
+  const releasedGiver = loaded.App.creatures.find(unit => unit.id === giver.id);
+  const releasedMerchant = loaded.App._findMerchantById(merchant.id);
+  assert(releasedGiver, 'Quest giver should be releasable after save/load');
+  assert(releasedMerchant, 'Merchant should be releasable after save/load');
+  loaded.App.acceptQuestFromUnit(releasedGiver.id);
+  assertEqual(loaded.App.quests.length, 1, 'Released loaded quest giver should not duplicate the issued quest');
+  assertEqual(releasedMerchant.stock[0].qty, 0, 'Released loaded merchant should not regenerate stock');
+
+  loaded.App._containTargetIn(loaded.App.player, releasedGiver, 'stomach');
+  loaded.App._containTargetIn(loaded.App.player, releasedMerchant, 'stomach');
+  const remoteTile = { ...loaded.App.getBaseTile(6, 6), x: 6, y: 6, explored: true, biome: 'plains', structure: null, creatures: [], items: [] };
+  loaded.App.worldMap.set('6,6', remoteTile);
+  loaded.App.location = { x: 6, y: 6 };
+  loaded.App.currentBiome = 'plains';
+  loaded.App.creatures = [];
+  loaded.App._doSubAction('feast', 'release', loaded.App.player, loaded.App.player, 'You', '');
+  loaded.App._doSubAction('feast', 'release', loaded.App.player, loaded.App.player, 'You', '');
+  const remoteGiver = loaded.App.creatures.find(unit => unit.id === giver.id);
+  const remoteMerchant = loaded.App.creatures.find(unit => unit.id === merchant.id);
+  assertEqual(remoteGiver.serviceSuspended, true, 'Quest service should remain suspended after remote release');
+  assertEqual(remoteMerchant.serviceSuspended, true, 'Merchant service should remain suspended after remote release');
+  assertEqual(loaded.App._getQuestGiverByKey(giver.id), undefined, 'Remote released quest service should be unavailable before the second save');
+  assertEqual(loaded.App._findMerchantById(merchant.id), undefined, 'Remote released merchant service should be unavailable before the second save');
+
+  const remoteBuffers = [];
+  loaded.App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  loaded.App._dbPut = async (_store, _key, value) => { remoteBuffers.push(value); };
+  assertEqual(await loaded.App._saveToSlotConfirmed('slot2'), true, 'Remote suspended services should save');
+  const reloaded = loadAppForCombat(() => 0.5, { binary: Binary });
+  reloaded.App._dbGet = async () => remoteBuffers[0];
+  reloaded.App.loadWorldStateFromMapStore = async () => {};
+  assertEqual(await reloaded.App.loadFromSlot('slot2'), true, 'Remote suspended service save should load');
+  const persistedGiver = reloaded.App.creatures.find(unit => unit.id === giver.id);
+  const persistedMerchant = reloaded.App.creatures.find(unit => unit.id === merchant.id);
+  assert(persistedGiver && persistedMerchant, 'Remote service NPCs should remain on their release tile after save/load');
+  assertEqual(persistedGiver.serviceSuspended, true, 'Quest suspension should survive save/load');
+  assertEqual(persistedMerchant.serviceSuspended, true, 'Merchant suspension should survive save/load');
+  assertEqual(persistedGiver.serviceOrigin.x, 0, 'Quest origin should survive save/load');
+  assertEqual(persistedMerchant.serviceOrigin.x, 0, 'Merchant origin should survive save/load');
+  assertEqual(reloaded.App._getQuestGiverByKey(giver.id), undefined, 'Reloaded remote quest giver should remain unavailable');
+  assertEqual(reloaded.App._findMerchantById(merchant.id), undefined, 'Reloaded remote merchant should remain unavailable');
+  assertEqual(reloaded.App.quests.length, 1, 'Remote service save/load should not duplicate the accepted quest');
+  assertEqual(persistedMerchant.stock[0].qty, 0, 'Remote service save/load should not replenish merchant stock');
+});
+
 test('Defeat renders recovery choices instead of return confirmation', () => {
   const defeated = loadAppForCombat(() => 0.5, { confirm: false });
   let shownScreen = null;
@@ -11540,6 +13449,12 @@ test('Mobile creature strip and long-press mark corpse targets through the compo
   App.renderMobileCreatureStrip();
   const card = elements.get('mobile-creature-card');
   const html = elements.get('mobile-creature-strip').innerHTML;
+  assertEqual(elements.get('mobile-creature-title').textContent, 'Remains', 'Corpse-only mobile creature rail should identify its contents as Remains');
+  assertEqual(elements.get('mobile-creature-title').getAttribute('data-i18n'), 'disposition.remains', 'Corpse-only mobile title should retain the matching locale key');
+  assertEqual(elements.get('mobile-creature-dock-badge').hidden, false, 'Corpse-only mobile dock should advertise recoverable remains');
+  assertEqual(elements.get('mobile-creature-dock-badge').textContent, '1', 'Corpse-only mobile dock should count recoverable remains');
+  assertContains(elements.get('mobile-creatures-dock-btn').getAttribute('aria-label'), 'Remains: 1 here', 'Corpse-only mobile dock should describe its destination accessibly');
+  assertEqual(elements.get('mobile-creatures-dock-btn').classList.contains('danger'), false, 'Recoverable remains should not retain the hostile dock treatment');
   assertEqual(card.style.display, 'none', 'Corpse-only mobile creature rail should remain collapsed until requested');
   assertContains(html, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile corpse chip should identify target routing');
   assertContains(html, "toggleExplorationTarget('creature','fallen-mobile')", 'Mobile corpse chip should mark remains as the composer target');
@@ -11708,6 +13623,30 @@ test('Gatherer party role improves search find chance', () => {
   App.search();
   assertEqual(App.inventory.length, 1, 'Gatherer role should raise search chance enough to find an item');
   assertContains(App.log[App.log.length - 1].text, 'You found a ', 'Search log should report the gatherer-assisted find');
+});
+
+test('Search discovery results use the active locale without coupling loot detection to English', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.worldMeta = { seed: 'localized-search', generatorVersion: 2 };
+  App.player = makeUnit('Zpig');
+  App.party = [App.player];
+  App.inventory = [];
+  App.location = { x: 4, y: 2 };
+  App.worldMap = new Map([['4,2', {
+    x: 4,
+    y: 2,
+    biome: 'grove',
+    explored: true,
+    description: 'Un claro tranquilo.',
+    creatures: [],
+    items: [],
+    overlays: { poi: { category: 'resourceSite' } }
+  }]]);
+  App.updateLanguage('es');
+  App.search();
+  assertEqual(App.inventory.length, 1, 'Localized resource search should retain deterministic item acquisition');
+  assertContains(App.log[App.log.length - 1].text, 'Encontraste ', 'Localized resource search should emit the active-language result');
+  assertNotContains(App.log[App.log.length - 1].text, 'You found', 'Localized search should not leak the former English sentinel');
 });
 
 test('Scavenging a corpse uses corpse-specific result and does not remove it', () => {
@@ -13162,8 +15101,10 @@ test('Intent feast sub-action affects outside-combat resolution and cleanup', ()
   assertEqual(App.lastIntentCommand.subAction, 'chew', 'Feast intent should record selected feast sub-action');
   assertEqual(App.defaultSubActions.feast, 'chew', 'Selected feast sub-action should become default');
   assertEqual(prey.alive, false, 'Selected chew sub-action should use the sub-action engine');
-  assertEqual(App.creatures.includes(prey), false, 'Consumed area creature should be removed after outside-combat sub-action resolution');
-  assertContains(App.log.map(entry => entry.text).join('\n'), 'break down', 'Sub-action result should be logged');
+  assertEqual(App.creatures.includes(prey), true, 'Outside-combat chew should preserve recoverable remains on the tile');
+  assertEqual(App._isCorpse(prey), true, 'Outside-combat chew should convert the depleted target into remains');
+  assertEqual(prey.source, 'chew', 'Outside-combat chew remains should retain their terminal cause');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'breaks down', 'Sub-action result should be logged');
 });
 
 test('Legacy forceFeed remains callable for compatibility but is hidden from the canonical picker', () => {
@@ -13195,7 +15136,7 @@ test('Selected party actor can interact with party targets outside combat', () =
   App.selectExplorationActor(1);
   App.outsideActionForParty('feed', 2);
   assertEqual(wounded.CPun, 60, 'Selected party actor should feed the selected party target');
-  assertContains(App.log[App.log.length - 1].text, 'Healer feeds Wounded', 'Party interaction log should use selected actor and target');
+  assertContains(App.log[App.log.length - 1].text, 'Healer tends Wounded', 'Party interaction log should use selected actor and target');
 });
 
 test('Exploration actor selection supports multiple party members', () => {
@@ -13280,36 +15221,38 @@ test('Party play-fight severity can be overridden for harsher outcomes', () => {
   assertEqual(player.disposition, App.DISPOSITION.CORPSE, 'Lethal play-fight mode should allow harsher moddable outcome');
 });
 
-test('Selected party members can be fed into another party member as consumer', () => {
+test('Group Feed defaults to Tend instead of inferring selected companions as prey', () => {
   const { App } = loadAppForCombat(() => 0);
-  const player = makeUnit('You', { id: 'player-1', size: 6, appetite: 8, hunger: 80 });
-  const preyA = makeUnit('Prey A', { id: 'prey-a', size: 2 });
-  const preyB = makeUnit('Prey B', { id: 'prey-b', size: 2 });
+  const player = makeUnit('You', { id: 'player-1', CPun: 20, MPun: 100, size: 6, appetite: 8, hunger: 80 });
+  const helperA = makeUnit('Helper A', { id: 'helper-a', size: 2, Feed: 20 });
+  const helperB = makeUnit('Helper B', { id: 'helper-b', size: 2, Feed: 20 });
   App.player = player;
-  App.party = [player, preyA, preyB];
+  App.party = [player, helperA, helperB];
   App.selectExplorationActor(1);
   App.selectExplorationActor(2);
   App.outsideActionForParty('feed', 0);
-  assertEqual(player.stomach.length, 2, 'Party consumer should receive both selected prey');
-  assertEqual(App.party.includes(preyA), false, 'Contained party member should leave active party list');
-  assertEqual(App.party.includes(preyB), false, 'Second contained party member should leave active party list');
+  assertEqual(player.CPun, 100, 'Default group Feed should combine selected actors as Tend helpers');
+  assertEqual(player.stomach.length, 0, 'Default group Feed should not infer an implicit Offer Self command');
+  assertEqual(App.party.includes(helperA), true, 'Ordinary selected helper should remain in the party');
+  assertEqual(App.party.includes(helperB), true, 'Second ordinary selected helper should remain in the party');
+  assertContains(App.log[App.log.length - 1].text, 'tend You', 'Default group Feed should narrate support semantics');
 });
 
 test('Player can assist group feeding without becoming prey', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', size: 4, appetite: 4 });
   const consumer = makeUnit('Consumer', { id: 'consumer-1', CPun: 100, MPun: 100, size: 6, appetite: 8, hunger: 80 });
-  const prey = makeUnit('Prey', { id: 'prey-1', size: 2 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 2, willingPrey: true });
   App.player = player;
   App.party = [player, consumer, prey];
   App.explorationActorIds = ['player-1', 'prey-1'];
-  App.outsideActionForParty('feed', 1);
+  App.outsideActionForParty('feed', 1, null, { subAction: 'offerWhole' });
   assertEqual(consumer.stomach.length, 1, 'Consumer should receive the eligible selected prey');
   assertEqual(consumer.stomach[0].name, 'Prey', 'Selected prey should be the contained party member');
   assertEqual(App.party.includes(player), true, 'Player should remain in the party after assisting');
   assertEqual(App.party.includes(prey), false, 'Eligible prey should leave active party list after feeding');
-  assertContains(App.log[App.log.length - 1].text, 'You help feed Prey to Consumer', 'Player helper should be described as assisting the feed');
-  assertNotContains(App.log[App.log.length - 1].text, 'cannot be handed off as prey', 'Player should not be routed through prey rejection when helping a group feed');
+  assertContains(App.log[App.log.length - 1].text, 'Prey willingly offers themself to Consumer', 'Explicit Offer Self should narrate the eligible selected source');
+  assertNotContains(App.log[App.log.length - 1].text, 'You willingly offers', 'Player helper should not be routed through whole-self offering');
 });
 
 test('Self-included group feed tends target instead of consuming helpers', () => {
@@ -13471,16 +15414,16 @@ test('Multi-target feast skips the actor self-target but resolves valid prey', (
   assertContains(App.log[App.log.length - 1].text, 'Prey', 'Multi-target feast summary should name only the valid affected target');
 });
 
-test('Single selected party member can be fed to another full-health party member', () => {
+test('Single selected willing party member can explicitly offer themself to a full-health consumer', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const consumer = makeUnit('Consumer', { id: 'consumer-1', CPun: 100, MPun: 100, size: 6, appetite: 6 });
-  const prey = makeUnit('Prey', { id: 'prey-1', size: 2 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 2, willingPrey: true });
   App.player = player;
   App.party = [player, consumer, prey];
   App.selectExplorationActor(2);
-  App.outsideActionForParty('feed', 1);
-  assertEqual(consumer.stomach.length, 1, 'Feed action should support feeding selected party member to party consumer');
+  App.outsideActionForParty('feed', 1, null, { subAction: 'offerWhole' });
+  assertEqual(consumer.stomach.length, 1, 'Explicit Offer Self should support a full-health party consumer');
   assertEqual(App.party.includes(prey), false, 'Fed party member should be contained rather than remain in party');
 });
 
@@ -13488,18 +15431,16 @@ test('Group action role summary identifies consumer prey and helpers', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const consumer = makeUnit('Consumer', { id: 'consumer-1', CPun: 100, MPun: 100, size: 6, appetite: 6 });
-  const prey = makeUnit('Prey', { id: 'prey-1', size: 2 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 2, willingPrey: true });
   App.player = player;
   App.party = [player, consumer, prey];
-  const feedSummary = App._groupActionRoleSummary('feed', consumer, [player, prey]);
+  const feedSummary = App._groupActionRoleSummary('feed', consumer, [player, prey], { subAction: 'offerWhole' });
   assertEqual(feedSummary.consumer.name, 'Consumer', 'Group feed summary should identify the recipient/consumer');
   assertEqual(feedSummary.preyNames.join(','), 'Prey', 'Group feed summary should identify selected party prey');
   assertEqual(feedSummary.helperNames.join(','), 'You', 'Group feed summary should identify player assistance');
   App.explorationActorIds = ['player-1', 'prey-1'];
-  App.outsideActionForParty('feed', 1);
-  assertContains(App.log[App.log.length - 1].text, 'Consumer: Consumer', 'Group feed log should name the consumer role');
-  assertContains(App.log[App.log.length - 1].text, 'Prey: Prey', 'Group feed log should name the prey role');
-  assertContains(App.log[App.log.length - 1].text, 'Helpers: You', 'Group feed log should name helper roles');
+  App.outsideActionForParty('feed', 1, null, { subAction: 'offerWhole' });
+  assertContains(App.log[App.log.length - 1].text, 'Prey willingly offers themself to Consumer', 'Explicit group Offer Self should name its source and consumer');
 
   const smallHelper = makeUnit('Small Helper', { id: 'small-helper', size: 1, appetite: 0, Feas: 50 });
   const primary = makeUnit('Primary', { id: 'primary-1', size: 6, appetite: 6, Feas: 30 });
@@ -13522,7 +15463,7 @@ test('Group feed respects explicit heal sub-action instead of consuming selected
   assertEqual(consumer.CPun, 100, 'Explicit heal should restore the party target with combined group Feed');
   assertEqual(consumer.stomach.length, 0, 'Explicit heal should not route selected party members into the target stomach');
   assertEqual(App.party.includes(prey), true, 'Explicit heal should keep selected party members in the active party');
-  assertContains(App.log[App.log.length - 1].text, 'restoring 80 punishment', 'Explicit heal should log tending instead of containment');
+  assertContains(App.log[App.log.length - 1].text, 'restoring 60 punishment', 'Explicit heal should report the actual condition restored instead of the uncapped request');
 });
 
 test('Group feed forceFeed chooses eligible predator when helper is selected first', () => {
@@ -13715,13 +15656,13 @@ test('Group exploration outcome summaries localize', () => {
   const transfer = loadAppForCombat(() => 0);
   const transferPlayer = makeUnit('You', { id: 'player-1' });
   const consumer = makeUnit('Consumer', { id: 'consumer-1', CPun: 100, MPun: 100, size: 6, appetite: 6 });
-  const transferPrey = makeUnit('Prey', { id: 'prey-1', size: 2 });
+  const transferPrey = makeUnit('Prey', { id: 'prey-1', size: 2, willingPrey: true });
   transfer.App.player = transferPlayer;
   transfer.App.party = [transferPlayer, consumer, transferPrey];
   transfer.App.explorationActorIds = ['prey-1'];
   transfer.App.updateLanguage('es');
-  transfer.App.outsideActionForParty('feed', 1);
-  assertContains(transfer.App.log[transfer.App.log.length - 1].text, 'Prey es alimentado a Consumer', 'Party feed transfer summary should localize');
+  transfer.App.outsideActionForParty('feed', 1, null, { subAction: 'offerWhole' });
+  assertContains(transfer.App.log[transfer.App.log.length - 1].text, 'Prey se ofrece voluntariamente a Consumer', 'Explicit Offer Self summary should localize');
 });
 
 test('Single exploration action result logs localize', () => {
@@ -13777,8 +15718,8 @@ test('Single exploration action result logs localize', () => {
   feeding.App.party = [feeder, wounded];
   feeding.App.updateLanguage('es');
   feeding.App.outsideActionForParty('feed', 1);
-  assertContains(feeding.App.log[feeding.App.log.length - 1].text, 'Tu alimenta a Wounded', 'Single feed result should localize');
-  assertContains(feeding.App.log[feeding.App.log.length - 1].text, 'restaurando 40 de castigo', 'Single feed amount should interpolate in localized result');
+  assertContains(feeding.App.log[feeding.App.log.length - 1].text, 'Tu atiendes a Wounded', 'Single Tend result should use localized second-person grammar');
+  assertContains(feeding.App.log[feeding.App.log.length - 1].text, 'restauras 40 de castigo', 'Single Tend amount should interpolate in localized result');
 });
 
 test('One actor needs enough stats to handle multiple exploration targets', () => {
@@ -14041,7 +15982,7 @@ test('Panel wrappers use one command dispatcher for combat target clicks', () =>
   assertEqual(App.confirmCombatTargets(), true, 'Combat target confirmation should resolve through shared panel dispatch');
   assertEqual(seen.length, 1, 'Combat target confirmation should hit the same dispatcher once');
   assertEqual(seen[0].mode, 'combat', 'Combat target click should build a combat command');
-  assertEqual(seen[0].source, 'combat-composer', 'Combat target confirmation should identify the composer command surface');
+  assertEqual(seen[0].source, 'action-variant-options', 'Combat target confirmation should identify the shared Fight variant command surface');
   assertEqual(seen[0].actorIds[0], 'player-combat-panel-dispatch', 'Combat command should record active actor id');
   assertEqual(seen[0].targetIds[0], 'enemy-combat-panel-dispatch', 'Combat command should record clicked target id');
 
@@ -14330,6 +16271,106 @@ test('Combat group planner queues and resolves one collective effort across mult
   assertEqual(first.CPun < 100, true, 'Collective resolution should affect the first marked target');
   assertEqual(second.CPun < 100, true, 'Collective resolution should affect the second marked target');
   assertEqual(advanced, 2, 'Group queue and eventual resolution should each advance exactly once');
+});
+
+test('Many-to-many Fight continues in deterministic target order after an early target falls', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'fall-through-player', Figh: 40, hunger: 10, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'fall-through-ally', Figh: 40, hunger: 20, combatRow: 'front' });
+  const first = makeUnit('First Enemy', { id: 'fall-through-first', disposition: App.DISPOSITION.ENEMY, CPun: 10, MPun: 100, con: 0, combatRow: 'front' });
+  const second = makeUnit('Second Enemy', { id: 'fall-through-second', disposition: App.DISPOSITION.ENEMY, CPun: 10, MPun: 100, con: 0, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [first, second];
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    sceneExchangeId: 'fall-through-exchange',
+    turnQueue: [
+      { unit: player, initiative: 30 },
+      { unit: ally, initiative: 20 },
+      { unit: first, initiative: 10 },
+      { unit: second, initiative: 9 }
+    ],
+    syncActions: []
+  };
+  [player, ally, first, second].forEach(unit => App._normalizeUnit(unit));
+  App.activeActor = player;
+  App._effectiveCon = () => 0;
+  App._combatDamageVariance = () => 0;
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+  const sync = {
+    type: 'sync_fight',
+    participants: [player, ally],
+    target: first,
+    targets: [first, second],
+    resolved: false
+  };
+
+  App._resolveSyncAction(sync);
+
+  assertEqual(App._isCorpse(first), true, 'First marked target should become remains when the collective hit defeats it');
+  assertEqual(App._isCorpse(second), true, 'Later marked targets should still resolve after an earlier target falls');
+  const actionLogs = App.log.filter(entry => entry.type === 'combat' && entry.text.includes('gang up on'));
+  assertEqual(actionLogs.length, 2, 'One many-to-many command should emit one ordered result per marked target');
+  assertContains(actionLogs[0].text, 'First Enemy', 'First marked target should resolve first');
+  assertContains(actionLogs[1].text, 'Second Enemy', 'Second marked target should resolve second');
+  assertEqual(player.hunger, 13, 'Lead should pay one Fight cost for the entire command');
+  assertEqual(ally.hunger, 23, 'Helper should pay one Fight cost for the entire command');
+  assertEqual(player.multiActionPractice.multi.fight.commands, 1, 'Lead should train once despite defeating multiple targets');
+  assertEqual(ally.multiActionPractice.multi.fight.commands, 1, 'Helper should train once despite defeating multiple targets');
+  assertEqual(advanced, 1, 'Collective resolution should advance exactly once after all targets resolve');
+});
+
+test('Queued group action drops an unavailable target and resolves remaining valid marks', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'partial-sync-player', Figh: 30, hunger: 5, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'partial-sync-ally', Figh: 30, hunger: 7, combatRow: 'front' });
+  const unavailable = makeUnit('Unavailable', { id: 'partial-sync-unavailable', disposition: App.DISPOSITION.ENEMY, CPun: 0, MPun: 100, combatRow: 'front' });
+  const remaining = makeUnit('Remaining', { id: 'partial-sync-remaining', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, con: 0, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [unavailable, remaining];
+  App.combatState = {
+    active: true,
+    round: 3,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [
+      { unit: player, initiative: 30 },
+      { unit: ally, initiative: 20 },
+      { unit: remaining, initiative: 10 }
+    ],
+    syncActions: []
+  };
+  [player, ally, unavailable, remaining].forEach(unit => App._normalizeUnit(unit));
+  App.activeActor = player;
+  App._effectiveCon = () => 0;
+  App._combatDamageVariance = () => 0;
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+  const sync = {
+    type: 'sync_fight',
+    participants: [player, ally],
+    target: unavailable,
+    targets: [unavailable, remaining],
+    resolved: false
+  };
+
+  App._resolveSyncAction(sync);
+
+  assertEqual(sync.targets.length, 1, 'Resolution should normalize the queued target list to still-valid marks');
+  assertEqual(sync.targets[0], remaining, 'The surviving valid mark should remain authoritative');
+  assertEqual(remaining.CPun < 100, true, 'The valid marked target should still receive the collective action');
+  assertEqual(player.hunger, 8, 'Lead should pay one Fight cost after partial target normalization');
+  assertEqual(ally.hunger, 10, 'Helper should pay one Fight cost after partial target normalization');
+  assertEqual(App.log.some(entry => entry.text.includes('Sync failed')), false, 'One unavailable mark should not falsely cancel the whole command');
+  assertEqual(advanced, 1, 'Partially valid group resolution should advance exactly once');
 });
 
 test('Combat planner allows party members as Feast targets', () => {
@@ -15059,7 +17100,9 @@ test('Direct multi-target creature feast preserves explicit sub-action options',
   assertEqual(actor.stomach.length, 0, 'Explicit direct chew should not fall back to swallow containment');
   assertEqual(preyA.alive, false, 'First direct multi-target chew should apply the chew sub-action');
   assertEqual(preyB.alive, false, 'Second direct multi-target chew should apply the chew sub-action');
-  assertEqual(App.creatures.length, 0, 'Chewed area creatures should leave the active creature list');
+  assertEqual(App.creatures.length, 2, 'Chewed area creatures should remain on the tile as recoverable remains');
+  assert(App.creatures.every(prey => App._isCorpse(prey)), 'Every terminal multi-target chew result should be classified as remains');
+  assert(App.creatures.every(prey => prey.source === 'chew'), 'Every terminal multi-target chew result should retain its cause');
   assertContains(App.log[App.log.length - 1].text, 'Prey A, Prey B', 'Direct explicit feast sub-action summary should name affected targets');
 });
 
@@ -15311,6 +17354,8 @@ test('Identical actor and target sets resolve as mutual group actions', () => {
   fight.App.resolveExplorationTargetAction('fight');
   assert(fighterA.CPun < 100, 'Mutual fight should affect the first participant');
   assert(fighterB.CPun < 100, 'Mutual fight should affect the second participant');
+  assertEqual(fighterA.hunger, 3, 'Mutual Fight should charge the first committed participant once');
+  assertEqual(fighterB.hunger, 3, 'Mutual Fight should charge the second committed participant once');
   assertContains(fight.App.log[fight.App.log.length - 1].text, 'mutual group', 'Identical actor/target fight should not route as ordered self-pairs');
 
   const social = loadAppForCombat(() => 0);
@@ -15324,6 +17369,8 @@ test('Identical actor and target sets resolve as mutual group actions', () => {
   social.App.resolveExplorationTargetAction('flirt');
   assert(socialA.CPle > 0, 'Mutual social action should affect the first participant');
   assert(socialB.CPle > 0, 'Mutual social action should affect the second participant');
+  assertEqual(socialA.hunger, 1, 'Mutual Talk should charge the first committed participant once');
+  assertEqual(socialB.hunger, 1, 'Mutual Talk should charge the second committed participant once');
   assertContains(social.App.log[social.App.log.length - 1].text, 'share talk as a mutual group', 'Identical actor/target social action should use mutual summary');
 });
 
@@ -15340,8 +17387,8 @@ test('Identical actor and target sets tend together and block mutual feast', () 
   feed.App.resolveExplorationTargetAction('feed');
   assert(healerA.CPun > 40, 'Mutual feed should heal the first participant');
   assert(healerB.CPun > 50, 'Mutual feed should heal the second participant');
-  assert(healerA.hunger < 40, 'Mutual feed should reduce first participant hunger pressure');
-  assert(healerB.hunger < 40, 'Mutual feed should reduce second participant hunger pressure');
+  assertEqual(healerA.hunger, 41, 'Mutual Tend should charge the first committed participant without creating nutrition');
+  assertEqual(healerB.hunger, 41, 'Mutual Tend should charge the second committed participant without creating nutrition');
   assertContains(feed.App.log[feed.App.log.length - 1].text, 'se atienden entre si', 'Mutual feed summary should localize');
 
   const feast = loadAppForCombat(() => 0);
@@ -15784,6 +17831,33 @@ test('Full inventory keeps tile-local item pickup stable', () => {
   assertContains(App._renderContextActions(), 'App.takeTileItems()', 'Full inventory pickup should keep Take Items available for correction');
   assertContains(App.log[App.log.length - 1].text, 'Inventory is full.', 'Full inventory pickup should explain why nothing moved');
   assertEqual(autoSaveCalls, 1, 'Full inventory pickup should autosave feedback state');
+});
+
+test('Holdings pack renders maintained item categories through the active locale', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'localized-pack-player' });
+  App.player = player;
+  App.party = [player];
+  App.inventory = [
+    { id: 'localized-pack-consumable', name: 'Strange Mushroom' },
+    { id: 'localized-pack-equipment', name: 'Leather Cap' },
+    { id: 'localized-pack-material', name: 'Monster Fang' }
+  ];
+  App.updateLanguage('es');
+  App.showInventory();
+  App.setHoldingsTab('pack');
+  const spanish = holdingsHtml(elements);
+  assertContains(spanish, 'Consumible', 'Consumable pack category should render in Spanish');
+  assertContains(spanish, 'Equipo', 'Equipment pack category should render in Spanish');
+  assertContains(spanish, 'Material', 'Material pack category should use the maintained locale label');
+  assertNotContains(spanish, '>consumable ·', 'Holdings should not expose the raw consumable token');
+  assertNotContains(spanish, '>equipment ·', 'Holdings should not expose the raw equipment token');
+
+  App.updateLanguage('en');
+  App.setHoldingsTab('pack');
+  const english = holdingsHtml(elements);
+  assertContains(english, 'Consumable', 'Consumable pack category should re-render in English');
+  assertContains(english, 'Equipment', 'Equipment pack category should re-render in English');
 });
 
 test('Healing consumables restore capped player condition and consume exactly one item', () => {
@@ -16870,23 +18944,123 @@ test('Generator v3 cave cells expose two mouths into one bounded underground net
   App.enterStructure();
   assertEqual(App.activeInterior.kind, 'cave-network', 'Cellular cave portals should generate a cave-network interior');
   assertEqual(Object.keys(App.activeInterior.tiles).length, 13, 'Initial cave networks should stay bounded');
-  const secondEntry = App.activeInterior.entryRooms[second.site.portalId].split(',').map(Number);
-  App.interiorLocation = { x: secondEntry[0], y: secondEntry[1] };
+  const directions = {
+    north: { dx: 0, dy: -1, opposite: 'south' },
+    east: { dx: 1, dy: 0, opposite: 'west' },
+    south: { dx: 0, dy: 1, opposite: 'north' },
+    west: { dx: -1, dy: 0, opposite: 'east' }
+  };
+  const firstEntryKey = App.activeInterior.entryRooms[first.site.portalId];
+  const secondEntryKey = App.activeInterior.entryRooms[second.site.portalId];
+  assertEqual(`${App.interiorLocation.x},${App.interiorLocation.y}`, firstEntryKey, 'Entering the first mouth should place the player in its authored portal room');
+  const queue = [{ key: firstEntryKey, path: [] }];
+  const visited = new Set([firstEntryKey]);
+  let route = null;
+  while (queue.length) {
+    const current = queue.shift();
+    if (current.key === secondEntryKey && !route) {
+      route = current.path;
+    }
+    const room = App.activeInterior.tiles[current.key];
+    for (const directionId of room.connections || []) {
+      const direction = directions[directionId];
+      assert(direction, `Cave room ${current.key} should only expose cardinal connection ids`);
+      const nextKey = `${room.x + direction.dx},${room.y + direction.dy}`;
+      const nextRoom = App.activeInterior.tiles[nextKey];
+      assert(nextRoom, `Cave connection ${directionId} from ${current.key} should lead to a real room`);
+      assert(nextRoom.connections.includes(direction.opposite), `Cave connection ${directionId} from ${current.key} should be reciprocal`);
+      if (visited.has(nextKey)) continue;
+      visited.add(nextKey);
+      queue.push({ key: nextKey, path: [...current.path, direction] });
+    }
+  }
+  assert(route && route.length > 0, 'The two surface cave mouths should have a traversable underground route between them');
+  assertEqual(visited.size, Object.keys(App.activeInterior.tiles).length, 'Every generated cave branch should remain connected to the two-mouth trunk');
+  App._worldChance = () => false;
+  App.autoSave = () => true;
+  route.forEach(direction => {
+    assertEqual(App.moveInterior(direction.dx, direction.dy), true, 'The player should traverse each reciprocal cave connection toward the second mouth');
+  });
+  assertEqual(`${App.interiorLocation.x},${App.interiorLocation.y}`, secondEntryKey, 'Traversing the cave should reach the other portal room without teleporting');
   App.exitStructure();
   assertEqual(`${App.location.x},${App.location.y}`, `${second.x},${second.y}`, 'The second underground exit should emerge from the other surface portal');
+});
+
+test('Generated structure interiors form connected reciprocal room graphs with one surface exit', () => {
+  const { App } = loadAppForCombat();
+  const structures = [
+    { id: 'cabin', budget: 6, kind: 'building' },
+    { id: 'ruins', budget: 12, kind: 'building' },
+    { id: 'burrow', budget: 10, kind: 'burrow' },
+    { id: 'manor', budget: 14, kind: 'building' },
+    { id: 'dungeon', budget: 16, kind: 'building' }
+  ];
+  const directions = {
+    north: { dx: 0, dy: -1, opposite: 'south' },
+    east: { dx: 1, dy: 0, opposite: 'west' },
+    south: { dx: 0, dy: 1, opposite: 'north' },
+    west: { dx: -1, dy: 0, opposite: 'east' }
+  };
+
+  for (const [index, expected] of structures.entries()) {
+    const x = 30 + index;
+    const y = -20 - index;
+    App.worldMeta = { worldId: `interior-graph-${expected.id}`, seed: `interior-graph-${expected.id}`, generatorVersion: 3, mapModsHash: 'core' };
+    App.worldMap = new Map();
+    App.tileDeltas = new Map();
+    const tile = {
+      ...App.getBaseTile(x, y),
+      x,
+      y,
+      explored: true,
+      structure: expected.id,
+      creatures: [],
+      items: []
+    };
+    App.worldMap.set(`${x},${y}`, tile);
+    const interior = App._ensureStructureInterior(tile);
+    const rooms = Object.values(interior.tiles);
+
+    assertEqual(interior.kind, expected.kind, `${expected.id} should generate the expected interior kind`);
+    assertEqual(rooms.length, expected.budget, `${expected.id} should fill its bounded room budget`);
+    assertEqual(interior.entryRooms.default, '0,0', `${expected.id} should expose its authored entry room`);
+    assertEqual(rooms.filter(room => room.exit).length, 1, `${expected.id} should expose exactly one surface exit`);
+    assertEqual(interior.tiles['0,0'].exit, true, `${expected.id} entry room should be its surface exit`);
+    assert(rooms.every(room => room.structure === null), `${expected.id} rooms should not inherit surface structures`);
+
+    const queue = ['0,0'];
+    const visited = new Set(queue);
+    while (queue.length) {
+      const roomKey = queue.shift();
+      const room = interior.tiles[roomKey];
+      for (const directionId of room.connections || []) {
+        const direction = directions[directionId];
+        assert(direction, `${expected.id} room ${roomKey} should only expose cardinal connection ids`);
+        const nextKey = `${room.x + direction.dx},${room.y + direction.dy}`;
+        const nextRoom = interior.tiles[nextKey];
+        assert(nextRoom, `${expected.id} connection ${directionId} from ${roomKey} should lead to a real room`);
+        assert(nextRoom.connections.includes(direction.opposite), `${expected.id} connection ${directionId} from ${roomKey} should be reciprocal`);
+        if (visited.has(nextKey)) continue;
+        visited.add(nextKey);
+        queue.push(nextKey);
+      }
+    }
+    assertEqual(visited.size, rooms.length, `Every generated ${expected.id} room should be reachable from its surface exit`);
+  }
 });
 
 test('Versioned start area validation guarantees early route and rest access', () => {
   const WorldGen = loadWorldGenForTest();
   const { App, elements } = loadAppForCombat();
   const seeds = ['default', 'layout-a', 'layout-b', 'route-seed', 'coastal-seed', 'wet-start', 'mountain-start'];
-  for (const seed of seeds) {
-    App.worldMeta = { worldId: `world-start-safe-${seed}`, seed, generatorVersion: 2, mapModsHash: 'core' };
+  for (const generatorVersion of [2, 3]) {
+    for (const seed of seeds) {
+    App.worldMeta = { worldId: `world-start-safe-v${generatorVersion}-${seed}`, seed, generatorVersion, mapModsHash: 'core' };
     App.worldMap = new Map();
     App.tileDeltas = new Map();
     App.exploredTiles = new Set();
     const result = WorldGen.validateStartArea(App.worldMeta, App._regionBiomeKeys());
-    assertEqual(result.ok, true, `Versioned start area should satisfy safety invariants for seed ${seed}`);
+    assertEqual(result.ok, true, `Versioned start area should satisfy safety invariants for generator v${generatorVersion}, seed ${seed}`);
     assertEqual(result.checks.safeBiomeRadius, true, `Start area should have enough low-danger passable terrain for seed ${seed}`);
     assertEqual(result.checks.noHardLockout, true, `Start should not be surrounded by blocked terrain for seed ${seed}`);
     assertEqual(result.checks.lowDangerResource, true, `Start should have low-danger resource terrain for seed ${seed}`);
@@ -16947,6 +19121,7 @@ test('Versioned start area validation guarantees early route and rest access', (
     App.search();
     assertEqual(App.inventory.length, 1, `Starter resource site search should grant one item for seed ${seed}`);
     assertEqual(App.getTile(-2, 0).resourceSearched, true, `Starter resource site should persist consumed state for seed ${seed}`);
+    }
   }
 });
 
@@ -17277,8 +19452,10 @@ test('Map tile inspector renders safe biome and terrain details', () => {
   assertContains(elements.get('mobile-tile-details-content').innerHTML, 'Structure', 'Mobile tile details sheet should hold full metadata');
   App.openTileDetails();
   assertEqual(elements.get('mobile-tile-details-sheet').hidden, false, 'Tile details sheet should open from the compact affordance');
+  assert(App._focusTrap, 'Tile details sheet should activate the shared focus trap');
   App.closeTileDetails();
   assertEqual(elements.get('mobile-tile-details-sheet').hidden, true, 'Tile details sheet should close cleanly');
+  assertEqual(App._focusTrap, null, 'Closing tile details should clear its focus trap');
 });
 
 test('Loaded world state rebuilds tile deltas over deterministic base tiles', () => {
@@ -18700,9 +20877,10 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   const { App, elements, document } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const enemy = makeUnit('Enemy', { id: 'enemy-sentence', disposition: App.DISPOSITION.ENEMY });
+  const secondEnemy = makeUnit('Second Enemy', { id: 'enemy-sentence-2', disposition: App.DISPOSITION.ENEMY });
   App.player = player;
   App.party = [player];
-  App.creatures = [enemy];
+  App.creatures = [enemy, secondEnemy];
   App.activeActor = player;
   App.combatState = {
     active: true,
@@ -18759,6 +20937,16 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   assertContains(html, 'Enemy', 'Combat target-pick sentence should show marked target names before confirmation');
   assertContains(html, 'data-command-count="1"', 'Combat target-pick sentence should expose marked target count metadata before confirmation');
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-target-count'), '1', 'Desktop combat target-pick sentence should expose selected target count metadata');
+  App.renderDesktopCombatComposer(player);
+  App.renderMobileCombatToolbelt();
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'Use Fight on selected target', 'Desktop single-target confirmation should retain singular copy');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Use Fight on selected target', 'Mobile single-target confirmation should retain singular copy');
+  App.combatTargetIds = [App._unitSelectionId(enemy), App._unitSelectionId(secondEnemy)];
+  App.combatTargetId = App.combatTargetIds[0];
+  App.renderDesktopCombatComposer(player);
+  App.renderMobileCombatToolbelt();
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'Use Fight on 2 selected targets', 'Desktop multi-target confirmation should disclose its target count');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Use Fight on 2 selected targets', 'Mobile multi-target confirmation should disclose its target count');
   assertEqual(elements.get('mobile-selection-sentence')?.innerHTML || '', '', 'Mobile combat should leave the exploration control-belt sentence empty');
 });
 
@@ -20874,7 +23062,7 @@ test('Quest species objectives match exact internal ids and display species labe
 
   const objective = { type: 'defeat', species: 'wolf', required: 1, progress: 0, complete: false };
   assertEqual(App.questSpeciesLabel('wolf'), 'Wolfkin', 'Quest species labels should use player-facing species names');
-  assertEqual(App._questObjectiveLabel(objective), 'defeat Wolfkin', 'Generated objective labels should display species names instead of raw ids');
+  assertEqual(App._questObjectiveLabel(objective), 'Defeat Wolfkin', 'Generated objective labels should display localized action and species names instead of raw ids');
   assertEqual(App._questObjectiveMatches('defeat', { species: 'wolf', target: { species: 'wolf' } }, objective), true, 'Internal wolf species id should match exact wolf objective');
   App.species.push(
     { id: 'wolfgirl', name: 'Wolfgirl', icon: '🐺', desc: 'Sapient wolf person' },
@@ -20895,10 +23083,10 @@ test('Quest species objectives match exact internal ids and display species labe
     objectives: [objective],
     reward: { gold: 1 }
   });
-  assertEqual(normalized.objectives[0].label, 'defeat Wolfkin', 'Normalized quest objectives should generate display-name labels when no explicit label exists');
+  assertEqual(normalized.objectives[0].label, 'Defeat Wolfkin', 'Normalized quest objectives should generate display-name labels when no explicit label exists');
   App.quests = [normalized];
   App.showQuestLog();
-  assertContains(elements.get('party-content').innerHTML, 'defeat Wolfkin', 'Quest log should render the generated display-name objective label');
+  assertContains(elements.get('party-content').innerHTML, 'Defeat Wolfkin', 'Quest log should render the generated display-name objective label');
 
   const explicit = App._normalizeQuest({
     id: 'explicit_wolf',
@@ -20906,6 +23094,23 @@ test('Quest species objectives match exact internal ids and display species labe
     objectives: [{ type: 'defeat', species: 'wolf', required: 1, label: 'Defeat the northern scout' }]
   });
   assertEqual(explicit.objectives[0].label, 'Defeat the northern scout', 'Explicit authored objective labels should be preserved');
+
+  const fallback = App._normalizeQuest({
+    id: 'localized-fallback-quest',
+    objectives: [{ type: 'travel', required: 1, checkpoints: [{ x: 4, y: 5 }] }]
+  });
+  assertEqual(fallback.generatedTitle, true, 'Missing quest title should be marked as a core-generated fallback');
+  assertEqual(fallback.objectives[0].generatedLabel, true, 'Missing objective label should be marked as a core-generated fallback');
+  assertEqual(fallback.objectives[0].checkpoints[0].generatedLabel, true, 'Missing checkpoint label should be marked as a core-generated fallback');
+  App.quests = [fallback];
+  App.updateLanguage('es');
+  App.showQuestLog();
+  const fallbackHtml = elements.get('party-content').innerHTML;
+  assertContains(fallbackHtml, 'Mision sin titulo', 'Quest log should re-resolve a generated title in the active locale');
+  assertContains(fallbackHtml, 'Viajar a objetivo', 'Quest log should re-resolve a generated objective action and target in the active locale');
+  assertContains(fallbackHtml, 'Punto de ruta 1', 'Quest log should re-resolve generated checkpoint names in the active locale');
+  assertNotContains(fallbackHtml, 'Untitled Quest', 'Generated quest fallback should not leak its original English normalization locale');
+  assertNotContains(fallbackHtml, 'Checkpoint 1', 'Generated checkpoint fallback should not leak its original English normalization locale');
 });
 
 test('Generated and mod species quest objectives use exact registered ids', () => {
@@ -20938,7 +23143,7 @@ test('Generated and mod species quest objectives use exact registered ids', () =
   };
   const modObjective = { type: 'defeat', species: 'modfolk', required: 1, progress: 0, complete: false };
   assertEqual(App.questSpeciesLabel('modfolk'), 'Modfolk', 'Mod-registered species should provide quest display labels');
-  assertEqual(App._questObjectiveLabel(modObjective), 'defeat Modfolk', 'Mod-registered species objectives should generate display-name labels');
+  assertEqual(App._questObjectiveLabel(modObjective), 'Defeat Modfolk', 'Mod-registered species objectives should generate localized display-name labels');
   assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'modfolk' } }, modObjective), true, 'Mod-registered species should match exact species objective ids');
   assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'wolf' } }, modObjective), false, 'Mod species objective should not fuzzy-match other species');
   App.species.push({ id: 'modfolk_variant', name: 'Modfolk Variant', icon: 'M', questFamilies: ['modfolk'], desc: 'Mod registered person' });
@@ -21384,7 +23589,7 @@ test('Merchant trade action labels localize with accessible names', () => {
   assertContains(html, '>Vender<', 'Sell visible label should localize');
   assertContains(html, 'aria-label="Volver"', 'Trade back control should expose localized accessible label');
   assertContains(html, 'Comercio con Trader', 'Trade heading should localize');
-  assertContains(html, '<span>Gold</span><strong>100</strong>', 'Trade summary should show current gold');
+  assertContains(html, '<span>Oro</span><strong>100</strong>', 'Trade summary should localize the gold label while showing the current value');
   assertContains(html, 'Categoria', 'Trade category control should localize');
   assertContains(html, '<option value="equipment" >Equipo</option>', 'Trade category option should localize');
   assertContains(html, 'Ordenar', 'Trade sort control should localize');
@@ -21560,6 +23765,162 @@ test('Structure encounters can place authored quest givers', () => {
   assertEqual(App.quests[0].giverLocation.x, 2, 'Accepted structure quest should store giver x for turn-in routing');
   assertEqual(App.quests[0].giverLocation.y, 0, 'Accepted structure quest should store giver y for turn-in routing');
   assertEqual(tile.structureSpawned, true, 'Structure spawn should be marked complete after quest placement');
+});
+
+test('Quest-giver containment suspends access and repeated release does not duplicate an issued quest', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const holder = makeUnit('Holder', { id: 'service-holder', size: 8, appetite: 8 });
+  const giver = makeUnit('Human Guide', {
+    id: 'service-quest-giver',
+    disposition: App.DISPOSITION.QUEST_GIVER,
+    quest: {
+      id: 'service-quest',
+      title: 'A Stable Task',
+      description: 'State should not reset through containment.',
+      objectives: [{ type: 'find', required: 1 }],
+      reward: { xp: 10 }
+    }
+  });
+  App.player = holder;
+  App.party = [holder];
+  App.creatures = [giver];
+  App.quests = [];
+
+  App.acceptQuestFromUnit(giver.id);
+  assertEqual(App.quests.length, 1, 'Quest should be issued once before containment');
+  App._containTargetIn(holder, giver, 'stomach');
+  assertEqual(App._getQuestGiverByKey(giver.id), undefined, 'Contained quest giver should not remain accessible as a quest service');
+
+  App._doSubAction('feast', 'release', holder, holder, holder.name, 's');
+  let released = App.creatures.find(unit => unit.id === giver.id);
+  assert(released, 'Released quest giver should preserve stable identity');
+  assertEqual(released.questAccepted, true, 'Release should preserve the issued state rather than recreating a fresh giver');
+  assertEqual(released.quest.status, 'active', 'Release should preserve the quest status');
+  App.acceptQuestFromUnit(released.id);
+  assertEqual(App.quests.length, 1, 'Released quest giver should not duplicate the already-issued quest');
+
+  App._containTargetIn(holder, released, 'stomach');
+  App._doSubAction('feast', 'release', holder, holder, holder.name, 's');
+  released = App.creatures.find(unit => unit.id === giver.id);
+  App.acceptQuestFromUnit(released.id);
+  assertEqual(App.quests.length, 1, 'Repeated contain/release cycles should not mint additional quest records');
+});
+
+test('Merchant containment suspends trade access and preserves stock across release', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const holder = makeUnit('Holder', { id: 'merchant-holder', size: 8, appetite: 8 });
+  const merchant = makeUnit('Human Merchant', {
+    id: 'contained-merchant',
+    disposition: App.DISPOSITION.MERCHANT,
+    stockTable: 'general',
+    stockLastRefreshDay: 0,
+    stock: [{ id: 'merchant-herb', name: 'Healing Herb', price: 10, qty: 1 }]
+  });
+  App.player = holder;
+  App.party = [holder];
+  App.creatures = [merchant];
+  App.dayCount = 0;
+
+  merchant.stock[0].qty = 0;
+  App._containTargetIn(holder, merchant, 'stomach');
+  assertEqual(App._findMerchantById(merchant.id), undefined, 'Contained merchant should not remain accessible as a trade service');
+  App._doSubAction('feast', 'release', holder, holder, holder.name, 's');
+  const released = App._findMerchantById(merchant.id);
+  assert(released, 'Released merchant should preserve stable identity');
+  assertEqual(released.stock[0].qty, 0, 'Release should preserve depleted stock rather than recreating a fresh merchant inventory');
+});
+
+test('Remote release keeps quest and merchant services suspended until their authored origin', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const holder = makeUnit('Holder', { id: 'portable-service-holder', size: 12, appetite: 12 });
+  const giver = makeUnit('Human Guide', {
+    id: 'portable-quest-giver',
+    disposition: App.DISPOSITION.QUEST_GIVER,
+    quest: {
+      id: 'portable-service-quest',
+      title: 'Work Stays Home',
+      objectives: [{ type: 'find', required: 1 }],
+      reward: { xp: 10 }
+    }
+  });
+  const merchant = makeUnit('Human Merchant', {
+    id: 'portable-merchant',
+    disposition: App.DISPOSITION.MERCHANT,
+    stockTable: 'general',
+    stockLastRefreshDay: 0,
+    stock: [{ id: 'portable-herb', name: 'Healing Herb', price: 13, qty: 0 }]
+  });
+  const origin = { ...App.getBaseTile(4, 5), x: 4, y: 5, explored: true, biome: 'grove', structure: 'cabin', creatures: [giver, merchant], items: [] };
+  const remote = { ...App.getBaseTile(9, 9), x: 9, y: 9, explored: true, biome: 'plains', structure: null, creatures: [], items: [] };
+  App.player = holder;
+  App.party = [holder];
+  App.creatures = [giver, merchant];
+  App.quests = [];
+  App.location = { x: 4, y: 5 };
+  App.currentBiome = 'grove';
+  App.worldMap = new Map([['4,5', origin], ['9,9', remote]]);
+  App.tileDeltas = new Map();
+
+  App.acceptQuestFromUnit(giver.id);
+  assertEqual(App.quests.length, 1, 'Origin quest should be issued once before transport');
+  App.quests[0].status = 'completed';
+  App.quests[0].rewardClaimed = true;
+  giver.quest.status = 'completed';
+  giver.quest.rewardClaimed = true;
+  App._containTargetIn(holder, giver, 'stomach');
+  App._containTargetIn(holder, merchant, 'stomach');
+  assertEqual(holder.stomach.every(unit => unit.serviceSuspended === true), true, 'Containment should suspend every service role');
+  assertEqual(holder.stomach.every(unit => unit.serviceOrigin?.x === 4 && unit.serviceOrigin?.y === 5 && unit.serviceOrigin?.structureId === 'cabin'), true, 'Containment should capture the authored service origin once');
+
+  App.location = { x: 9, y: 9 };
+  App.currentBiome = 'plains';
+  App.creatures = [];
+  App._doSubAction('feast', 'release', holder, holder, holder.name, 's');
+  App._doSubAction('feast', 'release', holder, holder, holder.name, 's');
+  let remoteGiver = App.creatures.find(unit => unit.id === giver.id);
+  let remoteMerchant = App.creatures.find(unit => unit.id === merchant.id);
+  assert(remoteGiver && remoteMerchant, 'Both service NPCs should remain present after remote release');
+  assertEqual(remoteGiver.serviceSuspended, true, 'Remote quest giver should remain service-suspended');
+  assertEqual(remoteMerchant.serviceSuspended, true, 'Remote merchant should remain service-suspended');
+  assertEqual(App._getQuestGiverByKey(giver.id), undefined, 'Remote quest giver should not become a portable quest service');
+  assertEqual(App._findMerchantById(merchant.id), undefined, 'Remote merchant should not become a portable trade service');
+  assertEqual(App._unitVisibleTraits(remoteGiver, 'creature', 6).some(trait => trait.key === 'quest'), false, 'Remote quest giver card should not advertise Quest');
+  assertEqual(App._unitVisibleTraits(remoteMerchant, 'creature', 6).some(trait => trait.key === 'merchant'), false, 'Remote merchant card should not advertise Merchant service');
+  App.explorationTargetIds = [App._explorationTargetUnitId('creature', remoteGiver)];
+  assertNotContains(App._renderExplorationTargetActions('desktop'), 'data-command-intent="quest"', 'Remote quest giver composer should omit Quest');
+  App.explorationTargetIds = [App._explorationTargetUnitId('creature', remoteMerchant)];
+  assertNotContains(App._renderExplorationTargetActions('desktop'), 'data-command-intent="trade"', 'Remote merchant composer should omit Trade');
+  const observation = App.emitTileObservation(remote, { wasExplored: false });
+  assertNotContains(observation.summary, 'can trade with you here', 'Remote merchant should not be narrated as an available trader');
+  assertNotContains(observation.summary, 'may have work for you', 'Remote quest giver should not be narrated as an available quest service');
+  assertEqual(observation.tags.includes('trade') || observation.tags.includes('quest'), false, 'Remote services should not add transaction tags');
+  assertEqual(observation.metadata.tileNarrativeState.state.creatures.every(unit => unit.serviceAvailable === false), true, 'Narration metadata should explicitly mark remote services unavailable');
+
+  App._containTargetIn(holder, remoteGiver, 'stomach');
+  App._containTargetIn(holder, remoteMerchant, 'stomach');
+  App._doSubAction('feast', 'release', holder, holder, holder.name, 's');
+  App._doSubAction('feast', 'release', holder, holder, holder.name, 's');
+  remoteGiver = App.creatures.find(unit => unit.id === giver.id);
+  remoteMerchant = App.creatures.find(unit => unit.id === merchant.id);
+  assertEqual(remoteGiver.serviceOrigin.x, 4, 'Repeated containment should not replace the quest giver origin');
+  assertEqual(remoteMerchant.serviceOrigin.x, 4, 'Repeated containment should not replace the merchant origin');
+  assertEqual(App.quests.length, 1, 'Repeated remote release should not mint another quest');
+  assertEqual(App.quests[0].status, 'completed', 'Repeated remote release should not reset completed quest status');
+  assertEqual(App.quests[0].rewardClaimed, true, 'Repeated remote release should not make an already-claimed reward available again');
+  assertEqual(remoteMerchant.stock[0].qty, 0, 'Repeated remote release should not replenish merchant stock');
+  assertEqual(remoteMerchant.stock[0].price, 13, 'Repeated remote release should not reset an authored merchant price');
+
+  App.location = { x: 4, y: 5 };
+  App.currentBiome = 'grove';
+  App.creatures = [remoteGiver, remoteMerchant];
+  origin.creatures = [remoteGiver, remoteMerchant];
+  assertEqual(App._getQuestGiverByKey(giver.id), remoteGiver, 'Quest service should restore only at its authored origin');
+  assertEqual(App._findMerchantById(merchant.id), remoteMerchant, 'Trade service should restore only at its authored origin');
+  App.acceptQuestFromUnit(remoteGiver.id);
+  assertEqual(App.quests.length, 1, 'Home restoration should preserve the already-issued quest');
+  assertEqual(App.quests[0].rewardClaimed, true, 'Home restoration should preserve claimed reward state');
+  assertEqual(remoteMerchant.stock[0].qty, 0, 'Home restoration should preserve depleted stock');
+  assertEqual(remoteMerchant.stock[0].price, 13, 'Home restoration should preserve merchant prices');
 });
 
 test('Equipment registry defines slots and item bonuses', () => {
@@ -22482,7 +24843,10 @@ test('Holdings contained detail preserves selected companion owner on Back and r
   App.setHoldingsTab('containers');
   assertContains(holdingsHtml(elements), 'Held Frogfolk', 'Selected companion container entry should render before inspect');
   App.showContainedHoldingDetail('party', 1, 'stomach', 0);
-  assertContains(holdingsHtml(elements), 'Holder', 'Contained detail should show the companion holder');
+  const containedHtml = holdingsHtml(elements);
+  assertContains(containedHtml, 'Holder', 'Contained detail should show the companion holder');
+  assertContains(containedHtml, 'aria-describedby="holdings-window-description"', 'Contained detail should reference its visible purpose description');
+  assertContains(containedHtml, 'Review this contained creature and its available actions.', 'Contained detail should visibly explain its management scope');
   App.setHoldingsTab('containers');
   assertContains(holdingsHtml(elements), 'Held Frogfolk', 'Back from contained detail should return to selected companion containers');
   App.releaseContained('party', 1, 'stomach', 0);
@@ -22796,8 +25160,11 @@ test('Character stats expose pending perk selection', () => {
   assertContains(html, 'You &lt;Hero&gt;', 'Character stats should escape player names');
   assertContains(html, "App.closeHoldingsWindow()", 'Character stats close action should return to play state');
   assertContains(html, 'Choose Perk (2)', 'Character stats should show pending perk button');
+  App.updateLanguage('es');
   App.showPerkSelection();
   html = holdingsHtml(elements);
+  assertContains(html, 'aria-describedby="holdings-window-description"', 'Perk picker should reference its visible purpose description');
+  assertContains(html, 'Elige una ventaja disponible o vuelve a los atributos del personaje.', 'Perk picker purpose should localize');
   assertContains(html, 'role="dialog" aria-modal="true"', 'Perk selection should render in the focused Holdings overlay');
   assertContains(html, 'data-command-surface="perk-selection-detail"', 'Perk selection should render as a detail command surface');
   assertContains(html, 'data-command-control="filter-perk-tree"', 'Perk filters should expose their drawer control role');
@@ -23029,6 +25396,8 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, 'data-surface-role="scene-feed"', 'Scene Feed surfaces should use player-facing scene-feed roles');
   assertContains(template, 'Scene Feed', 'Expanded semantic sheet should use Scene Feed wording');
   assertContains(template, 'id="story-sheet"', 'Story should expose an expandable sheet');
+  assertContains(template, 'aria-describedby="story-sheet-description"', 'Story sheet should reference a bounded purpose description');
+  assertContains(template, 'id="story-sheet-description" data-i18n="scene.feedDescription"', 'Story sheet description should use the maintained locale registry');
   assertContains(template, 'id="story-sheet-list"', 'Story sheet should expose recent story events');
   assertContains(template, 'id="mobile-tile-details-sheet"', 'Mobile should expose a tile details sheet');
   assertContains(template, 'id="mobile-tile-details-content"', 'Mobile tile details sheet should expose full metadata content');
@@ -23050,7 +25419,7 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, '.story-event-detail-meta', 'Expanded Scene Feed should style structured beat metadata');
   assertContains(template, '.story-sub-events', 'Expanded Scene Feed should style sub-event lists');
   assertContains(storyEventsContent, 'emitResult(app, commandOrPlan = {}, result = \'\', options = {})', 'Story event helper should expose a command/result bridge');
-  assertContains(storyEventsContent, 'registerSceneTemplate(app, template = {})', 'Story event helper should expose moddable scene template registration');
+  assertContains(storyEventsContent, 'registerSceneTemplate(app, template = {}, options = {})', 'Story event helper should expose owned scene template registration');
   assertContains(storyEventsContent, 'renderSceneBeat(app, plan = {}, outcomeInput = {})', 'Story event helper should expose deterministic Scene Beat rendering');
   assertContains(storyEventsContent, 'emitSceneBeat(app, commandOrPlan = {}, result = \'\', options = {})', 'Scene Feed helper should expose player-facing Scene Beat emission');
   assertContains(storyEventsContent, 'contentTier', 'Scene Beat data should carry content-tier metadata');
@@ -23128,7 +25497,7 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertContains(sceneFeedDoc, '`subEvents`', 'SceneBeat shape should include subEvents');
   assertContains(sceneFeedDoc, '## ActionOutcome Input', 'Scene Feed DSL should document ActionOutcome input');
   assertContains(sceneFeedDoc, 'if no template matches, the existing result string must still render', 'Scene Feed DSL should document fallback behavior');
-  assertContains(sceneFeedDoc, 'Use `App.registerSceneTemplate(template)`', 'Scene Feed DSL should document the mod API seam');
+  assertContains(sceneFeedDoc, '`MODS.registerSceneTemplate(template)`', 'Scene Feed DSL should document the public mod API seam');
   assertContains(sceneFeedDoc, '### Template Examples', 'Scene Feed DSL should include concrete template examples');
   assertContains(sceneFeedDoc, 'mod.safe-fight-summary', 'Scene Feed DSL should show a deterministic prose template example');
   assertContains(sceneFeedDoc, 'mod.row-failure-tactical', 'Scene Feed DSL should show a tactical failure template example');
@@ -24349,11 +26718,37 @@ test('Tutorial steps localize through active language', () => {
   App.updateLanguage('es');
   App.showTutorial();
   assertEqual(elements.get('tutorial-overlay').style.display, 'flex', 'Tutorial overlay should open');
+  assertEqual(elements.get('tutorial-overlay').getAttribute('aria-hidden'), 'false', 'Open tutorial should enter the accessibility tree');
   assertEqual(elements.get('tutorial-title').textContent, 'Bienvenida', 'First tutorial title should localize');
   assertContains(elements.get('tutorial-content').textContent, 'Eres salvaje', 'First tutorial content should localize');
   App.nextTutorial();
   assertEqual(elements.get('tutorial-title').textContent, 'Combate', 'Second tutorial title should localize');
   assertContains(elements.get('tutorial-content').textContent, 'Selecciona actores', 'Second tutorial content should localize group planning language');
+  App.closeTutorial();
+  assertEqual(elements.get('tutorial-overlay').getAttribute('aria-hidden'), 'true', 'Closed tutorial should leave the accessibility tree');
+});
+
+test('Tutorial overlay exposes a named and described modal contract', () => {
+  assertContains(template, 'id="tutorial-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="tutorial-title" aria-describedby="tutorial-content"', 'Tutorial should expose the shared named modal contract');
+  assertContains(template, '<div aria-live="polite" aria-atomic="true">', 'Tutorial step changes should be announced as one polite update');
+  assertContains(appContent, 'this.tutorialBackgroundState = YAW_DIALOG_FLOW.isolateUnderlying(overlay);', 'Tutorial should isolate the underlying screen while open');
+  assertContains(appContent, 'YAW_DIALOG_FLOW.restoreUnderlying(this.tutorialBackgroundState || []);', 'Tutorial should restore the underlying screen when closed');
+});
+
+test('System overlays reference visible names and descriptions', () => {
+  const relationships = [
+    ['screen-settings', 'settings-title', 'settings-description'],
+    ['screen-providers', 'ai-provider-title', 'ai-provider-description'],
+    ['screen-release', 'release-notes-title', 'release-notes-version'],
+    ['screen-activity', 'system-activity-title', 'system-activity-description'],
+    ['screen-mods', 'mod-manager-title', 'mod-manager-description'],
+    ['screen-market', 'host-catalog-title', 'host-catalog-description']
+  ];
+  relationships.forEach(([dialog, title, description]) => {
+    assertContains(template, `id="${dialog}" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="${title}" aria-describedby="${description}"`, `${dialog} should expose its visible title and description relationships`);
+    assertContains(template, `id="${title}"`, `${dialog} title relationship should resolve in fallback markup`);
+    assertContains(template, `id="${description}"`, `${dialog} description relationship should resolve in fallback markup`);
+  });
 });
 
 test('Combat tutorial copy documents group planning and intent-owned reach', () => {
@@ -24369,7 +26764,8 @@ test('Save manager renders localized accessible slot actions', () => {
   App.updateLanguage('es');
   App.renderSaveManager('load');
   const html = elements.get('save-manager').innerHTML;
-  assertEqual(elements.get('save-manager').getAttribute('aria-label'), 'Cargar partida', 'Save manager dialog label should localize in load mode');
+  assertContains(html, 'id="save-manager-title"', 'Save manager should render the visible heading referenced by the dialog');
+  assertContains(html, 'id="save-manager-description"', 'Save manager should render the visible description referenced by the dialog');
   assertContains(html, 'Cargar partida', 'Save manager title should localize in load mode');
   assertContains(html, 'Nueva partida', 'New game entry should localize');
   assertContains(html, 'Partida guardada', 'Occupied slot badge should localize');
@@ -24390,7 +26786,8 @@ test('Save manager renders localized accessible slot actions', () => {
   assertNotContains(html, 'Guardar y continuar en Slot 1', 'Load mode should not include save actions');
   App.renderSaveManager('save');
   const saveHtml = elements.get('save-manager').innerHTML;
-  assertEqual(elements.get('save-manager').getAttribute('aria-label'), 'Guardar partida', 'Save manager dialog label should localize in save mode');
+  assertContains(saveHtml, '<h1 id="save-manager-title"', 'Save manager should preserve its visible heading relationship in save mode');
+  assertContains(saveHtml, '>Guardar partida</h1>', 'Save manager referenced heading should localize in save mode');
   assertContains(saveHtml, 'Slot ocupado: guardar aqui hace que este sea el slot activo de autoguardado.', 'Occupied save-mode slot hint should localize');
   assertContains(saveHtml, 'Slot vacio: guarda aqui y continua autoguardando en este slot.', 'Empty save-mode slot hint should localize');
   assertContains(saveHtml, 'Acciones: Guardar, Borrar', 'Occupied save-mode action summary should localize');
@@ -24400,7 +26797,7 @@ test('Save manager renders localized accessible slot actions', () => {
   assertNotContains(saveHtml, 'aria-label="Cargar Slot 1"', 'Save mode should not include load actions');
   App.renderSaveManager('new');
   const newHtml = elements.get('save-manager').innerHTML;
-  assertEqual(elements.get('save-manager').getAttribute('aria-label'), 'Elegir slot de partida nueva', 'Save manager dialog label should describe new-game mode');
+  assertContains(newHtml, '>Elegir slot de partida nueva</h1>', 'Save manager referenced heading should describe new-game mode');
   assertContains(newHtml, 'Slot ocupado: sobrescribir requiere confirmacion.', 'Occupied new-mode slot hint should warn about confirmation');
   assertContains(newHtml, 'Slot vacio: listo para una nueva partida.', 'Empty new-mode slot hint should describe direct new-run use');
   assertContains(newHtml, 'Acciones: Sobrescribir, Borrar', 'Occupied new-mode action summary should localize');
@@ -24827,7 +27224,11 @@ test('Slow sparse save warning prints flat diagnostics without object expansion'
 test('Sparse save load reconstructs app state and preserves Binary fallback compatibility', async () => {
   const harness = loadAppForCombat(() => 0.5);
   const App = enableRealAutoSaveHarness(harness);
-  App.player = makeUnit('Sparse You', { id: 'sparse-load-player', species: 'human' });
+  App.player = makeUnit('Sparse You', {
+    id: 'sparse-load-player',
+    species: 'human',
+    creationOptions: { 'test-provider': { 'crest-style': 'sunburst' } }
+  });
   App.party = [App.player, makeUnit('Sparse Ally', { id: 'sparse-load-ally', species: 'bunny' })];
   App.screen = 'game';
   App.activeSlot = 'slot2';
@@ -24855,6 +27256,7 @@ test('Sparse save load reconstructs app state and preserves Binary fallback comp
 
   assertEqual(ok, true, 'Sparse slot should load without a Binary save blob');
   assertEqual(loaded.App.player.name, 'Sparse You', 'Sparse load should restore player identity');
+  assertEqual(loaded.App.player.creationOptions['test-provider']['crest-style'], 'sunburst', 'Sparse load should preserve bounded provider-owned creation choices');
   assertEqual(loaded.App.party.length, 2, 'Sparse load should restore party record');
   assertEqual(loaded.App.location.x, 7, 'Sparse load should restore x coordinate');
   assertEqual(loaded.App.location.y, 3, 'Sparse load should restore y coordinate');
@@ -25727,12 +28129,18 @@ test('Desktop card intent menus stay suppressed for composer-owned actions', () 
   App.openIntentSubActionSheet('creature', 'friendly-desktop', 'flirt', 'desktop', { currentTarget: opener });
   assertContains(appContent, 'closeMobileContextMenu() {\n                return this.closeIntentMenu();', 'Legacy mobile context close method should delegate to the shared intent close handler');
   assert(App._focusTrap, 'Desktop sub-action intent menus should activate the shared focus trap');
+  assertContains(body.innerHTML, 'aria-describedby="desktop-intent-menu-title-description"', 'Desktop sub-action dialog should reference its visible purpose description');
+  assertContains(body.innerHTML, 'Choose a Talk option. Availability clues describe likely limits before the attempt.', 'Desktop sub-action dialog should explain the attempt-clue contract');
+  assertEqual(elements.get('app').hasAttribute('inert'), true, 'Modal sub-action menus should make the underlying app inert');
+  assertEqual(elements.get('app').getAttribute('aria-hidden'), 'true', 'Modal sub-action menus should hide the underlying app from assistive technology');
   assert(listeners.has('keydown'), 'Desktop intent menus should register keyboard focus handling');
   const desktopMenu = elements.get('desktop-intent-menu');
   let prevented = false;
   listeners.get('keydown')({ key: 'Escape', preventDefault() { prevented = true; } });
   assertEqual(prevented, true, 'Escape should be consumed by the desktop intent focus trap');
   assertEqual(desktopMenu.removed, true, 'Escape should close the desktop sub-action intent menu');
+  assertEqual(elements.get('app').hasAttribute('inert'), false, 'Closing a modal sub-action menu should restore the underlying app');
+  assertEqual(elements.get('app').hasAttribute('aria-hidden'), false, 'Closing a modal sub-action menu should restore the underlying app accessibility tree');
   assertEqual(opener.focused, true, 'Closing desktop intent menu should restore focus to the opener');
   App.selectIntent('creature', 'remains-desktop', 'loot', 'desktop');
   assertEqual(App.lastIntentCommand.source, 'desktop', 'Desktop menu selection should record its command source');
@@ -25984,6 +28392,73 @@ test('Digestion tick advances progress, reduces condition, and terminalizes at t
   assertContains(App.log[App.log.length - 1].text, 'terminal digestion', 'Activity Log should remain a separate technical history entry');
 });
 
+test('Survivable player containment resolves as captured instead of death or recovery', () => {
+  const { App, window, hooks } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-survivable-containment', CPun: 40, MPun: 100, size: 3 });
+  const holder = makeUnit('Dragonfolk', { id: 'holder-survivable-containment', CPun: 60, MPun: 100, hunger: 50, stomach: [] });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [holder];
+  App.settings.endoMode = true;
+  App.settings.fatalVore = false;
+  App.location = { x: 2, y: 1 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+
+  const prey = App._createStomachPrey(player, {
+    holder,
+    holderId: holder.id,
+    containedId: player.id,
+    containerId: 'stomach'
+  });
+  holder.stomach.push(prey);
+  const resolved = window.YAW_UNIT_CONTAINMENT.terminalize(App, holder, prey, { key: 'stomach' });
+
+  assertEqual(resolved.state, 'softened', 'Survivable player containment should stop at the softened lifecycle state');
+  assertEqual(resolved.releaseEligible, true, 'Survivable player containment should remain releasable');
+  assertEqual(resolved.CPun, 1, 'Survivable player containment should preserve one condition on the contained record');
+  assertEqual(App.defeatState.status, 'captured', 'The shared player-state resolver should classify survivable containment as captured');
+  assertEqual(App.defeatState.terminal, false, 'Captured player containment should remain nonterminal');
+  assertEqual(App.defeatState.pending, false, 'Captured player containment should not open defeat recovery');
+  assertEqual(App.defeatState.cause, 'survivable-containment', 'Captured player state should preserve the containment cause');
+  assertEqual(hooks.some(hook => hook.event === 'onDefeat'), false, 'Survivable containment must not emit a defeat hook');
+  assertEqual(hooks.filter(hook => hook.event === 'onPlayerState').length, 1, 'Survivable containment should emit one player-state transition');
+});
+
+test('Fatal player digestion enters shared death recovery exactly once', () => {
+  const { App, window, hooks } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-fatal-digestion', CPun: 40, MPun: 100, size: 3 });
+  const holder = makeUnit('Dragonfolk', { id: 'holder-fatal-digestion', CPun: 60, MPun: 100, hunger: 50, stomach: [] });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [holder];
+  App.settings.endoMode = false;
+  App.settings.fatalVore = true;
+  App.settings.hardcore = false;
+  App.location = { x: 2, y: 1 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+  App.autoSave = () => true;
+
+  const prey = App._createStomachPrey(player, {
+    holder,
+    holderId: holder.id,
+    containedId: player.id,
+    containerId: 'stomach'
+  });
+  holder.stomach.push(prey);
+  window.YAW_UNIT_CONTAINMENT.terminalize(App, holder, prey, { key: 'stomach' });
+  const resolutionId = App.defeatState.resolutionId;
+  window.YAW_UNIT_CONTAINMENT.terminalize(App, holder, prey, { key: 'stomach' });
+
+  assertEqual(prey.state, 'terminal', 'Fatal player digestion should terminalize the containment record');
+  assertEqual(prey.releaseEligible, false, 'Fatal player digestion should make the terminal record unreleasable');
+  assertEqual(App.player.CPun, 0, 'Fatal player digestion should apply the shared terminal player condition');
+  assertEqual(App.defeatState.status, 'dead', 'Fatal player digestion should enter the shared dead state');
+  assertEqual(App.defeatState.pending, true, 'Fatal player digestion should open regular recovery');
+  assertEqual(App.defeatState.cause, 'fatal-digestion', 'Fatal player digestion should preserve its authoritative cause');
+  assertEqual(App.defeatState.resolutionId, resolutionId, 'Repeated terminalization should retain one resolution identity');
+  assertEqual(hooks.filter(hook => hook.event === 'onDefeat').length, 1, 'Repeated fatal digestion must emit one defeat hook');
+});
+
 test('Release restores contained prey at reduced condition and clears active containment', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', { id: 'release-holder', stomach: [] });
@@ -26005,6 +28480,58 @@ test('Release restores contained prey at reduced condition and clears active con
   assert(prey.status.vitalWeakness, 'Release below full vitality should apply Vital Weakness state');
   assertContains(App.latestSceneBeat.summary, 'released from You', 'Release should emit a Scene Beat');
   assertContains(App.log[App.log.length - 1].text, 'released from You', 'Release should also create a technical Activity Log entry');
+});
+
+test('Feast containment sub-actions keep Spanish results and logs localized', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'localized-player-holder', Feas: 40, size: 7, stomach: [] });
+  const companion = makeUnit('Zorro', { id: 'localized-companion-holder', Feas: 40, size: 7, stomach: [] });
+  App.player = player;
+  App.party = [player, companion];
+  App.creatures = [];
+  App.updateLanguage('es');
+
+  const playerPrey = makeUnit('Liebre', { id: 'localized-player-prey', CPun: 10, MPun: 100, size: 1, willingPrey: true });
+  App.creatures.push(playerPrey);
+  const playerSwallow = App._doSubAction('feast', 'swallow', player, playerPrey, 'Tu', '');
+  assertContains(playerSwallow, 'tu barriga', 'Player swallow result should use Spanish player-possession grammar');
+  const playerRelease = App._doSubAction('feast', 'release', player, playerPrey, 'Tu', '');
+  assertContains(playerRelease, 'liberas a Liebre', 'Release result should remain Spanish with player grammar');
+  assertContains(App.log[App.log.length - 1].text, 'es liberado del estomago', 'Release Activity Log should remain Spanish');
+  assertContains(App.latestSceneBeat.summary, 'es liberado del estomago', 'Release Scene Beat should remain Spanish');
+
+  const companionPrey = makeUnit('Raton', { id: 'localized-companion-prey', CPun: 10, MPun: 100, size: 1, willingPrey: true });
+  App.creatures.push(companionPrey);
+  const companionSwallow = App._doSubAction('feast', 'swallow', companion, companionPrey, 'Zorro', 's');
+  assertContains(companionSwallow, 'barriga de Zorro', 'Named-holder swallow result should use Spanish possession grammar');
+  const digestResult = App._doSubAction('feast', 'digest', companion, companionPrey, 'Zorro', 's');
+  assertContains(digestResult, 'digiere activamente a Raton', 'Active digestion result should remain Spanish');
+  assertContains(App.latestSceneBeat.summary, 'es digerido por completo dentro de Zorro', 'Terminal digestion Scene Beat should remain Spanish');
+  assert(App.log.some(entry => entry.text.includes('digestion terminal dentro de Zorro')), 'Terminal digestion Activity Log should remain Spanish');
+
+  assertContains(App._doSubAction('feast', 'digest', player, player, 'Tu', ''), 'no tienes a nadie', 'Empty digestion outcome should remain Spanish with player grammar');
+  assertContains(App._doSubAction('feast', 'release', player, player, 'Tu', ''), 'ninguna presa viva', 'Empty release outcome should remain Spanish');
+});
+
+test('Holdings containment commands localize Spanish scene and Activity Log output', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const holder = makeUnit('Zorro', { id: 'localized-holdings-holder', hunger: 50, stomach: [] });
+  App.player = holder;
+  App.party = [holder];
+  App.creatures = [];
+  App.updateLanguage('es');
+
+  const releasedPrey = makeUnit('Liebre', { id: 'localized-holdings-release', CPun: 20, MPun: 100, size: 1 });
+  App._containTargetIn(holder, releasedPrey, 'stomach');
+  assertEqual(App.releaseContained('party', 0, 'stomach', 0), true, 'Localized Holdings release should resolve');
+  assertContains(App.latestSceneBeat.summary, 'Liebre es liberado', 'Holdings release Scene Beat should be Spanish');
+  assert(App.log.some(entry => entry.text.includes('contenedor Barriga de Zorro')), 'Holdings release Activity Log should be Spanish');
+
+  const digestedPrey = makeUnit('Raton', { id: 'localized-holdings-digest', CPun: 20, MPun: 100, size: 1 });
+  App._containTargetIn(holder, digestedPrey, 'stomach');
+  assertEqual(App.digestContained('party', 0, 'stomach', 0), true, 'Localized Holdings digest should resolve');
+  assertContains(App.latestSceneBeat.summary, 'Raton es digerido por completo', 'Holdings digest Scene Beat should be Spanish');
+  assertContains(App.log[App.log.length - 1].text, 'Zorro digiere a Raton', 'Holdings digest Activity Log should be Spanish');
 });
 
 test('Container inventory renders contained creatures with targeted release and digest actions', () => {
@@ -26190,6 +28717,67 @@ test('Container inventory splits active containment from consumed history', () =
   assertEqual(App._containerUsed(actor, 'stomach'), 1, 'Only active contained creatures should occupy Belly capacity');
 });
 
+test('Containment state and integrity labels localize without mutating persisted lifecycle values', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const active = makeUnit('Liebre', {
+    id: 'localized-state-active',
+    CPun: 15,
+    MPun: 20,
+    size: 1,
+    inStomach: true,
+    state: 'digesting',
+    digestionState: 'digesting',
+    progress: 25,
+    vitalRemaining: 15,
+    vitalMax: 20,
+    integrity: 'intact',
+    releaseEligible: true
+  });
+  const consumed = makeUnit('Raton', {
+    id: 'localized-state-consumed',
+    CPun: 0,
+    MPun: 20,
+    size: 1,
+    alive: false,
+    inStomach: true,
+    state: 'depleted',
+    digestionState: 'depleted',
+    progress: 100,
+    vitalRemaining: 0,
+    vitalMax: 20,
+    integrity: 'damaged',
+    releaseEligible: false
+  });
+  const holder = makeUnit('You', { id: 'localized-state-holder', stomach: [active, consumed] });
+  App.player = holder;
+  App.party = [holder];
+  App.updateLanguage('es');
+
+  App.showInventory();
+  App.setHoldingsTab('containers');
+  const spanishList = holdingsHtml(elements);
+  assertContains(spanishList, 'En digestion', 'Active containment state should render in Spanish');
+  assertContains(spanishList, 'Agotada', 'Consumed containment state should render in Spanish');
+  assertContains(spanishList, 'data-contained-state="digesting"', 'Active state metadata should retain its canonical stored value');
+  assertContains(spanishList, 'data-contained-state="depleted"', 'Consumed state metadata should retain its canonical stored value');
+
+  App.showContainedHoldingDetail('party', 0, 'stomach', 0);
+  const spanishDetail = holdingsHtml(elements);
+  assertContains(spanishDetail, 'En digestion', 'Contained detail state should render in Spanish');
+  assertContains(spanishDetail, 'Integridad: Intacta', 'Contained detail integrity should render in Spanish');
+  assertContains(spanishDetail, 'Liberar: Si', 'Contained detail release eligibility should render in Spanish');
+  assertContains(App._containmentSummary(active), 'En digestion · Vitalidad 75% · Liberable', 'Public containment summary should render in Spanish');
+  assertContains(App._containmentDetailSummary(holder), 'Liebre en Barriga: 25% · Vitalidad 75% · Liberable', 'Expanded card containment summary should render in Spanish');
+
+  App.updateLanguage('en');
+  App.setHoldingsTab('containers');
+  const englishList = holdingsHtml(elements);
+  assertContains(englishList, 'Digesting', 'Active containment state should re-render in English');
+  assertContains(englishList, 'Depleted', 'Consumed containment state should re-render in English');
+  assertEqual(active.state, 'digesting', 'Language changes must not rewrite active persisted state');
+  assertEqual(consumed.state, 'depleted', 'Language changes must not rewrite consumed persisted state');
+});
+
 test('Release blocks depleted vital containment without restoring prey', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', { id: 'release-block-holder', stomach: [] });
@@ -26229,6 +28817,8 @@ test('Chew slurp and fragment use vital damage without creature-piece inventory'
   assertContains(chewResult, 'vitality', 'Chew result should use vital-damage language');
   assertEqual(chewTarget.vitalRemaining, 0, 'Chew should apply terminal vital damage');
   assertEqual(chewTarget.state, 'depleted', 'Chew should mark target depleted instead of creating pieces');
+  assertEqual(App._isCorpse(chewTarget), true, 'Terminal Chew should leave a remains record instead of a zero-condition living creature');
+  assertEqual(chewTarget.source, 'chew', 'Terminal Chew remains should retain the authored source');
   assert(slurpTarget.vitalRemaining < slurpTarget.vitalMax, 'Slurp should reduce vital integrity');
   assert(fragmentTarget.vitalRemaining < fragmentTarget.vitalMax, 'Fragment should reduce vital integrity');
   assertEqual(fragmentTarget.str, 10, 'Fragment should not directly mutate visible strength');
@@ -26337,7 +28927,7 @@ test('Over-capacity blocks swallow and expanded cards show containment detail', 
 
   const cardHtml = App.renderUnitCard(actor, 0, 'party');
   assertContains(cardHtml, 'Contains 1', 'Compact/detail card traits should show small containment indicator');
-  assertContains(cardHtml, 'Held in Belly: 30% · vitality 70% · releasable', 'Expanded details should show contained unit, progress, vitality, and release eligibility');
+  assertContains(cardHtml, 'Held in Belly: 30% · Vitality 70% · Releasable', 'Expanded details should show localized contained unit, progress, vitality, and release eligibility');
 });
 
 test('Terminal digestion uses neutral safe wording and creates no remains by default', () => {
@@ -26553,8 +29143,11 @@ test('Mobile party long-press menu exposes management actions', () => {
   assertContains(body.innerHTML, 'role="dialog"', 'Party long-press menu should expose dialog semantics');
   assertContains(body.innerHTML, 'aria-modal="true"', 'Party long-press menu should behave as a modal action menu');
   assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Party long-press menu should use its visible title as dialog label');
+  assertContains(body.innerHTML, 'aria-describedby="mobile-context-menu-description"', 'Party long-press menu should reference its visible purpose description');
   assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Party long-press menu title should be addressable');
-  assertContains(body.innerHTML, 'Party actions', 'Party menu should use accessible party action label');
+  assertContains(body.innerHTML, 'id="mobile-context-menu-description"', 'Party long-press menu purpose should be addressable');
+  assertContains(body.innerHTML, 'Party actions for Ally', 'Party menu should name both the task and selected party member');
+  assertContains(body.innerHTML, 'Manage Ally&#39;s holdings, party role, and companion actions.', 'Party menu should visibly explain its management scope');
   assertContains(body.innerHTML, 'Holdings', 'Party menu should expose Holdings');
   assertNotContains(body.innerHTML, "mobilePartyContextAction('actions'", 'Party menu should not duplicate marked-target actions behind an intent-sheet entry');
   assertNotContains(body.innerHTML, 'aria-label="Fight Ally"', 'Party menu should not expose primary action spam');
@@ -26582,7 +29175,8 @@ test('Mobile party long-press menu uses localized management labels', () => {
   App.partyLeaderId = 'player-1';
   App.updateLanguage('es');
   App.showMobilePartyContext(1);
-  assertContains(body.innerHTML, 'aria-label="Acciones del grupo"', 'Party menu label should localize');
+  assertContains(body.innerHTML, 'Acciones del grupo para Ally', 'Party menu title should localize while retaining the selected party member');
+  assertContains(body.innerHTML, 'Administra las pertenencias, el rol de grupo y las acciones de compañero de Ally.', 'Party menu purpose should localize while retaining the selected party member');
   assertContains(body.innerHTML, 'Pertenencias', 'Holdings menu item should localize');
   assertNotContains(body.innerHTML, "mobilePartyContextAction('actions'", 'Localized party menu should not include a duplicate intent-sheet entry');
   assertContains(body.innerHTML, 'Hacer lider', 'Leader menu item should localize');
@@ -26727,6 +29321,8 @@ test('Quest and trade composer intents open focused transaction windows', () => 
   let root = elements.get('transaction-window-root');
   assertEqual(App.transactionWindow.kind, 'quest', 'Quest intent should open a quest transaction window');
   assertContains(root.innerHTML, 'Guide Quests', 'Quest transaction should identify the NPC');
+  assertContains(root.innerHTML, 'aria-describedby="transaction-window-description"', 'Quest transaction should reference its visible purpose description');
+  assertContains(root.innerHTML, 'Review available and active quests from Guide.', 'Quest transaction should visibly explain its purpose');
   assertContains(root.innerHTML, 'Available', 'Quest transaction should show available quests');
   assertContains(root.innerHTML, 'Accepted', 'Quest transaction should show accepted quests');
   assertContains(root.innerHTML, 'Completed', 'Quest transaction should show completed quests');
@@ -26741,9 +29337,34 @@ test('Quest and trade composer intents open focused transaction windows', () => 
   root = elements.get('transaction-window-root');
   assertEqual(App.transactionWindow.kind, 'trade', 'Trade intent should open a shop transaction window');
   assertContains(root.innerHTML, 'Merchant Trade', 'Trade transaction should identify the merchant');
+  assertContains(root.innerHTML, 'Review wares, prices, and inventory with Merchant.', 'Trade transaction should visibly explain its purpose');
   assertContains(root.innerHTML, 'Buy', 'Trade transaction should show Buy list');
   assertContains(root.innerHTML, 'Sell', 'Trade transaction should show Sell list');
   assertContains(root.innerHTML, 'Inventory', 'Trade transaction should show inventory capacity');
+
+  App.closeTransactionWindow();
+  App.updateLanguage('es');
+  App.selectIntent('creature', 'merchant-1', 'trade', 'composer-tray');
+  root = elements.get('transaction-window-root');
+  assertContains(root.innerHTML, 'Comercio con Merchant', 'Spanish trade transaction should localize its title');
+  assertContains(root.innerHTML, 'Revisa mercancías, precios e inventario con Merchant.', 'Spanish trade transaction should localize its visible purpose');
+  assertContains(root.innerHTML, '>PNJ<', 'Spanish transaction summary should localize the NPC label');
+  assertContains(root.innerHTML, '>Ubicacion<', 'Spanish transaction summary should localize the location label');
+  assertContains(root.innerHTML, '>Oro<', 'Spanish transaction summary should localize the gold label');
+  assertContains(root.innerHTML, '>Inventario<', 'Spanish transaction summary should localize the inventory label');
+  assertContains(root.innerHTML, 'Cant. 1', 'Spanish trade stock should localize quantity text');
+  assertContains(root.innerHTML, '2 oro', 'Spanish trade stock should localize compact prices');
+  assertContains(root.innerHTML, 'Consumible', 'Spanish trade stock should localize item categories');
+
+  App.closeTransactionWindow();
+  App.selectIntent('creature', 'guide-1', 'quest', 'composer-tray');
+  root = elements.get('transaction-window-root');
+  assertContains(root.innerHTML, 'Misiones de Guide', 'Spanish quest transaction should localize its title');
+  assertContains(root.innerHTML, 'Revisa las misiones disponibles y activas de Guide.', 'Spanish quest transaction should localize its visible purpose');
+  assertContains(root.innerHTML, 'Disponibles', 'Spanish quest transaction should localize the available section');
+  assertContains(root.innerHTML, 'Aceptadas', 'Spanish quest transaction should localize the accepted section');
+  assertContains(root.innerHTML, 'Completadas', 'Spanish quest transaction should localize the completed section');
+  assertContains(root.innerHTML, 'Ninguna', 'Spanish quest transaction should localize empty section text');
 });
 
 test('Shop purchase updates gold inside transaction window and combat closes safely', () => {
@@ -26807,13 +29428,16 @@ test('Mobile combat unit strips own horizontal touch scrolling', () => {
 });
 
 test('Mobile panel dock replaces edge swipe panel gestures', () => {
+  const dockStart = template.indexOf('<div class="mobile-panel-dock"');
+  const dockHtml = template.slice(dockStart, template.indexOf('</div>', dockStart));
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should be present');
   assertContains(template, 'position: fixed', 'Mobile panel dock should stay anchored to the viewport');
   assertContains(template, 'bottom: calc(env(safe-area-inset-bottom) + 8px);', 'Mobile panel dock should respect the safe-area inset');
   assertContains(template, "onclick=\"App.showCharacterStats()\"", 'Mobile panel dock should open stats by tap');
   assertContains(template, "onclick=\"togglePanel('map')\"", 'Mobile panel dock should open the map panel by tap');
-  assertContains(template, "onclick=\"App.toggleMobilePartyRail()\"", 'Mobile panel dock should open the compact party rail by tap during exploration');
-  assertContains(template, "onclick=\"App.toggleMobileCreatureRail()\"", 'Mobile panel dock should open the compact creature rail by tap during exploration');
+  assertContains(template, "onclick=\"App.toggleMobileRoster()\"", 'Mobile panel dock should open one unified roster by tap');
+  assertNotContains(dockHtml, "onclick=\"App.toggleMobilePartyRail()\"", 'Mobile panel dock should not expose a separate Party destination');
+  assertNotContains(dockHtml, "onclick=\"App.toggleMobileCreatureRail()\"", 'Mobile panel dock should not expose a separate Creatures destination');
   assertNotContains(template, 'ontouchstart="App.handleTouchStart(event)"', 'Main play surface should not capture horizontal panel swipes');
   assertNotContains(template, 'ontouchend="App.handleTouchEnd(event)"', 'Main play surface should not complete horizontal panel swipes');
 });
@@ -26824,7 +29448,7 @@ test('Mobile gesture helpers include haptic feedback hooks', () => {
   assertNotContains(mobileGesturesContent, 'app._haptic(6)', 'Removed panel swipes should not trigger stray haptic feedback');
 });
 
-section('Media Repository Tests', 'core');
+section('Media Repository Tests', 'media');
 
 test('Media Repository V1 is built before modules and migrates provider-neutral stores', () => {
   const contractIndex = buildContent.indexOf("'src/core/media-contract.js'");
@@ -27143,6 +29767,224 @@ test('Example Tileset Pack packages are valid URI-installable module and replace
   assertEqual(replacement.bundle.presentations[0].tiles['state-current'].layers[0].rect.x, 940, 'Replacement fixture should visibly change its current-position presentation');
 });
 
+test('Sprite Pack V1 validates code-free strips states facings and fallbacks', () => {
+  assertContains(buildContent, "'src/core/sprite-pack-v1.js'", 'Sprite Pack V1 should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/asset-bundle-v1.js'") < buildContent.indexOf("'src/core/sprite-pack-v1.js'"), 'Sprite Pack should load after the generic asset bundle envelope');
+  assert(buildContent.indexOf("'src/core/sprite-pack-v1.js'") < buildContent.indexOf("'src/core/sprite-runtime.js'"), 'Sprite Pack validation should load before runtime presentation');
+  assertContains(unitCardContent, 'app._unitArtHtml(unit', 'Detailed unit cards should consume the shared Sprite Pack renderer');
+  assertContains(tacticalCardContent, 'app._unitArtHtml(unit', 'Compact and mobile tactical cards should consume the shared Sprite Pack renderer');
+  assertContains(centerContextContent, 'app._unitArtHtml(unit', 'Stage presence should consume the shared Sprite Pack renderer');
+  assertContains(templateContent, '@media (prefers-reduced-motion: reduce)', 'Sprite animation should honor the operating-system reduced-motion preference');
+  const media = loadMediaSystemForTest();
+  const hash = 'd'.repeat(64);
+  const packageData = {
+    packageType: 'yaw-asset-bundle',
+    packageVersion: 1,
+    bundle: {
+      id: 'sprites.standard',
+      targetModuleId: 'sprites_mod',
+      name: 'Standard Sprites',
+      version: '1.0.0',
+      license: 'CC0-1.0',
+      presentations: [{
+        type: 'yaw-sprite-pack',
+        version: 1,
+        id: 'sprites.standard',
+        name: 'Standard Sprites',
+        nativeFrameSize: 64,
+        scaling: 'pixelated',
+        atlases: [{ id: 'main', resourceId: 'sprites.main' }],
+        sprites: {
+          'species-human': {
+            label: 'Human',
+            states: {
+              'idle:any': {
+                atlasId: 'main',
+                rect: { x: 0, y: 0, width: 128, height: 64 },
+                frameCount: 2,
+                durationMs: 400
+              },
+              'wounded:west': {
+                atlasId: 'main',
+                rect: { x: 0, y: 64, width: 64, height: 64 }
+              }
+            }
+          },
+          default: { fallback: 'species-human' }
+        }
+      }],
+      resources: [{
+        id: 'sprites.main', uri: './sprites.webp', hash, mimeType: 'image/webp', byteLength: 128,
+        width: 128, height: 128, role: 'sprite-atlas'
+      }]
+    }
+  };
+  const normalized = media.YAW_ASSET_BUNDLE_V1.normalizePackage(packageData, { sourceUrl: 'https://packs.example/sprites/bundle.json' });
+  const pack = media.YAW_SPRITE_PACK_V1.normalizeBundle(normalized)[0];
+  const MODULE_SYSTEM = loadModuleSystemForTest({
+    assetBundleV1: media.YAW_ASSET_BUNDLE_V1,
+    tilesetPackV1: media.YAW_TILESET_PACK_V1,
+    spritePackV1: media.YAW_SPRITE_PACK_V1
+  });
+  const reviewed = MODULE_SYSTEM._normalizeAssetBundlePackage(packageData, 'https://packs.example/sprites/bundle.json');
+  assertEqual(pack.nativeFrameSize.width, 64, 'Square native frame size should normalize to width');
+  assertEqual(pack.sprites['species-human'].states['idle:any'].frameWidth, 64, 'Animation strips should derive an exact frame width');
+  assertEqual(pack.sprites['species-human'].states['wounded:west'].frameCount, 1, 'Static state frames should remain valid');
+  assertEqual(reviewed.bundle.presentations[0].sprites.default.fallback, 'species-human', 'Module review should normalize sprite aliases before download');
+
+  const uneven = structuredClone(packageData);
+  uneven.bundle.presentations[0].sprites['species-human'].states['idle:any'].frameCount = 3;
+  let rejected = false;
+  try {
+    media.YAW_SPRITE_PACK_V1.normalizeBundle(media.YAW_ASSET_BUNDLE_V1.normalizePackage(uneven, { sourceUrl: 'https://packs.example/sprites/bundle.json' }));
+  } catch (error) {
+    rejected = error.code === 'invalid_sprite_strip';
+  }
+  assertEqual(rejected, true, 'Animation strips that do not divide into whole frames should reject');
+
+  const badRole = structuredClone(packageData);
+  badRole.bundle.resources[0].role = 'portrait';
+  rejected = false;
+  try {
+    media.YAW_SPRITE_PACK_V1.normalizeBundle(media.YAW_ASSET_BUNDLE_V1.normalizePackage(badRole, { sourceUrl: 'https://packs.example/sprites/bundle.json' }));
+  } catch (error) {
+    rejected = error.code === 'invalid_sprite_resource';
+  }
+  assertEqual(rejected, true, 'Sprite atlases should require the dedicated code-free media role');
+});
+
+asyncTest('Sprite runtime acquires local atlases resolves unit states and restores emoji on unload', async () => {
+  assertContains(buildContent, "'src/core/sprite-runtime.js'", 'Sprite runtime should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/sprite-runtime.js'") < buildContent.indexOf("'src/core/tactical-card.js'"), 'Sprite runtime should load before shared unit presentation');
+  const { YAW_SPRITE_RUNTIME } = loadMediaSystemForTest();
+  const presentation = {
+    type: 'yaw-sprite-pack',
+    version: 1,
+    id: 'pack-creatures',
+    name: 'Creature Sprites',
+    nativeFrameSize: 64,
+    scaling: 'pixelated',
+    atlases: [{ id: 'main', resourceId: 'sprites.main' }],
+    sprites: {
+      'species-human': {
+        states: {
+          'idle:any': { atlasId: 'main', rect: { x: 0, y: 0, width: 128, height: 64 }, frameCount: 2, durationMs: 400 },
+          'wounded:west': { atlasId: 'main', rect: { x: 0, y: 64, width: 64, height: 64 } },
+          'ghost:any': { atlasId: 'main', rect: { x: 64, y: 64, width: 64, height: 64 } }
+        }
+      }
+    }
+  };
+  const descriptor = {
+    id: 'sprites.main', hash: 'e'.repeat(64), mimeType: 'image/png', byteLength: 128,
+    width: 128, height: 128, role: 'sprite-atlas', license: 'CC0-1.0', provenance: {}, fallback: null, source: {}
+  };
+  const releases = [];
+  const repository = {
+    async ownerMetadata() { return { kind: 'asset_bundle_v1', presentations: [presentation] }; },
+    async listOwner() { return [{ descriptor }]; },
+    async acquire(moduleId, resourceId) { return { leaseId: 'sprite-lease', url: `blob:${moduleId}/${resourceId}` }; },
+    release(moduleId, leaseId) { releases.push([moduleId, leaseId]); return true; }
+  };
+  await YAW_SPRITE_RUNTIME.activateModule('sprite-module', { repository, refresh: false });
+  const idle = YAW_SPRITE_RUNTIME.resolveUnit({ species: 'human', CPun: 100, MPun: 100 });
+  assertEqual(idle.stateKey, 'idle:any', 'Healthy units should resolve their idle sprite');
+  assertEqual(idle.atlas.url, 'blob:sprite-module/sprites.main', 'Sprite presentation should use a local repository lease');
+  const wounded = YAW_SPRITE_RUNTIME.resolveUnit({ species: 'human', CPun: 20, MPun: 100, facing: 'west' });
+  assertEqual(wounded.stateKey, 'wounded:west', 'State and facing should select the most specific authored frame');
+  const ghost = YAW_SPRITE_RUNTIME.resolveUnit({ species: 'human', CPun: 1, MPun: 100, recoveryGhost: true });
+  assertEqual(ghost.stateKey, 'ghost:any', 'Recovery ghost state should select explicit ghost presentation');
+  assert(YAW_SPRITE_RUNTIME.semanticKeys({ species: 'human' }, { isPlayer: true }).includes('flag-player'), 'Player identity supplied by the app should expose the player sprite semantic');
+  const app = { _escapeHtml: value => String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;') };
+  const html = YAW_SPRITE_RUNTIME.unitArtHtml(app, { species: 'human', CPun: 100, MPun: 100, icon: '🧑' }, '🧑');
+  assertContains(html, 'data-sprite-pack="pack-creatures"', 'Rendered unit art should expose its pack for diagnostics');
+  assertContains(html, 'yaw-unit-icon-fallback', 'Rendered art should retain a non-network emoji fallback');
+  assertContains(html, 'animation:yaw-sprite-strip', 'Animated strips should use the bounded shared animation path');
+  YAW_SPRITE_RUNTIME.deactivateModule('sprite-module', { repository, refresh: false });
+  assertEqual(YAW_SPRITE_RUNTIME.resolveUnit({ species: 'human' }), null, 'Disabling the owner should immediately restore fallback presentation');
+  assertEqual(releases.length, 1, 'Sprite atlas lease should release exactly once');
+});
+
+asyncTest('Media provider adapters are role-validated, owner-scoped, collision-safe, and removable', async () => {
+  const media = loadMediaSystemForTest();
+  const repository = new media.YAWMediaRepository({ contract: media.YAW_MEDIA_CONTRACT });
+  const acquired = [];
+  const sourceAdapter = {
+    capabilities() { return { source: true, store: false, lease: false }; },
+    async health() { return { ok: true, secret: 'must-not-escape' }; },
+    async acquire(input) { acquired.push(input); return { providerId: 'bridge', descriptor: input.descriptor, blob: new Blob([]) }; }
+  };
+  const registered = repository.registerAdapter('provider-module', 'bridge', sourceAdapter);
+  assertEqual(registered.ownerId, 'provider-module', 'Provider registration should retain its module owner');
+  assertEqual(repository.resolveSource('bridge').id, 'bridge', 'A source adapter should become available through provider-neutral routing');
+  await repository.resolveSource('bridge').acquire({ descriptor: { id: 'asset' } });
+  assertEqual(acquired.length, 1, 'The provider wrapper should call the trusted adapter with its original receiver');
+  const bridgeState = (await repository.providerState()).find(state => state.providerId === 'bridge');
+  assertEqual(bridgeState.ok, true, 'Repository health should normalize an adapter response under its registered id');
+  assertEqual(Object.prototype.hasOwnProperty.call(bridgeState, 'secret'), false, 'Provider health diagnostics should expose only the bounded public status shape');
+
+  let collisionRejected = false;
+  try {
+    repository.registerAdapter('other-module', 'bridge', sourceAdapter);
+  } catch (error) {
+    collisionRejected = error.code === 'provider_owned';
+  }
+  assertEqual(collisionRejected, true, 'A second owner must not replace an existing media provider id');
+  assertEqual(repository.unregisterProviderOwner('provider-module'), 1, 'Unloading an owner should remove each registered provider exactly once');
+  let missing = false;
+  try { repository.resolveSource('bridge'); } catch (error) { missing = error.code === 'source_not_found'; }
+  assertEqual(missing, true, 'Owner removal should make its provider unavailable without touching core providers');
+  assertEqual(repository.unregisterProvider('provider-module', 'http'), false, 'Module cleanup must not remove a core provider');
+  assert(repository.resolveSource('http'), 'Core HTTP acquisition should survive module-provider cleanup');
+});
+
+asyncTest('Media provider registration requires an explicit capability and unloads with its module', async () => {
+  const lifecycle = [];
+  const mediaRepository = {
+    attachDatabase() {}, setLogger() {}, async cleanup() {}, close() {}, releaseOwner() {},
+    unregisterProviderOwner(moduleId) { lifecycle.push(`unregister:${moduleId}`); return 1; },
+    registerAdapter(moduleId, providerId, adapter) {
+      lifecycle.push(`register:${moduleId}:${providerId}`);
+      assertEqual(adapter.capabilities().source, true, 'Module adapter should preserve its declared provider role');
+      return { id: providerId, ownerId: moduleId };
+    },
+    async removeOwner() {}, async installFromSource() {}, async listOwner() { return []; },
+    async metadata() { return null; }, async ownerMetadata() { return null; },
+    async repairOwner(ownerId) { return { ownerId, ok: true, missing: [] }; },
+    async acquire() { throw new Error('Media unavailable'); }, release() { return false; }
+  };
+  const MODULE_SYSTEM = loadModuleSystemForTest({ mediaRepository });
+  const module = {
+    id: 'provider-module',
+    manifest: MODULE_SYSTEM._normalizeManifest({
+      id: 'provider-module',
+      name: 'Provider Module',
+      version: '1.0.0',
+      permissions: ['media:provide'],
+      runtimeRequirements: { origins: ['file', 'https', 'localhost', 'http'], network: false, hotToggleSafe: true }
+    }),
+    code: `MODS.registerMediaProvider('sidecar-bridge', {
+      capabilities() { return { source: true, store: false }; },
+      async health() { return { ok: true }; },
+      async acquire() { return null; }
+    });`,
+    enabled: true
+  };
+  await MODULE_SYSTEM.loadModule(module);
+  assertEqual(lifecycle[0], 'register:provider-module:sidecar-bridge', 'Declared media providers should register under their module owner');
+  MODULE_SYSTEM.unloadModule(module.id);
+  assert(lifecycle.includes('unregister:provider-module'), 'Module unload should remove provider adapters after releasing presentation leases');
+
+  const denied = {
+    ...module,
+    id: 'provider-denied',
+    manifest: MODULE_SYSTEM._normalizeManifest({ id: 'provider-denied', name: 'Denied', version: '1.0.0', permissions: [] })
+  };
+  let permissionRejected = false;
+  try { await MODULE_SYSTEM.loadModule(denied); } catch (error) { permissionRejected = String(error.message).includes('media:provide'); }
+  assertEqual(permissionRejected, true, 'Provider registration without media:provide should fail module enablement');
+});
+
 asyncTest('Tileset runtime acquires atlas leases, composes semantic layers, restores candidates, and releases cleanly', async () => {
   assertContains(buildContent, "'src/core/tileset-runtime.js'", 'Tileset runtime should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/tileset-pack-v1.js'") < buildContent.indexOf("'src/core/tileset-runtime.js'"), 'Tileset runtime should load after its validator');
@@ -27229,6 +30071,34 @@ asyncTest('Module enable and unload activate tileset presentation before releasi
   MODULE_SYSTEM.unloadModule(module.id);
   assertEqual(lifecycle[1], 'deactivate:tiles-module', 'Disabling a module should release its atlas leases through the tileset runtime first');
   assertEqual(lifecycle[2], 'release:tiles-module', 'Generic owner cleanup should run after Tileset Pack lease cleanup');
+});
+
+asyncTest('Module enable and unload activate Sprite Pack presentation before releasing media ownership', async () => {
+  const lifecycle = [];
+  const mediaRepository = {
+    attachDatabase() {}, setLogger() {}, async cleanup() {}, close() {},
+    releaseOwner(moduleId) { lifecycle.push(`release:${moduleId}`); },
+    diagnostic() {}, async removeOwner() {}, async installFromSource() {},
+    async listOwner() { return []; }, async metadata() { return null; },
+    async ownerMetadata() { return null; }, async repairOwner(ownerId) { return { ownerId, ok: true, missing: [] }; },
+    async acquire() { throw new Error('Media unavailable'); }, release() { return false; }
+  };
+  const spriteRuntime = {
+    async activateModule(moduleId) { lifecycle.push(`activate:${moduleId}`); return { active: true }; },
+    deactivateModule(moduleId) { lifecycle.push(`deactivate:${moduleId}`); return true; }
+  };
+  const MODULE_SYSTEM = loadModuleSystemForTest({ mediaRepository, spriteRuntime });
+  const module = {
+    id: 'sprite-module',
+    manifest: MODULE_SYSTEM._normalizeManifest({ id: 'sprite-module', name: 'Sprite Module', version: '1.0.0', permissions: ['media:read'] }),
+    code: '',
+    enabled: true
+  };
+  await MODULE_SYSTEM.loadModule(module);
+  assertEqual(lifecycle[0], 'activate:sprite-module', 'Enabling a module should activate its installed Sprite Pack presentation');
+  MODULE_SYSTEM.unloadModule(module.id);
+  assertEqual(lifecycle[1], 'deactivate:sprite-module', 'Disabling a module should release its sprite atlas leases first');
+  assertEqual(lifecycle[2], 'release:sprite-module', 'Generic owner cleanup should run after Sprite Pack lease cleanup');
 });
 
 asyncTest('Asset Bundle V1 review, install, replacement, and removal are local and reference-safe', async () => {

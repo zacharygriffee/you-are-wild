@@ -22,6 +22,12 @@ const YAW_TACTICAL_CARD = {
         return text.length > 18 ? `${text.slice(0, 15).trim()}...` : text;
     },
 
+    fallbackName(app, isParty = false) {
+        return isParty
+            ? app._label('unit.partyMember', 'party member')
+            : app._label('unit.creature', 'creature');
+    },
+
     cssContentValue(app, value) {
         const text = String(value || '•').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         return app._escapeHtml(`'${text}'`);
@@ -35,7 +41,8 @@ const YAW_TACTICAL_CARD = {
 
     presentationBadge(app, unit) {
         const icon = app._escapeHtml(unit?.icon || '•');
-        return `<span class="presentation-corner-badge" data-corner-slot="agency" aria-hidden="true" ${this.agencyIconStyle(app, unit, '•')}>${icon}</span>`;
+        const art = app._unitArtHtml(unit, unit?.icon || '•', { className: 'corner-badge-sprite' });
+        return `<span class="presentation-corner-badge" data-corner-slot="agency" aria-hidden="true" ${this.agencyIconStyle(app, unit, '•')}>${art || icon}</span>`;
     },
 
     controlButton(app, classes, label, title, onclick, attrs = '') {
@@ -56,7 +63,7 @@ const YAW_TACTICAL_CARD = {
         const targetSelected = isParty ? app._isExplorationTarget(type, rawTargetId) : app._isExplorationTargetUnit('creature', unit);
         const combatMarked = !isParty && app._isCombatMarkedTarget?.(unit);
         const isTargetable = !isParty && app.targetSelection && app.canSelectCreatureTarget(unit);
-        const unitName = unit.name || (isParty ? 'party member' : 'creature');
+        const unitName = unit.name || this.fallbackName(app, isParty);
         const unitLabel = app._escapeHtml(unitName);
         const icon = isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon;
         const rootBase = presentation === 'desktop' ? 'unit-card' : 'mobile-unit-chip';
@@ -159,11 +166,11 @@ const YAW_TACTICAL_CARD = {
             ? ''
             : (quickIntent
                 ? `role="button" tabindex="0" data-card-purpose="quick-intent" aria-label="${app._escapeHtml(app._combatTargetPickHint(unit, quickIntent, true))}"`
-                : app._unitCardFocusAttrs(unit, false));
+                : app._unitCardFocusAttrs(unit, false, unitName));
         return `<div class="${cardClass}" data-card-role="compact-tactical" data-card-density="micro" data-unit-name="${unitLabel}" ${surfaceRoleAttrs} ${stageAttrs} ${rowAttr} ${syncRoleAttr} ${app._unitSelectionStateAttrs(unit, type)} ${focusAttrs}${interactionAttrs}${passive ? '' : pressHandlers} style="${isCorpse ? 'opacity:0.58;' : ''}">
                     ${app._srOnly(unitName)}
                     ${app._srOnly(app._combatStatusText(unit), 'role="status" aria-live="polite"')}
-                    <span class="unit-actions micro-control-slot micro-agency-slot ${hasAgencyControl ? 'has-control' : 'avatar-only'}" ${hasAgencyControl ? app._unitActionRowAttrs(actionRowScope, unit) : ''}>${agencyControl || `<span class="micro-avatar" aria-hidden="true">${app._escapeHtml(icon)}</span>`}</span>
+                    <span class="unit-actions micro-control-slot micro-agency-slot ${hasAgencyControl ? 'has-control' : 'avatar-only'}" ${hasAgencyControl ? app._unitActionRowAttrs(actionRowScope, unit) : ''}>${agencyControl || `<span class="micro-avatar" aria-hidden="true">${app._unitArtHtml(unit, icon, { className: 'micro-card-sprite' })}</span>`}</span>
                     <span class="micro-stat-slot">${app._unitTacticalRings(unit)}</span>
                     <span class="unit-actions micro-control-slot micro-target-slot ${hasTargetControl ? 'has-control' : 'empty'}" ${hasTargetControl ? app._unitActionRowAttrs(actionRowScope, unit) : ''}>${targetControl}</span>
                 </div>`;
@@ -179,7 +186,7 @@ const YAW_TACTICAL_CARD = {
         const targetSelected = isParty ? app._isExplorationTarget(type, rawTargetId) : app._isExplorationTargetUnit('creature', unit);
         const combatMarked = !isParty && app._isCombatMarkedTarget?.(unit);
         const isTargetable = !isParty && app.targetSelection && app.canSelectCreatureTarget(unit);
-        const unitName = unit.name || (isParty ? 'party member' : 'creature');
+        const unitName = unit.name || this.fallbackName(app, isParty);
         const unitLabel = app._escapeHtml(this.shortName(app, unit, unitName));
         const button = (classes, label, title, onclick, attrs = '') => {
             const cornerSlot = classes.includes('agency-corner-toggle')
@@ -268,10 +275,10 @@ const YAW_TACTICAL_CARD = {
         const click = quickIntent
             ? `App.executeQuickCombatIntentOnTarget('${app._escapeJsString(quickIntent)}','${targetKey}')`
             : (isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`);
-        return `<div class="${cardClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, false)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}" onclick="${click}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}>
+        return `<div class="${cardClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, false, unitName)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}" onclick="${click}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}>
                     ${actionButtons}
                     <div class="unit-header">
-                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
+                        <span class="unit-icon">${app._unitArtHtml(unit, isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon, { className: 'tactical-card-sprite' })}</span>
                         <div class="unit-info">
                             <div class="unit-name">${unitLabel}</div>
                             ${unitMeta ? `<div class="unit-meta">${unitMeta}</div>` : ''}
@@ -295,7 +302,7 @@ const YAW_TACTICAL_CARD = {
         const targetSelected = isParty ? app._isExplorationTarget(type, rawTargetId) : app._isExplorationTargetUnit('creature', unit);
         const combatMarked = !isParty && app._isCombatMarkedTarget?.(unit);
         const isTargetable = !isParty && app.targetSelection && app.canSelectCreatureTarget(unit);
-        const unitName = unit.name || (isParty ? 'party member' : 'creature');
+        const unitName = unit.name || this.fallbackName(app, isParty);
         const unitLabel = app._escapeHtml(this.shortName(app, unit, unitName));
         const chipButton = (classes, label, title, onclick, attrs = '') => {
             const cornerSlot = classes.includes('agency-corner-toggle')
@@ -394,9 +401,9 @@ const YAW_TACTICAL_CARD = {
         const keyActivate = `if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${chipClick}}`;
         const cornerActions = hasCornerControls ? actionButtons : '';
         const inlineActions = hasCornerControls ? '' : actionButtons;
-        return `<div class="${chipClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="${keyActivate}" onclick="${chipClick}"${pressHandlers}>
+        return `<div class="${chipClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, isExpanded, unitName)} onkeydown="${keyActivate}" onclick="${chipClick}"${pressHandlers}>
                     ${cornerActions}
-                    <div class="mobile-chip-name"><span>${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
+                    <div class="mobile-chip-name"><span>${app._unitArtHtml(unit, isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon, { className: 'mobile-chip-sprite' })}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
                     <div class="mobile-chip-meta">${app._escapeHtml(status)}${rowText}</div>
                     ${app._unitTacticalRings(unit)}

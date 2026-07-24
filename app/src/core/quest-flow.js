@@ -7,13 +7,15 @@ const YAW_QUEST_FLOW = {
     normalize(app, quest, giver = null) {
         const source = quest || {};
         const id = source.id || `quest_${app._stableIdPart(giver?.id || giver?.name, 'giver')}`;
+        const generatedTitle = Boolean(source.generatedTitle || !source.title);
         return {
             id,
-            title: source.title || 'Untitled Quest',
+            title: generatedTitle ? app._label('quest.untitled', 'Untitled Quest') : source.title,
+            generatedTitle,
             description: source.description || '',
             giverId: source.giverId || giver?.id || giver?.name || null,
             giverName: source.giverName || giver?.name || null,
-            giverLocation: source.giverLocation || giver?.giverLocation || (giver ? { x: Number(app.location?.x || 0), y: Number(app.location?.y || 0), label: giver.name || 'Quest giver' } : null),
+            giverLocation: source.giverLocation || giver?.giverLocation || (giver ? { x: Number(app.location?.x || 0), y: Number(app.location?.y || 0), label: giver.name || app._label('quest.giverFallback', 'Quest giver') } : null),
             status: source.status || 'available',
             turnInRequired: Boolean(source.turnInRequired || source.rewardOnTurnIn),
             rewardClaimed: Boolean(source.rewardClaimed),
@@ -23,19 +25,27 @@ const YAW_QUEST_FLOW = {
     },
 
     normalizeObjective(app, objective = {}, questId = 'quest', index = 0) {
-        const checkpoints = (objective.checkpoints || objective.route || []).map((checkpoint, checkpointIndex) => ({
-            id: checkpoint.id || `${questId}_objective_${index}_checkpoint_${checkpointIndex}`,
-            label: checkpoint.label || checkpoint.name || `Checkpoint ${checkpointIndex + 1}`,
-            x: Number(checkpoint.x ?? checkpoint.location?.x ?? checkpoint[0] ?? 0),
-            y: Number(checkpoint.y ?? checkpoint.location?.y ?? checkpoint[1] ?? 0),
-            complete: Boolean(checkpoint.complete)
-        }));
+        const checkpoints = (objective.checkpoints || objective.route || []).map((checkpoint, checkpointIndex) => {
+            const generatedLabel = Boolean(checkpoint.generatedLabel || (!checkpoint.label && !checkpoint.name));
+            return {
+                id: checkpoint.id || `${questId}_objective_${index}_checkpoint_${checkpointIndex}`,
+                label: generatedLabel
+                    ? app._label('quest.checkpointNumber', 'Checkpoint {index}', { index: checkpointIndex + 1 })
+                    : checkpoint.label || checkpoint.name,
+                generatedLabel,
+                x: Number(checkpoint.x ?? checkpoint.location?.x ?? checkpoint[0] ?? 0),
+                y: Number(checkpoint.y ?? checkpoint.location?.y ?? checkpoint[1] ?? 0),
+                complete: Boolean(checkpoint.complete)
+            };
+        });
         const location = objective.location || (Number.isFinite(objective.x) && Number.isFinite(objective.y) ? { x: objective.x, y: objective.y } : null);
         const required = objective.required || objective.count || Math.max(1, checkpoints.length || 1);
+        const generatedLabel = Boolean(objective.generatedLabel || (!objective.label && !objective.description));
         const normalized = {
             id: objective.id || `${questId}_objective_${index}`,
             type: objective.type || 'find',
-            label: objective.label || objective.description || this.objectiveLabel(app, objective),
+            label: generatedLabel ? this.objectiveLabel(app, objective) : objective.label || objective.description,
+            generatedLabel,
             targetId: objective.targetId || null,
             species: objective.species || null,
             item: objective.item || null,
@@ -55,8 +65,27 @@ const YAW_QUEST_FLOW = {
     },
 
     objectiveLabel(app, objective) {
-        const target = objective.item || this.speciesLabel(app, objective.species) || objective.targetId || objective.location?.label || 'target';
-        return `${objective.type || 'find'} ${target}`;
+        const type = objective.type || 'find';
+        const action = app._label(`quest.objective.${type}`, type);
+        const target = objective.item || this.speciesLabel(app, objective.species) || objective.targetId || objective.location?.label || app._label('quest.objective.target', 'target');
+        return app._label('quest.objectiveLabel', '{action} {target}', { action, target });
+    },
+
+    objectiveDisplayLabel(app, objective) {
+        return objective?.generatedLabel
+            ? this.objectiveLabel(app, objective)
+            : objective?.label || this.objectiveLabel(app, objective || {});
+    },
+
+    checkpointLabel(app, checkpoint, index = 0) {
+        if (!checkpoint) return app._label('quest.checkpointNumber', 'Checkpoint {index}', { index: index + 1 });
+        return checkpoint.generatedLabel
+            ? app._label('quest.checkpointNumber', 'Checkpoint {index}', { index: index + 1 })
+            : checkpoint.label || app._label('quest.checkpointNumber', 'Checkpoint {index}', { index: index + 1 });
+    },
+
+    titleLabel(app, quest) {
+        return quest?.generatedTitle ? app._label('quest.untitled', 'Untitled Quest') : quest?.title || app._label('quest.untitled', 'Untitled Quest');
     },
 
     speciesLabel(app, speciesId) {
@@ -91,7 +120,9 @@ const YAW_QUEST_FLOW = {
     },
 
     giverByKey(app, targetId) {
-        return app.creatures.find(c => String(c.id || c.name) === String(targetId) && c.quest);
+        return app.creatures.find(c => String(c.id || c.name) === String(targetId)
+            && c.quest
+            && YAW_UNIT_CONTAINMENT.serviceAvailable(app, c));
     },
 
     templateForStructure(app, structureId, tile = null) {
@@ -109,7 +140,7 @@ const YAW_QUEST_FLOW = {
         const tileId = tile ? `${tile.x}_${tile.y}` : 'local';
         quest.id = quest.id || `${templateId}_${tileId}`;
         quest.templateId = templateId;
-        if (tile) quest.giverLocation = { x: Number(tile.x), y: Number(tile.y), label: app.STRUCTURES[structureId]?.name || 'Quest giver' };
+        if (tile) quest.giverLocation = { x: Number(tile.x), y: Number(tile.y), label: app.STRUCTURES[structureId]?.name || app._label('quest.giverFallback', 'Quest giver') };
         return quest;
     },
 
@@ -138,6 +169,8 @@ const YAW_QUEST_FLOW = {
             level: Math.max(1, app.player?.level || 1),
             bodyParts: app.SPECIES_DEFAULT_PARTS[giverSpeciesId] || [],
             quest,
+            serviceOrigin: YAW_UNIT_CONTAINMENT.overworldServiceOrigin(tile, structureId),
+            serviceSuspended: false,
             tags: [sp?.name || giverSpeciesId, 'Quest', struct.name],
             expanded: false,
             hero: false,
@@ -203,10 +236,11 @@ const YAW_QUEST_FLOW = {
         app.quests = app.quests || [];
         const existing = this.byId(app, normalized.id);
         if (existing) {
-            app.log.push({ text: app._label('quest.alreadyInLog', '{title} is already in your quest log.', { title: existing.title }), type: 'discovery' });
+            const existingTitle = this.titleLabel(app, existing);
+            app.log.push({ text: app._label('quest.alreadyInLog', '{title} is already in your quest log.', { title: existingTitle }), type: 'discovery' });
             app.emitTransactionSceneBeat?.(giver, 'quest', 'blocked', {
-                title: existing.title,
-                questTitle: existing.title,
+                title: existingTitle,
+                questTitle: existingTitle,
                 reason: 'already-in-log'
             });
             if (!app.refreshTransactionWindow?.()) app.showQuestLog();
@@ -286,13 +320,14 @@ const YAW_QUEST_FLOW = {
             }
             if ((quest.objectives || []).length > 0 && quest.objectives.every(o => o.complete) && quest.status !== 'completed') {
                 quest.status = 'completed';
+                const questTitle = this.titleLabel(app, quest);
                 if (quest.turnInRequired) {
-                    const completedText = app._label('quest.completedTurnIn', 'Quest completed: {title}. Return to {giver} for your reward.', { title: quest.title, giver: quest.giverName || app._label('quest.defaultGiver', 'the quest giver') });
+                    const completedText = app._label('quest.completedTurnIn', 'Quest completed: {title}. Return to {giver} for your reward.', { title: questTitle, giver: quest.giverName || app._label('quest.defaultGiver', 'the quest giver') });
                     app.log.push({ text: completedText, type: 'discovery' });
                     app.showToast?.({ text: completedText, type: 'quest', importance: 'major', dedupeKey: `quest-completed:${quest.id}` });
                 } else {
                     this.grantReward(app, quest);
-                    const completedText = app._label('quest.completed', 'Quest completed: {title}.', { title: quest.title });
+                    const completedText = app._label('quest.completed', 'Quest completed: {title}.', { title: questTitle });
                     app.log.push({ text: completedText, type: 'discovery' });
                     app.showToast?.({ text: completedText, type: 'quest', importance: 'major', dedupeKey: `quest-completed:${quest.id}` });
                 }
@@ -338,10 +373,11 @@ const YAW_QUEST_FLOW = {
             return false;
         }
         if (quest.rewardClaimed) {
-            app.log.push({ text: app._label('quest.alreadyTurnedIn', '{title} has already been turned in.', { title: quest.title }), type: 'discovery' });
+            const questTitle = this.titleLabel(app, quest);
+            app.log.push({ text: app._label('quest.alreadyTurnedIn', '{title} has already been turned in.', { title: questTitle }), type: 'discovery' });
             app.emitTransactionSceneBeat?.({ name: quest.giverName || app._label('quest.defaultGiver', 'the quest giver') }, 'quest', 'blocked', {
-                title: quest.title,
-                questTitle: quest.title,
+                title: questTitle,
+                questTitle,
                 reason: 'already-turned-in'
             });
             app.renderLog();
@@ -350,14 +386,16 @@ const YAW_QUEST_FLOW = {
         }
         const granted = this.grantReward(app, quest);
         if (granted) {
-            const turnedInText = app._label('quest.turnedIn', 'Quest turned in: {title}.', { title: quest.title });
+            const questTitle = this.titleLabel(app, quest);
+            const turnedInText = app._label('quest.turnedIn', 'Quest turned in: {title}.', { title: questTitle });
             app.log.push({ text: turnedInText, type: 'loot' });
             app.showToast?.({ text: turnedInText, type: 'quest', importance: 'notable', dedupeKey: `quest-turned-in:${quest.id}` });
         }
         if (granted) {
+            const questTitle = this.titleLabel(app, quest);
             app.emitTransactionSceneBeat?.({ name: quest.giverName || app._label('quest.defaultGiver', 'the quest giver') }, 'quest', 'turned-in', {
-                title: quest.title,
-                questTitle: quest.title
+                title: questTitle,
+                questTitle
             });
         }
         app.renderLog();
@@ -382,7 +420,11 @@ const YAW_QUEST_FLOW = {
             y: Number(marker.y) - Number(app.location.y || 0)
         };
         app.renderLargeMap();
-        app.log.push({ text: app._label('quest.mapFocusedObjective', 'Map focused on {title}: {label}.', { title: quest.title, label: marker.label || objective.label || this.objectiveLabel(app, objective) }), type: 'discovery' });
+        const checkpointIndex = Math.max(0, (objective?.checkpoints || []).indexOf(marker));
+        const markerLabel = marker.generatedLabel
+            ? this.checkpointLabel(app, marker, checkpointIndex)
+            : marker.label || this.objectiveDisplayLabel(app, objective);
+        app.log.push({ text: app._label('quest.mapFocusedObjective', 'Map focused on {title}: {label}.', { title: this.titleLabel(app, quest), label: markerLabel }), type: 'discovery' });
         app.renderLog();
         return true;
     },
@@ -410,7 +452,7 @@ const YAW_QUEST_FLOW = {
             y: Number(marker.y) - Number(app.location.y || 0)
         };
         app.renderLargeMap();
-        app.log.push({ text: app._label('quest.mapFocusedTurnIn', 'Map focused on {title} turn-in: {label}.', { title: quest.title, label: marker.label }), type: 'discovery' });
+        app.log.push({ text: app._label('quest.mapFocusedTurnIn', 'Map focused on {title} turn-in: {label}.', { title: this.titleLabel(app, quest), label: marker.label }), type: 'discovery' });
         app.renderLog();
         return true;
     },

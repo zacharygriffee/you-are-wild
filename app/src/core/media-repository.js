@@ -9,6 +9,8 @@ class YAWMediaRepository {
         this.db = options.db || null;
         this.sources = new Map();
         this.stores = new Map();
+        this.providerOwners = new Map();
+        this.ownerProviders = new Map();
         this.activeLeases = new Map();
         this.ownerLeases = new Map();
         this.sequence = 0;
@@ -20,8 +22,8 @@ class YAWMediaRepository {
         };
         const indexeddb = options.indexeddbStore || new YAWIndexedDBMediaStore({ contract: this.contract, db: this.db });
         const http = options.httpSource || new YAWHttpMediaSource({ contract: this.contract });
-        this.registerStore(indexeddb);
-        this.registerSource(http);
+        this.registerStore(indexeddb, { ownerId: 'core' });
+        this.registerSource(http, { ownerId: 'core' });
     }
 
     attachDatabase(db) {
@@ -48,36 +50,135 @@ class YAWMediaRepository {
         }
     }
 
-    registerSource(provider) {
+    _providerOwner(id, ownerValue = 'core') {
+        const ownerId = this.contract.token(ownerValue || 'core', 'provider owner id');
+        const current = this.providerOwners.get(id);
+        if (current && current !== ownerId) {
+            throw this.contract.error('provider_owned', `Media provider ${id} is already registered by another owner`);
+        }
+        if (!current) {
+            this.providerOwners.set(id, ownerId);
+            if (!this.ownerProviders.has(ownerId)) this.ownerProviders.set(ownerId, new Set());
+            this.ownerProviders.get(ownerId).add(id);
+        }
+        return ownerId;
+    }
+
+    registerSource(provider, options = {}) {
         const id = this.contract.token(provider?.id, 'source provider id');
         if (typeof provider.acquire !== 'function') throw this.contract.error('invalid_provider', `Media source ${id} must implement acquire()`);
+        this._providerOwner(id, options.ownerId);
+        const existing = this.sources.get(id);
+        if (existing && existing !== provider) throw this.contract.error('provider_registered', `Media source ${id} is already registered`);
         this.sources.set(id, provider);
         return id;
     }
 
-    registerStore(provider) {
+    registerStore(provider, options = {}) {
         const id = this.contract.token(provider?.id, 'store provider id');
         for (const method of ['beginBatch', 'stage', 'commit', 'abort', 'has', 'stat', 'open', 'acquire', 'release', 'remove']) {
             if (typeof provider[method] !== 'function') throw this.contract.error('invalid_provider', `Media store ${id} must implement ${method}()`);
         }
+        this._providerOwner(id, options.ownerId);
+        const existing = this.stores.get(id);
+        if (existing && existing !== provider) throw this.contract.error('provider_registered', `Media store ${id} is already registered`);
         this.stores.set(id, provider);
         return id;
     }
 
     registerEndpointStore(options = {}) {
         const provider = new YAWEndpointMediaStore({ contract: this.contract, ...options });
-        this.registerStore(provider);
-        if (provider.capabilities().source) this.sources.set(provider.id, provider);
+        this.registerStore(provider, { ownerId: options.ownerId || 'core' });
+        if (provider.capabilities().source) this.registerSource(provider, { ownerId: options.ownerId || 'core' });
         return provider.id;
+    }
+
+    registerAdapter(ownerValue, providerValue, adapter) {
+        const ownerId = this.contract.token(ownerValue, 'provider owner id');
+        const id = this.contract.token(providerValue, 'media provider id');
+        if (!adapter || typeof adapter !== 'object' || Array.isArray(adapter)) {
+            throw this.contract.error('invalid_provider', `Media provider ${id} must be an adapter object`);
+        }
+        if (adapter.id != null && this.contract.token(adapter.id, 'media provider id') !== id) {
+            throw this.contract.error('invalid_provider', 'Media provider adapter id must match its registered id');
+        }
+        if (typeof adapter.health !== 'function' || typeof adapter.capabilities !== 'function') {
+            throw this.contract.error('invalid_provider', `Media provider ${id} must implement health() and capabilities()`);
+        }
+        const capabilities = adapter.capabilities();
+        if (!capabilities || typeof capabilities !== 'object' || typeof capabilities.then === 'function') {
+            throw this.contract.error('invalid_provider', `Media provider ${id} capabilities must be a synchronous object`);
+        }
+        const providesSource = capabilities.source === true;
+        const providesStore = capabilities.store === true;
+        if (!providesSource && !providesStore) {
+            throw this.contract.error('invalid_provider', `Media provider ${id} must advertise a source or store capability`);
+        }
+        const provider = { id };
+        for (const method of [
+            'capabilities', 'health', 'estimate', 'acquire', 'beginBatch', 'stage',
+            'commit', 'abort', 'has', 'stat', 'open', 'release', 'remove',
+            'cleanupStaging', 'close'
+        ]) {
+            if (typeof adapter[method] === 'function') provider[method] = adapter[method].bind(adapter);
+        }
+        if (providesStore) this.registerStore(provider, { ownerId });
+        if (providesSource) this.registerSource(provider, { ownerId });
+        return {
+            id,
+            ownerId,
+            capabilities: this.contract.serializable(capabilities, {})
+        };
+    }
+
+    unregisterProvider(ownerValue, providerValue) {
+        const ownerId = this.contract.token(ownerValue, 'provider owner id');
+        const id = this.contract.token(providerValue, 'media provider id');
+        if (this.providerOwners.get(id) !== ownerId || ownerId === 'core') return false;
+        for (const record of [...this.activeLeases.values()]) {
+            if (record.providerId === id) this.release(record.ownerId, record.leaseId);
+        }
+        const providers = new Set([this.sources.get(id), this.stores.get(id)].filter(Boolean));
+        this.sources.delete(id);
+        this.stores.delete(id);
+        this.providerOwners.delete(id);
+        const owned = this.ownerProviders.get(ownerId);
+        owned?.delete(id);
+        if (owned && owned.size === 0) this.ownerProviders.delete(ownerId);
+        for (const provider of providers) {
+            try { provider.close?.(); } catch (error) {}
+        }
+        return true;
+    }
+
+    unregisterProviderOwner(ownerValue) {
+        const ownerId = this.contract.token(ownerValue, 'provider owner id');
+        if (ownerId === 'core') return 0;
+        const ids = [...(this.ownerProviders.get(ownerId) || [])];
+        return ids.reduce((count, id) => count + (this.unregisterProvider(ownerId, id) ? 1 : 0), 0);
     }
 
     async providerState() {
         const states = [];
         for (const provider of new Set([...this.sources.values(), ...this.stores.values()])) {
             try {
-                states.push(await provider.health());
+                const health = await provider.health();
+                states.push({
+                    ok: health?.ok === true,
+                    providerId: provider.id,
+                    status: Number.isInteger(Number(health?.status)) ? Number(health.status) : null,
+                    code: health?.code ? String(health.code).slice(0, 120) : '',
+                    capabilities: this.contract.serializable(provider.capabilities?.() || {}, {})
+                });
             } catch (error) {
-                states.push({ ok: false, providerId: provider.id, code: error.code || 'provider_unavailable', capabilities: provider.capabilities?.() || {} });
+                let capabilities = {};
+                try { capabilities = this.contract.serializable(provider.capabilities?.() || {}, {}); } catch (capabilityError) {}
+                states.push({
+                    ok: false,
+                    providerId: provider.id,
+                    code: String(error?.code || 'provider_unavailable').slice(0, 120),
+                    capabilities
+                });
             }
         }
         return states;
@@ -398,7 +499,7 @@ class YAWMediaRepository {
 
     close() {
         for (const ownerId of [...this.ownerLeases.keys()]) this.releaseOwner(ownerId);
-        for (const provider of this.stores.values()) provider.close?.();
+        for (const provider of new Set([...this.sources.values(), ...this.stores.values()])) provider.close?.();
         this.db = null;
     }
 }

@@ -234,6 +234,10 @@ const YAW_STRUCTURE_NAVIGATION = {
     },
 
     enter(app) {
+        if (YAW_RECOVERY_MODES?.restricts?.(app, 'structures')) {
+            app._showRecoveryJourney?.();
+            return false;
+        }
         if (app.inInterior) return;
         const tile = this.currentOverworldTile(app);
         if (!tile || !tile.structure) {
@@ -355,6 +359,10 @@ const YAW_STRUCTURE_NAVIGATION = {
     },
 
     rest(app) {
+        if (YAW_RECOVERY_MODES?.isJourney?.(app)) {
+            app._showRecoveryJourney?.();
+            return false;
+        }
         if (!this.canRestHere(app)) {
             const unavailableText = app._label('log.restUnavailable', 'There is no safe place to rest here.');
             app.log.push({ text: unavailableText, type: 'discovery' });
@@ -371,6 +379,15 @@ const YAW_STRUCTURE_NAVIGATION = {
             app._applyHungerPressure?.(p, app.BALANCE_V1?.relief?.restHungerPressure ?? 8, { action: 'rest', source: 'rest' });
         });
         app._processDigestion?.({ ticks: app.BALANCE_V1?.relief?.restDigestionTicks ?? 8, source: 'rest' });
+        let partyResourceChanged = false;
+        for (const unit of [...new Set([...(app.party || []), ...(app.creatures || [])])]) {
+            const changes = YAW_RESOURCE_LEDGER.tick(unit, 'rest', 1);
+            partyResourceChanged = partyResourceChanged || (changes.length > 0 && (app.party || []).includes(unit));
+        }
+        if (partyResourceChanged) {
+            app._markSaveDirty?.('party', 'resource-regeneration');
+            app._markSaveDirty?.('holdings', 'resource-regeneration');
+        }
         const cured = YAW_COMBAT_STATUS.curePersistentAilments([...healed]);
         app._advanceTime(8);
         const restedText = app._label('log.rested', 'Rested and recovered. Time passes, hunger rises, and digestion advances.');

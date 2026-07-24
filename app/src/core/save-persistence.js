@@ -378,6 +378,7 @@ const YAW_SAVE_PERSISTENCE = {
             })).filter(entry => entry.unitId),
             syncActions: (app.combatState.syncActions || []).map(sync => ({
                 type: sync.type,
+                techniqueKey: sync.techniqueKey || sync.plan?.subAction || null,
                 participantIds: (sync.participants || []).map(unitRef).filter(Boolean),
                 targetId: unitRef(sync.target),
                 targetIds: (sync.targets?.length ? sync.targets : [sync.target]).map(unitRef).filter(Boolean),
@@ -400,6 +401,7 @@ const YAW_SAVE_PERSISTENCE = {
             parts: unit.parts || null,
             chest: unit.chest || null,
             bothParts: Boolean(unit.bothParts),
+            creationOptions: this.serializableClone(unit.creationOptions || {}, {}),
             lifeStage: unit.lifeStage || unit.ageCategory || null,
             adultEligibility: this.serializableClone(unit.adultEligibility || null, null),
             adultEligible: typeof unit.adultEligible === 'boolean' ? unit.adultEligible : null
@@ -426,6 +428,7 @@ const YAW_SAVE_PERSISTENCE = {
             playerCompatibility: unitCompatibility(app.player),
             partyCompatibility: (app.party || []).map(unitCompatibility),
             partyMultiActionPractice: (app.party || []).map(unit => this.serializableClone(unit?.multiActionPractice || null, null)),
+            partyResourceLedgers: (app.party || []).map(unit => this.serializableClone(unit?.resourceLedger || null, null)),
             partyRoles,
             partyAIOrders,
             logEntries: this.serializableClone(app.log || [], []),

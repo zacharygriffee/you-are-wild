@@ -7,6 +7,12 @@ Lightweight play, existing saves, optional content boundaries, and mod hooks.
 
 ## Immediate Next — Public Module Contract Hardening
 
+Status: acceptance gate satisfied for Public Module Contract V1. The neutral
+conformance and locale-pack fixtures cover the declared contribution boundary
+through install, enable, use, persistence/reload, dependency loss, disable,
+delete/reinstall, and owned cleanup. Reopen only for a demonstrated package or
+doctrine contradiction.
+
 The interaction composer cleanup is followed immediately by a public mod API
 and doctrine pass. Use neutral maintained fixtures to prove that every declared
 contribution is reachable and persistent. Unreviewed agent-generated packages
@@ -36,6 +42,10 @@ methods, or silent fallbacks.
 
 ## Slice 1 — Death/Defeat Contract and Regression Matrix
 
+Status: automated acceptance gate satisfied by Death/Defeat V3. Continue
+longer operator saves for observational evidence, and add code only for a new
+terminal cause, persistence boundary, or demonstrated contradiction.
+
 1. Enumerate every route that can incapacitate or terminate the player:
    direct combat, group combat, persistent damage, starvation, containment and
    digestion, scripted/module outcomes, load recovery, and future environment
@@ -58,6 +68,11 @@ contract; living post-defeat/contained play remains possible; no save is
 deleted in regular mode.
 
 ## Slice 2 — Regular, Hardcore, and Inventory Consequences
+
+Status: automated acceptance gate satisfied for regular recovery,
+death-bag/retain policies, repeated bags, partial retrieval, stranded
+companions, interior placement, sparse/full reload, and scoped Hardcore slot
+deletion.
 
 1. Restore regular recovery at the validated home/safe anchor with the player
    at minimal condition and no former companions automatically restored into
@@ -86,6 +101,11 @@ and desktop/mobile tests.
 
 ## Slice 3 — Survival and Action-Balance Instrumentation
 
+Status: acceptance gate satisfied. Schema-v2 scenario output now reports
+Starving thresholds, rest/digestion pacing, neutral action effect, commands and
+XP across resolution, and every one-, two-, and four-target Fight mastery tier.
+Runtime cross-checks prevent the multi-target table from drifting.
+
 1. Build deterministic scenario fixtures before changing numbers: empty rest,
    small/large prey digestion, slow/fast digestion, repeated Fight, Play, Feed,
    Feast, and Flee, plus single- and multi-target Fight at every mastery tier.
@@ -103,6 +123,12 @@ baseline, with no unexplained full-effect multiplication or nutrition loss.
 
 ## Slice 4 — Multi-Creature Interaction Hardening
 
+Status: acceptance gate satisfied for the currently supported interaction
+grammar. The matrix now directly covers early target defeat during ordered
+many-to-many resolution and queued-target invalidation in addition to its prior
+shape, overlap, cancellation, accounting, and save/load fixtures. Extend this
+slice only for a newly demonstrated contradiction or persistence boundary.
+
 1. Exercise one-to-one, one-to-many, many-to-one, many-to-many, mutual, and
    paired plans across combat and exploration.
 2. Cover mixed party/local targets, self-targeting, actors also selected as
@@ -119,6 +145,11 @@ without selection dead ends, duplicate costs, duplicate practice, or UI errors.
 
 ## Slice 5 — UI, Accessibility, and Localization Pass
 
+Status: current automated acceptance gate satisfied. The viewport,
+interaction, locale-parity, source-literal, high-contrast, reduced-motion,
+touch-target, dialog, and focus lifecycle suites are clean. Reopen for a
+demonstrated product defect or physical-device finding.
+
 1. Device-test 320–430px mobile, tablet portrait, compact desktop, and standard
    desktop at 12–20px font sizes.
 2. Cover death/recovery surfaces, inventory bag retrieval, save slots, Holdings,
@@ -134,6 +165,10 @@ no blocked command or horizontal page overflow.
 
 ## Slice 6 — Map Playability and Tileset Acceptance
 
+Status: automated acceptance gate satisfied; responsive route/POI live review
+is recorded. Representative coast, cave, building, and authored-pack art
+review continues when those states surface in operator play.
+
 1. Add deterministic start-area and reachable-home invariants, including a
    valid recovery anchor and future shrine-placement seam.
 2. Playtest roads, bridges, coasts, POI budgets, encounter pressure, buildings,
@@ -141,7 +176,10 @@ no blocked command or horizontal page overflow.
 3. Verify the same semantic map under bundled textures, Lightweight emoji, and
    a partial replacement tileset pack.
 4. Measure first-load texture cost, cache reuse, fallback behavior, crop
-   legibility, marker contrast, and low-bandwidth failure recovery.
+   legibility, marker contrast, and low-bandwidth failure recovery. Artifact
+   size, hosted cache reuse, Lightweight non-acquisition, and degraded startup
+   now have executable gates; crop legibility and marker contrast remain an
+   explicit operator visual review rather than a synthetic pass claim.
 5. Fix semantic or traversal defects before visual polish; retain mod-authored
    assets and transforms unless the pack violates its declared contract.
 
@@ -150,12 +188,15 @@ all three presentation paths communicate equivalent playable topology.
 
 ## Deferred From This Immediate Plan
 
-- Mobile Interaction Flow V2. Current responsive and accessibility regression
-  gates remain active, but the broader phone workflow needs deliberate design
-  for party/enemy switching and structure actions that stay reachable while a
-  roster panel is open. Do not accumulate competing one-off navigation patches.
-- Ghost/shrine recovery. The resolver and reachable-shrine seam are prepared,
-  but ghost abilities, restrictions, and resurrection economy come later.
+- Mobile Interaction Flow V2 is accepted and implemented as a unified,
+  state-aware Roster above the persistent composer. Keep its full responsive,
+  localization, focus, unload, and file-origin acceptance matrix green before
+  freezing any public module UI-slot names.
+- Ghost/shrine recovery has a bounded V1 implementation, but its player-facing
+  contract requires an explicit pre-publish review. Do not broaden its
+  abilities, destinations, restrictions, or resurrection economy until
+  [the Ghost recovery decision](ghost-recovery-prepublish-decision.md) is
+  resolved.
 - Healer debt, faction rescue, companion extraction quests, gravestones, and
   body landmarks beyond the V1 death bag.
 - New row/reach mechanics, Sprite Pack, richer structure skins, generated

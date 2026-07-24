@@ -24,6 +24,11 @@ receives only its own normalized metadata and opaque leases through the
 code-free packaging/install layer above the repository; all rendering formats
 remain downstream.
 
+Trusted-local executable modules may contribute an owned provider through the
+separate `media:provide` capability. Provider IDs cannot replace core or
+another module's provider, and disable/unload releases leases and removes every
+owned role. See [Media Provider Adapter Contract](media-provider-adapters.md).
+
 ## Contract Layers
 
 One `MediaRepository` facade coordinates three provider roles:

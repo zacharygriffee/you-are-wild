@@ -125,6 +125,7 @@
       parts: unit.parts || null,
       chest: unit.chest || null,
       bothParts: Boolean(unit.bothParts),
+      creationOptions: unit.creationOptions && typeof unit.creationOptions === 'object' ? JSON.parse(JSON.stringify(unit.creationOptions)) : {},
       lifeStage: unit.lifeStage || unit.ageCategory || null,
       adultEligibility: unit.adultEligibility || null,
       adultEligible: typeof unit.adultEligible === 'boolean' ? unit.adultEligible : null
@@ -316,6 +317,7 @@
       })).filter(entry => entry.unitId),
       syncActions: (appState.combatState.syncActions || []).map(sync => ({
         type: sync.type,
+        techniqueKey: sync.techniqueKey || sync.plan?.subAction || null,
         participantIds: (sync.participants || []).map(unitRef).filter(Boolean),
         targetId: unitRef(sync.target),
         targetIds: (sync.targets?.length ? sync.targets : [sync.target]).map(unitRef).filter(Boolean),
@@ -361,6 +363,7 @@
         playerCompatibility: unitCompatibility(appState.player),
         partyCompatibility,
         partyMultiActionPractice: (appState.party || []).map(unit => unit?.multiActionPractice || null),
+        partyResourceLedgers: (appState.party || []).map(unit => unit?.resourceLedger || null),
         partyRoles,
         partyAIOrders,
         logEntries,

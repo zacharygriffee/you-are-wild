@@ -47,6 +47,7 @@ const YAW_STARTUP_READINESS = {
         const state = {
             name: domainName,
             label: String(options.label || previous?.label || domainName),
+            labelKey: String(options.labelKey || previous?.labelKey || ''),
             blocking: options.blocking !== false,
             timeoutMs: Number.isFinite(options.timeoutMs) && options.timeoutMs > 0
                 ? Math.round(options.timeoutMs)
@@ -72,7 +73,13 @@ const YAW_STARTUP_READINESS = {
                 work,
                 new Promise((resolve, reject) => {
                     timeoutId = setTimeout(
-                        () => reject(new Error(`${state.label} did not become ready within ${state.timeoutMs}ms`)),
+                        () => {
+                            const error = new Error(`${state.label} did not become ready within ${state.timeoutMs}ms`);
+                            error.code = 'startup_timeout';
+                            error.domain = state.name;
+                            error.timeoutMs = state.timeoutMs;
+                            reject(error);
+                        },
                         state.timeoutMs
                     );
                 })
@@ -106,6 +113,7 @@ const YAW_STARTUP_READINESS = {
         if (!state?.task) return Promise.resolve(null);
         return this.start(state.name, state.task, {
             label: state.label,
+            labelKey: state.labelKey,
             blocking: state.blocking,
             timeoutMs: state.timeoutMs,
             force: true
@@ -143,6 +151,7 @@ const YAW_STARTUP_READINESS = {
         const serialize = state => state ? {
             name: state.name,
             label: state.label,
+            labelKey: state.labelKey,
             blocking: state.blocking,
             timeoutMs: state.timeoutMs,
             status: state.status,

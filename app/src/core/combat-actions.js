@@ -133,7 +133,9 @@ const YAW_COMBAT_ACTIONS = {
             const cancelLabel = app._escapeHtml(app._label('target.cancelAction', 'Cancel {action}', { action: actionText }));
             const label = app._escapeHtml(app._label('target.controls', 'Target controls'));
             const markedTargets = app._combatMarkedTargets?.() || [];
-            const confirmLabel = app._escapeHtml(app._label('target.confirmAction', 'Use {action} on selected target', { action: actionText }));
+            const confirmLabel = app._escapeHtml(markedTargets.length > 1
+                ? app._label('target.confirmAction.count', 'Use {action} on {count} selected targets', { action: actionText, count: markedTargets.length })
+                : app._label('target.confirmAction', 'Use {action} on selected target', { action: actionText }));
             const confirm = markedTargets.length
                 ? `<button class="action-btn primary" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="App.confirmCombatTargets()">${confirmLabel}</button>`
                 : '';

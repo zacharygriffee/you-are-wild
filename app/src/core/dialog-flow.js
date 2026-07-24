@@ -4,6 +4,31 @@
  */
 
 const YAW_DIALOG_FLOW = {
+    isolateUnderlying(dialog) {
+        if (!dialog || typeof document === 'undefined' || !document.body) return [];
+        return Array.from(document.body.children || []).filter(element => element !== dialog).map(element => {
+            const state = {
+                element,
+                inert: Boolean(element.hasAttribute?.('inert')),
+                ariaHidden: element.getAttribute?.('aria-hidden')
+            };
+            element.setAttribute?.('inert', '');
+            element.setAttribute?.('aria-hidden', 'true');
+            return state;
+        });
+    },
+
+    restoreUnderlying(states = []) {
+        states.forEach(state => {
+            const element = state?.element;
+            if (!element?.isConnected && element?.isConnected !== undefined) return;
+            if (state.inert) element.setAttribute?.('inert', '');
+            else element.removeAttribute?.('inert');
+            if (state.ariaHidden === null || state.ariaHidden === undefined) element.removeAttribute?.('aria-hidden');
+            else element.setAttribute?.('aria-hidden', state.ariaHidden);
+        });
+    },
+
     showConfirm(app, options = {}) {
         const message = String(options.message || '');
         if (!message) return false;
@@ -36,6 +61,7 @@ const YAW_DIALOG_FLOW = {
         const html = `<div class="app-confirm-backdrop" id="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="app-confirm-title" aria-describedby="app-confirm-message" data-command-surface="system-dialog" data-command-mode="system"><div class="app-confirm-card" data-command-surface="system-dialog" data-command-mode="system"><h3 id="app-confirm-title">${app._escapeHtml(title)}</h3><p id="app-confirm-message">${app._escapeHtml(message)}</p><div class="app-confirm-actions" data-command-surface="system-dialog" data-command-mode="system"><button class="nav-btn" data-command-surface="system-dialog" data-command-mode="system" data-command-control="cancel-dialog" data-command-slot="exit" onclick="App.resolveConfirmDialog(false)">${app._escapeHtml(cancelLabel)}</button><button class="nav-btn primary${dangerClass}" data-command-surface="system-dialog" data-command-mode="system" data-command-control="confirm-dialog" onclick="App.resolveConfirmDialog(true)">${app._escapeHtml(confirmLabel)}</button></div></div></div>`;
         document.body.insertAdjacentHTML('beforeend', html);
         const dialog = document.getElementById('app-confirm-dialog');
+        app.pendingConfirm.backgroundState = this.isolateUnderlying(dialog);
         app._activateFocusTrap(dialog, { close: () => app.resolveConfirmDialog(false) });
         return false;
     },
@@ -52,8 +78,10 @@ const YAW_DIALOG_FLOW = {
         const dialog = typeof document !== 'undefined' ? document.getElementById('app-confirm-dialog') : null;
         const pending = app.pendingConfirm;
         const parentFocusTrap = pending?.parentFocusTrap || null;
+        const backgroundState = pending?.backgroundState || [];
         const hadConfirm = Boolean(dialog || pending);
         if (dialog) dialog.remove();
+        this.restoreUnderlying(backgroundState);
         app.pendingConfirm = null;
         if (!hadConfirm) return;
         app._restoreFocusTrap(options);
@@ -87,6 +115,7 @@ const YAW_DIALOG_FLOW = {
         const html = `<div class="app-confirm-backdrop" id="save-recovery-dialog" role="dialog" aria-modal="true" aria-labelledby="save-recovery-title" aria-describedby="save-recovery-message" data-command-surface="save-recovery-dialog" data-command-mode="system"><div class="app-confirm-card" data-command-surface="save-recovery-dialog" data-command-mode="system"><h3 id="save-recovery-title">${app._escapeHtml(title)}</h3><p id="save-recovery-message">${app._escapeHtml(message)}</p><div class="app-confirm-actions" data-command-surface="save-recovery-dialog" data-command-mode="system"><button class="nav-btn" data-command-surface="save-recovery-dialog" data-command-mode="system" data-command-control="cancel-save-recovery" data-command-slot="exit" onclick="App.resolveSaveRecoveryDialog('cancel')">${app._escapeHtml(cancelLabel)}</button><button class="nav-btn" data-command-surface="save-recovery-dialog" data-command-mode="system" data-command-control="backup-save" onclick="App.resolveSaveRecoveryDialog('backup')">${app._escapeHtml(backupLabel)}</button><button class="nav-btn primary danger" data-command-surface="save-recovery-dialog" data-command-mode="system" data-command-control="delete-save" onclick="App.resolveSaveRecoveryDialog('delete')">${app._escapeHtml(deleteLabel)}</button></div></div></div>`;
         document.body.insertAdjacentHTML('beforeend', html);
         const dialog = document.getElementById('save-recovery-dialog');
+        app.pendingSaveRecovery.backgroundState = this.isolateUnderlying(dialog);
         app._activateFocusTrap(dialog, { close: () => app.resolveSaveRecoveryDialog('cancel') });
         return false;
     },
@@ -125,8 +154,10 @@ const YAW_DIALOG_FLOW = {
         const dialog = typeof document !== 'undefined' ? document.getElementById('save-recovery-dialog') : null;
         const pending = app.pendingSaveRecovery;
         const parentFocusTrap = pending?.parentFocusTrap || null;
+        const backgroundState = pending?.backgroundState || [];
         const hadRecovery = Boolean(dialog || pending);
         if (dialog) dialog.remove();
+        this.restoreUnderlying(backgroundState);
         app.pendingSaveRecovery = null;
         if (!hadRecovery) return;
         app._restoreFocusTrap(options);

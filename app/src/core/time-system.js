@@ -34,6 +34,15 @@ const YAW_TIME_SYSTEM = {
         if (hours > 0) app.dayCount = (app.dayCount || 0) + Math.floor(nextTotal / 24);
         this.render(app);
         if (hours > 0) {
+            let partyResourceChanged = false;
+            for (const unit of [...new Set([...(app.party || []), ...(app.creatures || [])])]) {
+                const changes = YAW_RESOURCE_LEDGER.tick(unit, 'hour', hours);
+                partyResourceChanged = partyResourceChanged || (changes.length > 0 && (app.party || []).includes(unit));
+            }
+            if (partyResourceChanged) {
+                app._markSaveDirty?.('party', 'resource-regeneration');
+                app._markSaveDirty?.('holdings', 'resource-regeneration');
+            }
             app._emitModuleHook('onTick', {
                 hours,
                 previousHour: current,

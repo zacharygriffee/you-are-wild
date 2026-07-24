@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 
 const assert = require('assert');
+const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { chromium } = require('playwright');
 
 const distUrl = pathToFileURL(path.resolve(__dirname, '../../dist/you-are-wild.html')).href;
+const neutralConformancePackage = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../docs/examples/neutral-conformance.yawmod.json'), 'utf8'));
+const neutralLocalePackage = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../docs/examples/neutral-conformance-locale-pack.yawmod.json'), 'utf8'));
 
 async function clearBrowserStorage(page) {
   await page.evaluate(async () => {
@@ -53,6 +56,207 @@ function makeUnitScript() {
   `;
 }
 
+async function checkCombatTargetConfirmation(page, name, width) {
+  const renderScenario = async ({ actor = 'player', targetCount = 1 } = {}) => page.evaluate(({ actorKind, requestedTargets }) => {
+    const make = (unitName, id, icon = '👤') => ({
+      id,
+      name: unitName,
+      species: 'human',
+      icon,
+      CPun: 100,
+      MPun: 100,
+      CPle: 40,
+      MPle: 100,
+      level: 1,
+      size: 4,
+      appetite: 4,
+      stomach: [],
+      womb: [],
+      balls: [],
+      inventory: [],
+      status: {},
+      combatRow: 'front',
+      Figh: 10,
+      Flir: 10,
+      Fuck: 10,
+      Feas: 10,
+      Feed: 10,
+      Flee: 10,
+      con: 10,
+      wis: 10,
+      cha: 10
+    });
+    App.updateLanguage('es');
+    App.showScreen('game');
+    const player = make('Exploradora', 'viewport-combat-player', '🧭');
+    player.mc = true;
+    const companion = make('Compañera de guardia', 'viewport-combat-companion', '🛡️');
+    companion.disposition = App.DISPOSITION.PARTY;
+    companion.obedient = true;
+    const enemies = [
+      Object.assign(make('Centinela de piedra', 'viewport-combat-enemy-1', '🪨'), { disposition: App.DISPOSITION.ENEMY }),
+      Object.assign(make('Vigía de la arboleda', 'viewport-combat-enemy-2', '🌿'), { disposition: App.DISPOSITION.ENEMY })
+    ];
+    App.player = player;
+    App.party = [player, companion];
+    App.creatures = enemies;
+    const tile = App.getCurrentTile?.();
+    if (tile) tile.creatures = enemies;
+    const currentTurn = actorKind === 'companion' ? 1 : 0;
+    App.combatState = {
+      active: true,
+      round: 2,
+      currentTurn,
+      turnQueue: [
+        { unit: player, initiative: 12 },
+        { unit: companion, initiative: 10 },
+        { unit: enemies[0], initiative: 7 },
+        { unit: enemies[1], initiative: 5 }
+      ],
+      syncActions: [],
+      processing: false
+    };
+    const currentActor = actorKind === 'companion' ? companion : player;
+    App.activeActor = currentActor;
+    App.combatPlanSelection = null;
+    App.feedSelection = null;
+    App.syncSelection = null;
+    App.explorationTargetIds = [];
+    App.targetSelection = { action: 'fight', source: 'combat', actorId: currentActor.id };
+    App.combatTargetIds = enemies.slice(0, requestedTargets).map(unit => App._unitSelectionId(unit));
+    App.combatTargetId = App.combatTargetIds[0] || null;
+    App.renderCreatures();
+    App.renderParty();
+    App.renderCombatSceneForTurn(currentActor);
+    App.renderMobileCombatToolbelt();
+    App.renderDesktopCombatComposer(currentActor);
+    App.renderSelectionSentence();
+  }, { actorKind: actor, requestedTargets: targetCount });
+
+  const readScenario = async () => page.evaluate(isMobile => {
+    const root = document.getElementById(isMobile ? 'mobile-combat-toolbelt' : 'desktop-context-belt');
+    const tray = root?.querySelector('.combat-target-tray, [data-command-surface="combat-targeting"]');
+    const row = root?.querySelector('.target-action-row, .mobile-combat-phase-controls .unit-actions');
+    const confirm = root?.querySelector('[data-command-control="confirm-targets"]');
+    const cancel = root?.querySelector('[data-command-control="cancel-targeting"]');
+    const sentence = isMobile
+      ? document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')
+      : document.getElementById('selection-sentence');
+    const rootRect = root?.getBoundingClientRect();
+    const rowRect = row?.getBoundingClientRect();
+    const confirmRect = confirm?.getBoundingClientRect();
+    const cancelRect = cancel?.getBoundingClientRect();
+    const withinViewport = rect => Boolean(rect
+      && rect.left >= -1
+      && rect.right <= innerWidth + 1
+      && rect.top >= -1
+      && rect.bottom <= innerHeight + 1);
+    return {
+      rootExists: Boolean(root),
+      trayExists: Boolean(tray),
+      surface: tray?.getAttribute('data-command-surface') || '',
+      mode: tray?.getAttribute('data-command-mode') || '',
+      grammar: tray?.getAttribute('data-command-grammar') || '',
+      targetCount: root?.getAttribute('data-command-target-count') || '',
+      rootInsideViewport: withinViewport(rootRect),
+      rowInsideViewport: withinViewport(rowRect),
+      rootBounds: rootRect ? { left: rootRect.left, right: rootRect.right, top: rootRect.top, bottom: rootRect.bottom, width: rootRect.width, height: rootRect.height } : null,
+      rowBounds: rowRect ? { left: rowRect.left, right: rowRect.right, top: rowRect.top, bottom: rowRect.bottom, width: rowRect.width, height: rowRect.height } : null,
+      viewport: { width: innerWidth, height: innerHeight },
+      confirmText: confirm?.textContent?.trim() || '',
+      confirmLabel: confirm?.getAttribute('aria-label') || '',
+      confirmWidth: confirmRect?.width || 0,
+      confirmHeight: confirmRect?.height || 0,
+      confirmInsideViewport: withinViewport(confirmRect),
+      cancelText: cancel?.textContent?.trim() || '',
+      cancelLabel: cancel?.getAttribute('aria-label') || '',
+      cancelWidth: cancelRect?.width || 0,
+      cancelHeight: cancelRect?.height || 0,
+      cancelInsideViewport: withinViewport(cancelRect),
+      sentenceText: sentence?.textContent?.replace(/\s+/g, ' ').trim() || '',
+      horizontalPageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      horizontalRootOverflow: Boolean(root && root.scrollWidth > root.clientWidth + 1),
+      horizontalRowOverflow: Boolean(row && row.scrollWidth > row.clientWidth + 1)
+    };
+  }, width <= 1024);
+
+  await renderScenario({ actor: 'player', targetCount: 1 });
+  await page.waitForTimeout(50);
+  const playerSingle = await readScenario();
+  assert.strictEqual(playerSingle.rootExists, true, `${name}: player target confirmation should render its responsive composer`);
+  assert.strictEqual(playerSingle.trayExists, true, `${name}: player target confirmation should render a target tray`);
+  assert.strictEqual(playerSingle.surface, 'combat-targeting', `${name}: player target tray should identify combat-targeting ownership`);
+  assert.strictEqual(playerSingle.mode, 'combat', `${name}: player target tray should identify combat mode`);
+  assert.strictEqual(playerSingle.grammar, 'actor-target-intent', `${name}: player target tray should retain actor-target-intent grammar`);
+  assert.strictEqual(playerSingle.targetCount, '1', `${name}: player target tray should expose one marked target`);
+  assert(playerSingle.confirmText.includes('objetivo seleccionado'), `${name}: single-target confirmation should use localized singular copy`);
+  assert(playerSingle.cancelText.includes('Cancelar'), `${name}: player target tray should localize Cancel`);
+  assert.strictEqual(playerSingle.confirmText, playerSingle.confirmLabel, `${name}: player confirmation visible and accessible labels should agree`);
+  assert.strictEqual(playerSingle.cancelText, playerSingle.cancelLabel, `${name}: player Cancel visible and accessible labels should agree`);
+  assert((playerSingle.sentenceText.includes('Tú') || playerSingle.sentenceText.includes('Tu') || playerSingle.sentenceText.includes('Exploradora'))
+    && playerSingle.sentenceText.includes('Centinela de piedra'), `${name}: player target sentence should retain localized player identity and marked target; got ${JSON.stringify(playerSingle.sentenceText)}`);
+  assert.strictEqual(playerSingle.rootInsideViewport && playerSingle.rowInsideViewport, true, `${name}: player target tray should remain inside the viewport; got ${JSON.stringify({ root: playerSingle.rootBounds, row: playerSingle.rowBounds, viewport: playerSingle.viewport })}`);
+  assert.strictEqual(playerSingle.confirmInsideViewport && playerSingle.cancelInsideViewport, true, `${name}: player target controls should remain inside the viewport`);
+  assert(playerSingle.confirmWidth >= 110 && playerSingle.cancelWidth >= 110, `${name}: player confirm and Cancel should retain readable widths`);
+  assert(playerSingle.confirmHeight >= 44 && playerSingle.cancelHeight >= 44, `${name}: player confirm and Cancel should retain touch-sized heights`);
+  assert.strictEqual(playerSingle.horizontalPageOverflow, false, `${name}: player target tray should not create page overflow`);
+  assert.strictEqual(playerSingle.horizontalRootOverflow, false, `${name}: player target composer should not clip horizontally`);
+  assert.strictEqual(playerSingle.horizontalRowOverflow, false, `${name}: player target controls should not require horizontal scrolling`);
+
+  await renderScenario({ actor: 'player', targetCount: 2 });
+  await page.waitForTimeout(50);
+  const playerMany = await readScenario();
+  assert.strictEqual(playerMany.targetCount, '2', `${name}: multi-target tray should expose both marked targets`);
+  assert(playerMany.confirmText.includes('2 objetivos seleccionados'), `${name}: multi-target confirmation should use localized counted copy`);
+  assert(playerMany.sentenceText.includes('Centinela de piedra') && playerMany.sentenceText.includes('Vigía de la arboleda'), `${name}: multi-target sentence should retain every marked target`);
+  assert(playerMany.confirmWidth >= 110 && playerMany.cancelWidth >= 110, `${name}: multi-target confirm and Cancel should remain readable`);
+  assert(playerMany.confirmHeight >= 44 && playerMany.cancelHeight >= 44, `${name}: multi-target controls should remain touch-sized`);
+  assert.strictEqual(playerMany.confirmInsideViewport && playerMany.cancelInsideViewport, true, `${name}: multi-target controls should remain inside the viewport`);
+  assert.strictEqual(playerMany.horizontalPageOverflow || playerMany.horizontalRootOverflow || playerMany.horizontalRowOverflow, false, `${name}: multi-target controls should remain horizontally bounded`);
+
+  await renderScenario({ actor: 'companion', targetCount: 1 });
+  await page.waitForTimeout(50);
+  const companionSingle = await readScenario();
+  assert.strictEqual(companionSingle.targetCount, '1', `${name}: companion target tray should expose its marked target`);
+  assert(companionSingle.sentenceText.includes('Compañera de guardia') && companionSingle.sentenceText.includes('Centinela de piedra'), `${name}: companion target sentence should retain the acting companion and target`);
+  assert(companionSingle.confirmText.includes('objetivo seleccionado'), `${name}: companion confirmation should stay localized`);
+  assert(companionSingle.confirmWidth >= 110 && companionSingle.cancelWidth >= 110, `${name}: companion confirm and Cancel should retain readable widths`);
+  assert.strictEqual(companionSingle.confirmInsideViewport && companionSingle.cancelInsideViewport, true, `${name}: companion target controls should remain in the viewport`);
+  assert.strictEqual(companionSingle.horizontalPageOverflow || companionSingle.horizontalRootOverflow || companionSingle.horizontalRowOverflow, false, `${name}: companion target tray should remain horizontally bounded`);
+
+  const cancelSelector = width <= 1024
+    ? '#mobile-combat-toolbelt [data-command-control="cancel-targeting"]'
+    : '#desktop-context-belt [data-command-control="cancel-targeting"]';
+  await page.locator(cancelSelector).click();
+  await page.waitForTimeout(50);
+  const cancelled = await page.evaluate(isMobile => {
+    const root = document.getElementById(isMobile ? 'mobile-combat-toolbelt' : 'desktop-context-belt');
+    return {
+      targetSelectionCleared: !App.targetSelection,
+      markedTargetsCleared: (App.combatTargetIds || []).length === 0,
+      intentControlsRestored: Boolean(root?.querySelector('[data-command-surface="combat-intents"]')),
+      actorStillCurrent: App._currentCombatActor?.()?.id === 'viewport-combat-companion',
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  }, width <= 1024);
+  assert.strictEqual(cancelled.targetSelectionCleared, true, `${name}: Cancel should clear combat target-selection mode`);
+  assert.strictEqual(cancelled.markedTargetsCleared, true, `${name}: Cancel should clear marked combat targets`);
+  assert.strictEqual(cancelled.intentControlsRestored, true, `${name}: Cancel should restore companion intent controls`);
+  assert.strictEqual(cancelled.actorStillCurrent, true, `${name}: Cancel should preserve the companion's current turn`);
+  assert.strictEqual(cancelled.pageOverflow, false, `${name}: restored companion intents should not overflow the page`);
+
+  await page.evaluate(() => {
+    App.combatState.active = false;
+    App.targetSelection = null;
+    App.combatTargetId = null;
+    App.combatTargetIds = [];
+    App.updateLanguage('en');
+    App.renderMobileCombatToolbelt();
+    App.renderDesktopCombatComposer();
+    App.showExplorationActions();
+  });
+}
+
 async function checkFileOriginFirstRunMenu(browser) {
   const page = await browser.newPage({ viewport: { width: 1100, height: 768 } });
   const pageErrors = [];
@@ -72,7 +276,14 @@ async function checkFileOriginFirstRunMenu(browser) {
       tutorialDisplay: getComputedStyle(tutorial).display,
       menuDisplay: getComputedStyle(menu).display,
       focusTrapId: App._focusTrap?.container?.id || '',
-      focusInsideTutorial: tutorial.contains(document.activeElement)
+      focusInsideTutorial: tutorial.contains(document.activeElement),
+      role: tutorial.getAttribute('role'),
+      modal: tutorial.getAttribute('aria-modal'),
+      ariaHidden: tutorial.getAttribute('aria-hidden'),
+      labelledBy: tutorial.getAttribute('aria-labelledby'),
+      describedBy: tutorial.getAttribute('aria-describedby'),
+      menuInert: menu.hasAttribute('inert'),
+      menuAriaHidden: menu.getAttribute('aria-hidden')
     };
   });
   assert.strictEqual(firstRun.protocol, 'file:', 'first-run menu check should exercise the downloadable file origin');
@@ -81,30 +292,151 @@ async function checkFileOriginFirstRunMenu(browser) {
   assert.strictEqual(firstRun.menuDisplay, 'flex', 'first-run startup should retain the menu behind the tutorial');
   assert.strictEqual(firstRun.focusTrapId, 'tutorial-overlay', 'first-run tutorial should own the active focus trap');
   assert.strictEqual(firstRun.focusInsideTutorial, true, 'first-run tutorial should receive keyboard focus');
+  assert.strictEqual(firstRun.role, 'dialog', 'first-run tutorial should expose dialog semantics');
+  assert.strictEqual(firstRun.modal, 'true', 'first-run tutorial should identify itself as modal');
+  assert.strictEqual(firstRun.ariaHidden, 'false', 'visible first-run tutorial should enter the accessibility tree');
+  assert.strictEqual(firstRun.labelledBy, 'tutorial-title', 'first-run tutorial should reference its changing title');
+  assert.strictEqual(firstRun.describedBy, 'tutorial-content', 'first-run tutorial should reference its changing instructions');
+  assert.strictEqual(firstRun.menuInert, true, 'first-run tutorial should isolate the underlying menu from interaction');
+  assert.strictEqual(firstRun.menuAriaHidden, 'true', 'first-run tutorial should hide the underlying menu from assistive technology');
 
   await page.locator('#tutorial-overlay [data-command-control="skip-tutorial"]').click();
   await page.waitForFunction(() => getComputedStyle(document.getElementById('tutorial-overlay')).display === 'none');
 
   const actions = [
-    ['open-settings', 'screen-settings', 'close-settings'],
-    ['open-mods', 'screen-mods', 'close-modules'],
-    ['open-activity-log', 'screen-activity', 'close-activity-log'],
-    ['open-release-notes', 'screen-release', 'close-release-notes']
+    ['open-settings', 'screen-settings', 'close-settings', 'settings-title', 'settings-description'],
+    ['open-mods', 'screen-mods', 'close-modules', 'mod-manager-title', 'mod-manager-description'],
+    ['open-activity-log', 'screen-activity', 'close-activity-log', 'system-activity-title', 'system-activity-description'],
+    ['open-release-notes', 'screen-release', 'close-release-notes', 'release-notes-title', 'release-notes-version']
   ];
-  for (const [openControl, screenId, closeControl] of actions) {
+  for (const [openControl, screenId, closeControl, titleId, descriptionId] of actions) {
     await page.locator(`#screen-menu [data-command-control="${openControl}"]`).click();
     await page.waitForFunction(id => {
       const screen = document.getElementById(id);
       return Boolean(screen?.classList.contains('active') && getComputedStyle(screen).display !== 'none');
     }, screenId);
+    const relationship = await page.evaluate(({ screenId, titleId, descriptionId }) => {
+      const dialog = document.getElementById(screenId);
+      const title = document.getElementById(titleId);
+      const description = document.getElementById(descriptionId);
+      return {
+        labelledBy: dialog?.getAttribute('aria-labelledby') || '',
+        describedBy: dialog?.getAttribute('aria-describedby') || '',
+        titleText: title?.textContent?.trim() || '',
+        descriptionText: description?.textContent?.trim() || ''
+      };
+    }, { screenId, titleId, descriptionId });
+    assert.strictEqual(relationship.labelledBy, titleId, `${screenId} should reference its visible title`);
+    assert.strictEqual(relationship.describedBy, descriptionId, `${screenId} should reference its visible description`);
+    assert(relationship.titleText.length > 0, `${screenId} referenced title should contain visible text`);
+    assert(relationship.descriptionText.length > 0, `${screenId} referenced description should contain visible text`);
+    if (screenId === 'screen-mods') {
+      const importToggle = page.locator('#remote-module-import-toggle');
+      await importToggle.focus();
+      await importToggle.click();
+      const openedImport = await page.evaluate(() => ({
+        controls: document.getElementById('remote-module-import-toggle')?.getAttribute('aria-controls') || '',
+        expanded: document.getElementById('remote-module-import-toggle')?.getAttribute('aria-expanded') || '',
+        hidden: document.getElementById('remote-module-import')?.hidden,
+        ariaHidden: document.getElementById('remote-module-import')?.getAttribute('aria-hidden') || '',
+        focusId: document.activeElement?.id || ''
+      }));
+      assert.strictEqual(openedImport.controls, 'remote-module-import', 'URI importer should reference its controlled region');
+      assert.strictEqual(openedImport.expanded, 'true', 'URI importer should expose expanded state while open');
+      assert.strictEqual(openedImport.hidden, false, 'URI importer controlled region should become visible');
+      assert.strictEqual(openedImport.ariaHidden, 'false', 'URI importer controlled region should enter the accessibility tree');
+      assert.strictEqual(openedImport.focusId, 'remote-module-uri', 'opening URI importer should focus its first task input');
+      await page.locator('[data-command-control="cancel-import-module-uri"]').click();
+      await page.waitForFunction(() => document.getElementById('remote-module-import')?.hidden === true);
+      const closedImport = await page.evaluate(() => ({
+        expanded: document.getElementById('remote-module-import-toggle')?.getAttribute('aria-expanded') || '',
+        ariaHidden: document.getElementById('remote-module-import')?.getAttribute('aria-hidden') || '',
+        focusId: document.activeElement?.id || ''
+      }));
+      assert.strictEqual(closedImport.expanded, 'false', 'canceling URI importer should expose collapsed state');
+      assert.strictEqual(closedImport.ariaHidden, 'true', 'canceling URI importer should remove the region from the accessibility tree');
+      assert.strictEqual(closedImport.focusId, 'remote-module-import-toggle', 'canceling URI importer should restore focus to its opener');
+    }
     await page.locator(`#${screenId} [data-command-control="${closeControl}"]`).click();
     await page.waitForFunction(() => App.screen === 'menu' && getComputedStyle(document.getElementById('screen-menu')).display === 'flex');
   }
 
-  await page.locator('#screen-menu [data-command-control="open-help"]').click();
+  const localizedHostCatalog = await page.evaluate(() => {
+    App.updateLanguage('es');
+    MODULE_SYSTEM.hostManifest = {
+      hostId: 'fixture-host',
+      policy: { allowUserModules: true, stateById: { 'secure-host-module': 'optional' } }
+    };
+    MODULE_SYSTEM.hostCatalog.set('secure-host-module', {
+      id: 'secure-host-module',
+      name: 'Secure Host Module',
+      version: '1.0.0',
+      description: 'Fixture host module',
+      type: 'feature_pack',
+      contentRating: 'safe',
+      preview: '🔒',
+      runtimeRequirements: { origins: ['https'], network: true, secureContext: true, hotToggleSafe: true }
+    });
+    App.showScreen('market');
+    const content = document.getElementById('market-content');
+    const cardText = content?.innerText || '';
+    const install = content?.querySelector('[data-command-control="install-sample-module"]');
+    const result = {
+      heading: content?.querySelector('h1')?.textContent.trim() || '',
+      cardText,
+      installText: install?.textContent.trim() || '',
+      installLabel: install?.getAttribute('aria-label') || '',
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      labelledBy: document.getElementById('screen-market')?.getAttribute('aria-labelledby') || '',
+      describedBy: document.getElementById('screen-market')?.getAttribute('aria-describedby') || '',
+      titleText: document.getElementById('host-catalog-title')?.textContent?.trim() || '',
+      descriptionText: document.getElementById('host-catalog-description')?.textContent?.trim() || ''
+    };
+    App.updateLanguage('en');
+    MODULE_SYSTEM.hostCatalog.clear();
+    MODULE_SYSTEM.hostManifest = null;
+    App.showScreen('menu');
+    return result;
+  });
+  assert(localizedHostCatalog.heading.includes('Catalogo del host'), 'file-origin host catalog should localize its heading');
+  assert(localizedHostCatalog.cardText.includes('Suministrado por el host'), 'host-module provenance should localize');
+  assert(localizedHostCatalog.cardText.includes('Opcional'), 'host policy state should localize');
+  assert(localizedHostCatalog.cardText.includes('Funciones'), 'host module type should localize');
+  assert(localizedHostCatalog.cardText.includes('El modulo requiere uno de estos origenes de ejecucion: https'), 'file-incompatible host requirement should localize with bounded origins');
+  assert(!localizedHostCatalog.cardText.includes('Module requires one of these runtime origins'), 'localized host compatibility should not leak its English diagnostic fallback');
+  assert.strictEqual(localizedHostCatalog.installText, 'Instalar', 'host-module install action should localize');
+  assert(localizedHostCatalog.installLabel.includes('Instalar Secure Host Module desde este host'), 'host-module install accessible name should localize');
+  assert.strictEqual(localizedHostCatalog.overflow, false, 'localized host catalog should remain horizontally bounded');
+  assert.strictEqual(localizedHostCatalog.labelledBy, 'host-catalog-title', 'runtime Host Catalog should retain its dialog title relationship');
+  assert.strictEqual(localizedHostCatalog.describedBy, 'host-catalog-description', 'runtime Host Catalog should retain its dialog description relationship');
+  assert(localizedHostCatalog.titleText.includes('Catalogo del host'), 'runtime Host Catalog referenced title should resolve after localized rerender');
+  assert(localizedHostCatalog.descriptionText.includes('Modulos suministrados'), 'runtime Host Catalog referenced description should resolve after localized rerender');
+
+  const helpControl = page.locator('#screen-menu [data-command-control="open-help"]');
+  await helpControl.focus();
+  await helpControl.click();
   await page.waitForFunction(() => getComputedStyle(document.getElementById('tutorial-overlay')).display === 'flex');
-  await page.locator('#tutorial-overlay [data-command-control="skip-tutorial"]').click();
+  await page.locator('#tutorial-overlay [data-command-control="next-tutorial"]').click();
+  const steppedTutorial = await page.evaluate(() => ({
+    title: document.getElementById('tutorial-title')?.textContent || '',
+    description: document.getElementById('tutorial-content')?.textContent || '',
+    focusInside: document.getElementById('tutorial-overlay')?.contains(document.activeElement) || false
+  }));
+  assert.strictEqual(steppedTutorial.title, 'Combat', 'tutorial should update its accessible title with the current step');
+  assert(steppedTutorial.description.includes('Select actors'), 'tutorial should update its accessible description with the current step');
+  assert.strictEqual(steppedTutorial.focusInside, true, 'tutorial step changes should retain focus containment');
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => getComputedStyle(document.getElementById('tutorial-overlay')).display === 'none');
+  const closedTutorial = await page.evaluate(() => ({
+    ariaHidden: document.getElementById('tutorial-overlay')?.getAttribute('aria-hidden'),
+    menuInert: document.getElementById('screen-menu')?.hasAttribute('inert'),
+    menuAriaHidden: document.getElementById('screen-menu')?.getAttribute('aria-hidden'),
+    focusControl: document.activeElement?.getAttribute?.('data-command-control') || ''
+  }));
+  assert.strictEqual(closedTutorial.ariaHidden, 'true', 'closed tutorial should leave the accessibility tree');
+  assert.strictEqual(closedTutorial.menuInert, false, 'closing tutorial should restore underlying menu interaction');
+  assert.notStrictEqual(closedTutorial.menuAriaHidden, 'true', 'closing tutorial should restore the underlying menu accessibility state');
+  assert.strictEqual(closedTutorial.focusControl, 'open-help', 'Escape should close tutorial and restore focus to its opener');
 
   await page.locator('#screen-menu [data-command-control="start-new-game"]').click();
   await page.waitForFunction(() => App.screen === 'save-manager' && getComputedStyle(document.getElementById('save-manager')).display !== 'none');
@@ -117,6 +449,65 @@ async function checkFileOriginFirstRunMenu(browser) {
   await page.waitForFunction(() => App.screen === 'menu');
 
   assert.deepStrictEqual(pageErrors, [], `file-origin first-run menu should not raise page errors: ${pageErrors.join('; ')}`);
+  await page.close();
+}
+
+async function checkFileOriginLocalePack(browser) {
+  const page = await browser.newPage({ viewport: { width: 1100, height: 768 } });
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.goto(distUrl, { waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+  await clearBrowserStorage(page);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+  await page.evaluate(() => App.skipTutorial?.());
+  await page.evaluate(async ({ targetPackage, localePackage }) => {
+    await MODULE_SYSTEM.installModule(targetPackage);
+    await MODULE_SYSTEM.installModule(localePackage);
+    await MODULE_SYSTEM.setModuleEnabled('yaw_neutral_conformance', true);
+    await MODULE_SYSTEM.setModuleEnabled('yaw_neutral_conformance_locale', true);
+    CONTENT.setLanguage('qps-ncon');
+    App.showScreen('settings');
+    App.showSettings();
+  }, { targetPackage: neutralConformancePackage, localePackage: neutralLocalePackage });
+  const active = await page.evaluate(() => ({
+    protocol: location.protocol,
+    selected: document.getElementById('setting-language')?.value || '',
+    option: document.querySelector('#setting-language option[value="qps-ncon"]')?.textContent || '',
+    translated: CONTENT.t('yaw_neutral_conformance.creation.crest'),
+    diagnostics: MODULE_SYSTEM.getModuleDiagnostics('yaw_neutral_conformance_locale')
+  }));
+  assert.strictEqual(active.protocol, 'file:', 'Locale Pack V1 browser check should preserve downloadable file-origin play');
+  assert.strictEqual(active.selected, 'qps-ncon', 'Active module locale should populate and select in Settings');
+  assert.strictEqual(active.option, 'Neutral Pseudo', 'Dynamic selector should present the reviewed module locale name');
+  assert.strictEqual(active.translated, '[Sun Crest]', 'Active module locale should resolve its dependency translation');
+  assert.deepStrictEqual(active.diagnostics, [], 'Complete conformance locale should have no missing or obsolete diagnostics');
+
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+  await page.waitForFunction(() => window.YAW_STARTUP_READINESS?.state('modules')?.status === 'ready', null, { timeout: 10000 });
+  const restored = await page.evaluate(() => ({
+    language: CONTENT.preferences.language,
+    translated: CONTENT.t('yaw_neutral_conformance.action.shareGreeting'),
+    optionPresent: Boolean(CONTENT.localeCatalog().find(locale => locale.id === 'qps-ncon'))
+  }));
+  assert.strictEqual(restored.language, 'qps-ncon', 'Saved module locale should restore after asynchronous file-origin module startup');
+  assert.strictEqual(restored.translated, '[Share Greeting]', 'Reload should restore translation entries after their dependency');
+  assert.strictEqual(restored.optionPresent, true, 'Reloaded locale should remain in the active catalog');
+
+  await page.evaluate(async () => {
+    await MODULE_SYSTEM.setModuleEnabled('yaw_neutral_conformance', false, { bypassLifecycle: true });
+  });
+  const unloaded = await page.evaluate(() => ({
+    language: CONTENT.preferences.language,
+    optionPresent: Boolean(CONTENT.localeCatalog().find(locale => locale.id === 'qps-ncon')),
+    translated: CONTENT.t('yaw_neutral_conformance.creation.crest')
+  }));
+  assert.strictEqual(unloaded.language, 'en', 'Disabling a translated dependency should select the locale fallback');
+  assert.strictEqual(unloaded.optionPresent, false, 'Dependent locale should leave the selector after target disable');
+  assert.strictEqual(unloaded.translated, 'yaw_neutral_conformance.creation.crest', 'Disabled target text should fall back to its stable key rather than retaining stale translated state');
+  assert.deepStrictEqual(pageErrors, [], `file-origin locale pack should not raise page errors: ${pageErrors.join('; ')}`);
   await page.close();
 }
 
@@ -233,6 +624,45 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(openedProviders.focusInside, true, `${name}: AI Providers should move focus into the active overlay`);
   assert.strictEqual(openedProviders.pageOverflow, false, `${name}: AI Providers should not create horizontal overflow`);
 
+  await page.locator('#screen-providers [data-command-control="add-provider-connection"]').click();
+  await page.waitForTimeout(50);
+  const openedProviderEditor = await page.evaluate(() => {
+    const form = document.getElementById('openai-provider-form');
+    const title = document.getElementById(form?.getAttribute('aria-labelledby') || '');
+    return {
+      formVisible: Boolean(form && getComputedStyle(form).display !== 'none'),
+      title: title?.textContent?.trim() || '',
+      focusId: document.activeElement?.id || '',
+      cancelControl: form?.querySelector('[data-command-control="cancel-provider-editor"]')?.getAttribute('data-command-slot') || ''
+    };
+  });
+  assert.strictEqual(openedProviderEditor.formVisible, true, `${name}: Add Connection should reveal the provider editor`);
+  assert(openedProviderEditor.title.length > 0, `${name}: provider editor should reference a visible localized heading`);
+  assert.strictEqual(openedProviderEditor.focusId, 'openai-provider-name', `${name}: provider editor should focus its first field`);
+  assert.strictEqual(openedProviderEditor.cancelControl, 'exit', `${name}: provider editor Cancel should identify its exit slot`);
+
+  await page.locator('#openai-provider-model').fill('accessibility-test-model');
+  await page.locator('#openai-provider-form button[type="submit"]').click();
+  await page.waitForFunction(() => !document.getElementById('openai-provider-form'));
+  const savedProviderEditor = await page.evaluate(() => ({
+    focusControl: document.activeElement?.getAttribute?.('data-command-control') || '',
+    editProfileId: document.querySelector('[data-command-control="edit-provider-connection"]')?.getAttribute('data-provider-profile-id') || ''
+  }));
+  assert.strictEqual(savedProviderEditor.focusControl, 'add-provider-connection', `${name}: successful provider save should restore focus to Add Connection`);
+  assert(savedProviderEditor.editProfileId.length > 0, `${name}: successful provider save should expose an addressable Edit control`);
+
+  await page.locator('#screen-providers [data-command-control="edit-provider-connection"]').click();
+  await page.waitForTimeout(50);
+  assert.strictEqual(await page.evaluate(() => document.activeElement?.id || ''), 'openai-provider-name', `${name}: Edit Connection should focus the editor's first field`);
+  await page.locator('#openai-provider-form [data-command-control="cancel-provider-editor"]').click();
+  await page.waitForFunction(() => !document.getElementById('openai-provider-form'));
+  const cancelledProviderEditor = await page.evaluate(() => ({
+    focusControl: document.activeElement?.getAttribute?.('data-command-control') || '',
+    focusProfileId: document.activeElement?.getAttribute?.('data-provider-profile-id') || ''
+  }));
+  assert.strictEqual(cancelledProviderEditor.focusControl, 'edit-provider-connection', `${name}: provider editor Cancel should restore focus to Edit Connection`);
+  assert.strictEqual(cancelledProviderEditor.focusProfileId, savedProviderEditor.editProfileId, `${name}: provider editor Cancel should restore the matching profile's Edit control`);
+
   await page.locator('#screen-providers [data-command-control="close-ai-providers"]').click();
   await page.waitForTimeout(50);
   const returnedSettings = await page.evaluate(() => ({
@@ -341,6 +771,61 @@ async function checkViewport(browser, name, width, height) {
     App.syncCreateContentLevel?.();
   });
   await page.waitForTimeout(50);
+  const createChoiceAccessibility = await page.evaluate(() => {
+    const originalSpecies = App.species;
+    App.updateLanguage('es');
+    App.species = [...originalSpecies, {
+      id: 'render-probe',
+      name: '<img src=x onerror=window.__speciesProbe=true>',
+      desc: '<svg onload=window.__speciesProbe=true></svg>',
+      icon: '<b>!</b>'
+    }];
+    App.initSpeciesGrid();
+    const probe = document.querySelector('[data-species="render-probe"]');
+    const allCards = [...document.querySelectorAll('#species-grid [data-command-control="select-species"]')];
+    App.selectSpecies('human');
+    const emptyTraitText = document.getElementById('species-info')?.textContent || '';
+    App.selectSpecies('wolf');
+    const humanPressedAfter = document.querySelector('[data-species="human"]')?.getAttribute('aria-pressed');
+    const wolfPressedAfter = document.querySelector('[data-species="wolf"]')?.getAttribute('aria-pressed');
+    App.initBodyPartsGrid();
+    const fangsBefore = document.querySelector('#body-parts-grid [data-part="fangs"]')?.getAttribute('aria-pressed');
+    App.toggleBodyPart('fangs');
+    const fangsAfter = document.querySelector('#body-parts-grid [data-part="fangs"]')?.getAttribute('aria-pressed');
+    App.selectGender('nonbinary');
+    App.selectEncounterPreference('female');
+    const result = {
+      everySpeciesChoiceHasPressedState: allCards.every(card => ['true', 'false'].includes(card.getAttribute('aria-pressed'))),
+      oneSpeciesChoicePressed: allCards.filter(card => card.getAttribute('aria-pressed') === 'true').length,
+      humanPressedAfter,
+      wolfPressedAfter,
+      fangsBefore,
+      fangsAfter,
+      identityPressed: [...document.querySelectorAll('#gender-grid [data-command-control="select-identity"]')].map(card => [card.dataset.value, card.getAttribute('aria-pressed')]),
+      preferencePressed: [...document.querySelectorAll('#preference-grid [data-command-control="select-encounter-preference"]')].map(card => [card.dataset.value, card.getAttribute('aria-pressed')]),
+      emptyTraitText,
+      probeText: probe?.textContent || '',
+      probeCreatedMarkup: Boolean(probe?.querySelector('img, svg, b')),
+      probeExecuted: Boolean(window.__speciesProbe)
+    };
+    App.species = originalSpecies;
+    App.selectedSpecies = 'human';
+    App.initSpeciesGrid();
+    App.updateLanguage('en');
+    return result;
+  });
+  assert.strictEqual(createChoiceAccessibility.everySpeciesChoiceHasPressedState, true, `${name}: every dynamic species choice should expose a pressed state`);
+  assert.strictEqual(createChoiceAccessibility.oneSpeciesChoicePressed, 1, `${name}: character creation should expose one selected species choice`);
+  assert.strictEqual(createChoiceAccessibility.humanPressedAfter, 'false', `${name}: choosing another species should clear the prior pressed state`);
+  assert.strictEqual(createChoiceAccessibility.wolfPressedAfter, 'true', `${name}: choosing a species should expose its pressed state`);
+  assert.strictEqual(createChoiceAccessibility.fangsBefore, 'true', `${name}: default species traits should expose selected pressed state`);
+  assert.strictEqual(createChoiceAccessibility.fangsAfter, 'false', `${name}: toggled traits should update their pressed state`);
+  assert.deepStrictEqual(createChoiceAccessibility.identityPressed, [['female', 'false'], ['male', 'false'], ['nonbinary', 'true']], `${name}: identity choices should synchronize their pressed state`);
+  assert.deepStrictEqual(createChoiceAccessibility.preferencePressed, [['female', 'true'], ['male', 'false'], ['nonbinary', 'false'], ['any', 'false']], `${name}: encounter preference choices should synchronize their pressed state`);
+  assert(createChoiceAccessibility.emptyTraitText.includes('Rasgos predeterminados: Ninguno'), `${name}: empty default traits should use maintained Spanish labels`);
+  assert(createChoiceAccessibility.probeText.includes('<img src=x'), `${name}: module-authored species names should remain visible as text`);
+  assert.strictEqual(createChoiceAccessibility.probeCreatedMarkup, false, `${name}: module-authored species presentation must not create executable markup`);
+  assert.strictEqual(createChoiceAccessibility.probeExecuted, false, `${name}: module-authored species presentation must not execute markup`);
   await page.locator('#screen-create [data-command-control="open-content-settings"]').click();
   await page.waitForTimeout(50);
   const openedCreateSettings = await page.evaluate(() => {
@@ -478,9 +963,20 @@ async function checkViewport(browser, name, width, height) {
       const r = btn.getBoundingClientRect();
       return r.width > 0 && r.height > 0;
     }).length;
+    const focusFixture = document.createElement('div');
+    focusFixture.innerHTML = '<button id="focus-fixture-visible">Visible</button><button id="focus-fixture-hidden" hidden>Hidden</button><div inert><button id="focus-fixture-inert">Inert</button></div><button id="focus-fixture-negative" tabindex="-1">Negative</button><div style="display:none"><button id="focus-fixture-css-hidden">CSS hidden</button></div>';
+    root.appendChild(focusFixture);
+    const fixtureFocusables = App._focusableChildren(root)
+      .map(control => control.id)
+      .filter(id => id?.startsWith('focus-fixture-'));
+    focusFixture.remove();
     return {
       appScreen: App.screen,
       saveMode: App.saveManagerMode,
+      labelledBy: root.getAttribute('aria-labelledby') || '',
+      describedBy: root.getAttribute('aria-describedby') || '',
+      headingText: root.querySelector('#save-manager-title')?.textContent.trim() || '',
+      descriptionText: root.querySelector('#save-manager-description')?.textContent.trim() || '',
       display: getComputedStyle(root).display,
       active: root.classList.contains('active'),
       overflowY: getComputedStyle(box).overflowY,
@@ -489,12 +985,16 @@ async function checkViewport(browser, name, width, height) {
       closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
       closeSlot: close?.getAttribute('data-command-slot') || '',
       visibleButtons,
+      fixtureFocusables,
       viewportHeight: innerHeight,
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     };
   });
   assert.strictEqual(save.appScreen, 'save-manager', `${name}: main-menu Load should enter save-manager screen state`);
   assert.strictEqual(save.saveMode, 'load', `${name}: main-menu Load should open save manager in load mode`);
+  assert.strictEqual(save.labelledBy, 'save-manager-title', `${name}: save manager should take its accessible name from the visible heading`);
+  assert.strictEqual(save.describedBy, 'save-manager-description', `${name}: save manager should relate its visible instructions as the dialog description`);
+  assert(save.headingText.length > 0 && save.descriptionText.length > 0, `${name}: save manager dialog relationships should resolve to visible localized copy`);
   assert.notStrictEqual(save.display, 'none', `${name}: save manager should be visible`);
   assert.strictEqual(save.active, true, `${name}: save manager should become active`);
   assert(save.overflowY === 'auto' || save.overflowY === 'scroll', `${name}: save manager content should be scrollable`);
@@ -503,6 +1003,7 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(save.closeVisible, true, `${name}: save manager should expose a visible close exit`);
   assert.strictEqual(save.closeSlot, 'exit', `${name}: save manager close should identify the exit slot`);
   assert(save.visibleButtons >= 2, `${name}: save manager should expose reachable actions`);
+  assert.deepStrictEqual(save.fixtureFocusables, ['focus-fixture-visible'], `${name}: shared focus trap should exclude hidden, inert, CSS-hidden, and negative-tab descendants`);
   assert.strictEqual(save.pageOverflow, false, `${name}: save manager should not create horizontal overflow`);
 
   await page.locator('#save-manager [data-save-slot="slot2"] [data-command-control="new-run-slot"]').click();
@@ -533,6 +1034,8 @@ async function checkViewport(browser, name, width, height) {
       focusTrapId: App._focusTrap?.container?.id || '',
       saveManagerDisplay: getComputedStyle(saveManager).display,
       saveManagerActive: saveManager.classList.contains('active'),
+      saveManagerInert: saveManager.hasAttribute('inert'),
+      saveManagerAriaHidden: saveManager.getAttribute('aria-hidden'),
       createDisplay: getComputedStyle(create).display,
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     };
@@ -551,6 +1054,8 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(overwriteConfirm.focusTrapId, 'app-confirm-dialog', `${name}: confirm dialog should activate the shared focus trap`);
   assert.notStrictEqual(overwriteConfirm.saveManagerDisplay, 'none', `${name}: save manager should remain visible behind its confirmation`);
   assert.strictEqual(overwriteConfirm.saveManagerActive, true, `${name}: save manager should remain active behind its confirmation`);
+  assert.strictEqual(overwriteConfirm.saveManagerInert, true, `${name}: confirmation should make its parent Save Manager inert`);
+  assert.strictEqual(overwriteConfirm.saveManagerAriaHidden, 'true', `${name}: confirmation should hide its parent Save Manager from assistive navigation`);
   assert.strictEqual(overwriteConfirm.createDisplay, 'none', `${name}: overwrite confirmation should not open character creation before approval`);
   assert.strictEqual(overwriteConfirm.pageOverflow, false, `${name}: confirm dialog should not create horizontal overflow`);
 
@@ -570,6 +1075,8 @@ async function checkViewport(browser, name, width, height) {
       lastSlot: App._getStoredValue?.('lastSlot') || '',
       saveManagerDisplay: getComputedStyle(saveManager).display,
       saveManagerActive: saveManager.classList.contains('active'),
+      saveManagerInert: saveManager.hasAttribute('inert'),
+      saveManagerAriaHidden: saveManager.getAttribute('aria-hidden'),
       closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
       closeInsideViewport: Boolean(closeRect && closeRect.left >= -1 && closeRect.right <= innerWidth + 1 && closeRect.top >= -1 && closeRect.bottom <= innerHeight + 1),
       createDisplay: getComputedStyle(create).display,
@@ -584,6 +1091,8 @@ async function checkViewport(browser, name, width, height) {
   assert.notStrictEqual(cancelledOverwrite.lastSlot, 'slot2', `${name}: cancelling overwrite should not persist the selected slot`);
   assert.notStrictEqual(cancelledOverwrite.saveManagerDisplay, 'none', `${name}: cancelling overwrite should return to the save manager`);
   assert.strictEqual(cancelledOverwrite.saveManagerActive, true, `${name}: cancelling overwrite should keep save manager active`);
+  assert.strictEqual(cancelledOverwrite.saveManagerInert, false, `${name}: cancelling overwrite should restore Save Manager interaction`);
+  assert.strictEqual(cancelledOverwrite.saveManagerAriaHidden, null, `${name}: cancelling overwrite should restore Save Manager assistive visibility`);
   assert.strictEqual(cancelledOverwrite.closeVisible, true, `${name}: save manager close should remain visible after cancelling overwrite`);
   assert.strictEqual(cancelledOverwrite.closeInsideViewport, true, `${name}: save manager close should remain inside the viewport after cancelling overwrite`);
   assert.strictEqual(cancelledOverwrite.createDisplay, 'none', `${name}: cancelling overwrite should not open character creation`);
@@ -622,6 +1131,8 @@ async function checkViewport(browser, name, width, height) {
       focusTrapId: App._focusTrap?.container?.id || '',
       saveManagerDisplay: getComputedStyle(saveManager).display,
       saveManagerActive: saveManager.classList.contains('active'),
+      saveManagerInert: saveManager.hasAttribute('inert'),
+      saveManagerAriaHidden: saveManager.getAttribute('aria-hidden'),
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     };
   });
@@ -641,6 +1152,8 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(recoveryDialog.focusTrapId, 'save-recovery-dialog', `${name}: save recovery should activate the shared focus trap`);
   assert.notStrictEqual(recoveryDialog.saveManagerDisplay, 'none', `${name}: save manager should remain visible behind save recovery`);
   assert.strictEqual(recoveryDialog.saveManagerActive, true, `${name}: save manager should remain active behind save recovery`);
+  assert.strictEqual(recoveryDialog.saveManagerInert, true, `${name}: save recovery should make its parent Save Manager inert`);
+  assert.strictEqual(recoveryDialog.saveManagerAriaHidden, 'true', `${name}: save recovery should hide its parent Save Manager from assistive navigation`);
   assert.strictEqual(recoveryDialog.pageOverflow, false, `${name}: save recovery should not create horizontal overflow`);
 
   await page.locator('#save-recovery-dialog [data-command-control="cancel-save-recovery"]').click();
@@ -656,6 +1169,8 @@ async function checkViewport(browser, name, width, height) {
       appScreen: App.screen,
       saveManagerDisplay: getComputedStyle(saveManager).display,
       saveManagerActive: saveManager.classList.contains('active'),
+      saveManagerInert: saveManager.hasAttribute('inert'),
+      saveManagerAriaHidden: saveManager.getAttribute('aria-hidden'),
       closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
       closeInsideViewport: Boolean(closeRect && closeRect.left >= -1 && closeRect.right <= innerWidth + 1 && closeRect.top >= -1 && closeRect.bottom <= innerHeight + 1),
       focusTrapId: App._focusTrap?.container?.id || '',
@@ -667,6 +1182,8 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(cancelledRecovery.appScreen, 'save-manager', `${name}: cancelling save recovery should keep save manager screen state`);
   assert.notStrictEqual(cancelledRecovery.saveManagerDisplay, 'none', `${name}: cancelling save recovery should return to the save manager`);
   assert.strictEqual(cancelledRecovery.saveManagerActive, true, `${name}: cancelling save recovery should keep save manager active`);
+  assert.strictEqual(cancelledRecovery.saveManagerInert, false, `${name}: cancelling save recovery should restore Save Manager interaction`);
+  assert.strictEqual(cancelledRecovery.saveManagerAriaHidden, null, `${name}: cancelling save recovery should restore Save Manager assistive visibility`);
   assert.strictEqual(cancelledRecovery.closeVisible, true, `${name}: save manager close should remain visible after cancelling recovery`);
   assert.strictEqual(cancelledRecovery.closeInsideViewport, true, `${name}: save manager close should remain inside the viewport after cancelling recovery`);
   assert.strictEqual(cancelledRecovery.focusTrapId, 'save-manager', `${name}: cancelling save recovery should restore save-manager focus trap`);
@@ -915,6 +1432,7 @@ async function checkViewport(browser, name, width, height) {
       con: 10, wis: 10, cha: 10
     });
     App.player.gold = 12;
+    App.updateLanguage('es');
     App.inventory = [];
     App.creatures = [
       Object.assign(make('Guide', 'guide-transaction'), {
@@ -950,6 +1468,9 @@ async function checkViewport(browser, name, width, height) {
       text: root?.textContent || '',
       role: modal?.getAttribute('role') || '',
       ariaModal: modal?.getAttribute('aria-modal') || '',
+      labelledBy: modal?.getAttribute('aria-labelledby') || '',
+      describedBy: modal?.getAttribute('aria-describedby') || '',
+      descriptionText: document.getElementById(modal?.getAttribute('aria-describedby') || '')?.textContent?.trim() || '',
       inViewport: Boolean(rect && rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
       closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
       appInert: document.querySelector('#app > .stage')?.hasAttribute('inert') || false,
@@ -961,12 +1482,15 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(tradeWindow.kind, 'trade', `${name}: trade transaction should store trade state`);
   assert.strictEqual(tradeWindow.role, 'dialog', `${name}: trade transaction should use dialog semantics`);
   assert.strictEqual(tradeWindow.ariaModal, 'true', `${name}: trade transaction should be modal`);
+  assert.strictEqual(tradeWindow.labelledBy, 'transaction-window-title', `${name}: trade transaction should reference its visible title`);
+  assert.strictEqual(tradeWindow.describedBy, 'transaction-window-description', `${name}: trade transaction should reference its visible purpose`);
+  assert(tradeWindow.descriptionText.includes('Merchant'), `${name}: localized trade purpose should identify the merchant`);
   assert.strictEqual(tradeWindow.inViewport, true, `${name}: trade transaction should fit inside the viewport`);
   assert.strictEqual(tradeWindow.closeVisible, true, `${name}: trade transaction should expose a visible Back exit`);
   assert.strictEqual(tradeWindow.appInert, true, `${name}: transaction should make the underlying stage inert`);
   assert.strictEqual(tradeWindow.composerHidden, true, `${name}: transaction should hide underlying composer controls`);
   assert.strictEqual(tradeWindow.pageOverflow, false, `${name}: trade transaction should not create horizontal overflow`);
-  assert(tradeWindow.text.includes('Buy') && tradeWindow.text.includes('Sell') && tradeWindow.text.includes('Gold'), `${name}: trade transaction should show Buy/Sell and gold`);
+  assert(tradeWindow.text.includes('Comprar') && tradeWindow.text.includes('Vender') && tradeWindow.text.includes('Oro'), `${name}: localized trade transaction should show Buy/Sell and gold`);
   await page.evaluate(() => App.closeTransactionWindow());
   await page.waitForTimeout(50);
   const afterTradeClose = await page.evaluate(() => ({
@@ -994,8 +1518,101 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(questWindow.kind, 'quest', `${name}: quest transaction should store quest state`);
   assert.strictEqual(questWindow.inViewport, true, `${name}: quest transaction should fit inside the viewport`);
   assert.strictEqual(questWindow.pageOverflow, false, `${name}: quest transaction should not create horizontal overflow`);
-  assert(questWindow.text.includes('Available') && questWindow.text.includes('Accepted') && questWindow.text.includes('Completed'), `${name}: quest transaction should show quest status lists`);
+  assert(questWindow.text.includes('Disponibles') && questWindow.text.includes('Aceptadas') && questWindow.text.includes('Completadas'), `${name}: localized quest transaction should show quest status lists`);
   await page.evaluate(() => App.closeTransactionWindow());
+  const localizedScaffolding = await page.evaluate(() => {
+    const attribute = (selector, name) => document.querySelector(selector)?.getAttribute(name) || '';
+    const text = selector => (document.querySelector(selector)?.textContent || '').trim();
+    return {
+      holdingsText: text('#app-menu [data-command-control="open-holdings"] span'),
+      holdingsLabel: attribute('#app-menu [data-command-control="open-holdings"]', 'aria-label'),
+      tileDetailsTitle: text('#mobile-tile-details-title'),
+      tileDetailsClose: attribute('[data-command-control="close-tile-details"]', 'aria-label'),
+      mobileNewBeatText: text('#mobile-new-beat-indicator'),
+      mobileNewBeatLabel: attribute('#mobile-new-beat-indicator', 'aria-label'),
+      mobileOpenFeedText: text('.mobile-story-expand-btn'),
+      mobileOpenFeedLabel: attribute('.mobile-story-expand-btn', 'aria-label'),
+      mobileFeedLabel: attribute('#mobile-story-latest', 'aria-label'),
+      desktopPlayLabel: attribute('#desktop-play-surface', 'aria-label'),
+      desktopGridLabel: attribute('#desktop-neighborhood-grid', 'aria-label'),
+      desktopFeedButtonText: text('.desktop-story-expand-btn'),
+      desktopFeedLabel: attribute('#desktop-scene-feed-latest', 'aria-label'),
+      commandComposerLabel: attribute('#desktop-command-composer', 'aria-label'),
+      storySheetKicker: text('.story-sheet-kicker'),
+      storySheetTitle: text('#story-sheet-title'),
+      storySheetClose: attribute('[data-command-control="close-story-sheet"]', 'aria-label'),
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(localizedScaffolding.holdingsText, 'Pertenencias', `${name}: app-menu Holdings text should localize`);
+  assert.strictEqual(localizedScaffolding.holdingsLabel, 'Abrir pertenencias', `${name}: app-menu Holdings accessible name should localize`);
+  assert.strictEqual(localizedScaffolding.tileDetailsTitle, 'Detalles de casilla', `${name}: tile-detail heading should localize`);
+  assert.strictEqual(localizedScaffolding.tileDetailsClose, 'Cerrar detalles de casilla', `${name}: tile-detail close accessible name should localize`);
+  assert.strictEqual(localizedScaffolding.mobileNewBeatText, 'Nuevo', `${name}: mobile new-beat indicator should localize`);
+  assert.strictEqual(localizedScaffolding.mobileNewBeatLabel, 'Ir al evento de escena mas reciente', `${name}: mobile new-beat accessible name should localize`);
+  assert.strictEqual(localizedScaffolding.mobileOpenFeedText, 'Escena', `${name}: mobile Scene Feed trigger text should localize`);
+  assert.strictEqual(localizedScaffolding.mobileOpenFeedLabel, 'Abrir cronica de escena', `${name}: mobile Scene Feed trigger accessible name should localize`);
+  assert.strictEqual(localizedScaffolding.mobileFeedLabel, 'Registro de escena, intercambios mas recientes primero', `${name}: mobile Scene Feed stream accessible name should localize`);
+  assert.strictEqual(localizedScaffolding.desktopPlayLabel, 'Superficie de juego actual', `${name}: desktop play surface accessible name should localize`);
+  assert.strictEqual(localizedScaffolding.desktopGridLabel, 'Cuadricula de recorrido 3 por 3', `${name}: desktop traversal grid accessible name should localize`);
+  assert.strictEqual(localizedScaffolding.desktopFeedButtonText, 'Cronica', `${name}: desktop Scene Feed trigger text should localize`);
+  assert.strictEqual(localizedScaffolding.desktopFeedLabel, 'Registro de escena, intercambios mas recientes primero', `${name}: desktop Scene Feed stream accessible name should localize`);
+  assert.strictEqual(localizedScaffolding.commandComposerLabel, 'Compositor de acciones', `${name}: desktop command composer accessible name should localize`);
+  assert.strictEqual(localizedScaffolding.storySheetKicker, 'Cronica de escena', `${name}: expanded Scene Feed kicker should localize`);
+  assert.strictEqual(localizedScaffolding.storySheetTitle, 'Eventos de escena recientes', `${name}: expanded Scene Feed heading should localize`);
+  assert.strictEqual(localizedScaffolding.storySheetClose, 'Cerrar cronica de escena', `${name}: expanded Scene Feed close accessible name should localize`);
+  assert.strictEqual(localizedScaffolding.pageOverflow, false, `${name}: localized persistent scaffolding should not create horizontal overflow`);
+  await page.evaluate(() => {
+    const makeUnnamed = (id, disposition) => ({
+      id, name: '', species: 'human', icon: '👤', disposition,
+      CPun: 100, MPun: 100, CPle: 30, MPle: 100,
+      level: 1, size: 4, appetite: 4,
+      stomach: [], womb: [], balls: [], inventory: [],
+      Figh: 10, Flir: 10, Fuck: 10, Feas: 10, Feed: 10, Flee: 10,
+      con: 10, wis: 10, cha: 10
+    });
+    App.party = [App.player, makeUnnamed('unnamed-ally', App.DISPOSITION.FRIENDLY)];
+    App.creatures = [makeUnnamed('unnamed-creature', App.DISPOSITION.FRIENDLY)];
+    App.renderParty();
+    App.renderCreatures();
+  });
+  await page.waitForTimeout(50);
+  const localizedFallbackUnits = await page.evaluate(() => {
+    const roots = ['#party-content', '#enemies-content', '#mobile-party-strip', '#mobile-creature-strip'];
+    const names = roots.flatMap(root => Array.from(document.querySelectorAll(`${root} .unit-name`), element => (element.textContent || '').trim()));
+    const labels = roots.flatMap(root => Array.from(document.querySelectorAll(`${root} [aria-label]`), element => element.getAttribute('aria-label') || ''));
+    App.showMobilePartyContext(1);
+    const dialog = document.getElementById('mobile-context-menu');
+    const dialogTitle = dialog?.querySelector('#mobile-context-menu-title')?.textContent || '';
+    const roleLabel = dialog?.querySelector('[data-command-control="set-party-role"]')?.getAttribute('aria-label') || '';
+    const orderLabel = dialog?.querySelector('[data-command-control="set-party-ai-order"]')?.getAttribute('aria-label') || '';
+    const dialogRole = dialog?.getAttribute('role') || '';
+    App.closeMobileContextMenu();
+    return {
+      names,
+      labels,
+      dialogTitle,
+      dialogDescription: dialog?.querySelector('#mobile-context-menu-description')?.textContent || '',
+      describedBy: dialog?.getAttribute('aria-describedby') || '',
+      roleLabel,
+      orderLabel,
+      dialogRole,
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert(localizedFallbackUnits.names.includes('miembro del grupo'), `${name}: unnamed party cards should use the maintained Spanish fallback`);
+  assert(localizedFallbackUnits.names.includes('criatura'), `${name}: unnamed creature cards should use the maintained Spanish fallback`);
+  assert(!localizedFallbackUnits.names.includes('party member') && !localizedFallbackUnits.names.includes('creature'), `${name}: localized unnamed cards should not leak English fallbacks`);
+  assert(localizedFallbackUnits.labels.some(label => label.includes('miembro del grupo')), `${name}: unnamed party controls should have localized accessible names`);
+  assert(localizedFallbackUnits.labels.some(label => label.includes('criatura')), `${name}: unnamed creature controls should have localized accessible names`);
+  assert.strictEqual(localizedFallbackUnits.dialogRole, 'dialog', `${name}: unnamed-party context actions should retain dialog semantics`);
+  assert.strictEqual(localizedFallbackUnits.describedBy, 'mobile-context-menu-description', `${name}: unnamed-party context dialog should reference its visible purpose`);
+  assert(localizedFallbackUnits.dialogDescription.includes('miembro del grupo'), `${name}: unnamed-party context purpose should use the localized visible name`);
+  assert(localizedFallbackUnits.dialogTitle.includes('miembro del grupo'), `${name}: unnamed-party context dialog should use the localized visible name`);
+  assert(localizedFallbackUnits.roleLabel.includes('miembro del grupo'), `${name}: unnamed-party role selector should use the localized accessible name`);
+  assert(localizedFallbackUnits.orderLabel.includes('miembro del grupo'), `${name}: unnamed-party AI selector should use the localized accessible name`);
+  assert.strictEqual(localizedFallbackUnits.pageOverflow, false, `${name}: longer fallback names should not create horizontal overflow`);
+  await page.evaluate(() => App.updateLanguage('en'));
   await page.evaluate(makeUnitScript());
   await page.waitForTimeout(50);
 
@@ -1249,6 +1866,12 @@ async function checkViewport(browser, name, width, height) {
     companion.stomach = [companionHeld];
     App._normalizeContainmentRecord(companion, companionHeld, 'stomach');
     if (!(App.party || []).includes(companion)) App.party = [App.player, companion];
+    const holdingsOpener = Array.from(document.querySelectorAll('[data-command-control="open-holdings"]')).find(button => {
+      const rect = button.getBoundingClientRect?.();
+      const style = getComputedStyle(button);
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect && (rect.width > 0 || rect.height > 0);
+    });
+    holdingsOpener?.focus();
     App.showCharacterStats();
   });
   await page.waitForTimeout(50);
@@ -1276,6 +1899,9 @@ async function checkViewport(browser, name, width, height) {
       hidden: Boolean(root?.hidden),
       role: dialog?.getAttribute('role') || '',
       ariaModal: dialog?.getAttribute('aria-modal') || '',
+      labelledBy: dialog?.getAttribute('aria-labelledby') || '',
+      describedBy: dialog?.getAttribute('aria-describedby') || '',
+      descriptionText: document.getElementById(dialog?.getAttribute('aria-describedby') || '')?.textContent?.trim() || '',
       surfaceRole: dialog?.getAttribute('data-surface-role') || '',
       title: root?.querySelector('#holdings-window-title')?.textContent?.trim() || '',
       inViewport: Boolean(rect && rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
@@ -1300,6 +1926,9 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(holdingsWindow.hidden, false, `${name}: Holdings window should be visible from live play`);
   assert.strictEqual(holdingsWindow.role, 'dialog', `${name}: Holdings window should use dialog semantics`);
   assert.strictEqual(holdingsWindow.ariaModal, 'true', `${name}: Holdings window should be modal`);
+  assert.strictEqual(holdingsWindow.labelledBy, 'holdings-window-title', `${name}: Holdings window should reference its visible title`);
+  assert.strictEqual(holdingsWindow.describedBy, 'holdings-window-description', `${name}: Holdings window should reference its visible purpose`);
+  assert(holdingsWindow.descriptionText.length > 0, `${name}: Holdings window purpose should resolve to visible text`);
   assert.strictEqual(holdingsWindow.surfaceRole, 'holdings-window', `${name}: Holdings window should identify its surface role`);
   assert(holdingsWindow.title.length > 0, `${name}: Holdings window should expose a title`);
   assert.strictEqual(holdingsWindow.inViewport, true, `${name}: Holdings window should stay inside the viewport`);
@@ -1396,6 +2025,7 @@ async function checkViewport(browser, name, width, height) {
   await page.waitForTimeout(50);
   const containedDetail = await page.evaluate(() => {
     const root = document.getElementById('holdings-window-root');
+    const dialog = root?.querySelector('.holdings-window');
     const title = root?.querySelector('#holdings-window-title');
     const close = root?.querySelector('.holdings-close[data-command-control="close-holdings"]');
     const back = root?.querySelector('[data-command-control="back-holdings"]');
@@ -1403,6 +2033,8 @@ async function checkViewport(browser, name, width, height) {
     const digest = root?.querySelector('[data-command-control="digest-contained"]');
     return {
       title: title?.textContent?.trim() || '',
+      describedBy: dialog?.getAttribute('aria-describedby') || '',
+      descriptionText: document.getElementById(dialog?.getAttribute('aria-describedby') || '')?.textContent?.trim() || '',
       text: root?.innerText || '',
       closeText: close?.textContent?.trim() || '',
       closeTitle: close?.getAttribute('title') || '',
@@ -1410,17 +2042,23 @@ async function checkViewport(browser, name, width, height) {
       backTitle: back?.getAttribute('title') || '',
       releaseTitle: release?.getAttribute('title') || '',
       digestTitle: digest?.getAttribute('title') || '',
+      focusTrapIsDialog: App._focusTrap?.container === dialog,
+      focusInside: Boolean(dialog?.contains(document.activeElement)),
       appClass: document.getElementById('app')?.classList.contains('holdings-window-open') || false,
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     };
   });
   assert(containedDetail.title.includes('Held One'), `${name}: contained Inspect should open the selected creature inside Holdings`);
+  assert.strictEqual(containedDetail.describedBy, 'holdings-window-description', `${name}: contained Inspect should reference its visible purpose`);
+  assert(containedDetail.descriptionText.length > 0, `${name}: contained Inspect purpose should resolve to visible text`);
   assert(containedDetail.text.includes('Vitality') && containedDetail.text.includes('Integrity'), `${name}: contained Inspect should show vitality, integrity, and release state`);
   assert.strictEqual(containedDetail.closeText, 'Close', `${name}: contained Inspect header exit should close the overlay rather than masquerading as Back`);
   assert.strictEqual(containedDetail.closeTitle, 'Close', `${name}: contained Inspect close control should keep an accessible title`);
   assert.strictEqual(containedDetail.backText, 'Back', `${name}: contained Inspect should expose an in-body Back control to return to Containers`);
   assert.strictEqual(containedDetail.backTitle, 'Back', `${name}: contained Inspect Back control should keep an accessible title`);
   assert(containedDetail.releaseTitle && containedDetail.digestTitle, `${name}: contained Inspect Release/Digest controls should keep accessible titles`);
+  assert.strictEqual(containedDetail.focusTrapIsDialog, true, `${name}: contained Inspect should reactivate the Holdings dialog focus trap after replacing its markup`);
+  assert.strictEqual(containedDetail.focusInside, true, `${name}: contained Inspect should keep keyboard focus inside the dialog`);
   assert.strictEqual(containedDetail.appClass, true, `${name}: contained Inspect should stay inside the Holdings overlay state`);
   assert.strictEqual(containedDetail.pageOverflow, false, `${name}: contained Inspect should not create horizontal overflow`);
 
@@ -1452,6 +2090,7 @@ async function checkViewport(browser, name, width, height) {
       appClass: app?.classList.contains('holdings-window-open') || false,
       stageInert: document.querySelector('#app > .stage')?.hasAttribute('inert') || false,
       focusTrapCleared: !App._focusTrap,
+      focusReturnedToHoldingsOpener: document.activeElement?.getAttribute('data-command-control') === 'open-holdings',
       dockVisible: Boolean(dock) && getComputedStyle(dock).display !== 'none' && dock.getBoundingClientRect().height > 0,
       surfaceVisible: Boolean(surfaceRect && surfaceRect.width > 0 && surfaceRect.height > 0),
       surfaceInsideViewport: !surfaceRect || (surfaceRect.left >= -1 && surfaceRect.right <= innerWidth + 1),
@@ -1462,6 +2101,7 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedHoldings.appClass, false, `${name}: closing Holdings should clear the app shell marker`);
   assert.strictEqual(returnedHoldings.stageInert, false, `${name}: closing Holdings should restore stage interactivity`);
   assert.strictEqual(returnedHoldings.focusTrapCleared, true, `${name}: closing Holdings should clear the focus trap`);
+  assert.strictEqual(returnedHoldings.focusReturnedToHoldingsOpener, true, `${name}: closing Holdings should return focus to the invoking Holdings control`);
   if (width <= 1024) assert.strictEqual(returnedHoldings.dockVisible, true, `${name}: mobile dock should be visible after Holdings closes`);
   assert.strictEqual(returnedHoldings.surfaceVisible, true, `${name}: play surface should be visible after Holdings closes`);
   assert.strictEqual(returnedHoldings.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after Holdings closes`);
@@ -1526,6 +2166,7 @@ async function checkViewport(browser, name, width, height) {
         viewportHeight: innerHeight,
         topNavDisplay: topNav ? getComputedStyle(topNav).display : '',
         timeDisplayVisible: Boolean(timeDisplay) && getComputedStyle(timeDisplay).display !== 'none' && timeRect.width > 0 && timeRect.height > 0,
+        focusControl: document.activeElement?.getAttribute?.('data-command-control') || '',
         visibleItems
       };
     });
@@ -1540,8 +2181,21 @@ async function checkViewport(browser, name, width, height) {
     assert(appMenu.visibleItems.some(label => label.includes('Load')), `${name}: mobile app menu should expose Load`);
     assert.strictEqual(appMenu.topNavDisplay, 'none', `${name}: mobile header should hide duplicated desktop play shortcuts`);
     assert.strictEqual(appMenu.timeDisplayVisible, true, `${name}: mobile header should keep the time indicator visible`);
+    assert.strictEqual(appMenu.focusControl, 'open-save-slots', `${name}: opening the app menu should move focus to its first available command`);
+    await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(20);
+    const arrowMenuFocus = await page.evaluate(() => document.activeElement?.getAttribute?.('data-command-control') || '');
+    assert.strictEqual(arrowMenuFocus, 'open-load-slots', `${name}: app-menu ArrowDown should move to the next menu command`);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(50);
+    const dismissedAppMenu = await page.evaluate(() => ({
+      open: document.getElementById('app-menu')?.classList.contains('open') || false,
+      expanded: document.getElementById('app-menu-toggle')?.getAttribute('aria-expanded') || '',
+      focusId: document.activeElement?.id || ''
+    }));
+    assert.strictEqual(dismissedAppMenu.open, false, `${name}: Escape should close the app menu`);
+    assert.strictEqual(dismissedAppMenu.expanded, 'false', `${name}: Escape should collapse the app-menu trigger state`);
+    assert.strictEqual(dismissedAppMenu.focusId, 'app-menu-toggle', `${name}: Escape should restore focus to the app-menu trigger`);
 
     const mobileControls = await page.evaluate(() => {
       const dock = document.querySelector('.mobile-panel-dock');
@@ -1822,6 +2476,145 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.creatureCueButtonHeight >= 44, `${name}: baseline mobile creature cue should keep a finger-sized touch target`);
     assert(mobileControls.creatureCueText.includes('Here:'), `${name}: baseline mobile creature cue should summarize the first visible creature`);
     assert.strictEqual(mobileControls.creatureCueInSheet, false, `${name}: mobile creature cue should not reintroduce a HERE block into the presentation sheet`);
+
+    const openedMobileVariant = await page.evaluate(() => {
+      App.closeIntentMenu?.();
+      App.closeAllPanels?.();
+      App.combatState.active = false;
+      App.updateLanguage('es');
+      App.clearExplorationTargets();
+      App.toggleExplorationTarget('creature', 'creature-1');
+      App.renderExplorationActions();
+      const opener = document.querySelector('#mobile-control-belt [data-command-intent="feast"], #mobile-target-actions [data-command-intent="feast"], [data-command-surface="target-intents"][data-command-intent="feast"]');
+      if (!opener) return false;
+      opener.focus();
+      App.openExplorationSubActionSheet('feast', 'composer-tray', '');
+      return true;
+    });
+    assert.strictEqual(openedMobileVariant, true, `${name}: mobile marked-target Feast should open its contextual variant dialog`);
+    await page.waitForTimeout(50);
+    const mobileVariant = await page.evaluate(() => {
+      const dialog = document.getElementById('mobile-context-menu');
+      const rect = dialog?.getBoundingClientRect();
+      const buttons = Array.from(dialog?.querySelectorAll('button') || []).filter(button => {
+        const buttonRect = button.getBoundingClientRect();
+        return buttonRect.width > 0 && buttonRect.height > 0;
+      });
+      const buttonRects = buttons.map(button => {
+        const buttonRect = button.getBoundingClientRect();
+        return { width: buttonRect.width, height: buttonRect.height, left: buttonRect.left, right: buttonRect.right, top: buttonRect.top, bottom: buttonRect.bottom };
+      });
+      const labelledBy = dialog?.getAttribute('aria-labelledby') || '';
+      const describedBy = dialog?.getAttribute('aria-describedby') || '';
+      return {
+        exists: Boolean(dialog),
+        role: dialog?.getAttribute('role') || '',
+        ariaModal: dialog?.getAttribute('aria-modal') || '',
+        labelledBy,
+        describedBy,
+        titleText: document.getElementById(labelledBy)?.textContent?.trim() || '',
+        descriptionText: document.getElementById(describedBy)?.textContent?.trim() || '',
+        inViewport: Boolean(rect && rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
+        scrollable: ['auto', 'scroll'].includes(getComputedStyle(dialog).overflowY),
+        appInert: document.getElementById('app')?.hasAttribute('inert') || false,
+        focusInside: Boolean(dialog?.contains(document.activeElement)),
+        buttonCount: buttonRects.length,
+        minButtonHeight: Math.min(...buttonRects.map(button => button.height)),
+        buttonsInsideDialogWidth: buttonRects.every(button => button.left >= rect.left - 1 && button.right <= rect.right + 1),
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    });
+    assert.strictEqual(mobileVariant.exists, true, `${name}: mobile contextual variant dialog should render`);
+    assert.strictEqual(mobileVariant.role, 'dialog', `${name}: mobile contextual variant dialog should expose dialog semantics`);
+    assert.strictEqual(mobileVariant.ariaModal, 'true', `${name}: mobile contextual variant dialog should be modal`);
+    assert.strictEqual(mobileVariant.labelledBy, 'mobile-context-menu-title', `${name}: mobile contextual variant dialog should reference its visible title`);
+    assert.strictEqual(mobileVariant.describedBy, 'mobile-context-menu-title-description', `${name}: mobile contextual variant dialog should reference its visible purpose`);
+    assert(mobileVariant.titleText.length > 0, `${name}: mobile contextual variant title should resolve to visible text`);
+    assert(mobileVariant.descriptionText.includes('Elige'), `${name}: mobile contextual variant purpose should remain localized under maximum text pressure`);
+    assert.strictEqual(mobileVariant.inViewport, true, `${name}: mobile contextual variant dialog should stay inside the viewport`);
+    assert.strictEqual(mobileVariant.scrollable, true, `${name}: mobile contextual variant dialog should retain bounded scrolling`);
+    assert.strictEqual(mobileVariant.appInert, true, `${name}: mobile contextual variant dialog should isolate the underlying app`);
+    assert.strictEqual(mobileVariant.focusInside, true, `${name}: mobile contextual variant dialog should contain keyboard focus`);
+    assert(mobileVariant.buttonCount >= 2, `${name}: mobile contextual variant dialog should expose at least one option and Back`);
+    assert(mobileVariant.minButtonHeight >= 44, `${name}: mobile contextual variant controls should keep finger-sized touch targets`);
+    assert.strictEqual(mobileVariant.buttonsInsideDialogWidth, true, `${name}: mobile contextual variant controls should not clip horizontally outside the dialog`);
+    assert.strictEqual(mobileVariant.pageOverflow, false, `${name}: mobile contextual variant dialog should not create horizontal page overflow`);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(50);
+    const closedMobileVariant = await page.evaluate(() => {
+      const active = document.activeElement;
+      const restored = active?.getAttribute?.('data-command-intent') === 'feast';
+      App.clearExplorationTargets();
+      App.updateLanguage('en');
+      App.renderExplorationActions();
+      return {
+        removed: !document.getElementById('mobile-context-menu'),
+        appInert: document.getElementById('app')?.hasAttribute('inert') || false,
+        focusRestored: restored
+      };
+    });
+    assert.strictEqual(closedMobileVariant.removed, true, `${name}: Escape should close the mobile contextual variant dialog`);
+    assert.strictEqual(closedMobileVariant.appInert, false, `${name}: closing the mobile contextual variant dialog should restore the app accessibility tree`);
+    assert.strictEqual(closedMobileVariant.focusRestored, true, `${name}: closing the mobile contextual variant dialog should restore its Feast opener`);
+
+    const tileDetailsOpenedFromVisibleOpener = await page.evaluate(() => {
+      const opener = document.querySelector('#mobile-tile-info .mobile-tile-details-btn');
+      const rect = opener?.getBoundingClientRect?.();
+      const style = opener ? getComputedStyle(opener) : null;
+      const visible = Boolean(opener && rect && rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden');
+      const ancestorInert = Boolean(opener?.closest?.('[inert]'));
+      if (visible) {
+        opener.focus();
+        opener.click();
+      } else {
+        App.openTileDetails();
+      }
+      return { visible, ancestorInert };
+    });
+    await page.waitForTimeout(50);
+    const tileDetailsDialog = await page.evaluate(() => {
+      const sheet = document.getElementById('mobile-tile-details-sheet');
+      const siblings = Array.from(sheet?.parentElement?.children || []).filter(element => element !== sheet);
+      return {
+        hidden: Boolean(sheet?.hidden),
+        labelledBy: sheet?.getAttribute('aria-labelledby') || '',
+        describedBy: sheet?.getAttribute('aria-describedby') || '',
+        title: document.getElementById('mobile-tile-details-title')?.textContent.trim() || '',
+        description: document.getElementById('mobile-tile-details-content')?.textContent.trim() || '',
+        focusTrapIsSheet: App._focusTrap?.container === sheet,
+        returnControl: App._tileDetailsReturnFocus?.control || '',
+        focusInside: Boolean(sheet?.contains(document.activeElement)),
+        siblingsInert: siblings.length > 0 && siblings.every(element => element.hasAttribute('inert') && element.getAttribute('aria-hidden') === 'true')
+      };
+    });
+    assert.strictEqual(tileDetailsDialog.hidden, false, `${name}: tile details should open as a visible modal sheet`);
+    assert.strictEqual(tileDetailsDialog.labelledBy, 'mobile-tile-details-title', `${name}: tile details should reference its visible localized heading`);
+    assert.strictEqual(tileDetailsDialog.describedBy, 'mobile-tile-details-content', `${name}: tile details should reference its visible metadata description`);
+    assert(tileDetailsDialog.title.length > 0 && tileDetailsDialog.description.length > 0, `${name}: tile-details relationships should resolve to visible content`);
+    assert.strictEqual(tileDetailsDialog.focusTrapIsSheet, true, `${name}: tile details should own the shared focus trap while open`);
+    if (tileDetailsOpenedFromVisibleOpener.visible && !tileDetailsOpenedFromVisibleOpener.ancestorInert) {
+      assert.strictEqual(tileDetailsDialog.returnControl, 'open-tile-details', `${name}: tile details should preserve a semantic token for its rerendered invoking control`);
+    }
+    assert.strictEqual(tileDetailsDialog.focusInside, true, `${name}: tile details should move keyboard focus into the sheet`);
+    assert.strictEqual(tileDetailsDialog.siblingsInert, true, `${name}: modal tile details should hide sibling play surfaces from interaction and assistive technology`);
+    await page.locator('[data-command-control="close-tile-details"]').click();
+    await page.waitForTimeout(50);
+    const closedTileDetails = await page.evaluate(() => {
+      const sheet = document.getElementById('mobile-tile-details-sheet');
+      const siblings = Array.from(sheet?.parentElement?.children || []).filter(element => element !== sheet);
+      return {
+        hidden: Boolean(sheet?.hidden),
+        focusTrapCleared: !App._focusTrap,
+        focusReturnedToOpener: document.activeElement?.getAttribute('data-command-control') === 'open-tile-details',
+        siblingsRestored: siblings.every(element => !element.hasAttribute('inert'))
+      };
+    });
+    assert.strictEqual(closedTileDetails.hidden, true, `${name}: closing tile details should hide the sheet`);
+    assert.strictEqual(closedTileDetails.focusTrapCleared, true, `${name}: closing tile details should clear its focus trap`);
+    if (tileDetailsOpenedFromVisibleOpener.visible && !tileDetailsOpenedFromVisibleOpener.ancestorInert) {
+      assert.strictEqual(closedTileDetails.focusReturnedToOpener, true, `${name}: closing tile details should restore focus to its visible invoking control`);
+    }
+    assert.strictEqual(closedTileDetails.siblingsRestored, true, `${name}: closing tile details should restore sibling play surfaces`);
     const hingeDelta = (before, after) => Math.abs(Number(before) - Number(after));
     const assertStableMobileMapHinge = (state) => {
       assert(
@@ -2167,7 +2960,13 @@ async function checkViewport(browser, name, width, height) {
         summary: 'You and Bunnyfolk exchange a tense look.',
         passage: 'Bunnyfolk studies the camp while you hold position.'
       });
-      App.openStorySheet();
+      const opener = Array.from(document.querySelectorAll('[data-command-control="open-story-sheet"]')).find(element => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+      });
+      opener?.focus();
+      opener?.click();
       const appRoot = document.getElementById('app');
       const sheet = document.getElementById('story-sheet');
       const windowEl = sheet?.querySelector('.story-sheet-window');
@@ -2184,6 +2983,10 @@ async function checkViewport(browser, name, width, height) {
         appOpenClass: appRoot.classList.contains('story-sheet-open'),
         hidden: sheet.hidden,
         ariaHidden: sheet.getAttribute('aria-hidden'),
+        labelledBy: sheet.getAttribute('aria-labelledby'),
+        describedBy: sheet.getAttribute('aria-describedby'),
+        description: document.getElementById('story-sheet-description')?.textContent?.trim() || '',
+        focusInside: sheet.contains(document.activeElement),
         sheetLeft: sheetRect.left,
         sheetRight: sheetRect.right,
         sheetTop: sheetRect.top,
@@ -2199,9 +3002,10 @@ async function checkViewport(browser, name, width, height) {
         viewportWidth: innerWidth,
         viewportHeight: innerHeight
       };
-      App.closeStorySheet();
+      close?.click();
       opened.closedHidden = sheet.hidden;
       opened.closedAriaHidden = sheet.getAttribute('aria-hidden');
+      opened.focusRestored = document.activeElement === opener;
       opened.headerInertAfterClose = header?.hasAttribute('inert') || false;
       opened.mainInertAfterClose = main?.hasAttribute('inert') || false;
       opened.appOpenClassAfterClose = appRoot.classList.contains('story-sheet-open');
@@ -2209,6 +3013,10 @@ async function checkViewport(browser, name, width, height) {
     });
     assert.strictEqual(openStorySheet.hidden, false, `${name}: mobile story sheet should open from the inline scene feed access path`);
     assert.strictEqual(openStorySheet.ariaHidden, 'false', `${name}: open mobile story sheet should expose dialog semantics`);
+    assert.strictEqual(openStorySheet.labelledBy, 'story-sheet-title', `${name}: Scene Feed dialog should reference its visible localized heading`);
+    assert.strictEqual(openStorySheet.describedBy, 'story-sheet-description', `${name}: Scene Feed dialog should reference its bounded purpose description`);
+    assert(openStorySheet.description.length > 0, `${name}: Scene Feed dialog description should not be empty`);
+    assert.strictEqual(openStorySheet.focusInside, true, `${name}: opening Scene Feed should move focus inside the dialog`);
     assert.strictEqual(openStorySheet.appOpenClass, true, `${name}: open mobile story sheet should mark root state`);
     assert(openStorySheet.sheetLeft >= -1 && openStorySheet.sheetRight <= openStorySheet.viewportWidth + 1, `${name}: mobile story sheet should stay inside viewport horizontally`);
     assert(openStorySheet.sheetTop >= -1 && openStorySheet.sheetBottom <= openStorySheet.viewportHeight + 1, `${name}: mobile story sheet should stay inside viewport vertically`);
@@ -2225,6 +3033,7 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(openStorySheet.headerInertAfterClose, false, `${name}: closing mobile story sheet should restore header interaction`);
     assert.strictEqual(openStorySheet.mainInertAfterClose, false, `${name}: closing mobile story sheet should restore play surface interaction`);
     assert.strictEqual(openStorySheet.appOpenClassAfterClose, false, `${name}: closing mobile story sheet should clear root state`);
+    assert.strictEqual(openStorySheet.focusRestored, true, `${name}: closing Scene Feed should restore its actual opener focus`);
 
     await page.evaluate(() => {
       App.toggleMobileMovePad();
@@ -2383,13 +3192,13 @@ async function checkViewport(browser, name, width, height) {
     await page.waitForTimeout(50);
     await page.evaluate(() => App.openPanelFromRail('party', 'actor'));
     await page.waitForTimeout(50);
-    const actorDrawer = await page.evaluate(() => {
-      const panel = document.getElementById('panel-party');
-      const backdrop = document.getElementById('panel-backdrop');
-      const close = panel?.querySelector('[data-command-control="close-actor-drawer"]');
+    const actorRoster = await page.evaluate(() => {
+      const panel = document.getElementById('mobile-roster-sheet');
+      const close = panel?.querySelector('[data-command-control="close-roster"]');
+      const activeTab = panel?.querySelector('[data-roster-tab][aria-selected="true"]');
       const panelRect = panel?.getBoundingClientRect();
       const closeRect = close?.getBoundingClientRect();
-      const compactCards = Array.from(panel?.querySelectorAll('.unit-card.compact-tactical-card.density-medium:not(.expanded)') || []);
+      const compactCards = Array.from(panel?.querySelectorAll('#mobile-roster-tabpanel > .mobile-unit-chip') || []);
       const cardRects = compactCards.map(card => card.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
       const ringCounts = compactCards.map(card => card.querySelectorAll('.tactical-stat-ring').length);
       const clippedCardButtons = compactCards.flatMap(card => Array.from(card.querySelectorAll('button')).filter(button => {
@@ -2402,52 +3211,55 @@ async function checkViewport(browser, name, width, height) {
           buttonRect.bottom > cardRect.bottom + 1
         );
       }).map(button => button.getAttribute('data-command-control') || button.textContent.trim()));
+      const composer = document.getElementById('mobile-control-belt');
+      const composerRect = composer?.getBoundingClientRect();
       return {
-        panelActive: panel?.classList.contains('active') || false,
+        panelOpen: panel?.classList.contains('open') && !panel.hidden,
         panelInsideViewport: Boolean(panelRect && panelRect.left >= -1 && panelRect.right <= innerWidth + 1 && panelRect.top >= -1 && panelRect.bottom <= innerHeight + 1),
-        backdropActive: backdrop?.classList.contains('active') || false,
+        activeTab: activeTab?.dataset.rosterTab || '',
         returnRail: App._mobilePanelReturnRail || '',
         actorIds: (App.explorationActorIds || []).join(','),
         actorExplicit: Boolean(App.explorationActorSelectionExplicit),
         targetIds: (App.explorationTargetIds || []).join(','),
         closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
         closeSlot: close?.getAttribute('data-command-slot') || '',
+        closeUsable: Boolean(closeRect && closeRect.width >= 44 && closeRect.height >= 44),
+        composerVisible: Boolean(composerRect && composerRect.width > 0 && composerRect.height > 0),
         compactCardCount: compactCards.length,
         compactMinHeight: cardRects.length ? Math.min(...cardRects.map(rect => rect.height)) : 0,
-        compactMaxHeight: cardRects.length ? Math.max(...cardRects.map(rect => rect.height)) : 0,
         compactCardsHaveRings: ringCounts.every(count => count >= 3),
         clippedCardButtons,
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
       };
     });
-    assert.strictEqual(actorDrawer.panelActive, true, `${name}: actor Details should open the full actor drawer`);
-    assert.strictEqual(actorDrawer.panelInsideViewport, true, `${name}: actor Details drawer should stay inside the mobile viewport`);
-    assert.strictEqual(actorDrawer.backdropActive, true, `${name}: actor Details drawer should activate the panel backdrop`);
-    assert.strictEqual(actorDrawer.returnRail, 'actor', `${name}: actor Details should remember the compact actor rail return target`);
-    assert.strictEqual(actorDrawer.actorIds, 'ally-1', `${name}: actor Details should preserve explicit actor selection`);
-    assert.strictEqual(actorDrawer.actorExplicit, true, `${name}: actor Details should preserve explicit actor mode`);
-    assert(actorDrawer.targetIds.includes('creature:creature-1'), `${name}: actor Details should preserve marked creature targets`);
-    assert.strictEqual(actorDrawer.closeVisible, true, `${name}: actor Details drawer should expose a visible close exit`);
-    assert.strictEqual(actorDrawer.closeSlot, 'exit', `${name}: actor Details close should identify the exit slot`);
-    assert(actorDrawer.compactCardCount >= 2, `${name}: actor Details drawer should render collapsed medium party cards`);
-    assert(actorDrawer.compactMinHeight >= 60, `${name}: collapsed medium party cards should keep a usable touch height, got ${actorDrawer.compactMinHeight}`);
-    assert(actorDrawer.compactMaxHeight <= 92, `${name}: collapsed medium party cards should not waste vertical drawer space, got ${actorDrawer.compactMaxHeight}`);
-    assert.strictEqual(actorDrawer.compactCardsHaveRings, true, `${name}: collapsed medium party cards should keep stat rings visible`);
-    assert.deepStrictEqual(actorDrawer.clippedCardButtons, [], `${name}: collapsed medium party card controls should not clip`);
-    assert.strictEqual(actorDrawer.pageOverflow, false, `${name}: actor Details drawer should not create horizontal overflow`);
+    assert.strictEqual(actorRoster.panelOpen, true, `${name}: actor Details should open the unified Roster`);
+    assert.strictEqual(actorRoster.panelInsideViewport, true, `${name}: Roster should stay inside the mobile viewport`);
+    assert.strictEqual(actorRoster.activeTab, 'party', `${name}: actor Details should open the Party Roster tab`);
+    assert.strictEqual(actorRoster.returnRail, 'actor', `${name}: Roster should remember the compact actor rail return target`);
+    assert.strictEqual(actorRoster.actorIds, 'ally-1', `${name}: Roster should preserve explicit actor selection`);
+    assert.strictEqual(actorRoster.actorExplicit, true, `${name}: Roster should preserve explicit actor mode`);
+    assert(actorRoster.targetIds.includes('creature:creature-1'), `${name}: Roster should preserve marked creature targets`);
+    assert.strictEqual(actorRoster.closeVisible, true, `${name}: Roster should expose a visible close exit`);
+    assert.strictEqual(actorRoster.closeSlot, 'exit', `${name}: Roster close should identify the exit slot`);
+    assert.strictEqual(actorRoster.closeUsable, true, `${name}: Roster close should meet the 44px touch target`);
+    assert.strictEqual(actorRoster.composerVisible, true, `${name}: opening Roster should keep the command composer visible`);
+    assert(actorRoster.compactCardCount >= 2, `${name}: Party Roster should render compact party cards`);
+    assert(actorRoster.compactMinHeight >= 60, `${name}: compact Roster cards should keep a usable touch height, got ${actorRoster.compactMinHeight}`);
+    assert.strictEqual(actorRoster.compactCardsHaveRings, true, `${name}: compact Roster cards should keep stat rings visible`);
+    assert.deepStrictEqual(actorRoster.clippedCardButtons, [], `${name}: compact Roster card controls should not clip`);
+    assert.strictEqual(actorRoster.pageOverflow, false, `${name}: Roster should not create horizontal overflow`);
 
-    await page.locator('#panel-party [data-command-control="close-actor-drawer"]').click();
+    await page.locator('#mobile-roster-sheet [data-command-control="close-roster"]').click();
     await page.waitForTimeout(80);
-    const actorDrawerReturn = await page.evaluate(() => {
-      const panel = document.getElementById('panel-party');
-      const backdrop = document.getElementById('panel-backdrop');
+    const actorRosterReturn = await page.evaluate(() => {
+      const panel = document.getElementById('mobile-roster-sheet');
       const actorBelt = document.getElementById('mobile-actor-belt');
       const tray = document.getElementById('mobile-target-action-tray');
       const sentence = document.getElementById('mobile-selection-sentence');
       const actorBeltRect = actorBelt?.getBoundingClientRect();
       return {
-        panelActive: panel?.classList.contains('active') || false,
-        backdropActive: backdrop?.classList.contains('active') || false,
+        panelOpen: panel?.classList.contains('open') || false,
+        panelHidden: Boolean(panel?.hidden),
         returnRail: App._mobilePanelReturnRail || '',
         actorBeltOpen: Boolean(App.mobileActorBeltOpen),
         actorBeltSurface: actorBelt?.getAttribute('data-command-surface') || '',
@@ -2457,89 +3269,64 @@ async function checkViewport(browser, name, width, height) {
         targetIds: (App.explorationTargetIds || []).join(','),
         sentenceText: sentence?.innerText || '',
         trayText: tray?.innerText || '',
-        focusReturnedToRail: Boolean(document.activeElement?.closest?.('#mobile-actor-belt')),
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
       };
     });
-    assert.strictEqual(actorDrawerReturn.panelActive, false, `${name}: closing actor Details should hide the full actor drawer`);
-    assert.strictEqual(actorDrawerReturn.backdropActive, false, `${name}: closing actor Details should clear the panel backdrop`);
-    assert.strictEqual(actorDrawerReturn.returnRail, '', `${name}: closing actor Details should clear the temporary return rail`);
-    assert.strictEqual(actorDrawerReturn.actorBeltOpen, true, `${name}: closing actor Details should restore the compact actor rail`);
-    assert.strictEqual(actorDrawerReturn.actorBeltSurface, 'actor-target-routing', `${name}: restored actor rail should keep actor-target routing ownership`);
-    assert.strictEqual(actorDrawerReturn.actorBeltCollapsed, false, `${name}: restored actor rail should be visible after returning from actor Details`);
-    assert.strictEqual(actorDrawerReturn.actorIds, 'ally-1', `${name}: closing actor Details should preserve selected actors`);
-    assert.strictEqual(actorDrawerReturn.actorExplicit, true, `${name}: closing actor Details should preserve explicit actor mode`);
-    assert(actorDrawerReturn.targetIds.includes('creature:creature-1'), `${name}: closing actor Details should preserve marked targets`);
-    assert(actorDrawerReturn.sentenceText.includes('Ally') && actorDrawerReturn.sentenceText.includes('Creature'), `${name}: returned compact rail should keep the composer sentence intact`);
-    assert(actorDrawerReturn.trayText.includes('Fight') && actorDrawerReturn.trayText.includes('Clear'), `${name}: returned compact rail should keep target intents reachable`);
-    assert.strictEqual(actorDrawerReturn.focusReturnedToRail, true, `${name}: closing actor Details should return focus to the compact actor rail`);
-    assert.strictEqual(actorDrawerReturn.pageOverflow, false, `${name}: closing actor Details should not create horizontal overflow`);
+    assert.strictEqual(actorRosterReturn.panelOpen, false, `${name}: closing Roster should hide it`);
+    assert.strictEqual(actorRosterReturn.panelHidden, true, `${name}: closed Roster should be removed from the accessibility tree`);
+    assert.strictEqual(actorRosterReturn.returnRail, '', `${name}: closing Roster should clear its temporary rail origin`);
+    assert.strictEqual(actorRosterReturn.actorIds, 'ally-1', `${name}: closing Roster should preserve selected actors`);
+    assert.strictEqual(actorRosterReturn.actorExplicit, true, `${name}: closing Roster should preserve explicit actor mode`);
+    assert(actorRosterReturn.targetIds.includes('creature:creature-1'), `${name}: closing Roster should preserve marked targets`);
+    assert(actorRosterReturn.sentenceText.includes('Ally') && actorRosterReturn.sentenceText.includes('Creature'), `${name}: closing Roster should keep the composer sentence intact`);
+    assert(actorRosterReturn.trayText.includes('Fight') && actorRosterReturn.trayText.includes('Clear'), `${name}: closing Roster should keep target intents reachable`);
+    assert.strictEqual(actorRosterReturn.pageOverflow, false, `${name}: closing Roster should not create horizontal overflow`);
 
     await page.evaluate(() => App.openPanelFromRail('enemies', 'target'));
     await page.waitForTimeout(50);
-    const targetDrawer = await page.evaluate(() => {
-      const panel = document.getElementById('panel-enemies');
-      const backdrop = document.getElementById('panel-backdrop');
-      const close = panel?.querySelector('[data-command-control="close-target-drawer"]');
+    const targetRoster = await page.evaluate(() => {
+      const panel = document.getElementById('mobile-roster-sheet');
+      const close = panel?.querySelector('[data-command-control="close-roster"]');
+      const activeTab = panel?.querySelector('[data-roster-tab][aria-selected="true"]');
       const panelRect = panel?.getBoundingClientRect();
       const closeRect = close?.getBoundingClientRect();
-      const compactCards = Array.from(panel?.querySelectorAll('.unit-card.compact-tactical-card.density-medium:not(.expanded)') || []);
+      const compactCards = Array.from(panel?.querySelectorAll('#mobile-roster-tabpanel > .mobile-unit-chip') || []);
       const cardRects = compactCards.map(card => card.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
-      const ringCounts = compactCards.map(card => card.querySelectorAll('.tactical-stat-ring').length);
-      const clippedCardButtons = compactCards.flatMap(card => Array.from(card.querySelectorAll('button')).filter(button => {
-        const buttonRect = button.getBoundingClientRect();
-        const cardRect = card.getBoundingClientRect();
-        return buttonRect.width > 0 && buttonRect.height > 0 && (
-          buttonRect.left < cardRect.left - 1 ||
-          buttonRect.right > cardRect.right + 1 ||
-          buttonRect.top < cardRect.top - 1 ||
-          buttonRect.bottom > cardRect.bottom + 1
-        );
-      }).map(button => button.getAttribute('data-command-control') || button.textContent.trim()));
       return {
-        panelActive: panel?.classList.contains('active') || false,
+        panelOpen: panel?.classList.contains('open') && !panel.hidden,
         panelInsideViewport: Boolean(panelRect && panelRect.left >= -1 && panelRect.right <= innerWidth + 1 && panelRect.top >= -1 && panelRect.bottom <= innerHeight + 1),
-        backdropActive: backdrop?.classList.contains('active') || false,
+        activeTab: activeTab?.dataset.rosterTab || '',
         returnRail: App._mobilePanelReturnRail || '',
         actorIds: (App.explorationActorIds || []).join(','),
         targetIds: (App.explorationTargetIds || []).join(','),
         closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
-        closeSlot: close?.getAttribute('data-command-slot') || '',
         compactCardCount: compactCards.length,
         compactMinHeight: cardRects.length ? Math.min(...cardRects.map(rect => rect.height)) : 0,
-        compactMaxHeight: cardRects.length ? Math.max(...cardRects.map(rect => rect.height)) : 0,
-        compactCardsHaveRings: ringCounts.every(count => count >= 3),
-        clippedCardButtons,
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
       };
     });
-    assert.strictEqual(targetDrawer.panelActive, true, `${name}: target Details should open the full target drawer`);
-    assert.strictEqual(targetDrawer.panelInsideViewport, true, `${name}: target Details drawer should stay inside the mobile viewport`);
-    assert.strictEqual(targetDrawer.backdropActive, true, `${name}: target Details drawer should activate the panel backdrop`);
-    assert.strictEqual(targetDrawer.returnRail, 'target', `${name}: target Details should remember the compact target rail return target`);
-    assert.strictEqual(targetDrawer.actorIds, 'ally-1', `${name}: target Details should preserve selected actors`);
-    assert(targetDrawer.targetIds.includes('creature:creature-1'), `${name}: target Details should preserve marked targets`);
-    assert.strictEqual(targetDrawer.closeVisible, true, `${name}: target Details drawer should expose a visible close exit`);
-    assert.strictEqual(targetDrawer.closeSlot, 'exit', `${name}: target Details close should identify the exit slot`);
-    assert(targetDrawer.compactCardCount >= 1, `${name}: target Details drawer should render collapsed medium target cards`);
-    assert(targetDrawer.compactMinHeight >= 60, `${name}: collapsed medium target cards should keep a usable touch height, got ${targetDrawer.compactMinHeight}`);
-    assert(targetDrawer.compactMaxHeight <= 92, `${name}: collapsed medium target cards should not waste vertical drawer space, got ${targetDrawer.compactMaxHeight}`);
-    assert.strictEqual(targetDrawer.compactCardsHaveRings, true, `${name}: collapsed medium target cards should keep stat rings visible`);
-    assert.deepStrictEqual(targetDrawer.clippedCardButtons, [], `${name}: collapsed medium target card controls should not clip`);
-    assert.strictEqual(targetDrawer.pageOverflow, false, `${name}: target Details drawer should not create horizontal overflow`);
+    assert.strictEqual(targetRoster.panelOpen, true, `${name}: target Details should open the unified Roster`);
+    assert.strictEqual(targetRoster.panelInsideViewport, true, `${name}: target Roster should stay inside the mobile viewport`);
+    assert.strictEqual(targetRoster.activeTab, 'here', `${name}: target Details should open the Here Roster tab`);
+    assert.strictEqual(targetRoster.returnRail, 'target', `${name}: target Roster should remember the compact target rail return target`);
+    assert.strictEqual(targetRoster.actorIds, 'ally-1', `${name}: target Roster should preserve selected actors`);
+    assert(targetRoster.targetIds.includes('creature:creature-1'), `${name}: target Roster should preserve marked targets`);
+    assert.strictEqual(targetRoster.closeVisible, true, `${name}: target Roster should expose a visible close exit`);
+    assert(targetRoster.compactCardCount >= 1, `${name}: Here Roster should render compact target cards`);
+    assert(targetRoster.compactMinHeight >= 60, `${name}: compact target cards should keep a usable touch height, got ${targetRoster.compactMinHeight}`);
+    assert.strictEqual(targetRoster.pageOverflow, false, `${name}: target Roster should not create horizontal overflow`);
 
-    await page.locator('#panel-enemies [data-command-control="close-target-drawer"]').click();
+    await page.locator('#mobile-roster-sheet [data-command-control="close-roster"]').click();
     await page.waitForTimeout(80);
-    const targetDrawerReturn = await page.evaluate(() => {
-      const panel = document.getElementById('panel-enemies');
-      const backdrop = document.getElementById('panel-backdrop');
+    const targetRosterReturn = await page.evaluate(() => {
+      const panel = document.getElementById('mobile-roster-sheet');
       const targetPicker = document.getElementById('mobile-target-picker-belt');
       const tray = document.getElementById('mobile-target-action-tray');
       const sentence = document.getElementById('mobile-selection-sentence');
       const pickerRect = targetPicker?.getBoundingClientRect();
       return {
-        panelActive: panel?.classList.contains('active') || false,
-        backdropActive: backdrop?.classList.contains('active') || false,
+        panelOpen: panel?.classList.contains('open') || false,
+        panelHidden: Boolean(panel?.hidden),
         returnRail: App._mobilePanelReturnRail || '',
         targetPickerOpen: Boolean(App.mobileTargetPickerOpen),
         targetPickerVisible: Boolean(pickerRect && pickerRect.width > 0 && pickerRect.height > 0 && getComputedStyle(targetPicker).display !== 'none'),
@@ -2548,22 +3335,17 @@ async function checkViewport(browser, name, width, height) {
         targetIds: (App.explorationTargetIds || []).join(','),
         sentenceText: sentence?.innerText || '',
         trayText: tray?.innerText || '',
-        focusReturnedToRail: Boolean(document.activeElement?.closest?.('#mobile-target-picker-belt')),
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
       };
     });
-    assert.strictEqual(targetDrawerReturn.panelActive, false, `${name}: closing target Details should hide the full target drawer`);
-    assert.strictEqual(targetDrawerReturn.backdropActive, false, `${name}: closing target Details should clear the panel backdrop`);
-    assert.strictEqual(targetDrawerReturn.returnRail, '', `${name}: closing target Details should clear the temporary return rail`);
-    assert.strictEqual(targetDrawerReturn.targetPickerOpen, true, `${name}: closing target Details should restore target picker state`);
-    assert.strictEqual(targetDrawerReturn.targetPickerVisible, true, `${name}: closing target Details should leave the target picker visible`);
-    assert.strictEqual(targetDrawerReturn.targetPickerHasTargetControl, true, `${name}: returned target picker should keep target controls reachable`);
-    assert.strictEqual(targetDrawerReturn.actorIds, 'ally-1', `${name}: closing target Details should preserve selected actors`);
-    assert(targetDrawerReturn.targetIds.includes('creature:creature-1'), `${name}: closing target Details should preserve marked targets`);
-    assert(targetDrawerReturn.sentenceText.includes('Ally') && targetDrawerReturn.sentenceText.includes('Creature'), `${name}: returned target picker should keep the composer sentence intact`);
-    assert(targetDrawerReturn.trayText.includes('Fight') && targetDrawerReturn.trayText.includes('Clear'), `${name}: returned target picker should keep target intents reachable`);
-    assert.strictEqual(targetDrawerReturn.focusReturnedToRail, true, `${name}: closing target Details should return focus to the target picker`);
-    assert.strictEqual(targetDrawerReturn.pageOverflow, false, `${name}: closing target Details should not create horizontal overflow`);
+    assert.strictEqual(targetRosterReturn.panelOpen, false, `${name}: closing target Roster should hide it`);
+    assert.strictEqual(targetRosterReturn.panelHidden, true, `${name}: closed target Roster should be removed from the accessibility tree`);
+    assert.strictEqual(targetRosterReturn.returnRail, '', `${name}: closing target Roster should clear its temporary rail origin`);
+    assert.strictEqual(targetRosterReturn.actorIds, 'ally-1', `${name}: closing target Roster should preserve selected actors`);
+    assert(targetRosterReturn.targetIds.includes('creature:creature-1'), `${name}: closing target Roster should preserve marked targets`);
+    assert(targetRosterReturn.sentenceText.includes('Ally') && targetRosterReturn.sentenceText.includes('Creature'), `${name}: target Roster should keep the composer sentence intact`);
+    assert(targetRosterReturn.trayText.includes('Fight') && targetRosterReturn.trayText.includes('Clear'), `${name}: target Roster should keep target intents reachable`);
+    assert.strictEqual(targetRosterReturn.pageOverflow, false, `${name}: closing target Roster should not create horizontal overflow`);
 
     await page.evaluate(() => App.clearExplorationTargets());
 
@@ -2750,6 +3532,13 @@ async function checkViewport(browser, name, width, height) {
         exists: true,
         role: menu.getAttribute('role'),
         ariaModal: menu.getAttribute('aria-modal'),
+        labelledBy: menu.getAttribute('aria-labelledby') || '',
+        describedBy: menu.getAttribute('aria-describedby') || '',
+        titleText: document.getElementById(menu.getAttribute('aria-labelledby') || '')?.textContent?.trim() || '',
+        descriptionText: document.getElementById(menu.getAttribute('aria-describedby') || '')?.textContent?.trim() || '',
+        appInert: document.getElementById('app')?.hasAttribute('inert') || false,
+        appAriaHidden: document.getElementById('app')?.getAttribute('aria-hidden') || '',
+        focusInside: menu.contains(document.activeElement),
         overflowY: getComputedStyle(menu).overflowY,
         top: menuRect.top,
         left: menuRect.left,
@@ -2768,6 +3557,13 @@ async function checkViewport(browser, name, width, height) {
     assert(partyMenu.exists, `${name}: party long-press menu should render`);
     assert.strictEqual(partyMenu.role, 'dialog', `${name}: party long-press menu should use dialog semantics`);
     assert.strictEqual(partyMenu.ariaModal, 'true', `${name}: party long-press menu should be modal`);
+    assert.strictEqual(partyMenu.labelledBy, 'mobile-context-menu-title', `${name}: party long-press menu should reference its visible title`);
+    assert.strictEqual(partyMenu.describedBy, 'mobile-context-menu-description', `${name}: party long-press menu should reference its visible purpose`);
+    assert(partyMenu.titleText.length > 0, `${name}: party long-press menu accessible title should resolve to visible text`);
+    assert(partyMenu.descriptionText.length > 0, `${name}: party long-press menu accessible purpose should resolve to visible text`);
+    assert.strictEqual(partyMenu.appInert, true, `${name}: modal party context should make the underlying app inert`);
+    assert.strictEqual(partyMenu.appAriaHidden, 'true', `${name}: modal party context should hide the underlying app from assistive technology`);
+    assert.strictEqual(partyMenu.focusInside, true, `${name}: party long-press menu should keep focus inside its modal surface`);
     assert(partyMenu.overflowY === 'auto' || partyMenu.overflowY === 'scroll', `${name}: party long-press menu should be scrollable`);
     assert(partyMenu.top >= -1, `${name}: party long-press menu should not clip above viewport`);
     assert(partyMenu.left >= -1, `${name}: party long-press menu should not clip left`);
@@ -2775,8 +3571,19 @@ async function checkViewport(browser, name, width, height) {
     assert(partyMenu.bottom <= partyMenu.viewportHeight + 1, `${name}: party long-press menu should not clip below viewport`);
     if (partyMenu.toolbarVisible) assert(partyMenu.bottom <= partyMenu.toolbarTop + 1, `${name}: party long-press menu should stay above mobile toolbar`);
 
-    await page.evaluate(() => {
+    const closedPartyMenu = await page.evaluate(() => {
       App.closeMobileContextMenu();
+      return {
+        appInert: document.getElementById('app')?.hasAttribute('inert') || false,
+        appAriaHidden: document.getElementById('app')?.hasAttribute('aria-hidden') || false,
+        menuRemoved: !document.getElementById('mobile-context-menu')
+      };
+    });
+    assert.strictEqual(closedPartyMenu.menuRemoved, true, `${name}: closing party context should remove its modal surface`);
+    assert.strictEqual(closedPartyMenu.appInert, false, `${name}: closing party context should restore underlying app interaction`);
+    assert.strictEqual(closedPartyMenu.appAriaHidden, false, `${name}: closing party context should restore the underlying accessibility tree`);
+
+    await page.evaluate(() => {
       App.creatures.push({
         id: 'corpse-1',
         name: 'Fallen',
@@ -3435,6 +4242,10 @@ async function checkViewport(browser, name, width, height) {
         exists: true,
         role: menu.getAttribute('role'),
         ariaModal: menu.getAttribute('aria-modal'),
+        labelledBy: menu.getAttribute('aria-labelledby') || '',
+        describedBy: menu.getAttribute('aria-describedby') || '',
+        titleText: document.getElementById(menu.getAttribute('aria-labelledby') || '')?.textContent?.trim() || '',
+        descriptionText: document.getElementById(menu.getAttribute('aria-describedby') || '')?.textContent?.trim() || '',
         presentation: menu.getAttribute('data-intent-presentation'),
         overflowY: style.overflowY,
         zIndex: Number.parseInt(style.zIndex, 10) || 0,
@@ -3466,6 +4277,9 @@ async function checkViewport(browser, name, width, height) {
     assert(desktopSubActionSheet.exists, `${name}: desktop sub-action sheet should render`);
     assert.strictEqual(desktopSubActionSheet.role, 'dialog', `${name}: desktop sub-action sheet should use dialog semantics`);
     assert.strictEqual(desktopSubActionSheet.ariaModal, 'true', `${name}: desktop sub-action sheet should be modal`);
+    assert.strictEqual(desktopSubActionSheet.labelledBy, 'desktop-intent-menu-title', `${name}: desktop sub-action sheet should reference its visible title`);
+    assert.strictEqual(desktopSubActionSheet.describedBy, 'desktop-intent-menu-title-description', `${name}: desktop sub-action sheet should reference its visible purpose`);
+    assert(desktopSubActionSheet.titleText.length > 0 && desktopSubActionSheet.descriptionText.length > 0, `${name}: desktop sub-action title and purpose should resolve to visible text`);
     assert.strictEqual(desktopSubActionSheet.presentation, 'desktop', `${name}: desktop sub-action sheet should declare desktop presentation`);
     assert(desktopSubActionSheet.overflowY === 'auto' || desktopSubActionSheet.overflowY === 'scroll', `${name}: desktop sub-action sheet should be scrollable`);
     assert(desktopSubActionSheet.zIndex > desktopPanels.party.zIndex, `${name}: desktop sub-action sheet should layer above side panels`);
@@ -3473,7 +4287,7 @@ async function checkViewport(browser, name, width, height) {
     assert(desktopSubActionSheet.left >= -1, `${name}: desktop sub-action sheet should not clip left`);
     assert(desktopSubActionSheet.right <= desktopSubActionSheet.viewportWidth + 1, `${name}: desktop sub-action sheet should not clip right`);
     assert(desktopSubActionSheet.bottom <= desktopSubActionSheet.viewportHeight + 1, `${name}: desktop sub-action sheet should not clip below viewport`);
-    assert(desktopSubActionSheet.visibleButtons >= 3, `${name}: desktop sub-action sheet should expose reachable action buttons`);
+    assert(desktopSubActionSheet.visibleButtons >= 2, `${name}: desktop sub-action sheet should expose a reachable action and back control`);
     assert.deepStrictEqual(desktopSubActionSheet.clippedButtons, [], `${name}: desktop sub-action sheet buttons should not clip`);
     await page.evaluate(() => App.closeIntentMenu());
 
@@ -3516,6 +4330,99 @@ async function checkViewport(browser, name, width, height) {
     assert(Math.abs(mapOverlay.center.left - mapOverlay.previousCenter.left) <= 1, `${name}: opening desktop map should not reflow center play tile horizontally`);
     assert(Math.abs(mapOverlay.center.top - mapOverlay.previousCenter.top) <= 1, `${name}: opening desktop map should not reflow center play tile vertically`);
   }
+
+  const localizedQuestFallbacks = await page.evaluate(() => {
+    App.updateLanguage('en');
+    const fallback = App._normalizeQuest({
+      id: 'viewport-localized-fallback-quest',
+      objectives: [{ type: 'travel', required: 1, checkpoints: [{ x: 4, y: 5 }] }]
+    });
+    App.quests = [fallback];
+    App.updateLanguage('es');
+    App.showQuestLog();
+    const detail = document.querySelector('.quest-log-detail');
+    const text = detail?.innerText || '';
+    const result = {
+      text,
+      generatedTitle: fallback.generatedTitle,
+      generatedObjective: fallback.objectives[0]?.generatedLabel,
+      generatedCheckpoint: fallback.objectives[0]?.checkpoints?.[0]?.generatedLabel,
+      englishLeak: /Untitled Quest|Travel to target|Checkpoint 1/.test(text),
+      overflow: detail ? detail.scrollWidth > detail.clientWidth + 1 : true
+    };
+    App.closePanelDetails('party');
+    return result;
+  });
+  assert.strictEqual(localizedQuestFallbacks.generatedTitle, true, `${name}: missing quest title should retain generated-fallback provenance`);
+  assert.strictEqual(localizedQuestFallbacks.generatedObjective, true, `${name}: missing objective label should retain generated-fallback provenance`);
+  assert.strictEqual(localizedQuestFallbacks.generatedCheckpoint, true, `${name}: missing checkpoint label should retain generated-fallback provenance`);
+  assert(localizedQuestFallbacks.text.includes('Mision sin titulo'), `${name}: rendered Spanish quest log should localize an untitled quest fallback`);
+  assert(localizedQuestFallbacks.text.includes('Viajar a objetivo'), `${name}: rendered Spanish quest log should localize generated objective action and target text`);
+  assert(localizedQuestFallbacks.text.includes('Punto de ruta 1'), `${name}: rendered Spanish quest log should localize generated checkpoint names`);
+  assert.strictEqual(localizedQuestFallbacks.englishLeak, false, `${name}: rendered Spanish quest fallbacks should not leak English normalization text`);
+  assert.strictEqual(localizedQuestFallbacks.overflow, false, `${name}: localized generated quest fallbacks should remain horizontally bounded`);
+
+  await checkCombatTargetConfirmation(page, name, width);
+
+  const terminalRemainsPresentation = await page.evaluate(() => {
+    App.updateLanguage('en');
+    const depleted = {
+      id: 'viewport-terminal-remains',
+      name: 'Fallen Target',
+      species: 'human',
+      icon: '👤',
+      disposition: App.DISPOSITION.ENEMY,
+      CPun: 1,
+      MPun: 100,
+      CPle: 0,
+      MPle: 100,
+      level: 1,
+      size: 4,
+      appetite: 4,
+      stomach: [],
+      womb: [],
+      balls: [],
+      inventory: [],
+      status: {}
+    };
+    App.creatures = [depleted];
+    App.combatState = {
+      active: true,
+      round: 1,
+      currentTurn: 0,
+      turnQueue: [{ unit: App.player, initiative: 10 }, { unit: depleted, initiative: 5 }],
+      syncActions: [],
+      processing: false
+    };
+    App._resolveVitalDepletion(depleted, 'chew');
+    App.renderCreatures();
+    const dock = document.getElementById('mobile-creatures-dock-btn');
+    const badge = document.getElementById('mobile-creature-dock-badge');
+    return {
+      desktopTitle: document.getElementById('enemies-title')?.textContent || '',
+      desktopText: document.getElementById('enemies-content')?.innerText || '',
+      mobileTitle: document.getElementById('mobile-creature-title')?.textContent || '',
+      mobileTitleKey: document.getElementById('mobile-creature-title')?.getAttribute('data-i18n') || '',
+      dockLabel: dock?.getAttribute('aria-label') || '',
+      dockDanger: dock?.classList.contains('danger') || false,
+      badgeText: badge?.textContent || '',
+      badgeHidden: Boolean(badge?.hidden),
+      queueContainsTarget: App.combatState.turnQueue.some(entry => entry.unit === depleted),
+      disposition: depleted.disposition,
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(terminalRemainsPresentation.disposition, 'corpse', `${name}: terminal Feast resolution should convert the target to remains`);
+  assert.strictEqual(terminalRemainsPresentation.queueContainsTarget, false, `${name}: terminal Feast resolution should remove remains from the living combat queue`);
+  assert.strictEqual(terminalRemainsPresentation.desktopTitle, 'Remains', `${name}: desktop target panel should identify a terminal target as Remains`);
+  assert(terminalRemainsPresentation.desktopText.includes('Remains') && !terminalRemainsPresentation.desktopText.includes('Hostile'), `${name}: desktop terminal card should be remains rather than a zero-condition hostile`);
+  assert.strictEqual(terminalRemainsPresentation.mobileTitle, 'Remains', `${name}: mobile target rail should identify a terminal target as Remains`);
+  assert.strictEqual(terminalRemainsPresentation.mobileTitleKey, 'disposition.remains', `${name}: mobile remains title should retain its locale key`);
+  assert(terminalRemainsPresentation.dockLabel.includes('Remains: 1 here'), `${name}: mobile dock should expose recoverable remains accessibly`);
+  assert.strictEqual(terminalRemainsPresentation.dockDanger, false, `${name}: remains-only mobile dock should clear enemy danger styling`);
+  assert.strictEqual(terminalRemainsPresentation.badgeText, '1', `${name}: mobile dock should count the recoverable remains`);
+  assert.strictEqual(terminalRemainsPresentation.badgeHidden, false, `${name}: mobile remains badge should stay discoverable`);
+  assert.strictEqual(terminalRemainsPresentation.pageOverflow, false, `${name}: responsive remains presentation should not introduce horizontal overflow`);
 
   await page.close();
 }
@@ -3577,9 +4484,9 @@ async function checkScopedStartupReadiness(browser) {
   await page.evaluate(() => {
     window.__startupDeferred = {};
     const deferred = name => new Promise(resolve => { window.__startupDeferred[name] = resolve; });
-    YAW_STARTUP_READINESS.start('saves', () => deferred('saves'), { label: 'saved games', force: true });
-    YAW_STARTUP_READINESS.start('installedMedia', () => deferred('media'), { label: 'installed media', force: true });
-    YAW_STARTUP_READINESS.start('bundledAssets', () => deferred('assets'), { label: 'visual assets', blocking: false, force: true });
+    YAW_STARTUP_READINESS.start('saves', () => deferred('saves'), { label: 'saved games', labelKey: 'startup.domain.saves', force: true });
+    YAW_STARTUP_READINESS.start('installedMedia', () => deferred('media'), { label: 'installed media', labelKey: 'startup.domain.installedMedia', force: true });
+    YAW_STARTUP_READINESS.start('bundledAssets', () => deferred('assets'), { label: 'visual assets', labelKey: 'startup.domain.bundledAssets', blocking: false, force: true });
     App.syncStartupReadinessUI();
   });
   const pending = await page.evaluate(() => ({
@@ -3599,6 +4506,26 @@ async function checkScopedStartupReadiness(browser) {
   assert.strictEqual(pending.busy, 'true', 'startup readiness: gated controls should expose aria-busy');
   assert(pending.status.includes('saved games') && pending.status.includes('installed media'), 'startup readiness: live status should identify pending domains');
 
+  const localizedPending = await page.evaluate(() => {
+    App.updateLanguage('es');
+    App.syncStartupReadinessUI();
+    return {
+      status: document.getElementById('menu-startup-status-text').textContent,
+      newGameLabel: document.getElementById('menu-new-game').getAttribute('aria-label'),
+      loadLabel: document.getElementById('menu-load-game').getAttribute('aria-label'),
+      modulesKey: YAW_STARTUP_READINESS.snapshot('installedMedia')?.labelKey || ''
+    };
+  });
+  assert(localizedPending.status.includes('partidas guardadas') && localizedPending.status.includes('medios instalados'), 'startup readiness: pending domain names should re-resolve in Spanish');
+  assert(localizedPending.status.includes('recursos visuales'), 'startup readiness: nonblocking pending visual domain should localize in the shared status');
+  assert(localizedPending.newGameLabel.includes('Preparando contenido del juego'), 'startup readiness: disabled New Game accessible name should localize');
+  assert(localizedPending.loadLabel.includes('Comprobando partidas guardadas'), 'startup readiness: disabled Load accessible name should localize');
+  assert.strictEqual(localizedPending.modulesKey, 'startup.domain.installedMedia', 'startup readiness: browser snapshot should preserve the stable domain locale key');
+  await page.evaluate(() => {
+    App.updateLanguage('en');
+    App.syncStartupReadinessUI();
+  });
+
   await page.evaluate(async () => {
     window.__startupDeferred.saves(null);
     window.__startupDeferred.media(null);
@@ -3608,7 +4535,7 @@ async function checkScopedStartupReadiness(browser) {
       YAW_STARTUP_READINESS.state('installedMedia').promise,
       YAW_STARTUP_READINESS.state('bundledAssets').promise
     ]);
-    YAW_STARTUP_READINESS.start('modules', async () => { throw new Error('delayed test failure'); }, { label: 'mods', force: true });
+    YAW_STARTUP_READINESS.start('modules', async () => { throw new Error('delayed test failure'); }, { label: 'mods', labelKey: 'startup.domain.modules', force: true });
     await YAW_STARTUP_READINESS.state('modules').promise;
     App.syncStartupReadinessUI();
   });
@@ -3624,6 +4551,54 @@ async function checkScopedStartupReadiness(browser) {
   assert.strictEqual(failed.modsDisabled, true, 'startup readiness: a failed module domain should remain gated');
   assert.strictEqual(failed.settingsDisabled, false, 'startup readiness: unrelated controls should remain available after failure');
   assert.strictEqual(failed.activityError, true, 'startup readiness: failures should be recorded in the Activity Log');
+
+  await page.evaluate(async () => {
+    YAW_STARTUP_READINESS.start('modules', async () => [], { label: 'mods', labelKey: 'startup.domain.modules', force: true });
+    await YAW_STARTUP_READINESS.state('modules').promise;
+    YAW_STARTUP_READINESS.start('bundledAssets', async () => { throw new Error('atlas fixture unavailable'); }, {
+      label: 'visual assets',
+      labelKey: 'startup.domain.bundledAssets',
+      blocking: false,
+      force: true
+    });
+    await YAW_STARTUP_READINESS.state('bundledAssets').promise;
+    App.syncStartupReadinessUI();
+  });
+  const visualFallback = await page.evaluate(() => ({
+    statusState: document.getElementById('menu-startup-status').dataset.state,
+    status: document.getElementById('menu-startup-status-text').textContent,
+    newGameDisabled: document.getElementById('menu-new-game').disabled,
+    loadDisabled: document.getElementById('menu-load-game').disabled,
+    modsDisabled: document.getElementById('menu-mods').disabled,
+    activityError: App.log.some(entry => entry.errorCode === 'startup_bundledAssets_failed')
+  }));
+  assert.strictEqual(visualFallback.statusState, 'error', 'startup readiness: visual acquisition failure should remain visibly degraded');
+  assert(visualFallback.status.includes('fallback graphics remain active'), 'startup readiness: visual acquisition failure should explain the graphics fallback');
+  assert.strictEqual(visualFallback.newGameDisabled, false, 'startup readiness: visual acquisition failure must not block New Game');
+  assert.strictEqual(visualFallback.loadDisabled, false, 'startup readiness: visual acquisition failure must not block Load');
+  assert.strictEqual(visualFallback.modsDisabled, false, 'startup readiness: visual acquisition failure must not block local module management');
+  assert.strictEqual(visualFallback.activityError, true, 'startup readiness: visual acquisition failure should be recorded in the Activity Log');
+
+  const localizedTimeout = await page.evaluate(async () => {
+    App.updateLanguage('es');
+    await YAW_STARTUP_READINESS.start('saves', () => new Promise(() => {}), {
+      label: 'saved games',
+      labelKey: 'startup.domain.saves',
+      timeoutMs: 1,
+      force: true
+    });
+    App.syncStartupReadinessUI();
+    const entry = [...App.log].reverse().find(item => item.errorCode === 'startup_saves_failed');
+    return {
+      text: entry?.text || '',
+      errorCode: YAW_STARTUP_READINESS.state('saves')?.error?.code || '',
+      labelKey: YAW_STARTUP_READINESS.snapshot('saves')?.labelKey || ''
+    };
+  });
+  assert.strictEqual(localizedTimeout.errorCode, 'startup_timeout', 'startup readiness: timeout should expose its stable diagnostic code');
+  assert.strictEqual(localizedTimeout.labelKey, 'startup.domain.saves', 'startup readiness: timeout snapshot should retain its locale label key');
+  assert(localizedTimeout.text.includes('Fallo de inicio en partidas guardadas'), 'startup readiness: timeout Activity Log entry should localize the domain');
+  assert(localizedTimeout.text.includes('no estuvo listo en 1 ms'), 'startup readiness: timeout Activity Log entry should localize the timeout explanation');
   await page.close();
 }
 
@@ -3631,6 +4606,7 @@ async function checkScopedStartupReadiness(browser) {
   const browser = await chromium.launch({ headless: true });
   try {
     await checkFileOriginFirstRunMenu(browser);
+    await checkFileOriginLocalePack(browser);
     await checkScopedStartupReadiness(browser);
     await checkShortMenuScrollFallback(browser);
     await checkViewport(browser, 'small phone 320', 320, 568);

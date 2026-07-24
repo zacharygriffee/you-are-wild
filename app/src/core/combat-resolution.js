@@ -50,6 +50,14 @@ const YAW_COMBAT_RESOLUTION = {
             app._reportInvalidCombatCommand?.(command, valid.reason);
             return false;
         }
+        const baseAction = String(command.action || '').replace(/^sync_/, '');
+        if (baseAction === 'fight' && command.subAction && typeof YAW_COMBAT_TECHNIQUES !== 'undefined') {
+            const selectedTechnique = YAW_COMBAT_TECHNIQUES.selected(app, command.actors || [actor], command.subAction, Math.max(1, targets.length));
+            if (selectedTechnique === false) {
+                app._reportInvalidCombatCommand?.(command, 'invalid-combat-technique');
+                return false;
+            }
+        }
         app.targetSelection = null;
         app._clearCombatMarkedTargets?.();
         app.renderMobileCombatToolbelt();
@@ -58,7 +66,7 @@ const YAW_COMBAT_RESOLUTION = {
             let meaningfulAttempt = false;
             const resultLines = [];
             const multiEffect = command.action === 'fight'
-                ? app._multiInteractionEffect?.(actor, 'fight', targets.length)
+                ? app._multiInteractionEffect?.(actor, 'fight', targets.length, { techniqueKey: command.subAction })
                 : null;
             const spreadText = command.action === 'fight'
                 ? app._multiInteractionOutcomeText?.('fight', [actor], targets)
@@ -66,7 +74,7 @@ const YAW_COMBAT_RESOLUTION = {
             for (const multiTarget of targets) {
                 if (!app.combatState?.active) break;
                 if (!multiTarget || multiTarget.CPun <= 0) continue;
-                const reach = app._combatReachResult?.(actor, multiTarget, command.action);
+                const reach = app._combatReachResult?.(actor, multiTarget, command.action, { techniqueKey: command.subAction });
                 if (reach?.canAttempt && !reach.canSucceed) {
                     resultLines.push(this.reachFailure(app, command.action, [actor], multiTarget, reach, { suppressStory: true }));
                     resolved = true;
@@ -115,7 +123,7 @@ const YAW_COMBAT_RESOLUTION = {
             app.nextTurn();
             return resolved;
         }
-        return app.executeActionAgainstTarget(command.action, actor, target);
+        return app.executeActionAgainstTarget(command.action, actor, target, { subAction: command.subAction || null });
     },
 
     executeActionAgainstTarget(app, action, actor, target) {
@@ -127,11 +135,12 @@ const YAW_COMBAT_RESOLUTION = {
                 app.combatState.processing = false;
                 return false;
             }
-            const actorName = actor.name === app.player?.name ? 'You' : actor.name;
-            const actorVerb = actor.name === app.player?.name ? '' : 's';
+            const actorIsPlayer = actor === app.player || actor.name === app.player?.name;
+            const actorName = actorIsPlayer ? app._label('party.you', 'You') : actor.name;
+            const actorVerb = actorIsPlayer ? '' : 's';
             const targetWasParty = app.party.includes(target);
             let result = '';
-            const reach = app._combatReachResult?.(actor, target, action);
+            const reach = app._combatReachResult?.(actor, target, action, { techniqueKey: options.subAction });
             if (reach?.canAttempt && !reach.canSucceed) {
                 app._applyActionCost?.(action, actor, target, {}, {
                     mode: 'combat',
@@ -183,23 +192,58 @@ const YAW_COMBAT_RESOLUTION = {
                 break;
             }
             case 'fight': {
+                const technique = typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+                    ? YAW_COMBAT_TECHNIQUES.selected(app, [actor], options.subAction || 'basic', 1)
+                    : null;
+                if (technique === false) {
+                    result = app._label('combat.technique.unavailableAtResolution', '{actor} can no longer use that combat technique.', { actor: actorName });
+                    break;
+                }
                 if (app._terrainCausesMiss(actor, target, action)) {
-                    result = `${actorName} miss${actorVerb} ${target.name}.`;
+                    result = app._label(actorIsPlayer ? 'combat.action.fightMiss.player' : 'combat.action.fightMiss.named', actorIsPlayer
+                        ? '{actor} miss {target}.'
+                        : '{actor} misses {target}.', {
+                        actor: actorName,
+                        target: target.name
+                    });
                     break;
                 }
                 const ar = app._combatActionRating(actor.Figh, actor, target, 'player-fight');
                 const def = app._effectiveCon(target);
                 const baseDmg = Math.max(1, ar - def * 0.3 + app._combatDamageVariance(actor, target, 'player-fight'));
                 const unscaledDmg = Math.max(1, Math.floor(baseDmg * app._physicalDamageMultiplier(actor, target)));
-                const dmg = options.multiEffect
-                    ? app._multiInteractionScaleValue(unscaledDmg, options.multiEffect)
+                const techniqueDamage = typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+                    ? YAW_COMBAT_TECHNIQUES.damageValue(unscaledDmg, technique)
                     : unscaledDmg;
+                const dmg = options.multiEffect
+                    ? app._multiInteractionScaleValue(techniqueDamage, options.multiEffect)
+                    : techniqueDamage;
                 target.CPun -= dmg;
                 app._wakeOnDamage(target);
                 app._applyAttackStatus(actor, target, dmg);
-                result = `${actorName} hit${actorVerb} ${target.name} for ${dmg} punishment!`;
+                const techniqueStatus = technique ? app._applyTechniqueStatus?.(actor, target, technique, dmg) : false;
+                result = technique
+                    ? app._label('combat.action.techniqueHit', '{actor} uses {technique} on {target} for {amount} punishment!', {
+                        actor: actorName,
+                        technique: YAW_COMBAT_TECHNIQUES.label(app, technique),
+                        target: target.name,
+                        amount: dmg
+                    })
+                    : app._label(actorIsPlayer ? 'combat.action.fightHit.player' : 'combat.action.fightHit.named', actorIsPlayer
+                        ? '{actor} hit {target} for {amount} punishment!'
+                        : '{actor} hits {target} for {amount} punishment!', {
+                        actor: actorName,
+                        target: target.name,
+                        amount: dmg
+                    });
+                if (techniqueStatus) {
+                    result += ` ${app._label('combat.action.techniqueStatus', '{target} is affected by {status}.', {
+                        target: target.name,
+                        status: YAW_COMBAT_TECHNIQUES.statusLabel(app, technique.status.effect)
+                    })}`;
+                }
                 if (target.CPun <= 0) {
-                    result += ` ${target.name} collapses!`;
+                    result += ` ${app._label('combat.targetCollapses', '{name} collapses!', { name: target.name })}`;
                     if (targetWasParty) {
                         if (target === app.player) app._handlePlayerFall?.({ cause: 'party-combat-damage', source: 'combat-fight' });
                         else app._dropPartyCorpse?.(target, 'fight');
@@ -224,18 +268,25 @@ const YAW_COMBAT_RESOLUTION = {
                     target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.3));
                     target.charmed = (target.charmed || 0) + 1;
                     target.Figh = Math.max(1, (target.Figh || 10) - 1);
-                    result = `${actorName} talk${actorVerb} with ${target.name}! Their guard lowers. Spirit rises to ${target.CPle}/${target.MPle}.`;
+                    result = app._label(actorIsPlayer ? 'combat.action.talkSuccess.player' : 'combat.action.talkSuccess.named', actorIsPlayer
+                        ? '{actor} talk with {target}! Their guard lowers. Spirit rises to {current}/{max}.'
+                        : '{actor} talks with {target}! Their guard lowers. Spirit rises to {current}/{max}.', {
+                        actor: actorName,
+                        target: target.name,
+                        current: target.CPle,
+                        max: target.MPle
+                    });
                     if (target.charmed >= 3) {
-                        result += targetWasParty
-                            ? ` ${target.name} is utterly charmed!`
-                            : ` ${target.name} is utterly charmed and becomes friendly!`;
+                        result += ` ${app._label(targetWasParty ? 'combat.action.charmedParty' : 'combat.action.charmedFriendly', targetWasParty
+                            ? '{target} is utterly charmed!'
+                            : '{target} is utterly charmed and becomes friendly!', { target: target.name })}`;
                         if (!targetWasParty) target.disposition = app.DISPOSITION.FRIENDLY;
                         target.willing = true;
                         if (!targetWasParty) app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
                     } else if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
-                        result += targetWasParty
-                            ? ` ${target.name} relaxes completely!`
-                            : ` ${target.name} relaxes and becomes friendly!`;
+                        result += ` ${app._label(targetWasParty ? 'combat.action.relaxedParty' : 'combat.action.relaxedFriendly', targetWasParty
+                            ? '{target} relaxes completely!'
+                            : '{target} relaxes and becomes friendly!', { target: target.name })}`;
                         if (!targetWasParty) target.disposition = app.DISPOSITION.FRIENDLY;
                         target.willing = true;
                         target.orgasmed = true;
@@ -244,7 +295,10 @@ const YAW_COMBAT_RESOLUTION = {
                     const breakthrough = targetWasParty ? null : app._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
-                    result = `${target.name} rejects the conversation with ${actorName}!`;
+                    result = app._label('combat.action.talkRejected', '{target} rejects the conversation with {actor}!', {
+                        actor: actorName,
+                        target: target.name
+                    });
                 }
                 break;
             }
@@ -257,18 +311,25 @@ const YAW_COMBAT_RESOLUTION = {
                 if (charm > resist) {
                     const oldPle = target.CPle;
                     target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
-                    result = `${actorName} play${actorVerb} with ${target.name}! Spirit rises to ${target.CPle}/${target.MPle}.`;
+                    result = app._label(actorIsPlayer ? 'combat.action.playSuccess.player' : 'combat.action.playSuccess.named', actorIsPlayer
+                        ? '{actor} play with {target}! Spirit rises to {current}/{max}.'
+                        : '{actor} plays with {target}! Spirit rises to {current}/{max}.', {
+                        actor: actorName,
+                        target: target.name,
+                        current: target.CPle,
+                        max: target.MPle
+                    });
                     if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
-                        result += targetWasParty
-                            ? ` ${target.name} relaxes, becoming dazed!`
-                            : ` ${target.name} relaxes, becoming dazed and friendly!`;
+                        result += ` ${app._label(targetWasParty ? 'combat.action.playDazedParty' : 'combat.action.playDazedFriendly', targetWasParty
+                            ? '{target} relaxes, becoming dazed!'
+                            : '{target} relaxes, becoming dazed and friendly!', { target: target.name })}`;
                         if (!targetWasParty) target.disposition = app.DISPOSITION.FRIENDLY;
                         target.willing = true;
                         target.orgasmed = true;
                         if (!targetWasParty) app._awardCombatXP(app.XP_REWARDS.seduceEnemy);
                         if (app.settings.refractoryPeriod) {
                             target.refractory = true;
-                            result += ` They need a moment to catch their breath...`;
+                            result += ` ${app._label('combat.action.catchBreath', 'They need a moment to catch their breath...')}`;
                         }
                         if (!targetWasParty && actor.name === app.player?.name) {
                             setTimeout(() => {
@@ -279,16 +340,17 @@ const YAW_COMBAT_RESOLUTION = {
                     const breakthrough = targetWasParty ? null : app._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
-                    result = `${target.name} does not want to play!`;
+                    result = app._label('combat.action.playRejected', '{target} does not want to play!', { target: target.name });
                 }
                 break;
             }
             case 'feed': {
-                const healAmount = Math.floor((actor.Feed || 10) * 2);
-                actor.CPun = Math.min(actor.MPun, actor.CPun + healAmount);
-                actor.hunger = Math.max(0, (actor.hunger || 0) - 25);
-                result = `${actorName} nourish${actorVerb} themself, restoring ${healAmount} punishment and sating hunger.`;
-                app._awardCombatXP(app.XP_REWARDS.feedAlly);
+                const tend = app._resolveTendEffect(actor, target);
+                result = app._label('feed.tendResult', '{actor} tends {target}, restoring {amount} punishment.', {
+                    actor: actorName,
+                    target: target.name,
+                    amount: tend.restoredCondition
+                });
                 break;
             }
             case 'feast': {

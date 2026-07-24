@@ -121,8 +121,12 @@ const YAW_COMBAT_RULES = {
         return false;
     },
 
-    intentReachProfile(_app, actor, action = 'fight') {
+    intentReachProfile(_app, actor, action = 'fight', options = {}) {
         const base = String(action || '').replace(/^sync_/, '');
+        if (base === 'fight' && options.techniqueKey && typeof YAW_COMBAT_TECHNIQUES !== 'undefined') {
+            const techniqueReach = YAW_COMBAT_TECHNIQUES.reachProfile(_app, actor, options.techniqueKey);
+            if (techniqueReach) return techniqueReach;
+        }
         const override = actor?.combatReachProfiles?.[base] || actor?.reachProfiles?.[base] || actor?.reachProfile || actor?.fightProfile;
         if (override) return String(override);
         if (base === 'fight') {
@@ -137,8 +141,8 @@ const YAW_COMBAT_RULES = {
         return 'none';
     },
 
-    reachResult(app, actor, target, action = 'fight') {
-        const profile = this.intentReachProfile(app, actor, action);
+    reachResult(app, actor, target, action = 'fight', options = {}) {
+        const profile = this.intentReachProfile(app, actor, action, options);
         const base = String(action || '').replace(/^sync_/, '');
         const sameSide = this.sameCombatSide(app, actor, target);
         const result = {
@@ -215,12 +219,12 @@ const YAW_COMBAT_RULES = {
         return result;
     },
 
-    canReachCombatTarget(app, actor, target, action = 'fight') {
-        return this.reachResult(app, actor, target, action).canSucceed;
+    canReachCombatTarget(app, actor, target, action = 'fight', options = {}) {
+        return this.reachResult(app, actor, target, action, options).canSucceed;
     },
 
-    canAttemptCombatTarget(app, actor, target, action = 'fight') {
-        return this.reachResult(app, actor, target, action).canAttempt;
+    canAttemptCombatTarget(app, actor, target, action = 'fight', options = {}) {
+        return this.reachResult(app, actor, target, action, options).canAttempt;
     },
 
     reachFailureText(app, actors = [], target = null, action = 'fight', reach = null) {
@@ -298,7 +302,7 @@ const YAW_COMBAT_RULES = {
         if (this.currentBiomeId(app) === 'cave'
             && !actor?.darkvision
             && app._combatStateRoll('combat-terrain-miss', actor, `${app._unitSelectionId(target)}:${action}`) < 0.5) {
-            app.log.push({ text: `${actor.name} loses the target in the cave darkness!`, type: 'combat' });
+            app.log.push({ text: app._label('combat.terrain.caveMiss', '{name} loses the target in the cave darkness!', { name: actor.name }), type: 'combat' });
             return true;
         }
         return false;

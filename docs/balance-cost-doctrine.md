@@ -40,9 +40,11 @@ These numbers are deliberately low. The goal is to reveal tradeoffs without maki
 - Play/Seduce costs more hunger and usually produces faster Spirit progress.
 - Fight and Flee add moderate hunger pressure.
 - Move Row consumes the turn and adds a small cost.
-- Feed costs the supporting actor a small amount while preserving existing healing/hunger-relief effects for the recipient.
+- Tend costs the supporting actor a small amount and restores recipient
+  condition only. Hunger relief requires a nutrition-bearing Feed variant with
+  an explicit source.
 - Feast gives modest size-scaled fullness when prey enters a stomach. Most nourishment arrives as digestion advances.
-- Fast and slow digestion provide the same total size-scaled nourishment. Slow digestion spreads that relief across more ticks instead of reducing its total.
+- Fast and slow digestion provide the same total size-scaled nourishment. Slow digestion spreads that relief across more ticks instead of reducing its total. Passive stomach progress uses a bounded hunger curve: at hunger 25 or below it runs at `0.8x`; ordinary hunger uses `1x`; hunger 70–84 uses `1.2x`; and starvation at 85 or above uses a capped `1.4x`. The slow base remains `2%` per tick and the fast base remains `5%`, so even urgent slow digestion (`2.8%`) stays below ordinary fast digestion. The current pace and effective rate are visible in Containers.
 - Scavenge continues to use finite Remains Pool relief; this pass does not create itemized creature pieces or permanent stat gains.
 - Inspect, quest, trade, recruit, loot, and structural detail actions do not add hunger pressure.
 
@@ -52,7 +54,7 @@ One-to-many actions use command-level costs in V1. A single actor performing one
 
 Multi-target Fight is an opt-in distributed effect rather than repeated full-strength attacks. With `N` targets, a novice begins at `1 / N` of their ordinary contribution per target. Persistent multi-Fight practice recovers the missing contribution continuously up to mastery, while explicit equipment, natural-technique, instinct, or true-area declarations may recover additional effect. In many-to-many Fight, each participant is scaled from their own practice and technique before contributions are combined. Practice is awarded once per completed command, diminishes within the same encounter/tile-day context, persists per party member, and never directly raises general `Figh` or global XP. Single-target Fight, mutual sparring, paired commands, action costs, reach, status application, and every unprofiled intent retain their prior rules.
 
-Rest is recovery and elapsed time, not food. Eight hours of rest add eight hunger points, heal condition, and advance containment by eight digestion ticks. A creature with nothing digesting wakes hungrier. A sufficiently large active meal can offset that pressure or leave the holder more sated; small or slow meals may offset only part of it.
+Rest is recovery and elapsed time, not food. Eight hours of rest add eight hunger points, heal condition, and advance containment by eight digestion ticks. A creature with nothing digesting wakes hungrier. A sufficiently large active meal can offset that pressure or leave the holder more sated; small or slow meals may offset only part of it. Each stomach tick re-evaluates the holder's hunger band after nutrition is delivered, so an urgent rate naturally returns toward normal rather than remaining accelerated for an entire multi-hour rest.
 
 ## Flee and Submission Outcomes
 
@@ -98,12 +100,23 @@ Broader balance should be driven by playtest data after this V1 pressure layer i
 
 ## Ordered Balance Backlog
 
-The next balance pass must replace the single generic Feed-cost assumption with
-variant-specific source economics. Feeding oneself or another creature cannot
-produce free recovery: Tend may primarily cost time/hunger, Nurse may consume a
-renewable reserve plus cooldown, Offer Piece must consume condition or vitality
-that represents the offered mass, and future authored variants must declare
-their own bounded source cost. The final mapping remains undecided until an
-interaction-wide matrix compares condition, vitality, hunger, Spirit, cooldown,
-XP, practice, elapsed time, and turn cost for success and committed failure in
-single-, multi-, and group-target forms.
+The current machine-readable inventory is
+`YAW_BALANCE_SYSTEM.interactionMatrix(App)` and its human-readable companion is
+`docs/interaction-balance-matrix.md`. Any tuning change must update that matrix,
+its executable scenarios, and this doctrine together.
+
+Feed uses variant-specific source economics. Tend is accepted as care: it costs
+the ordinary command hunger, restores only condition, and cannot create
+nutrition or Spirit. Nurse spends one Resource Ledger V1 nourishment charge
+plus its cooldown, Offer Piece consumes condition representing offered mass,
+Offer Self transfers the whole source into containment, and future authored
+variants must declare their own bounded source cost.
+
+`docs/feed-source-economy-decision.md` now presents the operator gate. Its
+recommended V1 separates Tend care (condition only) from actual nutritional
+transfer (Nurse, Offer Piece, or Offer Self), then bounds support XP by
+meaningful net effect. The Tend decision is active: combat support XP advances
+only when net condition crosses deterministic reward bands, is capped across a
+full target pool, and awards nothing for self-care or a no-op. A renewable Nurse
+reserve is now an implemented Resource Ledger V1 consumer and is not a
+prerequisite for condition-only Tend.

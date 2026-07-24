@@ -15,14 +15,16 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const card = document.getElementById('mobile-creature-card');
         const title = document.getElementById('mobile-creature-title');
         if (!strip) return;
-        if (title) title.textContent = app.combatState?.active
-            ? app._label('ui.enemies', 'Enemies')
-            : app._label('ui.creatures', 'Creatures');
         const living = app.creatures.filter(c => c.CPun > 0 && !app._isCorpse(c));
         const corpses = app.creatures.filter(c => app._isCorpse(c));
+        const presentation = this.creatureCollectionPresentation(app, living, corpses);
+        if (title) {
+            title.textContent = presentation.panelLabel;
+            title.setAttribute('data-i18n', presentation.panelKey);
+        }
         const itemChip = this.tileItemChip(app);
         const visible = [...living, ...corpses];
-        this.updateCreatureDockBadge(app, living);
+        this.updateCreatureDockBadge(app, living, corpses);
         if (card) card.style.display = (app.combatState.active || ((visible.length > 0 || itemChip) && app.mobileCreatureRailOpen !== false)) ? 'block' : 'none';
         strip.innerHTML = visible.length > 0 || itemChip
             ? `${visible.map(unit => app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')).join('')}${itemChip}`
@@ -237,6 +239,40 @@ const YAW_MOBILE_UNIT_STRIPS = {
         return (app.creatures || []).filter(unit => unit && (unit.CPun ?? 1) > 0 && !app._isCorpse(unit));
     },
 
+    corpseCreatures(app) {
+        return (app.creatures || []).filter(unit => unit && app._isCorpse(unit));
+    },
+
+    creatureCollectionPresentation(app, living = this.livingCreatures(app), corpses = this.corpseCreatures(app)) {
+        const enemies = living.filter(unit => unit.disposition === app.DISPOSITION.ENEMY);
+        let panelKey = app.combatState?.active ? 'ui.enemies' : 'ui.creatures';
+        let panelFallback = app.combatState?.active ? 'Enemies' : 'Creatures';
+        let dockKey = 'ui.creatures';
+        let dockFallback = 'Creatures';
+        if (enemies.length > 0) {
+            panelKey = 'ui.enemies';
+            panelFallback = 'Enemies';
+            dockKey = 'ui.enemies';
+            dockFallback = 'Enemies';
+        } else if (living.length > 0) {
+            panelKey = app.combatState?.active ? 'ui.creatures' : 'ui.here';
+            panelFallback = app.combatState?.active ? 'Creatures' : 'Here';
+        } else if (corpses.length > 0) {
+            panelKey = 'disposition.remains';
+            panelFallback = 'Remains';
+            dockKey = 'disposition.remains';
+            dockFallback = 'Remains';
+        }
+        return {
+            panelKey,
+            panelLabel: app._label(panelKey, panelFallback),
+            dockKey,
+            dockLabel: app._label(dockKey, dockFallback),
+            count: living.length > 0 ? living.length : corpses.length,
+            danger: enemies.length > 0
+        };
+    },
+
     visibleTargets(app) {
         return (app.creatures || []).filter(unit => unit && ((unit.CPun ?? 1) > 0 || app._isCorpse(unit)));
     },
@@ -281,26 +317,32 @@ const YAW_MOBILE_UNIT_STRIPS = {
                 </div>`;
     },
 
-    updateCreatureDockBadge(app, living = this.livingCreatures(app)) {
+    updateCreatureDockBadge(app, living = this.livingCreatures(app), corpses = this.corpseCreatures(app)) {
         const badge = document.getElementById('mobile-creature-dock-badge');
         const button = document.getElementById('mobile-creatures-dock-btn');
-        const count = living.length;
-        const hostileCount = living.filter(unit => unit?.disposition === app.DISPOSITION?.ENEMY || String(unit?.disposition || '').toLowerCase().includes('hostile')).length;
-        const danger = Boolean(app.combatState?.active || hostileCount > 0);
-        const baseLabel = danger
-            ? app._label('ui.enemies', 'Enemies')
-            : app._label('ui.creatures', 'Creatures');
-        const title = count > 0
-            ? app._label('ui.creatureDock.count', '{label}: {count} here', { label: baseLabel, count })
-            : baseLabel;
+        const presentation = this.creatureCollectionPresentation(app, living, corpses);
+        const itemCount = this.hasTileItems(app) ? (this.tileItemSummary(app)?.count || 0) : 0;
+        const count = presentation.count > 0 ? presentation.count : itemCount;
+        const danger = presentation.danger;
+        const categoryLabel = presentation.count > 0
+            ? presentation.dockLabel
+            : (itemCount > 0 ? app._label('ui.items', 'Items') : app._label('ui.here', 'Here'));
+        const rosterLabel = app._label('ui.roster', 'Roster');
+        const categoryTitle = count > 0
+            ? app._label('ui.creatureDock.count', '{label}: {count} here', { label: categoryLabel, count })
+            : categoryLabel;
+        const title = app._label('ui.rosterDock.summary', '{roster} — {summary}', {
+            roster: rosterLabel,
+            summary: categoryTitle
+        });
         if (button) {
             button.setAttribute('title', title);
             button.setAttribute('aria-label', title);
             button.classList.toggle('danger', danger && count > 0);
             const label = button.querySelector?.('.mobile-panel-dock-label');
             if (label) {
-                label.textContent = baseLabel;
-                label.setAttribute('data-i18n', danger ? 'ui.enemies' : 'ui.creatures');
+                label.textContent = rosterLabel;
+                label.setAttribute('data-i18n', 'ui.roster');
             }
         }
         if (!badge) return;
@@ -312,7 +354,8 @@ const YAW_MOBILE_UNIT_STRIPS = {
     creaturePresenceCue(app) {
         const cue = document.getElementById('mobile-creature-presence-cue');
         const living = this.livingCreatures(app);
-        this.updateCreatureDockBadge(app, living);
+        const corpses = this.corpseCreatures(app);
+        this.updateCreatureDockBadge(app, living, corpses);
         if (!cue) return;
         if (app.combatState?.active) {
             cue.innerHTML = '';
@@ -327,7 +370,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
             return;
         }
         const first = living[0] || {};
-        const icon = app._escapeHtml(first.icon || '👤');
+        const icon = app._unitArtHtml(first, first.icon || '👤', { className: 'presence-sprite' });
         const selected = living.length === 1 && app._isExplorationTargetUnit('creature', first);
         const selectedClass = selected ? ' selected selected-target' : '';
         const selectionAttrs = living.length === 1

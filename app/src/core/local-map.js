@@ -163,9 +163,9 @@ const YAW_LOCAL_MAP = {
         });
         this.writeMobileMap(html, 'interior');
         const coords = document.getElementById('coords');
-        if (coords) coords.textContent = `Inside ${app.activeInterior.structureName}`;
+        if (coords) coords.textContent = app._label('location.insideName', 'Inside {name}', { name: app.activeInterior.structureName });
         const mobileCoords = document.getElementById('mobile-coords');
-        if (mobileCoords) mobileCoords.textContent = `Inside ${cx}, ${cy}`;
+        if (mobileCoords) mobileCoords.textContent = app._label('location.insideCoordinates', 'Inside {x}, {y}', { x: cx, y: cy });
         app.renderTileInfo();
         app.renderLargeMap();
         app.renderDesktopPlaySurface();

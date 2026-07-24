@@ -4,6 +4,28 @@
  */
 
 const YAW_INTENT_MENU = {
+    setUnderlyingInert(enabled) {
+        const appShell = typeof document !== 'undefined' ? document.getElementById('app') : null;
+        if (!appShell) return;
+        if (enabled) {
+            if (!appShell.hasAttribute('data-intent-prior-inert')) {
+                appShell.setAttribute('data-intent-prior-inert', appShell.hasAttribute('inert') ? 'true' : 'false');
+                appShell.setAttribute('data-intent-prior-aria-hidden', appShell.getAttribute('aria-hidden') ?? '');
+            }
+            appShell.setAttribute('inert', '');
+            appShell.setAttribute('aria-hidden', 'true');
+            return;
+        }
+        const priorInert = appShell.getAttribute('data-intent-prior-inert');
+        const priorAriaHidden = appShell.getAttribute('data-intent-prior-aria-hidden');
+        if (priorInert === 'false') appShell.removeAttribute('inert');
+        else if (priorInert === 'true') appShell.setAttribute('inert', '');
+        if (priorAriaHidden === '') appShell.removeAttribute('aria-hidden');
+        else if (priorAriaHidden != null) appShell.setAttribute('aria-hidden', priorAriaHidden);
+        appShell.removeAttribute('data-intent-prior-inert');
+        appShell.removeAttribute('data-intent-prior-aria-hidden');
+    },
+
     surface(source = 'sheet', presentation = 'sheet') {
         const normalizedSource = String(source || 'sheet');
         const isDesktop = normalizedSource === 'desktop' || normalizedSource.startsWith('desktop-') || presentation === 'desktop';
@@ -56,7 +78,7 @@ const YAW_INTENT_MENU = {
 
     variantOptionsHtml(app, resolution, context = {}) {
         const action = resolution.action;
-        const defaultId = app._getDefaultSubAction(action);
+        const defaultId = context.defaultId || (action === 'fight' ? 'basic' : app._getDefaultSubAction(action));
         const ordered = [...resolution.variants].sort((left, right) => (left.id === defaultId ? -1 : (right.id === defaultId ? 1 : 0)));
         return ordered.map((variant, index) => {
             const label = app._escapeHtml(variant.label);
@@ -67,17 +89,37 @@ const YAW_INTENT_MENU = {
             const details = [
                 reason,
                 !reason && variant.hint ? variant.hint : '',
-                variant.cost?.label ? app._label('variant.cost', 'Cost: {cost}.', { cost: variant.cost.label }) : '',
+                variant.pairCount <= 1 && variant.cost?.label ? app._label('variant.cost', 'Cost: {cost}.', { cost: variant.cost.label }) : '',
                 ...(!reason && (variant.requirements || []).length
                     ? [app._label('variant.requirements', 'Requirements: {requirements}.', { requirements: variant.requirements.join(', ') })]
                     : [])
             ].filter(Boolean).join(' ');
+            const showPairPreview = variant.pairCount > 1 && Array.isArray(variant.pairPreviews) && variant.pairPreviews.length > 0;
+            const pairPreviewId = `${reasonId}-pairs`;
+            const pairPreviewItems = showPairPreview
+                ? variant.pairPreviews.map(pair => `<li data-variant-pair-status="${pair.available ? 'available' : 'unavailable'}"${pair.outlook ? ` data-attempt-outlook="${app._escapeHtml(pair.outlook)}"` : ''}>${app._escapeHtml(pair.label)}</li>`).join('')
+                : '';
+            const pairOverflow = showPairPreview && variant.pairPreviewOverflow > 0
+                ? `<li class="action-variant-pair-overflow">${app._escapeHtml(app._label('variant.pair.overflow', '{count} more pairs not shown.', { count: variant.pairPreviewOverflow }))}</li>`
+                : '';
+            const actorCostItems = showPairPreview
+                ? (variant.actorCosts || [])
+                    .filter(item => item.cost)
+                    .map(item => app._label('variant.actorCost', '{actor}: {cost}', { actor: item.actorName, cost: item.cost }))
+                : [];
+            const actorCostSummary = actorCostItems.length
+                ? `<div class="action-variant-actor-costs">${app._escapeHtml(app._label('variant.actorCosts', 'Actor costs: {costs}.', { costs: actorCostItems.join('; ') }))}</div>`
+                : '';
+            const pairPreviewHtml = showPairPreview
+                ? `<div class="action-variant-pair-preview" id="${pairPreviewId}" data-variant-pair-count="${variant.pairCount}"><div class="action-variant-pair-heading">${app._escapeHtml(app._label('variant.pair.heading', 'Pair preview'))}</div><ul>${pairPreviewItems}${pairOverflow}</ul>${actorCostSummary}</div>`
+                : '';
             const safeId = app._escapeJsString(variant.id);
             const selectCall = String(context.selectCall || '').replace(/\{id\}/g, safeId);
             const disabled = variant.available ? '' : ' disabled aria-disabled="true"';
-            const describedBy = details ? ` aria-describedby="${reasonId}"` : '';
+            const describedByIds = [details ? reasonId : '', showPairPreview ? pairPreviewId : ''].filter(Boolean);
+            const describedBy = describedByIds.length ? ` aria-describedby="${describedByIds.join(' ')}"` : '';
             const primary = variant.id === defaultId ? ' primary' : '';
-            return `<div class="action-variant-option${variant.available ? '' : ' unavailable'}" data-variant-status="${app._escapeHtml(variant.status)}"${variant.outlook ? ` data-attempt-outlook="${app._escapeHtml(variant.outlook)}"` : ''}><button class="action-btn${primary}" role="menuitem" data-command-surface="action-variant-options" data-command-mode="${app._escapeHtml(context.mode || 'exploration')}" data-command-intent="${app._escapeHtml(`${action}:${variant.id}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${app._escapeHtml(details ? `${variant.label}. ${details}` : variant.label)}" aria-label="${app._escapeHtml(details ? `${variant.label}. ${variant.hint || ''}`.trim() : variant.label)}"${describedBy}${disabled}${variant.available ? ` onclick="${selectCall}"` : ''}>${app._escapeHtml(variant.icon || '')} ${label}</button>${details ? `<span class="action-variant-reason" id="${reasonId}">${app._escapeHtml(details)}</span>` : ''}</div>`;
+            return `<div class="action-variant-option${variant.available ? '' : ' unavailable'}" data-variant-status="${app._escapeHtml(variant.status)}"${variant.outlook ? ` data-attempt-outlook="${app._escapeHtml(variant.outlook)}"` : ''}><button class="action-btn${primary}" role="menuitem" data-command-surface="action-variant-options" data-command-mode="${app._escapeHtml(context.mode || 'exploration')}" data-command-intent="${app._escapeHtml(`${action}:${variant.id}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${app._escapeHtml(details ? `${variant.label}. ${details}` : variant.label)}" aria-label="${app._escapeHtml(details ? `${variant.label}. ${variant.hint || ''}`.trim() : variant.label)}"${describedBy}${disabled}${variant.available ? ` onclick="${selectCall}"` : ''}>${app._escapeHtml(variant.icon || '')} ${label}</button>${details ? `<span class="action-variant-reason" id="${reasonId}">${app._escapeHtml(details)}</span>` : ''}${pairPreviewHtml}</div>`;
         }).join('');
     },
 
@@ -88,14 +130,24 @@ const YAW_INTENT_MENU = {
         const groupContexts = Array.isArray(context.groups) && context.groups.length > 0
             ? context.groups
             : [{ scope: context.scope || 'target', selectCall: context.selectCall || '' }];
-        const groups = groupContexts.map(group => ({
-            ...group,
-            resolution: YAW_SUB_ACTIONS.resolve(app, action, {
+        const resolveVariants = action === 'fight' && typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+            ? (scope => YAW_COMBAT_TECHNIQUES.resolve(app, {
                 actors,
                 targets,
-                scope: group.scope || 'target',
-                mode: context.mode || 'exploration'
-            })
+                scope,
+                mode: context.mode || 'exploration',
+                preferred: context.preferred
+            }))
+            : (scope => YAW_SUB_ACTIONS.resolve(app, action, {
+                actors,
+                targets,
+                scope,
+                mode: context.mode || 'exploration',
+                preferred: context.preferred
+            }));
+        const groups = groupContexts.map(group => ({
+            ...group,
+            resolution: resolveVariants(group.scope || 'target')
         })).filter(group => group.resolution.variants.length > 0);
         app.closeIntentMenu();
         const source = String(context.source || 'sheet');
@@ -112,14 +164,19 @@ const YAW_INTENT_MENU = {
             })}</div>`;
         }).join('');
         const backLabel = app._escapeHtml(app._label('ui.back', 'Back'));
+        const descriptionId = `${surface.titleId}-description`;
+        const description = app._escapeHtml(app._label('variant.dialogDescription', 'Choose a {action} option. Availability clues describe likely limits before the attempt.', {
+            action: app._uiLabel(action)
+        }));
         const cancelCall = context.cancelCall || 'App.closeIntentMenu()';
-        const html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-intent-source="${app._escapeHtml(source)}" data-command-surface="action-variant-options" data-command-mode="${app._escapeHtml(context.mode || 'exploration')}" data-command-grammar="actor-target-intent" data-command-intent="${app._escapeHtml(action)}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="action-variant-options" data-command-mode="${app._escapeHtml(context.mode || 'exploration')}" data-command-grammar="actor-target-intent">${options}<button class="action-btn" role="menuitem" data-command-control="back-variant" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="${cancelCall}">${backLabel}</button></div></div>`;
+        const html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-labelledby="${surface.titleId}" aria-describedby="${descriptionId}" data-intent-presentation="${surface.presentation}" data-intent-source="${app._escapeHtml(source)}" data-command-surface="action-variant-options" data-command-mode="${app._escapeHtml(context.mode || 'exploration')}" data-command-grammar="actor-target-intent" data-command-intent="${app._escapeHtml(action)}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><p class="action-variant-dialog-description" id="${descriptionId}">${description}</p><div class="${surface.actionsClass}" role="menu" data-command-surface="action-variant-options" data-command-mode="${app._escapeHtml(context.mode || 'exploration')}" data-command-grammar="actor-target-intent">${options}<button class="action-btn" role="menuitem" data-command-control="back-variant" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="${cancelCall}">${backLabel}</button></div></div>`;
         document.body.insertAdjacentHTML('beforeend', html);
         const menu = document.getElementById(surface.id);
         this.positionDesktopMenu(menu, context.anchorEvent, surface.presentation === 'desktop');
         const dismiss = typeof context.onDismiss === 'function'
             ? context.onDismiss
             : () => app.closeIntentMenu();
+        this.setUnderlyingInert(true);
         app._activateFocusTrap(menu, { close: dismiss });
         if (context.dismissOnOutside !== false) app._activateOutsideContextDismiss(menu);
         return groups.length === 1 ? groups[0].resolution : { action, actors, targets, groups };
@@ -151,6 +208,7 @@ const YAW_INTENT_MENU = {
         if (menu) menu.remove();
         const desktopMenu = document.getElementById('desktop-intent-menu');
         if (desktopMenu) desktopMenu.remove();
+        this.setUnderlyingInert(false);
         app._restoreFocusTrap();
     }
 };

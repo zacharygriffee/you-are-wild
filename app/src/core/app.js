@@ -211,8 +211,8 @@
             _multiInteractionProfile(action) {
                 return YAW_MULTI_INTERACTION.profile(action);
             },
-            _multiInteractionEffect(actor, action, targetCount = 1) {
-                return YAW_MULTI_INTERACTION.effect(this, actor, action, targetCount);
+            _multiInteractionEffect(actor, action, targetCount = 1, options = {}) {
+                return YAW_MULTI_INTERACTION.effect(this, actor, action, targetCount, options);
             },
             _multiInteractionScaleValue(value, effect, options = {}) {
                 return YAW_MULTI_INTERACTION.scaleValue(value, effect, options);
@@ -798,6 +798,14 @@
                     restDigestionTicks: 8,
                     containmentFullnessPerSize: 3,
                     containmentNutritionPerSize: 15
+                },
+                digestion: {
+                    satiatedThreshold: 25,
+                    satiatedMultiplier: 0.8,
+                    hungryMultiplier: 1.2,
+                    starvingMultiplier: 1.4,
+                    minimumMultiplier: 0.8,
+                    maximumMultiplier: 1.4
                 }
             },
 
@@ -866,6 +874,7 @@
                 cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
                 partyPlayFightMode: 'nonlethal',
                 inventoryRecovery: 'death-bag',
+                recoveryMode: 'core:regenerate',
                 highContrast: false, reducedMotion: false, fontSize: 14
             },
 
@@ -887,6 +896,9 @@
             mobileActorBeltOpen: false,
             mobileTargetPickerOpen: false,
             mobileCreatureRailOpen: false,
+            mobileRosterOpen: false,
+            mobileRosterTab: 'party',
+            mobileRosterDetail: null,
             transactionWindow: null,
             holdingsWindow: null,
             inInterior: false,
@@ -1169,13 +1181,17 @@
                 if (action === 'play') return this.startupDomainsReady(['saves', 'installedMedia', 'modules']);
                 return true;
             },
+            _startupDomainLabel(state) {
+                if (!state) return '';
+                return state.labelKey ? this._label(state.labelKey, state.label || state.name) : String(state.label || state.name || '');
+            },
             _setStartupControl(id, ready, options = {}) {
                 const control = document.getElementById(id);
                 if (!control) return;
                 control.disabled = !ready;
                 control.setAttribute('aria-disabled', ready ? 'false' : 'true');
                 control.setAttribute('aria-busy', ready ? 'false' : 'true');
-                const title = String(ready ? options.readyTitle || '' : options.pendingTitle || 'Preparing…');
+                const title = String(ready ? options.readyTitle || '' : options.pendingTitle || this._label('startup.preparingControl', 'Preparing…'));
                 if (title) {
                     control.title = title;
                     control.setAttribute('aria-label', title);
@@ -1232,7 +1248,7 @@
                     statusText.textContent = this._label('startup.blocked', 'Some saved or installed content could not be prepared.');
                 } else if (pending.length) {
                     status.dataset.state = 'pending';
-                    const labels = pending.map(state => state.label).join(', ');
+                    const labels = pending.map(state => this._startupDomainLabel(state)).join(', ');
                     statusText.textContent = this._label('startup.preparing', 'Preparing {items}…', { items: labels });
                 } else if (degradedErrors.length) {
                     status.dataset.state = 'error';
@@ -1249,9 +1265,12 @@
                 if (!this._startupReadinessErrors) this._startupReadinessErrors = new Set();
                 if (this._startupReadinessErrors.has(key)) return;
                 this._startupReadinessErrors.add(key);
-                const message = state.error?.message || String(state.error || 'Unknown startup failure');
+                const domain = this._startupDomainLabel(state);
+                const message = state.error?.code === 'startup_timeout'
+                    ? this._label('startup.timeout', '{domain} did not become ready within {timeout} ms.', { domain, timeout: state.error.timeoutMs || state.timeoutMs || 0 })
+                    : state.error?.message || String(state.error || this._label('startup.unknownFailure', 'Unknown startup failure'));
                 this._pushLog({
-                    text: this._label('startup.domainFailed', 'Startup {domain} failed: {message}', { domain: state.label, message }),
+                    text: this._label('startup.domainFailed', 'Startup {domain} failed: {message}', { domain, message }),
                     type: 'error',
                     errorCode: `startup_${state.name}_failed`
                 }, 'error');
@@ -1263,14 +1282,14 @@
                     this._startupReadinessUnsubscribe = YAW_STARTUP_READINESS.subscribe(state => this._recordStartupReadiness(state));
                 }
                 let bundledAttempt = 0;
-                const saves = YAW_STARTUP_READINESS.start('saves', () => this._syncLastSaveSlot(), { label: 'saved games', timeoutMs: 10000 });
+                const saves = YAW_STARTUP_READINESS.start('saves', () => this._syncLastSaveSlot(), { label: 'saved games', labelKey: 'startup.domain.saves', timeoutMs: 10000 });
                 const installedMedia = YAW_STARTUP_READINESS.start('installedMedia', async () => {
                     if (typeof MODULE_SYSTEM === 'undefined') return null;
                     const attempt = YAW_STARTUP_READINESS.state('installedMedia')?.attempts || 1;
                     if (attempt === 1 && MODULE_SYSTEM.mediaReady) return MODULE_SYSTEM.mediaReady;
                     if (typeof MODULE_SYSTEM.prepareInstalledMedia === 'function') return MODULE_SYSTEM.prepareInstalledMedia();
                     return MODULE_SYSTEM.ready;
-                }, { label: 'installed media', timeoutMs: 20000 });
+                }, { label: 'installed media', labelKey: 'startup.domain.installedMedia', timeoutMs: 20000 });
                 const modules = YAW_STARTUP_READINESS.start('modules', async () => {
                     await YAW_STARTUP_READINESS.when('installedMedia');
                     if (typeof MODULE_SYSTEM === 'undefined') return [];
@@ -1289,7 +1308,7 @@
                     }
                     this.syncHostCatalogControls();
                     return MODULE_SYSTEM.loadEnabledModules();
-                }, { label: 'mods', timeoutMs: 30000 });
+                }, { label: 'mods', labelKey: 'startup.domain.modules', timeoutMs: 30000 });
                 const bundledAssets = YAW_STARTUP_READINESS.start('bundledAssets', async () => {
                     bundledAttempt++;
                     const promise = bundledAttempt === 1
@@ -1302,7 +1321,7 @@
                         YAW_TILESET_RUNTIME._refreshMaps?.();
                     }
                     return result;
-                }, { label: 'visual assets', blocking: false, timeoutMs: 20000 });
+                }, { label: 'visual assets', labelKey: 'startup.domain.bundledAssets', blocking: false, timeoutMs: 20000 });
                 this.syncStartupReadinessUI();
                 return Promise.all([saves, installedMedia, modules, bundledAssets]);
             },
@@ -1509,6 +1528,9 @@
             _normalizeContainmentRecords(holder, container = 'stomach') {
                 return YAW_UNIT_CONTAINMENT.normalizeContainer(this, holder, container);
             },
+            _isServiceAvailable(unit) {
+                return YAW_UNIT_CONTAINMENT.serviceAvailable(this, unit);
+            },
             _captureVitalProfile(unit) {
                 return YAW_UNIT_CONTAINMENT.captureVitalProfile(unit);
             },
@@ -1528,7 +1550,7 @@
                 return YAW_UNIT_CONTAINMENT.isTerminalVitalState(record);
             },
             _containmentSummary(record) {
-                return YAW_UNIT_CONTAINMENT.summary(record);
+                return YAW_UNIT_CONTAINMENT.summary(this, record);
             },
             _normalizeRemainsRecord(record, defaults = {}) {
                 return YAW_UNIT_CONTAINMENT.normalizeRemainsRecord(record, defaults);
@@ -1549,8 +1571,17 @@
                     const containerLabel = this._label(container === 'stomach' ? 'capacity.stomach' : container === 'womb' ? 'capacity.womb' : 'capacity.balls', container);
                     const progress = Math.round(prey.progress ?? prey.digestionProgress ?? 0);
                     const vital = Math.round(this._vitalRatio(prey) * 100);
-                    const release = prey.releaseEligible ? this._label('containment.releaseEligible', 'releasable') : this._label('containment.releaseBlocked', 'not releasable');
-                    return `${prey.name} in ${containerLabel}: ${progress}% · vitality ${vital}% · ${release}`;
+                    const release = prey.releaseEligible
+                        ? this._label('containment.summary.releasable', 'Releasable')
+                        : this._label('containment.summary.notReleasable', 'Not releasable');
+                    return this._label('containment.detailSummary', '{target} in {container}: {progress}% · {vitality} {ratio}% · {release}', {
+                        target: prey.name || this._label('containment.unknownPrey', 'Contained creature'),
+                        container: containerLabel,
+                        progress,
+                        vitality: this._label('containment.vitality', 'Vitality'),
+                        ratio: vital,
+                        release
+                    });
                 }).join(' | ');
             },
             _renderContainerInventory(unit, holderType = 'party', holderIndex = 0) {
@@ -1612,12 +1643,14 @@
             },
             _makeCreatureFlee(unit, threat = this.player) {
                 const relocated = this._relocateFleeingCreature(unit, { threat, source: 'threat-reaction' });
+                const unitName = unit?.name || this._label('ui.unknown', 'Unknown');
+                const threatName = threat?.name || this._label('combat.flee.threatFallback', 'the threat');
                 if (!relocated) {
                     const cornered = this._turnCreatureHostile(unit);
-                    cornered.text = `${unit.name} cannot escape ${threat?.name || 'the threat'} and turns hostile!`;
+                    cornered.text = this._label('combat.flee.cannotEscape', '{name} cannot escape {threat} and turns hostile!', { name: unitName, threat: threatName });
                     return cornered;
                 }
-                return { fled: true, text: `${unit.name} panics and flees from ${threat?.name || 'the threat'}!` };
+                return { fled: true, text: this._label('combat.flee.panicsFrom', '{name} panics and flees from {threat}!', { name: unitName, threat: threatName }) };
             },
             _relocateFleeingCreature(unit, options = {}) {
                 return YAW_WORLD_STATE.relocateFleeingCreature(this, unit, options);
@@ -1677,7 +1710,9 @@
                 unit.disposition = this.DISPOSITION.ENEMY;
                 unit.willing = false;
                 this._syncCurrentTileCreatures();
-                return { fled: false, hostile: unit, text: `${unit.name} turns hostile!` };
+                return { fled: false, hostile: unit, text: this._label('combat.flee.turnsHostile', '{name} turns hostile!', {
+                    name: unit?.name || this._label('ui.unknown', 'Unknown')
+                }) };
             },
             _syncCurrentTileCreatures() {
                 if (this.inInterior) {
@@ -1705,7 +1740,9 @@
                 if (!this.creatures.includes(unit)) this.creatures.push(unit);
                 this._makeCorpse(unit, cause);
                 this.combatState.turnQueue = this.combatState.turnQueue.filter(entry => entry.unit !== unit);
-                this.log.push({ text: `${unit.name}'s remains fall to the ground.`, type: 'combat' });
+                this.log.push({ text: this._label('corpse.partyRemainsDropped', "{name}'s remains fall to the ground.", {
+                    name: unit.name || this._label('ui.unknown', 'Unknown')
+                }), type: 'combat' });
                 this.renderParty();
                 this.renderCreatures();
                 return true;
@@ -1722,7 +1759,9 @@
                     return false;
                 });
                 if (removed > 0) {
-                    this.log.push({ text: `${removed === 1 ? 'A corpse decays' : removed + ' corpses decay'} into nothing.`, type: 'discovery' });
+                    this.log.push({ text: this._label(removed === 1 ? 'corpse.decayedOne' : 'corpse.decayedMany', removed === 1
+                        ? 'A corpse decays into nothing.'
+                        : '{count} corpses decay into nothing.', { count: removed }), type: 'discovery' });
                     this._syncCurrentTileCreatures();
                     this.renderCreatures();
                     this.renderLog();
@@ -1742,7 +1781,9 @@
                     return this._makeCreatureFlee(unit, threat);
                 }
                 const hostile = this._turnCreatureHostile(unit);
-                hostile.text = `${unit.name} is cornered and turns hostile!`;
+                hostile.text = this._label('combat.flee.corneredHostile', '{name} is cornered and turns hostile!', {
+                    name: unit?.name || this._label('ui.unknown', 'Unknown')
+                });
                 return hostile;
             },
             _reactCreatureToThreat(unit, threat = this.player) {
@@ -1828,6 +1869,27 @@
                 return target;
             },
 
+            _resolveVitalDepletion(target, cause = 'chew') {
+                if (!target) return target;
+                target.CPun = 0;
+                target.CPle = 0;
+                target.alive = false;
+                target.state = 'depleted';
+                target.digestionState = 'depleted';
+                const targetWasParty = this.party.includes(target);
+                if (targetWasParty && (target === this.player || target.mc)) {
+                    this._handlePlayerFall?.({ cause: `${cause}-vital-depletion`, source: `feast-${cause}` });
+                } else if (targetWasParty) {
+                    this._dropPartyCorpse(target, cause);
+                } else {
+                    this._makeCorpse(target, cause);
+                    if (this.combatState?.turnQueue) {
+                        this.combatState.turnQueue = this.combatState.turnQueue.filter(entry => entry.unit !== target);
+                    }
+                }
+                return target;
+            },
+
             _applySpeciesAbilities(unit) {
                 if (!unit) return unit;
                 const speciesAbilities = this.SPECIES_ABILITIES[unit.species] || {};
@@ -1889,6 +1951,9 @@
                 unit.size = unit.size || this.SPECIES_SIZE[unit.species] || 4;
                 unit.appetite = unit.appetite || 4;
                 unit.bodyParts = unit.bodyParts || this.SPECIES_DEFAULT_PARTS[unit.species] || [];
+                unit.creationOptions = unit.creationOptions && typeof unit.creationOptions === 'object' && !Array.isArray(unit.creationOptions)
+                    ? JSON.parse(JSON.stringify(unit.creationOptions))
+                    : {};
                 unit.tags = unit.tags || [species?.name || unit.species || 'Unknown'];
                 this._applySpeciesCanon(unit);
                 unit.perks = unit.perks || [];
@@ -1912,6 +1977,7 @@
                 unit.status = unit.status || {};
                 unit.lactating = unit.lactating || false;
                 unit.lactationCooldown = unit.lactationCooldown || 0;
+                YAW_RESOURCE_LEDGER.normalizeUnit(unit);
                 unit.slurpable = unit.slurpable || this.SPECIES_ABILITIES[unit.species]?.floopy || this.SPECIES_ABILITIES[unit.species]?.enveloped || false;
                 unit.breakable = unit.breakable || false;
                 unit.willingPrey = unit.willingPrey || false;
@@ -1978,11 +2044,42 @@
                 this.combatState.xpEarned = (this.combatState.xpEarned || 0) + amount;
             },
 
+            _resolveTendEffect(actor, target, options = {}) {
+                if (!target) return { requestedCondition: 0, restoredCondition: 0, xpAwarded: 0 };
+                const maximum = Math.max(1, Number(target.MPun) || 1);
+                const before = Math.max(0, Math.min(maximum, Number(target.CPun) || 0));
+                const requestedCondition = Math.max(0, Math.floor(Number(
+                    options.condition ?? ((actor?.Feed || 10) * 2)
+                ) || 0));
+                target.CPun = Math.min(maximum, before + requestedCondition);
+                const restoredCondition = Math.max(0, target.CPun - before);
+                let xpAwarded = 0;
+                if (options.awardXP !== false
+                    && this.combatState?.active
+                    && actor
+                    && actor !== target
+                    && restoredCondition > 0) {
+                    const rewardKey = this.party.includes(target) ? 'feedAlly' : 'feedEnemy';
+                    const rewardCap = Math.max(0, Math.floor(Number(this.XP_REWARDS?.[rewardKey]) || 0));
+                    const beforeBand = Math.floor(rewardCap * before / maximum);
+                    const afterBand = Math.floor(rewardCap * target.CPun / maximum);
+                    xpAwarded = Math.max(0, afterBand - beforeBand);
+                    if (xpAwarded > 0) this._awardCombatXP(xpAwarded);
+                }
+                return { requestedCondition, restoredCondition, xpAwarded };
+            },
+
             _balanceConfig() {
                 return YAW_BALANCE_SYSTEM.ensure(this);
             },
             _balanceScenarioBaseline() {
                 return YAW_BALANCE_SYSTEM.scenarioBaseline(this);
+            },
+            _interactionBalanceMatrix() {
+                return YAW_BALANCE_SYSTEM.interactionMatrix(this);
+            },
+            _digestionRateState(unit, baseRate = 5) {
+                return YAW_BALANCE_SYSTEM.digestionRateState(this, unit, baseRate);
             },
             _applyHungerPressure(unit, amount, context = {}) {
                 return YAW_BALANCE_SYSTEM.applyHungerPressure(this, unit, amount, context);
@@ -2266,20 +2363,20 @@
                 const biomeText = CONTENT.biomeIntro(this.currentBiome || 'forest', ctx);
                 let encounterText = '';
                 if (enemies.length > 0) {
-                    encounterText = `You encounter ${enemies.map(e => e.name).join(', ')}! They are aggressive!`;
-                    if (neutrals.length > 0) encounterText += ` Nearby, ${neutrals.map(n => n.name).join(', ')} watch${neutrals.length === 1 ? 'es' : ''} cautiously.`;
-                    if (friendlies.length > 0) encounterText += ` ${friendlies.map(f => f.name).join(', ')} seem${friendlies.length === 1 ? 's' : ''} unconcerned.`;
+                    encounterText = this._label('encounter.hostile', 'You encounter {names}! They are aggressive!', { names: enemies.map(e => e.name).join(', ') });
+                    if (neutrals.length > 0) encounterText += ` ${this._label('encounter.neutralNearby', 'Nearby, {names} watch cautiously.', { names: neutrals.map(n => n.name).join(', ') })}`;
+                    if (friendlies.length > 0) encounterText += ` ${this._label('encounter.friendlyUnconcerned', '{names} seem unconcerned.', { names: friendlies.map(f => f.name).join(', ') })}`;
                 } else if (neutrals.length > 0) {
-                    encounterText = `You spot ${neutrals.map(n => n.name).join(', ')}. They watch you cautiously.`;
-                    if (friendlies.length > 0) encounterText += ` ${friendlies.map(f => f.name).join(', ')} seem${friendlies.length === 1 ? 's' : ''} friendly.`;
+                    encounterText = this._label('encounter.neutral', 'You spot {names}. They watch you cautiously.', { names: neutrals.map(n => n.name).join(', ') });
+                    if (friendlies.length > 0) encounterText += ` ${this._label('encounter.friendlyNearby', '{names} seem friendly.', { names: friendlies.map(f => f.name).join(', ') })}`;
                 } else {
-                    encounterText = `You spot ${friendlies.map(f => f.name).join(', ')}. They seem friendly.`;
+                    encounterText = this._label('encounter.friendly', 'You spot {names}. They seem friendly.', { names: friendlies.map(f => f.name).join(', ') });
                 }
-                this.updateScene(`${biome.name} - ${tile.hasLandmark ? tile.landmarkName : 'Wilderness'}`, biomeText + '\n\n' + encounterText, enemies.length > 0);
+                this.updateScene(`${biome.name} - ${tile.hasLandmark ? tile.landmarkName : this._label('ui.scene.wildernessTitle', 'The Wilderness')}`, biomeText + '\n\n' + encounterText, enemies.length > 0);
                 this.log.push({ text: encounterText, type: enemies.length > 0 ? 'combat' : 'discovery' });
                 if (enemies.length > 0) this.showToast({ text: encounterText, type: 'danger', importance: 'major', dedupeKey: `encounter:${tile.x},${tile.y}` });
                 if (enemies.length > 0) {
-                    if (isBoss) { this.log.push({ text: `A powerful guardian guards the ${tile.landmarkName}!`, type: 'combat' }); }
+                    if (isBoss) this.log.push({ text: this._label('encounter.guardian', 'A powerful guardian guards {landmark}!', { landmark: tile.landmarkName }), type: 'combat' });
                     this.startCombat(enemies);
                 } else {
                     this.renderCreatures();
@@ -2340,13 +2437,19 @@
                     const structDesc = struct.descriptions[descIdx];
                     const ctx = { species: enemies[0].species, mood: struct.disposition, voreEnabled: true, explicit: true };
                     const biomeText = CONTENT.biomeIntro(this.currentBiome || 'forest', ctx);
-                    const dispText = disp === this.DISPOSITION.ENEMY ? 'hostile' : (disp === this.DISPOSITION.FRIENDLY ? 'friendly' : 'wary');
-                    const encounterText = `You found a ${struct.name}! ${structDesc} ${enemies.length} ${dispText} creature${enemies.length > 1 ? 's' : ''} ${disp === this.DISPOSITION.ENEMY ? 'blocks' : 'inhabits'} the area.`;
+                    const dispositionKey = disp === this.DISPOSITION.ENEMY ? 'disposition.hostile' : (disp === this.DISPOSITION.FRIENDLY ? 'disposition.friendly' : 'disposition.neutral');
+                    const encounterText = this._label('structure.encounter.occupants', 'You found {structure}! {description} Occupants ({disposition}, {count}): {names}.', {
+                        structure: struct.name,
+                        description: structDesc,
+                        disposition: this._label(dispositionKey, disp),
+                        count: enemies.length,
+                        names: enemies.map(enemy => enemy.name).join(', ')
+                    });
                     this.updateScene(`${struct.name} - ${biome.name}`, biomeText + '\n\n' + encounterText, disp === this.DISPOSITION.ENEMY);
-                    this.log.push({ text: `Discovered ${struct.name}! ${encounterText}`, type: 'discovery' });
+                    this.log.push({ text: this._label('structure.encounter.discovered', 'Discovered {name}! {details}', { name: struct.name, details: encounterText }), type: 'discovery' });
                     if (livingEnemies.length > 0) this.showToast({ text: encounterText, type: 'danger', importance: 'major', dedupeKey: `structure-encounter:${tile.x},${tile.y}` });
                     if (livingEnemies.length > 0) {
-                        this.log.push({ text: `Combat started with ${livingEnemies.map(e => e.name).join(', ')}!`, type: 'combat' });
+                        this.log.push({ text: this._label('combat.startedWith', 'Combat started with {names}!', { names: livingEnemies.map(e => e.name).join(', ') }), type: 'combat' });
                         this.startCombat(livingEnemies);
                     } else {
                         this.renderCreatures();
@@ -2356,9 +2459,13 @@
                     const descIdx = Math.abs(tile.x + tile.y) % struct.descriptions.length;
                     const structDesc = struct.descriptions[descIdx];
                     const visitors = [];
-                    if (merchant) visitors.push(`${merchant.name} is trading here`);
-                    if (questGiver) visitors.push(`${questGiver.name} has work for you`);
-                    const encounterText = `You found a ${struct.name}. ${structDesc} ${visitors.join(', and ')}.`;
+                    if (merchant) visitors.push(this._label('structure.encounter.merchantHere', '{name} is trading here', { name: merchant.name }));
+                    if (questGiver) visitors.push(this._label('structure.encounter.questGiverHere', '{name} has work for you', { name: questGiver.name }));
+                    const encounterText = this._label('structure.encounter.services', 'You found {structure}. {description} {visitors}.', {
+                        structure: struct.name,
+                        description: structDesc,
+                        visitors: visitors.join(', ')
+                    });
                     this.updateScene(`${struct.name} - ${biome.name}`, encounterText, false);
                     this.log.push({ text: encounterText, type: 'discovery' });
                     this.renderCreatures();
@@ -2367,7 +2474,10 @@
                     // Empty structure
                     const descIdx = Math.abs(tile.x + tile.y) % struct.descriptions.length;
                     const structDesc = struct.descriptions[descIdx];
-                    this.log.push({ text: `You found a ${struct.name}. ${structDesc} It seems empty.`, type: 'discovery' });
+                    this.log.push({ text: this._label('structure.encounter.empty', 'You found {structure}. {description} It seems empty.', {
+                        structure: struct.name,
+                        description: structDesc
+                    }), type: 'discovery' });
                     this.showExplorationActions();
                 }
             },
@@ -2375,6 +2485,10 @@
 
             // ===== COMBAT SYSTEM =====
             startCombat(enemies) {
+                if (this._recoveryRestricts?.('combat')) {
+                    this._showRecoveryJourney?.();
+                    return false;
+                }
                 return YAW_COMBAT_LIFECYCLE.start(this, enemies);
             },
 
@@ -2454,20 +2568,20 @@
                 return YAW_COMBAT_RULES.isReachSensitiveCombatAction(action);
             },
 
-            _combatReachProfile(actor, action = 'fight') {
-                return YAW_COMBAT_RULES.intentReachProfile(this, actor, action);
+            _combatReachProfile(actor, action = 'fight', options = {}) {
+                return YAW_COMBAT_RULES.intentReachProfile(this, actor, action, options);
             },
 
-            _combatReachResult(actor, target, action = 'fight') {
-                return YAW_COMBAT_RULES.reachResult(this, actor, target, action);
+            _combatReachResult(actor, target, action = 'fight', options = {}) {
+                return YAW_COMBAT_RULES.reachResult(this, actor, target, action, options);
             },
 
-            _canAttemptCombatTarget(actor, target, action = 'fight') {
-                return YAW_COMBAT_RULES.canAttemptCombatTarget(this, actor, target, action);
+            _canAttemptCombatTarget(actor, target, action = 'fight', options = {}) {
+                return YAW_COMBAT_RULES.canAttemptCombatTarget(this, actor, target, action, options);
             },
 
-            _canReachCombatTarget(actor, target, action = 'fight') {
-                return YAW_COMBAT_RULES.canReachCombatTarget(this, actor, target, action);
+            _canReachCombatTarget(actor, target, action = 'fight', options = {}) {
+                return YAW_COMBAT_RULES.canReachCombatTarget(this, actor, target, action, options);
             },
 
             _combatReachFailureText(actors = [], target = null, action = 'fight', reach = null) {
@@ -2527,6 +2641,10 @@
                 return YAW_COMBAT_STATUS.applyAttackStatus(this, actor, target, dmg);
             },
 
+            _applyTechniqueStatus(actor, target, profile, dmg) {
+                return YAW_COMBAT_STATUS.applyTechniqueStatus(this, actor, target, profile, dmg);
+            },
+
             _charmedTargetsFor(unit) {
                 return YAW_COMBAT_STATUS.charmedTargetsFor(this, unit);
             },
@@ -2561,6 +2679,11 @@
                 const all = [...this.party, ...this.creatures];
                 for (const unit of all) {
                     this._processStomachState(unit, options);
+                    const resourceChanges = YAW_RESOURCE_LEDGER.tick(unit, 'digestion', Math.max(1, Math.floor(Number(options.ticks) || 1)));
+                    if (resourceChanges.length > 0 && this.party.includes(unit)) {
+                        this._markSaveDirty?.('party', 'resource-regeneration');
+                        this._markSaveDirty?.('holdings', 'resource-regeneration');
+                    }
                     // Lactation cooldown decrement
                     if (unit.lactationCooldown > 0) {
                         unit.lactationCooldown--;
@@ -2691,6 +2814,10 @@
             _doSubAction(action, subId, actor, target, actorName, actorVerb) {
                 const subDef = this.SUB_ACTIONS[action] && this.SUB_ACTIONS[action][subId];
                 if (!subDef) return `[Unknown sub-action ${action}.${subId}]`;
+                const actorIsPlayer = actor === this.player || actor?.name === this.player?.name;
+                const displayActorName = actorIsPlayer
+                    ? this._label('party.you', 'You')
+                    : (actorName || actor?.name || this._label('target.actorRole', 'Actor'));
                 let result = '';
                 switch (action + '.' + subId) {
                     case 'feast.swallow': {
@@ -2712,28 +2839,44 @@
                             this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
                             this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                         }
-                        result = `${actorName} eat${actorVerb} ${target.name}! They are held in ${actor.name === this.player?.name ? 'your' : actor.name + "'s"} belly.`;
+                        const playerActor = actor.name === this.player?.name;
+                        result = this._label(playerActor ? 'feast.swallowResult.player' : 'feast.swallowResult.named', playerActor
+                            ? '{actor} eats {target}! They are held in your belly.'
+                            : "{actor} eats {target}! They are held in {owner}'s belly.", {
+                            actor: actorName,
+                            target: target.name,
+                            owner: actor.name
+                        });
                         break;
                     }
                     case 'feast.chew': {
+                        const targetWasParty = this.party.includes(target);
                         const attempt = this._assessFeastAttempt(actor, target, { requireCapacity: false });
                         if (!attempt.succeeds) {
                             result = this._label('feast.attempt.chewResisted', '{actor} tries to break down {target}, but {target} resists.', { actor: actorName, target: target.name });
                             break;
                         }
                         this._applyVitalDamage(target, target.MPun || target.CPun || 1, { source: 'chew', terminal: false });
-                        target.state = 'depleted';
-                        target.digestionState = 'depleted';
-                        target.alive = false; target.CPun = 0; target.CPle = 0;
+                        this._resolveVitalDepletion(target, 'chew');
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 30);
                         actor.Feas += 2;
-                        this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
-                        this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
-                        result = `${actorName} break${actorVerb} down ${target.name}'s vitality. ${target.name} is depleted.`;
+                        if (!targetWasParty) {
+                            this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
+                            this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
+                        }
+                        result = this._label('feast.chewResult', "{actor} breaks down {target}'s vitality. {target} is depleted and leaves recoverable remains.", {
+                            actor: actorName,
+                            target: target.name
+                        });
                         break;
                     }
                     case 'feast.cockVore': {
-                        if (!actor.parts || actor.parts !== 'cock') { result = `${actorName} lack${actorVerb} the required option for that.`; break; }
+                        if (!actor.parts || actor.parts !== 'cock') {
+                            result = this._label(actorIsPlayer ? 'variant.unavailable.actorCapability.player' : 'variant.unavailable.actorCapability.named', actorIsPlayer
+                                ? '{name} do not have the required capability.'
+                                : '{name} does not have the required capability.', { name: displayActorName });
+                            break;
+                        }
                         if (!this._canFitPrey(actor, target, 'balls')) { result = this._capacityFailureMessage(actor, target, 'balls'); break; }
                         const attempt = this._assessFeastAttempt(actor, target, { container: 'balls' });
                         if (!attempt.succeeds) {
@@ -2748,7 +2891,12 @@
                         break;
                     }
                     case 'feast.unbirth': {
-                        if (!actor.parts || actor.parts !== 'clit') { result = `${actorName} lack${actorVerb} the required option for that.`; break; }
+                        if (!actor.parts || actor.parts !== 'clit') {
+                            result = this._label(actorIsPlayer ? 'variant.unavailable.actorCapability.player' : 'variant.unavailable.actorCapability.named', actorIsPlayer
+                                ? '{name} do not have the required capability.'
+                                : '{name} does not have the required capability.', { name: displayActorName });
+                            break;
+                        }
                         if (!this._canFitPrey(actor, target, 'womb')) { result = this._capacityFailureMessage(actor, target, 'womb'); break; }
                         const attempt = this._assessFeastAttempt(actor, target, { container: 'womb' });
                         if (!attempt.succeeds) {
@@ -2763,56 +2911,103 @@
                     }
                     case 'feast.digest': {
                         const livingStomach = this._activeContainedPrey(actor, 'stomach');
-                        if (livingStomach.length === 0) { result = `${actorName} have no one held in their belly.`; break; }
+                        if (livingStomach.length === 0) {
+                            const playerActor = actor.name === this.player?.name;
+                            result = this._label(playerActor ? 'feast.digestUnavailable.player' : 'feast.digestUnavailable.named', playerActor
+                                ? '{actor} have no one held in your belly.'
+                                : '{actor} has no one held in their belly.', { actor: actorName });
+                            break;
+                        }
                         const prey = livingStomach[0];
                         prey.progress = 100;
                         prey.digestionProgress = 100;
                         YAW_UNIT_CONTAINMENT.terminalize(this, actor, prey, { key: 'stomach' });
-                        result = `${actorName} actively digest ${prey.name}, fully breaking them down.`;
+                        const playerActor = actor.name === this.player?.name;
+                        result = this._label(playerActor ? 'feast.digestResult.player' : 'feast.digestResult.named', playerActor
+                            ? '{actor} actively digest {target}, fully breaking them down.'
+                            : '{actor} actively digests {target}, fully breaking them down.', {
+                            actor: actorName,
+                            target: prey.name
+                        });
                         break;
                     }
                     case 'feast.release': {
                         const livingStomach = this._activeContainedPrey(actor, 'stomach').filter(p => p.releaseEligible);
-                        if (livingStomach.length === 0) { result = `${actorName} have no living prey to release.`; break; }
+                        if (livingStomach.length === 0) {
+                            const playerActor = actor.name === this.player?.name;
+                            result = this._label(playerActor ? 'feast.releaseUnavailable.player' : 'feast.releaseUnavailable.named', playerActor
+                                ? '{actor} have no living prey to release.'
+                                : '{actor} has no living prey to release.', { actor: actorName });
+                            break;
+                        }
                         const prey = livingStomach[0];
                         const idx = actor.stomach.indexOf(prey);
                         if (idx >= 0) actor.stomach.splice(idx, 1);
                         this._releaseFromVitalState(prey);
+                        YAW_UNIT_CONTAINMENT.refreshReleasedService(this, prey);
                         if (this.creatures.indexOf(prey) === -1) this.creatures.push(prey);
+                        this._syncCurrentTileCreatures();
                         YAW_UNIT_CONTAINMENT.emitContainmentBeat(this, 'released', actor, prey, {
                             deltas: [{ kind: 'state', state: 'released', unit: prey.name }]
                         });
-                        this.log.push({ text: `${prey.name} released from ${actor.name}'s stomach at reduced condition.`, type: 'combat' });
-                        result = `${actorName} release ${prey.name} from their belly, weak and dazed but alive.`;
+                        this.log.push({ text: this._label('feast.releaseLog', "{target} is released from {holder}'s stomach at reduced condition.", {
+                            target: prey.name,
+                            holder: actor.name
+                        }), type: 'combat' });
+                        const playerActor = actor.name === this.player?.name;
+                        result = this._label(playerActor ? 'feast.releaseResult.player' : 'feast.releaseResult.named', playerActor
+                            ? '{actor} release {target} from your belly, weak and dazed but alive.'
+                            : '{actor} releases {target} from their belly, weak and dazed but alive.', {
+                            actor: actorName,
+                            target: prey.name
+                        });
                         break;
                     }
                     case 'feed.tend':
                     case 'feed.heal': {
-                        const healAmount = Math.floor((actor.Feed || 10) * 2);
-                        target.CPun = Math.min(target.MPun, target.CPun + healAmount);
-                        target.hunger = Math.max(0, (target.hunger || 0) - 25);
-                        if (target.CPle < target.MPle * 0.5) {
-                            target.CPle = Math.min(target.MPle, target.CPle + Math.floor(healAmount * 0.5));
-                        }
-                        this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = this._label('feed.tendResult', '{actor} tends {target}, restoring {amount} punishment and easing their hunger.', {
+                        const tend = this._resolveTendEffect(actor, target);
+                        const playerActor = actor.name === this.player?.name;
+                        result = this._label(playerActor ? 'feed.tendResult.player' : 'feed.tendResult.named', playerActor
+                            ? '{actor} tend {target}, restoring {amount} punishment.'
+                            : '{actor} tends {target}, restoring {amount} punishment.', {
                             actor: actorName,
                             target: target.name,
-                            amount: healAmount
+                            amount: tend.restoredCondition
                         });
                         break;
                     }
                     case 'feed.nurse':
                     case 'feed.breastfeed': {
-                        if (!actor.lactating) { result = `${actorName} are not lactating.`; break; }
-                        if (actor.lactationCooldown > 0) { result = `${actorName}'s milk is not ready yet.`; break; }
-                        const milkAmount = Math.floor((actor.Feed || 10) * 3);
+                        const playerActor = actor.name === this.player?.name;
+                        if (!actor.lactating) {
+                            result = this._label(playerActor ? 'feed.nurseUnavailable.player' : 'feed.nurseUnavailable.named', '{actor} cannot nurse right now.', { actor: actorName });
+                            break;
+                        }
+                        if (actor.lactationCooldown > 0) {
+                            result = this._label(playerActor ? 'feed.nurseCooldown.player' : 'feed.nurseCooldown.named', '{actor} cannot nurse again yet.', { actor: actorName });
+                            break;
+                        }
+                        const spentReserve = YAW_RESOURCE_LEDGER.spend(actor, 'core:nurse', 1);
+                        if (spentReserve < 1) {
+                            result = this._label('feed.nurseReserveUnavailable', '{actor} does not have enough {resource}.', {
+                                actor: actorName,
+                                resource: YAW_RESOURCE_LEDGER.label(this, 'core:nurse')
+                            });
+                            break;
+                        }
+                        if (this.party.includes(actor)) {
+                            this._markSaveDirty?.('party', 'nurse-resource-spend');
+                            this._markSaveDirty?.('holdings', 'nurse-resource-spend');
+                        }
+                        const milkAmount = Math.floor((actor.Feed || 10) * 3) * spentReserve;
                         target.CPun = Math.min(target.MPun, target.CPun + milkAmount);
                         target.CPle = Math.min(target.MPle, target.CPle + Math.floor(milkAmount * 0.3));
-                        target.hunger = Math.max(0, (target.hunger || 0) - 40);
+                        target.hunger = Math.max(0, (target.hunger || 0) - (40 * spentReserve));
                         actor.lactationCooldown = 3;
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = this._label('feed.nurseResult', '{actor} nurses {target}, restoring vitality and easing their hunger.', {
+                        result = this._label(playerActor ? 'feed.nurseResult.player' : 'feed.nurseResult.named', playerActor
+                            ? '{actor} nurse {target}, restoring vitality and easing their hunger.'
+                            : '{actor} nurses {target}, restoring vitality and easing their hunger.', {
                             actor: actorName,
                             target: target.name
                         });
@@ -2859,8 +3054,8 @@
                         target.CPun = Math.min(target.MPun, target.CPun + nourishment);
                         target.hunger = Math.max(0, (target.hunger || 0) - Math.max(10, pieceCost));
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = this._label('feed.offerPieceResult', '{actor} offers a renewable piece to {target}, losing {cost} punishment while restoring {amount}.', {
-                            actor: actor.name,
+                        result = this._label('feed.offerPieceResult', 'A renewable piece from {actor} restores {amount} punishment to {target}, at a cost of {cost} punishment to {actor}.', {
+                            actor: actorName,
                             target: target.name,
                             cost: pieceCost,
                             amount: nourishment
@@ -2869,31 +3064,54 @@
                     }
                     case 'feed.sacrifice': {
                         const isWilling = target.livestock || target.willingPrey;
-                        if (!isWilling && !this.cheats.canEatAnything) { result = `${target.name} refuses to be fed to ${actorName}.`; break; }
-                        if (actor.size < target.size - 2) { result = `${actor.name} is too small to hold ${target.name}.`; break; }
+                        if (!isWilling && !this.cheats.canEatAnything) {
+                            result = this._label('feed.legacy.sacrificeRefused', '{target} refuses to be offered to {actor}.', { target: target.name, actor: displayActorName });
+                            break;
+                        }
+                        if (actor.size < target.size - 2) {
+                            result = this._label(actorIsPlayer ? 'feed.legacy.tooSmall.player' : 'feed.legacy.tooSmall.named', actorIsPlayer
+                                ? '{actor} are too small to hold {target}.'
+                                : '{actor} is too small to hold {target}.', { actor: displayActorName, target: target.name });
+                            break;
+                        }
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
                         this._containTargetIn(actor, target, 'stomach', { willingSacrifice: true });
                         this._awardCombatXP(this.XP_REWARDS.feedEnemy);
-                        result = `${target.name} willingly feeds themself to ${actorName}, sliding down into warmth.`;
+                        result = this._label('feed.legacy.sacrificeResult', '{target} willingly offers themself to {actor} and settles in their belly.', { target: target.name, actor: displayActorName });
                         break;
                     }
                     case 'feed.forceFeed': {
                         const holders = this.party.filter(p => p !== actor && p !== target && p.CPun > 0);
                         if (holders.length === 0 && this.creatures.filter(c => c.CPun > 0 && c !== target && c !== actor).length === 0) {
-                            result = `No one available to hold ${target.name} down.`; break;
+                            result = this._label('feed.legacy.noHolder', 'No one is available to restrain {target}.', { target: target.name });
+                            break;
                         }
                         const holder = holders[0] || this.creatures.filter(c => c.CPun > 0 && c !== target && c !== actor)[0];
-                        if (actor.size < target.size - 2) { result = `${actor.name} is too small to hold ${target.name}.`; break; }
+                        if (actor.size < target.size - 2) {
+                            result = this._label(actorIsPlayer ? 'feed.legacy.tooSmall.player' : 'feed.legacy.tooSmall.named', actorIsPlayer
+                                ? '{actor} are too small to hold {target}.'
+                                : '{actor} is too small to hold {target}.', { actor: displayActorName, target: target.name });
+                            break;
+                        }
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
                         this._containTargetIn(actor, target, 'stomach', { forcedFed: true, by: actor.name });
                         target.forcedFed = true;
                         actor.forcedFed = true;
                         this._awardCombatXP(this.XP_REWARDS.feedEnemy);
-                        result = `${holder.name} restrains ${target.name} while ${actorName} forces the handoff, placing them in their belly against their will.`;
+                        result = this._label(actorIsPlayer ? 'feed.legacy.forceResult.player' : 'feed.legacy.forceResult.named', actorIsPlayer
+                            ? '{holder} restrains {target} while {actor} force the handoff, placing them in your belly against their will.'
+                            : "{holder} restrains {target} while {actor} forces the handoff, placing them in {actor}'s belly against their will.", {
+                            holder: holder.name,
+                            target: target.name,
+                            actor: displayActorName
+                        });
                         break;
                     }
                     case 'feed.slurp': {
-                        if (!target.slurpable) { result = `${target.name} is not slurpable.`; break; }
+                        if (!target.slurpable) {
+                            result = this._label('feed.legacy.drawUnavailable', '{target} cannot provide renewable nourishment.', { target: target.name });
+                            break;
+                        }
                         const slurpAmount = Math.floor((actor.Feed || 10) * 1.5);
                         this._applyVitalDamage(target, slurpAmount, { source: 'slurp', terminal: false, minimumCondition: 1 });
                         if (target.vitalRemaining <= 0) target.state = 'depleted';
@@ -2901,18 +3119,25 @@
                         actor.CPun = Math.min(actor.MPun, actor.CPun + slurpAmount);
                         actor.hunger = Math.max(0, (actor.hunger || 0) - 20);
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = `${actorName} draw${actorVerb} vitality from ${target.name}, leaving them weakened but whole.`;
+                        result = this._label(actorIsPlayer ? 'feed.legacy.drawResult.player' : 'feed.legacy.drawResult.named', actorIsPlayer
+                            ? '{actor} draw vitality from {target}, leaving them weakened but whole.'
+                            : '{actor} draws vitality from {target}, leaving them weakened but whole.', { actor: displayActorName, target: target.name });
                         break;
                     }
                     case 'feed.fragment': {
-                        if (!target.breakable) { result = `${target.name} is not breakable.`; break; }
+                        if (!target.breakable) {
+                            result = this._label('feed.legacy.fragmentUnavailable', '{target} cannot provide a renewable fragment.', { target: target.name });
+                            break;
+                        }
                         const fragAmount = Math.floor((actor.Feed || 10) * 1.5);
                         this._applyVitalDamage(target, fragAmount, { source: 'fragment', terminal: false, minimumCondition: 1 });
                         if (target.vitalRemaining <= 0) target.state = 'depleted';
                         actor.CPun = Math.min(actor.MPun, actor.CPun + fragAmount);
                         actor.hunger = Math.max(0, (actor.hunger || 0) - 20);
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = `${actorName} reduce${actorVerb} ${target.name}'s vitality as nourishment. ${target.name} is diminished but remains whole.`;
+                        result = this._label(actorIsPlayer ? 'feed.legacy.fragmentResult.player' : 'feed.legacy.fragmentResult.named', actorIsPlayer
+                            ? '{actor} reduce vitality from {target} as nourishment. {target} is diminished but remains whole.'
+                            : '{actor} reduces vitality from {target} as nourishment. {target} is diminished but remains whole.', { actor: displayActorName, target: target.name });
                         break;
                     }
                     default: {
@@ -2929,7 +3154,10 @@
                                 result = this._label('variant.executionFailed', '{variant} could not be completed.', { variant: this._getActionLabel(action, subId) });
                             }
                         } else {
-                            result = `[Sub-action ${action}.${subId} not yet implemented]`;
+                            result = this._label('variant.notImplemented', '{action} variant {variant} is not implemented.', {
+                                action: this._uiLabel(action),
+                                variant: this._getActionLabel(action, subId)
+                            });
                         }
                         break;
                     }
@@ -3294,6 +3522,7 @@
             _feedPartyMemberToConsumer(prey, consumer) {
                 if (!prey || !consumer || prey === consumer) return this._label('group.feed.selfBlocked', '{name} cannot feed into themself yet.', { name: prey?.name || 'Someone' });
                 if (prey === this.player || prey.mc) return this._label('group.feed.playerBlocked', '{name} cannot be handed off as prey right now.', { name: prey.name });
+                if (!prey.livestock && !prey.willingPrey) return this._label('feed.offerWholeUnwilling', '{name} is not willing to offer themself whole.', { name: prey.name });
                 if (!this._canFitPrey(consumer, prey, 'stomach')) return this._capacityFailureMessage(consumer, prey, 'stomach');
                 this._containTargetIn(consumer, prey, 'stomach', { willingSacrifice: true });
                 return this._label('group.feed.partyToConsumer', '{prey} is fed to {consumer} and settles in their belly.', { prey: prey.name, consumer: consumer.name });
@@ -3328,13 +3557,9 @@
                     actor.hunger = Math.max(0, (actor.hunger || 0) - 25);
                 }
                 if (target.vitalRemaining <= 0 || target.CPun <= 0) {
-                    target.alive = false;
-                    target.CPun = 0;
-                    target.state = 'depleted';
-                    target.digestionState = 'depleted';
-                    if (this.party.includes(target)) this._removeContainedPartyMember(target);
-                    else this._removeCreatureFromArea(target);
-                    this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
+                    const targetWasParty = this.party.includes(target);
+                    this._resolveVitalDepletion(target, 'group-chew');
+                    if (!targetWasParty) this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                 }
                 return this._label('group.feast.split', '{actors} reduce {target} through vital damage.', {
                     actors: participants.map(actor => actor.name).join(', '),
@@ -3415,23 +3640,26 @@
                     prey = [target].filter(Boolean);
                 } else if (action === 'feed' && target) {
                     if (selectedSubAction && !['tend', 'heal'].includes(selectedSubAction)) {
-                        primaryActor = this._selectGroupFeedSubActionActor(selectedSubAction, target, livingActors) || primaryActor;
-                        helpers = livingActors.filter(actor => actor && actor !== primaryActor);
+                        const def = this.SUB_ACTIONS.feed?.[selectedSubAction];
+                        const eligible = livingActors.filter(actor => actor !== target && this._isSubActionAvailable(def, actor, target, livingActors.filter(helper => helper !== actor && helper !== target)));
+                        primaryActor = eligible[0] || this._selectGroupFeedSubActionActor(selectedSubAction, target, livingActors) || primaryActor;
+                        helpers = livingActors.filter(actor => actor && actor !== primaryActor && !eligible.includes(actor));
                         recipient = target;
+                        if (selectedSubAction === 'offerWhole') {
+                            consumer = target;
+                            prey = eligible;
+                        }
                     } else if (this.party.includes(target)) {
                         recipient = target;
-                        consumer = target;
-                        const candidates = livingActors.filter(actor => actor !== target);
-                        prey = candidates.filter(actor => actor !== this.player && !actor.mc);
-                        helpers = candidates.filter(actor => !prey.includes(actor));
-                        primaryActor = prey[0] || target;
+                        helpers = livingActors.filter(actor => actor !== target);
+                        primaryActor = livingActors[0] || target;
                     } else {
                         recipient = target;
                     }
                 } else {
                     recipient = target || null;
                 }
-                const names = units => (units || []).filter(Boolean).map(unit => unit.name || 'Unknown');
+                const names = units => (units || []).filter(Boolean).map(unit => unit.name || this._label('ui.unknown', 'Unknown'));
                 return {
                     action,
                     subAction: selectedSubAction,
@@ -3450,9 +3678,9 @@
 
             _groupRoleLine(summary = {}) {
                 const parts = [];
-                if (summary.primaryActor) parts.push(`${this._label('target.primaryActor', 'Primary')}: ${summary.primaryActor.name || 'Unknown'}`);
-                if (summary.consumer) parts.push(`${this._label('target.consumer', 'Consumer')}: ${summary.consumer.name || 'Unknown'}`);
-                if (summary.recipient && summary.recipient !== summary.consumer) parts.push(`${this._label('target.recipient', 'Recipient')}: ${summary.recipient.name || 'Unknown'}`);
+                if (summary.primaryActor) parts.push(`${this._label('target.primaryActor', 'Primary')}: ${summary.primaryActor.name || this._label('ui.unknown', 'Unknown')}`);
+                if (summary.consumer) parts.push(`${this._label('target.consumer', 'Consumer')}: ${summary.consumer.name || this._label('ui.unknown', 'Unknown')}`);
+                if (summary.recipient && summary.recipient !== summary.consumer) parts.push(`${this._label('target.recipient', 'Recipient')}: ${summary.recipient.name || this._label('ui.unknown', 'Unknown')}`);
                 if (summary.preyNames?.length) parts.push(`${this._label('target.prey', 'Prey')}: ${summary.preyNames.join(', ')}`);
                 if (summary.helperNames?.length) parts.push(`${this._label('target.helpers', 'Helpers')}: ${summary.helperNames.join(', ')}`);
                 return parts.join(' | ');
@@ -3579,8 +3807,7 @@
                         const totalFeed = living.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
                         const healAmount = Math.max(1, Math.floor(totalFeed / living.length));
                         living.forEach(unit => {
-                            unit.CPun = Math.min(unit.MPun, (unit.CPun || 0) + healAmount);
-                            unit.hunger = Math.max(0, (unit.hunger || 0) - 10);
+                            this._resolveTendEffect(null, unit, { condition: healAmount, awardXP: false });
                         });
                         result = this._label('group.mutual.feed', '{actors} tend each other, restoring {amount} punishment where needed.', { actors: names, amount: healAmount });
                         break;
@@ -3604,6 +3831,15 @@
                         break;
                     default:
                         return false;
+                }
+                if (action !== 'feast' && options.applyCost !== false) {
+                    living.forEach(actor => {
+                        this._applyActionCost?.(action, actor, actor, { affected: true }, {
+                            mode: 'adventure',
+                            source: 'exploration-mutual-resolution',
+                            emitScene: true
+                        });
+                    });
                 }
                 this.log.push({ text: result, type: 'discovery' });
                 this.emitStoryResult({ mode: 'adventure', actors: living, targets: living, action, shape: 'mutual' }, result);
@@ -3799,50 +4035,37 @@
                     }
                     case 'feed': {
                         if (selectedSubAction && !['tend', 'heal'].includes(selectedSubAction)) {
-                            const primary = this._selectGroupFeedSubActionActor(selectedSubAction, target, livingActors);
-                            if (!primary) {
+                            const def = this.SUB_ACTIONS.feed?.[selectedSubAction];
+                            const eligible = livingActors.filter(actor => actor !== target && this._isSubActionAvailable(
+                                def,
+                                actor,
+                                target,
+                                livingActors.filter(helper => helper !== actor && helper !== target)
+                            ));
+                            if (eligible.length === 0) {
                                 result = this._label('feed.noValidTarget', 'No valid target for this feed action.');
                                 break;
                             }
-                            const { actorName: primaryName, actorVerb: primaryVerb } = this._actorNameAndVerb(primary);
-                            result = this._doSubAction('feed', selectedSubAction, primary, target, primaryName, primaryVerb);
-                            this._cleanupOutsideSubActionTarget('feed', selectedSubAction, primary, target);
+                            const targetConsumingAliases = new Set(['sacrifice', 'forceFeed', 'slurp', 'fragment']);
+                            const participants = targetConsumingAliases.has(selectedSubAction) ? [eligible[0]] : eligible;
+                            result = participants.map(primary => {
+                                const { actorName: primaryName, actorVerb: primaryVerb } = this._actorNameAndVerb(primary);
+                                const text = this._doSubAction('feed', selectedSubAction, primary, target, primaryName, primaryVerb);
+                                this._cleanupOutsideSubActionTarget('feed', selectedSubAction, primary, target);
+                                return text;
+                            }).join(' ');
                             break;
                         }
-                        if (this.party.includes(target)) {
-                            const candidates = livingActors.filter(actor => actor !== target);
-                            const prey = candidates.filter(actor => actor !== this.player && !actor.mc);
-                            const helpers = candidates.filter(actor => !prey.includes(actor));
-                            if (['tend', 'heal'].includes(selectedSubAction) || livingActors.includes(target) || candidates.length === 0 || prey.length === 0) {
-                                const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
-                                const healAmount = Math.floor(totalFeed * 2);
-                                target.CPun = Math.min(target.MPun, target.CPun + healAmount);
-                                result = livingActors.includes(target)
-                                    ? this._label('group.feed.tendTogether', '{actors} tend {target} together, restoring {amount} punishment.', { actors: names, target: target.name, amount: healAmount })
-                                    : this._label('group.feed.tend', '{actors} tend {target}, restoring {amount} punishment.', { actors: names, target: target.name, amount: healAmount });
-                            } else {
-                                const roleLine = this._groupRoleLine(this._groupActionRoleSummary('feed', target, livingActors, options));
-                                const texts = prey.map(actor => this._feedPartyMemberToConsumer(actor, target));
-                                if (helpers.length > 0) {
-                                    const helperNames = helpers.map(actor => actor.name).join(', ');
-                                    texts.push(this._label('group.feed.helpers', '{helpers} help feed {prey} to {target}.', {
-                                        helpers: helperNames,
-                                        prey: prey.map(actor => actor.name).join(', '),
-                                        target: target.name
-                                    }));
-                                }
-                                if (roleLine) texts.push(roleLine);
-                                result = texts.join(' ');
-                            }
-                        } else {
-                            const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
-                            target.CPun = Math.min(target.MPun, target.CPun + Math.floor(totalFeed * 2));
-                            result = this._label('group.feed.creature', '{actors} feed {target}, restoring {amount} punishment.', {
+                        const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
+                        const healAmount = Math.floor(totalFeed * 2);
+                        const tend = this._resolveTendEffect(null, target, { condition: healAmount, awardXP: false });
+                        result = this.party.includes(target) && livingActors.includes(target)
+                            ? this._label('group.feed.tendTogether', '{actors} tend {target} together, restoring {amount} punishment.', { actors: names, target: target.name, amount: tend.restoredCondition })
+                            : this._label(this.party.includes(target) ? 'group.feed.tend' : 'group.feed.creature', '{actors} tend {target}, restoring {amount} punishment.', {
                                 actors: names,
                                 target: target.name,
-                                amount: Math.floor(totalFeed * 2)
+                                amount: tend.restoredCondition
                             });
-                        }
                         break;
                     }
                     case 'feast': {
@@ -4119,21 +4342,7 @@
                             this._cleanupOutsideSubActionTarget(action, selectedSubAction, actor, target);
                             break;
                         }
-                        if (options.allowPartySacrifice !== false && this.party.includes(actor) && this.party.includes(target) && actor !== target && target.CPun >= target.MPun) {
-                            result = this._feedPartyMemberToConsumer(actor, target);
-                            break;
-                        }
-                        const healAmount = Math.floor((actor.Feed || 10) * 2);
-                        target.CPun = Math.min(target.MPun, target.CPun + healAmount);
-                        target.hunger = Math.max(0, (target.hunger || 0) - 25);
-                        if (target.CPle < target.MPle * 0.5) {
-                            target.CPle = Math.min(target.MPle, target.CPle + Math.floor(healAmount * 0.5));
-                        }
-                        result = this._label('explore.feed.success', '{actor} feeds {target}, restoring {amount} punishment and sating their hunger.', {
-                            actor: actorName,
-                            target: target.name,
-                            amount: healAmount
-                        });
+                        result = this._doSubAction('feed', 'tend', actor, target, actorName, actor.name === this.player?.name ? '' : 's');
                         break;
                     }
                     case 'inspect': {
@@ -4190,6 +4399,7 @@
             _cleanupOutsideSubActionTarget(action, subAction, actor, target) {
                 const containedTarget = target && target !== actor && (target.CPun <= 0 || target.alive === false);
                 if (!containedTarget) return;
+                if (this._isCorpse(target)) return;
                 const removesTarget = action === 'feast' || (action === 'feed' && ['sacrifice', 'forceFeed'].includes(subAction));
                 if (!removesTarget) return;
                 if (this.party.includes(target)) this._removeContainedPartyMember(target);
@@ -4611,6 +4821,18 @@
                 return YAW_QUEST_FLOW.objectiveLabel(this, objective);
             },
 
+            _questObjectiveDisplayLabel(objective) {
+                return YAW_QUEST_FLOW.objectiveDisplayLabel(this, objective);
+            },
+
+            _questCheckpointLabel(checkpoint, index = 0) {
+                return YAW_QUEST_FLOW.checkpointLabel(this, checkpoint, index);
+            },
+
+            _questTitleLabel(quest) {
+                return YAW_QUEST_FLOW.titleLabel(this, quest);
+            },
+
             questSpeciesLabel(speciesId) {
                 return YAW_QUEST_FLOW.speciesLabel(this, speciesId);
             },
@@ -4949,6 +5171,27 @@
                 if (this.combatState?.active) return YAW_MOBILE_UNIT_STRIPS.toggleCreatureRail(this);
                 return YAW_MOBILE_UNIT_STRIPS.toggleTargetPicker(this);
             },
+            openMobileRoster(tab = '') {
+                return YAW_PANEL_SHELL.openRoster(this, tab);
+            },
+            closeMobileRoster(options = {}) {
+                return YAW_PANEL_SHELL.closeRoster(this, options);
+            },
+            toggleMobileRoster(tab = '') {
+                return YAW_PANEL_SHELL.toggleRoster(this, tab);
+            },
+            setMobileRosterTab(tab, options = {}) {
+                return YAW_PANEL_SHELL.setRosterTab(this, tab, options);
+            },
+            handleMobileRosterTabKeydown(event) {
+                return YAW_PANEL_SHELL.rosterTabKeydown(this, event);
+            },
+            handleMobileRosterSelection(event) {
+                return YAW_PANEL_SHELL.handleRosterSelection(this, event);
+            },
+            clearMobileRosterDetail() {
+                return YAW_PANEL_SHELL.clearRosterDetail(this);
+            },
             renderMobileCreatureStrip() {
                 return YAW_MOBILE_UNIT_STRIPS.creatures(this);
             },
@@ -5012,8 +5255,8 @@
             _unitSelectionRoleLabel(role) {
                 return YAW_UNIT_SELECTION.roleLabel(this, role);
             },
-            _unitCardFocusAttrs(unit, expanded = false) {
-                return YAW_UNIT_SELECTION.focusAttrs(this, unit, expanded);
+            _unitCardFocusAttrs(unit, expanded = false, fallbackName = null) {
+                return YAW_UNIT_SELECTION.focusAttrs(this, unit, expanded, fallbackName);
             },
             _unitActionRowAttrs(scope, unit = null) {
                 return YAW_UNIT_SELECTION.actionRowAttrs(this, scope, unit);
@@ -5023,6 +5266,13 @@
             },
             renderTacticalCard(unit, index, type, options = {}) {
                 return YAW_TACTICAL_CARD.render(this, unit, index, type, options);
+            },
+            _unitArtHtml(unit, fallback = '👤', options = {}) {
+                if (typeof YAW_SPRITE_RUNTIME === 'undefined') return this._escapeHtml(fallback || unit?.icon || '👤');
+                return YAW_SPRITE_RUNTIME.unitArtHtml(this, unit, fallback || unit?.icon || '👤', {
+                    ...options,
+                    isPlayer: options.isPlayer === true || unit === this.player
+                });
             },
             renderMobileUnitChip(unit, index, type) {
                 return YAW_MOBILE_UNIT_CHIP.render(this, unit, index, type);
@@ -5238,8 +5488,23 @@
             showDefeatRecovery() {
                 return YAW_DEFEAT_RECOVERY.showDefeatRecovery(this);
             },
+            beginDefeatRecovery() {
+                return YAW_DEFEAT_RECOVERY.beginSelectedRecovery(this);
+            },
             regenerateFromDefeat() {
                 return YAW_DEFEAT_RECOVERY.regenerate(this);
+            },
+            resurrectFromRecovery() {
+                return YAW_DEFEAT_RECOVERY.resurrectFromJourney(this);
+            },
+            _showRecoveryJourney() {
+                return YAW_DEFEAT_RECOVERY.showRecoveryJourney(this);
+            },
+            _isRecoveryJourney() {
+                return YAW_RECOVERY_MODES.isJourney(this);
+            },
+            _recoveryRestricts(capability) {
+                return YAW_RECOVERY_MODES.restricts(this, capability);
             },
             collectDeathBag(bagId) {
                 return YAW_DEFEAT_RECOVERY.collectDeathBag(this, bagId);
@@ -5422,9 +5687,46 @@
                     this.closeAppMenu();
                 });
                 document.addEventListener('keydown', event => {
-                    if (event?.key === 'Escape') this.closeAppMenu();
+                    if (this.handleAppMenuKey(event)) return;
                     this._handleTraversalHotkey(event);
                 });
+            },
+            appMenuItems() {
+                const menu = document.getElementById('app-menu');
+                if (!menu) return [];
+                return Array.from(menu.querySelectorAll('[role="menuitem"]')).filter(item => {
+                    if (item.disabled || item.hidden || item.getAttribute('aria-hidden') === 'true') return false;
+                    const style = typeof getComputedStyle === 'function' ? getComputedStyle(item) : null;
+                    return !style || (style.display !== 'none' && style.visibility !== 'hidden');
+                });
+            },
+            focusAppMenuItem(index = 0) {
+                const items = this.appMenuItems();
+                if (!items.length) return false;
+                const target = items[((index % items.length) + items.length) % items.length];
+                try { target.focus({ preventScroll: true }); } catch (_error) { target.focus(); }
+                return true;
+            },
+            handleAppMenuKey(event) {
+                const menu = document.getElementById('app-menu');
+                if (!menu?.classList?.contains('open')) return false;
+                if (event?.key === 'Escape') {
+                    event.preventDefault?.();
+                    event.stopPropagation?.();
+                    this.closeAppMenu({ restoreFocus: true });
+                    return true;
+                }
+                const items = this.appMenuItems();
+                if (!items.length || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event?.key)) return false;
+                event.preventDefault?.();
+                event.stopPropagation?.();
+                const current = items.indexOf(document.activeElement);
+                let next = 0;
+                if (event.key === 'ArrowDown') next = current < 0 ? 0 : current + 1;
+                else if (event.key === 'ArrowUp') next = current < 0 ? items.length - 1 : current - 1;
+                else if (event.key === 'End') next = items.length - 1;
+                this.focusAppMenuItem(next);
+                return true;
             },
             setAppMenuOpen(open) {
                 const menu = document.getElementById('app-menu');
@@ -5438,10 +5740,17 @@
                 event?.stopPropagation?.();
                 const menu = document.getElementById('app-menu');
                 const isOpen = menu?.classList?.contains('open');
-                return this.setAppMenuOpen(!isOpen);
+                const open = this.setAppMenuOpen(!isOpen);
+                if (open) setTimeout(() => this.focusAppMenuItem(0), 0);
+                return open;
             },
-            closeAppMenu() {
-                return this.setAppMenuOpen(false);
+            closeAppMenu(options = {}) {
+                const closed = this.setAppMenuOpen(false);
+                if (options.restoreFocus) {
+                    const toggle = document.getElementById('app-menu-toggle');
+                    try { toggle?.focus?.({ preventScroll: true }); } catch (_error) { toggle?.focus?.(); }
+                }
+                return closed;
             },
             isOverlayScreen(name) {
                 return ['settings', 'providers', 'mods', 'market', 'release', 'activity'].includes(String(name || ''));
@@ -5664,7 +5973,9 @@
                     this.renderLog();
                     return;
                 }
-                this.log.push({ text: `⚡ ${this._label('combat.instantWinSuccess', 'Instant Win! All enemies are defeated.')}`, type: 'combat' });
+                this.log.push({ text: this._label('combat.instantWinDecorated', '⚡ {message}', {
+                    message: this._label('combat.instantWinSuccess', 'Instant Win! All enemies are defeated.')
+                }), type: 'combat' });
                 this.renderLog();
                 this.creatures.forEach(c => { if (c.disposition === this.DISPOSITION.ENEMY && this._isLivingCreature(c)) this._makeCorpse(c, 'fight'); });
                 this._emitCombatAction('instant_win', this.player, null, 'success');
@@ -5733,6 +6044,9 @@
             renderContentPolicySettings() {
                 return YAW_SETTINGS_FLOW.renderContentPolicySettings(this);
             },
+            renderRecoveryModeOptions() {
+                return YAW_SETTINGS_FLOW.renderRecoveryModeOptions(this);
+            },
             enforceContentTierSettings() {
                 return YAW_SETTINGS_FLOW.enforceContentTierSettings(this);
             },
@@ -5759,6 +6073,9 @@
             },
             updateLanguage(language) {
                 return YAW_SETTINGS_FLOW.updateLanguage(this, language);
+            },
+            refreshLanguagePresentation() {
+                return YAW_SETTINGS_FLOW.refreshLanguagePresentation(this);
             },
             syncLanguageControl() {
                 return YAW_SETTINGS_FLOW.syncLanguageControl(this);
@@ -5885,14 +6202,27 @@
             showTutorial() {
                 this.tutorialStep = 0;
                 const overlay = document.getElementById('tutorial-overlay');
+                if (!overlay) return false;
+                if (Array.isArray(this.tutorialBackgroundState)) {
+                    YAW_DIALOG_FLOW.restoreUnderlying(this.tutorialBackgroundState);
+                }
+                overlay.setAttribute('aria-hidden', 'false');
                 overlay.style.display = 'flex';
+                this.tutorialBackgroundState = YAW_DIALOG_FLOW.isolateUnderlying(overlay);
                 this._activateFocusTrap(overlay, { close: () => this.closeTutorial() });
                 this.nextTutorial();
+                return true;
             },
             closeTutorial() {
                 const overlay = document.getElementById('tutorial-overlay');
-                if (overlay) overlay.style.display = 'none';
+                if (overlay) {
+                    overlay.style.display = 'none';
+                    overlay.setAttribute('aria-hidden', 'true');
+                }
+                YAW_DIALOG_FLOW.restoreUnderlying(this.tutorialBackgroundState || []);
+                this.tutorialBackgroundState = null;
                 this._restoreFocusTrap();
+                return true;
             },
             nextTutorial() {
                 const steps = [
@@ -6065,6 +6395,7 @@
                 if (typeof YAW_STARTUP_READINESS !== 'undefined' && YAW_STARTUP_READINESS.state('saves')) {
                     const state = await YAW_STARTUP_READINESS.start('saves', () => this._syncLastSaveSlot(), {
                         label: 'saved games',
+                        labelKey: 'startup.domain.saves',
                         timeoutMs: 10000,
                         force: true
                     });

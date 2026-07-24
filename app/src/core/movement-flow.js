@@ -6,6 +6,8 @@
 const YAW_MOVEMENT_FLOW = {
     move(app, dx, dy) {
         if (!app.player) return;
+        const recoveryJourney = YAW_RECOVERY_MODES?.isJourney?.(app) === true;
+        const recoveryMode = recoveryJourney ? YAW_RECOVERY_MODES.forState(app, app.defeatState) : null;
         if (app.transactionWindow || app.holdingsWindow) return false;
         if (app.inInterior) {
             app.moveInterior(dx, dy);
@@ -18,7 +20,14 @@ const YAW_MOVEMENT_FLOW = {
             app.renderLog();
             return;
         }
-        const traversal = app._traversalDecision(dx, dy);
+        const traversal = recoveryJourney && recoveryMode?.traversal === 'ethereal'
+            ? {
+                allowed: true,
+                to: { x: app.location.x + Math.trunc(Number(dx) || 0), y: app.location.y + Math.trunc(Number(dy) || 0) },
+                cost: 1,
+                reasonCode: 'ethereal-recovery'
+            }
+            : app._traversalDecision(dx, dy);
         if (!traversal.allowed) {
             const text = app._traversalMessage(traversal);
             app.log.push({ text, type: 'move' });
@@ -36,7 +45,9 @@ const YAW_MOVEMENT_FLOW = {
         app.clearTileBoundExplorationTargets();
         app.location.x = traversal.to.x; app.location.y = traversal.to.y;
         app._advanceTime(traversal.cost);
-        app._applyTravelCost?.(app.party, { action: 'move', source: 'travel' });
+        if (!YAW_RECOVERY_MODES?.restricts?.(app, 'hunger')) {
+            app._applyTravelCost?.(app.party, { action: 'move', source: 'travel' });
+        }
         app._clearTileEvents();
         app.clearToasts?.({ reason: 'tile-change' });
         document.getElementById('coords').textContent = `${app.location.x}, ${app.location.y}`;
@@ -61,7 +72,7 @@ const YAW_MOVEMENT_FLOW = {
         if (wasExplored) {
             app.creatures = app._tileCreatures(tile.creatures || []);
             const enemies = app._livingEnemies(app.creatures);
-            if (enemies.length > 0) {
+            if (enemies.length > 0 && !recoveryJourney) {
                 const encounterText = `You encounter ${enemies.map(e => e.name).join(', ')}!`;
                 app.log.push({ text: encounterText, type: 'combat' });
                 app._addTileEvent(encounterText, 'combat');
@@ -73,18 +84,20 @@ const YAW_MOVEMENT_FLOW = {
             }
         } else {
             app.creatures = app._tileCreatures(tile.creatures || []);
-            if (tile.structure && !tile.structureSpawned) {
+            if (!recoveryJourney && tile.structure && !tile.structureSpawned) {
                 app.spawnStructureEncounter(tile, !wasExplored);
-            } else if (app._worldChance('tile-wild-encounter', tile.x, tile.y, biome.encounterChance || 0)) {
+            } else if (!recoveryJourney && app._worldChance('tile-wild-encounter', tile.x, tile.y, biome.encounterChance || 0)) {
                 app.spawnWildEncounter(tile, false, !wasExplored);
             }
         }
         tile.creatures = app._tileCreatures(app.creatures);
         app.persistTileDelta(tile.x, tile.y, tile);
         app.emitTileObservation?.(tile, { wasExplored });
-        app._updateQuestProgress('escort', { x: app.location.x, y: app.location.y });
-        app._updateQuestProgress('travel', { x: app.location.x, y: app.location.y });
-        if (!app.combatState.active) {
+        if (!recoveryJourney) {
+            app._updateQuestProgress('escort', { x: app.location.x, y: app.location.y });
+            app._updateQuestProgress('travel', { x: app.location.x, y: app.location.y });
+        }
+        if (!app.combatState.active && !recoveryJourney) {
             const restoredEnemies = app._livingEnemies(app.creatures);
             if (restoredEnemies.length > 0) {
                 const encounterText = `You encounter ${restoredEnemies.map(e => e.name).join(', ')}!`;
@@ -96,6 +109,7 @@ const YAW_MOVEMENT_FLOW = {
         }
         app.renderMap();
         if (!app.combatState.active) app.showExplorationActions();
+        if (recoveryJourney) app._showRecoveryJourney?.();
         app.renderCreatures();
         app.renderLog();
         app._emitModuleHook('onPlayerMove', {

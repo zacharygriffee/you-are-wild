@@ -106,10 +106,13 @@ const YAW_COMBAT_TURNS = {
         }
         if (currentUnit.status?.enveloped && currentUnit.status.enveloped.turns > 0) {
             currentUnit.CPun -= 4;
-            const summary = `${currentUnit.name} is enveloped by ${currentUnit.status.enveloped.by}!`;
+            const summary = app._label('combat.status.envelopedBy', '{name} is enveloped by {source}!', {
+                name: currentUnit.name,
+                source: currentUnit.status.enveloped.by
+            });
             app._pushLog(summary, 'combat', { actor: currentUnit, phase: 'status' });
             this.emitSkippedTurn(app, currentUnit, summary, ['enveloped']);
-            if (currentUnit.CPun <= 0) { app._pushLog(`${currentUnit.name} succumbs to the envelopment!`, 'combat', { actor: currentUnit, phase: 'status' }); }
+            if (currentUnit.CPun <= 0) app._pushLog(app._label('combat.status.succumbsEnvelopment', '{name} succumbs to the envelopment!', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'status' });
             app.renderLog(); app.nextTurn(); return;
         }
         app.renderCombatSceneForTurn(currentUnit);
@@ -136,7 +139,7 @@ const YAW_COMBAT_TURNS = {
         app.combatState.turnQueue = living.map(c => ({ unit: c, initiative: app._calcInitiative(c), actedThisRound: false })).sort((a, b) => b.initiative - a.initiative);
         app.combatState.currentTurn = 0;
         app.combatState.round++;
-        app._pushLog(`--- Round ${app.combatState.round} ---`, 'combat', { phase: 'round' });
+        app._pushLog(app._label('combat.roundDivider', '--- Round {round} ---', { round: app.combatState.round }), 'combat', { phase: 'round' });
         app.renderMobileCombatToolbelt();
         for (const c of living) {
             if (!app.cheats.neverHungry) {

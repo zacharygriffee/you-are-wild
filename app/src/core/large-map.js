@@ -27,8 +27,9 @@ const YAW_LARGE_MAP = {
         if (tile.hasLandmark && tile.landmarkName) return tile.landmarkName;
         if (tile.structure) return app.STRUCTURES[tile.structure]?.name || tile.structure;
         const living = (tile.creatures || []).filter(creature => app._isLivingCreature(creature));
-        if (living.length > 0) return `${living.length} creature${living.length === 1 ? '' : 's'}`;
-        if ((tile.items || []).length > 0) return `${tile.items.length} item${tile.items.length === 1 ? '' : 's'}`;
+        if (living.length > 0) return app._label(living.length === 1 ? 'ui.largeMap.creatureCountOne' : 'ui.largeMap.creatureCountMany', living.length === 1 ? '{count} creature' : '{count} creatures', { count: living.length });
+        const itemCount = (tile.items || []).length;
+        if (itemCount > 0) return app._label(itemCount === 1 ? 'ui.largeMap.itemCountOne' : 'ui.largeMap.itemCountMany', itemCount === 1 ? '{count} item' : '{count} items', { count: itemCount });
         return '';
     },
 
@@ -107,12 +108,13 @@ const YAW_LARGE_MAP = {
                 if (poi) classes += ' poi';
                 if (questMarker) classes += ' quest';
                 if (visual.classes) classes += ` ${visual.classes}`;
-                const label = tile ? `${visual.label} (${x}, ${y})` : `Unknown (${x}, ${y})`;
+                const unknownLabel = app._label('ui.largeMap.unknownTile', 'Unknown');
+                const label = tile ? `${visual.label} (${x}, ${y})` : `${unknownLabel} (${x}, ${y})`;
                 const markerLabel = questMarker || poi;
                 const tileArt = app._mapTileArtHtml(visual);
                 html += `<div class="${classes}" ${app._mapTileAttrs(visual)} title="${app._escapeHtml(markerLabel ? `${label}: ${markerLabel}` : label)}" aria-label="${app._escapeHtml(label)}">${tileArt}<span class="large-map-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span></div>`;
-                if (poi) points.push({ x, y, biome: visual.label || 'Known area', poi });
-                if (questMarker) points.push({ x, y, biome: 'Quest', poi: questMarker });
+                if (poi) points.push({ x, y, biome: visual.label || app._label('ui.largeMap.knownArea', 'Known area'), poi });
+                if (questMarker) points.push({ x, y, biome: app._label('ui.largeMap.questMarker', 'Quest'), poi: questMarker });
             }
             html += '</div>';
         }
@@ -120,7 +122,7 @@ const YAW_LARGE_MAP = {
         if (poiContainer) {
             poiContainer.innerHTML = points.length
                 ? points.slice(0, 6).map(point => `<div>${app._escapeHtml(point.poi)} <span style="color:var(--text-muted);">(${point.x}, ${point.y})</span></div>`).join('')
-                : '<div>No discovered points of interest nearby.</div>';
+                : `<div>${app._escapeHtml(app._label('ui.largeMap.noPoints', 'No discovered points of interest nearby.'))}</div>`;
         }
         return html;
     }

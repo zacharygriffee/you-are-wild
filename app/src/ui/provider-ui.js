@@ -5,6 +5,7 @@
 const AIProviderUI = {
     busy: false,
     editingProfileId: '',
+    editorReturnFocus: null,
     message: '',
     messageKind: 'info',
 
@@ -150,6 +151,7 @@ const AIProviderUI = {
             ? this.label('provider.state.connected', 'Connected for this browser session')
             : this.label('provider.state.reenter', 'Credential required for this session');
         const id = this.escape(this.js(profile.id));
+        const profileId = this.escape(profile.id);
         return `
             <article class="provider-connection-card">
                 <div class="provider-connection-summary">
@@ -163,7 +165,7 @@ const AIProviderUI = {
                     <div><dt>${this.escape(this.label('provider.reasoningEffort', 'Reasoning effort'))}</dt><dd>${this.escape(this.label(`provider.reasoning.${metadata.reasoningEffort || 'provider'}`, metadata.reasoningEffort || 'Provider managed'))}</dd></div>
                 </dl>
                 <div class="provider-actions" role="group" aria-label="${this.escape(this.label('provider.connectionActions', 'Connection actions'))}">
-                    <button class="nav-btn" type="button" onclick="AIProviderUI.openEditor('${id}')" ${this.busy ? 'disabled' : ''}>${this.escape(profile.connected ? this.label('provider.edit', 'Edit') : this.label('provider.reconnect', 'Reconnect'))}</button>
+                    <button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="edit-provider-connection" data-provider-profile-id="${profileId}" onclick="AIProviderUI.openEditor('${id}')" ${this.busy ? 'disabled' : ''}>${this.escape(profile.connected ? this.label('provider.edit', 'Edit') : this.label('provider.reconnect', 'Reconnect'))}</button>
                     <button class="nav-btn" type="button" onclick="AIProviderUI.runOpenAI('test','${id}')" ${!profile.connected || this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.test', 'Test'))}</button>
                     <button class="nav-btn" type="button" onclick="AIProviderUI.runOpenAI('disconnect','${id}')" ${!profile.connected || this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.clearCredential', 'Clear Credential'))}</button>
                     <button class="nav-btn danger" type="button" onclick="AIProviderUI.runOpenAI('remove','${id}')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.remove', 'Remove'))}</button>
@@ -188,8 +190,12 @@ const AIProviderUI = {
         const reasoningSelected = value => (metadata.reasoningEffort || 'provider') === value ? 'selected' : '';
         const replacingCredential = !profile?.connected;
         const endpoint = metadata.endpoint || (localOnly ? 'http://localhost:11434/v1' : 'https://api.openai.com/v1');
+        const title = profile
+            ? this.label('provider.editor.editTitle', 'Edit provider connection')
+            : this.label('provider.editor.addTitle', 'Add provider connection');
         return `
-            <form id="openai-provider-form" class="provider-editor" onsubmit="event.preventDefault(); AIProviderUI.runOpenAI('save','${this.escape(this.js(profile?.id || ''))}')">
+            <form id="openai-provider-form" class="provider-editor" aria-labelledby="openai-provider-editor-title" onsubmit="event.preventDefault(); AIProviderUI.runOpenAI('save','${this.escape(this.js(profile?.id || ''))}')">
+                <h3 id="openai-provider-editor-title">${this.escape(title)}</h3>
                 <div class="provider-form-grid">
                     <label class="provider-field"><span>${this.escape(this.label('provider.connectionName', 'Connection name'))}</span><input id="openai-provider-name" type="text" maxlength="120" value="${this.escape(profile?.name || this.label('provider.openai.defaultName', 'OpenAI-Compatible API'))}" required></label>
                     <label class="provider-field"><span>${this.escape(this.label('provider.endpoint', 'API endpoint'))}</span><input id="openai-provider-endpoint" type="url" maxlength="500" value="${this.escape(endpoint)}" required><small>${this.escape(localOnly ? this.label('provider.fileOriginEndpointHelp', 'Use an unauthenticated loopback OpenAI-compatible endpoint, such as http://localhost:11434/v1 for Ollama.') : this.label('provider.endpointHelp', 'Base URL. Authenticated endpoints require HTTPS; loopback HTTP is strictly no-auth.'))}</small></label>
@@ -206,7 +212,7 @@ const AIProviderUI = {
                 ${profile?.connected && !localOnly ? `<label class="provider-replace-credential"><input id="openai-provider-replace-credential" type="checkbox" onchange="AIProviderUI.toggleCredentialReplacement(this.checked)"><span><strong>${this.escape(this.label('provider.replaceCredential', 'Replace session credential and headers'))}</strong><small>${this.escape(this.label('provider.replaceCredentialHelp', 'Re-enter every secret value. Saving without this option keeps the current session credential unchanged.'))}</small></span></label>` : ''}
                 <fieldset id="openai-provider-credential-fields" class="provider-headers" ${localOnly || !replacingCredential ? 'disabled' : ''}><legend>${this.escape(this.label('provider.additionalHeaders', 'Additional session headers'))}</legend><small>${this.escape(this.label('provider.additionalHeadersHelp', 'Values are session-only. Authorization and transport-controlled headers cannot be overridden.'))}</small><div id="openai-provider-header-rows">${this.renderHeaderRows(profile)}</div><button class="nav-btn" type="button" onclick="AIProviderUI.addHeaderRow()">${this.escape(this.label('provider.addHeader', 'Add Header'))}</button></fieldset>
                 <p class="provider-disclosure">${this.escape(localOnly ? this.label('provider.fileOriginDisclosure', 'File mode permits only unauthenticated loopback endpoints. Ollama supports OpenAI-compatible requests at http://localhost:11434/v1.') : this.label('provider.browserDirectDisclosure', 'Browser-direct requests send the credential only to the exact endpoint origin you approved and require compatible CORS behavior. Redirects are blocked.'))}</p>
-                <div class="provider-actions"><button class="nav-btn primary" type="submit" ${this.busy ? 'disabled' : ''}>${this.escape(profile?.connected ? this.label('provider.save', 'Save') : this.label('provider.connect', 'Connect'))}</button><button class="nav-btn" type="button" onclick="AIProviderUI.closeEditor()" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('ui.cancel', 'Cancel'))}</button></div>
+                <div class="provider-actions"><button class="nav-btn primary" type="submit" ${this.busy ? 'disabled' : ''}>${this.escape(profile?.connected ? this.label('provider.save', 'Save') : this.label('provider.connect', 'Connect'))}</button><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="cancel-provider-editor" data-command-slot="exit" onclick="AIProviderUI.closeEditor()" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('ui.cancel', 'Cancel'))}</button></div>
             </form>`;
     },
 
@@ -228,7 +234,7 @@ const AIProviderUI = {
                 ${profiles.map(profile => this.renderOpenAIProfile(profile)).join('')}
                 ${profiles.length || editor ? '' : `<p class="provider-empty">${this.escape(this.label('provider.openai.empty', 'No OpenAI-compatible connections saved.'))}</p>`}
                 ${editor}
-                ${this.editingProfileId ? '' : `<button class="nav-btn primary" type="button" onclick="AIProviderUI.openEditor('new')">${this.escape(localOnly ? this.label('provider.addLocalConnection', 'Add Local Connection') : this.label('provider.addConnection', 'Add Connection'))}</button>`}
+                ${this.editingProfileId ? '' : `<button class="nav-btn primary" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="add-provider-connection" onclick="AIProviderUI.openEditor('new')">${this.escape(localOnly ? this.label('provider.addLocalConnection', 'Add Local Connection') : this.label('provider.addConnection', 'Add Connection'))}</button>`}
             </section>`;
     },
 
@@ -269,15 +275,51 @@ const AIProviderUI = {
         return App.showAIProviderScreen();
     },
 
+    captureEditorReturnFocus(profileId = 'new') {
+        const active = typeof document !== 'undefined' ? document.activeElement : null;
+        this.editorReturnFocus = {
+            element: active && active !== document.body ? active : null,
+            control: active?.dataset?.commandControl || (profileId === 'new' ? 'add-provider-connection' : 'edit-provider-connection'),
+            profileId: profileId === 'new' ? '' : String(profileId || '')
+        };
+        return this.editorReturnFocus;
+    },
+
+    focusEditor() {
+        const field = document.getElementById('openai-provider-name');
+        field?.focus();
+        return document.activeElement === field;
+    },
+
+    restoreEditorFocus() {
+        const returnFocus = this.editorReturnFocus;
+        this.editorReturnFocus = null;
+        let target = returnFocus?.element;
+        if (!target?.isConnected) {
+            const controls = [...document.querySelectorAll('[data-command-control]')];
+            target = controls.find(control => control.dataset.commandControl === returnFocus?.control
+                && (!returnFocus?.profileId || control.dataset.providerProfileId === returnFocus.profileId));
+        }
+        if (!target) {
+            target = document.querySelector('[data-command-control="add-provider-connection"]');
+        }
+        target?.focus();
+        return document.activeElement === target;
+    },
+
     openEditor(profileId = 'new') {
-        this.editingProfileId = String(profileId || 'new');
+        const nextProfileId = String(profileId || 'new');
+        this.captureEditorReturnFocus(nextProfileId);
+        this.editingProfileId = nextProfileId;
         this.setMessage();
         this.refresh();
+        this.focusEditor();
     },
 
     closeEditor() {
         this.editingProfileId = '';
         this.refresh();
+        this.restoreEditorFocus();
     },
 
     addHeaderRow() {
@@ -370,6 +412,7 @@ const AIProviderUI = {
         this.busy = true;
         this.setMessage(this.label('provider.working', 'Working...'));
         this.refresh();
+        if (action === 'save') this.focusEditor();
         try {
             if (action === 'save') {
                 const profile = YAW_OPENAI_COMPATIBLE_PROVIDER.connect(formInput);
@@ -392,6 +435,7 @@ const AIProviderUI = {
             }
             this.busy = false;
             this.refresh();
+            if (action === 'save') this.restoreEditorFocus();
             if (typeof ModUI !== 'undefined') ModUI.refreshModList();
             return true;
         } catch (error) {
@@ -399,6 +443,7 @@ const AIProviderUI = {
             this.logError(error, action, 'OpenAI-compatible API');
             this.setMessage(this.errorMessage(error), 'error');
             this.refresh();
+            if (action === 'save') this.focusEditor();
             return false;
         }
     }

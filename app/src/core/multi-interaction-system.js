@@ -87,9 +87,13 @@ const YAW_MULTI_INTERACTION = {
         return { ...raw };
     },
 
-    techniqueSources(app, unit, action, targetCount) {
+    techniqueSources(app, unit, action, targetCount, options = {}) {
         if (!unit) return [];
         const rawSources = [];
+        if (options.techniqueKey && typeof YAW_COMBAT_TECHNIQUES !== 'undefined') {
+            const selected = YAW_COMBAT_TECHNIQUES.multiTargetSpec(app, unit, options.techniqueKey, targetCount);
+            if (selected) rawSources.push(selected);
+        }
         if (unit.multiTargetTechnique) rawSources.push(unit.multiTargetTechnique);
         if (Array.isArray(unit.multiTargetTechniques)) rawSources.push(...unit.multiTargetTechniques);
         if (unit.actionTechniques?.multiTarget) rawSources.push(unit.actionTechniques.multiTarget);
@@ -106,7 +110,7 @@ const YAW_MULTI_INTERACTION = {
         });
     },
 
-    effect(app, unit, action, targetCount = 1) {
+    effect(app, unit, action, targetCount = 1, options = {}) {
         const profile = this.profile(action);
         const count = Math.max(1, Math.floor(Number(targetCount) || 1));
         if (!profile || count <= 1) {
@@ -115,7 +119,7 @@ const YAW_MULTI_INTERACTION = {
         const entry = this.entry(unit, profile.id);
         const xp = Math.max(0, Number(entry?.xp) || 0);
         const mastery = this.clamp(xp / profile.maxPracticeXp);
-        const techniques = this.techniqueSources(app, unit, profile.id, count);
+        const techniques = this.techniqueSources(app, unit, profile.id, count, options);
         const area = techniques.some(spec => spec.area === true || spec.fullEffect === true);
         const recovery = techniques.reduce((sum, spec) => sum + Math.max(0, Number(spec.recovery) || 0), 0);
         const effectiveMastery = area ? 1 : this.clamp(mastery + recovery);

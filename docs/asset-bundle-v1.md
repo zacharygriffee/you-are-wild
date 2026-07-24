@@ -78,7 +78,8 @@ Bundles may also include up to 16 inert `presentations` declarations totaling
 at most 1 MiB of encoded JSON. Asset Bundle V1 only bounds and preserves these
 declarations. A named presentation consumer validates its own schema before
 installation; unknown presentation types remain installed but inactive.
-Tileset Pack V1 is the first such consumer and is specified separately.
+Tileset Pack V1 and Sprite Pack V1 are maintained consumers and are specified
+separately.
 
 ## Validation And Budgets
 
@@ -154,12 +155,13 @@ acquisition on file origin still depends on the endpoint's browser CORS policy.
 - no archive extraction or executable module code;
 - no automatic update polling, background repair, or publisher identity;
 - no multiple bundle overlays for one module;
-- no built-in sprite, animation, audio, video, or 3D schema (Tileset Pack V1
-  is a separate presentation consumer layered on this envelope);
+- no generic animation, audio, video, or 3D schema (Tileset Pack V1 and Sprite
+  Pack V1 are separate bounded presentation consumers layered on this
+  envelope);
 - no direct remote hotlinking during play;
 - no dependency on AI generation, packaged-runtime bridges, or OPFS.
 
-Presentation consumers are the next layer. Tileset Pack V1 now demonstrates
-that contract: it resolves leases during asynchronous activation, caches
-render-ready handles, preserves lower-priority local and text/emoji fallbacks,
-and keeps terrain and gameplay semantics separate from selected art.
+Presentation consumers are the next layer. Tileset Pack V1 and Sprite Pack V1
+resolve leases during asynchronous activation, cache render-ready handles,
+preserve lower-priority local and text/emoji fallbacks, and keep gameplay
+semantics separate from selected art.

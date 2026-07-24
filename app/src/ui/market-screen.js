@@ -149,8 +149,8 @@ const MODULE_MARKETPLACE = {
                 <div data-command-surface="marketplace" data-command-mode="system" style="width: 100%; max-width: 1000px; box-sizing: border-box; margin: 0 auto; padding: 24px; overflow-y: auto; max-height: 100dvh;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;">
                         <div style="min-width: 0;">
-                            <h1 style="color: var(--accent-primary); margin: 0;">🏪 ${title}</h1>
-                            <p style="color: var(--text-muted); margin: 8px 0 0 0;">
+                            <h1 id="host-catalog-title" style="color: var(--accent-primary); margin: 0;">🏪 ${title}</h1>
+                            <p id="host-catalog-description" style="color: var(--text-muted); margin: 8px 0 0 0;">
                                 ${subtitle}
                             </p>
                         </div>
@@ -211,22 +211,34 @@ const MODULE_MARKETPLACE = {
         
         renderModuleCard(mod) {
             const name = this.escapeHtml(mod.name);
-            const type = this.escapeHtml(String(mod.type || '').replace('_', ' '));
+            const typeToken = String(mod.type || '').trim();
+            const type = this.escapeHtml(this.label(`market.type.${typeToken}`, typeToken.replace('_', ' ')));
             const description = this.escapeHtml(mod.description);
             const preview = this.escapeHtml(mod.preview);
             const version = this.escapeHtml(mod.version);
             const id = this.escapeHtml(this.jsString(mod.id));
             const isHostModule = mod.provenance === 'host';
-            const installLabel = this.escapeHtml(mod.installed ? (mod.enabled ? 'Enabled' : 'Installed') : (isHostModule ? 'Install' : this.label('market.installSample', 'Install Fixture')));
-            const installTitle = this.escapeHtml(mod.installed ? `${mod.name} is already installed` : (isHostModule ? `Install ${mod.name} from this host` : this.label('market.installSampleModule', 'Install fixture {name}', { name: mod.name })));
+            const installLabel = this.escapeHtml(mod.installed
+                ? this.label(mod.enabled ? 'market.status.enabled' : 'market.status.installed', mod.enabled ? 'Enabled' : 'Installed')
+                : (isHostModule ? this.label('market.installHost', 'Install') : this.label('market.installSample', 'Install Fixture')));
+            const installTitle = this.escapeHtml(mod.installed
+                ? this.label('market.alreadyInstalled', '{name} is already installed', { name: mod.name })
+                : (isHostModule
+                    ? this.label('market.installHostModule', 'Install {name} from this host', { name: mod.name })
+                    : this.label('market.installSampleModule', 'Install fixture {name}', { name: mod.name })));
             const contentRating = this.renderContentRatingBadge(mod.contentRating);
-            const sampleBadge = this.escapeHtml(isHostModule ? 'Host supplied' : this.label('market.sampleBadge', 'Fixture sample'));
-            const samplePurpose = this.escapeHtml(isHostModule ? (mod.policyState || 'optional') : (mod.samplePurpose || this.label('market.samplePurposeFallback', 'Workflow test')));
+            const sampleBadge = this.escapeHtml(isHostModule ? this.label('market.hostSupplied', 'Host supplied') : this.label('market.sampleBadge', 'Fixture sample'));
+            const samplePurpose = this.escapeHtml(isHostModule
+                ? this.label(`mod.policy.${mod.policyState || 'optional'}`, mod.policyState || 'optional')
+                : (mod.samplePurpose || this.label('market.samplePurposeFallback', 'Workflow test')));
             const byline = this.escapeHtml(isHostModule
-                ? `${mod.hostId || 'host'} - v${mod.version}`
+                ? this.label('market.hostByline', '{host} - v{version}', { host: mod.hostId || 'host', version: mod.version })
                 : this.label('market.sampleByline', 'local sample - v{version}', { version: mod.version }));
+            const compatibilityReason = mod.compatibilityReasonKey
+                ? this.label(mod.compatibilityReasonKey, mod.compatibilityReason, mod.compatibilityReasonVars || {})
+                : mod.compatibilityReason;
             const requirements = isHostModule
-                ? `<div style="margin-top:8px;font-size:11px;color:${mod.compatibilityReason ? 'var(--accent-danger)' : 'var(--text-muted)'};">${this.escapeHtml(mod.compatibilityReason || `Origins: ${(mod.runtimeRequirements?.origins || []).join(', ')}`)}</div>`
+                ? `<div style="margin-top:8px;font-size:11px;color:${compatibilityReason ? 'var(--accent-danger)' : 'var(--text-muted)'};">${this.escapeHtml(compatibilityReason || this.label('market.runtimeOrigins', 'Origins: {origins}', { origins: (mod.runtimeRequirements?.origins || []).join(', ') }))}</div>`
                 : '';
             return `
                 <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 

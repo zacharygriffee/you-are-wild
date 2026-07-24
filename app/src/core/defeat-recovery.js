@@ -40,6 +40,9 @@ const YAW_DEFEAT_RECOVERY = {
                 companionRoster: Array.isArray(state.companionRoster) ? this.clone(state.companionRoster, []) : [],
                 status: this.PLAYER_STATES.includes(state.status) ? state.status : (state.pending ? 'dead' : 'active'),
                 cause: this.normalizeCause(state.cause || state.outcome),
+                recoveryModeKey: String(state.recoveryModeKey || YAW_RECOVERY_MODES?.selectedKey?.(app) || 'core:regenerate'),
+                recoveryPhase: String(state.recoveryPhase || (state.status === 'recovering' ? 'journey' : 'prompt')),
+                shrineAnchor: state.shrineAnchor ? this.normalizeAnchor(app, state.shrineAnchor) : null,
                 safeAnchor: this.normalizeAnchor(app, state.safeAnchor || app.safeAnchor),
                 defeatedAt: { ...this.defeatLocation(app), ...(state.defeatedAt || {}) }
             };
@@ -54,6 +57,9 @@ const YAW_DEFEAT_RECOVERY = {
             cause: this.normalizeCause(state.cause || state.outcome || 'defeat'),
             source: state.source || 'legacy-save',
             outcome: state.outcome || 'defeat',
+            recoveryModeKey: 'core:regenerate',
+            recoveryPhase: 'prompt',
+            shrineAnchor: null,
             defeatedAt: { ...this.defeatLocation(app), ...(state.defeatedAt || {}) },
             safeAnchor: this.normalizeAnchor(app, state.safeAnchor || app.safeAnchor),
             loggedAt: Number(state.loggedAt) || Date.now(),
@@ -83,6 +89,11 @@ const YAW_DEFEAT_RECOVERY = {
             cause: this.normalizeCause(input.cause || input.outcome || 'defeat'),
             source: String(input.source || 'gameplay'),
             outcome: String(input.outcome || (terminal ? 'defeat' : status)),
+            recoveryModeKey: String(input.recoveryModeKey || existing?.recoveryModeKey || YAW_RECOVERY_MODES?.selectedKey?.(app) || 'core:regenerate'),
+            recoveryPhase: String(input.recoveryPhase || existing?.recoveryPhase || 'prompt'),
+            shrineAnchor: input.shrineAnchor
+                ? this.normalizeAnchor(app, input.shrineAnchor)
+                : (existing?.shrineAnchor ? this.normalizeAnchor(app, existing.shrineAnchor) : null),
             defeatedAt: { ...this.defeatLocation(app), ...(input.defeatedAt || {}) },
             safeAnchor: { ...this.ensureSafeAnchor(app) },
             loggedAt: now,
@@ -338,6 +349,29 @@ const YAW_DEFEAT_RECOVERY = {
             app.targetSelection = null;
             app._clearTransientInteractionState();
             app._clearCombatRefreshSnapshot(app.activeSlot);
+            const journeyMode = YAW_RECOVERY_MODES?.profile?.(app.defeatState?.recoveryModeKey);
+            if (app.defeatState?.status === 'recovering'
+                && app.defeatState?.recoveryPhase === 'journey'
+                && journeyMode?.resolution === 'shrine') {
+                app.party = app.player ? [app.player] : [];
+                app.partyLeaderId = app.player ? (app._unitSelectionId?.(app.player) || app.player.id || app.player.name) : null;
+                if (app.player) {
+                    app.player.CPun = Math.max(1, Number(app.player.CPun) || 1);
+                    app.player.knockedOut = false;
+                    app.player.recoveryGhost = true;
+                    app.player.recoveryModeKey = app.defeatState.recoveryModeKey;
+                }
+            } else if (app.defeatState?.status === 'recovering') {
+                app.defeatState.status = 'dead';
+                app.defeatState.recoveryPhase = 'prompt';
+                app.defeatState.recoveryModeKey = 'core:regenerate';
+                if (app.player) {
+                    app.player.CPun = 0;
+                    app.player.knockedOut = true;
+                    delete app.player.recoveryGhost;
+                    delete app.player.recoveryModeKey;
+                }
+            }
             return true;
         }
         app.defeatState = this.migrateState(app, loaded?.questState?.defeatState);
@@ -348,11 +382,18 @@ const YAW_DEFEAT_RECOVERY = {
         const state = app.defeatState?.pending ? app.defeatState : this.markDefeat(app, 'defeat');
         if (app.combatState?.active && state.awaitingEncounterSettlement && !state.encounterSettled) return false;
         const anchor = this.normalizeAnchor(app, state.safeAnchor || app.safeAnchor || this.startAnchor(app));
+        const mode = YAW_RECOVERY_MODES?.forState?.(app, state);
         const title = app._label('recovery.defeatTitle', 'Defeat');
         const cause = String(state.cause || state.outcome || 'defeat').replace(/[-_]+/g, ' ');
-        const message = app.settings?.inventoryRecovery === 'retain'
+        let message = app.settings?.inventoryRecovery === 'retain'
             ? app._label('recovery.defeatMessageRetain', 'You fell to {cause}. Regenerate alone at {label} with your inventory, or end this run for now.', { cause, label: anchor.label })
             : app._label('recovery.defeatMessageBag', 'You fell to {cause}. Regenerate alone at {label}; your ordinary pack and gold will remain in a recovery bag.', { cause, label: anchor.label });
+        if (mode?.resolution === 'shrine') {
+            message = app._label('recovery.defeatMessageGhost', 'You fell to {cause}. Rise as a harmless ghost at the defeat site and return to {label} to resurrect.', {
+                cause,
+                label: anchor.label
+            });
+        }
         app.updateScene(title, message, false);
         app.renderParty();
         app.renderCreatures();
@@ -419,9 +460,27 @@ const YAW_DEFEAT_RECOVERY = {
     },
 
     recoveryControlsHtml(app) {
-        const regenerate = app._escapeHtml(app._label('recovery.regenerate', 'Regenerate'));
+        const state = app.defeatState;
+        const mode = YAW_RECOVERY_MODES?.forState?.(app, state);
+        if (YAW_RECOVERY_MODES?.isJourney?.(app)) {
+            const atShrine = this.isAtRecoveryShrine(app, state);
+            const resurrect = app._escapeHtml(app._label('recovery.resurrect', 'Resurrect'));
+            const journey = app._escapeHtml(app._label('recovery.ghostJourney', 'Return to {label} to resurrect.', {
+                label: state?.shrineAnchor?.label || state?.safeAnchor?.label || app._label('recovery.safeAnchor', 'Safe Place')
+            }));
+            const primary = atShrine
+                ? `<button class="action-btn primary" data-command-surface="defeat-recovery" data-command-mode="recovery" data-command-control="resurrect" onclick="App.resurrectFromRecovery()">${resurrect}</button>`
+                : `<span class="action-variant-reason" role="status">${journey}</span>`;
+            const endGame = app._escapeHtml(app._label('recovery.endGame', 'End Game'));
+            return `${primary}<button class="action-btn danger" data-command-surface="defeat-recovery" data-command-mode="recovery" data-command-control="end-game" onclick="App.endDefeatedRun()">${endGame}</button>`;
+        }
+        const regenerate = app._escapeHtml(mode?.resolution === 'shrine'
+            ? app._label('recovery.riseGhost', 'Rise as Ghost')
+            : (mode?.key === 'core:regenerate'
+                ? app._label('recovery.regenerate', 'Regenerate')
+                : (mode ? YAW_RECOVERY_MODES.label(app, mode) : app._label('recovery.regenerate', 'Regenerate'))));
         const endGame = app._escapeHtml(app._label('recovery.endGame', 'End Game'));
-        return `<button class="action-btn primary" data-command-surface="defeat-recovery" data-command-mode="recovery" data-command-control="regenerate" onclick="App.regenerateFromDefeat()">${regenerate}</button><button class="action-btn danger" data-command-surface="defeat-recovery" data-command-mode="recovery" data-command-control="end-game" onclick="App.endDefeatedRun()">${endGame}</button>`;
+        return `<button class="action-btn primary" data-command-surface="defeat-recovery" data-command-mode="recovery" data-command-control="regenerate" onclick="App.beginDefeatRecovery()">${regenerate}</button><button class="action-btn danger" data-command-surface="defeat-recovery" data-command-mode="recovery" data-command-control="end-game" onclick="App.endDefeatedRun()">${endGame}</button>`;
     },
 
     renderRecoveryControls(app) {
@@ -470,10 +529,108 @@ const YAW_DEFEAT_RECOVERY = {
         app.mobileActorBeltOpen = false;
     },
 
-    regenerate(app) {
+    beginSelectedRecovery(app) {
+        const state = this.migrateState(app, app.defeatState) || this.markDefeat(app, 'defeat');
+        const mode = YAW_RECOVERY_MODES?.forState?.(app, state);
+        if (!mode || mode.resolution === 'immediate') return this.regenerate(app);
+        return this.beginRecoveryJourney(app, state, mode);
+    },
+
+    beginRecoveryJourney(app, state = app.defeatState, mode = YAW_RECOVERY_MODES?.forState?.(app, state)) {
+        state = this.migrateState(app, state);
+        if (!state?.pending || !mode || mode.resolution !== 'shrine') return false;
+        if (!state.companionsSettled) state = this.settleEncounter(app, state.encounterOutcome || 'noncombat');
+        state.recoveryModeKey = mode.key;
+        state.recoveryPhase = 'journey';
+        state.status = 'recovering';
+        state.pending = true;
+        state.terminal = true;
+        state.shrineAnchor = this.validateRecoveryAnchor(app, state.safeAnchor || app.safeAnchor || this.startAnchor(app));
+        app.defeatState = state;
+        this.applyRegularConsequences(app, state, mode);
+        app._clearTransientInteractionState();
+        app._clearCombatRefreshSnapshot(app.activeSlot);
+        app.mode = app.GAME_MODE.NORMAL;
+        app.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
+        app.activeActor = null;
+        app.targetSelection = null;
+        app.inInterior = false;
+        app.activeInterior = null;
+        app.interiorLocation = { x: 0, y: 0 };
+        const origin = mode.entry === 'safe-anchor' ? state.shrineAnchor : state.defeatedAt;
+        app.location = { x: Number(origin?.x) || 0, y: Number(origin?.y) || 0 };
+        const tile = app.getTile(app.location.x, app.location.y);
+        app.currentBiome = tile?.biome || app.currentBiome || 'forest';
+        app.creatures = app._tileCreatures(tile?.creatures || []);
+        app.party = app.player ? [app.player] : [];
+        app.partyLeaderId = app.player ? (app._unitSelectionId?.(app.player) || app.player.id || app.player.name) : null;
+        if (app.player) {
+            app.player.CPun = Math.max(1, Math.ceil((Math.max(1, Number(app.player.MPun) || 1) * mode.vitalityPercent) / 100));
+            app.player.knockedOut = false;
+            app.player.fledCombat = false;
+            app.player.recoveryGhost = true;
+            app.player.recoveryModeKey = mode.key;
+        }
+        app._autoSaveSuppressed = false;
+        const message = app._label('recovery.ghostRises', 'You rise as a ghost. Return to {label}; ordinary combat, inventory use, and creature interactions are unavailable until resurrection.', {
+            label: state.shrineAnchor.label
+        });
+        app.log.push({ text: message, type: 'discovery' });
+        app._addTileEvent?.(message, 'discovery');
+        app.showScreen('game');
+        app.updateScene(app._label('recovery.ghostTitle', 'Ghost Journey'), message, false);
+        app.renderMap();
+        app.renderParty();
+        app.renderCreatures();
+        app.renderLog();
+        app.showExplorationActions();
+        this.renderRecoveryControls(app);
+        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'combat', 'quests', 'sceneFeed', 'activityLog'], 'begin-recovery-journey');
+        app.autoSave?.();
+        return true;
+    },
+
+    isAtRecoveryShrine(app, state = app.defeatState) {
+        const anchor = state?.shrineAnchor || state?.safeAnchor;
+        return Boolean(anchor
+            && !app.inInterior
+            && Number(app.location?.x) === Number(anchor.x)
+            && Number(app.location?.y) === Number(anchor.y));
+    },
+
+    showRecoveryJourney(app) {
+        if (!YAW_RECOVERY_MODES?.isJourney?.(app)) return false;
+        const state = app.defeatState;
+        const atShrine = this.isAtRecoveryShrine(app, state);
+        const message = atShrine
+            ? app._label('recovery.shrineReached', 'You reach {label}. You may resurrect now.', { label: state.shrineAnchor.label })
+            : app._label('recovery.ghostJourney', 'Return to {label} to resurrect.', { label: state.shrineAnchor.label });
+        app.updateScene(app._label('recovery.ghostTitle', 'Ghost Journey'), message, false);
+        this.renderRecoveryControls(app);
+        return true;
+    },
+
+    resurrectFromJourney(app) {
+        if (!YAW_RECOVERY_MODES?.isJourney?.(app) || !this.isAtRecoveryShrine(app)) return false;
+        return this.regenerate(app, { fromJourney: true });
+    },
+
+    fallbackFromUnavailableMode(app) {
+        if (!app.defeatState?.pending) return false;
+        if (app.player) {
+            delete app.player.recoveryGhost;
+            delete app.player.recoveryModeKey;
+            app.player.CPun = 0;
+            app.player.knockedOut = true;
+        }
+        return this.showDefeatRecovery(app);
+    },
+
+    regenerate(app, options = {}) {
         const state = this.migrateState(app, app.defeatState) || this.markDefeat(app, 'defeat');
         const anchor = this.validateRecoveryAnchor(app, state.safeAnchor || app.safeAnchor || this.startAnchor(app));
-        this.applyRegularConsequences(app, state);
+        const mode = YAW_RECOVERY_MODES?.forState?.(app, state);
+        this.applyRegularConsequences(app, state, mode);
         app._clearTransientInteractionState();
         app._clearCombatRefreshSnapshot(app.activeSlot);
         app.mode = app.GAME_MODE.NORMAL;
@@ -492,9 +649,12 @@ const YAW_DEFEAT_RECOVERY = {
         YAW_COMBAT_STATUS.clearCombatOnlyStatuses(recoveringParty);
         YAW_COMBAT_STATUS.curePersistentAilments(recoveringParty);
         if (app.player) {
-            app.player.CPun = Math.max(1, app.player.CPun || 0);
+            const vitalityPercent = Math.max(1, Math.min(100, Number(mode?.vitalityPercent) || 1));
+            app.player.CPun = Math.max(1, Math.ceil((Math.max(1, Number(app.player.MPun) || 1) * vitalityPercent) / 100));
             app.player.knockedOut = false;
             app.player.fledCombat = false;
+            delete app.player.recoveryGhost;
+            delete app.player.recoveryModeKey;
         }
         app.defeatState = null;
         app._autoSaveSuppressed = false;
@@ -573,11 +733,14 @@ const YAW_DEFEAT_RECOVERY = {
         return app.getTile(anchor.x, anchor.y);
     },
 
-    applyRegularConsequences(app, state = app.defeatState) {
+    applyRegularConsequences(app, state = app.defeatState, mode = YAW_RECOVERY_MODES?.forState?.(app, state)) {
         state = this.migrateState(app, state);
         if (!state || state.consequencesApplied) return state;
         if (!state.companionsSettled) state = this.settleEncounter(app, state.encounterOutcome || 'noncombat');
-        if (app.settings?.inventoryRecovery !== 'retain') {
+        const inventoryPolicy = mode?.inventory && mode.inventory !== 'settings'
+            ? mode.inventory
+            : app.settings?.inventoryRecovery;
+        if (inventoryPolicy !== 'retain') {
             const dropped = (app.inventory || []).filter(item => !this.isProtectedItem(item));
             const retained = (app.inventory || []).filter(item => this.isProtectedItem(item));
             const gold = Math.max(0, Number(app.player?.gold) || 0);

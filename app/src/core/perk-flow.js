@@ -128,7 +128,9 @@ const YAW_PERK_FLOW = {
         if (!app.player) return;
         const grant = Math.max(1, Math.floor(Number(count) || 1));
         app.player.pendingPerkChoices = (app.player.pendingPerkChoices || 0) + grant;
-        app.log.push({ text: `Debug: granted ${grant} perk choice${grant === 1 ? '' : 's'}.`, type: 'discovery' });
+        app.log.push({ text: app._label(grant === 1 ? 'perk.debugGrantedOne' : 'perk.debugGrantedMany', grant === 1
+            ? 'Debug: granted {count} perk choice.'
+            : 'Debug: granted {count} perk choices.', { count: grant }), type: 'discovery' });
         app.renderLog();
         app.showCharacterStats();
         app.markAutoSaveDirty?.(['manifest', 'player', 'quests', 'activityLog'], 'perk-debug-grant');

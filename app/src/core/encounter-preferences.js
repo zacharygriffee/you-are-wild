@@ -56,7 +56,9 @@ const YAW_ENCOUNTER_PREFERENCES = {
             if (output) output.textContent = `${weights[key]}%`;
         }
         document.querySelectorAll('#preference-grid .option-card').forEach(card => {
-            card.classList.toggle('selected', card.dataset.value === app.selectedEncounterPreference);
+            const selected = card.dataset.value === app.selectedEncounterPreference;
+            card.classList.toggle('selected', selected);
+            card.setAttribute('aria-pressed', selected ? 'true' : 'false');
         });
     },
 

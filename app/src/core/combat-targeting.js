@@ -138,6 +138,12 @@ const YAW_COMBAT_TARGETING = {
     executeIntentOnMarkedTarget(app, action, actor = app.activeActor || app._currentCombatActor() || app.player) {
         const targets = this.markedTargets(app);
         if (!targets.length) return false;
+        if (action === 'fight') {
+            const actors = app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1
+                ? app._syncSelectedParticipants()
+                : [actor];
+            return YAW_COMBAT_FEED.executeVariantAction(app, action, actor, targets, { actors, targets });
+        }
         if (app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
             return app.queueCombatGroupIntent(action);
         }

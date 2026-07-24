@@ -43,6 +43,7 @@ const YAW_SETTINGS_FLOW = {
             cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
             partyPlayFightMode: 'nonlethal',
             inventoryRecovery: 'death-bag',
+            recoveryMode: 'core:regenerate',
             highContrast: false, reducedMotion: false, fontSize: 14
         };
     },
@@ -74,6 +75,10 @@ const YAW_SETTINGS_FLOW = {
         normalized.inventoryRecovery = ['death-bag', 'retain'].includes(source.inventoryRecovery)
             ? source.inventoryRecovery
             : defaults.inventoryRecovery;
+        const recoveryMode = String(source.recoveryMode || defaults.recoveryMode);
+        normalized.recoveryMode = recoveryMode.length <= 193 && /^[a-zA-Z0-9_.:-]+:[a-zA-Z0-9_.:-]+$/.test(recoveryMode)
+            ? recoveryMode
+            : defaults.recoveryMode;
         const parsedFontSize = Number(source.fontSize);
         normalized.fontSize = Math.max(12, Math.min(20, Number.isFinite(parsedFontSize) ? Math.round(parsedFontSize) : defaults.fontSize));
         return normalized;
@@ -279,6 +284,10 @@ const YAW_SETTINGS_FLOW = {
             CONTENT.preferences.language = language;
         }
         app.saveSettings();
+        this.refreshLanguagePresentation(app);
+    },
+
+    refreshLanguagePresentation(app) {
         app.syncLanguageControl();
         app.applyStaticLocalization();
         void this.renderContentPolicySettings(app);
@@ -289,9 +298,21 @@ const YAW_SETTINGS_FLOW = {
         app.renderLog();
     },
 
-    syncLanguageControl() {
+    syncLanguageControl(app) {
         const language = document.getElementById('setting-language');
-        if (language) language.value = CONTENT?.preferences?.language || 'en';
+        if (!language) return;
+        const catalog = CONTENT?.localeCatalog?.() || [
+            { id: 'en', displayName: 'English' },
+            { id: 'es', displayName: 'Espanol' }
+        ];
+        const escape = value => app?._escapeHtml
+            ? app._escapeHtml(String(value ?? ''))
+            : String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[character]);
+        language.innerHTML = catalog.map(locale => `<option value="${escape(locale.id)}">${escape(locale.displayName)}</option>`).join('');
+        const requested = CONTENT?.preferences?.language || 'en';
+        language.value = catalog.some(locale => locale.id === requested) ? requested : 'en';
     },
 
     updateAccessibilitySetting(app, key, value) {
@@ -334,12 +355,26 @@ const YAW_SETTINGS_FLOW = {
         if (fontSizeValue) fontSizeValue.textContent = `${size}px`;
     },
 
+    renderRecoveryModeOptions(app) {
+        const select = document.getElementById('setting-recovery-mode');
+        if (!select || typeof YAW_RECOVERY_MODES === 'undefined') return false;
+        const selected = YAW_RECOVERY_MODES.selectedKey(app);
+        select.innerHTML = YAW_RECOVERY_MODES.available().map(profile => {
+            const label = `${profile.icon || ''} ${YAW_RECOVERY_MODES.label(app, profile)}`.trim();
+            const description = YAW_RECOVERY_MODES.description(app, profile);
+            return `<option value="${app._escapeHtml(profile.key)}" title="${app._escapeHtml(description)}"${profile.key === selected ? ' selected' : ''}>${app._escapeHtml(label)}</option>`;
+        }).join('');
+        select.value = selected;
+        return true;
+    },
+
     show(app) {
         document.getElementById('screen-settings').style.display = 'block';
         const hardcore = document.getElementById('toggle-hardcore');
         if (hardcore) hardcore.checked = app.settings.hardcore;
         const inventoryRecovery = document.getElementById('setting-inventory-recovery');
         if (inventoryRecovery) inventoryRecovery.value = app.settings.inventoryRecovery;
+        this.renderRecoveryModeOptions(app);
         const playerDeathCheat = document.getElementById('cheat-playerDeath');
         if (playerDeathCheat) {
             const available = app.canTriggerPlayerDeathCheat();

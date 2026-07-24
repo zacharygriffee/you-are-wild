@@ -14,7 +14,9 @@ const YAW_TRANSACTION_WINDOW = {
 
     locationText(app) {
         const tile = app._currentExplorationTile?.();
-        const biome = app.biomes?.[tile?.biome || app.currentBiome]?.name || app.currentBiome || 'Wilderness';
+        const biome = app.biomes?.[tile?.biome || app.currentBiome]?.name
+            || app.currentBiome
+            || app._label('ui.scene.wildernessTitle', 'The Wilderness');
         const coords = app.inInterior
             ? `${app.location.x}, ${app.location.y} / ${app.interiorLocation.x}, ${app.interiorLocation.y}`
             : `${app.location.x}, ${app.location.y}`;
@@ -25,22 +27,71 @@ const YAW_TRANSACTION_WINDOW = {
         return `${(app.inventory || []).length}/${app.MAX_INVENTORY}`;
     },
 
+    captureReturnFocus(app) {
+        if (typeof document === 'undefined') return null;
+        const active = document.activeElement;
+        const inTargetRail = Boolean(active?.closest?.('#mobile-target-picker-belt, #mobile-target-action-tray'));
+        const inActorRail = Boolean(active?.closest?.('#mobile-actor-belt'));
+        return {
+            control: active?.getAttribute?.('data-command-control') || '',
+            intent: active?.getAttribute?.('data-command-intent') || '',
+            slot: active?.getAttribute?.('data-command-slot') || '',
+            rail: inTargetRail || app.mobileTargetPickerOpen || app._mobilePanelReturnRail === 'target'
+                ? 'target'
+                : (inActorRail || app.mobileActorBeltOpen || app._mobilePanelReturnRail === 'actor' ? 'actor' : '')
+        };
+    },
+
+    restoreReturnFocus(app, token = null) {
+        if (!token || typeof document === 'undefined' || app.combatState?.active || app.screen !== 'game') return false;
+        const roots = token.rail === 'target'
+            ? ['#mobile-target-picker-belt', '#mobile-target-action-tray']
+            : (token.rail === 'actor'
+                ? ['#mobile-actor-belt']
+                : ['#desktop-context-belt', '#mobile-explore-actions', '#mobile-target-action-tray']);
+        const candidates = roots.flatMap(selector => Array.from(document.querySelectorAll(`${selector} button, ${selector} [tabindex="0"]`)));
+        const visible = candidates.filter(element => {
+            if (!element?.isConnected || element.disabled) return false;
+            const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+            const rect = element.getBoundingClientRect?.();
+            return (!style || (style.display !== 'none' && style.visibility !== 'hidden'))
+                && (!rect || rect.width > 0 || rect.height > 0);
+        });
+        const matches = element => (!token.control || element.getAttribute('data-command-control') === token.control)
+            && (!token.intent || element.getAttribute('data-command-intent') === token.intent)
+            && (!token.slot || element.getAttribute('data-command-slot') === token.slot);
+        const fallbackControl = token.rail === 'target' ? 'focus-target' : (token.rail === 'actor' ? 'focus-actor' : '');
+        const target = visible.find(matches)
+            || (fallbackControl ? visible.find(element => element.getAttribute('data-command-control') === fallbackControl) : null)
+            || visible[0];
+        if (!target?.focus) return false;
+        try { target.focus({ preventScroll: true }); } catch (_error) { target.focus(); }
+        return true;
+    },
+
+    itemTypeLabel(app, type = 'misc') {
+        const token = String(type || 'misc').trim().toLowerCase();
+        return app._label(`item.category.${token}`, token || app._label('item.category.misc', 'Misc'));
+    },
+
     open(app, kind, targetId) {
         if (!['quest', 'trade'].includes(kind)) return false;
         const npc = this.npc(app, targetId);
         if (!npc || !app._isLivingCreature(npc)) return false;
-        if (kind === 'trade' && npc.disposition !== app.DISPOSITION.MERCHANT) return false;
-        if (kind === 'quest' && !npc.quest && !(app.quests || []).length) return false;
+        if (kind === 'trade' && (npc.disposition !== app.DISPOSITION.MERCHANT || !app._isServiceAvailable(npc))) return false;
+        if (kind === 'quest' && ((!npc.quest && !(app.quests || []).length) || !app._isServiceAvailable(npc))) return false;
         const nextTargetId = app._explorationTargetUnitId?.('creature', npc) || npc.id || npc.name;
         const previous = app.transactionWindow;
         const sameWindow = previous
             && previous.kind === kind
             && String(previous.targetId) === String(nextTargetId);
+        const returnFocus = sameWindow ? previous.returnFocus : this.captureReturnFocus(app);
         app.transactionWindow = {
             kind,
             targetId: nextTargetId,
             exchangeId: sameWindow ? previous.exchangeId : `transaction-${kind}-${app.storyEventSeq + 1}`,
-            openedAt: { x: app.location.x, y: app.location.y, interior: Boolean(app.inInterior) }
+            openedAt: { x: app.location.x, y: app.location.y, interior: Boolean(app.inInterior) },
+            returnFocus
         };
         if (!sameWindow) app.emitTransactionSceneBeat?.(npc, kind, 'opened');
         app.closeIntentMenu?.();
@@ -52,6 +103,7 @@ const YAW_TRANSACTION_WINDOW = {
     close(app) {
         const root = this.root();
         const exchangeId = app.transactionWindow?.exchangeId;
+        const returnFocus = app.transactionWindow?.returnFocus || null;
         app.transactionWindow = null;
         if (exchangeId && typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.closeExchange(app, exchangeId, { reason: 'transaction-closed' });
         app._restoreFocusTrap?.({ restoreFocus: false });
@@ -63,6 +115,7 @@ const YAW_TRANSACTION_WINDOW = {
         document.getElementById('app')?.classList?.remove('transaction-window-open');
         app.renderExplorationActions?.();
         app._renderInteractionState?.({ exploration: true, toolbelt: false });
+        this.restoreReturnFocus(app, returnFocus);
         return false;
     },
 
@@ -107,15 +160,19 @@ const YAW_TRANSACTION_WINDOW = {
         const title = kind === 'trade'
             ? app._label('trade.title', '{name} Trade', { name: npc.name })
             : app._label('quest.windowTitle', '{name} Quests', { name: npc.name });
+        const description = kind === 'trade'
+            ? app._label('transaction.tradeDescription', 'Review wares, prices, and inventory with {name}.', { name: npc.name })
+            : app._label('transaction.questDescription', 'Review available and active quests from {name}.', { name: npc.name });
         const closeLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
         root.hidden = false;
         root.innerHTML = `
             <div class="transaction-backdrop" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="close-transaction" onclick="App.closeTransactionWindow()"></div>
-            <section class="transaction-window ${kind}" role="dialog" aria-modal="true" aria-labelledby="transaction-window-title" data-surface-role="transaction-window" data-command-surface="transaction-window" data-command-mode="exploration" data-command-intent="${app._escapeHtml(kind)}">
+            <section class="transaction-window ${kind}" role="dialog" aria-modal="true" aria-labelledby="transaction-window-title" aria-describedby="transaction-window-description" data-surface-role="transaction-window" data-command-surface="transaction-window" data-command-mode="exploration" data-command-intent="${app._escapeHtml(kind)}">
                 <header class="transaction-header">
                     <div>
                         <div class="transaction-eyebrow">${app._escapeHtml(app._unitDispositionLabel(npc) || (kind === 'trade' ? app._label('disposition.merchant', 'Merchant') : app._label('disposition.quest', 'Quest')))}</div>
                         <h2 id="transaction-window-title">${app._escapeHtml(title)}</h2>
+                        <p id="transaction-window-description" class="holding-entry-meta">${app._escapeHtml(description)}</p>
                     </div>
                     <button class="nav-btn transaction-close" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="close-transaction" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeTransactionWindow()">${closeLabel}</button>
                 </header>
@@ -138,11 +195,15 @@ const YAW_TRANSACTION_WINDOW = {
         const location = app._escapeHtml(this.locationText(app));
         const gold = app._escapeHtml(String(app.player?.gold || 0));
         const capacity = app._escapeHtml(this.inventoryCapacity(app));
+        const npcLabel = app._escapeHtml(app._label('transaction.summary.npc', 'NPC'));
+        const locationLabel = app._escapeHtml(app._label('transaction.summary.location', 'Location'));
+        const goldLabel = app._escapeHtml(app._label('transaction.summary.gold', 'Gold'));
+        const inventoryLabel = app._escapeHtml(app._label('transaction.summary.inventory', 'Inventory'));
         return `<div class="transaction-summary" data-command-surface="transaction-window" data-command-mode="exploration">
-            <div><span>NPC</span><strong>${name}</strong><small>${type}</small></div>
-            <div><span>Location</span><strong>${location}</strong></div>
-            <div><span>Gold</span><strong>${gold}</strong></div>
-            <div><span>Inventory</span><strong>${capacity}</strong></div>
+            <div><span>${npcLabel}</span><strong>${name}</strong><small>${type}</small></div>
+            <div><span>${locationLabel}</span><strong>${location}</strong></div>
+            <div><span>${goldLabel}</span><strong>${gold}</strong></div>
+            <div><span>${inventoryLabel}</span><strong>${capacity}</strong></div>
         </div>`;
     },
 
@@ -157,12 +218,16 @@ const YAW_TRANSACTION_WINDOW = {
             html += this.empty(app, app._label('trade.noStockMatches', 'No stock matches the current filter.'));
         } else {
             stockEntries.forEach(({ item, index }) => {
-                const def = app.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
+                const unknown = app._label('item.unknown', 'Unknown');
+                const def = app.ITEMS[item.name] || { icon: '?', desc: unknown, type: 'misc' };
                 const disabled = (app.player.gold || 0) < item.price || item.qty <= 0 || app.inventory.length >= app.MAX_INVENTORY ? ' disabled aria-disabled="true"' : '';
                 const buyTitle = app._escapeHtml(app._label('trade.buyItem', 'Buy {name}', { name: item.name }));
+                const typeLabel = app._escapeHtml(this.itemTypeLabel(app, def.type));
+                const quantity = app._escapeHtml(app._label('trade.quantity', 'Qty {count}', { count: item.qty }));
+                const price = app._escapeHtml(app._label('trade.goldCompact', '{amount}g', { amount: item.price }));
                 html += `<article class="transaction-item">
-                    <div><strong>${app._escapeHtml(def.icon || '?')} ${app._escapeHtml(item.name)}</strong><small>${app._escapeHtml(def.type || 'misc')} · ${app._escapeHtml(def.desc || '')}</small></div>
-                    <div class="transaction-item-meta"><span>Qty ${app._escapeHtml(String(item.qty))}</span><span>${app._escapeHtml(String(item.price))}g</span></div>
+                    <div><strong>${app._escapeHtml(def.icon || '?')} ${app._escapeHtml(item.name)}</strong><small>${typeLabel} · ${app._escapeHtml(def.desc || '')}</small></div>
+                    <div class="transaction-item-meta"><span>${quantity}</span><span>${price}</span></div>
                     <button class="nav-btn" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="buy-item" data-command-intent="trade" title="${buyTitle}" aria-label="${buyTitle}"${disabled} onclick="App.buyFromMerchant('${targetId}',${index})">${buyLabel}</button>
                 </article>`;
             });
@@ -175,12 +240,15 @@ const YAW_TRANSACTION_WINDOW = {
             html += this.empty(app, app._label('trade.noInventoryMatches', 'No inventory items match the current filter.'));
         } else {
             sellEntries.forEach(({ item }) => {
-                const def = app.ITEMS[item.name] || { icon: '?', value: 1, desc: 'Unknown' };
+                const unknown = app._label('item.unknown', 'Unknown');
+                const def = app.ITEMS[item.name] || { icon: '?', value: 1, desc: unknown, type: 'misc' };
                 const price = Math.max(1, Math.floor((def.value || 1) * 0.5));
                 const sellTitle = app._escapeHtml(app._label('trade.sellItem', 'Sell {name}', { name: item.name }));
+                const typeLabel = app._escapeHtml(this.itemTypeLabel(app, def.type));
+                const priceLabel = app._escapeHtml(app._label('trade.goldCompact', '{amount}g', { amount: price }));
                 html += `<article class="transaction-item">
-                    <div><strong>${app._escapeHtml(def.icon || '?')} ${app._escapeHtml(item.name)}</strong><small>${app._escapeHtml(def.type || 'misc')} · ${app._escapeHtml(def.desc || '')}</small></div>
-                    <div class="transaction-item-meta"><span>${app._escapeHtml(String(price))}g</span></div>
+                    <div><strong>${app._escapeHtml(def.icon || '?')} ${app._escapeHtml(item.name)}</strong><small>${typeLabel} · ${app._escapeHtml(def.desc || '')}</small></div>
+                    <div class="transaction-item-meta"><span>${priceLabel}</span></div>
                     <button class="nav-btn" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="sell-item" data-command-intent="trade" title="${sellTitle}" aria-label="${sellTitle}" onclick="App.sellToMerchant('${targetId}','${String(item.id).replace(/'/g, "\\'")}')">${sellLabel}</button>
                 </article>`;
             });
@@ -196,15 +264,15 @@ const YAW_TRANSACTION_WINDOW = {
         const active = related.filter(quest => quest.status === 'active');
         const completed = related.filter(quest => quest.status === 'completed');
         return `<div class="transaction-columns quest-columns">
-            ${this.questList(app, 'Available', available, giver, 'available')}
-            ${this.questList(app, 'Accepted', active, giver, 'accepted')}
-            ${this.questList(app, 'Completed', completed, giver, 'completed')}
+            ${this.questList(app, app._label('quest.window.available', 'Available'), available, giver, 'available')}
+            ${this.questList(app, app._label('quest.window.accepted', 'Accepted'), active, giver, 'accepted')}
+            ${this.questList(app, app._label('quest.window.completed', 'Completed'), completed, giver, 'completed')}
         </div>`;
     },
 
     questList(app, title, quests, giver, section) {
         let html = `<section class="transaction-section" data-quest-section="${app._escapeHtml(section)}"><h3>${app._escapeHtml(title)}</h3><div class="transaction-list">`;
-        if (!quests.length) return `${html}${this.empty(app, 'None')}</div></section>`;
+        if (!quests.length) return `${html}${this.empty(app, app._label('quest.window.none', 'None'))}</div></section>`;
         quests.forEach(quest => {
             const normalized = app._normalizeQuest(quest, giver);
             const targetId = app._unitKey(giver);

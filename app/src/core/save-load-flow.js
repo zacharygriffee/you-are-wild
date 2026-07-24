@@ -61,6 +61,9 @@ const YAW_SAVE_LOAD_FLOW = {
                 if (compatible.parts) unit.parts = compatible.parts;
                 if (compatible.chest) unit.chest = compatible.chest;
                 if (Object.prototype.hasOwnProperty.call(compatible, 'bothParts')) unit.bothParts = Boolean(compatible.bothParts);
+                if (compatible.creationOptions && typeof compatible.creationOptions === 'object' && !Array.isArray(compatible.creationOptions)) {
+                    unit.creationOptions = JSON.parse(JSON.stringify(compatible.creationOptions));
+                }
                 if (compatible.lifeStage) unit.lifeStage = compatible.lifeStage;
                 if (compatible.adultEligibility && typeof compatible.adultEligibility === 'object') {
                     unit.adultEligibility = { ...compatible.adultEligibility };
@@ -89,6 +92,7 @@ const YAW_SAVE_LOAD_FLOW = {
                 parts: playerCompatibility?.parts || null,
                 chest: playerCompatibility?.chest || null,
                 bothParts: Boolean(playerCompatibility?.bothParts),
+                creationOptions: playerCompatibility?.creationOptions || {},
                 level: loaded.playerLevel,
                 CPun: loaded.playerHp,
                 MPun: loaded.playerMaxHp,
@@ -104,8 +108,12 @@ const YAW_SAVE_LOAD_FLOW = {
             app.largeMapRadius = app.largeMapRadius || 8;
             const loadedParty = loaded.party && loaded.party.length ? loaded.party : [app.player];
             const partyCompatibility = Array.isArray(loaded.questState?.partyCompatibility) ? loaded.questState.partyCompatibility : [];
+            const partyResourceLedgers = Array.isArray(loaded.questState?.partyResourceLedgers) ? loaded.questState.partyResourceLedgers : [];
             app.party = loadedParty.map((unit, index) => {
                 applyCompatibility(unit, partyCompatibility[index] || (index === 0 ? playerCompatibility : null));
+                if ((!unit.resourceLedger || typeof unit.resourceLedger !== 'object') && partyResourceLedgers[index] && typeof partyResourceLedgers[index] === 'object') {
+                    unit.resourceLedger = JSON.parse(JSON.stringify(partyResourceLedgers[index]));
+                }
                 return app._normalizeUnit(unit, {
                     disposition: app.DISPOSITION.PARTY,
                     hero: index === 0,
@@ -221,7 +229,10 @@ const YAW_SAVE_LOAD_FLOW = {
             app.renderParty();
             app.renderCreatures();
             app.renderLog();
-            if (loadedDefeated) app.showDefeatRecovery();
+            if (loadedDefeated) {
+                if (app._isRecoveryJourney?.()) app._showRecoveryJourney?.();
+                else app.showDefeatRecovery();
+            }
             else if (!app._resumeLoadedCombat()) app.showExplorationActions();
             app._emitModuleHook('onGameLoad', {
                 slotName,

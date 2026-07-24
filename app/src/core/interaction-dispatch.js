@@ -156,6 +156,10 @@ const YAW_INTERACTION_DISPATCH = {
 
     validate(app, command) {
         if (!command || !command.action) return { ok: false, reason: 'missing-action' };
+        if (YAW_RECOVERY_MODES?.isJourney?.(app)
+            && (YAW_RECOVERY_MODES.restricts(app, 'interactions') || YAW_RECOVERY_MODES.restricts(app, 'combat'))) {
+            return { ok: false, reason: 'recovery-restricted' };
+        }
         if (!command.actors?.length) return { ok: false, reason: 'missing-actor' };
         if (['fight', 'flirt', 'fuck', 'feast', 'feed', 'inspect'].includes(command.action) && !command.targets?.length && command.mode !== 'combat') {
             return { ok: false, reason: 'missing-target' };
@@ -192,7 +196,9 @@ const YAW_INTERACTION_DISPATCH = {
                     if (!target || target.CPun <= 0) return { ok: false, reason: 'invalid-combat-target' };
                     if (constraints.hostileOnly !== false && target.disposition !== app.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };
                     if (constraints.checkReach !== false && app._isReachSensitiveCombatAction?.(normalizedCombatAction)) {
-                        const reachResults = reachActors.map(unit => app._combatReachResult?.(unit, target, normalizedCombatAction)).filter(Boolean);
+                        const reachResults = reachActors.map(unit => app._combatReachResult?.(unit, target, normalizedCombatAction, {
+                            techniqueKey: command.subAction
+                        })).filter(Boolean);
                         const allCanAttempt = reachResults.length === reachActors.length && reachResults.every(result => result.canAttempt);
                         if (!allCanAttempt) return { ok: false, reason: 'cannot-reach' };
                     } else if (constraints.checkReach !== false && !reachActors.some(unit => app._canAttemptCombatTarget?.(unit, target, normalizedCombatAction))) {
@@ -209,7 +215,15 @@ const YAW_INTERACTION_DISPATCH = {
             return this.dispatchCombat(app, command);
         }
         const valid = this.validate(app, command);
-        if (!valid.ok) return false;
+        if (!valid.ok) {
+            if (valid.reason === 'recovery-restricted') {
+                const text = app._label('recovery.actionRestricted', 'A ghost cannot use ordinary physical or social interactions before resurrection.');
+                app._pushLog?.(text, 'discovery', { action: command?.action, phase: valid.reason });
+                app._showRecoveryJourney?.();
+                app.renderLog?.();
+            }
+            return false;
+        }
         app.lastIntentCommand = {
             actorIds: command.actorIds,
             action: command.action,
@@ -262,7 +276,9 @@ const YAW_INTERACTION_DISPATCH = {
         const actors = command?.timing === 'slowest-participant'
             ? (command?.actors || [])
             : [actor].filter(Boolean);
-        const reach = actors.map(unit => app._combatReachResult?.(unit, target, baseAction)).find(result => result?.canAttempt && !result.canSucceed);
+        const reach = actors.map(unit => app._combatReachResult?.(unit, target, baseAction, {
+            techniqueKey: command?.subAction
+        })).find(result => result?.canAttempt && !result.canSucceed);
         if (reach) return app._combatReachFailureText?.(actors, target, baseAction, reach);
         return null;
     },
@@ -282,6 +298,8 @@ const YAW_INTERACTION_DISPATCH = {
             text = app._label('combat.group.needIntent', 'Choose an intent for the group action.');
         } else if (reason === 'missing-lead-actor' && command?.source === 'combat-planner') {
             text = app._label('combat.group.needLead', 'The current actor must lead this group action.');
+        } else if (reason === 'invalid-combat-technique') {
+            text = app._label('combat.technique.invalid', 'That combat technique is no longer available for the selected actors and targets.');
         }
         app.combatCorrectionMessage = { text, reason, action: command?.action || '', targetId: target?.id || target?.name || '', time: Date.now() };
         app._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });

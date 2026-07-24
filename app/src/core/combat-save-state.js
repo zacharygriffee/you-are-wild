@@ -86,8 +86,15 @@ const YAW_COMBAT_SAVE_STATE = {
                 const target = targets[0] || null;
                 const resolveAtIndex = sync.resolveAtIndex || 0;
                 const round = sync.round || savedCombat.round || 1;
+                const techniqueKey = sync.techniqueKey || null;
+                const techniqueAvailable = !techniqueKey
+                    || techniqueKey === 'basic'
+                    || (typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+                        && YAW_COMBAT_TECHNIQUES.selected(app, participants, techniqueKey, Math.max(1, targets.length)) !== false);
+                if (!techniqueAvailable) return null;
                 return {
                     type: sync.type,
+                    techniqueKey,
                     participants,
                     target,
                     targets,
@@ -99,6 +106,7 @@ const YAW_COMBAT_SAVE_STATE = {
                         actors: participants,
                         targets,
                         action: sync.type,
+                        subAction: techniqueKey,
                         source: 'sync-save',
                         targetType: 'enemy',
                         shape: targets.length > 1 ? 'many-to-many' : 'many-to-one',
@@ -117,7 +125,7 @@ const YAW_COMBAT_SAVE_STATE = {
                         metadata: { baseAction: app._syncBaseAction(sync.type), round }
                     }) : null
                 };
-            }).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved),
+            }).filter(sync => sync && sync.target && sync.participants.length >= 2 && !sync.resolved),
             processing: false,
             xpEarned: savedCombat.xpEarned || 0
         };

@@ -10,6 +10,7 @@
     "test": "node test/test.js",
     "test:core": "node test/test.js --filter=core",
     "test:ui": "node test/test.js --filter=ui",
+    "test:media": "node test/test.js --filter=media",
     "test:viewport": "node test/viewport-check.js",
     "test:interactions": "node test/combat-interactions-check.js",
     "lint": "node build.js --lint-only",

@@ -49,7 +49,7 @@ const YAW_COMBAT_STATUS = {
     wakeOnDamage(app, unit) {
         if (unit?.status?.sleep) {
             delete unit.status.sleep;
-            app.log.push({ text: `${unit.name} wakes from the hit!`, type: 'combat' });
+            app.log.push({ text: app._label('combat.status.wakesOnHit', '{name} wakes from the hit!', { name: unit.name }), type: 'combat' });
         }
     },
 
@@ -121,6 +121,38 @@ const YAW_COMBAT_STATUS = {
         if (actor?.fearAttack || actor?.menacing) target.status.fear = { turns: 2, by: actor.name, source: 'combat' };
     },
 
+    applyTechniqueStatus(app, actor, target, profile, dmg = 0) {
+        const status = profile?.status;
+        if (!status || !target || target.CPun <= 0 || Number(dmg) <= 0) return false;
+        const roll = app?._combatStateRoll?.('combat-technique-status', actor, `${profile.key}:${app?._unitSelectionId?.(target) || target.id || target.name}`) ?? 1;
+        if (roll >= status.chance) return false;
+        target.status = target.status || {};
+        const source = `technique:${profile.key}`;
+        if (status.effect === 'bleed') {
+            const existing = target.status.bleed || { dmg: status.power, turns: status.turns, stacks: 0 };
+            existing.dmg = Math.max(existing.dmg || 0, status.power);
+            existing.turns = Math.max(existing.turns || 0, status.turns);
+            existing.stacks = Math.min(5, (existing.stacks || 0) + 1);
+            existing.source = source;
+            target.status.bleed = existing;
+        } else if (status.effect === 'burn') {
+            target.status.burn = { dmg: status.power, turns: status.turns, source };
+        } else if (status.effect === 'freeze') {
+            target.status.freeze = { skip: true, slowTurns: status.turns, source };
+        } else if (status.effect === 'stun') {
+            target.status.stun = { turns: status.turns, source };
+        } else if (status.effect === 'sleep') {
+            target.status.sleep = { turns: status.turns, source };
+        } else if (status.effect === 'charm') {
+            target.status.charm = { turns: status.turns, by: actor?.name || '', source };
+        } else if (status.effect === 'fear') {
+            target.status.fear = { turns: status.turns, by: actor?.name || '', source };
+        } else {
+            return false;
+        }
+        return true;
+    },
+
     charmedTargetsFor(app, unit) {
         if (!unit?.status?.charm) return null;
         if (app._hasEquipmentEffect(unit, 'focusGuard')) {
@@ -156,7 +188,10 @@ const YAW_COMBAT_STATUS = {
                 if (spreadTarget && app._combatStateRoll('combat-burn-spread', unit, app._unitSelectionId(spreadTarget)) < 0.25) {
                     spreadTarget.status = spreadTarget.status || {};
                     spreadTarget.status.burn = { dmg: 3, turns: 2, fresh: true };
-                    app.log.push({ text: `${unit.name}'s burn spreads to ${spreadTarget.name}!`, type: 'combat' });
+                    app.log.push({ text: app._label('combat.status.burnSpreads', "{source}'s burn spreads to {target}!", {
+                        source: unit.name,
+                        target: spreadTarget.name
+                    }), type: 'combat' });
                 }
                 unit.status.burn.turns--;
                 if (unit.status.burn.turns <= 0) delete unit.status.burn;
@@ -164,7 +199,10 @@ const YAW_COMBAT_STATUS = {
             if (unit.status.restrained) {
                 unit.status.restrained.turns--;
                 if (unit.status.restrained.turns <= 0) {
-                    app.log.push({ text: `${unit.name} breaks free from ${unit.status.restrained.by}!`, type: 'combat' });
+                    app.log.push({ text: app._label('combat.status.breaksRestraint', '{name} breaks free from {source}!', {
+                        name: unit.name,
+                        source: unit.status.restrained.by
+                    }), type: 'combat' });
                     delete unit.status.restrained;
                 }
             }
@@ -172,7 +210,7 @@ const YAW_COMBAT_STATUS = {
                 unit.CPun -= 4;
                 unit.status.enveloped.turns--;
                 if (unit.status.enveloped.turns <= 0) {
-                    app.log.push({ text: `${unit.name} escapes the envelopment!`, type: 'combat' });
+                    app.log.push({ text: app._label('combat.status.escapesEnvelopment', '{name} escapes the envelopment!', { name: unit.name }), type: 'combat' });
                     delete unit.status.enveloped;
                 }
             }
@@ -194,7 +232,7 @@ const YAW_COMBAT_STATUS = {
             }
             if (unit.status.frightened) delete unit.status.frightened;
             if (unit !== app.player && app.party.includes(unit) && unit.CPun <= 0) {
-                app.log.push({ text: `${unit.name} succumbs to their wounds.`, type: 'combat' });
+                app.log.push({ text: app._label('combat.status.succumbsWounds', '{name} succumbs to their wounds.', { name: unit.name }), type: 'combat' });
                 app._dropPartyCorpse(unit, 'status');
             }
         }

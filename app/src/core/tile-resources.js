@@ -15,6 +15,7 @@ const YAW_TILE_RESOURCES = {
         const roll = app._worldRoll('search-roll', tileX, tileY, searchDay, searchHour);
         const findChance = Math.min(0.85, 0.3 + (app._hasEquipmentEffect(app.player, 'luckyFind') ? 0.15 : 0) + (app._hasPerkEffect('predatorScent') ? 0.1 : 0) + app._partyRoleEffect('gatherer', 0.1, 0.25));
         let result = '';
+        let foundItem = false;
         const resourceSite = tile?.overlays?.poi?.category === 'resourceSite' && !tile.resourceSearched;
         if (resourceSite && app.inventory.length >= app.MAX_INVENTORY) {
             result = app._label('inventory.full', 'Inventory is full.');
@@ -26,7 +27,8 @@ const YAW_TILE_RESOURCES = {
             tile.resourceSearched = true;
             app.persistTileDelta(tileX, tileY, tile);
             app._updateQuestProgress('find', { item: iname, name: iname });
-            result = 'You found a ' + iname + '!';
+            result = app._label('search.foundItem', 'You found a {item}!', { item: iname });
+            foundItem = true;
         } else if (roll < findChance) {
             const struct = tile?.structure ? app.STRUCTURES[tile.structure] : null;
             const authoredLoot = struct?.lootTable && !tile.structureLooted ? app._lootItemNameFromTable(struct.lootTable, 'structure-search-loot', tileX, tileY, searchDay, searchHour) : null;
@@ -39,15 +41,16 @@ const YAW_TILE_RESOURCES = {
             const iid = `item_${tileX}_${tileY}_${searchDay}_${searchHour}`;
             app.inventory.push({ id: iid, name: iname });
             app._updateQuestProgress('find', { item: iname, name: iname });
-            result = 'You found a ' + iname + '!';
+            result = app._label('search.foundItem', 'You found a {item}!', { item: iname });
+            foundItem = true;
         } else if (roll < 0.6) {
-            result = 'You explore the area. ' + tile.description;
+            result = app._label('search.explored', 'You explore the area. {description}', { description: tile.description || '' });
         } else {
-            result = 'Nothing of interest here.';
+            result = app._label('search.nothing', 'Nothing of interest here.');
         }
         app.log.push({ text: result, type: 'discovery' });
         app._addTileEvent(result, 'discovery');
-        if (result.startsWith('You found a ')) {
+        if (foundItem) {
             app.showToast?.({ text: result, type: 'loot', importance: 'notable', dedupeKey: `search-loot:${tileX},${tileY}:${searchDay}:${searchHour}` });
         }
         app.renderLog();

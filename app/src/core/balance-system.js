@@ -29,6 +29,14 @@ const YAW_BALANCE_SYSTEM = {
                 restDigestionTicks: 8,
                 containmentFullnessPerSize: 3,
                 containmentNutritionPerSize: 15
+            },
+            digestion: {
+                satiatedThreshold: 25,
+                satiatedMultiplier: 0.8,
+                hungryMultiplier: 1.2,
+                starvingMultiplier: 1.4,
+                minimumMultiplier: 0.8,
+                maximumMultiplier: 1.4
             }
         };
     },
@@ -38,7 +46,8 @@ const YAW_BALANCE_SYSTEM = {
             ...this.defaults(),
             ...(app.BALANCE_V1 || {}),
             costs: { ...this.defaults().costs, ...(app.BALANCE_V1?.costs || {}) },
-            relief: { ...this.defaults().relief, ...(app.BALANCE_V1?.relief || {}) }
+            relief: { ...this.defaults().relief, ...(app.BALANCE_V1?.relief || {}) },
+            digestion: { ...this.defaults().digestion, ...(app.BALANCE_V1?.digestion || {}) }
         };
         return app.BALANCE_V1;
     },
@@ -51,6 +60,33 @@ const YAW_BALANCE_SYSTEM = {
 
     hunger(unit) {
         return Math.max(0, Math.round(Number(unit?.hunger) || 0));
+    },
+
+    digestionRateState(app, unit, baseRate = 5) {
+        const cfg = this.ensure(app);
+        const digestion = cfg.digestion || this.defaults().digestion;
+        const hunger = this.hunger(unit);
+        let multiplier = 1;
+        let pace = 'steady';
+        if (hunger >= cfg.hungerStarving) {
+            multiplier = Number(digestion.starvingMultiplier || 1.4);
+            pace = 'urgent';
+        } else if (hunger >= cfg.hungerHungry) {
+            multiplier = Number(digestion.hungryMultiplier || 1.2);
+            pace = 'quick';
+        } else if (hunger <= Number(digestion.satiatedThreshold ?? 25)) {
+            multiplier = Number(digestion.satiatedMultiplier || 0.8);
+            pace = 'slower';
+        }
+        const minimum = Number(digestion.minimumMultiplier || 0.8);
+        const maximum = Number(digestion.maximumMultiplier || 1.4);
+        multiplier = Math.max(minimum, Math.min(maximum, multiplier));
+        const rate = Number((Math.max(0, Number(baseRate) || 0) * multiplier).toFixed(2));
+        const fallbacks = { slower: 'Slower', steady: 'Steady', quick: 'Quick', urgent: 'Urgent' };
+        const label = app?._label
+            ? app._label(`containment.digestionPace.${pace}`, fallbacks[pace])
+            : fallbacks[pace];
+        return { hunger, baseRate: Number(baseRate) || 0, multiplier, rate, pace, label };
     },
 
     applyHungerPressure(app, unit, amount = 0, context = {}) {
@@ -154,6 +190,11 @@ const YAW_BALANCE_SYSTEM = {
     scenarioBaseline(app) {
         const cfg = this.ensure(app);
         const turnsTo = (threshold, cost) => cost > 0 ? Math.ceil(threshold / cost) : null;
+        const referencePool = 100;
+        const referenceFightDamage = 40;
+        const referenceCharm = 40;
+        const referenceFeed = 20;
+        const commandsToResolve = effect => effect > 0 ? Math.ceil(referencePool / effect) : null;
         const digestion = (size, rate) => {
             const nutrition = Math.min(100, Math.max(1, size) * cfg.relief.containmentNutritionPerSize);
             const ticks = Math.ceil(100 / rate);
@@ -170,23 +211,303 @@ const YAW_BALANCE_SYSTEM = {
                 netRestHunger: cfg.relief.restHungerPressure - restNutrition
             };
         };
+        const reward = (key, fallback) => Number(app?.XP_REWARDS?.[key] ?? fallback);
+        const referenceAction = (id, details = {}) => ({
+            id,
+            targetPool: referencePool,
+            committedCommands: 1,
+            timeHoursPerCommand: 0,
+            xpPerResolvedEncounter: 0,
+            ...details
+        });
+        const multiFight = (targetCount, xp, tier, area = false) => {
+            const count = Math.max(1, Math.floor(Number(targetCount) || 1));
+            const mastery = Math.max(0, Math.min(1, (Number(xp) || 0) / 200));
+            const share = 1 / count;
+            const scale = count <= 1 ? 1 : (area ? 1 : share + mastery * (1 - share));
+            const effectPerTarget = Math.max(1, Math.floor(referenceFightDamage * scale));
+            return {
+                tier,
+                practiceXp: xp,
+                targetCount: count,
+                areaTechnique: area,
+                scale: Number(scale.toFixed(3)),
+                percent: Math.round(scale * 100),
+                effectPerTarget,
+                totalEffect: effectPerTarget * count,
+                commandsToResolveEachTarget: commandsToResolve(effectPerTarget)
+            };
+        };
+        const masteryTiers = [
+            ['novice', 0],
+            ['practiced', 20],
+            ['skilled', 60],
+            ['expert', 120],
+            ['master', 200]
+        ];
         return {
+            schemaVersion: 2,
             thresholds: {
                 warning: cfg.hungerWarning,
                 hungry: cfg.hungerHungry,
                 starving: cfg.hungerStarving
             },
             commandsToHungryFromSated: Object.fromEntries(Object.entries(cfg.costs).map(([action, cost]) => [action, turnsTo(cfg.hungerHungry, cost)])),
+            commandsToStarvingFromSated: Object.fromEntries(Object.entries(cfg.costs).map(([action, cost]) => [action, turnsTo(cfg.hungerStarving, cost)])),
             emptyRest: {
                 hungerPerRest: cfg.relief.restHungerPressure,
                 restsToHungry: turnsTo(cfg.hungerHungry, cfg.relief.restHungerPressure),
                 hoursToHungry: turnsTo(cfg.hungerHungry, cfg.relief.restHungerPressure) * 8
             },
             digestion: [1, 3, 6].flatMap(size => [digestion(size, 5), digestion(size, 2)]),
+            referenceScenario: {
+                assumptions: {
+                    targetCondition: referencePool,
+                    targetSpirit: referencePool,
+                    fightDamageBeforeSpread: referenceFightDamage,
+                    successfulTalkCharm: referenceCharm,
+                    successfulPlayCharm: referenceCharm,
+                    feedStat: referenceFeed,
+                    deterministicVariance: 0,
+                    eligibleAttempt: true
+                },
+                actions: [
+                    referenceAction('fight', {
+                        effectLedger: 'condition',
+                        effectPerCommand: referenceFightDamage,
+                        committedCommands: commandsToResolve(referenceFightDamage),
+                        xpPerResolvedEncounter: reward('defeatEnemy', 50),
+                        rewardMode: 'once-on-enemy-defeat'
+                    }),
+                    referenceAction('flirt', {
+                        publicAction: 'talk',
+                        effectLedger: 'spirit',
+                        resolutionThreshold: Math.ceil(referencePool * cfg.spiritThresholdRatio),
+                        effectPerCommand: Math.floor(referenceCharm * 0.3),
+                        committedCommands: Math.ceil((referencePool * cfg.spiritThresholdRatio) / Math.floor(referenceCharm * 0.3)),
+                        xpPerResolvedEncounter: reward('flirtEnemy', 50),
+                        rewardMode: 'once-on-enemy-social-resolution'
+                    }),
+                    referenceAction('fuck', {
+                        publicAction: 'play',
+                        effectLedger: 'spirit',
+                        resolutionThreshold: Math.ceil(referencePool * cfg.spiritThresholdRatio),
+                        effectPerCommand: Math.floor(referenceCharm * 0.5),
+                        committedCommands: Math.ceil((referencePool * cfg.spiritThresholdRatio) / Math.floor(referenceCharm * 0.5)),
+                        xpPerResolvedEncounter: reward('seduceEnemy', 50),
+                        rewardMode: 'once-on-enemy-social-resolution'
+                    }),
+                    referenceAction('feed', {
+                        effectLedger: 'condition',
+                        effectPerCommand: Math.floor(referenceFeed * 2),
+                        committedCommands: commandsToResolve(Math.floor(referenceFeed * 2)),
+                        xpPerCommand: 'condition-band delta',
+                        xpPerResolvedEncounter: reward('feedAlly', 20),
+                        rewardMode: 'proportional-to-net-condition-restored; capped-per-full-target-pool; no-self-reward'
+                    }),
+                    referenceAction('feast', {
+                        effectLedger: 'containment-state',
+                        effectPerCommand: 'variant-defined terminal or contained state',
+                        committedCommands: 1,
+                        xpPerResolvedEncounter: reward('consumeEnemy', 75),
+                        rewardMode: 'once-on-enemy-consumption'
+                    }),
+                    referenceAction('flee', {
+                        targetPool: null,
+                        effectLedger: 'position',
+                        effectPerCommand: 'safe-adjacent relocation',
+                        committedCommands: 1,
+                        xpPerResolvedEncounter: 0,
+                        rewardMode: 'none'
+                    })
+                ],
+                multiTargetFight: masteryTiers.flatMap(([tier, xp]) => [
+                    multiFight(1, xp, tier),
+                    multiFight(2, xp, tier),
+                    multiFight(4, xp, tier)
+                ]).concat([multiFight(4, 0, 'novice', true)])
+            },
             spirit: {
                 breakthroughRatio: cfg.spiritThresholdRatio,
                 postResolveRatio: cfg.spiritPostResolveRatio
             }
+        };
+    },
+
+    interactionMatrix(app) {
+        const cfg = this.ensure(app);
+        const rewards = {
+            defeatEnemy: Number(app?.XP_REWARDS?.defeatEnemy ?? 50),
+            consumeEnemy: Number(app?.XP_REWARDS?.consumeEnemy ?? 75),
+            seduceEnemy: Number(app?.XP_REWARDS?.seduceEnemy ?? 50),
+            flirtEnemy: Number(app?.XP_REWARDS?.flirtEnemy ?? 50),
+            feedAlly: Number(app?.XP_REWARDS?.feedAlly ?? 20),
+            feedEnemy: Number(app?.XP_REWARDS?.feedEnemy ?? 25)
+        };
+        const command = (id, details = {}) => ({
+            id,
+            source: {
+                hunger: Number(cfg.costs[id] ?? 0),
+                charge: 'once-per-committed-actor-command'
+            },
+            timeHours: 0,
+            turn: 'committed-attempt',
+            shapes: ['one-to-one'],
+            outcomes: {
+                blocked: { charge: false, consumesTurn: false },
+                success: { charge: true, consumesTurn: true },
+                committedFailure: { charge: true, consumesTurn: true }
+            },
+            ...details
+        });
+        const variant = (action, id, details = {}) => ({
+            id: `${action}.${id}`,
+            action,
+            variant: id,
+            source: {
+                hunger: Number(cfg.costs[action] ?? 0),
+                charge: 'once-per-committed-actor-command'
+            },
+            timeHours: 0,
+            turn: 'committed-attempt',
+            outcomes: {
+                blocked: { charge: false, consumesTurn: false },
+                success: { charge: true, consumesTurn: true },
+                committedFailure: { charge: true, consumesTurn: true }
+            },
+            ...details
+        });
+        return {
+            schemaVersion: 1,
+            semantics: {
+                hunger: 'higher-is-hungrier',
+                condition: 'CPun/MPun',
+                spirit: 'CPle/MPle',
+                vitality: 'containment-vital-pool',
+                blockedSelection: 'no-cost-no-turn',
+                committedFailure: 'cost-and-turn',
+                multiTargetCost: 'once-per-actor-command',
+                groupCost: 'once-per-participant-command'
+            },
+            commands: [
+                command('fight', {
+                    shapes: ['one-to-one', 'one-to-many', 'many-to-one', 'mutual'],
+                    target: { condition: 'damage(action-rating, defense, terrain, multi-target-scale)' },
+                    reward: { xpOnEnemyDefeat: rewards.defeatEnemy },
+                    practice: 'multi-target-fight-only'
+                }),
+                command('flirt', {
+                    publicAction: 'talk',
+                    shapes: ['one-to-one', 'one-to-many', 'many-to-one', 'mutual'],
+                    target: { spirit: 'floor(charm*0.3) on success', fight: '-1 on success' },
+                    reward: { xpOnEnemyResolution: rewards.flirtEnemy }
+                }),
+                command('fuck', {
+                    publicAction: 'play',
+                    shapes: ['one-to-one', 'one-to-many', 'many-to-one', 'mutual'],
+                    target: { spirit: 'floor(charm*0.5) on success' },
+                    reward: { xpOnEnemyResolution: rewards.seduceEnemy }
+                }),
+                command('feed', {
+                    shapes: ['one-to-one', 'one-to-many', 'many-to-one', 'mutual'],
+                    target: { condition: 'floor(actor.Feed*2)' },
+                    reward: {
+                        xpOnResolution: 'condition-band delta',
+                        capPerFullTargetPool: rewards.feedAlly,
+                        selfTarget: 0
+                    }
+                }),
+                command('feast', {
+                    shapes: ['one-to-one', 'one-to-many', 'many-to-one'],
+                    target: { state: 'variant-defined containment or vitality outcome' },
+                    reward: { xpOnEnemyConsumption: rewards.consumeEnemy }
+                }),
+                command('flee', {
+                    shapes: ['self'],
+                    target: { position: 'safe-adjacent-tile-or-room on success' },
+                    reward: { xpOnResolution: 0 }
+                })
+            ],
+            variants: [
+                variant('feed', 'tend', {
+                    target: { condition: 'floor(actor.Feed*2)', hunger: 0, spirit: 0 },
+                    reward: {
+                        xpOnResolution: 'condition-band delta',
+                        capPerFullTargetPool: rewards.feedAlly,
+                        selfTarget: 0
+                    }
+                }),
+                variant('feed', 'nurse', {
+                    source: {
+                        hunger: Number(cfg.costs.feed ?? 0),
+                        resource: { key: 'core:nurse', amount: 1, capacity: 3, regeneration: { trigger: 'digestion', every: 3, amount: 1 } },
+                        cooldown: { lactation: 3 },
+                        charge: 'once-per-committed-actor-command'
+                    },
+                    target: { condition: 'floor(actor.Feed*3)', hunger: -40, spirit: 'floor(heal*0.3)' },
+                    reward: { xpOnResolution: rewards.feedAlly }
+                }),
+                variant('feed', 'offerWhole', {
+                    source: { hunger: Number(cfg.costs.feed ?? 0), state: 'contained-by-target', charge: 'once-per-committed-actor-command' },
+                    target: { hunger: 'containment-fullness-by-source-size', capacity: 'source-size' },
+                    reward: { xpOnResolution: rewards.feedAlly }
+                }),
+                variant('feed', 'offerPiece', {
+                    source: { hunger: Number(cfg.costs.feed ?? 0), condition: '-max(2,floor(MPun*0.15))', charge: 'once-per-committed-actor-command' },
+                    target: { condition: 'floor(actor.Feed*1.5)', hunger: '-max(10,piece-cost)' },
+                    reward: { xpOnResolution: rewards.feedAlly }
+                }),
+                variant('feast', 'swallow', {
+                    source: { hunger: Number(cfg.costs.feast ?? 0), condition: '+20 on success', charge: 'once-per-committed-actor-command' },
+                    target: { state: 'contained-stomach', hunger: 'holder fullness by target size' },
+                    reward: { xpOnEnemyResolution: rewards.consumeEnemy }
+                }),
+                variant('feast', 'chew', {
+                    source: { hunger: Number(cfg.costs.feast ?? 0), condition: '+30 on success', charge: 'once-per-committed-actor-command' },
+                    target: { vitality: 'all remaining vitality', state: 'depleted' },
+                    reward: { xpOnEnemyResolution: rewards.consumeEnemy }
+                }),
+                variant('feast', 'digest', {
+                    scope: 'self',
+                    target: { digestionProgress: 100, state: 'terminalized-by-containment-policy' },
+                    reward: { xpOnResolution: 0 }
+                }),
+                variant('feast', 'release', {
+                    scope: 'self',
+                    target: { state: 'released-at-reduced-condition' },
+                    reward: { xpOnResolution: 0 }
+                }),
+                variant('fuck', 'seduce', {
+                    scope: 'both',
+                    publicAction: 'play',
+                    target: { spirit: 'floor(charm*0.5) on success' },
+                    reward: { xpOnEnemyResolution: rewards.seduceEnemy }
+                })
+            ],
+            digestion: {
+                passiveBaseRate: 5,
+                passiveSlowRate: 2,
+                hungerScaling: {
+                    satiatedAtOrBelow: Number(cfg.digestion.satiatedThreshold),
+                    hungryAtOrAbove: Number(cfg.hungerHungry),
+                    starvingAtOrAbove: Number(cfg.hungerStarving),
+                    multipliers: {
+                        satiated: Number(cfg.digestion.satiatedMultiplier),
+                        steady: 1,
+                        hungry: Number(cfg.digestion.hungryMultiplier),
+                        starving: Number(cfg.digestion.starvingMultiplier)
+                    },
+                    minimum: Number(cfg.digestion.minimumMultiplier),
+                    maximum: Number(cfg.digestion.maximumMultiplier)
+                },
+                totalNutrition: `${cfg.relief.containmentNutritionPerSize}*prey-size`,
+                invariant: 'rate-changes-delivery-time-not-total-nutrition'
+            },
+            unresolved: [
+                'authored mass-ledger replacement for Offer Piece condition proxy',
+                'Fight sub-variant cost/effect declarations',
+                'explicit elapsed-time policy for non-travel interactions'
+            ]
         };
     },
 

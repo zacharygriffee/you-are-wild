@@ -31,7 +31,7 @@ const MODULE_SYSTEM = {
     DEFAULT_HOST_MANIFEST_PATH: 'yaw-host.json',
     REMOTE_PACKAGE_MAX_BYTES: 2 * 1024 * 1024,
     REMOTE_PACKAGE_TIMEOUT_MS: 15000,
-    KNOWN_PERMISSIONS: ['ui.read', 'media:read', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option', 'content:add_action_variant'],
+    KNOWN_PERMISSIONS: ['ui.read', 'media:read', 'media:provide', 'scene:add_template', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option', 'content:add_action_variant', 'mechanics:add_resource_profile', 'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'],
     db: null,
     hostManifest: null,
     hostManifestState: { status: 'uninitialized', reason: '', url: '' },
@@ -62,6 +62,7 @@ const MODULE_SYSTEM = {
     // Active modules
     activeModules: new Map(),
     ownedContributions: new Map(),
+    moduleDiagnostics: new Map(),
     settingActions: new Map(),
     loadingModuleId: null,
 
@@ -184,20 +185,37 @@ const MODULE_SYSTEM = {
         return 'http';
     },
 
-    _runtimeCompatibilityBlockReason(manifest) {
+    _runtimeCompatibilityBlock(manifest) {
         const requirements = this._normalizeRuntimeRequirements(manifest?.runtimeRequirements, manifest?.hotToggleSafe);
         const origin = this._runtimeOrigin();
         if (!requirements.origins.includes(origin)) {
-            return `Module requires one of these runtime origins: ${requirements.origins.join(', ')}`;
+            const origins = requirements.origins.join(', ');
+            return {
+                key: 'mod.compatibility.origins',
+                vars: { origins },
+                message: `Module requires one of these runtime origins: ${origins}`
+            };
         }
         const secure = origin === 'https' || origin === 'localhost';
         if (requirements.secureContext && !secure) {
-            return 'Module requires HTTPS or localhost';
+            return {
+                key: 'mod.compatibility.secureContext',
+                vars: {},
+                message: 'Module requires HTTPS or localhost'
+            };
         }
         if (requirements.network && origin === 'file') {
-            return 'Module requires a server-hosted network origin';
+            return {
+                key: 'mod.compatibility.network',
+                vars: {},
+                message: 'Module requires a server-hosted network origin'
+            };
         }
         return null;
+    },
+
+    _runtimeCompatibilityBlockReason(manifest) {
+        return this._runtimeCompatibilityBlock(manifest)?.message || null;
     },
 
     _normalizePolicyDeclarations(value, fieldName, kind) {
@@ -734,17 +752,26 @@ const MODULE_SYSTEM = {
 
     _normalizeAssetBundlePackage(packageData, sourceUrl) {
         const normalizedPackage = YAW_ASSET_BUNDLE_V1.normalizePackage(packageData, { sourceUrl });
-        if (typeof YAW_TILESET_PACK_V1 === 'undefined') return normalizedPackage;
-        const normalizedTilesets = YAW_TILESET_PACK_V1.normalizeBundle(normalizedPackage, {
-            requiredKeys: typeof globalThis !== 'undefined' && globalThis.AssetManifest?.allTileKeys
-                ? globalThis.AssetManifest.allTileKeys()
-                : []
-        });
-        let index = 0;
-        normalizedPackage.bundle.presentations = normalizedPackage.bundle.presentations.map(presentation => {
-            if (String(presentation?.type || '') !== YAW_TILESET_PACK_V1.PRESENTATION_TYPE) return presentation;
-            return normalizedTilesets[index++];
-        });
+        if (typeof YAW_TILESET_PACK_V1 !== 'undefined') {
+            const normalizedTilesets = YAW_TILESET_PACK_V1.normalizeBundle(normalizedPackage, {
+                requiredKeys: typeof globalThis !== 'undefined' && globalThis.AssetManifest?.allTileKeys
+                    ? globalThis.AssetManifest.allTileKeys()
+                    : []
+            });
+            let index = 0;
+            normalizedPackage.bundle.presentations = normalizedPackage.bundle.presentations.map(presentation => {
+                if (String(presentation?.type || '') !== YAW_TILESET_PACK_V1.PRESENTATION_TYPE) return presentation;
+                return normalizedTilesets[index++];
+            });
+        }
+        if (typeof YAW_SPRITE_PACK_V1 !== 'undefined') {
+            const normalizedSprites = YAW_SPRITE_PACK_V1.normalizeBundle(normalizedPackage);
+            let index = 0;
+            normalizedPackage.bundle.presentations = normalizedPackage.bundle.presentations.map(presentation => {
+                if (String(presentation?.type || '') !== YAW_SPRITE_PACK_V1.PRESENTATION_TYPE) return presentation;
+                return normalizedSprites[index++];
+            });
+        }
         return normalizedPackage;
     },
 
@@ -1085,8 +1112,17 @@ const MODULE_SYSTEM = {
         const record = module || {};
         const provenance = this._normalizeProvenance(record.provenance || 'user');
         const policyState = this.hostPolicyState(record.id);
-        const compatibilityReason = this._runtimeCompatibilityBlockReason(record.manifest || {});
+        const compatibility = this._runtimeCompatibilityBlock(record.manifest || {});
+        const compatibilityReason = compatibility?.message || null;
         const userBlocked = Boolean(this.hostManifest && ['user', 'remote'].includes(provenance) && this.hostManifest.policy.allowUserModules === false);
+        const policyReason = policyState === 'required'
+            ? { key: 'mod.control.required', vars: {}, message: 'Required by this host' }
+            : (policyState === 'forbidden'
+                ? { key: 'mod.control.forbidden', vars: {}, message: 'Disabled by this host' }
+                : (userBlocked
+                    ? { key: 'mod.control.userModulesDisabled', vars: {}, message: 'User-installed modules are disabled by this host' }
+                    : null));
+        const reason = compatibility || policyReason;
         return {
             provenance,
             policyState,
@@ -1096,10 +1132,11 @@ const MODULE_SYSTEM = {
             canEnable: policyState !== 'forbidden' && !userBlocked && !compatibilityReason,
             canDisable: policyState !== 'required',
             compatibilityReason,
-            reason: compatibilityReason
-                || (policyState === 'required' ? 'Required by this host' : '')
-                || (policyState === 'forbidden' ? 'Disabled by this host' : '')
-                || (userBlocked ? 'User-installed modules are disabled by this host' : '')
+            compatibilityReasonKey: compatibility?.key || '',
+            compatibilityReasonVars: compatibility?.vars || {},
+            reason: reason?.message || '',
+            reasonKey: reason?.key || '',
+            reasonVars: reason?.vars || {}
         };
     },
 
@@ -1337,7 +1374,9 @@ const MODULE_SYSTEM = {
                 policyState: this.hostPolicyState(entry.id) || 'optional',
                 installed: Boolean(installed),
                 enabled: Boolean(installed?.enabled),
-                compatibilityReason: control.compatibilityReason
+                compatibilityReason: control.compatibilityReason,
+                compatibilityReasonKey: control.compatibilityReasonKey,
+                compatibilityReasonVars: control.compatibilityReasonVars
             };
         });
     },
@@ -1813,6 +1852,8 @@ const MODULE_SYSTEM = {
                 runtimeTimers,
                 loading: false
             });
+            this._evaluateModuleContributions(module.id);
+            App.refreshLanguagePresentation?.();
 
             if (typeof YAW_TILESET_RUNTIME !== 'undefined') {
                 try {
@@ -1821,6 +1862,16 @@ const MODULE_SYSTEM = {
                     YAW_MEDIA_REPOSITORY?.diagnostic?.('tileset_activation_failed', {
                         ownerId: module.id,
                         message: error.code || error.message || 'tileset_error'
+                    }, 'error');
+                }
+            }
+            if (typeof YAW_SPRITE_RUNTIME !== 'undefined') {
+                try {
+                    await YAW_SPRITE_RUNTIME.activateModule(module.id);
+                } catch (error) {
+                    YAW_MEDIA_REPOSITORY?.diagnostic?.('sprite_activation_failed', {
+                        ownerId: module.id,
+                        message: error.code || error.message || 'sprite_error'
                     }, 'error');
                 }
             }
@@ -1844,8 +1895,13 @@ const MODULE_SYSTEM = {
                 speciesProfiles: [],
                 items: new Set(),
                 templates: [],
+                sceneTemplates: [],
                 locales: [],
-                actionVariants: []
+                localeDefinitions: [],
+                actionVariants: [],
+                resourceProfiles: [],
+                combatTechniques: [],
+                recoveryModes: []
             });
         }
         return this.ownedContributions.get(moduleId);
@@ -2167,6 +2223,80 @@ const MODULE_SYSTEM = {
         this._contributionRecord(moduleId)[collectionName].add(entry);
     },
 
+    _addOwnedResourceProfile(moduleId, resourceId, definition) {
+        if (typeof YAW_RESOURCE_LEDGER === 'undefined') throw new Error('Resource Ledger V1 is unavailable');
+        const profile = YAW_RESOURCE_LEDGER.register(moduleId, resourceId, definition);
+        this._contributionRecord(moduleId).resourceProfiles.push({ key: profile.key });
+        return {
+            version: profile.version,
+            id: profile.id,
+            key: profile.key,
+            label: profile.label,
+            labelKey: profile.labelKey,
+            capacity: profile.capacity,
+            regeneration: profile.regeneration ? { ...profile.regeneration } : null,
+            eligibility: {
+                species: [...profile.eligibility.species],
+                abilities: [...profile.eligibility.abilities],
+                flags: [...profile.eligibility.flags]
+            }
+        };
+    },
+
+    _addOwnedCombatTechnique(moduleId, techniqueId, definition) {
+        if (typeof YAW_COMBAT_TECHNIQUES === 'undefined') throw new Error('Combat Technique V1 is unavailable');
+        const profile = YAW_COMBAT_TECHNIQUES.register(moduleId, techniqueId, definition);
+        this._contributionRecord(moduleId).combatTechniques.push({ key: profile.key });
+        return {
+            version: profile.version,
+            id: profile.id,
+            key: profile.key,
+            label: profile.label,
+            labelKey: profile.labelKey,
+            description: profile.description,
+            descriptionKey: profile.descriptionKey,
+            icon: profile.icon,
+            eligibility: {
+                species: [...profile.eligibility.species],
+                abilities: [...profile.eligibility.abilities],
+                flags: [...profile.eligibility.flags]
+            },
+            equipment: {
+                required: profile.equipment.required,
+                anyTags: [...profile.equipment.anyTags],
+                allTags: [...profile.equipment.allTags],
+                slots: [...profile.equipment.slots]
+            },
+            reach: profile.reach,
+            damage: { ...profile.damage },
+            area: { ...profile.area },
+            status: profile.status ? { ...profile.status } : null
+        };
+    },
+
+    _addOwnedRecoveryMode(moduleId, modeId, definition) {
+        if (typeof YAW_RECOVERY_MODES === 'undefined') throw new Error('Recovery Mode V1 is unavailable');
+        const profile = YAW_RECOVERY_MODES.register(moduleId, modeId, definition);
+        this._contributionRecord(moduleId).recoveryModes.push({ key: profile.key });
+        App.renderRecoveryModeOptions?.();
+        return {
+            version: profile.version,
+            id: profile.id,
+            key: profile.key,
+            label: profile.label,
+            labelKey: profile.labelKey,
+            description: profile.description,
+            descriptionKey: profile.descriptionKey,
+            icon: profile.icon,
+            entry: profile.entry,
+            resolution: profile.resolution,
+            inventory: profile.inventory,
+            traversal: profile.traversal,
+            restrictions: [...profile.restrictions],
+            vitalityPercent: profile.vitalityPercent
+        };
+    },
+
     _addOwnedSpecies(moduleId, speciesDef) {
         const entry = this._normalizeDataContribution(speciesDef, 'Species');
         const profile = this._normalizeSpeciesProfile(entry);
@@ -2219,10 +2349,174 @@ const MODULE_SYSTEM = {
         this._contributionRecord(moduleId).templates.push({ category, type, variant, tier, previous });
     },
 
-    _addOwnedLocaleEntries(moduleId, locale, entries) {
+    _addOwnedSceneTemplate(moduleId, template) {
+        if (typeof YAW_STORY_EVENTS === 'undefined' || !YAW_STORY_EVENTS?.registerSceneTemplate) throw new Error('Scene Feed template registry is unavailable');
+        if (!template || typeof template !== 'object' || Array.isArray(template)) throw new Error('Scene Feed template must be an object');
+        const localId = String(template.id || '').trim();
+        if (!localId || localId.length > 96 || !/^[a-zA-Z0-9_.:-]+$/.test(localId)) throw new Error('Scene Feed template id must be a token');
+        const id = `${moduleId}:${localId}`;
+        const registered = YAW_STORY_EVENTS.registerSceneTemplate(App, { ...template, id, source: moduleId }, { owner: moduleId });
+        if (!registered) throw new Error('Scene Feed template requires a matcher or selector');
+        this._contributionRecord(moduleId).sceneTemplates.push({ id });
+        return id;
+    },
+
+    _legacyTemplateConsumer(category, type, variant) {
+        const key = `${category}.${type}.${variant}`;
+        if (category === 'biome' && variant === 'default' && Object.prototype.hasOwnProperty.call(App.biomes || {}, type)) return { reachable: true, key };
+        const actionKeys = new Set(['action.cockVore.default', 'action.unbirth.default', 'action.corpseLoot.default', 'action.corpseScavenge.default']);
+        return { reachable: actionKeys.has(key), key };
+    },
+
+    _evaluateModuleContributions(moduleId) {
+        const record = this.ownedContributions.get(moduleId);
+        const diagnostics = [];
+        for (const template of record?.templates || []) {
+            const consumer = this._legacyTemplateConsumer(template.category, template.type, template.variant);
+            if (!consumer.reachable) diagnostics.push({
+                code: 'unreachable_content_template',
+                severity: 'warning',
+                contribution: consumer.key,
+                message: `Content template ${consumer.key} has no known core consumer`
+            });
+        }
+        for (const locale of record?.localeDefinitions || []) {
+            const definition = CONTENT?.localeDefinition?.(locale.id);
+            if (!definition) continue;
+            for (const target of definition.targets || []) {
+                const referenceLocale = definition.fallback || 'en';
+                let expected = [];
+                if (target.moduleId === 'core') {
+                    const moduleOnlyKeys = new Set();
+                    for (const contributionRecord of this.ownedContributions.values()) {
+                        for (const contribution of contributionRecord.locales || []) {
+                            if (contribution.locale !== referenceLocale) continue;
+                            for (const [key, prior] of Object.entries(contribution.previous || {})) {
+                                if (prior === undefined) moduleOnlyKeys.add(key);
+                            }
+                        }
+                    }
+                    expected = Object.keys(CONTENT.locales?.[referenceLocale] || {}).filter(key => !moduleOnlyKeys.has(key));
+                } else {
+                    const targetRecord = this.ownedContributions.get(target.moduleId);
+                    expected = (targetRecord?.locales || [])
+                        .filter(contribution => contribution.locale === referenceLocale)
+                        .flatMap(contribution => Object.keys(contribution.previous || {}));
+                }
+                const actual = (record.locales || [])
+                    .filter(contribution => contribution.locale === definition.id && contribution.target === target.moduleId)
+                    .flatMap(contribution => Object.keys(contribution.previous || {}));
+                const expectedSet = new Set(expected);
+                const actualSet = new Set(actual);
+                const missing = [...expectedSet].filter(key => !actualSet.has(key)).sort();
+                const obsolete = [...actualSet].filter(key => !expectedSet.has(key)).sort();
+                if (missing.length) diagnostics.push({
+                    code: 'locale_missing_keys',
+                    severity: 'warning',
+                    locale: definition.id,
+                    target: target.moduleId,
+                    count: missing.length,
+                    sample: missing.slice(0, 20),
+                    message: `Locale ${definition.id} is missing ${missing.length} ${target.moduleId} translation key(s)`
+                });
+                if (obsolete.length) diagnostics.push({
+                    code: 'locale_obsolete_keys',
+                    severity: 'warning',
+                    locale: definition.id,
+                    target: target.moduleId,
+                    count: obsolete.length,
+                    sample: obsolete.slice(0, 20),
+                    message: `Locale ${definition.id} has ${obsolete.length} obsolete ${target.moduleId} translation key(s)`
+                });
+            }
+        }
+        this.moduleDiagnostics.set(moduleId, diagnostics);
+        for (const diagnostic of diagnostics) {
+            console.warn(`[${moduleId}] ${diagnostic.message}`);
+            App.log?.push?.({ text: `[${moduleId}] ${diagnostic.message}`, type: 'error' });
+        }
+        if (diagnostics.length) App.renderLog?.();
+        return diagnostics.map(entry => ({ ...entry }));
+    },
+
+    getModuleDiagnostics(moduleId) {
+        return (this.moduleDiagnostics.get(String(moduleId || '')) || []).map(entry => ({ ...entry }));
+    },
+
+    _normalizeLocaleTarget(moduleId, manifest, source) {
+        const target = typeof source === 'string' ? { moduleId: source } : source;
+        if (!target || typeof target !== 'object' || Array.isArray(target)) throw new Error('Locale targets must be module ids or target objects');
+        const targetModuleId = String(target.moduleId || target.id || '').trim();
+        if (!targetModuleId || !/^[a-zA-Z0-9_-]+$/.test(targetModuleId)) throw new Error('Locale target moduleId must be a module id token');
+        const minVersion = this._normalizeGameVersion(target.minVersion || '', 'locale target minVersion');
+        if (targetModuleId === 'core') {
+            if (minVersion && this._compareVersions(this._currentGameVersion(), minVersion) < 0) {
+                throw new Error(`Locale ${moduleId} requires core ${minVersion} or newer`);
+            }
+            return { moduleId: 'core', minVersion };
+        }
+        if (!manifest?.dependencies?.includes(targetModuleId)) {
+            throw new Error(`Locale target ${targetModuleId} must be declared as a module dependency`);
+        }
+        const activeTarget = this.activeModules.get(targetModuleId);
+        if (!activeTarget || activeTarget.loading) throw new Error(`Locale target ${targetModuleId} is not active`);
+        const targetVersion = String(activeTarget.manifest?.version || '0.0.0');
+        if (minVersion && this._compareVersions(targetVersion, minVersion) < 0) {
+            throw new Error(`Locale ${moduleId} requires ${targetModuleId} ${minVersion} or newer`);
+        }
+        return { moduleId: targetModuleId, minVersion };
+    },
+
+    _addOwnedLocaleDefinition(moduleId, manifest, definition) {
+        if (typeof CONTENT === 'undefined' || !CONTENT?.registerLocale) throw new Error('Content locale registry is unavailable');
+        if (!definition || typeof definition !== 'object' || Array.isArray(definition)) throw new Error('Locale definition must be an object');
+        const fallback = CONTENT.localeDefinition?.(definition.fallback || 'en');
+        if (!fallback) throw new Error(`Unknown locale fallback ${definition.fallback || 'en'}`);
+        if (!fallback.builtIn && fallback.owner !== moduleId) {
+            if (!manifest?.dependencies?.includes(fallback.owner)) {
+                throw new Error(`Locale fallback ${fallback.id} requires dependency ${fallback.owner}`);
+            }
+            if (!this.activeModules.has(fallback.owner)) throw new Error(`Locale fallback owner ${fallback.owner} is not active`);
+        }
+        const rawTargets = Array.isArray(definition.targets) ? definition.targets : [];
+        if (!rawTargets.length || rawTargets.length > 16) throw new Error('Locale definitions require 1 to 16 targets');
+        const targets = [];
+        const seen = new Set();
+        for (const source of rawTargets) {
+            const target = this._normalizeLocaleTarget(moduleId, manifest, source);
+            if (seen.has(target.moduleId)) throw new Error(`Duplicate locale target ${target.moduleId}`);
+            seen.add(target.moduleId);
+            targets.push(target);
+        }
+        const registered = CONTENT.registerLocale(moduleId, { ...definition, targets });
+        this._contributionRecord(moduleId).localeDefinitions.push({ id: registered.id });
+        return registered;
+    },
+
+    _addOwnedLocaleEntries(moduleId, manifest, locale, entries, options = {}) {
         if (typeof CONTENT === 'undefined' || !CONTENT?.registerLocaleEntries) throw new Error('Content locale registry is unavailable');
+        const definition = CONTENT.localeDefinition?.(locale);
+        if (!definition) throw new Error(`Unknown locale ${locale}`);
+        let targetModuleId = String(options?.target || options?.moduleId || '').trim();
+        if (definition.builtIn) {
+            targetModuleId = targetModuleId || 'core';
+            if (targetModuleId !== 'core') this._normalizeLocaleTarget(moduleId, manifest, { moduleId: targetModuleId });
+        } else {
+            if (definition.owner !== moduleId) throw new Error(`Locale ${definition.id} is owned by ${definition.owner}`);
+            if (!targetModuleId) throw new Error(`Locale ${definition.id} entries require a declared target`);
+            const declaredTarget = definition.targets.find(target => target.moduleId === targetModuleId);
+            if (!declaredTarget) throw new Error(`Locale target ${targetModuleId} was not declared for ${definition.id}`);
+            this._normalizeLocaleTarget(moduleId, manifest, declaredTarget);
+        }
+        if (targetModuleId !== 'core') {
+            const prefix = `${targetModuleId}.`;
+            for (const key of Object.keys(entries || {})) {
+                if (!String(key).startsWith(prefix)) throw new Error(`Locale keys for ${targetModuleId} must use the ${prefix} namespace`);
+            }
+        }
         const previous = CONTENT.registerLocaleEntries(locale, entries);
-        this._contributionRecord(moduleId).locales.push({ locale, previous });
+        this._contributionRecord(moduleId).locales.push({ locale: definition.id, previous, target: targetModuleId });
+        return Object.keys(previous).length;
     },
 
     _removeModuleContributions(moduleId) {
@@ -2258,13 +2552,26 @@ const MODULE_SYSTEM = {
         for (const contribution of [...record.templates].reverse()) {
             CONTENT?.registerTemplateTier?.(contribution.category, contribution.type, contribution.variant, contribution.tier, contribution.previous ?? null);
         }
+        for (const contribution of [...record.sceneTemplates].reverse()) {
+            if (typeof YAW_STORY_EVENTS !== 'undefined') YAW_STORY_EVENTS.unregisterSceneTemplate?.(App, contribution.id, moduleId);
+        }
         for (const contribution of [...record.locales].reverse()) {
             CONTENT?.restoreLocaleEntries?.(contribution.locale, contribution.previous);
         }
+        let languageChanged = false;
+        for (const contribution of [...record.localeDefinitions].reverse()) {
+            const result = CONTENT?.unregisterLocale?.(contribution.id, moduleId);
+            languageChanged = languageChanged || result?.languageChanged === true;
+        }
         CONTENT?.unregisterCreationOptions?.(moduleId);
         if (typeof YAW_SUB_ACTIONS !== 'undefined') YAW_SUB_ACTIONS.unregisterOwner?.(App, moduleId);
+        if (typeof YAW_RESOURCE_LEDGER !== 'undefined') YAW_RESOURCE_LEDGER.unregisterOwner?.(moduleId);
+        if (typeof YAW_COMBAT_TECHNIQUES !== 'undefined') YAW_COMBAT_TECHNIQUES.unregisterOwner?.(moduleId, App);
+        if (typeof YAW_RECOVERY_MODES !== 'undefined') YAW_RECOVERY_MODES.unregisterOwner?.(moduleId, App);
 
         this.ownedContributions.delete(moduleId);
+        this.moduleDiagnostics.delete(moduleId);
+        if (record.localeDefinitions.length || languageChanged) App.refreshLanguagePresentation?.();
     },
 
     _hasPermission(manifest, permission) {
@@ -2305,7 +2612,9 @@ const MODULE_SYSTEM = {
             YAW_NARRATION_SYSTEM.removeOwner(App, moduleId);
         }
         if (typeof YAW_TILESET_RUNTIME !== 'undefined') YAW_TILESET_RUNTIME.deactivateModule(moduleId);
+        if (typeof YAW_SPRITE_RUNTIME !== 'undefined') YAW_SPRITE_RUNTIME.deactivateModule(moduleId);
         if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') YAW_MEDIA_REPOSITORY.releaseOwner(moduleId);
+        if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') YAW_MEDIA_REPOSITORY.unregisterProviderOwner?.(moduleId);
         for (const key of [...this.settingActions.keys()]) {
             if (key.startsWith(`${moduleId}:`)) this.settingActions.delete(key);
         }
@@ -2345,9 +2654,19 @@ const MODULE_SYSTEM = {
                 self._addOwnedTemplate(moduleId, category, type, variant, tier, renderer);
             },
 
-            registerLocaleEntries(locale, entries) {
+            registerSceneTemplate(template) {
+                self._requirePermission(moduleId, manifest, 'scene:add_template');
+                return self._addOwnedSceneTemplate(moduleId, template);
+            },
+
+            registerLocale(definition) {
                 self._requirePermission(moduleId, manifest, 'content:add_locale');
-                self._addOwnedLocaleEntries(moduleId, locale, entries);
+                return self._addOwnedLocaleDefinition(moduleId, manifest, definition);
+            },
+
+            registerLocaleEntries(locale, entries, options = {}) {
+                self._requirePermission(moduleId, manifest, 'content:add_locale');
+                return self._addOwnedLocaleEntries(moduleId, manifest, locale, entries, options);
             },
 
             registerCreationOption(option) {
@@ -2362,6 +2681,54 @@ const MODULE_SYSTEM = {
                 const registered = YAW_SUB_ACTIONS.register(App, action, variantId, definition, { owner: moduleId });
                 self._contributionRecord(moduleId).actionVariants.push({ action: String(action), id: String(variantId) });
                 return registered;
+            },
+
+            registerResourceProfile(resourceId, definition) {
+                self._requirePermission(moduleId, manifest, 'mechanics:add_resource_profile');
+                return self._addOwnedResourceProfile(moduleId, resourceId, definition);
+            },
+
+            registerCombatTechnique(techniqueId, definition) {
+                self._requirePermission(moduleId, manifest, 'mechanics:add_combat_technique');
+                return self._addOwnedCombatTechnique(moduleId, techniqueId, definition);
+            },
+
+            registerRecoveryMode(modeId, definition) {
+                self._requirePermission(moduleId, manifest, 'mechanics:add_recovery_mode');
+                return self._addOwnedRecoveryMode(moduleId, modeId, definition);
+            },
+
+            resources: {
+                read(unit, resourceId) {
+                    self._requirePermission(moduleId, manifest, 'mechanics:add_resource_profile');
+                    const state = YAW_RESOURCE_LEDGER.state(unit, YAW_RESOURCE_LEDGER.key(moduleId, resourceId));
+                    return state ? {
+                        key: state.key,
+                        current: state.current,
+                        capacity: state.capacity,
+                        progress: state.progress
+                    } : null;
+                },
+
+                spend(unit, resourceId, amount = 1) {
+                    self._requirePermission(moduleId, manifest, 'mechanics:add_resource_profile');
+                    const spent = YAW_RESOURCE_LEDGER.spend(unit, YAW_RESOURCE_LEDGER.key(moduleId, resourceId), amount);
+                    if (spent > 0) {
+                        App._markSaveDirty?.('party', 'module-resource-spend');
+                        App._markSaveDirty?.('holdings', 'module-resource-spend');
+                    }
+                    return spent;
+                },
+
+                grant(unit, resourceId, amount = 1) {
+                    self._requirePermission(moduleId, manifest, 'mechanics:add_resource_profile');
+                    const granted = YAW_RESOURCE_LEDGER.grant(unit, YAW_RESOURCE_LEDGER.key(moduleId, resourceId), amount);
+                    if (granted > 0) {
+                        App._markSaveDirty?.('party', 'module-resource-grant');
+                        App._markSaveDirty?.('holdings', 'module-resource-grant');
+                    }
+                    return granted;
+                }
             },
 
             getContext(options = {}) {
@@ -2469,6 +2836,12 @@ const MODULE_SYSTEM = {
             registerAIProvider(providerId, adapter) {
                 self._requirePermission(moduleId, manifest, 'ai:provide');
                 return YAW_AI_PROVIDER_MANAGER.registerAdapter(providerId, adapter, moduleId);
+            },
+
+            registerMediaProvider(providerId, adapter) {
+                self._requirePermission(moduleId, manifest, 'media:provide');
+                if (!self.activeModules.has(moduleId)) throw new Error(`Module ${moduleId} is not active`);
+                return YAW_MEDIA_REPOSITORY.registerAdapter(moduleId, providerId, adapter);
             },
 
             createAIProviderConnection(providerId, metadata = {}) {

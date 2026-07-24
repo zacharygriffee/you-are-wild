@@ -1,0 +1,32 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_neutral_conformance_locale",
+  "gameVersion": "0.14.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_neutral_conformance_locale",
+      "name": "You Are Wild: Neutral Conformance Locale",
+      "version": "1.0.0",
+      "minGameVersion": "0.14.0",
+      "description": "Development fixture proving a dependency-versioned, unload-safe translation pack.",
+      "type": "locale_pack",
+      "contentRating": "safe",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": ["file", "https", "localhost", "http"],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": true
+      },
+      "permissions": ["content:add_locale"],
+      "dependencies": ["yaw_neutral_conformance"],
+      "contentCategories": [],
+      "gameplayVariants": [],
+      "settings": []
+    },
+    "code": "MODS.registerLocale({ id: 'qps-ncon', displayName: 'Neutral Pseudo', fallback: 'en', targets: [{ moduleId: 'yaw_neutral_conformance', minVersion: '1.0.0' }] });\nMODS.registerLocaleEntries('qps-ncon', { 'yaw_neutral_conformance.creation.crest': '[Sun Crest]', 'yaw_neutral_conformance.action.shareGreeting': '[Share Greeting]' }, { target: 'yaw_neutral_conformance' });\nMODS.log('Neutral conformance locale registered.');",
+    "assets": {}
+  }
+}

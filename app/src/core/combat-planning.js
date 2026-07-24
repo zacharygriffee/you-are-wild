@@ -224,7 +224,15 @@ const YAW_COMBAT_PLANNING = {
             app._reportInvalidCombatCommand?.(command, 'missing-lead-actor');
             return false;
         }
+        if (intendedGroup && actors.length < 2) {
+            app._reportInvalidCombatCommand?.(command, 'missing-actor');
+            return false;
+        }
         if (actors.length === 1 && !intendedGroup) {
+            if (action === 'fight' && targets.length > 0) {
+                app.combatPlanSelection = null;
+                return YAW_COMBAT_FEED.executeVariantAction(app, 'fight', actors[0], targets, { actors, targets });
+            }
             const singleCommand = app._buildPanelInteractionCommand({
                 mode: 'combat',
                 actors,
@@ -266,6 +274,10 @@ const YAW_COMBAT_PLANNING = {
         if (!valid.ok) {
             app._reportInvalidCombatCommand?.(command, valid.reason);
             return false;
+        }
+        if (action === 'fight' && targets.length > 0) {
+            app.combatPlanSelection = null;
+            return YAW_COMBAT_FEED.executeVariantAction(app, 'fight', actors[0], targets, { actors, targets });
         }
         return app._dispatchInteractionCommand(command);
     },

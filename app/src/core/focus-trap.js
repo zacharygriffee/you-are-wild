@@ -6,9 +6,27 @@ const YAW_FOCUS_TRAP = {
         return 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
     },
 
+    isFocusableChild(element, container) {
+        if (!element || element.disabled || element.hidden) return false;
+        if (String(element.getAttribute?.('type') || '').toLowerCase() === 'hidden') return false;
+        const tabIndex = element.getAttribute?.('tabindex');
+        if (tabIndex !== null && tabIndex !== undefined && Number(tabIndex) < 0) return false;
+        let current = element;
+        while (current) {
+            if (current.hidden || current.hasAttribute?.('hidden') || current.inert || current.hasAttribute?.('inert')) return false;
+            if (current.getAttribute?.('aria-hidden') === 'true') return false;
+            const style = typeof getComputedStyle === 'function' ? getComputedStyle(current) : current.style;
+            if (style && (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse')) return false;
+            if (current === container) break;
+            current = current.parentElement;
+        }
+        if (element.isConnected !== false && typeof element.getClientRects === 'function' && element.getClientRects().length === 0) return false;
+        return true;
+    },
+
     focusableChildren(container) {
         if (!container || typeof container.querySelectorAll !== 'function') return [];
-        return Array.from(container.querySelectorAll(this.focusableSelector())).filter(el => !el.disabled && el.style?.display !== 'none');
+        return Array.from(container.querySelectorAll(this.focusableSelector())).filter(element => this.isFocusableChild(element, container));
     },
 
     focusFirstIn(container) {

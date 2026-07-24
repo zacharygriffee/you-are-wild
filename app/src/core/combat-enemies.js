@@ -77,7 +77,10 @@ const YAW_COMBAT_ENEMIES = {
         const target = app._selectEnemyTarget(enemy, reachableTargets.length > 0 ? reachableTargets : targets);
         if (enemy.menacing && target.CPun / target.MPun < 0.4
             && app._combatStateRoll('combat-menacing-fear', enemy, app._unitSelectionId(target)) < 0.3) {
-            app.log.push({ text: `${enemy.name} is terrifying! ${target.name} cowers in fear.`, type: 'combat' });
+            app.log.push({ text: app._label('combat.enemyTerrifies', '{enemy} is terrifying! {target} cowers in fear.', {
+                enemy: enemy.name,
+                target: target.name
+            }), type: 'combat' });
             target.status.frightened = true;
             app.renderLog();
         }
@@ -120,7 +123,16 @@ const YAW_COMBAT_ENEMIES = {
         const isRanged = enemy.ranged || enemy.antiflying;
         const targetDodge = target.flying && !isRanged && !enemy.ranged ? 0.5 : (target.swimming && !enemy.antiswimming ? 0.3 : (target.floopy ? 0.3 : 0));
         if (app._targetDodgeRoll(enemy, target, 'fight') < targetDodge) {
-            app.log.push({ text: `${target.name} dodges ${enemy.name}'s attack! (${target.flying ? 'flying' : target.swimming ? 'swimming' : 'floopy'})`, type: 'combat' });
+            const dodgeKind = target.flying
+                ? app._label('combat.dodge.flying', 'flying')
+                : target.swimming
+                    ? app._label('combat.dodge.swimming', 'swimming')
+                    : app._label('combat.dodge.flexible', 'flexible');
+            app.log.push({ text: app._label('combat.enemyAttackDodged', "{target} dodges {enemy}'s attack! ({kind})", {
+                target: target.name,
+                enemy: enemy.name,
+                kind: dodgeKind
+            }), type: 'combat' });
             app.renderLog(); app.nextTurn(); return;
         }
         const ar = app._combatActionRating(enemy.Figh, enemy, target, 'enemy-fight') * (enemy.rage && enemy.CPun < enemy.MPun * 0.5 ? 1.5 : 1);
@@ -149,10 +161,10 @@ const YAW_COMBAT_ENEMIES = {
                 target: target.name
             }), type: 'combat' });
         }
-        let result = `${enemy.name} hits ${target.name} for ${dmg} punishment!`;
-        if (enemy.bloodsuck) result += ` ${enemy.name} heals!`;
+        let result = app._label('combat.enemyHits', '{enemy} hits {target} for {amount} punishment!', { enemy: enemy.name, target: target.name, amount: dmg });
+        if (enemy.bloodsuck) result += ` ${app._label('combat.combatantHeals', '{name} heals!', { name: enemy.name })}`;
         if (target.CPun <= 0) {
-            result += ` ${target.name} falls!`;
+            result += ` ${app._label('combat.targetFalls', '{name} falls!', { name: target.name })}`;
             if (target.name === app.player.name) {
                 if (app.cheats.godMode) {
                     target.CPun = Math.max(1, target.CPun);

@@ -6,8 +6,8 @@ Feed is a target-explicit interaction. The selected actor is always the source o
 
 | Variant | Source requirement | Target effect |
 | --- | --- | --- |
-| Tend | A living actor, including self | Restores condition and eases hunger on a wounded target. |
-| Nurse | Lactating actor whose cooldown is ready | Restores vitality and hunger to the chosen target, then starts cooldown. |
+| Tend | A living actor, including self | Restores condition only on a wounded target. It creates no nutrition or Spirit recovery. |
+| Nurse | Lactating actor whose cooldown is ready and whose `core:nurse` nourishment reserve has a charge | Spends one charge, restores bounded vitality and hunger to the chosen target from the amount spent, then starts cooldown. |
 | Offer Self | Non-player livestock or authored willing prey that fits the target | Places the actor alive in the target's stomach and removes the actor from the active party/area through the normal containment contract. |
 | Offer Piece | Renewable, slurpable, breakable, or slime-like actor with enough condition reserve | Costs the actor a bounded amount of condition and restores the chosen target without removing either unit. |
 
@@ -22,7 +22,8 @@ Whole-player offering is deferred. Removing the player into living containment n
 ## Resolution invariants
 
 - Actor, target, and variant are recorded on the same interaction command and Scene Beat.
-- Feed and Feast use the same `YAW_SUB_ACTIONS.resolve` contract. It evaluates the selected actor-target pairs and reports each variant as available, partial, or unavailable.
+- Feed, Feast, and Play use the same `YAW_SUB_ACTIONS.resolve` contract. It evaluates the selected actor-target pairs and reports each variant as available, partial, or unavailable.
+- Multi-pair menus show at most eight exact pair explanations, disclose any omitted pair count, and list the ordinary action cost once per actor. This presentation does not change deterministic resolution order or accounting.
 - Variants declare `scope: 'target'`, `scope: 'self'`, or `scope: 'both'`. Target-scoped options resolve against marked units; self-scoped options resolve against each eligible selected actor and never consume or clear an unrelated marked target.
 - Feed, Feast, and Play remain stable primary interaction buttons. Their variants never appear as peer `Self: ...` buttons in the main composer.
 - Actor-owned containment controls such as Digest and Release remain available without requiring a marked target. Opening the primary interaction with actor-only selection shows a Self group; opening it with marked targets shows applicable Self and Targets groups in the same accessible submenu.
@@ -31,6 +32,17 @@ Whole-player offering is deferred. Removing the player into living containment n
 - Combat Feed is target-first and spends the current actor's turn only after a variant resolves.
 - Exploration and combat use the same variant definitions and containment helpers.
 - Costs and nourishment apply once per resolved command and remain deterministic.
+- Nurse reserve state is owned by Resource Ledger V1. Missing and legacy entries
+  start at zero, renew on the authored digestion interval, persist by namespace,
+  and remain dormant rather than executable while a contributing profile is
+  unloaded.
+- Tend is care rather than nourishment. It charges the actor's ordinary Feed
+  command cost, changes only target condition, and leaves hunger and Spirit
+  untouched.
+- Combat Tend support XP is the delta between deterministic condition-recovery
+  bands. Restoring one full target condition pool can award at most the
+  configured support reward, partial restoration awards only the bands crossed,
+  and self-care or a no-op awards none.
 - Whole offering preserves the living unit record, role/AI metadata, and containment persistence.
 - Offering a piece never reduces the source below one condition.
-- Core labels and feedback are localized. Trusted legacy integrations may keep using `App.registerSubAction`. Modules request `content:add_action_variant` and use `MODS.registerActionVariant`; V1 bounds module variants to Feed and Feast, rejects core-id replacement, owns registrations by module, and removes them on unload.
+- Core labels and feedback are localized. Trusted legacy integrations may keep using `App.registerSubAction`. Modules request `content:add_action_variant` and use `MODS.registerActionVariant`; V1 bounds module variants to Feed, Feast, and Play, rejects core-id replacement, owns registrations by module, and removes them on unload.

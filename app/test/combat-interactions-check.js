@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const { pathToFileURL } = require('url');
 const { chromium } = require('playwright');
 
@@ -42,6 +43,59 @@ async function startTilesetFixtureServer() {
   const address = server.address();
   return {
     origin: `http://127.0.0.1:${address.port}`,
+    close: () => new Promise(resolve => server.close(resolve))
+  };
+}
+
+async function startHostedTilesetCacheServer() {
+  const root = path.resolve(__dirname, '../..');
+  const hostedBuild = path.join(root, 'dist', 'you-are-wild.hosted.html');
+  execFileSync(process.execPath, [path.join(root, 'app', 'build.js'), '--hosted'], {
+    cwd: path.join(root, 'app'),
+    stdio: 'pipe'
+  });
+  const assetNames = [
+    'basic-tileset-v1.png',
+    'basic-tileset-overlays-v1.png',
+    'terrain-sand-seamless-v1.png'
+  ];
+  const counts = new Map(assetNames.map(name => [name, 0]));
+  const server = http.createServer((request, response) => {
+    const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
+    let file = null;
+    let cacheControl = 'no-store';
+    if (pathname === '/game/' || pathname === '/game/index.html') {
+      file = hostedBuild;
+    } else {
+      const match = pathname.match(/^\/game\/assets\/([^/]+)$/);
+      if (match && assetNames.includes(match[1])) {
+        file = path.join(root, 'media', match[1]);
+        counts.set(match[1], counts.get(match[1]) + 1);
+        cacheControl = 'public, max-age=31536000, immutable';
+      }
+    }
+    if (!file || !fs.existsSync(file)) {
+      response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end('Not found');
+      return;
+    }
+    const bytes = fs.readFileSync(file);
+    response.writeHead(200, {
+      'Content-Type': file.endsWith('.png') ? 'image/png' : 'text/html; charset=utf-8',
+      'Content-Length': String(bytes.byteLength),
+      'Cache-Control': cacheControl
+    });
+    response.end(bytes);
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  return {
+    origin: `http://127.0.0.1:${address.port}`,
+    assetNames,
+    counts: () => Object.fromEntries(counts),
     close: () => new Promise(resolve => server.close(resolve))
   };
 }
@@ -587,7 +641,7 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(state.targetSelection, null, 'Desktop direct Mark + Fight should leave no target-pick state');
   assert.strictEqual(state.planActive, false, 'Desktop direct Mark + Fight should not create combat planner state');
   assert.strictEqual(state.pendingIntent, null, 'Desktop direct Mark + Fight should leave no pending intent');
-  assert.strictEqual(state.commandSource, 'combat-composer', 'Desktop direct Mark + Fight should dispatch from the combat composer');
+  assert.strictEqual(state.commandSource, 'action-variant-options', 'Desktop direct Mark + Fight should dispatch through the resolved combat-technique option');
   assert.deepStrictEqual(state.commandTargetIds, ['enemy-1'], 'Desktop direct Mark + Fight should dispatch the marked enemy id');
   assert.strictEqual(state.commandAction, 'fight', 'Desktop direct Mark + Fight should dispatch the selected intent');
 
@@ -679,7 +733,7 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(state.targetSelection, null, 'Mobile direct Mark + Fight should leave no target-pick state');
   assert.strictEqual(state.planActive, false, 'Mobile direct Mark + Fight should not create combat planner state');
   assert.strictEqual(state.pendingIntent, null, 'Mobile direct Mark + Fight should leave no pending intent');
-  assert.strictEqual(state.commandSource, 'combat-composer', 'Mobile direct Mark + Fight should dispatch from the combat composer');
+  assert.strictEqual(state.commandSource, 'action-variant-options', 'Mobile direct Mark + Fight should dispatch through the resolved combat-technique option');
   assert.deepStrictEqual(state.commandTargetIds, ['enemy-1'], 'Mobile direct Mark + Fight should dispatch the marked enemy id');
 
   await setupCombat(page);
@@ -842,6 +896,32 @@ async function runContextualVariantComposerFlow(page) {
   assert.deepStrictEqual(state.targets, ['creature:friendly-1'], 'Opening targeted Feast should preserve target selection');
   await page.locator('#desktop-intent-menu [data-command-control="back-variant"]').click();
 
+  await page.evaluate(() => {
+    App.explorationActorIds = [App._unitSelectionId(App.player), App._unitSelectionId(App.party.find(unit => unit.id === 'ally-1'))];
+    App.explorationActorSelectionExplicit = true;
+    App.renderParty();
+    App.renderExplorationActions();
+  });
+  await page.locator(`#desktop-context-belt button[onclick*="openExplorationSubActionSheet('feed','composer-tray','desktop')"]`).click();
+  state = await page.evaluate(() => {
+    const menu = document.querySelector('#desktop-intent-menu');
+    const pairPreview = menu?.querySelector('.action-variant-group[data-command-scope="target"] .action-variant-pair-preview[data-variant-pair-count="2"]');
+    return {
+      pairPreviewCount: menu?.querySelectorAll('.action-variant-pair-preview').length || 0,
+      pairItems: pairPreview?.querySelectorAll('li[data-variant-pair-status]').length || 0,
+      pairText: pairPreview?.innerText || '',
+      describedBy: menu?.querySelector('[data-command-intent="feed:tend"]')?.getAttribute('aria-describedby') || '',
+      horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert(state.pairPreviewCount >= 1, 'Multi-actor Feed should expose bounded pair-level explanations');
+  assert.strictEqual(state.pairItems, 2, 'Two actors and one target should expose exactly two pair explanations');
+  assert(state.pairText.includes('You') && state.pairText.includes('Ally') && state.pairText.includes('Friendly'), 'Pair preview should name each source and recipient');
+  assert(state.pairText.includes('Actor costs:'), 'Pair preview should explain once-per-actor costs');
+  assert(state.describedBy.includes('-pairs'), 'Variant controls should reference their pair explanation accessibly');
+  assert.strictEqual(state.horizontalOverflow, false, 'Pair previews should remain inside the desktop viewport');
+  await page.locator('#desktop-intent-menu [data-command-control="back-variant"]').click();
+
   await page.locator(`#desktop-context-belt button[onclick*="openExplorationSubActionSheet('fuck','composer-tray','desktop')"]`).click();
   state = await page.evaluate(() => {
     const menu = document.querySelector('#desktop-intent-menu');
@@ -878,6 +958,32 @@ async function runContextualVariantComposerFlow(page) {
   assert.strictEqual(state.desktopMenuVisible, false, 'Mobile actor-only Feast should not open the desktop popover');
   assert.strictEqual(state.selfScope, true, 'Mobile actor-only Feast should retain the Self scope');
   assert.strictEqual(state.horizontalOverflow, false, 'Mobile contextual submenu should not introduce page-level horizontal overflow');
+  await page.locator('#mobile-context-menu [data-command-control="back-variant"]').click();
+
+  await page.evaluate(() => {
+    App.explorationActorIds = [App._unitSelectionId(App.player), App._unitSelectionId(App.party.find(unit => unit.id === 'ally-1'))];
+    App.explorationActorSelectionExplicit = true;
+    App.explorationTargetIds = ['creature:friendly-1'];
+    App.renderParty();
+    App.renderCreatures();
+    App.renderExplorationActions();
+  });
+  await page.locator('#mobile-target-action-tray button[data-command-intent="feed"]').first().click();
+  state = await page.evaluate(() => {
+    const menu = document.querySelector('#mobile-context-menu');
+    const pairPreview = menu?.querySelector('.action-variant-group[data-command-scope="target"] .action-variant-pair-preview[data-variant-pair-count="2"]');
+    const rect = menu?.getBoundingClientRect();
+    return {
+      pairItems: pairPreview?.querySelectorAll('li[data-variant-pair-status]').length || 0,
+      pairText: pairPreview?.innerText || '',
+      bounded: Boolean(rect && rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
+      horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(state.pairItems, 2, 'Mobile multi-actor Feed should expose the same pair explanations as desktop');
+  assert(state.pairText.includes('You') && state.pairText.includes('Ally') && state.pairText.includes('Friendly'), 'Mobile pair preview should name each source and recipient');
+  assert.strictEqual(state.bounded, true, 'Mobile pair preview should remain inside its bounded dialog');
+  assert.strictEqual(state.horizontalOverflow, false, 'Mobile pair preview should not introduce page-level horizontal overflow');
   await page.locator('#mobile-context-menu [data-command-control="back-variant"]').click();
   await page.setViewportSize({ width: 1365, height: 768 });
 }
@@ -2700,7 +2806,7 @@ async function runSelectionSemanticsFlow(page) {
     else if (typeof togglePanel === 'function') togglePanel('enemies');
   });
   state = await page.evaluate(() => {
-    const pick = document.querySelector('#enemies-content button[data-command-control="mark-combat-target"]');
+    const pick = document.querySelector('#mobile-roster-tabpanel button[data-command-control="mark-combat-target"]');
     const rect = pick?.getBoundingClientRect();
     const style = pick ? getComputedStyle(pick) : null;
     const before = pick ? getComputedStyle(pick, '::before') : null;
@@ -2717,7 +2823,7 @@ async function runSelectionSemanticsFlow(page) {
     };
   });
   assert.strictEqual(state.pickExists, true, 'Mobile drawer combat target picking should render a target mark control');
-  assert.strictEqual(state.pickText, 'Target', 'Mobile drawer target mark should retain accessible DOM text');
+  assert.strictEqual(state.pickText, '', 'Mobile Roster target mark should avoid duplicating visible text beside its icon');
   assert(state.pickTitle && state.pickAriaLabel, 'Mobile drawer icon-only target mark should keep title and aria-label text');
   assert(state.pickWidth <= 44 && state.pickHeight >= 44, 'Mobile drawer target mark should render as a compact icon-sized touch target');
   assert.strictEqual(state.pickFontSize, 0, 'Mobile drawer target mark should hide visible text labels');
@@ -2902,27 +3008,27 @@ async function runDesktopIntentSubActionSheetFlow(page) {
       presentation: menuEl?.getAttribute('data-intent-presentation') || '',
       hasDesktopClass: menuEl?.classList.contains('intent-menu-desktop') || false,
       hasMobileMenu: Boolean(document.querySelector('#mobile-context-menu')),
-      hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','attack')"),
+      hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','basic')"),
       centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.strictEqual(state.presentation, 'desktop', 'Desktop sub-action sheet should declare desktop presentation');
   assert.strictEqual(state.hasDesktopClass, true, 'Desktop sub-action sheet should use desktop layout class');
   assert.strictEqual(state.hasMobileMenu, false, 'Desktop sub-action sheet should not reuse the mobile context sheet');
-  assert.strictEqual(state.hasAttackButton, true, 'Desktop sub-action sheet should dispatch through selectIntent with a sub-action');
+  assert.strictEqual(state.hasAttackButton, true, 'Desktop sub-action sheet should dispatch through selectIntent with the core Basic Attack technique');
   assert.strictEqual(state.centerHasActorControls, false, 'Opening the desktop sub-action sheet should not move actor controls into center');
 
   state = await page.evaluate(() => {
     const menuEl = document.querySelector('#desktop-intent-menu');
     return {
       hasDesktopClass: menuEl?.classList.contains('intent-menu-desktop') || false,
-      hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','attack')"),
+      hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','basic')"),
       hasMobileMenu: Boolean(document.querySelector('#mobile-context-menu')),
       centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.strictEqual(state.hasDesktopClass, true, 'Desktop sub-action sheet should stay on the desktop surface');
-  assert.strictEqual(state.hasAttackButton, true, 'Desktop sub-action sheet should dispatch through selectIntent with a sub-action');
+  assert.strictEqual(state.hasAttackButton, true, 'Desktop sub-action sheet should keep the core Basic Attack technique wired through selectIntent');
   assert.strictEqual(state.hasMobileMenu, false, 'Desktop sub-action sheet should not create a mobile menu');
   assert.strictEqual(state.centerHasActorControls, false, 'Opening a desktop sub-action sheet should not move actor controls into center');
 
@@ -2964,7 +3070,7 @@ async function runDesktopIntentSubActionSheetFlow(page) {
       openerRight: openerRect?.right ?? 0,
       viewportWidth: innerWidth,
       viewportHeight: innerHeight,
-      hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','attack')"),
+      hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','basic')"),
       centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
@@ -2982,7 +3088,7 @@ async function runDesktopIntentSubActionSheetFlow(page) {
   assert.strictEqual(state.hasAttackButton, true, 'Anchored desktop sub-action sheet should still dispatch through selectIntent with a sub-action');
   assert.strictEqual(state.centerHasActorControls, false, 'Anchored desktop sub-action sheet should not move actor controls into center');
 
-  await page.locator(`#desktop-intent-menu button[onclick*="selectIntent('creature','friendly-1','fight','desktop','attack')"]`).first().click();
+  await page.locator(`#desktop-intent-menu button[onclick*="selectIntent('creature','friendly-1','fight','desktop','basic')"]`).first().click();
 
   state = await page.evaluate(() => ({
     menuVisible: Boolean(document.querySelector('#desktop-intent-menu')),
@@ -2995,7 +3101,7 @@ async function runDesktopIntentSubActionSheetFlow(page) {
   }));
   assert.strictEqual(state.menuVisible, false, 'Selecting a desktop sub-action should close the intent sheet');
   assert.strictEqual(state.action, 'fight', 'Desktop sub-action selection should record the selected action');
-  assert.strictEqual(state.subAction, 'attack', 'Desktop sub-action selection should record the chosen sub-action');
+  assert.strictEqual(state.subAction, 'basic', 'Desktop sub-action selection should record the chosen Basic Attack technique');
   assert.strictEqual(state.source, 'desktop', 'Desktop sub-action selection should preserve desktop command source metadata');
   assert.strictEqual(state.mode, 'adventure', 'Desktop sub-action selection should normalize as an adventure command');
   assert.deepStrictEqual(state.targetIds, ['friendly-1'], 'Desktop sub-action selection should record the clicked creature target');
@@ -3023,7 +3129,7 @@ async function runRadialIntentSubActionPresentationFlow(page) {
     return {
       presentation: menu?.getAttribute('data-intent-presentation') || '',
       radialClass: menu?.classList.contains('intent-menu-radial') || false,
-      attackButton: (menu?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','radial','attack')"),
+      attackButton: (menu?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','radial','basic')"),
       deadBackButton: (menu?.innerHTML || '').includes("showIntentMenu('creature','friendly-1','radial','radial')")
     };
   });
@@ -3032,7 +3138,7 @@ async function runRadialIntentSubActionPresentationFlow(page) {
   assert.strictEqual(state.attackButton, true, 'Radial sub-action sheet should preserve radial source for selectIntent');
   assert.strictEqual(state.deadBackButton, false, 'Radial sub-action sheet should not include a Back path to suppressed living menus');
 
-  await page.locator(`#mobile-context-menu button[onclick*="selectIntent('creature','friendly-1','fight','radial','attack')"]`).first().click();
+  await page.locator(`#mobile-context-menu button[onclick*="selectIntent('creature','friendly-1','fight','radial','basic')"]`).first().click();
   state = await page.evaluate(() => {
     const menu = document.querySelector('#mobile-context-menu');
     return {
@@ -3044,7 +3150,7 @@ async function runRadialIntentSubActionPresentationFlow(page) {
   });
   assert.strictEqual(state.menuVisible, false, 'Selecting a radial sub-action should close the sheet');
   assert.strictEqual(state.source, 'radial', 'Radial sub-action selection should preserve radial command source');
-  assert.strictEqual(state.subAction, 'attack', 'Radial sub-action selection should record the chosen sub-action');
+  assert.strictEqual(state.subAction, 'basic', 'Radial sub-action selection should record the chosen Basic Attack technique');
   assert.strictEqual(state.centerHasActorControls, false, 'Radial sub-action flow should keep center free of actor controls');
   await page.evaluate(() => App.closeMobileContextMenu());
 }
@@ -3808,6 +3914,8 @@ async function runCompactRailRoundTripFlow(page) {
     targetPickerOpen: App.mobileTargetPickerOpen,
     targetPickerDisplay: getComputedStyle(document.querySelector('#mobile-target-picker-belt')).display,
     targetButtons: document.querySelectorAll('#mobile-target-picker-belt button[data-command-control="focus-target"]').length,
+    activeControl: document.activeElement?.getAttribute('data-command-control') || '',
+    focusInsideTargetRail: Boolean(document.activeElement?.closest?.('#mobile-target-picker-belt, #mobile-target-action-tray')),
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort(),
     trayText: document.querySelector('#mobile-target-action-tray')?.innerText || ''
@@ -3817,6 +3925,8 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.targetPickerOpen, true, 'Transaction Back should restore the target picker');
   assert.notStrictEqual(state.targetPickerDisplay, 'none', 'Transaction Back should keep the target picker visible');
   assert(state.targetButtons >= 2, 'Transaction Back should restore target controls');
+  assert.strictEqual(state.activeControl, 'focus-target', 'Transaction Back should restore keyboard focus to a target control');
+  assert.strictEqual(state.focusInsideTargetRail, true, 'Transaction Back should return focus inside the responsive target rail');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Transaction Back should keep selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Transaction Back should keep mixed and self targets');
   assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Transaction Back should keep shared composer intents visible');
@@ -4084,7 +4194,8 @@ async function runSaveManagerSlotBrowserFlow(page) {
 
   let state = await page.evaluate(() => ({
     mode: App.saveManagerMode,
-    label: document.querySelector('#save-manager')?.getAttribute('aria-label') || '',
+    labelledBy: document.querySelector('#save-manager')?.getAttribute('aria-labelledby') || '',
+    label: document.querySelector('#save-manager-title')?.textContent.trim() || '',
     visible: getComputedStyle(document.querySelector('#save-manager')).display !== 'none',
     hasOverwriteSlot2: Boolean(document.querySelector(`#save-manager button[aria-label="Overwrite Slot 2 with a new game"]`)),
     hasDeleteSlot3: Boolean(document.querySelector(`#save-manager button[aria-label="Delete Slot 3"]`)),
@@ -4093,6 +4204,7 @@ async function runSaveManagerSlotBrowserFlow(page) {
     slot3Time: localStorage.getItem('yaw-save-time-slot3')
   }));
   assert.strictEqual(state.mode, 'new', 'Browser new-game manager should enter new slot mode');
+  assert.strictEqual(state.labelledBy, 'save-manager-title', 'Browser new-game manager should reference its visible heading');
   assert.strictEqual(state.label, 'Choose New Game Slot', 'Browser new-game manager should expose the new-slot dialog label');
   assert.strictEqual(state.visible, true, 'Browser new-game manager should be visible');
   assert.strictEqual(state.hasOverwriteSlot2, true, 'Browser occupied new-game slot should expose overwrite action');
@@ -4166,7 +4278,8 @@ async function runSaveManagerSlotBrowserFlow(page) {
   state = await page.evaluate(() => ({
     pending: Boolean(App.pendingConfirm),
     mode: App.saveManagerMode,
-    label: document.querySelector('#save-manager')?.getAttribute('aria-label') || '',
+    labelledBy: document.querySelector('#save-manager')?.getAttribute('aria-labelledby') || '',
+    label: document.querySelector('#save-manager-title')?.textContent.trim() || '',
     slot3Time: localStorage.getItem('yaw-save-time-slot3'),
     saveManagerVisible: getComputedStyle(document.querySelector('#save-manager')).display !== 'none',
     hasUseEmptySlot3: Boolean(document.querySelector(`#save-manager button[aria-label="Start new game in Slot 3"]`)),
@@ -4175,6 +4288,7 @@ async function runSaveManagerSlotBrowserFlow(page) {
   }));
   assert.strictEqual(state.pending, false, 'Browser delete slot should clear pending confirmation');
   assert.strictEqual(state.mode, 'new', 'Browser delete from new-game slot mode should preserve new mode');
+  assert.strictEqual(state.labelledBy, 'save-manager-title', 'Browser delete from new-game mode should keep its visible heading relationship');
   assert.strictEqual(state.label, 'Choose New Game Slot', 'Browser delete from new-game mode should keep new-game dialog label');
   assert.strictEqual(state.slot3Time, null, 'Browser delete slot should remove only the selected slot timestamp');
   assert.strictEqual(state.saveManagerVisible, true, 'Browser delete from new-game mode should return to the save manager');
@@ -4455,6 +4569,25 @@ async function runTilesetCrossSurfaceFlow(page) {
   assert.strictEqual(state.blockedEdges, 'north', 'Rendered current tile should retain directional barrier metadata');
   assert(state.baseStyle.includes('yaw-tileset-atlas-') && state.routeStyle.includes('yaw-tileset-atlas-'), 'Terrain and route layers should resolve through prepared session atlas variables');
   assert.notStrictEqual(state.baseStyle.match(/yaw-tileset-atlas-\d+/)?.[0], state.routeStyle.match(/yaw-tileset-atlas-\d+/)?.[0], 'Road overlays should use a different RGBA atlas from opaque terrain');
+  const texturedEquivalence = await page.evaluate(() => {
+    const inspect = selector => {
+      const root = document.querySelector(selector);
+      return {
+        semantics: root?.getAttribute('data-tileset-semantic-keys') || '',
+        tilesetKey: root?.getAttribute('data-tileset-key') || '',
+        baseKey: root?.getAttribute('data-base-tileset-key') || '',
+        blockedEdges: root?.getAttribute('data-blocked-edges') || '',
+        label: root?.getAttribute('aria-label') || root?.getAttribute('title') || ''
+      };
+    };
+    return {
+      mobile: inspect('#mobile-mini-map .map-tile.center'),
+      desktop: inspect('#desktop-map-cell-center'),
+      large: inspect('#large-map .large-map-tile.current'),
+      eastAllowed: App._traversalDecision(1, 0).allowed,
+      northReason: App._traversalDecision(0, -1).reasonCode
+    };
+  });
 
   await page.evaluate(() => {
     const tiles = new Map();
@@ -4628,6 +4761,202 @@ async function runTilesetCrossSurfaceFlow(page) {
   assert(state.northWallSemantics.includes('interior-wall-south') && state.northWallSemantics.includes('state-blocked-south'), 'Interior wall metadata should expose its directional wall and blocked edge');
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+  return texturedEquivalence;
+}
+
+async function runLightweightTilesetEquivalenceFlow(browser, texturedSnapshot) {
+  const page = await browser.newPage({ viewport: { width: 1365, height: 768 } });
+  try {
+    await page.goto(`${distUrl}?graphics=emoji`, { waitUntil: 'load' });
+    await page.waitForFunction(() => Boolean(window.App) && window.YAW_GRAPHICS_MODE === 'emoji' && typeof YAW_TILESET_RUNTIME !== 'undefined', null, { timeout: 10000 });
+    await page.evaluate(() => {
+      const makeUnit = (name, id) => ({
+        id, name, species: 'human', icon: 'X', level: 1,
+        CPun: 100, MPun: 100, CPle: 0, MPle: 100,
+        Figh: 20, Feas: 20, Flir: 20, Fuck: 20, Flee: 20, Feed: 20,
+        str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10,
+        size: 4, appetite: 4, stomach: [], womb: [], balls: [], bodyParts: [], tags: ['Person'], status: {}, disposition: 'party'
+      });
+      App.player = makeUnit('You', 'lightweight-tileset-player');
+      App.party = [App.player];
+      App.creatures = [];
+      App.screen = 'game';
+      App.inInterior = false;
+      App.activeInterior = null;
+      App.location = { x: 0, y: 0 };
+      const quiet = (x, y) => ({
+        x, y, biome: 'grove', baseBiome: 'grove', derivedBiome: 'grove', displayBiome: 'grove', explored: true,
+        creatures: [], items: [], overlays: { barriers: [] }
+      });
+      App.worldMap = new Map([
+        ['0,0', {
+          x: 0, y: 0, biome: 'swamp', baseBiome: 'swamp', derivedBiome: 'swamp', displayBiome: 'road', explored: true,
+          creatures: [], items: [], overlays: { road: { id: 'visual-road', direction: 'east-west', connections: ['east'] }, barriers: ['north'] }
+        }],
+        ['1,0', {
+          x: 1, y: 0, biome: 'jungle', baseBiome: 'jungle', derivedBiome: 'jungle', displayBiome: 'jungle', explored: true,
+          creatures: [], items: [], overlays: { road: { id: 'visual-road', direction: 'east-west', connections: ['west'] }, barriers: [] }
+        }],
+        ['0,-1', quiet(0, -1)],
+        ['0,1', quiet(0, 1)],
+        ['-1,0', quiet(-1, 0)]
+      ]);
+      App.exploredTiles = new Set(['0,0', '1,0']);
+      App.renderMap();
+      App.renderLargeMap();
+      App.renderDesktopPlaySurface();
+    });
+    const lightweight = await page.evaluate(() => {
+      const inspect = selector => {
+        const root = document.querySelector(selector);
+        return {
+          semantics: root?.getAttribute('data-tileset-semantic-keys') || '',
+          tilesetKey: root?.getAttribute('data-tileset-key') || '',
+          baseKey: root?.getAttribute('data-base-tileset-key') || '',
+          blockedEdges: root?.getAttribute('data-blocked-edges') || '',
+          label: root?.getAttribute('aria-label') || root?.getAttribute('title') || ''
+        };
+      };
+      return {
+        graphicsMode: window.YAW_GRAPHICS_MODE,
+        bundledStatus: YAW_TILESET_RUNTIME.status('__bundled__'),
+        artLayerCount: document.querySelectorAll('.yaw-tile-art-layer').length,
+        visibleFallbackIcons: [...document.querySelectorAll('#mobile-mini-map .mobile-play-tile-icon, #desktop-neighborhood-grid .desktop-play-cell-icon, #large-map .large-map-tile-icon')]
+          .filter(element => (element.textContent || '').trim()).length,
+        snapshot: {
+          mobile: inspect('#mobile-mini-map .map-tile.center'),
+          desktop: inspect('#desktop-map-cell-center'),
+          large: inspect('#large-map .large-map-tile.current'),
+          eastAllowed: App._traversalDecision(1, 0).allowed,
+          northReason: App._traversalDecision(0, -1).reasonCode
+        }
+      };
+    });
+    assert.strictEqual(lightweight.graphicsMode, 'emoji', 'Lightweight presentation should activate only through the explicit graphics query');
+    assert.strictEqual(lightweight.bundledStatus, null, 'Lightweight presentation should skip bundled atlas registration');
+    assert.strictEqual(lightweight.artLayerCount, 0, 'Lightweight presentation should not create atlas-backed art layers');
+    assert(lightweight.visibleFallbackIcons > 0, 'Lightweight presentation should retain semantic emoji/text fallback cues');
+    assert.deepStrictEqual(lightweight.snapshot, texturedSnapshot, 'Lightweight and Textured presentation should expose identical map semantics and traversal decisions');
+  } finally {
+    await page.close();
+  }
+}
+
+async function runHostedTilesetCacheFlow(browser) {
+  const fixture = await startHostedTilesetCacheServer();
+  const texturedContext = await browser.newContext();
+  const texturedPage = await texturedContext.newPage();
+  try {
+    await texturedPage.goto(`${fixture.origin}/game/index.html`, { waitUntil: 'load' });
+    await texturedPage.waitForFunction(
+      () => Boolean(window.App) && window.YAW_BUNDLED_TILESET_READY,
+      null,
+      { timeout: 10000 }
+    );
+    const firstPreparation = await texturedPage.evaluate(() => window.YAW_BUNDLED_TILESET_READY);
+    assert.strictEqual(firstPreparation?.mode, 'external', 'Hosted Textured should prepare the external first-party atlases');
+    assert.deepStrictEqual(
+      fixture.counts(),
+      Object.fromEntries(fixture.assetNames.map(name => [name, 1])),
+      'Hosted Textured cold load should request each first-party atlas exactly once'
+    );
+
+    await texturedPage.reload({ waitUntil: 'load' });
+    await texturedPage.waitForFunction(
+      () => Boolean(window.App) && window.YAW_BUNDLED_TILESET_READY,
+      null,
+      { timeout: 10000 }
+    );
+    await texturedPage.evaluate(() => window.YAW_BUNDLED_TILESET_READY);
+    assert.deepStrictEqual(
+      fixture.counts(),
+      Object.fromEntries(fixture.assetNames.map(name => [name, 1])),
+      'Hosted Textured reload should reuse immutable browser cache instead of transferring atlases again'
+    );
+  } finally {
+    await texturedContext.close();
+  }
+
+  const lightweightContext = await browser.newContext();
+  const lightweightPage = await lightweightContext.newPage();
+  const lightweightAssetRequests = [];
+  lightweightPage.on('request', request => {
+    if (request.url().includes('/game/assets/')) lightweightAssetRequests.push(request.url());
+  });
+  try {
+    await lightweightPage.goto(`${fixture.origin}/game/index.html?graphics=emoji`, { waitUntil: 'load' });
+    await lightweightPage.waitForFunction(
+      () => Boolean(window.App) && window.YAW_GRAPHICS_MODE === 'emoji' && window.YAW_BUNDLED_TILESET_READY,
+      null,
+      { timeout: 10000 }
+    );
+    const preparation = await lightweightPage.evaluate(() => window.YAW_BUNDLED_TILESET_READY);
+    assert.strictEqual(preparation?.disabled, true, 'Hosted Lightweight should disable bundled atlas preparation');
+    assert.deepStrictEqual(lightweightAssetRequests, [], 'Hosted Lightweight should not request any first-party atlas');
+  } finally {
+    await lightweightContext.close();
+    await fixture.close();
+  }
+}
+
+async function uriTilesetTopologySnapshot(page) {
+  await page.evaluate(() => {
+    const makeUnit = (name, id) => ({
+      id, name, species: 'human', icon: 'X', level: 1,
+      CPun: 100, MPun: 100, CPle: 0, MPle: 100,
+      Figh: 20, Feas: 20, Flir: 20, Fuck: 20, Flee: 20, Feed: 20,
+      str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10,
+      size: 4, appetite: 4, stomach: [], womb: [], balls: [], bodyParts: [], tags: ['Person'], status: {}, disposition: 'party'
+    });
+    const tile = (x, y, options = {}) => ({
+      x, y, biome: options.biome || 'grove', baseBiome: options.biome || 'grove',
+      derivedBiome: options.biome || 'grove', displayBiome: options.road ? 'road' : (options.biome || 'grove'),
+      water: options.biome === 'water', explored: true, creatures: [], items: [],
+      overlays: {
+        road: options.road ? { id: 'uri-pack-topology-road', direction: 'north-south', connections: options.connections || [] } : null,
+        barriers: options.barriers || []
+      }
+    });
+    App.player = makeUnit('You', 'uri-pack-topology-player');
+    App.party = [App.player];
+    App.creatures = [];
+    App.screen = 'game';
+    App.inInterior = false;
+    App.activeInterior = null;
+    App.location = { x: 0, y: 0 };
+    App.worldMap = new Map([
+      ['0,0', tile(0, 0, { road: true, connections: ['north', 'south'], barriers: ['east'] })],
+      ['0,-1', tile(0, -1, { road: true, connections: ['south'] })],
+      ['0,1', tile(0, 1, { road: true, connections: ['north'] })],
+      ['1,0', tile(1, 0, { biome: 'water' })],
+      ['-1,0', tile(-1, 0)]
+    ]);
+    App.exploredTiles = new Set([...App.worldMap.keys()]);
+    App.renderMap();
+    App.renderLargeMap();
+    App.renderDesktopPlaySurface();
+  });
+  return page.evaluate(() => {
+    const inspect = selector => {
+      const root = document.querySelector(selector);
+      return {
+        semantics: root?.getAttribute('data-tileset-semantic-keys') || '',
+        tilesetKey: root?.getAttribute('data-tileset-key') || '',
+        baseKey: root?.getAttribute('data-base-tileset-key') || '',
+        blockedEdges: root?.getAttribute('data-blocked-edges') || '',
+        mapKind: root?.getAttribute('data-map-kind') || '',
+        label: root?.getAttribute('aria-label') || root?.getAttribute('title') || ''
+      };
+    };
+    return {
+      mobile: inspect('#mobile-mini-map .map-tile.center'),
+      desktop: inspect('#desktop-map-cell-center'),
+      large: inspect('#large-map .large-map-tile.current'),
+      northAllowed: App._traversalDecision(0, -1).allowed,
+      eastAllowed: App._traversalDecision(1, 0).allowed,
+      eastReason: App._traversalDecision(1, 0).reasonCode
+    };
+  });
 }
 
 async function runUriTilesetLifecycleFlow(browser) {
@@ -4641,6 +4970,7 @@ async function runUriTilesetLifecycleFlow(browser) {
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => Boolean(window.App) && typeof MODULE_SYSTEM !== 'undefined' && typeof YAW_TILESET_RUNTIME !== 'undefined', null, { timeout: 10000 });
     await page.waitForFunction(() => Boolean(YAW_TILESET_RUNTIME.status('__bundled__')), null, { timeout: 10000 });
+    const bundledTopology = await uriTilesetTopologySnapshot(page);
 
     const installed = await page.evaluate(async ({ origin, moduleId }) => {
       await MODULE_SYSTEM.init();
@@ -4685,6 +5015,7 @@ async function runUriTilesetLifecycleFlow(browser) {
     assert.strictEqual(installed.activePack, 'yaw.example-partial-v1', 'Enabling the target module should activate its installed Tileset Pack presentation');
     assert.strictEqual(installed.moduleEnabled, true, 'Example target module should be active after explicit enablement');
     assert(installed.layerOwners.every(url => url.startsWith('blob:')), 'Gameplay layers should use local object-URL leases rather than hotlinking the source URI');
+    assert.deepStrictEqual(await uriTilesetTopologySnapshot(page), bundledTopology, 'Installing and enabling a partial URI tileset must not change map semantics or traversal decisions');
 
     const replaced = await page.evaluate(async ({ origin, moduleId }) => {
       await MODULE_SYSTEM.setModuleEnabled(moduleId, false);
@@ -4703,6 +5034,7 @@ async function runUriTilesetLifecycleFlow(browser) {
     assert.strictEqual(replaced.version, '1.1.0', 'Reviewed replacement should update the installed bundle audit version');
     assert.strictEqual(replaced.packId, 'yaw.example-partial-v1.1', 'Replacement enablement should activate the replacement presentation');
     assert.strictEqual(replaced.currentRectX, 940, 'Replacement presentation geometry should replace the prior current-position layer');
+    assert.deepStrictEqual(await uriTilesetTopologySnapshot(page), bundledTopology, 'Replacing a partial URI tileset must preserve the same playable topology');
 
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(id => MODULE_SYSTEM.activeModules.has(id) && YAW_TILESET_RUNTIME.status(id)?.active, moduleId, { timeout: 10000 });
@@ -4722,6 +5054,7 @@ async function runUriTilesetLifecycleFlow(browser) {
     assert.strictEqual(persisted.packId, 'yaw.example-partial-v1.1', 'Enabled replacement presentation should reactivate from IndexedDB after reload');
     assert.strictEqual(persisted.routeOwner, moduleId, 'Persisted replacement should continue to own provided route semantics');
     assert(persisted.routeUrl.startsWith('blob:'), 'Reloaded replacement should reacquire a local session lease');
+    assert.deepStrictEqual(await uriTilesetTopologySnapshot(page), bundledTopology, 'Reloading an enabled partial URI tileset must preserve the same playable topology');
 
     const restored = await page.evaluate(async moduleId => {
       await MODULE_SYSTEM.setModuleEnabled(moduleId, false);
@@ -4732,6 +5065,7 @@ async function runUriTilesetLifecycleFlow(browser) {
     }, moduleId);
     assert.strictEqual(restored.activeModuleId, '__bundled__', 'Final disable should restore the bundled candidate');
     assert.strictEqual(restored.routeOwner, '__bundled__', 'Final disable should restore bundled route semantics');
+    assert.deepStrictEqual(await uriTilesetTopologySnapshot(page), bundledTopology, 'Disabling a partial URI tileset must restore presentation without changing map semantics or traversal');
   } finally {
     await page.close();
     await fixture.close();
@@ -4755,7 +5089,7 @@ async function runUriTilesetLifecycleFlow(browser) {
     await clearBrowserStorage(page);
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
-    await runTilesetCrossSurfaceFlow(page);
+    const texturedSnapshot = await runTilesetCrossSurfaceFlow(page);
     await runCombatTargetFirstComposerFlow(page);
     await runCombatProgressInvariantFlow(page);
     await runActionMatrix(page);
@@ -4785,6 +5119,8 @@ async function runUriTilesetLifecycleFlow(browser) {
     await runMalformedSaveMetadataBrowserFlow(page);
     await runClearAllBrowserStorageFlow(page);
     await page.close();
+    await runLightweightTilesetEquivalenceFlow(browser, texturedSnapshot);
+    await runHostedTilesetCacheFlow(browser);
     await runUriTilesetLifecycleFlow(browser);
   } finally {
     await browser.close();

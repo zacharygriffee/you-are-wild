@@ -17,7 +17,10 @@ Required edge coverage is locked for mixed party/local targets, partial
 actor-target overlap, self-included Feed/Fight/Feast, stale selections,
 unreachable targets, already-full Feed targets, queued group timing, cancel,
 save/load of queued target lists, one cost per actor, and one diminishing
-practice award per command.
+practice award per command. A many-to-many Fight continues in marked order when
+an early target falls, and a target that becomes unavailable before queued
+resolution is removed without canceling the remaining valid marks or charging
+participants twice.
 
 Valid but impossible attempts remain in-world outcomes or correctable selection
 states. They do not become application errors, duplicate costs, or silent turn

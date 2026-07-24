@@ -10,7 +10,10 @@ const YAW_COMBAT_SCENE = {
 
     turnTitle(app, unit = null) {
         const actor = this.actor(app, unit);
-        return `Round ${app.combatState?.round || 1} - ${actor?.name || app._label('ui.combat', 'Combat')}'s turn`;
+        return app._label('combat.turnTitle', "Round {round} - {actor}'s turn", {
+            round: app.combatState?.round || 1,
+            actor: actor?.name || app._label('ui.combat', 'Combat')
+        });
     },
 
     turnDescription(app, unit = null) {
@@ -110,9 +113,12 @@ const YAW_COMBAT_SCENE = {
         const attrHtml = `data-scene-beat-id="${app._escapeHtml(attrs.id)}" data-scene-importance="${app._escapeHtml(attrs.importance)}" data-scene-result="${app._escapeHtml(attrs.result)}" data-has-scene-beat="${app._escapeHtml(attrs.hasBeat)}" aria-label="${app._escapeHtml(attrs.label)}"`;
         const latestClass = mobile ? 'mobile-combat-story-latest' : 'desktop-combat-story-latest';
         const expandClass = mobile ? 'mobile-story-expand-btn' : 'desktop-story-expand-btn';
+        const sceneLabel = app._escapeHtml(app._label('scene.kicker', 'Scene'));
+        const openFeedLabel = app._escapeHtml(app._label('scene.openFeed', 'Open scene feed'));
+        const feedLabel = app._escapeHtml(app._label('scene.feedButton', 'Feed'));
         return `<div class="combat-story-strip ${mobile ? 'mobile-combat-story-strip' : 'desktop-combat-story-strip'}" data-surface-role="scene-feed" aria-live="polite">`
-            + `<div class="desktop-story-copy"><span class="desktop-story-kicker">Scene</span><div class="story-latest ${latestClass}${latest ? ' scene-beat-highlight' : ''}" data-surface-role="scene-feed-latest" ${attrHtml}>${storyHtml}</div></div>`
-            + `<button class="nav-btn ${expandClass}" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="${app._escapeHtml(String((app.storyEvents || []).length))}" title="Open scene feed" aria-label="Open scene feed">Feed</button>`
+            + `<div class="desktop-story-copy"><span class="desktop-story-kicker">${sceneLabel}</span><div class="story-latest ${latestClass}${latest ? ' scene-beat-highlight' : ''}" data-surface-role="scene-feed-latest" ${attrHtml}>${storyHtml}</div></div>`
+            + `<button class="nav-btn ${expandClass}" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="${app._escapeHtml(String((app.storyEvents || []).length))}" title="${openFeedLabel}" aria-label="${openFeedLabel}">${feedLabel}</button>`
             + `</div>`;
     },
 

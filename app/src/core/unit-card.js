@@ -11,7 +11,9 @@ const YAW_UNIT_CARD = {
         const isAlly = isParty && !isPlayer;
         const isCorpse = app._isCorpse(unit);
         const isLeader = isParty && app._getPartyLeader() === unit;
-        const unitName = unit.name || 'party member';
+        const unitName = unit.name || (isParty
+            ? app._label('unit.partyMember', 'party member')
+            : app._label('unit.creature', 'creature'));
         const escapedUnitName = app._escapeHtml(unitName);
         const roleLabel = isAlly ? app._escapeHtml(app._partyRoleLabel(app._getPartyRole(unit))) : '';
         const canDragPartyMember = isAlly && !app.combatState.active;
@@ -186,9 +188,9 @@ const YAW_UNIT_CARD = {
             equipment: app._escapeHtml(app._label('party.equipment', 'Equipment'))
         };
         const cardContextMenuAttr = '';
-        return `<div class="${cardClass}" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
+        return `<div class="${cardClass}" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, isExpanded, unitName)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
                     <div class="unit-header">
-                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
+                        <span class="unit-icon">${app._unitArtHtml(unit, isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon, { className: 'unit-card-sprite' })}</span>
                         <div class="unit-info">
                             <div class="unit-name">${escapedUnitName}</div>
                             ${unitMeta ? `<div class="unit-meta">${unitMeta}</div>` : ''}

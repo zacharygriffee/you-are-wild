@@ -51,7 +51,11 @@ Fallback rule: if no template matches, the existing result string must still ren
 
 ## Template Registry
 
-Use `App.registerSceneTemplate(template)` for deterministic template mods. Templates may match on:
+Modules declare `scene:add_template` and use
+`MODS.registerSceneTemplate(template)` for deterministic Scene Feed templates.
+The public API requires a token-like local `id`, prefixes it with the module
+ID, owns it, and removes it on unload. Raw `App.registerSceneTemplate` is a
+trusted core/legacy seam, not the public module contract. Templates may match on:
 
 - `mode`
 - `action`
@@ -81,7 +85,7 @@ Higher `priority` wins. Built-in templates are fallback/default behavior; mod te
 Plain deterministic prose:
 
 ```js
-App.registerSceneTemplate({
+MODS.registerSceneTemplate({
   id: 'mod.safe-fight-summary',
   mode: 'combat',
   action: 'fight',
@@ -95,7 +99,7 @@ App.registerSceneTemplate({
 Terse tactical prose:
 
 ```js
-App.registerSceneTemplate({
+MODS.registerSceneTemplate({
   id: 'mod.row-failure-tactical',
   mode: 'combat',
   tags: ['cannot-reach'],

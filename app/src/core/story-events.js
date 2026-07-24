@@ -111,9 +111,10 @@ const YAW_STORY_EVENTS = {
         ];
     },
 
-    registerSceneTemplate(app, template = {}) {
+    registerSceneTemplate(app, template = {}, options = {}) {
         if (!template || typeof template !== 'object') return false;
         if (!template.id && !template.action && !template.mode && typeof template.match !== 'function') return false;
+        const owner = String(options.owner || template.owner || 'legacy-runtime').trim().slice(0, 160) || 'legacy-runtime';
         const normalized = {
             id: String(template.id || `mod-template-${Date.now()}-${Math.random().toString(36).slice(2)}`),
             mode: template.mode || null,
@@ -128,12 +129,22 @@ const YAW_STORY_EVENTS = {
             render: typeof template.render === 'function' ? template.render : null,
             summary: typeof template.summary === 'function' || typeof template.summary === 'string' ? template.summary : null,
             passage: typeof template.passage === 'function' || typeof template.passage === 'string' ? template.passage : null,
-            source: template.source || 'mod'
+            source: template.source || owner,
+            owner
         };
         if (!Array.isArray(app.sceneTemplates)) app.sceneTemplates = [];
         app.sceneTemplates = app.sceneTemplates.filter(existing => existing.id !== normalized.id);
         app.sceneTemplates.push(normalized);
         return true;
+    },
+
+    unregisterSceneTemplate(app, templateId, owner = null) {
+        if (!Array.isArray(app.sceneTemplates)) return false;
+        const id = String(templateId || '');
+        const expectedOwner = owner === null ? null : String(owner);
+        const before = app.sceneTemplates.length;
+        app.sceneTemplates = app.sceneTemplates.filter(template => template.id !== id || (expectedOwner !== null && template.owner !== expectedOwner));
+        return app.sceneTemplates.length !== before;
     },
 
     templateContext(app, plan = {}, outcome = {}) {
@@ -293,18 +304,25 @@ const YAW_STORY_EVENTS = {
     tileNarrativeDescriptor(app, tile = null, options = {}) {
         if (!tile || app.inInterior) return null;
         const creatures = app._tileCreatures?.(app.creatures?.length ? app.creatures : tile.creatures || []) || [];
-        const normalizedCreatures = creatures.map(unit => ({
-            id: String(unit?.id || unit?.name || ''),
-            name: String(unit?.name || ''),
-            species: String(unit?.species || ''),
-            disposition: String(unit?.disposition || ''),
-            corpse: Boolean(app._isCorpse?.(unit)),
-            punishment: Number(unit?.CPun ?? 0),
-            maxPunishment: Number(unit?.MPun ?? 0),
-            hungerBand: Math.max(0, Math.min(4, Math.floor(Number(unit?.hunger || 0) / 25))),
-            restrained: Boolean(unit?.restrained || unit?.isRestrained),
-            questAvailable: Boolean(unit?.quest)
-        })).sort((first, second) => `${first.id}:${first.name}`.localeCompare(`${second.id}:${second.name}`));
+        const normalizedCreatures = creatures.map(unit => {
+            const serviceUnit = unit?.disposition === (app.DISPOSITION?.MERCHANT || 'merchant')
+                || unit?.disposition === (app.DISPOSITION?.QUEST_GIVER || 'quest_giver')
+                || Boolean(unit?.quest);
+            const serviceAvailable = serviceUnit ? Boolean(app._isServiceAvailable?.(unit)) : null;
+            return {
+                id: String(unit?.id || unit?.name || ''),
+                name: String(unit?.name || ''),
+                species: String(unit?.species || ''),
+                disposition: String(unit?.disposition || ''),
+                corpse: Boolean(app._isCorpse?.(unit)),
+                punishment: Number(unit?.CPun ?? 0),
+                maxPunishment: Number(unit?.MPun ?? 0),
+                hungerBand: Math.max(0, Math.min(4, Math.floor(Number(unit?.hunger || 0) / 25))),
+                restrained: Boolean(unit?.restrained || unit?.isRestrained),
+                serviceAvailable,
+                questAvailable: Boolean(unit?.quest && serviceAvailable)
+            };
+        }).sort((first, second) => `${first.id}:${first.name}`.localeCompare(`${second.id}:${second.name}`));
         const normalizedItems = (Array.isArray(tile.items) ? tile.items : []).map(item => ({
             id: String(item?.id || ''),
             name: String(item?.name || item || ''),
@@ -374,6 +392,7 @@ const YAW_STORY_EVENTS = {
         const remains = (app._tileCreatures?.(app.creatures?.length ? app.creatures : tile.creatures || []) || [])
             .filter(unit => unit && app._isCorpse?.(unit));
         const items = Array.isArray(tile.items) ? tile.items : [];
+        const serviceAvailable = unit => Boolean(app._isServiceAvailable?.(unit));
         const details = [];
         const subEvents = [];
         if (tile.description) {
@@ -392,8 +411,8 @@ const YAW_STORY_EVENTS = {
         if (living.length) {
             const names = this.listNames(app, living.map(unit => unit.name));
             const hungry = living.filter(unit => (unit.hunger || 0) >= 60).map(unit => unit.name);
-            const merchants = living.filter(unit => unit.disposition === app.DISPOSITION.MERCHANT).map(unit => unit.name);
-            const questGivers = living.filter(unit => unit.disposition === app.DISPOSITION.QUEST_GIVER || unit.quest).map(unit => unit.name);
+            const merchants = living.filter(unit => unit.disposition === app.DISPOSITION.MERCHANT && serviceAvailable(unit)).map(unit => unit.name);
+            const questGivers = living.filter(unit => (unit.disposition === app.DISPOSITION.QUEST_GIVER || unit.quest) && serviceAvailable(unit)).map(unit => unit.name);
             const creatureText = hungry.length
                 ? app._label('scene.observe.creaturesHungry', 'You notice {names}; {hungry} looks hungry.', {
                     names,
@@ -412,7 +431,7 @@ const YAW_STORY_EVENTS = {
                 }));
             }
             living.forEach(unit => subEvents.push({
-                type: unit.disposition === app.DISPOSITION.MERCHANT ? 'merchant' : ((unit.disposition === app.DISPOSITION.QUEST_GIVER || unit.quest) ? 'quest-giver' : 'creature'),
+                type: unit.disposition === app.DISPOSITION.MERCHANT && serviceAvailable(unit) ? 'merchant' : (((unit.disposition === app.DISPOSITION.QUEST_GIVER || unit.quest) && serviceAvailable(unit)) ? 'quest-giver' : 'creature'),
                 targetId: unit.id || unit.name,
                 targetName: unit.name,
                 summary: unit.name
@@ -446,8 +465,8 @@ const YAW_STORY_EVENTS = {
                 ...(tile.hasLandmark ? ['landmark'] : []),
                 ...(tile.structure ? ['structure'] : []),
                 ...(living.length ? ['creatures'] : []),
-                ...(living.some(unit => unit.disposition === app.DISPOSITION.MERCHANT) ? ['merchant', 'trade'] : []),
-                ...(living.some(unit => unit.disposition === app.DISPOSITION.QUEST_GIVER || unit.quest) ? ['quest-giver', 'quest'] : []),
+                ...(living.some(unit => unit.disposition === app.DISPOSITION.MERCHANT && serviceAvailable(unit)) ? ['merchant', 'trade'] : []),
+                ...(living.some(unit => (unit.disposition === app.DISPOSITION.QUEST_GIVER || unit.quest) && serviceAvailable(unit)) ? ['quest-giver', 'quest'] : []),
                 ...(remains.length ? ['remains'] : []),
                 ...(items.length ? ['items'] : [])
             ],
@@ -959,10 +978,12 @@ const YAW_STORY_EVENTS = {
         if (!delta || typeof delta !== 'object') return String(delta || '');
         if (delta.label) return String(delta.label);
         const kind = delta.kind || delta.type || 'delta';
-        if (kind === 'punishment' || kind === 'damage') return `${delta.amount ?? ''} punishment`.trim();
-        if (kind === 'healing' || kind === 'heal') return `${delta.amount ?? ''} punishment restored`.trim();
-        if (kind === 'spirit') return delta.max ? `Spirit ${delta.current}/${delta.max}` : 'Spirit changed';
-        if (kind === 'state') return delta.state || 'State changed';
+        if (kind === 'punishment' || kind === 'damage') return app._label('scene.delta.punishment', '{amount} punishment', { amount: delta.amount ?? '' }).trim();
+        if (kind === 'healing' || kind === 'heal') return app._label('scene.delta.healing', '{amount} punishment restored', { amount: delta.amount ?? '' }).trim();
+        if (kind === 'spirit') return delta.max
+            ? app._label('scene.delta.spirit', 'Spirit {current}/{max}', { current: delta.current ?? '', max: delta.max })
+            : app._label('scene.delta.spiritChanged', 'Spirit changed');
+        if (kind === 'state') return delta.state || app._label('scene.delta.stateChanged', 'State changed');
         return [kind, delta.amount, delta.unit].filter(Boolean).join(' ');
     },
 
@@ -1078,8 +1099,8 @@ const YAW_STORY_EVENTS = {
         if (!sheet) return false;
         sheet.hidden = true;
         sheet.setAttribute('aria-hidden', 'true');
-        app._restoreFocusTrap?.();
         this.setUnderlyingInert(false);
+        app._restoreFocusTrap?.();
         document.getElementById('app')?.classList?.remove('story-sheet-open');
         return true;
     }

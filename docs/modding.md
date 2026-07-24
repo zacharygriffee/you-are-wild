@@ -28,8 +28,11 @@ Focused contracts:
 - [AI providers](ai-providers.md)
 - [Narration mods](narration-mods.md)
 - [Media repository](media-repository.md)
+- [Media Provider Adapter Contract](media-provider-adapters.md)
 - [Asset Bundle V1](asset-bundle-v1.md)
 - [Tileset Pack V1](tileset-pack-v1.md)
+- [Locale Pack V1](locale-pack-v1.md)
+- [Combat Technique V1](combat-technique-v1.md)
 
 ## Trust Boundary
 
@@ -152,6 +155,8 @@ Implemented permissions:
 | --- | --- |
 | `ui.read` | `MODS.getContext()` bounded public context |
 | `media:read` | list, inspect, acquire, and release owned media leases |
+| `media:provide` | register an owned trusted-local Media Source/Store adapter |
+| `scene:add_template` | register owned deterministic Scene Feed templates |
 | `scene:read_narrative` | bounded narration context and extensions |
 | `scene:narrate` | owned narration publication and orchestration |
 | `ai:request` | request an existing opaque provider connection |
@@ -159,13 +164,65 @@ Implemented permissions:
 | `world:add_biome` | add or temporarily replace an owned biome definition |
 | `content:add_species` | add owned serializable species data |
 | `content:add_item` | add owned serializable item data |
-| `content:add_template` | register owned content templates |
-| `content:add_locale` | register owned locale entries |
-| `content:add_creation_option` | register owned creation choices |
-| `content:add_action_variant` | register an owned Feed or Feast variant |
+| `content:add_template` | register owned legacy content templates for documented core request keys |
+| `content:add_locale` | register an owned locale definition and bounded target-owned translation entries |
+| `content:add_creation_option` | register owned creation choices persisted under the provider namespace |
+| `content:add_action_variant` | register an owned Feed, Feast, or Play variant |
+| `mechanics:add_resource_profile` | register and mutate an owned bounded Resource Ledger V1 profile |
+| `mechanics:add_combat_technique` | register an owned declarative Combat Technique V1 Fight profile |
+| `mechanics:add_recovery_mode` | register an owned declarative Recovery Mode V1 profile |
 
 Unknown permissions reject installation. Calling a permissioned API without
 declaring its token fails module enablement and cleans partial contributions.
+
+`MODS.registerMediaProvider(providerId, adapter)` is reserved for executable
+trusted-local infrastructure modules. It requires `media:provide`, cannot
+replace a provider owned by core or another module, and unregisters every
+owned role on disable. It does not expose credential persistence or arbitrary
+filesystem paths. See the Media Provider Adapter Contract for required roles
+and the separate `media:read` consumer boundary.
+
+### Locale Packs
+
+`MODS.registerLocale(definition)` registers one module-owned locale with a
+display name, active fallback, and 1 to 16 versioned targets.
+`MODS.registerLocaleEntries(locale, entries, { target })` adds its translation
+entries. Non-core targets must be active declared dependencies and every key
+must start with `<target-module-id>.`. Module and core target versions are
+checked before registration; disabling either the locale owner or a translated
+dependency removes the locale and safely selects its fallback. Missing and
+obsolete target keys appear as bounded module diagnostics. See
+[Locale Pack V1](locale-pack-v1.md) for the complete contract and maintained
+conformance fixtures.
+
+### Legacy Content Template Keys
+
+`MODS.registerContentTemplate(category, type, variant, tier, renderer)` uses
+exactly three key tokens: `category.type.variant`. Each token accepts letters,
+numbers, underscores, hyphens, dots, or colons. Registration only supplies
+text; it does not create a gameplay route. The current core consumers are:
+
+| Request key | Consumer |
+| --- | --- |
+| `biome.<installed-biome-id>.default` | surface and structure encounter observations |
+| `action.cockVore.default` | enabled Capture compatibility outcome |
+| `action.unbirth.default` | enabled Engulf compatibility outcome |
+| `action.corpseLoot.default` | remains-loot outcome |
+| `action.corpseScavenge.default` | remains-scavenge outcome |
+
+An enabled module receives an Activity Log diagnostic for any other legacy
+template key because core cannot request it. Do not use legacy content
+templates for Scene Feed matching; declare `scene:add_template` and use
+`MODS.registerSceneTemplate` instead.
+
+### Creation Option Persistence
+
+Creation options selected for a new character are copied into
+`player.creationOptions[providerId][optionId]` and survive full and sparse save
+round trips. Values remain bounded strings owned by the provider; they do not
+create mechanics merely by being selected. The four compatibility anatomy
+values continue to populate the established `parts` and `chest` fields. Each
+provider may register at most 64 creation options.
 
 ### Species Profile V1
 
@@ -217,6 +274,95 @@ it does not create fire damage, resistance, new actions, predator/prey rules,
 or perks. Those require a separately documented extension seam. Do not present
 descriptive fields as executable powers.
 
+### Resource Ledger V1
+
+`mechanics:add_resource_profile` permits a module to declare a bounded,
+provider-owned renewable resource and to read, grant, or spend only that
+resource:
+
+```js
+MODS.registerResourceProfile('sap', {
+  label: 'sap reserve',
+  labelKey: 'example_mod.resource.sap',
+  capacity: 4,
+  regeneration: { trigger: 'rest', every: 2, amount: 1 },
+  eligibility: { species: ['mosskin'] }
+});
+
+const state = MODS.resources.read(actor, 'sap');
+const granted = MODS.resources.grant(actor, 'sap', 1);
+const spent = MODS.resources.spend(actor, 'sap', 1);
+```
+
+Profile IDs become `<module-id>:<resource-id>`. Capacity is an integer from 1
+to 1,000,000. Regeneration is optional and accepts only `digestion`, `hour`, or
+`rest`, with bounded integer `every` and `amount` values. Eligibility may list
+species, existing ability flags, and ordinary boolean unit flags; all authored
+lists must match. A profile with no eligibility constraints can apply to any
+unit, but it still starts empty.
+
+The ledger is core-owned save state. Missing entries, including legacy saves,
+normalize to zero rather than receiving a free capability. Sparse saves retain
+the ledger with the unit; binary compatibility exports mirror it outside the
+fixed legacy unit codec. Disabling a module removes its executable profile but
+keeps bounded dormant values so re-enabling cannot refill or duplicate the
+resource. Modules cannot read or mutate another owner's ledger through
+`MODS.resources`.
+
+Resource labels should use an owned locale key registered through
+`content:add_locale`; the bounded fallback label remains available when that
+locale entry is absent. Resource profiles do not create actions by themselves.
+An action variant still needs its own declared capability and must spend the
+resource only after the deterministic attempt commits.
+
+### Combat Technique V1
+
+`mechanics:add_combat_technique` registers a namespaced declarative Fight
+profile through `MODS.registerCombatTechnique(id, definition)`. The bounded
+profile may specify capability and equipment eligibility, one command-scoped
+reach profile, deterministic damage shaping, an explicit multi-target cap and
+distribution, and one core-owned status profile. It cannot run a combat
+callback or replace Basic Attack.
+
+Eligible techniques appear beneath Fight after actor and target selection.
+Single, multi-target, and group commands carry the selected namespaced key in
+the canonical `InteractionPlan`. Full and sparse combat saves retain queued
+keys; unload removes profiles and cancels their queued work without changing
+unrelated combat. See [Combat Technique V1](combat-technique-v1.md) for the
+complete schema, equipment tags, limits, resolution order, localization, and
+save rules.
+
+### Recovery Mode V1
+
+`mechanics:add_recovery_mode` registers a namespaced declarative terminal
+recovery profile through `MODS.registerRecoveryMode(id, definition)`. A
+profile may select immediate or shrine resolution, defeat-site or safe-anchor
+entry, the existing inventory policy, normal or ethereal traversal, bounded
+living-action restrictions, and resurrection vitality. It cannot replace
+defeat, companion, inventory, Hardcore, movement, save, or resurrection code
+with callbacks.
+
+The selected profile is snapshotted at defeat and persists through full and
+sparse saves. Unloading its owner removes the profile, restores the default
+setting, and returns an active owned journey to the explicit ordinary recovery
+prompt. See [Recovery Mode V1](recovery-mode-v1.md) for the complete schema,
+core Ghost pilgrimage, localization, persistence, and unload rules.
+
+### Code-free Sprite Pack V1
+
+Sprite art is delivered as an Asset Bundle V1 presentation rather than
+executable module code. The target module declares `media:read`; the bundle
+uses one `yaw-sprite-pack` declaration and image resources with the
+`sprite-atlas` role. Core validates semantic species keys, bounded
+state/facing strips, dimensions, animation duration, and fallbacks before any
+resource is downloaded.
+
+Enabled packs acquire local Media Repository leases and render through shared
+unit cards and presence rails. Disabling the owner releases the leases and
+restores the prior pack or emoji immediately. Sprites cannot add stats,
+actions, targeting, collision, or save state. See
+[Sprite Pack V1](sprite-pack-v1.md) for the schema and limits.
+
 ### Hook events
 
 The current hook registry accepts exactly:
@@ -235,7 +381,8 @@ them.
 
 ## Action Variant Contract
 
-The public registration seam currently extends only `feed` and `feast`:
+The public registration seam extends `feed`, `feast`, and `play` (`play` maps
+to the internal Play intent while remaining the public spelling):
 
 ```js
 MODS.registerActionVariant('feed', 'exampleOffer', {
@@ -258,11 +405,19 @@ Definitions require executable `validate` and `execute` functions. `scope` is
 `capacity`, and `willingness`. IDs are bounded and owned, and unload removes
 them. A module may not replace an existing variant.
 
-The UI also presents core Play self/target choices through the contextual menu,
-but custom Play variants are not a public module capability yet. Do not declare
-or document a Play, Fight, Talk, or Flee variant until the runtime registry
-explicitly supports it. Manifest `gameplayVariants` are policy toggles, not
-executable action variants.
+Play variants use the same self/target contextual menu and dispatch contract;
+register them with the public action name `play`. Generic callback-based Fight,
+Talk, and Flee action variants are not public capabilities. Named Fight choices
+use the separate declarative Combat Technique V1 contract. Manifest
+`gameplayVariants` are policy toggles, not executable action variants.
+
+Content gating belongs to the owning module manifest, not an undocumented field
+inside an action-variant definition. Use the manifest `contentRating` and
+required `contentCategories`; a blocked module never registers its variants,
+and lowering policy unloads them with the rest of that module's contributions.
+If one package needs independently available safe and rated variants, split
+them into separately owned modules rather than relying on per-variant
+`minPosture` or `contentCategory` fields.
 
 Ordinary tactical uncertainty should resolve after commitment through an
 `ActionOutcome` and Scene Beat. A mod should use `validate` for structural
@@ -368,7 +523,8 @@ The following are not current module capabilities:
 
 - a sandboxed community marketplace or verified publisher identity;
 - automatic URI updates or runtime hotlinking;
-- custom Play/Fight/Talk/Flee action-variant registration;
+- callback-based custom Fight, Talk, or Flee action-variant registration
+  outside the declarative Combat Technique V1 seam;
 - arbitrary save-schema mutation or direct mechanical control from narration;
 - sprite, animation, audio, video, or 3D presentation schemas;
 - persistent provider credentials in mods;

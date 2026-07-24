@@ -1,22 +1,26 @@
 /**
  * YOU ARE WILD COMBAT ACTION VARIANTS
- * Shared contextual Feed / Feast variant selection and resolution.
+ * Shared contextual Feed / Feast / Fight variant selection and resolution.
  * The historical YAW_COMBAT_FEED name remains as a compatibility alias.
  */
 
 const YAW_COMBAT_FEED = {
-    executeVariantAction(app, action, actor = app.activeActor || app._currentCombatActor() || app.player, target = null) {
+    executeVariantAction(app, action, actor = app.activeActor || app._currentCombatActor() || app.player, target = null, options = {}) {
         actor = actor || app.activeActor || app._currentCombatActor() || app.player;
-        if (!target || target.CPun <= 0) {
+        const actors = [...new Set((options.actors || [actor]).filter(unit => unit && unit.CPun > 0))];
+        const targets = [...new Set((options.targets || (Array.isArray(target) ? target : [target])).filter(unit => unit && unit.CPun > 0))];
+        if (!targets.length) {
             app.selectTarget(action);
             return true;
         }
-        const resolution = YAW_SUB_ACTIONS.resolve(app, action, { actors: [actor], targets: [target], mode: 'combat' });
+        const resolution = action === 'fight' && typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+            ? YAW_COMBAT_TECHNIQUES.resolve(app, { actors, targets, mode: 'combat' })
+            : YAW_SUB_ACTIONS.resolve(app, action, { actors, targets, mode: 'combat' });
         const validVariants = resolution.variants.filter(variant => variant.available);
         if (validVariants.length === 0) {
             const fallback = app._label('variant.noOptions', 'No {action} variants are available for {name}. Choose another target.', {
                 action: app._uiLabel(action),
-                name: target.name
+                name: targets.map(unit => unit.name).join(', ')
             });
             app.log.push({ text: fallback, type: 'combat' });
             app.renderLog();
@@ -25,15 +29,19 @@ const YAW_COMBAT_FEED = {
             return false;
         }
         if (resolution.decision === 'direct') {
-            return this.executeSubAction(app, validVariants[0].id, actor, target, action);
+            return this.executeSubAction(app, validVariants[0].id, actor, targets[0], action, { actors, targets });
         }
         const selection = {
             active: true,
             action,
             actorId: app._unitSelectionId(actor),
-            target,
-            targetId: app._unitSelectionId(target),
-            targetType: app.party.includes(target) ? 'party' : (target.disposition === app.DISPOSITION.ENEMY ? 'enemy' : 'creature'),
+            actorIds: actors.map(unit => app._unitSelectionId(unit)),
+            actors,
+            target: targets[0],
+            targets,
+            targetId: app._unitSelectionId(targets[0]),
+            targetIds: targets.map(unit => app._unitSelectionId(unit)),
+            targetType: app.party.includes(targets[0]) ? 'party' : (targets[0].disposition === app.DISPOSITION.ENEMY ? 'enemy' : 'creature'),
             subIds: validVariants.map(variant => variant.id),
             variants: resolution.variants,
             resume: {
@@ -58,11 +66,14 @@ const YAW_COMBAT_FEED = {
     openVariantSheet(app, presentation = '') {
         const selection = app.feedSelection;
         if (!selection?.active) return false;
-        const actor = app._resolvePanelUnit?.('party', selection.actorId)
+        const actors = (selection.actors || []).filter(unit => unit && unit.CPun > 0);
+        const actor = actors[0]
+            || app._resolvePanelUnit?.('party', selection.actorId)
             || app.activeActor
             || app._currentCombatActor()
             || app.player;
-        const target = selection.target;
+        const targets = (selection.targets || [selection.target]).filter(unit => unit && unit.CPun > 0);
+        const target = targets[0];
         if (!actor || !target) return false;
         const desktop = presentation === 'desktop'
             || (!presentation && typeof window !== 'undefined' && Number(window.innerWidth || 0) > 1024);
@@ -71,8 +82,8 @@ const YAW_COMBAT_FEED = {
         const title = app._label('variant.optionsTitle', '{action} Options', { action: app._uiLabel(action) });
         return YAW_INTENT_MENU.openVariantSheet(app, {
             action,
-            actors: [actor],
-            targets: [target],
+            actors: actors.length ? actors : [actor],
+            targets,
             scope: 'target',
             mode: 'combat',
             source,
@@ -112,28 +123,49 @@ const YAW_COMBAT_FEED = {
         app.selectTarget?.(action);
     },
 
-    executeSubAction(app, subId, actor, target = app.feedSelection?.target || null, action = app.feedSelection?.action || 'feed') {
-        const subDef = app.SUB_ACTIONS[action]?.[subId];
-        if (!subDef) return false;
+    executeSubAction(app, subId, actor, target = app.feedSelection?.target || null, action = app.feedSelection?.action || 'feed', options = {}) {
+        const isFight = action === 'fight';
+        const subDef = isFight ? null : app.SUB_ACTIONS[action]?.[subId];
+        if (!isFight && !subDef) return false;
         app.closeIntentMenu?.();
         actor = actor || app.activeActor || app._currentCombatActor() || app.player;
-        app.defaultSubActions[action] = subId;
-        if (!target || target.CPun <= 0) {
+        const selection = app.feedSelection;
+        const actors = [...new Set((options.actors || selection?.actors || [actor]).filter(unit => unit && unit.CPun > 0))];
+        const targets = [...new Set((options.targets || selection?.targets || [target]).filter(unit => unit && unit.CPun > 0))];
+        if (!isFight) app.defaultSubActions[action] = subId;
+        if (!targets.length) {
             this.failSubAction(app, action, action === 'feed' ? 'feed.noValidTarget' : 'variant.noValidTarget', action === 'feed' ? 'No valid target for this feed action.' : 'Choose a living target for this action.');
             return false;
         }
-        const resolution = YAW_SUB_ACTIONS.resolve(app, action, { actors: [actor], targets: [target], preferred: subId, mode: 'combat' });
+        const resolution = isFight
+            ? YAW_COMBAT_TECHNIQUES.resolve(app, { actors, targets, preferred: subId, mode: 'combat' })
+            : YAW_SUB_ACTIONS.resolve(app, action, { actors, targets, preferred: subId, mode: 'combat' });
         if (!resolution.variants.find(variant => variant.id === subId)?.available) {
             this.failSubAction(app, action, 'variant.noLongerAvailable', 'That variant is no longer available. Choose another.');
             return false;
         }
+        const grouped = actors.length > 1;
+        const dispatchAction = isFight && grouped ? 'sync_fight' : action;
+        const targetType = targets.some(unit => app.party.includes(unit))
+            ? (targets.every(unit => app.party.includes(unit)) ? 'party' : 'mixed')
+            : (targets.every(unit => unit.disposition === app.DISPOSITION.ENEMY) ? 'enemy' : 'creature');
         const command = app._buildPanelInteractionCommand({
-            mode: 'combat', actors: [actor], targets: [target], action, subAction: subId,
+            mode: 'combat', actors, targets, action: dispatchAction, subAction: subId,
             source: 'action-variant-options',
-            targetType: app.party.includes(target) ? 'party' : (target.disposition === app.DISPOSITION.ENEMY ? 'enemy' : 'creature'),
-            timing: 'current-turn',
-            constraints: { requireCurrentTurn: true, hostileOnly: false, checkReach: false, checkRows: false, minActors: 1, minTargets: 1, maxTargets: 1 },
-            metadata: { phase: 'action-variant' }
+            targetType,
+            shape: grouped && targets.length > 1 ? 'many-to-many' : (grouped ? 'many-to-one' : (targets.length > 1 ? 'one-to-many' : 'one-to-one')),
+            timing: grouped ? 'slowest-participant' : 'current-turn',
+            distribution: targets.length > 1 ? 'all' : 'single',
+            constraints: {
+                requireCurrentTurn: true,
+                hostileOnly: false,
+                checkReach: true,
+                checkRows: true,
+                minActors: grouped ? 2 : 1,
+                minTargets: 1,
+                maxTargets: isFight ? YAW_COMBAT_TECHNIQUES.MAX_TARGETS : 1
+            },
+            metadata: { phase: 'action-variant', baseAction: action, consumeCurrentTurn: true }
         });
         app.feedSelection = null;
         app._clearCombatMarkedTargets?.();

@@ -4,6 +4,20 @@
  */
 
 const YAW_CREATE_FLOW = {
+    speciesText(app, species, field = 'name') {
+        const fallback = String(field === 'description' ? (species?.description ?? species?.desc ?? '') : (species?.[field] || ''));
+        const authoredKey = String(species?.[`${field}Key`] || '').trim();
+        return authoredKey ? app._label(authoredKey, fallback) : fallback;
+    },
+
+    syncPressedState(selector, selectedValue, datasetKey) {
+        document.querySelectorAll(selector).forEach(card => {
+            const selected = card.dataset[datasetKey] === selectedValue;
+            card.classList.toggle('selected', selected);
+            card.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        });
+    },
+
     initSpeciesGrid(app) {
         const grid = document.getElementById('species-grid');
         const selectedSpecies = app.species.some(species => species.id === app.selectedSpecies)
@@ -11,21 +25,38 @@ const YAW_CREATE_FLOW = {
             : 'human';
         app.selectedSpecies = selectedSpecies;
         if (grid) {
-            grid.innerHTML = app.species.map(s => `<div class="option-card ${s.id === selectedSpecies ? 'selected' : ''}" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-species" data-create-option="${s.id}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
+            grid.innerHTML = app.species.map(species => {
+                const selected = species.id === selectedSpecies;
+                const id = app._escapeHtml(species.id);
+                const jsId = app._escapeJsString(species.id);
+                const icon = app._escapeHtml(species.icon || '👤');
+                const name = app._escapeHtml(this.speciesText(app, species, 'name'));
+                const description = app._escapeHtml(this.speciesText(app, species, 'description') || species.desc || '');
+                return `<div class="option-card${selected ? ' selected' : ''}" role="button" tabindex="0" aria-pressed="${selected ? 'true' : 'false'}" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-species" data-create-option="${id}" data-species="${id}" onclick="App.selectSpecies('${jsId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"><div style="font-size:48px" aria-hidden="true">${icon}</div><div style="font-weight:600;color:var(--text-primary)">${name}</div><div style="font-size:12px;color:var(--text-muted)">${description}</div></div>`;
+            }).join('');
             if (document.getElementById('species-info')) this.selectSpecies(app, selectedSpecies);
         }
     },
 
     selectSpecies(app, id) {
         app.selectedSpecies = id;
-        document.querySelectorAll('#species-grid .option-card').forEach(c => c.classList.toggle('selected', c.dataset.species === id));
+        this.syncPressedState('#species-grid .option-card', id, 'species');
         const species = app.species.find(s => s.id === id);
+        if (!species) return;
         const defaults = app.SPECIES_DEFAULT_PARTS[id] || [];
         app.selectedBodyParts = [...defaults];
         const info = document.getElementById('species-info');
-        if (info) info.innerHTML = `<div style="font-size:48px;margin-bottom:8px">${species.icon}</div><h3>${species.name}</h3><p>${species.desc}</p><p style="color:var(--text-muted);font-size:12px;margin-top:8px">Default traits: ${defaults.length ? defaults.map(p => app.BODY_PARTS[p]?.label || p).join(', ') : 'None'}</p>`;
+        if (info) {
+            const name = app._escapeHtml(this.speciesText(app, species, 'name'));
+            const description = app._escapeHtml(this.speciesText(app, species, 'description') || species.desc || '');
+            const traitNames = defaults.map(part => app._escapeHtml(app.BODY_PARTS[part]?.label || part));
+            const traits = traitNames.length ? traitNames.join(', ') : app._escapeHtml(app._label('create.none', 'None'));
+            info.innerHTML = `<div style="font-size:48px;margin-bottom:8px" aria-hidden="true">${app._escapeHtml(species.icon || '👤')}</div><h3>${name}</h3><p>${description}</p><p style="color:var(--text-muted);font-size:12px;margin-top:8px">${app._escapeHtml(app._label('create.defaultTraits', 'Default traits'))}: ${traits}</p>`;
+        }
         document.querySelectorAll('#body-parts-grid .option-card').forEach(c => {
-            c.classList.toggle('selected', app.selectedBodyParts.includes(c.dataset.part));
+            const selected = app.selectedBodyParts.includes(c.dataset.part);
+            c.classList.toggle('selected', selected);
+            c.setAttribute('aria-pressed', selected ? 'true' : 'false');
         });
     },
 
@@ -60,6 +91,7 @@ const YAW_CREATE_FLOW = {
     selectGender(app, gender) {
         app.selectedGender = gender;
         this.ensureSafeCompatibilityParts(app);
+        this.syncPressedState('#gender-grid .option-card', gender, 'value');
         app._setCreateValidation('');
     },
 
@@ -73,12 +105,19 @@ const YAW_CREATE_FLOW = {
     toggleBodyPart(app, id) {
         if (app.selectedBodyParts.includes(id)) app.selectedBodyParts = app.selectedBodyParts.filter(x => x !== id);
         else app.selectedBodyParts.push(id);
+        document.querySelectorAll('#body-parts-grid .option-card').forEach(card => {
+            const selected = app.selectedBodyParts.includes(card.dataset.part);
+            card.classList.toggle('selected', selected);
+            card.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        });
     },
 
     updateAnatomyUI(app) {
         document.querySelectorAll('#anatomy-grid .option-card').forEach(c => {
             const part = c.dataset.part;
-            c.classList.toggle('selected', app.selectedParts.includes(part));
+            const selected = app.selectedParts.includes(part);
+            c.classList.toggle('selected', selected);
+            c.setAttribute('aria-pressed', selected ? 'true' : 'false');
         });
     },
 
@@ -155,12 +194,15 @@ const YAW_CREATE_FLOW = {
     initBodyPartsGrid(app) {
         const grid = document.getElementById('body-parts-grid');
         if (!grid) return;
-        grid.innerHTML = Object.entries(app.BODY_PARTS).map(([id, part]) =>
-            `<div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-trait" data-create-option="${id}" data-part="${id}" onclick="App.toggleBodyPart('${id}');this.classList.toggle('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
-                        <div style="font-weight:600;color:var(--text-primary)">${part.label}</div>
-                        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${part.desc}</div>
-                    </div>`
-        ).join('');
+        grid.innerHTML = Object.entries(app.BODY_PARTS).map(([id, part]) => {
+            const selected = app.selectedBodyParts.includes(id);
+            const escapedId = app._escapeHtml(id);
+            const jsId = app._escapeJsString(id);
+            return `<div class="option-card${selected ? ' selected' : ''}" role="button" tabindex="0" aria-pressed="${selected ? 'true' : 'false'}" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-trait" data-create-option="${escapedId}" data-part="${escapedId}" onclick="App.toggleBodyPart('${jsId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                        <div style="font-weight:600;color:var(--text-primary)">${app._escapeHtml(part.label)}</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${app._escapeHtml(part.desc)}</div>
+                    </div>`;
+        }).join('');
     },
 
     renderProviderCreationOptions(app, options = CONTENT?.getCreationOptions?.() || []) {
@@ -169,7 +211,7 @@ const YAW_CREATE_FLOW = {
         grid.innerHTML = options.map(option => {
             const selected = app.selectedParts.includes(option.value) ? ' selected' : '';
             const icon = option.icon ? `<div class="create-option-icon" aria-hidden="true">${app._escapeHtml(option.icon)}</div>` : '';
-            return `<div class="option-card${selected}" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-provider-option" data-create-option="${app._escapeHtml(option.id)}" data-part="${app._escapeHtml(option.value)}" onclick="App.selectPart('${app._escapeJsString(option.value)}');App.updateAnatomyUI()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+            return `<div class="option-card${selected}" role="button" tabindex="0" aria-pressed="${selected ? 'true' : 'false'}" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-provider-option" data-create-option="${app._escapeHtml(option.id)}" data-part="${app._escapeHtml(option.value)}" onclick="App.selectPart('${app._escapeJsString(option.value)}');App.updateAnatomyUI()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                 ${icon}<div style="font-weight:600;color:var(--text-primary)">${app._escapeHtml(option.label)}</div>
                 ${option.description ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">${app._escapeHtml(option.description)}</div>` : ''}
             </div>`;
@@ -192,6 +234,12 @@ const YAW_CREATE_FLOW = {
         const species = app.species.find(s => s.id === app.selectedSpecies);
         const baseStats = app._getSpeciesBaseStats(app.selectedSpecies);
         const parts = [...app.selectedParts];
+        const creationOptions = {};
+        for (const option of CONTENT?.getCreationOptions?.() || []) {
+            if (!parts.includes(option.value)) continue;
+            if (!creationOptions[option.provider]) creationOptions[option.provider] = {};
+            creationOptions[option.provider][option.id] = option.value;
+        }
         const bodyParts = [...app.selectedBodyParts];
         const hasCock = parts.includes('cock');
         const hasClit = parts.includes('clit');
@@ -206,6 +254,7 @@ const YAW_CREATE_FLOW = {
             icon: species.icon, gender: app.selectedGender,
             identity: app.selectedGender, parts: hasCock ? 'cock' : (hasClit ? 'clit' : null),
             chest: hasTits ? 'tits' : (hasPecs ? 'pecs' : null), bothParts: hasCock && hasClit,
+            creationOptions,
             bodyParts: bodyParts, size: app.SPECIES_SIZE[app.selectedSpecies] || 4, appetite: 4,
             level: 1, xp: 0, xpToNext: 100, gold: 0,
             MPun: maxPun, CPun: maxPun, MPle: maxPle, CPle: Math.floor(maxPle * 0.5),
@@ -224,7 +273,7 @@ const YAW_CREATE_FLOW = {
         app.largeMapRadius = 8;
         app.timeHour = 8;
         app.dayCount = 0;
-        app.log = [{ text: 'Welcome to the world, ' + name + '.', type: 'discovery' }];
+        app.log = [{ text: app._label('log.welcomeWorld', 'Welcome to the world, {name}.', { name }), type: 'discovery' }];
         app.tileEvents = [];
         app.worldMap = new Map();
         app.exploredTiles = new Set();

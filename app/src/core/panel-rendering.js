@@ -36,9 +36,14 @@ const YAW_PANEL_RENDERING = {
         }
         this.syncDetailToggle(app, 'party');
         app.renderMobilePartyStrip();
+        if (app.mobileRosterOpen) YAW_PANEL_SHELL.renderRoster(app);
     },
 
     showPartyDetail(app, title, html) {
+        const isMobile = typeof window !== 'undefined' && Number(window.innerWidth || 0) > 0 && window.innerWidth <= 1024;
+        if (isMobile && document.getElementById('mobile-roster-sheet')) {
+            return YAW_PANEL_SHELL.showRosterDetail(app, app.combatState?.active ? 'allies' : 'party', title, html);
+        }
         const label = app._escapeHtml(title || app._label('ui.party', 'Party'));
         const detail = `<div class="party-panel-detail" data-surface-role="actor-detail" role="region" aria-label="${label}">${html || ''}</div>`;
         const container = document.getElementById('party-content');
@@ -46,7 +51,6 @@ const YAW_PANEL_RENDERING = {
         if (container) container.innerHTML = detail;
         if (mobileStrip) mobileStrip.innerHTML = detail;
         const panel = document.getElementById('panel-party');
-        const isMobile = typeof window !== 'undefined' && Number(window.innerWidth || 0) > 0 && window.innerWidth <= 1024;
         if (isMobile && panel) {
             document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(panelEl => panelEl.classList.remove('active'));
             panel.classList.add('active');
@@ -92,6 +96,9 @@ const YAW_PANEL_RENDERING = {
     },
 
     closeDetails(app, panel = 'party') {
+        if (app.mobileRosterDetail && typeof window !== 'undefined' && window.innerWidth <= 1024) {
+            return YAW_PANEL_SHELL.clearRosterDetail(app);
+        }
         this.clearLegacyCenterActions();
         if (panel === 'party') app.renderParty();
         if (panel === 'creature') app.renderCreatures();
@@ -139,9 +146,14 @@ const YAW_PANEL_RENDERING = {
         }
         this.syncDetailToggle(app, 'creature');
         app.renderMobileCreatureStrip();
+        if (app.mobileRosterOpen) YAW_PANEL_SHELL.renderRoster(app);
     },
 
     showCreatureDetail(app, title, html) {
+        const isMobile = typeof window !== 'undefined' && Number(window.innerWidth || 0) > 0 && window.innerWidth <= 1024;
+        if (isMobile && document.getElementById('mobile-roster-sheet')) {
+            return YAW_PANEL_SHELL.showRosterDetail(app, app.combatState?.active ? 'enemies' : 'here', title, html);
+        }
         const label = app._escapeHtml(title || app._label('ui.creatures', 'Creatures'));
         const detail = `<div class="party-panel-detail creature-panel-detail" data-surface-role="target-detail" role="region" aria-label="${label}">${html || ''}</div>`;
         const container = document.getElementById('enemies-content');
@@ -151,7 +163,6 @@ const YAW_PANEL_RENDERING = {
         if (mobileStrip) mobileStrip.innerHTML = detail;
         if (mobileCard) mobileCard.style.display = 'block';
         const panel = document.getElementById('panel-enemies');
-        const isMobile = typeof window !== 'undefined' && Number(window.innerWidth || 0) > 0 && window.innerWidth <= 1024;
         if (isMobile && panel) {
             document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(panelEl => panelEl.classList.remove('active'));
             panel.classList.add('active');

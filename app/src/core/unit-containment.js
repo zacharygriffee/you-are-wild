@@ -109,20 +109,115 @@ const YAW_UNIT_CONTAINMENT = {
         return app.containerProfiles[containerId] || this.defaultContainerProfiles().stomach;
     },
 
+    serviceKind(app, unit) {
+        if (!unit) return null;
+        if (unit.disposition === app?.DISPOSITION?.MERCHANT) return 'merchant';
+        if (unit.disposition === app?.DISPOSITION?.QUEST_GIVER || unit.quest) return 'quest';
+        return null;
+    },
+
+    overworldServiceOrigin(tile = null, structureId = '') {
+        if (!tile || !Number.isFinite(Number(tile.x)) || !Number.isFinite(Number(tile.y))) return null;
+        return {
+            version: 1,
+            scope: 'overworld',
+            x: Number(tile.x),
+            y: Number(tile.y),
+            structureId: String(structureId || tile.structure || '')
+        };
+    },
+
+    currentServiceLocation(app) {
+        if (!app) return null;
+        if (app.inInterior && app.activeInterior) {
+            const origin = app.activeInterior.origin || app.interiorEntrySurface || app.location || {};
+            return {
+                version: 1,
+                scope: 'interior',
+                x: Number(origin.x || 0),
+                y: Number(origin.y || 0),
+                structureId: String(app.activeInterior.structure || ''),
+                interiorId: String(app.activeInterior.id || ''),
+                roomX: Number(app.interiorLocation?.x || 0),
+                roomY: Number(app.interiorLocation?.y || 0)
+            };
+        }
+        const tile = app._currentOverworldTile?.() || app.getTile?.(app.location?.x || 0, app.location?.y || 0) || app.location;
+        return this.overworldServiceOrigin(tile, tile?.structure || '');
+    },
+
+    serviceOriginMatches(app, origin = null) {
+        if (!origin || typeof origin !== 'object') return false;
+        const current = this.currentServiceLocation(app);
+        if (!current || String(origin.scope || 'overworld') !== current.scope) return false;
+        if (Number(origin.x) !== current.x || Number(origin.y) !== current.y) return false;
+        if (String(origin.structureId || '') !== String(current.structureId || '')) return false;
+        if (current.scope === 'interior') {
+            if (String(origin.interiorId || '') !== String(current.interiorId || '')) return false;
+            if (Number(origin.roomX) !== current.roomX || Number(origin.roomY) !== current.roomY) return false;
+        }
+        return true;
+    },
+
+    captureServiceOrigin(app, unit) {
+        if (!this.serviceKind(app, unit)) return null;
+        if (!unit.serviceOrigin || typeof unit.serviceOrigin !== 'object') {
+            unit.serviceOrigin = this.currentServiceLocation(app);
+        }
+        return unit.serviceOrigin || null;
+    },
+
+    suspendService(app, unit) {
+        if (!this.serviceKind(app, unit)) return false;
+        this.captureServiceOrigin(app, unit);
+        unit.serviceSuspended = true;
+        return true;
+    },
+
+    refreshReleasedService(app, unit) {
+        if (!this.serviceKind(app, unit)) return false;
+        unit.serviceSuspended = !this.serviceOriginMatches(app, unit.serviceOrigin);
+        return !unit.serviceSuspended;
+    },
+
+    serviceAvailable(app, unit) {
+        if (!this.serviceKind(app, unit)) return false;
+        if (unit.serviceSuspended !== true) return true;
+        if (!this.serviceOriginMatches(app, unit.serviceOrigin)) return false;
+        unit.serviceSuspended = false;
+        app?.markAutoSaveDirty?.(['currentTile', 'worldTiles'], 'service-returned-home');
+        return true;
+    },
+
     createPrey(app, target, extra = {}) {
+        this.suspendService(app, target);
         const containerId = extra.containerId || (extra.inWomb ? 'womb' : extra.inCock ? 'balls' : 'stomach');
         const entryVerb = extra.entryVerb || (containerId === 'stomach' ? 'swallow' : containerId);
+        const capturedPun = Number.isFinite(target.CPun) ? Math.max(1, target.CPun) : Math.max(1, target.MPun || 1);
         const prey = {
             ...target,
             alive: true,
             inStomach: containerId === 'stomach' && !extra.inWomb && !extra.inCock,
             inWomb: extra.inWomb || false,
             inCock: extra.inCock || false,
+            containerId,
+            entryVerb,
+            state: 'contained',
+            progress: 0,
             digestionProgress: 0,
             digestionState: 'contained',
-            capturedPun: Number.isFinite(target.CPun) ? target.CPun : target.MPun || 1,
+            releaseEligible: true,
+            capturedPun,
+            vitalMax: capturedPun,
+            vitalRemaining: capturedPun,
+            vitalDamageTaken: 0,
             originalStats: this.captureVitalProfile(target),
             statDrain: this.emptyStatDrain(),
+            nutritionReliefMax: undefined,
+            nutritionReliefApplied: 0,
+            nutritionReliefRemainder: 0,
+            initialSatietyApplied: false,
+            temporaryStatEffects: [],
             willingSacrifice: extra.willingSacrifice || false,
             forcedFed: extra.forcedFed || false,
             by: extra.by || null
@@ -233,6 +328,27 @@ const YAW_UNIT_CONTAINMENT = {
         const actual = before - holder.hunger;
         prey.nutritionReliefApplied = applied + requested;
         return actual;
+    },
+
+    digestionPaceState(app, holder, containerId = 'stomach') {
+        const config = this.containerConfigs().find(entry => entry.key === containerId);
+        if (!config) return null;
+        const baseRate = app?.settings?.slowDigestion ? config.slowRate : config.fastRate;
+        if (containerId !== 'stomach' || typeof app?._digestionRateState !== 'function') {
+            return { hunger: Number(holder?.hunger || 0), baseRate, multiplier: 1, rate: baseRate, pace: 'steady', label: app?._label?.('containment.digestionPace.steady', 'Steady') || 'Steady' };
+        }
+        return app._digestionRateState(holder, baseRate);
+    },
+
+    digestionPaceText(app, holder, containerId = 'stomach') {
+        if (containerId !== 'stomach') return '';
+        const state = this.digestionPaceState(app, holder, containerId);
+        if (!state) return '';
+        const rate = Number.isInteger(state.rate) ? String(state.rate) : String(Number(state.rate.toFixed(2)));
+        return app._label('containment.digestionPace', 'Digestion pace: {pace} ({rate}%/tick)', {
+            pace: state.label,
+            rate
+        });
     },
 
     normalizeContainer(app, holder, containerId = 'stomach') {
@@ -376,12 +492,34 @@ const YAW_UNIT_CONTAINMENT = {
         return record.depleted || record.edibleRemaining <= 0;
     },
 
-    summary(record) {
+    stateLabel(app, state = 'contained') {
+        const normalized = String(state || 'contained');
+        const fallbacks = {
+            contained: 'Contained', digesting: 'Digesting', softened: 'Softened', terminal: 'Terminal',
+            digested: 'Digested', released: 'Released', passed: 'Passed', depleted: 'Depleted'
+        };
+        return app?._label?.(`containment.state.${normalized}`, fallbacks[normalized] || normalized) || fallbacks[normalized] || normalized;
+    },
+
+    integrityLabel(app, integrity = 'intact') {
+        const normalized = String(integrity || 'intact');
+        const fallbacks = { intact: 'Intact', damaged: 'Damaged' };
+        return app?._label?.(`containment.integrity.${normalized}`, fallbacks[normalized] || normalized) || fallbacks[normalized] || normalized;
+    },
+
+    summary(app, record) {
         if (!record) return '';
         const ratio = Math.round(this.vitalRatio(record) * 100);
         const state = this.normalizedState(record);
-        const release = record.releaseEligible && ratio > 0 ? 'releasable' : 'not releasable';
-        return `${state} · vitality ${ratio}% · ${release}`;
+        const release = record.releaseEligible && ratio > 0
+            ? app._label('containment.summary.releasable', 'Releasable')
+            : app._label('containment.summary.notReleasable', 'Not releasable');
+        return app._label('containment.summary', '{state} · {vitality} {ratio}% · {release}', {
+            state: this.stateLabel(app, state),
+            vitality: app._label('containment.vitality', 'Vitality'),
+            ratio,
+            release
+        });
     },
 
     containerLabel(app, container = 'stomach') {
@@ -427,6 +565,7 @@ const YAW_UNIT_CONTAINMENT = {
             const entryHtml = entries.length
                 ? entries.map(({ prey, index, state }) => {
                     const name = prey.name || app._label('containment.unknownPrey', 'Contained creature');
+                    const stateText = this.stateLabel(app, state);
                     const vital = Math.round(this.vitalRatio(prey) * 100);
                     const progress = Math.round(prey.progress ?? prey.digestionProgress ?? 0);
                     const canRelease = canManage && this.canReleaseFromVitalState(prey);
@@ -442,10 +581,11 @@ const YAW_UNIT_CONTAINMENT = {
                     const digestDisabled = canDigest ? '' : ' disabled aria-disabled="true"';
                     const containerArg = app._escapeJsString(container);
                     const inspectTitle = app._escapeHtml(app._label('containment.inspectTitle', 'Inspect {name}', { name }));
+                    const paceText = this.digestionPaceText(app, holder, container);
                     return `<div class="container-inventory-entry" data-contained-id="${app._escapeHtml(prey.containedId || prey.id || prey.name || String(index))}" data-contained-state="${app._escapeHtml(state)}">
                         <div class="container-entry-main">
                             <div class="container-entry-name">${app._escapeHtml(prey.icon || '')} ${app._escapeHtml(name)}</div>
-                            <div class="container-entry-meta">${app._escapeHtml(state)} · ${app._escapeHtml(app._label('containment.vitality', 'Vitality'))} ${vital}% · ${app._escapeHtml(app._label('containment.progress', 'Progress'))} ${progress}%</div>
+                            <div class="container-entry-meta">${app._escapeHtml(stateText)} · ${app._escapeHtml(app._label('containment.vitality', 'Vitality'))} ${vital}% · ${app._escapeHtml(app._label('containment.progress', 'Progress'))} ${progress}%${paceText ? ` · ${app._escapeHtml(paceText)}` : ''}</div>
                         </div>
                         <div class="container-entry-actions" data-command-surface="container-inventory" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-grammar="container-management">
                             <button class="action-btn" data-command-control="inspect-contained" title="${inspectTitle}" aria-label="${inspectTitle}" onclick="event.stopPropagation();App.inspectContained('${holderArg}',${holderIndex},'${containerArg}',${index})">${app._escapeHtml(app._label('containment.inspect', 'Inspect'))}</button>
@@ -466,13 +606,14 @@ const YAW_UNIT_CONTAINMENT = {
                 const containerArg = app._escapeJsString(container);
                 const consumedHtml = consumedEntries.map(({ prey, index, state }) => {
                     const name = prey.name || app._label('containment.unknownPrey', 'Contained creature');
+                    const stateText = this.stateLabel(app, state);
                     const vital = Math.round(this.vitalRatio(prey) * 100);
                     const progress = Math.round(prey.progress ?? prey.digestionProgress ?? 0);
                     const inspectTitle = app._escapeHtml(app._label('containment.inspectConsumedTitle', 'Inspect consumed {name}', { name }));
                     return `<div class="container-inventory-entry consumed-entry" data-contained-id="${app._escapeHtml(prey.containedId || prey.id || prey.name || String(index))}" data-contained-state="${app._escapeHtml(state)}" data-contained-list="consumed">
                         <div class="container-entry-main">
                             <div class="container-entry-name">${app._escapeHtml(prey.icon || '')} ${app._escapeHtml(name)}</div>
-                            <div class="container-entry-meta">${app._escapeHtml(label)} · ${app._escapeHtml(state)} · ${app._escapeHtml(app._label('containment.vitality', 'Vitality'))} ${vital}% · ${app._escapeHtml(app._label('containment.progress', 'Progress'))} ${progress}%</div>
+                            <div class="container-entry-meta">${app._escapeHtml(label)} · ${app._escapeHtml(stateText)} · ${app._escapeHtml(app._label('containment.vitality', 'Vitality'))} ${vital}% · ${app._escapeHtml(app._label('containment.progress', 'Progress'))} ${progress}%</div>
                         </div>
                         <div class="container-entry-actions" data-command-surface="container-inventory" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-grammar="container-management">
                             <button class="action-btn" data-command-control="inspect-contained" title="${inspectTitle}" aria-label="${inspectTitle}" onclick="event.stopPropagation();App.inspectContained('${holderArg}',${holderIndex},'${containerArg}',${index})">${app._escapeHtml(app._label('containment.inspect', 'Inspect'))}</button>
@@ -549,8 +690,10 @@ const YAW_UNIT_CONTAINMENT = {
         this.normalizeRecord(app, holder, prey, container);
         const title = `${prey.icon || ''} ${prey.name || app._label('containment.unknownPrey', 'Contained creature')}`;
         const state = this.normalizedState(prey);
+        const stateText = this.stateLabel(app, state);
         const vital = Math.round(this.vitalRatio(prey) * 100);
         const progress = Math.round(prey.progress ?? prey.digestionProgress ?? 0);
+        const paceText = this.digestionPaceText(app, holder, container);
         const containerLabel = this.containerLabel(app, container);
         const backText = app._label('inventory.back', 'Back');
         const releaseText = app._label('containment.release', 'Release');
@@ -573,8 +716,8 @@ const YAW_UNIT_CONTAINMENT = {
                 <div class="holdings-entry">
                     <div class="holding-entry-main">
                         <strong>${app._escapeHtml(prey.name || app._label('containment.unknownPrey', 'Contained creature'))}</strong>
-                        <div class="holding-entry-meta">${app._escapeHtml(state)} · ${app._escapeHtml(app._label('containment.vitality', 'Vitality'))} ${vital}% · ${app._escapeHtml(app._label('containment.progress', 'Progress'))} ${progress}%</div>
-                        <div class="holding-entry-meta">${app._escapeHtml(app._label('containment.integrity', 'Integrity'))}: ${app._escapeHtml(prey.integrity || 'intact')} · ${app._escapeHtml(app._label('containment.releaseEligible', 'Release'))}: ${releaseAvailable ? app._escapeHtml(app._label('ui.yes', 'Yes')) : app._escapeHtml(app._label('ui.no', 'No'))}</div>
+                        <div class="holding-entry-meta">${app._escapeHtml(stateText)} · ${app._escapeHtml(app._label('containment.vitality', 'Vitality'))} ${vital}% · ${app._escapeHtml(app._label('containment.progress', 'Progress'))} ${progress}%${paceText ? ` · ${app._escapeHtml(paceText)}` : ''}</div>
+                        <div class="holding-entry-meta">${app._escapeHtml(app._label('containment.integrity', 'Integrity'))}: ${app._escapeHtml(this.integrityLabel(app, prey.integrity || 'intact'))} · ${app._escapeHtml(app._label('containment.releaseEligible', 'Release'))}: ${releaseAvailable ? app._escapeHtml(app._label('ui.yes', 'Yes')) : app._escapeHtml(app._label('ui.no', 'No'))}</div>
                     </div>
                 </div>
                 <div class="holding-entry-actions">${releaseButton}${digestButton}<button class="nav-btn" data-command-surface="container-inspect" data-command-control="back-holdings" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="App.setHoldingsTab ? App.setHoldingsTab('containers') : App.showInventory()">${backLabel}</button></div>
@@ -595,7 +738,9 @@ const YAW_UNIT_CONTAINMENT = {
         const { holder } = this.resolveHolder(app, holderType, holderIndex);
         if (!holder) return false;
         if (!this.canManageContainerEntry(app, holder)) {
-            app.log?.push?.({ text: this.containerLabel(app, container) + ': only the current combat actor can release contained creatures.', type: 'combat' });
+            app.log?.push?.({ text: app._label('containment.releaseCurrentActorOnly', '{container}: only the current combat actor can release contained creatures.', {
+                container: this.containerLabel(app, container)
+            }), type: 'combat' });
             app.renderLog?.();
             return false;
         }
@@ -604,18 +749,26 @@ const YAW_UNIT_CONTAINMENT = {
         if (!prey) return false;
         this.normalizeRecord(app, holder, prey, container);
         if (!this.canReleaseFromVitalState(prey)) {
-            app.log?.push?.({ text: `${prey.name || 'Contained creature'} cannot be released now.`, type: app.combatState?.active ? 'combat' : 'discovery' });
+            app.log?.push?.({ text: app._label('containment.releaseUnavailable', '{name} cannot be released now.', {
+                name: prey.name || app._label('containment.unknownPrey', 'Contained creature')
+            }), type: app.combatState?.active ? 'combat' : 'discovery' });
             this.refreshAfterContainerCommand(app, holderType);
             return false;
         }
         list.splice(containedIndex, 1);
         this.releaseFromVitalState(prey);
+        this.refreshReleasedService(app, prey);
         if (!Array.isArray(app.creatures)) app.creatures = [];
         if (!app.creatures.includes(prey)) app.creatures.push(prey);
+        app._syncCurrentTileCreatures?.();
         this.emitContainmentBeat(app, 'released', holder, prey, {
             deltas: [{ kind: 'state', state: 'released', unit: prey.name }]
         });
-        app.log?.push?.({ text: `${prey.name || 'Contained creature'} released from ${holder.name || 'holder'} ${this.containerLabel(app, container)} at reduced condition.`, type: app.combatState?.active ? 'combat' : 'discovery' });
+        app.log?.push?.({ text: app._label('containment.releaseLog', "{target} is released from {holder}'s {container} at reduced condition.", {
+            target: prey.name || app._label('containment.unknownPrey', 'Contained creature'),
+            holder: holder.name || app._label('containment.holderFallback', 'holder'),
+            container: this.containerLabel(app, container)
+        }), type: app.combatState?.active ? 'combat' : 'discovery' });
         const resumedCombat = this.resumeCombatAfterRelease(app, prey);
         this.refreshAfterContainerCommand(app, holderType);
         app.markAutoSaveDirty?.(['manifest', 'party', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'containment-release');
@@ -628,7 +781,9 @@ const YAW_UNIT_CONTAINMENT = {
         const { holder } = this.resolveHolder(app, holderType, holderIndex);
         if (!holder) return false;
         if (!this.canManageContainerEntry(app, holder)) {
-            app.log?.push?.({ text: this.containerLabel(app, container) + ': only the current combat actor can digest contained creatures.', type: 'combat' });
+            app.log?.push?.({ text: app._label('containment.digestCurrentActorOnly', '{container}: only the current combat actor can digest contained creatures.', {
+                container: this.containerLabel(app, container)
+            }), type: 'combat' });
             app.renderLog?.();
             return false;
         }
@@ -637,14 +792,20 @@ const YAW_UNIT_CONTAINMENT = {
         if (!prey) return false;
         this.normalizeRecord(app, holder, prey, container);
         if (['softened', 'terminal', 'digested', 'released', 'passed', 'depleted'].includes(this.normalizedState(prey))) {
-            app.log?.push?.({ text: `${prey.name || 'Contained creature'} cannot be digested further.`, type: app.combatState?.active ? 'combat' : 'discovery' });
+            app.log?.push?.({ text: app._label('containment.digestFurtherUnavailable', '{target} cannot be digested further.', {
+                target: prey.name || app._label('containment.unknownPrey', 'Contained creature')
+            }), type: app.combatState?.active ? 'combat' : 'discovery' });
             this.refreshAfterContainerCommand(app, holderType);
             return false;
         }
         prey.progress = 100;
         prey.digestionProgress = 100;
         this.terminalize(app, holder, prey, { key: container });
-        app.log?.push?.({ text: `${holder.name || 'Holder'} digests ${prey.name || 'contained creature'} in ${this.containerLabel(app, container)}.`, type: app.combatState?.active ? 'combat' : 'discovery' });
+        app.log?.push?.({ text: app._label('containment.digestLog', '{holder} digests {target} in {container}.', {
+            holder: holder.name || app._label('containment.holderFallback', 'Holder'),
+            target: prey.name || app._label('containment.targetFallback', 'contained creature'),
+            container: this.containerLabel(app, container)
+        }), type: app.combatState?.active ? 'combat' : 'discovery' });
         this.refreshAfterContainerCommand(app, holderType);
         app.markAutoSaveDirty?.(['manifest', 'party', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'containment-digest');
         app.autoSave?.();
@@ -654,14 +815,14 @@ const YAW_UNIT_CONTAINMENT = {
 
     emitContainmentBeat(app, kind, holder, prey, options = {}) {
         if (!app || typeof app.emitSceneBeat !== 'function' || !prey || !holder) return null;
-        const targetName = prey.name || 'the contained creature';
-        const holderName = holder.name || 'their holder';
+        const targetName = prey.name || app._label('containment.targetFallback', 'the contained creature');
+        const holderName = holder.name || app._label('containment.holderFallback', 'their holder');
         const summaries = {
-            contained: `${targetName} is held in ${holderName}'s stomach.`,
-            digesting: `${targetName} weakens while held in ${holderName}'s stomach.`,
-            softened: `${targetName} is fully softened inside ${holderName}, but remains alive and can be released.`,
-            released: `${targetName} is released from ${holderName}'s stomach, weakened but alive.`,
-            terminal: `${targetName} is fully digested inside ${holderName}. ${holderName} feels restored.`
+            contained: app._label('containment.beat.contained', "{target} is held in {holder}'s stomach.", { target: targetName, holder: holderName }),
+            digesting: app._label('containment.beat.digesting', "{target} weakens while held in {holder}'s stomach.", { target: targetName, holder: holderName }),
+            softened: app._label('containment.beat.softened', '{target} is fully softened inside {holder}, but remains alive and can be released.', { target: targetName, holder: holderName }),
+            released: app._label('containment.beat.released', "{target} is released from {holder}'s stomach, weakened but alive.", { target: targetName, holder: holderName }),
+            terminal: app._label('containment.beat.terminal', '{target} is fully digested inside {holder}. {holder} feels restored.', { target: targetName, holder: holderName })
         };
         return app.emitSceneBeat({
             mode: app.combatState?.active ? 'combat' : 'adventure',
@@ -733,7 +894,10 @@ const YAW_UNIT_CONTAINMENT = {
             if (!prey.softenedSceneBeatEmitted) {
                 prey.softenedSceneBeatEmitted = true;
                 this.emitContainmentBeat(app, 'softened', holder, prey, { deltas });
-                app?.log?.push?.({ text: `${prey.name} is fully softened inside ${holder.name} and can be released alive.`, type: 'combat' });
+                app?.log?.push?.({ text: app._label('containment.softenedLog', '{target} is fully softened inside {holder} and can be released alive.', {
+                    target: prey.name || app._label('containment.targetFallback', 'the contained creature'),
+                    holder: holder.name || app._label('containment.holderFallback', 'their holder')
+                }), type: 'combat' });
             }
             if (isPlayer) app?._resolvePlayerState?.({ status: 'captured', terminal: false, cause: 'survivable-containment', source: 'unit-containment' });
             return prey;
@@ -752,7 +916,10 @@ const YAW_UNIT_CONTAINMENT = {
         if (!prey.terminalSceneBeatEmitted) {
             prey.terminalSceneBeatEmitted = true;
             this.emitContainmentBeat(app, 'terminal', holder, prey, { deltas });
-            app?.log?.push?.({ text: `${prey.name} reaches terminal digestion inside ${holder.name}.`, type: 'combat' });
+            app?.log?.push?.({ text: app._label('containment.terminalLog', '{target} reaches terminal digestion inside {holder}.', {
+                target: prey.name || app._label('containment.targetFallback', 'the contained creature'),
+                holder: holder.name || app._label('containment.holderFallback', 'their holder')
+            }), type: 'combat' });
         }
         if (isPlayer) app?._handlePlayerFall?.({ fatal: true, cause: 'fatal-digestion', source: 'unit-containment' });
         return prey;
@@ -803,9 +970,19 @@ const YAW_UNIT_CONTAINMENT = {
             if (!this.isActiveContained(prey, config.key) || prey[config.flag] === false) continue;
             this.ensureStatDrain(prey);
             if (config.advanceContained && prey.digestionState === 'contained') prey.digestionState = 'digesting';
-            const rate = app.settings.slowDigestion ? config.slowRate : config.fastRate;
             const beforeProgress = Math.max(0, Number(prey.progress || prey.digestionProgress || 0));
-            prey.progress = Math.min(100, beforeProgress + rate * ticks);
+            const baseRate = app.settings.slowDigestion ? config.slowRate : config.fastRate;
+            if (config.key === 'stomach' && typeof app._digestionRateState === 'function') {
+                prey.progress = beforeProgress;
+                for (let tick = 0; tick < ticks && prey.progress < 100; tick++) {
+                    const rateState = app._digestionRateState(unit, baseRate);
+                    const step = Math.min(100 - prey.progress, rateState.rate);
+                    prey.progress += step;
+                    this.applyDigestionNutrition(app, unit, prey, step);
+                }
+            } else {
+                prey.progress = Math.min(100, beforeProgress + baseRate * ticks);
+            }
             prey.digestionProgress = prey.progress;
             prey.state = prey.progress > 0 ? 'digesting' : 'contained';
             prey.digestionState = prey.state;
@@ -816,7 +993,9 @@ const YAW_UNIT_CONTAINMENT = {
             }
             const conditionDrain = Math.max(1, Math.floor(progressDelta * 0.4));
             this.applyVitalDamage(prey, conditionDrain, { source: 'digestion-tick' });
-            this.applyDigestionNutrition(app, unit, prey, progressDelta);
+            if (config.key !== 'stomach' || typeof app._digestionRateState !== 'function') {
+                this.applyDigestionNutrition(app, unit, prey, progressDelta);
+            }
             if (app.settings.statAbsorption) {
                 app._absorbStats(unit, progressDelta, config.stats);
             }

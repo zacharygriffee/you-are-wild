@@ -25,9 +25,9 @@ const YAW_COMBAT_LIFECYCLE = {
             .sort((a, b) => b.initiative - a.initiative);
         app.combatState.currentTurn = 0;
         const ambushers = enemies.filter(e => e.ambushReady);
-        if (ambushers.length > 0) app._pushLog(`${ambushers.map(e => e.name).join(', ')} ambush from hiding!`, 'combat', { phase: 'start' });
-        app._pushLog(`Combat! Order: ${app.combatState.turnQueue.map(e => e.unit.name).join(', ')}`, 'combat', { phase: 'start' });
-        app.updateScene(`Round 1`, `Combat started!`, true);
+        if (ambushers.length > 0) app._pushLog(app._label('combat.ambushStart', '{names} ambush from hiding!', { names: ambushers.map(e => e.name).join(', ') }), 'combat', { phase: 'start' });
+        app._pushLog(app._label('combat.orderStart', 'Combat! Order: {names}', { names: app.combatState.turnQueue.map(e => e.unit.name).join(', ') }), 'combat', { phase: 'start' });
+        app.updateScene(app._label('combat.roundTitle', 'Round {round}', { round: 1 }), app._label('combat.started', 'Combat started!'), true);
         const rangedBackRowEnemies = enemies.filter(unit => unit?.CPun > 0 && unit.ranged && unit.combatRow === 'back');
         if (rangedBackRowEnemies.length && typeof app.emitStoryResult === 'function') {
             const names = rangedBackRowEnemies.map(unit => unit.name || app._label('unit.generic', 'unit')).join(', ');
@@ -102,30 +102,30 @@ const YAW_COMBAT_LIFECYCLE = {
         if (outcome === 'victory') {
             app.log.push({ text: app._label(pendingPlayerDeath ? 'combat.companionsVictoryAfterDeath' : 'combat.victory', pendingPlayerDeath ? 'Your companions finish the battle, but you did not survive.' : 'Victory! Enemies defeated or subdued.'), type: pendingPlayerDeath ? 'combat' : 'discovery' });
             const texts = [
-                'The battlefield falls silent.',
-                'Your enemies lie defeated.',
-                'Another victory, another meal.',
-                'You emerge from the chaos unscathed.'
+                app._label('combat.victoryScene.silent', 'The battlefield falls silent.'),
+                app._label('combat.victoryScene.defeated', 'Your enemies lie defeated.'),
+                app._label('combat.victoryScene.meal', 'Another victory, another meal.'),
+                app._label('combat.victoryScene.unscathed', 'You emerge from the chaos unscathed.')
             ];
             const roll = app._combatStateRoll('combat-victory-scene', app.player, 'victory-text');
             const index = Math.min(texts.length - 1, Math.floor(roll * texts.length));
-            app.updateScene('Victory', texts[index], false);
+            app.updateScene(app._label('combat.victoryTitle', 'Victory'), texts[index], false);
             if (!pendingPlayerDeath) app.gainXP(app.combatState.xpEarned || app.XP_REWARDS.defeatEnemy);
             for (const c of pendingPlayerDeath ? [] : app.creatures) {
                 if (c.disposition === app.DISPOSITION.FRIENDLY && c.CPun > 0) {
-                    app.log.push({ text: `${c.name} looks ready to follow you...`, type: 'discovery' });
+                    app.log.push({ text: app._label('combat.friendlyReady', '{name} looks ready to follow you...', { name: c.name }), type: 'discovery' });
                 }
             }
             if (!pendingPlayerDeath) app._runPostCombatScavengers();
         } else if (outcome === 'flee') {
             app.log.push({ text: app._label('combat.escapedEncounter', 'You escaped the encounter.'), type: 'move' });
-            app.updateScene('Escaped', 'You put distance between yourself and danger.', false);
+            app.updateScene(app._label('combat.escapedTitle', 'Escaped'), app._label('combat.escapedScene', 'You put distance between yourself and danger.'), false);
         } else if (outcome === 'disengage') {
             app.log.push({ text: app._label('combat.disengaged', 'The encounter breaks off.'), type: 'move' });
-            app.updateScene('Disengaged', app._label('combat.disengaged', 'The encounter breaks off.'), false);
+            app.updateScene(app._label('combat.disengagedTitle', 'Disengaged'), app._label('combat.disengaged', 'The encounter breaks off.'), false);
         } else {
             app.log.push({ text: app._label('combat.defeat', 'Defeat...'), type: 'combat' });
-            app.updateScene('Defeat', 'Darkness claims you...', false);
+            app.updateScene(app._label('combat.defeatTitle', 'Defeat'), app._label('combat.defeatScene', 'Darkness claims you...'), false);
         }
         if (!pendingPlayerDeath && outcome !== 'defeat') app.renderMap();
         app.renderLog();

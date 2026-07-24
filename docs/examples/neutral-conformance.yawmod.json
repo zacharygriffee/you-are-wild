@@ -1,0 +1,29 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_neutral_conformance",
+  "gameVersion": "0.14.0",
+  "module": {
+    "manifest": {
+      "id": "yaw_neutral_conformance",
+      "name": "You Are Wild: Neutral Module Conformance",
+      "version": "1.0.0",
+      "minGameVersion": "0.14.0",
+      "description": "Development fixture proving owned locale, creation, Play variant, and Scene Feed contributions.",
+      "type": "development_fixture",
+      "contentRating": "safe",
+      "trustBoundary": "trusted-local",
+      "permissions": [
+        "scene:add_template",
+        "content:add_locale",
+        "content:add_creation_option",
+        "content:add_action_variant"
+      ],
+      "dependencies": [],
+      "contentCategories": [],
+      "gameplayVariants": [],
+      "settings": []
+    },
+    "code": "MODS.registerLocaleEntries('en', { 'yaw_neutral_conformance.creation.crest': 'Sun Crest', 'yaw_neutral_conformance.action.shareGreeting': 'Share Greeting' });\nMODS.registerLocaleEntries('es', { 'yaw_neutral_conformance.creation.crest': 'Cresta solar', 'yaw_neutral_conformance.action.shareGreeting': 'Compartir saludo' });\nMODS.registerCreationOption({ id: 'sun-crest', group: 'conformance-crest', value: 'sunburst', label: 'Sun Crest', description: 'A neutral provider-owned creation choice.', icon: '☀️' });\nMODS.registerActionVariant('play', 'shareGreeting', { label: 'Share Greeting', sfwLabel: 'Share Greeting', icon: '👋', scope: 'both', requirements: ['reach'], validate(actor, target) { return Boolean(actor && target); }, execute(actor, target) { return { ok: true, summary: `${actor.name} shares a friendly greeting with ${target.name}.` }; } });\nMODS.registerSceneTemplate({ id: 'friendly-greeting', action: 'shareGreeting', maxTier: 0, priority: 80, summary: '{actors} shares a friendly greeting with {targets}.', passage: '{summary}' });\nMODS.log('Neutral conformance contributions registered.');"
+  }
+}

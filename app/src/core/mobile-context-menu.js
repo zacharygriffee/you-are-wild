@@ -7,7 +7,10 @@ const YAW_MOBILE_CONTEXT_MENU = {
     const unit = app.party[index];
     if (!unit) return;
     app.closeMobileContextMenu();
-    const unitLabel = app._escapeHtml(unit.name || 'party member');
+    const fallbackName = app._label('unit.partyMember', 'party member');
+    const unitName = unit.name || fallbackName;
+    const dialogTitle = app._label('ui.partyActionsFor', 'Party actions for {name}', { name: unitName });
+    const dialogDescription = app._label('ui.partyActionsDescription', "Manage {name}'s holdings, party role, and companion actions.", { name: unitName });
     const role = app._getPartyRole(unit);
     const order = app._getPartyAIOrder(unit);
     const commandControls = {
@@ -24,14 +27,13 @@ const YAW_MOBILE_CONTEXT_MENU = {
     };
     const roleOptions = Object.keys(app.PARTY_ROLES).map(key => `<option value="${key}" ${role === key ? 'selected' : ''}>${app._escapeHtml(app._partyRoleLabel(key))}</option>`).join('');
     const orderOptions = Object.keys(app.PARTY_AI_ORDERS).map(key => `<option value="${key}" ${order === key ? 'selected' : ''}>${app._escapeHtml(app._partyAIOrderLabel(key))}</option>`).join('');
-    const menuLabel = app._label('ui.partyActions', 'Party actions');
     const roleLabel = app._label('party.role', 'Role');
     const orderLabel = app._label('party.aiOrder', 'AI Order');
-    const roleAria = app._label('party.roleFor', 'Party role for {name}', { name: unit.name || 'party member' });
-    const orderAria = app._label('party.aiOrderFor', 'AI order for {name}', { name: unit.name || 'party member' });
+    const roleAria = app._label('party.roleFor', 'Party role for {name}', { name: unitName });
+    const orderAria = app._label('party.aiOrderFor', 'AI order for {name}', { name: unitName });
     const roleDescription = app._partyRoleDescription(role);
     const orderDescription = app._partyAIOrderDescription(order);
-    let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(menuLabel)}" aria-labelledby="mobile-context-menu-title" data-command-surface="detail-management" data-command-mode="exploration"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${unit.icon || ''} ${unitLabel}</div><div class="mobile-context-menu-actions" role="menu" data-command-surface="detail-management" data-command-mode="exploration">`;
+    let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-labelledby="mobile-context-menu-title" aria-describedby="mobile-context-menu-description" data-command-surface="detail-management" data-command-mode="exploration"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${unit.icon || ''} ${app._escapeHtml(dialogTitle)}</div><p class="mobile-context-menu-description" id="mobile-context-menu-description">${app._escapeHtml(dialogDescription)}</p><div class="mobile-context-menu-actions" role="menu" aria-label="${app._escapeHtml(dialogTitle)}" data-command-surface="detail-management" data-command-mode="exploration">`;
     html += actionButton(app._label('ui.holdings', 'Holdings'), 'stats');
     if (unit !== app.player && !unit.mc) {
       if (app._getPartyLeader() !== unit) html += actionButton(app._label('party.makeLeader', 'Make Leader'), 'lead');
@@ -44,6 +46,7 @@ const YAW_MOBILE_CONTEXT_MENU = {
     html += '</div></div>';
     document.body.insertAdjacentHTML('beforeend', html);
     const menu = document.getElementById('mobile-context-menu');
+    YAW_INTENT_MENU.setUnderlyingInert(true);
     app._activateFocusTrap(menu, { close: () => app.closeMobileContextMenu() });
     app._activateOutsideContextDismiss(menu);
   },

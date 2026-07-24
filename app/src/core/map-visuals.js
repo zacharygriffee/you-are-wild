@@ -178,7 +178,7 @@ const YAW_MAP_VISUALS = {
                 baseTilesetKey: 'unknown',
                 kind: 'unknown',
                 classes: 'map-visual-unknown',
-                label: options.label || 'Unknown',
+                label: options.label || app._label('ui.largeMap.unknownTile', 'Unknown'),
                 marker: null,
                 hasPaintedAsset: Boolean(asset?.src),
                 asset
@@ -483,11 +483,12 @@ const YAW_MAP_VISUALS = {
     },
 
     compactTileInfoHtml(app, tile = null) {
+        const detailsLabel = app._escapeHtml(app._label('ui.details', 'Details'));
         if (app.inInterior && app.activeInterior) {
             const room = app._currentInteriorTile();
             const biome = app.biomes[room?.biome] || app.biomes.indoors;
             const phase = app._isNight() ? app._label('ui.tileInfo.night', 'Night') : app._label('ui.tileInfo.day', 'Day');
-            return `<div class="mobile-tile-summary-row"><span><strong>${app._escapeHtml(app._label('ui.tileInfo.title', 'Current Tile'))}</strong> ${biome?.icon || '□'} ${app._escapeHtml(biome?.name || app._label('ui.largeMap.interior', 'Interior'))}</span><button class="nav-btn mobile-tile-details-btn" data-command-surface="tile-details" data-command-mode="navigation" data-command-control="open-tile-details" title="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" aria-label="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" onpointerdown="event.stopPropagation();window.openTileDetails()">Details</button></div>`
+            return `<div class="mobile-tile-summary-row"><span><strong>${app._escapeHtml(app._label('ui.tileInfo.title', 'Current Tile'))}</strong> ${biome?.icon || '□'} ${app._escapeHtml(biome?.name || app._label('ui.largeMap.interior', 'Interior'))}</span><button class="nav-btn mobile-tile-details-btn" data-command-surface="tile-details" data-command-mode="navigation" data-command-control="open-tile-details" title="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" aria-label="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" onpointerdown="event.stopPropagation()">${detailsLabel}</button></div>`
                 + `<div class="mobile-tile-meta-row">${app._escapeHtml(app.activeInterior.structureName)} · ${app.interiorLocation.x}, ${app.interiorLocation.y} · ${app._escapeHtml(app._timeLabel())} ${app._escapeHtml(phase)}</div>`;
         }
         const current = tile || app.getTile(app.location.x, app.location.y);
@@ -495,7 +496,7 @@ const YAW_MAP_VISUALS = {
         const summary = this.tileMapSummary(app, current);
         const phase = app._isNight() ? app._label('ui.tileInfo.night', 'Night') : app._label('ui.tileInfo.day', 'Day');
         const danger = this.dangerPressureLabel(app, summary.danger === 'high' ? 0.66 : (summary.danger === 'elevated' ? 0.36 : 0));
-        return `<div class="mobile-tile-summary-row"><span><strong>${app._escapeHtml(app._label('ui.tileInfo.title', 'Current Tile'))}</strong> ${biome.icon || ''} ${app._escapeHtml(biome.name || current.biome)}</span><button class="nav-btn mobile-tile-details-btn" data-command-surface="tile-details" data-command-mode="navigation" data-command-control="open-tile-details" title="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" aria-label="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" onpointerdown="event.stopPropagation();window.openTileDetails()">Details</button></div>`
+        return `<div class="mobile-tile-summary-row"><span><strong>${app._escapeHtml(app._label('ui.tileInfo.title', 'Current Tile'))}</strong> ${biome.icon || ''} ${app._escapeHtml(biome.name || current.biome)}</span><button class="nav-btn mobile-tile-details-btn" data-command-surface="tile-details" data-command-mode="navigation" data-command-control="open-tile-details" title="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" aria-label="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" onpointerdown="event.stopPropagation()">${detailsLabel}</button></div>`
             + `<div class="mobile-tile-meta-row">${current.x}, ${current.y} · ${app._escapeHtml(app._timeLabel())} ${app._escapeHtml(phase)} · ${app._escapeHtml(app._label('ui.tileInfo.danger', 'Danger'))}: ${app._escapeHtml(danger)}</div>`;
     },
 
@@ -508,6 +509,7 @@ const YAW_MAP_VISUALS = {
             mobileTileInfo.innerHTML = this.compactTileInfoHtml(app, tile);
             mobileTileInfo.querySelector('[data-command-control="open-tile-details"]')?.addEventListener('click', event => {
                 event.preventDefault();
+                event.stopPropagation();
                 app.openTileDetails?.();
             });
         }
@@ -515,13 +517,46 @@ const YAW_MAP_VISUALS = {
         if (mobileDetails) mobileDetails.innerHTML = html;
     },
 
+    setTileDetailsUnderlyingInert(app, sheet, enabled) {
+        if (!sheet?.parentElement) return;
+        if (enabled) {
+            app._tileDetailsInertState = Array.from(sheet.parentElement.children)
+                .filter(element => element !== sheet)
+                .map(element => ({
+                    element,
+                    inert: element.hasAttribute('inert'),
+                    ariaHidden: element.getAttribute('aria-hidden')
+                }));
+            app._tileDetailsInertState.forEach(({ element }) => {
+                element.setAttribute('inert', '');
+                element.setAttribute('aria-hidden', 'true');
+            });
+            return;
+        }
+        (app._tileDetailsInertState || []).forEach(({ element, inert, ariaHidden }) => {
+            if (!element?.isConnected) return;
+            if (inert) element.setAttribute('inert', '');
+            else element.removeAttribute('inert');
+            if (ariaHidden == null) element.removeAttribute('aria-hidden');
+            else element.setAttribute('aria-hidden', ariaHidden);
+        });
+        app._tileDetailsInertState = null;
+    },
+
     openTileDetails(app) {
+        const active = typeof document !== 'undefined' ? document.activeElement : null;
+        app._tileDetailsReturnFocus = active && active !== document.body ? {
+            element: active,
+            control: active.getAttribute?.('data-command-control') || ''
+        } : null;
         this.renderTileInfo(app);
         const sheet = document.getElementById('mobile-tile-details-sheet');
         if (!sheet) return false;
         sheet.hidden = false;
         sheet.setAttribute('aria-hidden', 'false');
         document.getElementById('mobile-play-surface')?.classList?.add('tile-details-open');
+        this.setTileDetailsUnderlyingInert(app, sheet, true);
+        app._activateFocusTrap?.(sheet, { close: () => app.closeTileDetails() });
         app._focusFirstIn?.(sheet);
         return true;
     },
@@ -529,9 +564,28 @@ const YAW_MAP_VISUALS = {
     closeTileDetails(app) {
         const sheet = document.getElementById('mobile-tile-details-sheet');
         if (!sheet) return false;
+        const returnFocus = app._tileDetailsReturnFocus || null;
+        app._tileDetailsReturnFocus = null;
         sheet.hidden = true;
         sheet.setAttribute('aria-hidden', 'true');
         document.getElementById('mobile-play-surface')?.classList?.remove('tile-details-open');
+        this.setTileDetailsUnderlyingInert(app, sheet, false);
+        app._restoreFocusTrap?.({ restoreFocus: false });
+        const equivalent = returnFocus?.control
+            ? Array.from(document.querySelectorAll(`[data-command-control="${returnFocus.control}"]`)).find(element => {
+                if (!element?.isConnected || element.disabled || element.closest?.('[inert]')) return false;
+                const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+                const rect = element.getBoundingClientRect?.();
+                return (!style || (style.display !== 'none' && style.visibility !== 'hidden'))
+                    && (!rect || rect.width > 0 || rect.height > 0);
+            })
+            : null;
+        const target = returnFocus?.element?.isConnected && !returnFocus.element.closest?.('[inert]')
+            ? returnFocus.element
+            : equivalent;
+        if (target?.focus) {
+            try { target.focus({ preventScroll: true }); } catch (_error) { target.focus(); }
+        }
         return true;
     }
 };

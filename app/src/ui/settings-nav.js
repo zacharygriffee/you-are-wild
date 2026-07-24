@@ -6,13 +6,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (nav) {
         const settingsBtn = document.createElement('button');
         settingsBtn.className = 'nav-btn';
-        settingsBtn.innerHTML = '⚙️ <span data-i18n="ui.menu.settings">Settings</span>';
-        settingsBtn.title = 'Open settings';
+        const label = App._label('ui.menu.settings', 'Settings');
+        const title = App._label('ui.menu.settingsTitle', 'Open settings');
+        settingsBtn.append('⚙️ ');
+        const labelNode = document.createElement('span');
+        labelNode.setAttribute('data-i18n', 'ui.menu.settings');
+        labelNode.textContent = label;
+        settingsBtn.appendChild(labelNode);
+        settingsBtn.title = title;
         settingsBtn.setAttribute('data-command-surface', 'app-system');
         settingsBtn.setAttribute('data-command-mode', 'system');
         settingsBtn.setAttribute('data-command-control', 'open-settings');
         settingsBtn.setAttribute('data-i18n-title', 'ui.menu.settingsTitle');
-        settingsBtn.setAttribute('aria-label', 'Open settings');
+        settingsBtn.setAttribute('aria-label', title);
         settingsBtn.setAttribute('data-i18n-aria-label', 'ui.menu.settingsTitle');
         settingsBtn.onclick = () => {
             App.openSettingsFromGame();

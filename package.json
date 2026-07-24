@@ -7,12 +7,14 @@
     "test": "npm --prefix app test",
     "test:core": "npm --prefix app run test:core",
     "test:ui": "npm --prefix app run test:ui",
+    "test:media": "npm --prefix app run test:media",
     "test:viewport": "npm --prefix app run test:viewport",
     "test:interactions": "npm --prefix app run test:interactions",
     "lint": "npm --prefix app run lint",
     "dev": "npm --prefix app run dev",
     "clean": "npm --prefix app run clean",
     "audit:branding": "node scripts/branding-audit.js",
-    "full-build": "npm --prefix app run full-build"
+    "audit:map-assets": "npm --prefix app run build:hosted --silent && node scripts/map-tileset-acceptance.js",
+    "full-build": "npm --prefix app run full-build && npm run audit:map-assets"
   }
 }

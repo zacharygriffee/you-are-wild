@@ -102,16 +102,30 @@ const ModUI = {
 
     toggleRemoteImport(forceOpen = null) {
         const panel = document.getElementById('remote-module-import');
-        if (!panel) return;
+        const trigger = document.getElementById('remote-module-import-toggle');
+        if (!panel) return false;
         const open = forceOpen === null ? panel.hidden : Boolean(forceOpen);
+        if (open && !this.remoteImportReturnFocus) {
+            const active = document.activeElement;
+            this.remoteImportReturnFocus = active && active !== document.body && !panel.contains?.(active)
+                ? active
+                : trigger;
+        }
         panel.hidden = !open;
+        panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+        trigger?.setAttribute('aria-expanded', open ? 'true' : 'false');
         if (!open) {
             this.pendingRemoteReview = null;
             const review = document.getElementById('remote-module-review');
             if (review) review.innerHTML = '';
+            const returnFocus = this.remoteImportReturnFocus;
+            this.remoteImportReturnFocus = null;
+            const target = returnFocus?.isConnected === false ? trigger : (returnFocus || trigger);
+            target?.focus?.();
         } else {
             document.getElementById('remote-module-uri')?.focus();
         }
+        return open;
     },
 
     async beginRemoteUpdate(moduleId) {
@@ -474,6 +488,9 @@ const ModUI = {
             const deleteLabel = this.escapeHtml(this.label('mod.delete', 'Delete'));
             const deleteTitle = this.escapeHtml(this.label('mod.deleteModule', 'Delete {name}', { name: manifest.name || mod.id || 'Module' }));
             const controlState = MODULE_SYSTEM.moduleControlState(mod);
+            const controlReason = controlState.reasonKey
+                ? this.label(controlState.reasonKey, controlState.reason, controlState.reasonVars || {})
+                : controlState.reason;
             const provenanceLabel = this.escapeHtml({
                 host: this.label('mod.provenance.host', 'Host supplied'),
                 'built-in': this.label('mod.provenance.builtIn', 'Built in'),
@@ -481,13 +498,13 @@ const ModUI = {
                 remote: this.label('mod.provenance.remote', 'URI installed')
             }[controlState.provenance] || controlState.provenance);
             const policyLabel = controlState.policyState
-                ? `<span style="font-size:10px;color:var(--accent-primary);text-transform:uppercase;">${this.escapeHtml(controlState.policyState)}</span>`
+                ? `<span style="font-size:10px;color:var(--accent-primary);text-transform:uppercase;">${this.escapeHtml(this.label(`mod.policy.${controlState.policyState}`, controlState.policyState))}</span>`
                 : '';
-            const availabilityReason = controlState.reason
-                ? `<div style="font-size:11px;color:${controlState.compatibilityReason ? 'var(--accent-danger)' : 'var(--text-muted)'};margin-top:4px;">${this.escapeHtml(controlState.reason)}</div>`
+            const availabilityReason = controlReason
+                ? `<div style="font-size:11px;color:${controlState.compatibilityReason ? 'var(--accent-danger)' : 'var(--text-muted)'};margin-top:4px;">${this.escapeHtml(controlReason)}</div>`
                 : '';
             const toggleAllowed = mod.enabled ? controlState.canDisable : controlState.canEnable;
-            const toggleTitle = toggleAllowed ? enableTitle : this.escapeHtml(controlState.reason || this.label('mod.controlledByHost', 'Controlled by this host'));
+            const toggleTitle = toggleAllowed ? enableTitle : this.escapeHtml(controlReason || this.label('mod.controlledByHost', 'Controlled by this host'));
             const settings = (manifest.settings || []).length
                 ? `<details class="mod-settings"><summary>${this.escapeHtml(this.label('mod.settings', 'Settings'))}</summary>${manifest.settings.map(setting => this.settingControl(mod.id, setting, valuesByModule[mod.id]?.[setting.key])).join('')}</details>`
                 : '';
@@ -621,10 +638,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (nav) {
         const modBtn = document.createElement('button');
         modBtn.className = 'nav-btn';
-        modBtn.innerHTML = '📦 <span data-i18n="ui.menu.mods">Mods</span>';
-        modBtn.title = 'Open mods';
+        const label = App._label('ui.menu.mods', 'Mods');
+        const title = App._label('ui.menu.modsTitle', 'Open mods');
+        modBtn.append('📦 ');
+        const labelNode = document.createElement('span');
+        labelNode.setAttribute('data-i18n', 'ui.menu.mods');
+        labelNode.textContent = label;
+        modBtn.appendChild(labelNode);
+        modBtn.title = title;
+        modBtn.setAttribute('data-command-surface', 'app-system');
+        modBtn.setAttribute('data-command-mode', 'system');
+        modBtn.setAttribute('data-command-control', 'open-mods');
         modBtn.setAttribute('data-i18n-title', 'ui.menu.modsTitle');
-        modBtn.setAttribute('aria-label', 'Open mods');
+        modBtn.setAttribute('aria-label', title);
         modBtn.setAttribute('data-i18n-aria-label', 'ui.menu.modsTitle');
         modBtn.onclick = () => ModUI.showModScreen();
         nav.appendChild(modBtn);

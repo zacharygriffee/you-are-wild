@@ -35,12 +35,16 @@ const YAW_UNIT_CONTAINERS = {
         const fallbackContainer = container === 'womb' ? 'inner' : container === 'balls' ? 'reserve' : 'belly';
         const owner = actor === app.player
             ? app._label('capacity.owner.your', 'Your')
-            : app._label('capacity.owner.named', "{name}'s", { name: actor?.name || 'Someone' });
+            : actor?.name
+                ? app._label('capacity.owner.named', "{name}'s", { name: actor.name })
+                : app._label('capacity.owner.unknown', 'their');
         return app._label('capacity.tooFull', '{actor} tries, but {owner} {container} is too full for {target}.', {
-            actor: actor === app.player ? app._label('party.you', 'You') : (actor?.name || app._label('target.actorRole', 'Actor')),
+            actor: actor === app.player
+                ? app._label('party.you', 'You')
+                : (actor?.name || app._label('capacity.actor.unknown', 'Someone')),
             owner,
             container: app._label(containerKey, fallbackContainer),
-            target: target?.name || 'target'
+            target: target?.name || app._label('capacity.target.unknown', 'the target')
         });
     },
 

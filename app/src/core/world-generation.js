@@ -3,6 +3,7 @@ const WorldGen = (() => {
     const fade = t => t * t * (3 - 2 * t);
     const lerp = (a, b, t) => a + (b - a) * t;
     const caveNetworkCache = new Map();
+    const routeLoopCache = new Map();
 
     function hash01(seed, version, purpose, ...parts) {
         const input = `${String(seed || 'default')}|v${version || 1}|${purpose}|${parts.join('|')}`;
@@ -676,6 +677,108 @@ const WorldGen = (() => {
         return getPoiContextForTile(seed, version, x, y, regionCell).dangerInfluence;
     }
 
+    function routeParentCell(seed, version, cellX, cellY) {
+        if (cellX === 0 && cellY === 0) return null;
+        if (cellX === 0) return { x: 0, y: cellY - Math.sign(cellY) };
+        if (cellY === 0) return { x: cellX - Math.sign(cellX), y: 0 };
+        const reduceX = hash01(seed, version, 'route-parent-axis', cellX, cellY) < 0.5;
+        return reduceX
+            ? { x: cellX - Math.sign(cellX), y: cellY }
+            : { x: cellX, y: cellY - Math.sign(cellY) };
+    }
+
+    function sameRouteCell(a, b) {
+        return Boolean(a && b && a.x === b.x && a.y === b.y);
+    }
+
+    function routeTreeDistance(seed, version, from, to) {
+        const cacheKey = `${seed}|${version}|${from.x},${from.y}|${to.x},${to.y}`;
+        if (routeLoopCache.has(cacheKey)) return routeLoopCache.get(cacheKey);
+        const fromAncestors = new Map();
+        let cursor = { ...from };
+        let steps = 0;
+        while (cursor && steps <= 4096) {
+            fromAncestors.set(`${cursor.x},${cursor.y}`, steps);
+            cursor = routeParentCell(seed, version, cursor.x, cursor.y);
+            steps++;
+        }
+        cursor = { ...to };
+        steps = 0;
+        let distance = null;
+        while (cursor && steps <= 4096) {
+            const known = fromAncestors.get(`${cursor.x},${cursor.y}`);
+            if (known !== undefined) {
+                distance = known + steps;
+                break;
+            }
+            cursor = routeParentCell(seed, version, cursor.x, cursor.y);
+            steps++;
+        }
+        routeLoopCache.set(cacheKey, distance);
+        if (routeLoopCache.size > 4096) routeLoopCache.delete(routeLoopCache.keys().next().value);
+        return distance;
+    }
+
+    function routeGraphEdge(seed, version, fromCell, toCell, suffix) {
+        const fromParent = routeParentCell(seed, version, fromCell.x, fromCell.y);
+        const toParent = routeParentCell(seed, version, toCell.x, toCell.y);
+        const primary = sameRouteCell(fromParent, toCell) || sameRouteCell(toParent, fromCell);
+        if (primary) return { tier: 'primary', cycleLength: 0 };
+        if (!chance(seed, version, `road-loop-${suffix}`, fromCell.x, fromCell.y, 0.08)) return null;
+        const treeDistance = routeTreeDistance(seed, version, fromCell, toCell);
+        const cycleLength = treeDistance === null ? 0 : treeDistance + 1;
+        if (cycleLength < 8) return null;
+        return { tier: 'loop', cycleLength };
+    }
+
+    function getRouteGraphEdgesForRegion(seed, version, cellX, cellY) {
+        if ((version || 1) < 5) return [];
+        const fromCell = { x: cellX, y: cellY };
+        const edges = [];
+        for (const [dx, dy, suffix] of [[1, 0, 'e'], [0, 1, 's']]) {
+            const toCell = { x: cellX + dx, y: cellY + dy };
+            const policy = routeGraphEdge(seed, version, fromCell, toCell, suffix);
+            if (!policy) continue;
+            edges.push({
+                id: `road_region_${cellX}_${cellY}_${suffix}`,
+                fromCell: { ...fromCell },
+                toCell,
+                ...policy
+            });
+        }
+        return edges;
+    }
+
+    function routeBranchSegments(seed, version, cellX, cellY) {
+        if ((version || 1) < 5) return [];
+        const anchors = getRouteAnchorsForRegion(seed, version, cellX, cellY);
+        if (anchors.length <= 1) return [];
+        const connected = [anchors[0]];
+        const segments = [];
+        for (const anchor of anchors.slice(1)) {
+            const parent = connected
+                .map(candidate => ({
+                    candidate,
+                    distance: Math.hypot(
+                        anchor.anchor.x - candidate.anchor.x,
+                        anchor.anchor.y - candidate.anchor.y
+                    )
+                }))
+                .sort((a, b) => a.distance - b.distance || a.candidate.id.localeCompare(b.candidate.id))[0].candidate;
+            segments.push({
+                id: `road_branch_${parent.id}_${anchor.id}`,
+                from: parent.anchor,
+                to: anchor.anchor,
+                fromAnchorId: parent.id,
+                toAnchorId: anchor.id,
+                tier: 'branch',
+                cycleLength: 0
+            });
+            connected.push(anchor);
+        }
+        return segments;
+    }
+
     function routeSegmentsForTile(seed, version, x, y) {
         const cellSize = 36;
         const cx = Math.floor(x / cellSize);
@@ -687,6 +790,22 @@ const WorldGen = (() => {
                 const cellY = cy + oy;
                 const fromAnchor = getRouteAnchorsForRegion(seed, version, cellX, cellY)[0];
                 const from = fromAnchor.anchor;
+                if ((version || 1) >= 5) {
+                    segments.push(...routeBranchSegments(seed, version, cellX, cellY));
+                    for (const edge of getRouteGraphEdgesForRegion(seed, version, cellX, cellY)) {
+                        const toAnchor = getRouteAnchorsForRegion(seed, version, edge.toCell.x, edge.toCell.y)[0];
+                        segments.push({
+                            id: edge.id,
+                            from,
+                            to: toAnchor.anchor,
+                            fromAnchorId: fromAnchor.id,
+                            toAnchorId: toAnchor.id,
+                            tier: edge.tier,
+                            cycleLength: edge.cycleLength
+                        });
+                    }
+                    continue;
+                }
                 for (const [nx, ny, suffix] of [[cellX + 1, cellY, 'e'], [cellX, cellY + 1, 's']]) {
                     if (!chance(seed, version, `road-edge-${suffix}`, cellX, cellY, 0.62)) continue;
                     const toAnchor = getRouteAnchorsForRegion(seed, version, nx, ny)[0];
@@ -700,19 +819,42 @@ const WorldGen = (() => {
 
     function getRoadOverlayRaw(seed, version, x, y, fields = null) {
         if ((version || 1) >= 2 && y === 0 && Math.abs(x) <= 6) {
-            return { id: 'road_start_axis', direction: 'east-west', startArea: true };
+            if ((version || 1) < 5) {
+                return { id: 'road_start_axis', direction: 'east-west', startArea: true };
+            }
+            return {
+                id: 'road_start_axis',
+                direction: 'east-west',
+                startArea: true,
+                segmentIds: ['road_start_axis'],
+                routeTier: 'starter'
+            };
         }
         const terrainFields = fields || getTerrainFields(seed, version, x, y);
-        if (terrainFields.roughness > 0.86) return null;
-        let best = null;
+        if ((version || 1) < 5 && terrainFields.roughness > 0.86) return null;
+        const matches = [];
         for (const segment of routeSegmentsForTile(seed, version, x, y)) {
             const dist = distanceToSegment(x, y, segment.from.x, segment.from.y, segment.to.x, segment.to.y);
-            if (dist.distance <= 0.72 && (!best || dist.distance < best.distance)) {
-                const direction = Math.abs(dist.dx) >= Math.abs(dist.dy) ? 'east-west' : 'north-south';
-                best = { id: segment.id, direction, distance: dist.distance };
-            }
+            if (dist.distance > 0.72) continue;
+            matches.push({
+                id: segment.id,
+                direction: Math.abs(dist.dx) >= Math.abs(dist.dy) ? 'east-west' : 'north-south',
+                distance: dist.distance,
+                routeTier: segment.tier || 'legacy',
+                cycleLength: segment.cycleLength || 0
+            });
         }
-        return best ? { id: best.id, direction: best.direction } : null;
+        matches.sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id));
+        const best = matches[0];
+        if (!best) return null;
+        if ((version || 1) < 5) return { id: best.id, direction: best.direction };
+        return {
+            id: best.id,
+            direction: best.direction,
+            routeTier: best.routeTier,
+            cycleLength: best.cycleLength,
+            segmentIds: [...new Set(matches.map(match => match.id))]
+        };
     }
 
     function getRoadOverlay(seed, version, x, y, fields) {
@@ -723,7 +865,10 @@ const WorldGen = (() => {
         const connections = [];
         for (const [direction, dx, dy] of [['north', 0, -1], ['east', 1, 0], ['south', 0, 1], ['west', -1, 0]]) {
             const neighbor = getRoadOverlayRaw(seed, version, x + dx, y + dy);
-            if (neighbor?.id !== road.id) continue;
+            const sharesSegment = (version || 1) >= 5
+                ? road.segmentIds?.some(id => neighbor?.segmentIds?.includes(id))
+                : neighbor?.id === road.id;
+            if (!sharesSegment) continue;
             const neighborFields = getTerrainFields(seed, version, x + dx, y + dy);
             if (neighborFields.water && !getBridgeOverlay(seed, version, x + dx, y + dy, neighborFields, neighbor)) continue;
             connections.push(direction);
@@ -998,6 +1143,7 @@ const WorldGen = (() => {
         getPoiBudgetForRegion,
         getPoiCandidatesForRegion,
         getRouteAnchorsForRegion,
+        getRouteGraphEdgesForRegion,
         getRoadOverlay,
         getBridgeOverlay,
         getBarrierEdges,

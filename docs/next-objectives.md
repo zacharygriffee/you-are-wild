@@ -61,14 +61,18 @@ This is the short handoff for unfinished work. Completed implementation history 
 - Passive stomach digestion now uses bounded hunger bands (`0.8x` sated, `1x` ordinary, `1.2x` hungry, `1.4x` starving), re-evaluates its pace after each nutrition-bearing tick, and exposes the effective rate in Containers. Fast and slow modes retain distinct pacing and identical size-scaled total nutrition.
 - Quest givers and merchants now retain a versioned authored service origin. Containment suspends their service without deleting accepted quest state or stock; release away from that origin keeps Quest/Trade absent from lookup, transaction controls, status chips, map markers, deterministic observations, and narration availability metadata. Repeated swallow/release and save/load preserve the suspension, while returning the same NPC to its authored structure restores the unchanged service state.
 - `Break Down` is the safe-content presentation of Mature `Chew`, not a separate nonterminal move. Its preview now discloses the all-remaining-Vitality consequence, and terminal outcomes consistently become recoverable remains and leave the living combat queue rather than persisting as zero-condition hostiles. Desktop and mobile target surfaces now identify a remains-only result consistently, including the localized mobile rail/dock label, count, and non-danger state while combat teardown is still pending.
-- Map acceptance now executes start safety and recovery-anchor invariants against generator versions 2, 3, and 4, walks between paired cave mouths through the generated reciprocal room graph, and verifies bounded connected cabin, ruins, burrow, manor, and dungeon interiors with exactly one surface exit.
-- Generator V4 is now the new-run default. Its inner 3×3 is a passable Grove
+- Map acceptance now executes start safety and recovery-anchor invariants against generator versions 2, 3, 4, and 5, walks between paired cave mouths through the generated reciprocal room graph, and verifies bounded connected cabin, ruins, burrow, manor, and dungeon interiors with exactly one surface exit.
+- Generator V5 is now the new-run default. It retains Generator V4's inner
+  3×3 passable Grove
   with no encounter roll, danger-site influence, cave portal, or hostile
   structure. Radius 2–5 releases encounter chance by an explicit distance
   multiplier while limiting generated encounters to one tier-1 creature,
   suppressing ambush and reinforcement, and deferring any player-relative
   over-budget hostility to a visible neutral meeting rather than modifying
-  combat damage. Existing worlds retain their recorded generator version.
+  combat damage. Route Hierarchy V2 replaces independent macro-edge flips with
+  one connected acyclic primary network, tree-shaped POI branches, and rare
+  alternate links whose cycles span at least eight macro edges. Existing
+  worlds retain their recorded generator version.
 - Dynamic Holdings, contained-detail, perk, Quest/Trade, party-management, and action-variant dialogs now expose visible localized purpose text through stable `aria-describedby` relationships. Real mobile and desktop viewport checks keep those relationships, focus containment, long Spanish labels, and horizontal-overflow bounds together.
 - Mobile contextual action-variant dialogs run in the full 313–1024px responsive matrix under 20px Spanish, high contrast, and reduced motion. The browser gate verifies localized title/purpose relationships, focus containment and restoration, 44px option targets, bounded scrolling, and horizontal clipping alongside the accepted Mobile Interaction Flow V2 shell.
 - Combat target-confirmation trays now run in the same responsive matrix for player and companion turns with one and multiple marked targets. Counted English/Spanish confirmation copy, readable primary/Cancel widths, 44px controls, preserved actor/target state, cancellation, and horizontal bounds are browser-verified on phones, tablets, compact desktop, and standard desktop.
@@ -196,13 +200,11 @@ Flow V2 shell without reintroducing separate phone navigation models.
    multi-seed/all-core-species acceptance. Continue strengthening traversal
    metadata, roads/bridges/coasts, POI budgets, and routes around that
    contract.
-4. After the current Sites release, reduce accidental road circles and
-   redundant short cycles. Prefer a legible route hierarchy with primary
-   anchor-to-anchor paths, bounded branches, and occasional intentional loops
-   for alternate access. Detect and prune small low-value cycles only when
-   doing so preserves POI connectivity, bridge/coast crossings, reciprocal
-   traversal, deterministic generation, and compatibility with road topology
-   tiles.
+4. Route Hierarchy V2 is implemented for Generator V5. Continue representative
+   playtesting of its primary anchor tree, route-capable POI branches, rare
+   eight-or-more-edge alternate loops, bridges/coasts, reciprocal raster
+   junctions, and road topology tiles. Keep Generator V4 and earlier immutable;
+   only revise V5 after a concrete connectivity or visual contradiction.
 5. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
 6. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, the dedicated AI Providers panel, Puter, and session-only browser-direct OpenAI-Compatible text connections now exist. Gather playtest feedback on that lifecycle before adding OAuth, relays, MCP, image/video/audio providers, or localhost sidecars.
 7. After player-POV narration has enough playtest coverage, consider a narrator perspective setting with explicit player, first-person, third-person-limited, and cinematic modes. Keep player POV as the default and preserve the structured viewpoint-role contract across modes.
@@ -274,6 +276,7 @@ generated artifact.
 - `docs/balance-scenario-baseline.md`
 - `docs/multi-interaction-regression-matrix.md`
 - `docs/map-tileset-acceptance.md`
+- `docs/route-hierarchy-v2.md`
 - `docs/feast-containment-v2.md`
 - `docs/save-sparse-delta.md`
 - `docs/testing.md`

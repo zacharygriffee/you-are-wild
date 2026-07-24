@@ -863,7 +863,7 @@
             tileDeltas: new Map(),
             exploredTiles: new Set(),
             superPatchMap: new Map(),
-            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 4, mapModsHash: 'core' },
+            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 5, mapModsHash: 'core' },
             PATCH_SIZE: 10,
             SUPER_PATCH_SIZE: 3, // 3x3 patches = 30x30 tiles per biome region
             currentBiome: 'forest',

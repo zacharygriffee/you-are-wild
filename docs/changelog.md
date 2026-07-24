@@ -4,6 +4,13 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Generator V5 is now the new-run default and adds Route Hierarchy V2 without
+  changing recorded V4 worlds. Macro anchors form one deterministic connected
+  tree, route-capable POIs receive bounded tree-shaped local branches, and
+  rare extra links are retained only when they create an intentional loop of
+  at least eight macro edges. Rasterized junctions preserve shared segment
+  identity, while bridges, base biomes, starter routes, and the full V4
+  safe-start/admission contract remain intact.
 - Interaction Balance Matrix schema v3 now inventories Basic Attack and every
   registered Combat Technique V1 profile, including normal once-per-command
   Fight hunger cost, reach, equipment requirements, damage shaping, area

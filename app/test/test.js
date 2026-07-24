@@ -19259,6 +19259,78 @@ test('Road and bridge overlays are deterministic constrained features', () => {
   assert(sampledWaterRoads > 0, 'Sampled routes should include at least one valid bridged water crossing');
 });
 
+test('Generator v5 route hierarchy removes short macro cycles while preserving branches and legacy worlds', () => {
+  const WorldGen = loadWorldGenForTest();
+  const seed = 'route-hierarchy';
+  const version = 5;
+  const radius = 8;
+  const nodes = [];
+  const edges = [];
+  for (let y = -radius; y <= radius; y++) {
+    for (let x = -radius; x <= radius; x++) {
+      nodes.push(`${x},${y}`);
+      for (const edge of WorldGen.getRouteGraphEdgesForRegion(seed, version, x, y)) {
+        if (edge.toCell.x < -radius || edge.toCell.x > radius || edge.toCell.y < -radius || edge.toCell.y > radius) continue;
+        edges.push(edge);
+      }
+    }
+  }
+  const repeated = [];
+  for (let y = -radius; y <= radius; y++) {
+    for (let x = -radius; x <= radius; x++) {
+      repeated.push(...WorldGen.getRouteGraphEdgesForRegion(seed, version, x, y)
+        .filter(edge => edge.toCell.x >= -radius && edge.toCell.x <= radius && edge.toCell.y >= -radius && edge.toCell.y <= radius));
+    }
+  }
+  assertEqual(JSON.stringify(edges), JSON.stringify(repeated), 'Generator v5 route graph should be deterministic');
+
+  const parent = new Map(nodes.map(node => [node, node]));
+  const find = node => {
+    let root = node;
+    while (parent.get(root) !== root) root = parent.get(root);
+    while (parent.get(node) !== node) {
+      const next = parent.get(node);
+      parent.set(node, root);
+      node = next;
+    }
+    return root;
+  };
+  const union = (a, b) => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA === rootB) return false;
+    parent.set(rootB, rootA);
+    return true;
+  };
+  const primary = edges.filter(edge => edge.tier === 'primary');
+  for (const edge of primary) {
+    const from = `${edge.fromCell.x},${edge.fromCell.y}`;
+    const to = `${edge.toCell.x},${edge.toCell.y}`;
+    assertEqual(union(from, to), true, 'Primary route hierarchy should remain acyclic');
+  }
+  assertEqual(primary.length, nodes.length - 1, 'Primary routes should form one spanning tree across the sampled macro region');
+  assertEqual(new Set(nodes.map(find)).size, 1, 'Primary routes should preserve connected anchor-to-anchor access');
+
+  const loops = edges.filter(edge => edge.tier === 'loop');
+  assert(loops.length > 0, 'The deterministic sample should retain occasional intentional alternate routes');
+  assert(loops.every(edge => edge.cycleLength >= 8), 'Optional route links should never create short macro cycles');
+
+  const branchRegion = { x: -2, y: -2 };
+  const anchors = WorldGen.getRouteAnchorsForRegion(seed, version, branchRegion.x, branchRegion.y);
+  assert(anchors.length > 1, 'The deterministic sample should expose multiple route-capable POIs in one region');
+  for (const anchor of anchors) {
+    assert(WorldGen.getRoadOverlay(seed, version, anchor.anchor.x, anchor.anchor.y), 'Every route-capable POI anchor should land on its tree-shaped local road branch');
+  }
+
+  const legacy = WorldGen.getRoadOverlay('road-cycle-compat', 4, -7, 6);
+  assertEqual(legacy.id, 'road_poi_-1_0_restSite_1_poi_0_0_restSite_0', 'Recorded Generator v4 worlds should retain their prior road segment identity');
+  assertEqual(legacy.connections.join(','), 'east,south,west', 'Recorded Generator v4 worlds should retain their prior road topology');
+
+  const { App } = loadAppForCombat();
+  assertEqual(App._defaultWorldMeta().generatorVersion, 5, 'New runs should use the versioned route hierarchy');
+  assertContains(createFlowContent, 'generatorVersion: 5', 'Character creation should record Generator v5 for new runs');
+});
+
 test('Terrain traversal metadata defines conservative passability and route costs', () => {
   const WorldGen = loadWorldGenForTest();
   const plain = WorldGen.getTraversal({ biome: 'plains', water: false, overlays: {} });
@@ -19457,7 +19529,7 @@ test('Versioned start area validation guarantees early route and rest access', (
   const WorldGen = loadWorldGenForTest();
   const { App, elements } = loadAppForCombat();
   const seeds = ['default', 'layout-a', 'layout-b', 'route-seed', 'coastal-seed', 'wet-start', 'mountain-start'];
-  for (const generatorVersion of [2, 3, 4]) {
+  for (const generatorVersion of [2, 3, 4, 5]) {
     for (const seed of seeds) {
     App.worldMeta = { worldId: `world-start-safe-v${generatorVersion}-${seed}`, seed, generatorVersion, mapModsHash: 'core' };
     App.worldMap = new Map();

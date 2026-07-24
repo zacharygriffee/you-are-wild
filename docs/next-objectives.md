@@ -62,6 +62,11 @@ This is the short handoff for unfinished work. Completed implementation history 
   each through its real runtime path, verifies IndexedDB/local-lease or locale
   persistence across reload, and restores core fallback on disable. Subjective
   translation and artwork review remains operator-owned.
+- Asset Bundle installation now exposes cancellable, announced per-resource
+  progress while preserving atomic replacement. Archive transport has an
+  explicit defer/activation decision: current real packs remain on individually
+  hashed URI resources until latency, portable handoff, CORS, or repair
+  evidence justifies a bounded extraction layer.
 - Balance acceptance now emits a schema-v2 deterministic reference in addition to survival and digestion pacing: effect per command, expected commands and current XP across a neutral resolution, Starving thresholds, and one-, two-, and four-target Fight values at every practice tier plus authored full-area behavior. Each multi-target row is cross-checked against the live runtime profile. Tend is condition-only care and restoring one full allied target pool now awards at most 20 support XP regardless of command count; self-care and no-op attempts award none.
 - Focused quest/trade windows now localize their title, summary labels, item metadata, quantities, prices, quest-section headings, and empty states through the maintained English/Spanish registry. Responsive checks exercise the longer Spanish presentation at 20px under high contrast and reduced motion, and closing a transaction restores keyboard focus to the originating mobile actor/target rail after the composer rerenders.
 - Passive stomach digestion now uses bounded hunger bands (`0.8x` sated, `1x` ordinary, `1.2x` hungry, `1.4x` starving), re-evaluates its pace after each nutrition-bearing tick, and exposes the effective rate in Containers. Fast and slow modes retain distinct pacing and identical size-scaled total nutrition.
@@ -220,7 +225,14 @@ Flow V2 shell without reintroducing separate phone navigation models.
 11. Sprite Pack V1 now has a maintained real authored fixture with a reproducible atlas. Browser acceptance proves animated idle, wounded, Ghost, default fallback, IndexedDB retention, local leases, no-hotlink reload, and emoji restoration. Continue subjective/unit-density review before adding action-specific states, diagonals, or skeletal animation.
 12. The owned `media:provide` adapter seam is implemented. Keep concrete later providers ordered in backlog: AI generation as a reviewed Source at priority 3; Electron, Pear, or another packaged-runtime bridge at priority 4; and OPFS as an optional browser-storage optimization at priority 5. None may become a prerequisite for the downloaded `file://` game.
 13. Extend asset/content-pack presentation seams. Optional packs may eventually provide richer tilesets, sprites, portraits, audio, animated 2D media, and capability-gated 3D scenes, but their presentation formats must remain independent from storage providers and the bundle envelope.
-14. Consider archive transport only after real bundle use shows that individually hashed URI resources are insufficient. Archives still need unpacked-size budgets and safe relative paths; publisher signatures and community update discovery remain separate work.
+14. Keep archive transport deferred under
+    [Archive Transport Decision](archive-transport-decision.md) until a real
+    pack demonstrates request-latency, portable-handoff, per-resource CORS, or
+    repair pressure that individually hashed URI resources cannot satisfy. Any
+    future archive remains acquisition-only and requires independent packed and
+    unpacked budgets, safe relative paths, bounded expansion, post-extraction
+    hashes, cancellation, and atomic staging. Publisher signatures and update
+    discovery remain separate work.
 15. Recovery Mode V1 and the opt-in Ghost pilgrimage are implemented. Continue
     the accepted built-in baseline: Settings opt-in, defeat-site entry,
     ordinary companion settlement, inventory-setting consequences,
@@ -288,6 +300,7 @@ generated artifact.
 - `docs/multi-interaction-regression-matrix.md`
 - `docs/map-tileset-acceptance.md`
 - `docs/route-hierarchy-v2.md`
+- `docs/archive-transport-decision.md`
 - `docs/feast-containment-v2.md`
 - `docs/save-sparse-delta.md`
 - `docs/testing.md`

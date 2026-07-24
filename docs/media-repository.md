@@ -22,7 +22,9 @@ reference counts, repair checks, diagnostics, and lease cleanup. Module code
 receives only its own normalized metadata and opaque leases through the
 `media:read` API. [Asset Bundle V1](asset-bundle-v1.md) now supplies the first
 code-free packaging/install layer above the repository; all rendering formats
-remain downstream.
+remain downstream. Long installs expose bounded progress and propagate an
+explicit player cancellation signal through acquisition and staging; abort
+discards the batch before catalog replacement, preserving the prior owner.
 
 Trusted-local executable modules may contribute an owned provider through the
 separate `media:provide` capability. Provider IDs cannot replace core or

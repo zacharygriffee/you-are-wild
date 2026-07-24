@@ -2673,6 +2673,10 @@ test('Mod Manager exposes explicit URI review without runtime hotlink controls',
   assertContains(templateContent, 'data-command-control="import-module-uri"', 'Mod Manager should expose URI package acquisition');
   assertContains(templateContent, 'id="remote-module-review"', 'Mod Manager should reserve an explicit trust-review result region');
   assertContains(modUiContent, 'installReviewedRemoteModule', 'URI installation should consume a reviewed in-memory package');
+  assertContains(modUiContent, 'remoteInstallController: null', 'Large URI asset installs should keep an owned cancellation controller');
+  assertContains(modUiContent, 'signal: controller.signal', 'Asset install cancellation should reach the atomic Media Repository batch');
+  assertContains(modUiContent, 'data-command-control="cancel-asset-install"', 'Active asset installs should expose an explicit cancel command');
+  assertContains(modUiContent, 'the installed bundle was not replaced', 'Canceled installation feedback should explain atomic preservation');
   assertContains(modUiContent, 'Trusted-local mod code runs in the game page', 'URI review should disclose the trusted-local execution boundary');
   assertNotContains(modUiContent, 'setInterval(() => ModUI.beginRemoteUpdate', 'URI mods must never poll or auto-update');
 });

@@ -4,6 +4,8 @@
  */
 const ModUI = {
     pendingRemoteReview: null,
+    remoteInstallController: null,
+    remoteInstallActive: false,
 
     label(key, fallback, vars = {}) {
         if (typeof App !== 'undefined' && App._label) return App._label(key, fallback, vars);
@@ -115,6 +117,7 @@ const ModUI = {
         panel.setAttribute('aria-hidden', open ? 'false' : 'true');
         trigger?.setAttribute('aria-expanded', open ? 'true' : 'false');
         if (!open) {
+            if (this.remoteInstallActive) this.cancelRemoteInstall();
             this.pendingRemoteReview = null;
             const review = document.getElementById('remote-module-review');
             if (review) review.innerHTML = '';
@@ -126,6 +129,61 @@ const ModUI = {
             document.getElementById('remote-module-uri')?.focus();
         }
         return open;
+    },
+
+    setRemoteInstallBusy(active) {
+        this.remoteInstallActive = active === true;
+        const reviewButton = document.getElementById('remote-module-review-button');
+        const uri = document.getElementById('remote-module-uri');
+        const integrity = document.getElementById('remote-module-integrity');
+        if (reviewButton) reviewButton.disabled = this.remoteInstallActive;
+        if (uri) uri.disabled = this.remoteInstallActive;
+        if (integrity) integrity.disabled = this.remoteInstallActive;
+    },
+
+    renderAssetInstallProgress(output, bundle, progress = {}) {
+        if (!output) return;
+        const count = Math.max(1, Number(progress.count || bundle.resourceCount) || 1);
+        const phase = String(progress.phase || 'download');
+        const completed = Math.min(count, Math.max(0, phase === 'staged'
+            ? Number(progress.index || 0)
+            : Number(progress.index || 0)));
+        const current = Math.min(count, Math.max(1, phase === 'staged'
+            ? completed
+            : Number(progress.index || 0) + 1));
+        const loaded = Math.max(0, Number(progress.loaded || 0));
+        const total = Math.max(0, Number(progress.total || 0));
+        const status = this.label('mod.assetInstalling', 'Installing asset bundle: {completed}/{count} resources verified...', {
+            completed,
+            count
+        });
+        const transfer = total > 0
+            ? this.label('mod.assetDownloadingResource', 'Resource {current}/{count}: {loaded}/{total} bytes received.', {
+                current,
+                count,
+                loaded,
+                total
+            })
+            : this.label('mod.assetPreparingResource', 'Preparing resource {current}/{count}.', { current, count });
+        output.innerHTML = `
+            <div role="status" aria-live="polite" aria-atomic="true" style="margin-top:12px;">
+                <p id="remote-asset-install-status" style="color:var(--text-muted);margin:0 0 6px;">${this.escapeHtml(status)}</p>
+                <progress aria-labelledby="remote-asset-install-status" value="${completed}" max="${count}" style="display:block;width:100%;margin-bottom:6px;"></progress>
+                <p style="font-size:12px;color:var(--text-muted);margin:0 0 8px;">${this.escapeHtml(transfer)}</p>
+                <button id="remote-asset-install-cancel" class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="cancel-asset-install" data-command-slot="exit" onclick="ModUI.cancelRemoteInstall()">${this.escapeHtml(this.label('mod.assetCancelInstall', 'Cancel installation'))}</button>
+            </div>`;
+    },
+
+    cancelRemoteInstall() {
+        const controller = this.remoteInstallController;
+        if (!controller || controller.signal.aborted) return false;
+        controller.abort('player-cancel');
+        const button = document.getElementById('remote-asset-install-cancel');
+        if (button) {
+            button.disabled = true;
+            button.textContent = this.label('mod.assetCanceling', 'Canceling...');
+        }
+        return true;
     },
 
     async beginRemoteUpdate(moduleId) {
@@ -251,7 +309,7 @@ const ModUI = {
 
     async installReviewedRemote() {
         const review = this.pendingRemoteReview;
-        if (!review) return;
+        if (!review || this.remoteInstallActive) return;
         if (review.kind === 'asset_bundle_v1') {
             const bundle = review.bundle;
             const warning = this.label('mod.assetConfirm', 'Install {name} v{version} for {module}? The game will download and verify {count} resources ({bytes} bytes) before replacing its current bundle.', {
@@ -263,13 +321,21 @@ const ModUI = {
             });
             if (!confirm(warning)) return;
             const output = document.getElementById('remote-module-review');
+            const controller = new AbortController();
+            this.remoteInstallController = controller;
+            this.setRemoteInstallBusy(true);
+            this.renderAssetInstallProgress(output, bundle, {
+                phase: 'download',
+                index: 0,
+                count: bundle.resourceCount,
+                loaded: 0,
+                total: 0
+            });
             try {
                 await MODULE_SYSTEM.installReviewedRemoteAssetBundle(review, {
+                    signal: controller.signal,
                     onProgress: progress => {
-                        if (!output) return;
-                        const completed = Number(progress.index || 0);
-                        const count = Number(progress.count || bundle.resourceCount);
-                        output.innerHTML = `<p style="color:var(--text-muted);margin:8px 0;">${this.escapeHtml(this.label('mod.assetInstalling', 'Installing asset bundle: {completed}/{count} resources verified...', { completed, count }))}</p>`;
+                        this.renderAssetInstallProgress(output, bundle, progress);
                     }
                 });
                 this.pendingRemoteReview = null;
@@ -277,11 +343,28 @@ const ModUI = {
                 if (output) output.innerHTML = `<p style="color:var(--accent-primary);margin:8px 0;">${this.escapeHtml(this.label('mod.assetInstalled', 'Asset bundle installed locally. Enable its target module when ready.'))}</p>`;
                 await this.refreshModList();
             } catch (error) {
+                if (controller.signal.aborted || error?.code === 'aborted') {
+                    this.logRemote(this.label('mod.assetInstallCanceledLog', 'Canceled asset bundle installation for {module}; the installed bundle was not replaced.', {
+                        module: bundle.targetModuleId
+                    }));
+                    const panel = document.getElementById('remote-module-import');
+                    if (output && !panel?.hidden) {
+                        output.innerHTML = `
+                            <div role="status" aria-live="polite" style="margin-top:12px;">
+                                <p style="color:var(--accent-warning);margin:0 0 8px;">${this.escapeHtml(this.label('mod.assetInstallCanceled', 'Installation canceled. The installed bundle was not replaced.'))}</p>
+                                <button class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="retry-asset-install" onclick="ModUI.installReviewedRemote()">${this.escapeHtml(this.label('mod.assetRetryInstall', 'Retry installation'))}</button>
+                            </div>`;
+                    }
+                    return;
+                }
                 const message = error?.message || String(error);
                 this.logRemote(this.label('mod.assetInstallFailedLog', 'Asset bundle install failed: {message}', { message }), 'error');
                 if (output) output.innerHTML = `<p style="color:var(--accent-danger);margin:8px 0;">${this.escapeHtml(message)}</p>`;
                 alert(message);
                 console.error(error);
+            } finally {
+                if (this.remoteInstallController === controller) this.remoteInstallController = null;
+                this.setRemoteInstallBusy(false);
             }
             return;
         }

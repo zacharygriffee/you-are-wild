@@ -346,6 +346,78 @@ async function checkFileOriginFirstRunMenu(browser) {
       assert.strictEqual(openedImport.hidden, false, 'URI importer controlled region should become visible');
       assert.strictEqual(openedImport.ariaHidden, 'false', 'URI importer controlled region should enter the accessibility tree');
       assert.strictEqual(openedImport.focusId, 'remote-module-uri', 'opening URI importer should focus its first task input');
+
+      await page.evaluate(() => {
+        window.__viewportOriginalAssetInstall = MODULE_SYSTEM.installReviewedRemoteAssetBundle;
+        window.__viewportOriginalConfirm = window.confirm;
+        window.confirm = () => true;
+        MODULE_SYSTEM.installReviewedRemoteAssetBundle = (review, options = {}) => new Promise((resolve, reject) => {
+          options.onProgress?.({ phase: 'download', index: 0, count: 2, loaded: 12, total: 100 });
+          options.signal.addEventListener('abort', () => {
+            const error = new Error('Media installation was canceled');
+            error.code = 'aborted';
+            reject(error);
+          }, { once: true });
+        });
+        ModUI.pendingRemoteReview = {
+          kind: 'asset_bundle_v1',
+          bundle: {
+            id: 'viewport.bundle',
+            name: 'Viewport Bundle',
+            version: '1.0.0',
+            targetModuleId: 'viewport-module',
+            resourceCount: 2,
+            totalByteLength: 200
+          }
+        };
+        void ModUI.installReviewedRemote();
+      });
+      await page.waitForFunction(() => ModUI.remoteInstallActive && Boolean(document.getElementById('remote-asset-install-cancel')));
+      const activeAssetInstall = await page.evaluate(() => {
+        const output = document.getElementById('remote-module-review');
+        const progress = output?.querySelector('progress');
+        return {
+          statusRole: output?.querySelector('[role="status"]')?.getAttribute('role') || '',
+          statusText: output?.innerText || '',
+          progressValue: progress?.value,
+          progressMax: progress?.max,
+          progressLabelledBy: progress?.getAttribute('aria-labelledby') || '',
+          cancelControl: document.getElementById('remote-asset-install-cancel')?.getAttribute('data-command-control') || '',
+          uriDisabled: document.getElementById('remote-module-uri')?.disabled,
+          integrityDisabled: document.getElementById('remote-module-integrity')?.disabled,
+          reviewDisabled: document.getElementById('remote-module-review-button')?.disabled
+        };
+      });
+      assert.strictEqual(activeAssetInstall.statusRole, 'status', 'Active asset install should expose a live status region');
+      assert(activeAssetInstall.statusText.includes('Resource 1/2: 12/100 bytes received'), 'Active asset install should expose bounded resource progress');
+      assert.strictEqual(activeAssetInstall.progressValue, 0, 'First resource download should begin with zero verified resources');
+      assert.strictEqual(activeAssetInstall.progressMax, 2, 'Asset install progress should expose the reviewed resource count');
+      assert.strictEqual(activeAssetInstall.progressLabelledBy, 'remote-asset-install-status', 'Asset progress should reference its visible status');
+      assert.strictEqual(activeAssetInstall.cancelControl, 'cancel-asset-install', 'Active asset install should expose a stable cancel command');
+      assert.strictEqual(activeAssetInstall.uriDisabled, true, 'Asset install should freeze its reviewed URI while active');
+      assert.strictEqual(activeAssetInstall.integrityDisabled, true, 'Asset install should freeze its reviewed digest while active');
+      assert.strictEqual(activeAssetInstall.reviewDisabled, true, 'Asset install should prevent a second overlapping review');
+
+      await page.locator('#remote-asset-install-cancel').click();
+      await page.waitForFunction(() => !ModUI.remoteInstallActive && Boolean(document.querySelector('[data-command-control="retry-asset-install"]')));
+      const canceledAssetInstall = await page.evaluate(() => {
+        const result = {
+          text: document.getElementById('remote-module-review')?.innerText || '',
+          pendingReview: ModUI.pendingRemoteReview?.bundle?.id || '',
+          uriDisabled: document.getElementById('remote-module-uri')?.disabled,
+          reviewDisabled: document.getElementById('remote-module-review-button')?.disabled
+        };
+        MODULE_SYSTEM.installReviewedRemoteAssetBundle = window.__viewportOriginalAssetInstall;
+        window.confirm = window.__viewportOriginalConfirm;
+        delete window.__viewportOriginalAssetInstall;
+        delete window.__viewportOriginalConfirm;
+        return result;
+      });
+      assert(canceledAssetInstall.text.includes('Installation canceled. The installed bundle was not replaced.'), 'Canceled install should explain that prior assets remain intact');
+      assert.strictEqual(canceledAssetInstall.pendingReview, 'viewport.bundle', 'Canceled install should retain its reviewed package for explicit retry');
+      assert.strictEqual(canceledAssetInstall.uriDisabled, false, 'Canceled install should release its URI input');
+      assert.strictEqual(canceledAssetInstall.reviewDisabled, false, 'Canceled install should release the review command');
+
       await page.locator('[data-command-control="cancel-import-module-uri"]').click();
       await page.waitForFunction(() => document.getElementById('remote-module-import')?.hidden === true);
       const closedImport = await page.evaluate(() => ({

@@ -114,7 +114,10 @@ minimum game and target-module versions are checked before installation.
    does not fetch the resources.
 5. Confirm installation. Every resource is fetched without credentials or
    referrer data, bounded, MIME/signature checked where supported, size checked,
-   SHA-256 verified, and staged.
+   SHA-256 verified, and staged. The Mod Manager exposes announced per-resource
+   progress and an explicit Cancel action. Cancellation aborts and discards the
+   staged batch without replacing the installed catalog; the reviewed package
+   remains available for an explicit retry.
 6. Only after every resource verifies does the target module's catalog and
    bundle audit record replace the prior catalog. The module remains disabled
    until the player enables it.
@@ -165,3 +168,8 @@ Presentation consumers are the next layer. Tileset Pack V1 and Sprite Pack V1
 resolve leases during asynchronous activation, cache render-ready handles,
 preserve lower-priority local and text/emoji fallbacks, and keep gameplay
 semantics separate from selected art.
+
+Archive transport remains deferred under the bounded activation criteria in
+[Archive Transport Decision](archive-transport-decision.md). It must remain an
+acquisition transport over this contract, not a replacement for per-resource
+hashing, ownership, or local runtime leases.

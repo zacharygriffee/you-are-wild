@@ -4,6 +4,12 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Long Asset Bundle installs are now cancellable through the Mod Manager. The
+  live region exposes per-resource byte progress, reviewed URI/digest controls
+  stay frozen during the operation, and one explicit Cancel aborts the staged
+  Media Repository batch without replacing the installed bundle. The reviewed
+  package remains available for Retry; the full flow is browser-verified from
+  the downloadable `file://` build.
 - Real presentation-pack acceptance now uses maintained installable fixtures
   rather than schema-only examples. French Preview proves a partial third
   language can visibly relabel the menu, report English-fallback diagnostics,

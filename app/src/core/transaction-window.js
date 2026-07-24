@@ -76,6 +76,7 @@ const YAW_TRANSACTION_WINDOW = {
 
     open(app, kind, targetId) {
         if (!['quest', 'trade'].includes(kind)) return false;
+        if (!app._guardRecoveryCapability?.('interactions', { action: kind })) return false;
         const npc = this.npc(app, targetId);
         if (!npc || !app._isLivingCreature(npc)) return false;
         if (kind === 'trade' && (npc.disposition !== app.DISPOSITION.MERCHANT || !app._isServiceAvailable(npc))) return false;

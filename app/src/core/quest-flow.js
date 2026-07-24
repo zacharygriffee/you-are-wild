@@ -194,18 +194,21 @@ const YAW_QUEST_FLOW = {
     },
 
     acceptFromUnit(app, targetId) {
+        if (!app._guardRecoveryCapability?.('interactions', { action: 'accept-quest' })) return false;
         const giver = this.giverByKey(app, targetId);
         if (!giver) return false;
         return app.acceptQuest(giver.quest, giver);
     },
 
     previewFromUnit(app, targetId) {
+        if (!app._guardRecoveryCapability?.('interactions', { action: 'preview-quest' })) return false;
         const giver = this.giverByKey(app, targetId);
         if (!giver) return false;
         return app.openTransactionWindow('quest', targetId);
     },
 
     showPreview(app, quest, giver = null) {
+        if (!app._guardRecoveryCapability?.('interactions', { action: 'preview-quest' })) return false;
         const normalized = this.normalize(app, quest, giver);
         const targetKey = giver ? String(giver.id || giver.name || '').replace(/\\/g, "\\\\").replace(/'/g, "\\'") : '';
         const title = app._escapeHtml(app._label('quest.previewTitle', 'Quest Preview'));
@@ -232,6 +235,7 @@ const YAW_QUEST_FLOW = {
     },
 
     accept(app, quest, giver = null) {
+        if (!app._guardRecoveryCapability?.('interactions', { action: 'accept-quest' })) return false;
         const normalized = this.normalize(app, quest, giver);
         app.quests = app.quests || [];
         const existing = this.byId(app, normalized.id);

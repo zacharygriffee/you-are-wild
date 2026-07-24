@@ -750,6 +750,7 @@ const YAW_HOLDINGS = {
 
 const YAW_INVENTORY_PANEL = {
     show(app) {
+        if (!app._guardRecoveryCapability?.('inventory', { action: 'open-inventory' })) return false;
         const owner = YAW_HOLDINGS.selectedOwner(app) || app.player;
         return YAW_HOLDINGS.show(app, owner, { tab: 'pack' });
     },
@@ -765,7 +766,7 @@ const YAW_INVENTORY_PANEL = {
     },
 
     requestUse(app, itemId) {
-        if (YAW_RECOVERY_MODES?.restricts?.(app, 'inventory')) return false;
+        if (!app._guardRecoveryCapability?.('inventory', { action: 'use-item' })) return false;
         const item = (app.inventory || []).find(entry => String(entry?.id) === String(itemId));
         if (!item || app._getItemDef(item).effect !== 'heal') return false;
         if (YAW_HOLDINGS.partyOwners(app).length <= 1) return this.use(app, itemId);
@@ -786,7 +787,7 @@ const YAW_INVENTORY_PANEL = {
     },
 
     use(app, itemId, targetId = null) {
-        if (YAW_RECOVERY_MODES?.restricts?.(app, 'inventory')) return false;
+        if (!app._guardRecoveryCapability?.('inventory', { action: 'use-item' })) return false;
         const index = (app.inventory || []).findIndex(item => String(item?.id) === String(itemId));
         if (index < 0) return false;
         const item = app.inventory[index];
@@ -869,7 +870,7 @@ const YAW_INVENTORY_PANEL = {
     },
 
     equip(app, itemId, ownerId = null) {
-        if (YAW_RECOVERY_MODES?.restricts?.(app, 'inventory')) return false;
+        if (!app._guardRecoveryCapability?.('inventory', { action: 'equip-item' })) return false;
         // Pack UI is player-only for now. ownerId remains as a legacy/internal compatibility seam
         // until companion equipment gets a deliberate management flow separate from Pack.
         const owner = YAW_HOLDINGS.ownerById(app, ownerId || app.holdingsWindow?.ownerId);
@@ -899,7 +900,7 @@ const YAW_INVENTORY_PANEL = {
     },
 
     unequip(app, slot, ownerId = null) {
-        if (YAW_RECOVERY_MODES?.restricts?.(app, 'inventory')) return false;
+        if (!app._guardRecoveryCapability?.('inventory', { action: 'unequip-item' })) return false;
         const owner = YAW_HOLDINGS.ownerById(app, ownerId || app.holdingsWindow?.ownerId);
         if (!owner?.equipment || !owner.equipment[slot]) return;
         if (app.inventory.length >= app.MAX_INVENTORY) {
@@ -923,7 +924,7 @@ const YAW_INVENTORY_PANEL = {
     },
 
     drop(app, itemId) {
-        if (YAW_RECOVERY_MODES?.restricts?.(app, 'inventory')) return false;
+        if (!app._guardRecoveryCapability?.('inventory', { action: 'drop-item' })) return false;
         const index = app.inventory.findIndex(item => String(item?.id) === String(itemId));
         if (index === -1) return false;
         const tile = app._currentExplorationTile();

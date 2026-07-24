@@ -2484,12 +2484,12 @@
 
 
             // ===== COMBAT SYSTEM =====
-            startCombat(enemies) {
-                if (this._recoveryRestricts?.('combat')) {
-                    this._showRecoveryJourney?.();
-                    return false;
-                }
-                return YAW_COMBAT_LIFECYCLE.start(this, enemies);
+            startCombat(enemies, options = {}) {
+                return YAW_COMBAT_LIFECYCLE.start(this, enemies, options);
+            },
+
+            _ensureCurrentHostileEncounter(options = {}) {
+                return YAW_COMBAT_LIFECYCLE.ensureCurrentEncounter(this, options);
             },
 
             _ambushInitiativeBonus() {
@@ -5505,6 +5505,9 @@
             },
             _recoveryRestricts(capability) {
                 return YAW_RECOVERY_MODES.restricts(this, capability);
+            },
+            _guardRecoveryCapability(capability, context = {}) {
+                return YAW_RECOVERY_MODES.guard(this, capability, context);
             },
             collectDeathBag(bagId) {
                 return YAW_DEFEAT_RECOVERY.collectDeathBag(this, bagId);

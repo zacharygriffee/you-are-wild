@@ -5,6 +5,7 @@
 
 const YAW_TRADE_FLOW = {
     show(app, targetId) {
+        if (!app._guardRecoveryCapability?.('interactions', { action: 'trade' })) return false;
         return app.openTransactionWindow('trade', targetId);
     },
 
@@ -31,6 +32,7 @@ const YAW_TRADE_FLOW = {
     },
 
     completePurchase(app, targetId, stockIndex) {
+        if (!app._guardRecoveryCapability?.('interactions', { action: 'trade-buy' })) return false;
         const merchant = app._findMerchantById(targetId);
         const item = merchant?.stock?.[stockIndex];
         if (!merchant || !item || item.qty <= 0) return;
@@ -73,6 +75,7 @@ const YAW_TRADE_FLOW = {
     },
 
     buy(app, targetId, stockIndex) {
+        if (!app._guardRecoveryCapability?.('interactions', { action: 'trade-buy' })) return false;
         const merchant = app._findMerchantById(targetId);
         const item = merchant?.stock?.[stockIndex];
         if (!merchant || !item || item.qty <= 0) return;
@@ -91,6 +94,7 @@ const YAW_TRADE_FLOW = {
     },
 
     sell(app, targetId, itemId) {
+        if (!app._guardRecoveryCapability?.('interactions', { action: 'trade-sell' })) return false;
         const merchant = app._findMerchantById(targetId);
         if (!merchant) return;
         const item = app.inventory.find(i => String(i.id) === String(itemId));

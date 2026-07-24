@@ -5496,7 +5496,7 @@ test('Combat action helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-turns.js'") < buildContent.indexOf("'src/core/combat-lifecycle.js'"), 'Combat lifecycle should load after combat turns');
   assert(buildContent.indexOf("'src/core/combat-lifecycle.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat lifecycle helper should load before app.js');
   assertContains(combatLifecycleContent, 'const YAW_COMBAT_LIFECYCLE = {', 'Combat lifecycle helper should expose the lifecycle service');
-  assertContains(combatLifecycleContent, 'start(app, enemies)', 'Combat lifecycle helper should own combat initialization');
+  assertContains(combatLifecycleContent, 'start(app, enemies, options = {})', 'Combat lifecycle helper should own combat initialization and admission context');
   assertContains(combatLifecycleContent, 'nextTurn(app)', 'Combat lifecycle helper should own turn advancement');
   assertContains(combatLifecycleContent, 'endCombat(app, result)', 'Combat lifecycle helper should own combat completion');
   assertContains(combatLifecycleContent, 'confirmDefeatReturnToMenu(app)', 'Combat lifecycle helper should own defeat confirmation routing');
@@ -5509,7 +5509,7 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatLifecycleContent, 'app.showConfirmDialog({', 'Combat lifecycle should use the in-app confirmation flow for defeat');
   assertContains(combatLifecycleContent, 'app.autoSave()', 'Combat lifecycle should preserve autosave after combat ends');
   assertNotContains(combatLifecycleContent, 'Math.random', 'Combat lifecycle helper should not use ambient randomness');
-  assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.start(this, enemies)', 'App startCombat wrapper should delegate to combat lifecycle');
+  assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.start(this, enemies, options)', 'App startCombat wrapper should delegate combat admission context to the lifecycle');
   assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.nextTurn(this)', 'App nextTurn wrapper should delegate to combat lifecycle');
   assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.endCombat(this, result)', 'App endCombat wrapper should delegate to combat lifecycle');
   assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.confirmDefeatReturnToMenu(this)', 'App defeat confirmation wrapper should delegate to combat lifecycle');
@@ -12244,6 +12244,75 @@ test('Ghost recovery journeys from the defeat site and resurrects only at the sa
   assertEqual(App.player.recoveryGhost, true, 'Journey player should carry explicit ghost state');
   assertEqual(App.inventory[0].id, 'ghost-keepsake', 'Retain policy should be applied exactly once before the journey');
   assertEqual(App.startCombat([enemy]), false, 'Ghost recovery should block combat');
+  assertEqual(App.combatState.active, false, 'A hostile at the defeat site should not turn a Ghost journey into combat');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'As a ghost, you pass through Wolfkin; no battle begins.', 'Ghost combat suppression should explain why the hostile remains without starting battle');
+  for (const capability of ['combat', 'inventory', 'hunger', 'interactions', 'recruitment', 'structures']) {
+    assertEqual(App._recoveryRestricts(capability), true, `Ghost recovery should retain its ${capability} restriction`);
+  }
+
+  const talkCommand = App._buildPanelInteractionCommand({
+    mode: 'adventure',
+    actors: [player],
+    targets: [enemy],
+    action: 'flirt'
+  });
+  const feastCommand = App._buildPanelInteractionCommand({
+    mode: 'adventure',
+    actors: [player],
+    targets: [enemy],
+    action: 'feast',
+    subAction: 'swallow'
+  });
+  const enemyCondition = enemy.CPun;
+  assertEqual(App._dispatchInteractionCommand(talkCommand), false, 'A Ghost should not Talk or Play with a creature');
+  assertEqual(App._dispatchInteractionCommand(feastCommand), false, 'A Ghost should not Eat or Feast on a creature');
+  assertEqual(enemy.CPun, enemyCondition, 'Blocked Ghost interactions should not change their target');
+
+  const inventoryBefore = App.inventory.map(item => item.id).join(',');
+  assertEqual(App.showInventory(), false, 'A Ghost should not open ordinary inventory management');
+  assertEqual(App.useItem('ghost-keepsake'), false, 'A Ghost should not use an inventory item');
+  assertEqual(App.inventory.map(item => item.id).join(','), inventoryBefore, 'Blocked Ghost inventory actions should not mutate inventory');
+
+  const merchant = makeUnit('Ghost Merchant', {
+    id: 'ghost-merchant',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [{ name: 'Healing Herb', price: 1, qty: 1 }]
+  });
+  const questGiver = makeUnit('Ghost Guide', {
+    id: 'ghost-guide',
+    disposition: App.DISPOSITION.QUEST_GIVER
+  });
+  const quest = {
+    id: 'ghost-quest',
+    title: 'Work for the Living',
+    description: 'This should remain unavailable.',
+    objectives: [],
+    reward: {}
+  };
+  questGiver.quest = quest;
+  const recruit = makeUnit('Ghost Recruit', {
+    id: 'ghost-recruit',
+    disposition: App.DISPOSITION.FRIENDLY,
+    willing: true,
+    recruitReady: true
+  });
+  App.creatures.push(merchant, questGiver, recruit);
+  const goldBefore = App.player.gold || 0;
+  const questCountBefore = (App.quests || []).length;
+  const partyCountBefore = App.party.length;
+  assertEqual(App.showTrade(merchant.id), false, 'A Ghost should not open a merchant transaction');
+  assertEqual(App.buyFromMerchant(merchant.id, 0), false, 'A stale merchant control should not buy an item during Ghost recovery');
+  assertEqual(App.player.gold || 0, goldBefore, 'Blocked Ghost trading should not spend gold');
+  assertEqual(App.previewQuestFromUnit(questGiver.id), false, 'A Ghost should not open a quest-giver transaction');
+  assertEqual(App.acceptQuest(quest, questGiver), false, 'A stale quest control should not accept a quest during Ghost recovery');
+  assertEqual((App.quests || []).length, questCountBefore, 'Blocked Ghost quest actions should not mutate the quest log');
+  assertEqual(App.recruitCreature(recruit, player, { force: true }), false, 'A Ghost should not recruit a creature');
+  assertEqual(App.party.length, partyCountBefore, 'Blocked Ghost recruitment should not change the party');
+  assertEqual(App.enterStructure(), false, 'A Ghost should not enter a structure');
+  assertEqual(App.rest(), false, 'A Ghost should not rest at a structure');
+  assertEqual(App.inInterior, false, 'Blocked Ghost structure actions should leave the player outside');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'A ghost cannot use ordinary physical or social interactions before resurrection.', 'Blocked Ghost capabilities should explain the restriction');
+
   assertEqual(App.resurrectFromRecovery(), false, 'Resurrection should fail away from the safe shrine');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'Return to The Beginning', 'Journey controls should explain the required destination');
 
@@ -18377,6 +18446,42 @@ test('Revisiting a tile starts combat only for living enemies', () => {
   assertEqual(App.combatState.active, true, 'Living enemy revisit should start combat');
   assert(App.combatState.turnQueue.some(entry => entry.unit === enemy), 'Living enemy should be included in turn queue');
   assert(!App.combatState.turnQueue.some(entry => entry.unit === corpse), 'Corpse should not be included in turn queue');
+});
+
+test('Hostile encounter admission routes a down player into recovery instead of an actorless composer', () => {
+  const { App, elements } = loadAppForCombat(() => 1);
+  const player = makeUnit('You', { id: 'down-player-encounter', CPun: 0, MPun: 100, knockedOut: true });
+  const companion = makeUnit('Companion', { id: 'living-companion-encounter', CPun: 50, MPun: 50 });
+  const enemy = makeUnit('Naga', { id: 'hostile-admission-naga', disposition: App.DISPOSITION.ENEMY, CPun: 60, MPun: 60 });
+  App.player = player;
+  App.party = [player, companion];
+  App.creatures = [enemy];
+  App.location = { x: 4, y: 2 };
+  App.safeAnchor = { x: 0, y: 0, label: 'The Beginning' };
+
+  assertEqual(App.startCombat([enemy], { source: 'hostile-admission-test' }), false, 'A new battle should not begin around a down player');
+  assertEqual(App.combatState.active, false, 'Rejected admission should leave combat inactive');
+  assertEqual(App.defeatState?.pending, true, 'An unresolved down player should enter authoritative recovery');
+  assertEqual(App.defeatState?.cause, 'unresolved-player-defeat', 'Recovery should preserve the encounter admission cause');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="regenerate"', 'Recovery controls should replace the ordinary exploration composer');
+  assertNotContains(elements.get('selection-sentence').innerHTML, 'Select a living actor', 'The actorless exploration correction should not replace recovery');
+});
+
+test('Legacy down-player saves recover unless companions are resuming an active battle', () => {
+  const { App, window } = loadAppForCombat(() => 1);
+  const down = makeUnit('You', { CPun: 0, MPun: 100, knockedOut: true });
+  const companion = makeUnit('Companion', { CPun: 30, MPun: 30 });
+  const inactive = {
+    playerHp: 0,
+    party: [down, companion],
+    questState: { combatState: { active: false } }
+  };
+  const active = {
+    ...inactive,
+    questState: { combatState: { active: true } }
+  };
+  assertEqual(window.YAW_DEFEAT_RECOVERY.shouldLoadAsDefeated(App, inactive), true, 'A down player outside combat should load into recovery even when a companion survived');
+  assertEqual(window.YAW_DEFEAT_RECOVERY.shouldLoadAsDefeated(App, active), false, 'A living companion should be allowed to resume the already-active battle');
 });
 
 test('Restored world state populates current tile creatures', () => {

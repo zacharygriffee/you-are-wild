@@ -37,15 +37,17 @@ does not settle the player-facing fantasy or economy.
    - optional read-only inspection and Scene history;
    - or a small, explicitly authored spectral ability set.
    Ordinary combat, containment, trade, quests, recruitment, and structure
-   use should remain blocked unless deliberately redesigned.
+   use remain blocked through their direct command boundaries unless
+   deliberately redesigned.
 6. **Resurrection cost**
    - free but inconvenient travel;
    - time, condition, item, currency, or faction cost;
    - or a cost supplied by a bounded recovery profile.
-7. **Encounter communication**
-   - Ghost travel currently suppresses ordinary encounters. The UI and Scene
-     Feed must make that state explicit so a nearby Hostile does not look like
-     a failed combat trigger.
+7. **Encounter communication — implemented baseline**
+   - Ghost travel suppresses ordinary encounters and now records an explicit
+     Scene/Activity explanation when a living Hostile is present. It no longer
+     falls through to the ordinary exploration composer or resemble a failed
+     combat trigger.
 8. **Failure safety**
    - every chosen destination must be reachable under spectral traversal;
    - unavailable module-owned recovery must continue to fall back to ordinary

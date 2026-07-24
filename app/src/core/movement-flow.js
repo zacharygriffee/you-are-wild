@@ -71,14 +71,7 @@ const YAW_MOVEMENT_FLOW = {
 
         if (wasExplored) {
             app.creatures = app._tileCreatures(tile.creatures || []);
-            const enemies = app._livingEnemies(app.creatures);
-            if (enemies.length > 0 && !recoveryJourney) {
-                const encounterText = `You encounter ${enemies.map(e => e.name).join(', ')}!`;
-                app.log.push({ text: encounterText, type: 'combat' });
-                app._addTileEvent(encounterText, 'combat');
-                app.showToast?.({ text: encounterText, type: 'danger', importance: 'major', dedupeKey: `encounter:${tile.x},${tile.y}` });
-                app.startCombat(enemies);
-            } else if (app.creatures.length > 0) {
+            if (app.creatures.length > 0) {
                 app.updateScene(`${biome.name} - ${tile.hasLandmark ? tile.landmarkName : 'Wilderness'}`, `You return to the ${biome.name}. ${tile.description}`, false);
                 app.renderExplorationActions();
             }
@@ -97,19 +90,12 @@ const YAW_MOVEMENT_FLOW = {
             app._updateQuestProgress('escort', { x: app.location.x, y: app.location.y });
             app._updateQuestProgress('travel', { x: app.location.x, y: app.location.y });
         }
-        if (!app.combatState.active && !recoveryJourney) {
-            const restoredEnemies = app._livingEnemies(app.creatures);
-            if (restoredEnemies.length > 0) {
-                const encounterText = `You encounter ${restoredEnemies.map(e => e.name).join(', ')}!`;
-                app.log.push({ text: encounterText, type: 'combat' });
-                app._addTileEvent(encounterText, 'combat');
-                app.showToast?.({ text: encounterText, type: 'danger', importance: 'major', dedupeKey: `encounter:${tile.x},${tile.y}` });
-                app.startCombat(restoredEnemies);
-            }
-        }
+        if (!app.combatState.active) app._ensureCurrentHostileEncounter?.({ source: 'movement', announce: true });
         app.renderMap();
-        if (!app.combatState.active) app.showExplorationActions();
-        if (recoveryJourney) app._showRecoveryJourney?.();
+        const recoveryPending = Boolean(app.defeatState?.pending || app.defeatState?.terminal);
+        if (!app.combatState.active && !recoveryPending) app.showExplorationActions();
+        if (YAW_RECOVERY_MODES?.isJourney?.(app)) app._showRecoveryJourney?.();
+        else if (recoveryPending) app.showDefeatRecovery?.();
         app.renderCreatures();
         app.renderLog();
         app._emitModuleHook('onPlayerMove', {

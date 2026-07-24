@@ -4,6 +4,15 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Hostile encounter admission now has one authoritative lifecycle gate across
+  fresh entry, revisits, direct starts, regeneration, and save/load. A living
+  player facing a living hostile enters combat; an unresolved down player
+  enters defeat recovery instead of an actorless composer; an active Ghost
+  journey suppresses combat with an explicit Scene/Activity explanation.
+  Existing companion-led combat still resumes and settles before recovery.
+  Ghost journeys also enforce their declared restrictions at direct
+  interaction, transaction, quest, inventory, recruitment, and structure
+  entry points, so stale controls cannot bypass the recovery-only surface.
 - UI Contribution V1 gives enabled trusted-local modules five stable,
   permissioned presentation slots: post-place commands, party and local roster
   badges, roster detail rows, and low-frequency app-menu utilities. Modules

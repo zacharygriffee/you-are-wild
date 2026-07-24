@@ -42,8 +42,16 @@ This is the short handoff for unfinished work. Completed implementation history 
   outcomes while core retains terminal resolution and persistence. The
   built-in Ghost pilgrimage begins at the defeat site, applies consequences
   once, permits encounter-free ethereal travel, blocks ordinary living
-  actions, and resurrects only at the validated safe shrine. Legacy saves and
-  unavailable module-owned journeys fall back safely to ordinary recovery.
+  actions, explicitly explains suppressed hostile encounters, and resurrects
+  only at the validated safe shrine. Legacy saves and unavailable module-owned
+  journeys fall back safely to ordinary recovery. Direct Eat/Talk, quest,
+  trade, inventory, recruitment, and structure routes all enforce the same
+  profile restrictions rather than relying on hidden recovery controls.
+- Hostile encounter admission now runs through one lifecycle gate on fresh
+  entry, revisits, direct starts, regeneration, and save/load. Living players
+  enter combat with living hostiles; unresolved down-player states enter
+  authoritative recovery rather than exposing an actorless composer; and
+  active companion-led battles remain resumable before player recovery.
 - Sprite Pack V1 now layers code-free species/ability/disposition art over
   Asset Bundle V1. Bounded state/facing animation strips use local leases,
   shared unit surfaces, reduced-motion handling, semantic text, and emoji
@@ -77,7 +85,29 @@ This is the short handoff for unfinished work. Completed implementation history 
 
 ## Active Objectives
 
-### Immediate Next — Responsive UI, Accessibility, and Localization
+### Immediate Next — Current Sites release
+
+1. Finalize the remaining Ghost product choices before publishing: shrine
+   identity, journey entry method, resurrection cost, inventory policy, and
+   whether travel-only remains the permanent built-in profile.
+2. Implement the player-favoring Standard Adventure survival-pressure and
+   Generator V4 safe-start contracts. This includes visible hunger penalties,
+   player-relative encounter admission, a protected opening region, safer and
+   more predictable roads, visible adjacent-tile danger, and an ambush
+   perception contest that gives Scout and Guard distinct value. Keep an
+   explicit later adventure-pressure setting for players who prefer lethal
+   uncertainty.
+3. Run longer Death/Defeat V3 playtests across companion battle settlement,
+   save/resume while dead, repeated recovery bags, Hardcore, and interior
+   deaths.
+4. Continue Drop Off/Rejoin testing across overworld and interiors.
+5. Continue mobile/desktop accessibility and localization cleanup.
+6. Expand the interaction balance matrix across Feed costs, multi-target
+   penalties, hunger/digestion, and Combat Technique equipment/row cases.
+7. Exercise real maintained localization, sprite, tileset, interior, and
+   terrain-transition packs before extending their contracts.
+
+### Responsive UI, Accessibility, and Localization
 
 Continue the evidence-led interface cleanup on the accepted Mobile Interaction
 Flow V2 shell without reintroducing separate phone navigation models.
@@ -120,13 +150,48 @@ Flow V2 shell without reintroducing separate phone navigation models.
 6. Continue hardening the contextual action-variant orchestrator. Feed, Feast, Play, and declarative Combat Technique V1 Fight choices now remain stable primary buttons with accessible submenus. Reach, capacity, willingness, resistance, equipment, and technique limits remain clues; physically meaningful commands commit and resolve success or failure through the Scene Feed instead of disappearing as composer errors. Group menus retain bounded previews and once-per-actor accounting. Preserve Back/Cancel state and keep module variants inside validated owned registries.
 7. Playtest Combat Technique V1 across equipment loss, protected rows, flying targets, split/full-area attacks, deterministic status expiry, queued group save/restore, and module unload. Snare/grab/pull, new blockers, and deeper back-row defensive value still require a separate design decision.
 8. Design gameplay-bearing SFW body builds separately from stat-oriented traits. Explicit anatomy remains optional-provider gated.
-9. Reproduce and close the hostile-encounter activation gap seen in operator play: a living `Hostile` unit can remain on the current tile while combat is inactive and the composer reports `Select a living actor`. Hostile tile entry is expected to start combat except during an explicit recovery journey. Test zero-vitality/defeat settlement, combat teardown, revisits, and save/resume; if combat is intentionally suppressed, present the recovery reason instead of an ordinary encounter and exploration composer.
+9. Before the next Sites publication, implement a player-favoring survival
+   pressure pass for Standard Adventure. Hunger must affect players,
+   companions, and creatures through visible bounded action/initiative
+   penalties at Hungry and Starving without lowering Constitution or maximum
+   condition. Ordinary travel encounters must use player-relative threat
+   admission so a single untelegraphed hostile cannot defeat a full-health
+   player before their first meaningful turn. Preserve dangerous outcomes for
+   clearly signposted difficult biomes, landmarks, and voluntary danger sites
+   rather than relying on invisible damage reduction.
+10. Add an ambush-awareness contract and later difficulty control. Resolve
+    first-entry ambushes through a deterministic perception contest using
+    Wisdom, visibility, terrain, relevant traits/equipment, and existing Scout
+    and Guard party roles. Scout should improve warning or avoidance; Guard
+    should mitigate an ambush that still begins. Detected threats may become
+    ordinary initiative or offer Avoid/Approach, while failed detection grants
+    initiative pressure rather than bonus damage. Design an explicit
+    adventure-pressure setting so the default remains player-favoring and an
+    opt-in profile can retain lethal uncertainty; prefer encounter
+    composition, warning, and admission changes over opaque health/damage
+    multipliers. Expose the current and adjacent tile danger band before
+    travel, and make roads materially safer or more predictable than the
+    surrounding wilderness without guaranteeing safety.
 
 ### Features
 
 1. Use `docs/feature-placement.md` to classify expansion proposals before implementation.
 2. Continue public mod-context and example hardening for narrative, structural, and asset/content-pack lanes.
-3. Strengthen deterministic map playability: start-area invariants, traversal metadata, roads/bridges/coasts, POI budgets, routes, and encounter pressure.
+3. Strengthen deterministic map playability with a Generator V4 safe-start
+   contract. The origin must be Grove with a small Grove inner ring; the
+   immediate 3x3 must not admit hostile encounters; roughly radius 2–5 may
+   introduce at most one tier-1 hostile without ambush or reinforcement; and
+   hostile structures/danger sites must remain outside the protected radius.
+   Spawn admission must use the weakest valid starting character to bound
+   worst-hit and opening-round threat so a full-health starter cannot be
+   defeated before receiving a meaningful turn. Normal biome pressure should
+   release predictably with distance rather than through invisible player
+   damage reduction. Make the live encounter roll consume the generated
+   safe-start/encounter-pressure metadata instead of only the biome's flat
+   chance, correct the opening biome prose, and lock the contract with
+   multi-seed/all-core-species acceptance. Continue strengthening traversal
+   metadata, roads/bridges/coasts, POI budgets, and routes around that
+   contract.
 4. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
 5. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, the dedicated AI Providers panel, Puter, and session-only browser-direct OpenAI-Compatible text connections now exist. Gather playtest feedback on that lifecycle before adding OAuth, relays, MCP, image/video/audio providers, or localhost sidecars.
 6. After player-POV narration has enough playtest coverage, consider a narrator perspective setting with explicit player, first-person, third-person-limited, and cinematic modes. Keep player POV as the default and preserve the structured viewpoint-role contract across modes.

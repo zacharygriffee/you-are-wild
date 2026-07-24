@@ -233,7 +233,14 @@ const YAW_SAVE_LOAD_FLOW = {
                 if (app._isRecoveryJourney?.()) app._showRecoveryJourney?.();
                 else app.showDefeatRecovery();
             }
-            else if (!app._resumeLoadedCombat()) app.showExplorationActions();
+            else if (!app._resumeLoadedCombat()) {
+                const encounter = app._ensureCurrentHostileEncounter?.({ source: 'save-load', announce: true });
+                if (!app.combatState?.active
+                    && !app.defeatState?.pending
+                    && (!encounter || encounter.reason === 'no-hostiles')) {
+                    app.showExplorationActions();
+                }
+            }
             app._emitModuleHook('onGameLoad', {
                 slotName,
                 combatActive: Boolean(app.combatState?.active),

@@ -320,8 +320,8 @@ const YAW_DEFEAT_RECOVERY = {
         }
         const playerHp = Number.isFinite(loaded?.playerHp) ? loaded.playerHp : null;
         const playerDown = playerHp !== null && playerHp <= 0;
-        const livingParty = party.filter(unit => unit && unit.CPun > 0 && !unit.knockedOut);
-        return playerDown && livingParty.length === 0;
+        const resumableCompanionBattle = Boolean(loaded?.questState?.combatState?.active && livingAllies.length > 0);
+        return playerDown && !resumableCompanionBattle;
     },
 
     isWipedCombatSave(_app, loaded = null) {
@@ -485,6 +485,8 @@ const YAW_DEFEAT_RECOVERY = {
 
     renderRecoveryControls(app) {
         const html = this.recoveryControlsHtml(app);
+        const selectionSentence = document.getElementById('selection-sentence');
+        if (selectionSentence) selectionSentence.innerHTML = '';
         const desktopBelt = document.getElementById('desktop-context-belt');
         if (desktopBelt) {
             desktopBelt.innerHTML = html;
@@ -672,7 +674,8 @@ const YAW_DEFEAT_RECOVERY = {
         app.renderParty();
         app.renderCreatures();
         app.renderLog();
-        app.showExplorationActions();
+        const encounter = app._ensureCurrentHostileEncounter?.({ source: options.fromJourney ? 'ghost-resurrection' : 'regeneration', announce: true });
+        if (!app.combatState?.active && (!encounter || encounter.reason === 'no-hostiles')) app.showExplorationActions();
         app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'combat', 'quests', 'sceneFeed', 'activityLog'], 'regenerate');
         app.autoSave();
         return true;

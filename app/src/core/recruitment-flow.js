@@ -61,6 +61,7 @@ const YAW_RECRUITMENT_FLOW = {
 
     confirm(app, target) {
         if (!target) return false;
+        if (!app._guardRecoveryCapability?.('recruitment', { action: 'recruit' })) return false;
         return app.showConfirmDialog({
             title: app._label('action.recruit', 'Recruit'),
             message: app._label('recruit.confirmSubmissive', '{name} is ready to follow. Recruit them to your party?', { name: target.name }),
@@ -71,6 +72,7 @@ const YAW_RECRUITMENT_FLOW = {
     },
 
     recruit(app, target, actor = app.player, options = {}) {
+        if (!app._guardRecoveryCapability?.('recruitment', { action: 'recruit' })) return false;
         if (app.party.length >= app.MAX_PARTY_SIZE) {
             app.log.push({ text: app._label('recruit.partyFull', 'Party is full! Cannot recruit {name}', { name: target.name }), type: 'combat' });
             app.emitRecruitmentSceneBeat?.(target, actor, 'blocked', 'party-full');

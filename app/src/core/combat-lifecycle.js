@@ -4,7 +4,99 @@
  */
 
 const YAW_COMBAT_LIFECYCLE = {
-    start(app, enemies) {
+    admission(app, enemies, options = {}) {
+        const hostiles = app._livingEnemies(Array.isArray(enemies) ? enemies : app.creatures);
+        if (app.combatState?.active) return { allowed: false, reason: 'already-active', enemies: hostiles };
+        if (!hostiles.length) return { allowed: false, reason: 'no-hostiles', enemies: [] };
+        if (YAW_RECOVERY_MODES?.isJourney?.(app) || app._recoveryRestricts?.('combat')) {
+            return { allowed: false, reason: 'recovery-journey', enemies: hostiles };
+        }
+        const defeatState = YAW_DEFEAT_RECOVERY?.migrateState?.(app, app.defeatState);
+        if (defeatState?.pending || defeatState?.terminal) {
+            app.defeatState = defeatState;
+            return { allowed: false, reason: 'defeat-recovery', enemies: hostiles };
+        }
+        const playerReady = Boolean(app.player
+            && app.player.CPun > 0
+            && !app.player.knockedOut
+            && !app._isCorpse(app.player));
+        if (!playerReady) {
+            const nonterminal = defeatState
+                && !defeatState.terminal
+                && ['captured', 'incapacitated'].includes(defeatState.status);
+            if (nonterminal) {
+                app.defeatState = defeatState;
+                return { allowed: false, reason: `player-${defeatState.status}`, enemies: hostiles };
+            }
+            app._handlePlayerFall?.({
+                fatal: true,
+                cause: 'unresolved-player-defeat',
+                source: String(options.source || 'encounter-admission')
+            });
+            return { allowed: false, reason: 'defeat-recovery', enemies: hostiles };
+        }
+        return { allowed: true, reason: 'ready', enemies: hostiles };
+    },
+
+    presentBlockedAdmission(app, admission, options = {}) {
+        if (!admission || admission.allowed) return false;
+        if (admission.reason === 'recovery-journey') {
+            const names = admission.enemies.map(enemy => enemy.name || app._label('unit.generic', 'unit')).join(', ');
+            const text = app._label('recovery.ghostEncounterSuppressed', 'As a ghost, you pass through {names}; no battle begins.', { names });
+            if (options.announce !== false) {
+                app.log.push({ text, type: 'discovery' });
+                app._addTileEvent?.(text, 'discovery');
+                app.showToast?.({ text, type: 'system', importance: 'notable', dedupeKey: `ghost-encounter:${app.location?.x},${app.location?.y}` });
+            }
+            app._showRecoveryJourney?.();
+            app.renderLog?.();
+            return true;
+        }
+        if (admission.reason === 'defeat-recovery') {
+            app.showDefeatRecovery?.();
+            return true;
+        }
+        if (admission.reason === 'player-captured' || admission.reason === 'player-incapacitated') {
+            const text = app._label('recovery.encounterUnavailable', 'You cannot enter a new battle while {status}.', {
+                status: admission.reason === 'player-captured'
+                    ? app._label('recovery.state.captured', 'captured')
+                    : app._label('recovery.state.incapacitated', 'incapacitated')
+            });
+            if (options.announce !== false) {
+                app.log.push({ text, type: 'discovery' });
+                app._addTileEvent?.(text, 'discovery');
+            }
+            app.updateScene?.(app._label('recovery.unavailableTitle', 'Unable to Fight'), text, false);
+            app.renderLog?.();
+            return true;
+        }
+        return false;
+    },
+
+    ensureCurrentEncounter(app, options = {}) {
+        const admission = this.admission(app, app.creatures, options);
+        if (!admission.allowed) {
+            this.presentBlockedAdmission(app, admission, options);
+            return admission;
+        }
+        if (options.announce !== false) {
+            const names = admission.enemies.map(enemy => enemy.name || app._label('unit.generic', 'unit')).join(', ');
+            const text = app._label('encounter.hostile', 'You encounter {names}! They are aggressive!', { names });
+            app.log.push({ text, type: 'combat' });
+            app._addTileEvent?.(text, 'combat');
+            app.showToast?.({ text, type: 'danger', importance: 'major', dedupeKey: `encounter:${app.location?.x},${app.location?.y}` });
+        }
+        this.start(app, admission.enemies, { ...options, admission });
+        return { ...admission, started: true };
+    },
+
+    start(app, enemies, options = {}) {
+        const admission = options.admission || this.admission(app, enemies, options);
+        if (!admission.allowed) {
+            this.presentBlockedAdmission(app, admission, options);
+            return false;
+        }
+        enemies = admission.enemies;
         app.closeTransactionWindow?.();
         app.closeHoldingsWindow?.();
         app._clearTransientInteractionState();

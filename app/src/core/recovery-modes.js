@@ -190,6 +190,28 @@ const YAW_RECOVERY_MODES = {
     restricts(app, capability) {
         if (!this.isJourney(app)) return false;
         return this.forState(app, app.defeatState)?.restrictions?.includes(String(capability || '')) || false;
+    },
+
+    guard(app, capability, context = {}) {
+        const blockedCapability = String(capability || '');
+        if (!this.restricts(app, blockedCapability)) return true;
+        const text = app?._label?.(
+            'recovery.actionRestricted',
+            'A ghost cannot use ordinary physical or social interactions before resurrection.'
+        ) || 'A ghost cannot use ordinary physical or social interactions before resurrection.';
+        app?._pushLog?.(text, 'discovery', {
+            action: String(context.action || blockedCapability || 'recovery'),
+            phase: 'recovery-restricted'
+        });
+        app?.showToast?.({
+            text,
+            type: 'blocked',
+            importance: 'notable',
+            dedupeKey: `recovery-restricted:${blockedCapability}`
+        });
+        app?._showRecoveryJourney?.();
+        app?.renderLog?.();
+        return false;
     }
 };
 

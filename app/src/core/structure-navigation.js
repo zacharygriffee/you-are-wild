@@ -234,10 +234,7 @@ const YAW_STRUCTURE_NAVIGATION = {
     },
 
     enter(app) {
-        if (YAW_RECOVERY_MODES?.restricts?.(app, 'structures')) {
-            app._showRecoveryJourney?.();
-            return false;
-        }
+        if (!app._guardRecoveryCapability?.('structures', { action: 'enter-structure' })) return false;
         if (app.inInterior) return;
         const tile = this.currentOverworldTile(app);
         if (!tile || !tile.structure) {
@@ -359,10 +356,7 @@ const YAW_STRUCTURE_NAVIGATION = {
     },
 
     rest(app) {
-        if (YAW_RECOVERY_MODES?.isJourney?.(app)) {
-            app._showRecoveryJourney?.();
-            return false;
-        }
+        if (!app._guardRecoveryCapability?.('structures', { action: 'rest' })) return false;
         if (!this.canRestHere(app)) {
             const unavailableText = app._label('log.restUnavailable', 'There is no safe place to rest here.');
             app.log.push({ text: unavailableText, type: 'discovery' });

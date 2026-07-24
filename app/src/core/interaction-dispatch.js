@@ -217,10 +217,7 @@ const YAW_INTERACTION_DISPATCH = {
         const valid = this.validate(app, command);
         if (!valid.ok) {
             if (valid.reason === 'recovery-restricted') {
-                const text = app._label('recovery.actionRestricted', 'A ghost cannot use ordinary physical or social interactions before resurrection.');
-                app._pushLog?.(text, 'discovery', { action: command?.action, phase: valid.reason });
-                app._showRecoveryJourney?.();
-                app.renderLog?.();
+                app._guardRecoveryCapability?.('interactions', { action: command?.action });
             }
             return false;
         }

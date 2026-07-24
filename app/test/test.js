@@ -15,10 +15,12 @@ const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mo
 const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.md');
 const NEXT_OBJECTIVES = path.join(__dirname, '..', '..', 'docs', 'next-objectives.md');
 const NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-narration.yawmod.json');
+const NARRATION_MOD_SOURCE = path.join(__dirname, '..', '..', 'optional-mods', 'sources', 'you-are-wild-narration.js');
 const EXPLICIT_NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-explicit-narration.yawmod.json');
 const TEMPLATE_NARRATION_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-template-narration.yawmod.json');
 const NARRATION_DIAGNOSTICS_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-narration-diagnostics.yawmod.json');
 const ELEMENTAL_SPECIES_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-elemental-species.yawmod.json');
+const WAYSTONE_RECOVERY_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-waystone-recovery.yawmod.json');
 const NEUTRAL_CONFORMANCE_MOD_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'neutral-conformance.yawmod.json');
 const NEUTRAL_CONFORMANCE_LOCALE_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'neutral-conformance-locale-pack.yawmod.json');
 const FRENCH_PREVIEW_LOCALE_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-french-preview.yawmod.json');
@@ -914,11 +916,16 @@ test('Narration package is optional and declares bounded provider-neutral settin
   const prompt = manifest.settings.find(setting => setting.key === 'systemPrompt');
   assert(prompt?.type === 'string' && prompt.multiline === true, 'Narration package should expose bounded multiline mod instructions');
   assert(prompt.maxLength <= 2000, 'Narration instructions should stay within the manager hard limit');
-  assertEqual(manifest.version, '0.6.0', 'Profile-aware player-viewpoint narration should use the versioned package contract');
+  assertEqual(manifest.version, '0.7.0', 'Perspective-aware narration should use the versioned package contract');
+  assertEqual(packageData.module.code, fs.readFileSync(NARRATION_MOD_SOURCE, 'utf8').trimEnd(), 'Built Simple Narrator code should match its maintainable source');
   const profiles = manifest.settings.find(setting => setting.key === 'profile');
   assertEqual(profiles?.options?.length, 3, 'Simple Narrator should expose three narration profiles');
   assertContains(profiles.description, 'Character reactions', 'Narration profile help should explain the character-focused mode');
-  assertContains(prompt.description, 'cannot override viewpoint', 'Narration settings should explain that style guidance cannot replace the viewpoint contract');
+  const perspectives = manifest.settings.find(setting => setting.key === 'perspective');
+  assertEqual(perspectives?.default, 'player', 'Player POV should remain the default narration perspective');
+  assertEqual(perspectives?.options?.map(option => option.value).join(','), 'player,first_person,third_person_limited,cinematic', 'Simple Narrator should expose the four accepted perspective modes');
+  assertContains(perspectives.description, 'grammatical framing only', 'Perspective help should distinguish prose framing from deterministic state');
+  assertContains(prompt.description, 'cannot override viewpoint roles', 'Narration settings should explain that style guidance cannot replace structured viewpoint roles');
   assertNotContains(generatedBuildContent, 'yaw_narration_first_party', 'Optional narration package must not enter the default build');
   assertContains(buildContent, 'FIRST_PARTY_PACKAGE_MIRRORS', 'Release validation should use an explicit first-party package allowlist');
 });
@@ -980,11 +987,12 @@ asyncTest('Simple Narrator applies distinct profile contracts across player-view
     const result = results[index];
     assertEqual(result.request.profileId, cases[index].profile, 'Selected narration profile should reach the provider request');
     assertEqual(result.request.input.context, result.context, 'Actor, target, self, observer, mixed, and character-free viewpoint context should remain intact');
-    assertContains(result.request.instructions, 'Use player POV from context.viewpoint', 'Every profile should retain the player-viewpoint contract');
-    assertContains(result.request.instructions, 'cannot override the viewpoint, profile, fact, policy', 'Custom style guidance should remain subordinate to fixed contracts');
+    assertContains(result.request.instructions, 'Perspective contract - Player POV', 'Default profile runs should retain second-person player POV');
+    assertContains(result.request.instructions, 'Structured viewpoint roles remain authoritative', 'Every profile should preserve structured actor and target roles');
+    assertContains(result.request.instructions, 'cannot override the perspective, viewpoint roles, profile, fact, policy', 'Custom style guidance should remain subordinate to fixed contracts');
     assert(result.request.instructions.length <= 2000, 'Combined viewpoint, profile, and style instructions should stay within the provider-manager limit');
     assert(result.request.instructions.indexOf('Profile contract') < result.request.instructions.indexOf('Style guidance'), 'Profile contract should precede editable style guidance');
-    assertContains(result.publication.id, '.v6.', 'Profile-contract changes should publish under a new cache namespace');
+    assertContains(result.publication.id, '.v7.', 'Perspective-contract changes should publish under a new cache namespace');
   }
   assertContains(results[0].request.instructions, 'Profile contract - Storyteller', 'Storyteller should receive scene-focused instructions');
   assertContains(results[2].request.instructions, 'never split a player self-interaction', 'Character mode should handle self-interaction as one character');
@@ -993,6 +1001,79 @@ asyncTest('Simple Narrator applies distinct profile contracts across player-view
   assertContains(results[5].request.instructions, 'character-free exploration', 'Hybrid should define a character-free exploration fallback');
   assert(results[0].cacheLookup.variant !== results[2].cacheLookup.variant, 'Profile changes should use distinct narration cache variants');
   assert(results[2].cacheLookup.variant !== results[4].cacheLookup.variant, 'Every profile should have a distinct narration cache variant');
+});
+
+asyncTest('Simple Narrator perspective modes change grammar without changing structured context', async () => {
+  const packageData = JSON.parse(fs.readFileSync(NARRATION_MOD_PACKAGE, 'utf8'));
+  const context = {
+    target: { exchangeId: 'perspective-exchange' },
+    viewpoint: {
+      mode: 'player',
+      player: { id: 'player-1', name: 'Zx' },
+      participation: 'mixed',
+      beatRoles: [
+        { beatId: 'beat-1', participation: 'actor' },
+        { beatId: 'beat-2', participation: 'observer' }
+      ]
+    },
+    characters: [{ id: 'wolf-1', name: 'Wolfkin' }],
+    beats: [{ id: 'beat-1', summary: 'Zx advances.' }, { id: 'beat-2', summary: 'Wolfkin retreats.' }],
+    recentBeats: [],
+    activity: []
+  };
+
+  const run = async perspective => {
+    const hooks = {};
+    const requests = [];
+    const cacheLookups = [];
+    const MODS = {
+      async getSetting(key, fallback) {
+        if (key === 'perspective') return perspective;
+        if (key === 'providerConnection') return 'provider-1';
+        if (key === 'systemPrompt') return 'Write concise, vivid narration focused on what the player perceives. Use second person for the player and third person for other characters. Give dialogue room when characters speak. Avoid repeating interface labels.';
+        return fallback;
+      },
+      registerNarrationOrchestrator() {},
+      registerHook(event, callback) { hooks[event] = callback; },
+      async ownsNarrationExchange() { return true; },
+      getNarrationContext() { return context; },
+      getCachedTileNarration(query) { cacheLookups.push(query); return null; },
+      publishNarration(record) { return record; },
+      updateNarration() {},
+      cacheTileNarration() {},
+      ai: {
+        listConnections() { return [{ id: 'provider-1' }]; },
+        cancelPending() {},
+        async generate(request) { requests.push(request); return { text: 'Narrated.' }; }
+      }
+    };
+    new Function('MODS', packageData.module.code)(MODS);
+    hooks.onSceneBeat({ exchangeId: context.target.exchangeId });
+    await hooks.onSceneExchangeClosed({ exchangeId: context.target.exchangeId, policy: { posture: 'sfw' } });
+    return { request: requests[0], variant: cacheLookups[0].variant };
+  };
+
+  const player = await run('player');
+  const first = await run('first_person');
+  const limited = await run('third_person_limited');
+  const cinematic = await run('cinematic');
+  assertContains(player.request.instructions, "Address the player as 'you'", 'Player POV should request second-person grammar');
+  assertContains(first.request.instructions, "Narrate viewpoint.player as 'I'", 'First-person mode should request first-person grammar');
+  assertNotContains(first.request.instructions, 'Use second person for the player and third person for other characters', 'An unchanged pre-0.7 default prompt should migrate instead of conflicting with first person');
+  assertContains(first.request.instructions, 'Follow the selected narration perspective', 'Migrated default style should defer to the selected perspective');
+  assertContains(limited.request.instructions, "player name or a neutral 'the traveler' fallback", 'Third-person-limited mode should use bounded player identity');
+  assertContains(cinematic.request.instructions, 'external third-person camera framing', 'Cinematic mode should request external framing');
+  for (const result of [player, first, limited, cinematic]) {
+    assertEqual(result.request.input.context, context, 'Perspective selection must not rewrite deterministic narration context');
+    assertEqual(result.request.input.viewpointMode, 'player', 'All prose modes should preserve the authoritative player viewpoint model');
+    assertContains(result.request.instructions, 'observer = describe the actual other characters', 'Every perspective must preserve observer-role ownership');
+    assertContains(result.request.instructions, 'Never invent perceptions, dialogue, state, outcomes, or facts', 'Every perspective must remain fact bounded');
+  }
+  assertEqual(player.request.input.narrationPerspective, 'player', 'Player mode should be explicit in provider input');
+  assertEqual(first.request.input.narrationPerspective, 'first_person', 'First-person mode should be explicit in provider input');
+  assertEqual(limited.request.input.narrationPerspective, 'third_person_limited', 'Third-person mode should be explicit in provider input');
+  assertEqual(cinematic.request.input.narrationPerspective, 'cinematic', 'Cinematic mode should be explicit in provider input');
+  assertEqual(new Set([player.variant, first.variant, limited.variant, cinematic.variant]).size, 4, 'Every perspective should use a separate narration cache variant');
 });
 
 test('Reference narration packages remain optional and separate provider use from offline fixtures', () => {
@@ -2223,17 +2304,18 @@ asyncTest('Simple Narrator sends a versioned player-POV contract and inherits pr
   await harness.fire('onSceneExchangeClosed', { exchangeId: 'observer-exchange', policy });
   const request = harness.requests.find(item => item.request)?.request;
   assert(request, 'Simple Narrator should issue one provider request');
-  assertContains(request.instructions, "Address viewpoint.player as 'you'", 'Narrator instructions should identify the player as second person');
-  assertContains(request.instructions, "self = use reflexive language such as 'yourself'", 'Narrator instructions should cover self-interaction explicitly');
-  assertContains(request.instructions, 'observer = describe the other characters in third person', 'Narrator instructions should preserve spectator POV');
+  assertContains(request.instructions, "Address the player as 'you'", 'Default narrator instructions should identify the player as second person');
+  assertContains(request.instructions, 'self = the player is one character acting on themself', 'Narrator instructions should cover self-interaction explicitly');
+  assertContains(request.instructions, 'observer = describe the actual other characters', 'Narrator instructions should preserve spectator POV');
   assertContains(request.instructions, 'Keep the prose spare.', 'Editable style guidance should remain layered into the request');
   assertEqual(request.input.viewpointMode, 'player', 'Structured input should declare the current viewpoint mode');
   assertEqual(request.input.context.viewpoint.participation, 'observer', 'Structured input should retain the derived player role');
   assertEqual(Object.prototype.hasOwnProperty.call(request, 'timeoutMs'), false, 'Narrator requests should inherit the selected provider profile timeout');
   assertContains(request.instructions, 'For a tile-entry observation, describe the current place and visible state', 'Narrator instructions should isolate tile observations from unrelated recent history');
   assertContains(request.instructions, 'Profile contract - Storyteller', 'Default narration should apply the explicit Storyteller contract');
-  assertEqual(harness.narrations[0].profileVersion, '6', 'Narration records should identify the profile-contract version');
-  assertContains(harness.narrations[0].id, '.v6.exchange.', 'Profile-aware narration ids should not collide with older generated records');
+  assertEqual(request.input.narrationPerspective, 'player', 'Default narration should declare player POV in structured provider input');
+  assertEqual(harness.narrations[0].profileVersion, '7', 'Narration records should identify the perspective-contract version');
+  assertContains(harness.narrations[0].id, '.v7.exchange.', 'Perspective-aware narration ids should not collide with older generated records');
 });
 
 asyncTest('Simple Narrator reuses matching tile prose without another provider request', async () => {
@@ -4931,6 +5013,24 @@ test('Feed decision records implemented Tend separately from deferred nutrition 
   assertContains(decision, 'Hunger and Spirit relief were removed from Tend', 'Feed decision should record the implemented condition-only boundary');
   assertContains(placement, 'Feed extensions and nutrition-bearing reserves', 'Feature placement should retain only unresolved Feed extensions');
   assertNotContains(placement, 'Whether Feed becomes actor-to-target whole/portion offering', 'Feature placement should not reopen the accepted Feed direction');
+});
+
+test('Content Placement V1 rejects executable map callbacks until worlds snapshot a deterministic recipe', () => {
+  const decision = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'content-placement-v1-decision.md'), 'utf8');
+  const sparseMap = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'sparse-map-generation.md'), 'utf8');
+  assertContains(decision, 'Species Profile V1 `encounters`', 'Placement decision should identify the maintained rare-encounter seam');
+  assertContains(decision, '`worldMeta.mapModsHash` is currently metadata scaffolding', 'Placement decision should state the current recipe gap');
+  assertContains(decision, 'New-world snapshot', 'A future placement seam should require a canonical new-world recipe');
+  assertContains(decision, 'Missing-owner policy', 'A future placement seam should define missing module behavior before release');
+  assertContains(decision, '`file://`', 'A future placement seam should retain offline reconstruction');
+  assertContains(sparseMap, 'Do not expose executable terrain, layer, rule, or semantic-generator callbacks', 'Sparse generation doctrine should reject load-order-sensitive callbacks');
+
+  const modules = loadModuleSystemForTest();
+  const api = modules.createModAPI('placement-boundary', { permissions: ['world:add_biome'] });
+  assertEqual(typeof api.addBiome, 'function', 'The existing biome-definition seam should remain available');
+  for (const unsafeName of ['registerWorldPlacement', 'registerMapRule', 'registerMapLayerGenerator', 'registerSemanticGenerator']) {
+    assertEqual(api[unsafeName], undefined, `${unsafeName} should not be exposed before recipe acceptance exists`);
+  }
 });
 
 test('Backlog completion audit maps preservation invariants and operator gates to evidence', () => {
@@ -10797,6 +10897,37 @@ test('Module recovery modes are permissioned owned and safely fall back on unloa
   assertEqual(app.defeatState.recoveryPhase, 'prompt', 'An unavailable journey should return to an explicit recovery prompt');
   assertEqual(app.defeatState.status, 'dead', 'An unavailable journey should no longer leave the player in ghost state');
   assertEqual(app._recoveryMenuClosed, true, 'Unloading the active recovery owner should close transient recovery UI');
+});
+
+asyncTest('Waystone Recovery is an offline optional profile with owned locale and unload behavior', async () => {
+  const CONTENT = loadContentSystemForTest();
+  const modules = loadModuleSystemForTest({ CONTENT });
+  modules.db = createFakeIndexedDb().db;
+  const packageData = JSON.parse(fs.readFileSync(WAYSTONE_RECOVERY_MOD_PACKAGE, 'utf8'));
+  assertEqual(packageData.module.manifest.type, 'content_pack', 'Waystone Recovery should remain an optional content pack');
+  assertEqual(packageData.module.manifest.minGameVersion, '0.14.0', 'Waystone Recovery should target the bounded Recovery Mode V1 release');
+  assertEqual(packageData.module.manifest.runtimeRequirements.network, false, 'Waystone Recovery should not need network access');
+  assert(packageData.module.manifest.runtimeRequirements.origins.includes('file'), 'Waystone Recovery should support downloaded file-origin play');
+  assertEqual(packageData.module.manifest.permissions.join(','), 'content:add_locale,mechanics:add_recovery_mode', 'Waystone Recovery should request only its locale and recovery capabilities');
+
+  await modules.installModule(packageData);
+  const installed = (await modules.getAllModules()).find(module => module.id === 'yaw_waystone_recovery');
+  assertEqual(installed.enabled, false, 'A locally installed recovery profile should remain disabled until explicitly enabled');
+  await modules.setModuleEnabled('yaw_waystone_recovery', true);
+  const profile = modules._testRecoveryModes.profile('yaw_waystone_recovery:waystone-pilgrimage');
+  assert(profile, 'Enabling Waystone Recovery should register its namespaced profile');
+  assertEqual(profile.entry, 'defeat-site', 'Waystone should begin at the recorded defeat site');
+  assertEqual(profile.resolution, 'shrine', 'Waystone should use the core pilgrimage resolver');
+  assertEqual(profile.inventory, 'death-bag', 'Waystone should declare its inventory consequence');
+  assertEqual(profile.vitalityPercent, 25, 'Waystone should declare bounded resurrection vitality');
+  assertEqual(profile.restrictions.length, 6, 'Waystone should remain traversal-only during recovery');
+  assertEqual(CONTENT.t('yaw_waystone_recovery.mode.label'), 'Waystone pilgrimage', 'Enabled recovery should own its English label');
+  CONTENT.setLanguage('es');
+  assertEqual(CONTENT.t('yaw_waystone_recovery.mode.label'), 'Peregrinación de piedra guía', 'Enabled recovery should own its Spanish label');
+
+  await modules.setModuleEnabled('yaw_waystone_recovery', false);
+  assertEqual(modules._testRecoveryModes.profile('yaw_waystone_recovery:waystone-pilgrimage'), null, 'Disabling Waystone should remove only its owned profile');
+  assertEqual(CONTENT.t('yaw_waystone_recovery.mode.label'), 'yaw_waystone_recovery.mode.label', 'Disabling Waystone should remove its owned locale entries');
 });
 
 asyncTest('Module action variants follow manifest content policy and unload on policy downgrade', async () => {

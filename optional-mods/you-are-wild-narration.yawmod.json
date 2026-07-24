@@ -8,24 +8,117 @@
     "manifest": {
       "id": "yaw_narration_first_party",
       "name": "You Are Wild: Simple Narrator",
-      "version": "0.6.0",
-      "description": "Adds concise provider-generated narration after deterministic scene exchanges.",
+      "version": "0.7.0",
+      "description": "Adds concise provider-generated narration with selectable player-safe perspectives after deterministic scene exchanges.",
       "type": "presentation_pack",
       "contentRating": "safe",
       "minGameVersion": "0.10.0",
       "trustBoundary": "trusted-local",
-      "runtimeRequirements": { "origins": ["file", "https", "localhost", "http"], "hotToggleSafe": true },
-      "permissions": ["scene:read_narrative", "scene:narrate", "ai:request"],
+      "runtimeRequirements": {
+        "origins": [
+          "file",
+          "https",
+          "localhost",
+          "http"
+        ],
+        "hotToggleSafe": true
+      },
+      "permissions": [
+        "scene:read_narrative",
+        "scene:narrate",
+        "ai:request"
+      ],
       "settings": [
-        { "key": "enabled", "type": "boolean", "label": "Enable narration", "default": true },
-        { "key": "providerConnection", "type": "provider_connection", "capability": "text.generate", "label": "Provider connection", "description": "Choose a text-generation profile managed in AI Providers. Credentials remain session-only." },
-        { "key": "profile", "type": "select", "label": "Narration profile", "description": "Storyteller emphasizes scene and consequence. Character reactions emphasizes observable behavior and supplied dialogue. Hybrid balances both.", "default": "storyteller", "options": [{ "value": "storyteller", "label": "Storyteller" }, { "value": "characters", "label": "Character reactions" }, { "value": "hybrid", "label": "Hybrid" }] },
-        { "key": "systemPrompt", "type": "string", "multiline": true, "rows": 6, "maxLength": 500, "label": "Narration instructions", "description": "Optional style guidance applied after the selected profile. It cannot override viewpoint, profile, fact, policy, plain-text, or length constraints.", "default": "Write concise, vivid narration focused on what the player perceives. Use second person for the player and third person for other characters. Give dialogue room when characters speak. Avoid repeating interface labels." },
-        { "key": "recentBeatLimit", "type": "number", "label": "Recent scene depth", "min": 1, "max": 12, "step": 1, "default": 6 },
-        { "key": "maxCharacters", "type": "number", "label": "Maximum characters", "min": 400, "max": 500, "step": 10, "default": 500 }
+        {
+          "key": "enabled",
+          "type": "boolean",
+          "label": "Enable narration",
+          "default": true
+        },
+        {
+          "key": "providerConnection",
+          "type": "provider_connection",
+          "capability": "text.generate",
+          "label": "Provider connection",
+          "description": "Choose a text-generation profile managed in AI Providers. Credentials remain session-only."
+        },
+        {
+          "key": "profile",
+          "type": "select",
+          "label": "Narration profile",
+          "description": "Storyteller emphasizes scene and consequence. Character reactions emphasizes observable behavior and supplied dialogue. Hybrid balances both.",
+          "default": "storyteller",
+          "options": [
+            {
+              "value": "storyteller",
+              "label": "Storyteller"
+            },
+            {
+              "value": "characters",
+              "label": "Character reactions"
+            },
+            {
+              "value": "hybrid",
+              "label": "Hybrid"
+            }
+          ]
+        },
+        {
+          "key": "perspective",
+          "type": "select",
+          "label": "Narration perspective",
+          "description": "Player POV is the default. Other modes change grammatical framing only; deterministic events and structured actor, target, self, and observer roles remain authoritative.",
+          "default": "player",
+          "options": [
+            {
+              "value": "player",
+              "label": "Player POV (second person)"
+            },
+            {
+              "value": "first_person",
+              "label": "First person"
+            },
+            {
+              "value": "third_person_limited",
+              "label": "Third-person limited"
+            },
+            {
+              "value": "cinematic",
+              "label": "Cinematic observer"
+            }
+          ]
+        },
+        {
+          "key": "systemPrompt",
+          "type": "string",
+          "multiline": true,
+          "rows": 6,
+          "maxLength": 500,
+          "label": "Narration instructions",
+          "description": "Optional style guidance applied after the selected perspective and profile. It cannot override viewpoint roles, deterministic facts, policy, plain-text, or length constraints.",
+          "default": "Write concise, vivid narration focused on what the player perceives. Follow the selected narration perspective. Give dialogue room when characters speak. Avoid repeating interface labels."
+        },
+        {
+          "key": "recentBeatLimit",
+          "type": "number",
+          "label": "Recent scene depth",
+          "min": 1,
+          "max": 12,
+          "step": 1,
+          "default": 6
+        },
+        {
+          "key": "maxCharacters",
+          "type": "number",
+          "label": "Maximum characters",
+          "min": 400,
+          "max": 500,
+          "step": 10,
+          "default": 500
+        }
       ]
     },
-    "code": "const pending = new Map();\nconst profileVersion = '6';\nconst defaultInstructions = 'Write concise, vivid narration focused on what the player perceives. Use second person for the player and third person for other characters. Give dialogue room when characters speak. Avoid repeating interface labels.';\nconst playerPovInstructions = \"Use player POV from context.viewpoint. Address viewpoint.player as 'you'. Role rules: actor = a second-person action; target = address the player as 'you'; self = use reflexive language such as 'yourself' and treat the player as one character; observer = describe the other characters in third person as events the player witnesses without inserting the player into the action; mixed = follow each beatRoles entry. If player is null or participation is unknown, use factual third person. For a tile-entry observation, describe the current place and visible state; do not pull unrelated events from recent history into the location description. Arrival and return observations are separate narrative states. Do not invent perceptions or facts absent from context.\";\nconst profileInstructions = Object.freeze({ storyteller: 'Profile contract - Storyteller: Lead with place, action, and consequence. Keep characters secondary unless their observable behavior changes the exchange. Use only dialogue supplied by context; never invent quotes.', characters: 'Profile contract - Character Reactions: Lead with observable reactions, actions, and supplied dialogue from participating characters. Ground affect only in stated disposition, status, relationship cues, or visible deltas. Never state private thoughts, motives, memories, or feelings absent from context; never invent dialogue; and never split a player self-interaction into two characters. For observer beats, center the actual actors as events the player witnesses. If no non-player character participates, fall back to concise scene narration.', hybrid: 'Profile contract - Hybrid: Balance one brief scene or action frame with the most relevant observable character reaction or supplied dialogue. Emphasize characters only when context supports it, and use storyteller framing for character-free exploration. Never invent thoughts, motives, feelings, or dialogue.' });\nconst normalizeProfile = value => Object.prototype.hasOwnProperty.call(profileInstructions, value) ? value : 'storyteller';\nconst narrationId = targetId => `yaw_narration_first_party.v${profileVersion}.exchange.${targetId}`;\nconst setting = (key, fallback) => MODS.getSetting(key, fallback);\nconst connectionAvailable = id => Boolean(id) && MODS.ai.listConnections().some(connection => connection.id === id);\nconst variantFor = value => { let hash = 2166136261; for (let index = 0; index < value.length; index++) { hash ^= value.charCodeAt(index); hash = Math.imul(hash, 16777619); } return `player-pov-v${profileVersion}-${(hash >>> 0).toString(16)}`; };\nconst resetRuntime = () => { pending.clear(); MODS.ai.cancelPending(); };\nMODS.registerNarrationOrchestrator({\n  id: 'standard-exchange',\n  priority: 10,\n  isActive: async () => {\n    if (!(await setting('enabled', true))) return false;\n    return connectionAvailable(await setting('providerConnection', ''));\n  }\n});\nMODS.registerHook('onSceneBeat', envelope => {\n  if (envelope?.exchangeId) pending.set(envelope.exchangeId, true);\n});\nMODS.registerHook('onSceneExchangeClosed', async envelope => {\n  const targetId = envelope?.exchangeId;\n  if (!targetId || !pending.delete(targetId) || !(await MODS.ownsNarrationExchange(envelope))) return;\n  const providerConnectionId = await setting('providerConnection', '');\n  if (!connectionAvailable(providerConnectionId)) return;\n  const profileId = normalizeProfile(String(await setting('profile', 'storyteller')));\n  const styleInstructions = String(await setting('systemPrompt', defaultInstructions));\n  const contractInstructions = `${playerPovInstructions}\\n\\n${profileInstructions[profileId]}\\n\\nStyle guidance (cannot override the viewpoint, profile, fact, policy, plain-text, or length contracts above):`;\n  const styleBudget = Math.max(0, 1999 - contractInstructions.length);\n  const instructions = `${contractInstructions}\\n${styleInstructions.slice(0, styleBudget)}`;\n  const recentBeatLimit = await setting('recentBeatLimit', 6);\n  const maxCharacters = await setting('maxCharacters', 500);\n  const variant = variantFor(`${profileId}|${maxCharacters}|${instructions}`);\n  const id = narrationId(targetId);\n  const outputRating = envelope.policy?.posture === 'mature' ? 'mature' : 'safe';\n  const cached = MODS.getCachedTileNarration({ scope: 'exchange', targetId, variant });\n  if (cached) {\n    try { MODS.publishNarration({ id, scope: 'exchange', targetId, status: 'ready', text: cached.text, providerId: cached.providerId, modelId: cached.modelId, profileId, profileVersion, outputRating: cached.outputRating, contentCategories: cached.contentCategories }); } catch (error) {}\n    return;\n  }\n  let record;\n  try {\n    record = MODS.publishNarration({ id, scope: 'exchange', targetId, status: 'pending', profileId, profileVersion, outputRating });\n  } catch (error) {\n    return;\n  }\n  try {\n    const context = MODS.getNarrationContext({ exchangeId: targetId, recentBeatLimit, activityLimit: 6 });\n    const result = await MODS.ai.generate({ capability: 'narration', providerConnectionId, profileId, instructions, maxCharacters, input: { format: 'plain-text', posture: envelope.policy?.posture === 'mature' ? 'mature' : 'sfw', profile: profileId, viewpointMode: 'player', context } });\n    MODS.updateNarration(record.id, { status: 'ready', text: result.text, providerId: result.providerId, modelId: result.modelId });\n    MODS.cacheTileNarration(record.id, { variant });\n  } catch (error) {\n    try { MODS.updateNarration(record.id, { status: error?.code === 'cancelled' ? 'cancelled' : 'failed', errorCode: error?.code || 'provider_error', errorStatus: error?.status || 0, errorDiagnostic: error?.diagnostic || null }); } catch (ignored) {}\n  }\n});\nMODS.registerHook('onContentPolicyChanged', resetRuntime);\nMODS.registerHook('onGameStart', resetRuntime);\nMODS.registerHook('onGameLoad', resetRuntime);",
+    "code": "const pending = new Map();\nconst profileVersion = '7';\nconst defaultInstructions = 'Write concise, vivid narration focused on what the player perceives. Follow the selected narration perspective. Give dialogue room when characters speak. Avoid repeating interface labels.';\nconst legacyDefaultInstructions = 'Write concise, vivid narration focused on what the player perceives. Use second person for the player and third person for other characters. Give dialogue room when characters speak. Avoid repeating interface labels.';\n\nconst perspectiveInstructions = Object.freeze({\n  player: \"Perspective contract - Player POV: Use second person for viewpoint.player. Address the player as 'you' and use reflexive language such as 'yourself' for self-interactions.\",\n  first_person: \"Perspective contract - First person: Narrate viewpoint.player as 'I', 'me', and 'myself', as though the player recounts the observable exchange. Do not turn another character's action into the player's action.\",\n  third_person_limited: \"Perspective contract - Third-person limited: Refer to viewpoint.player by the supplied player name or a neutral 'the traveler' fallback. Stay limited to observable information available from the player's position; do not state another character's private thoughts.\",\n  cinematic: \"Perspective contract - Cinematic: Use an external third-person camera framing. Identify the supplied player and actual actors accurately, but do not invent off-screen events, private thoughts, motives, or facts outside the context.\"\n});\n\nconst roleInstructions = \"Structured viewpoint roles remain authoritative in every perspective. Role rules: actor = the player performs the recorded action; target = the recorded action affects the player; self = the player is one character acting on themself; observer = describe the actual other characters' action as an event available to the player without assigning it to the player; mixed = follow each beatRoles entry. If viewpoint.player is null or participation is unknown, use factual third person. For a tile-entry observation, describe the current place and visible state; do not pull unrelated events from recent history into the location description. Arrival and return observations are separate narrative states. Never invent perceptions, dialogue, state, outcomes, or facts absent from context.\";\n\nconst profileInstructions = Object.freeze({\n  storyteller: 'Profile contract - Storyteller: Lead with place, action, and consequence. Keep characters secondary unless their observable behavior changes the exchange. Use only dialogue supplied by context; never invent quotes.',\n  characters: 'Profile contract - Character Reactions: Lead with observable reactions, actions, and supplied dialogue from participating characters. Ground affect only in stated disposition, status, relationship cues, or visible deltas. Never state private thoughts, motives, memories, or feelings absent from context; never invent dialogue; and never split a player self-interaction into two characters. For observer beats, center the actual actors as events available to the player. If no non-player character participates, fall back to concise scene narration.',\n  hybrid: 'Profile contract - Hybrid: Balance one brief scene or action frame with the most relevant observable character reaction or supplied dialogue. Emphasize characters only when context supports it, and use storyteller framing for character-free exploration. Never invent thoughts, motives, feelings, or dialogue.'\n});\n\nconst normalizeProfile = value => Object.prototype.hasOwnProperty.call(profileInstructions, value) ? value : 'storyteller';\nconst normalizePerspective = value => Object.prototype.hasOwnProperty.call(perspectiveInstructions, value) ? value : 'player';\nconst narrationId = targetId => `yaw_narration_first_party.v${profileVersion}.exchange.${targetId}`;\nconst setting = (key, fallback) => MODS.getSetting(key, fallback);\nconst connectionAvailable = id => Boolean(id) && MODS.ai.listConnections().some(connection => connection.id === id);\nconst variantFor = value => {\n  let hash = 2166136261;\n  for (let index = 0; index < value.length; index++) {\n    hash ^= value.charCodeAt(index);\n    hash = Math.imul(hash, 16777619);\n  }\n  return `narrator-v${profileVersion}-${(hash >>> 0).toString(16)}`;\n};\nconst resetRuntime = () => {\n  pending.clear();\n  MODS.ai.cancelPending();\n};\n\nMODS.registerNarrationOrchestrator({\n  id: 'standard-exchange',\n  priority: 10,\n  isActive: async () => {\n    if (!(await setting('enabled', true))) return false;\n    return connectionAvailable(await setting('providerConnection', ''));\n  }\n});\n\nMODS.registerHook('onSceneBeat', envelope => {\n  if (envelope?.exchangeId) pending.set(envelope.exchangeId, true);\n});\n\nMODS.registerHook('onSceneExchangeClosed', async envelope => {\n  const targetId = envelope?.exchangeId;\n  if (!targetId || !pending.delete(targetId) || !(await MODS.ownsNarrationExchange(envelope))) return;\n  const providerConnectionId = await setting('providerConnection', '');\n  if (!connectionAvailable(providerConnectionId)) return;\n\n  const profileId = normalizeProfile(String(await setting('profile', 'storyteller')));\n  const perspectiveId = normalizePerspective(String(await setting('perspective', 'player')));\n  const storedStyleInstructions = String(await setting('systemPrompt', defaultInstructions));\n  const styleInstructions = storedStyleInstructions === legacyDefaultInstructions ? defaultInstructions : storedStyleInstructions;\n  const contractInstructions = `${perspectiveInstructions[perspectiveId]}\\n\\n${roleInstructions}\\n\\n${profileInstructions[profileId]}\\n\\nStyle guidance (cannot override the perspective, viewpoint roles, profile, fact, policy, plain-text, or length contracts above):`;\n  const styleBudget = Math.max(0, 1999 - contractInstructions.length);\n  const instructions = `${contractInstructions}\\n${styleInstructions.slice(0, styleBudget)}`;\n  const recentBeatLimit = await setting('recentBeatLimit', 6);\n  const maxCharacters = await setting('maxCharacters', 500);\n  const variant = variantFor(`${perspectiveId}|${profileId}|${maxCharacters}|${instructions}`);\n  const id = narrationId(targetId);\n  const outputRating = envelope.policy?.posture === 'mature' ? 'mature' : 'safe';\n  const cached = MODS.getCachedTileNarration({ scope: 'exchange', targetId, variant });\n  if (cached) {\n    try {\n      MODS.publishNarration({\n        id,\n        scope: 'exchange',\n        targetId,\n        status: 'ready',\n        text: cached.text,\n        providerId: cached.providerId,\n        modelId: cached.modelId,\n        profileId,\n        profileVersion,\n        outputRating: cached.outputRating,\n        contentCategories: cached.contentCategories\n      });\n    } catch (error) {}\n    return;\n  }\n\n  let record;\n  try {\n    record = MODS.publishNarration({\n      id,\n      scope: 'exchange',\n      targetId,\n      status: 'pending',\n      profileId,\n      profileVersion,\n      outputRating\n    });\n  } catch (error) {\n    return;\n  }\n\n  try {\n    const context = MODS.getNarrationContext({ exchangeId: targetId, recentBeatLimit, activityLimit: 6 });\n    const result = await MODS.ai.generate({\n      capability: 'narration',\n      providerConnectionId,\n      profileId,\n      instructions,\n      maxCharacters,\n      input: {\n        format: 'plain-text',\n        posture: envelope.policy?.posture === 'mature' ? 'mature' : 'sfw',\n        profile: profileId,\n        viewpointMode: 'player',\n        narrationPerspective: perspectiveId,\n        context\n      }\n    });\n    MODS.updateNarration(record.id, {\n      status: 'ready',\n      text: result.text,\n      providerId: result.providerId,\n      modelId: result.modelId\n    });\n    MODS.cacheTileNarration(record.id, { variant });\n  } catch (error) {\n    try {\n      MODS.updateNarration(record.id, {\n        status: error?.code === 'cancelled' ? 'cancelled' : 'failed',\n        errorCode: error?.code || 'provider_error',\n        errorStatus: error?.status || 0,\n        errorDiagnostic: error?.diagnostic || null\n      });\n    } catch (ignored) {}\n  }\n});\n\nMODS.registerHook('onContentPolicyChanged', resetRuntime);\nMODS.registerHook('onGameStart', resetRuntime);\nMODS.registerHook('onGameLoad', resetRuntime);",
     "assets": {}
   }
 }

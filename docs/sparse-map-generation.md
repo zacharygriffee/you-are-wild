@@ -304,19 +304,18 @@ Generative art plugins should receive semantic prompts/data from the resolver ra
 
 ## Modding Contract
 
-Future APIs should allow mods to contribute map behavior without patching core generation:
+Do not expose executable terrain, layer, rule, or semantic-generator callbacks.
+The current `mapModsHash` field is scaffolding and does not yet snapshot an
+enabled-module recipe, so a callback would make unexplored geography depend on
+runtime load order and missing code.
 
-```js
-registerTerrainType(id, config)
-registerMapFeature(id, config)
-registerMapLayerGenerator(layerId, generator)
-registerMapRule(rule)
-registerSemanticGenerator(generator)
-registerMapRenderer(renderer)
-registerGeneratedArtProvider(provider)
-```
-
-Mods should be included in `mapModsHash` so seed sharing remains honest.
+The evaluated direction is
+[Content Placement V1 Decision](content-placement-v1-decision.md): a
+new-world snapshot of bounded declarative candidates, a canonical recipe digest
+stored in `mapModsHash`, core-owned seeded arbitration, persisted materialized
+placements, explicit missing-owner handling, and offline reconstruction.
+Terrain classification and route generation remain a stricter
+generator-version concern rather than an ordinary content placement.
 
 ## Migration Path
 

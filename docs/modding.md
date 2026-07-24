@@ -162,7 +162,7 @@ Implemented permissions:
 | `scene:narrate` | owned narration publication and orchestration |
 | `ai:request` | request an existing opaque provider connection |
 | `ai:provide` | register a trusted provider adapter and session connection |
-| `world:add_biome` | add or temporarily replace an owned biome definition |
+| `world:add_biome` | add or temporarily replace an owned biome definition; this legacy seam is not a save-stable geography-placement promise |
 | `content:add_species` | add owned serializable species data |
 | `content:add_item` | add owned serializable item data |
 | `content:add_template` | register owned legacy content templates for documented core request keys |
@@ -175,6 +175,15 @@ Implemented permissions:
 
 Unknown permissions reject installation. Calling a permissioned API without
 declaring its token fails module enablement and cleans partial contributions.
+
+World placement is deliberately narrower than content registration. Species
+Profile V1 may contribute rare encounters to existing biome tables.
+`world:add_biome` contributes a runtime definition, but modules must not assume
+that it snapshots a world recipe or survives owner removal for unmaterialized
+tiles. There is no public structure, landmark, resource-site, route, or
+interior placement callback. The prerequisites and proposed declarative
+boundary are recorded in
+[Content Placement V1 Decision](content-placement-v1-decision.md).
 
 ### UI Contribution V1
 

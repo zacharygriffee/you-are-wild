@@ -48,6 +48,14 @@ V1 does not admit arbitrary destinations, resurrection callbacks, item
 creation, stat mutation, procedural shrine placement, or module-owned death
 handling.
 
+The maintained
+[Waystone Recovery](../optional-mods/you-are-wild-waystone-recovery.yawmod.json)
+fixture demonstrates a module-owned profile composed only from these fields.
+The boundary between expressible V1 profiles and later companion extraction,
+resurrection economies, authored destinations, landmarks, or spectral
+abilities is recorded in
+[Later Recovery Variants Decision](recovery-variants-decision.md).
+
 ## Core profiles
 
 - `core:regenerate` immediately returns the player alone to the validated safe
@@ -78,4 +86,3 @@ Modules own labels and declarations, while core owns command surfaces, Scene
 facts, Activity Log outcomes, save state, movement, and resurrection. A
 recovery mode cannot use narration to create state, suppress deterministic
 consequences, revive companions, or bypass content policy.
-

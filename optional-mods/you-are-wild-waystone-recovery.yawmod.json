@@ -1,0 +1,32 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_waystone_recovery",
+  "gameVersion": "0.14.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_waystone_recovery",
+      "name": "You Are Wild: Waystone Recovery",
+      "version": "1.0.0",
+      "description": "Optional Recovery Mode V1 pilgrimage: leave a death bag, return ethereally to the established safe place, and revive at 25% vitality.",
+      "type": "content_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.14.0",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": ["file", "https", "localhost", "http"],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": true
+      },
+      "permissions": ["content:add_locale", "mechanics:add_recovery_mode"],
+      "dependencies": [],
+      "contentCategories": [],
+      "gameplayVariants": [],
+      "settings": []
+    },
+    "code": "MODS.registerLocaleEntries('en', {\n  'yaw_waystone_recovery.mode.label': 'Waystone pilgrimage',\n  'yaw_waystone_recovery.mode.description': 'Leave a death bag, rise at the defeat site, and return ethereally to your established safe place.'\n});\nMODS.registerLocaleEntries('es', {\n  'yaw_waystone_recovery.mode.label': 'Peregrinación de piedra guía',\n  'yaw_waystone_recovery.mode.description': 'Deja una bolsa, levántate en el lugar de la derrota y regresa de forma etérea a tu lugar seguro.'\n});\nMODS.registerRecoveryMode('waystone-pilgrimage', {\n  label: 'Waystone pilgrimage',\n  labelKey: 'yaw_waystone_recovery.mode.label',\n  description: 'Leave a death bag, rise at the defeat site, and return ethereally to your established safe place.',\n  descriptionKey: 'yaw_waystone_recovery.mode.description',\n  icon: '🪨',\n  entry: 'defeat-site',\n  resolution: 'shrine',\n  inventory: 'death-bag',\n  traversal: 'ethereal',\n  restrictions: ['combat', 'inventory', 'hunger', 'interactions', 'recruitment', 'structures'],\n  vitalityPercent: 25\n});",
+    "assets": {}
+  }
+}

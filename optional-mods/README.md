@@ -10,10 +10,14 @@ the APIs they actually use.
 It adds provider-neutral SFW/Mature narration orchestration, exposes bounded
 multiline mod instructions, and requires a session provider connection. Ready
 narration becomes the primary Scene Feed passage, but deterministic Scene Beats
-remain available under the Events disclosure. Version 0.6 gives Storyteller,
-Character reactions, and Hybrid distinct prompt contracts, promotes ready tile
-observations into the center passage, and reuses bounded state-fingerprinted
-prose when an unchanged tile is revisited with the same narrator configuration.
+remain available under the Events disclosure. Version 0.7 keeps player POV as
+the default and adds first-person, third-person-limited, and cinematic observer
+framing. Perspective changes affect grammar only: structured actor, target,
+self, observer, and mixed roles plus deterministic facts remain authoritative.
+Storyteller, Character reactions, and Hybrid remain separate style profiles,
+and unchanged tiles reuse bounded state-and-configuration-fingerprinted prose.
+The packaged runtime is generated from
+`sources/you-are-wild-narration.js` with `npm run build:simple-narrator`.
 
 `you-are-wild-template-narration.yawmod.json` is an offline deterministic
 fallback/reference package. It exercises orchestration ownership and narration
@@ -24,6 +28,12 @@ allows Simple Narrator to take ownership when a provider is ready.
 developer fixture. It reports bounded public context and ownership lifecycle
 without reading provider profiles, credentials, saves, or raw application
 state.
+
+`you-are-wild-waystone-recovery.yawmod.json` is a disabled-by-default Recovery
+Mode V1 example. It combines the existing death-bag, defeat-site, ethereal
+journey, safe-place resurrection, and vitality declarations without replacing
+core defeat or companion settlement. It includes owned English and Spanish
+labels and works without network access.
 
 `you-are-wild-explicit-narration.yawmod.json` is a separate category-gated
 orchestrator. It remains disabled by default, requires explicit provider-policy

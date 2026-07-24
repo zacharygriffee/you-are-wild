@@ -4,6 +4,23 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Simple Narrator 0.7 adds selectable player POV, first-person,
+  third-person-limited, and cinematic observer perspectives. Player POV
+  remains the default; each mode has an isolated cache variant and changes
+  grammatical framing without changing the structured viewpoint roles,
+  deterministic scene context, or content-policy boundary. The exact 0.6
+  default prompt migrates to perspective-neutral wording while customized
+  instructions remain untouched.
+- Content Placement V1 now has a firm pre-API decision. Species Profile V1
+  encounter weights remain supported, while executable map callbacks and
+  save-unstable geography claims are rejected until a canonical new-world
+  recipe, meaningful `mapModsHash`, missing-owner policy, materialized deltas,
+  and offline reconstruction acceptance exist.
+- Waystone Recovery is a disabled-by-default, offline-compatible Recovery Mode
+  V1 fixture with owned English and Spanish labels. It proves alternate
+  death-bag, ethereal-journey, and vitality profiles stay inside the shared
+  defeat resolver; companion extraction, resurrection economies, authored
+  destinations, landmarks, and spectral abilities remain explicit V2 work.
 - Long Asset Bundle installs are now cancellable through the Mod Manager. The
   live region exposes per-resource byte progress, reviewed URI/digest controls
   stay frozen during the operation, and one explicit Cancel aborts the staged

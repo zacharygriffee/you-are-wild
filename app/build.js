@@ -23,9 +23,11 @@ const FIRST_PARTY_PACKAGE_MIRRORS = [
   'you-are-wild-elemental-species.yawmod.json',
   'you-are-wild-explicit-narration.yawmod.json',
   'you-are-wild-explicit.yawmod.json',
+  'you-are-wild-french-preview.yawmod.json',
   'you-are-wild-narration-diagnostics.yawmod.json',
   'you-are-wild-narration.yawmod.json',
-  'you-are-wild-template-narration.yawmod.json'
+  'you-are-wild-template-narration.yawmod.json',
+  'you-are-wild-waystone-recovery.yawmod.json'
 ];
 
 function loadRelease() {

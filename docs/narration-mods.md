@@ -198,7 +198,13 @@ occur before a pending record exists are reported as Errors.
 - `you-are-wild-narration.yawmod.json`: provider-backed Simple Narrator. It
   demonstrates booleans, select and numeric settings, a provider selector, a
   multiline system-prompt setting, asynchronous generation, tile-state cache
-  reuse, center-tile presentation, and attribution.
+  reuse, center-tile presentation, attribution, and four grammar-only
+  perspectives. Player POV remains the default. First-person,
+  third-person-limited, and cinematic observer framing still consume the same
+  structured player identity and actor/target/self/observer roles; they cannot
+  rewrite deterministic facts or infer private state. An unchanged 0.6 default
+  style prompt migrates to perspective-neutral wording; customized instructions
+  remain untouched and subordinate to the fixed contracts.
 - `you-are-wild-template-narration.yawmod.json`: deterministic offline narrator.
   It has no `ai:request` permission and demonstrates fallback ownership and
   publication independently of a network or paid provider.

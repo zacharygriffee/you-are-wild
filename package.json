@@ -10,6 +10,7 @@
     "test:media": "npm --prefix app run test:media",
     "test:viewport": "npm --prefix app run test:viewport",
     "test:interactions": "npm --prefix app run test:interactions",
+    "build:simple-narrator": "node scripts/build-simple-narrator-package.js",
     "build:example-sprites": "node scripts/build-example-sprite-atlas.js",
     "lint": "npm --prefix app run lint",
     "dev": "npm --prefix app run dev",

@@ -218,7 +218,13 @@ Flow V2 shell without reintroducing separate phone navigation models.
    only revise V5 after a concrete connectivity or visual contradiction.
 5. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
 6. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, the dedicated AI Providers panel, Puter, and session-only browser-direct OpenAI-Compatible text connections now exist. Gather playtest feedback on that lifecycle before adding OAuth, relays, MCP, image/video/audio providers, or localhost sidecars.
-7. After player-POV narration has enough playtest coverage, consider a narrator perspective setting with explicit player, first-person, third-person-limited, and cinematic modes. Keep player POV as the default and preserve the structured viewpoint-role contract across modes.
+7. Simple Narrator 0.7 now exposes player POV, first-person,
+   third-person-limited, and cinematic observer perspectives. Player POV
+   remains the default; the other modes alter grammatical framing only, use
+   distinct cache variants, and preserve structured actor, target, self,
+   observer, and mixed roles plus deterministic facts. Continue provider and
+   prose-quality playtests without widening any mode into private-state or
+   off-screen invention.
 8. Continue representative coast, cave, building-interior, and authored-pack visual review for Tileset Pack V1 when those states surface in operator play. The real partial-pack fixture now proves install/reload/unload for beach material, shoreline edges and corners, building/cave rooms, corridors, and doors; this closes lifecycle validation, not subjective art approval. The 2026-07-23 live route/POI sample passes at 1280×720 and 390×844, including the 17×17 review map. Automated acceptance also records current artifact bytes, proves immutable hosted cache reuse, proves Lightweight makes no atlas requests, and keeps degraded startup non-blocking. Keep reduced-motion and emoji/text fallbacks intact.
 9. Continue operator review of Interior Skin V1 across huts, manors, and dungeons. Automated real-pack coverage now proves module-owned building/cave floors, corridor topology, doors, and fallback without changing reciprocal room graphs. Author richer structure-specific variants only after representative room grammar remains legible; keep cave networks independent.
 10. Continue operator review of Terrain Transition V1 against straight coasts, peninsulas, coves, islands, and diagonal contacts. Automated real-pack coverage now proves cardinal/corner shoreline ownership and fallback. If representative visual review confirms the metadata grammar, generalize the same material-pair seam to grass/sand, snow/rock, and swamp/plains without hard-coding biome pairs.
@@ -240,7 +246,14 @@ Flow V2 shell without reintroducing separate phone navigation models.
     place with 1% condition. Continue only for a demonstrated contradiction or
     a separately authorized new profile capability; do not reopen core defeat
     callbacks.
-16. Consider later recovery variants through the same resolver rather than separate death code: surviving companions can extract the player, a healer/faction can resurrect them for a coin debt or quest obligation, and a prior body/death bag can become a map landmark. These are downstream content hooks, not V2 baseline requirements.
+16. Later recovery variants are classified in
+    [Later Recovery Variants Decision](recovery-variants-decision.md).
+    Waystone Recovery proves that alternate inventory, journey, restriction,
+    and vitality combinations fit Recovery Mode V1 as an optional module.
+    Companion extraction, healer/faction costs or obligations, authored shrine
+    destinations, body landmarks, and spectral abilities still require
+    separately bounded V2 capabilities; do not emulate them through hooks or
+    narrative state.
 17. Continue the accepted [Mobile Interaction Flow V2](mobile-interaction-flow-v2-decision.md) and [UI Contribution V1](ui-contribution-v1.md): one state-aware Roster sheet with Party/Here/Items or Allies/Enemies tabs, a persistent core-owned place composer, and only five bounded declarative module slots. Do not expand into dock, traversal, Scene Feed, or combat-confirmation ownership without a new product decision.
 18. Preserve the accepted
     [Ghost recovery product decision](ghost-recovery-prepublish-decision.md).
@@ -253,6 +266,14 @@ Flow V2 shell without reintroducing separate phone navigation models.
     optional and partial until a human translation review expands its coverage;
     English remains the offline core fallback and stale target namespaces must
     continue to fail through version floors and diagnostics.
+20. Advanced content placement has an explicit boundary in
+    [Content Placement V1 Decision](content-placement-v1-decision.md). Species
+    Profile V1 encounter weights are the only maintained gameplay-placement
+    seam. Do not add executable map callbacks or present `world:add_biome` as a
+    save-stable placement promise. A future declarative API first requires a
+    canonical new-world recipe and `mapModsHash`, core-owned arbitration,
+    materialized tile deltas, explicit missing-owner behavior, and offline
+    reconstruction acceptance.
 
 ### Release / Distribution
 

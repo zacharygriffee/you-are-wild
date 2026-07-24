@@ -1,4 +1,4 @@
-# Interaction Balance Matrix V1
+# Interaction Balance Matrix V2
 
 `YAW_BALANCE_SYSTEM.interactionMatrix(App)` is the machine-readable inventory of
 current interaction costs and effects. This document explains how to use it; it
@@ -28,6 +28,15 @@ does not authorize retuning the values it reports.
 
 The runtime matrix contains the formulas, ownership, shape policy, and current
 Feed/Feast variant rows. Tests must change with any contract change.
+
+## Hunger combat pressure
+
+Hunger affects combat performance without changing Constitution or maximum
+condition. At hunger 70–84, action ratings and initiative use `0.9x` and Flee
+loses five percentage points. At hunger 85–100, action ratings use `0.75x`,
+initiative uses `0.8x`, and Flee loses fifteen percentage points. Tactical
+cards expose the active band and exact action penalty. This is a universal
+living-unit rule rather than a player-only handicap.
 
 ## Feed source ownership
 

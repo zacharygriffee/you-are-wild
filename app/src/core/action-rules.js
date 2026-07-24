@@ -13,10 +13,11 @@ const YAW_ACTION_RULES = {
     },
 
     combatActionRating(app, entry, actor, target = null, purpose = 'rating') {
-        return this.actionRatingFromRoll(
+        const rating = this.actionRatingFromRoll(
             entry,
             app._combatStateRoll('combat-action-rating', actor, `${app._unitSelectionId(target || {})}:${purpose}`)
         );
+        return app._applyHungerCombatPressure?.(rating, actor, 'action') ?? rating;
     },
 
     combatDamageVariance(app, actor, target, purpose = 'fight', scale = 6) {

@@ -66,8 +66,8 @@ const YAW_UNIT_CARD_STATUS = {
             ? ['stomach', 'womb', 'balls'].reduce((sum, container) => sum + app._activeContainedPrey(unit, container).length, 0)
             : 0;
         const chips = [];
-        const add = (key, label, tone = 'neutral') => {
-            if (!chips.some(chip => chip.key === key)) chips.push({ key, label, tone });
+        const add = (key, label, tone = 'neutral', title = label) => {
+            if (!chips.some(chip => chip.key === key)) chips.push({ key, label, tone, title });
         };
         if (inCombat && unit.combatRow === 'back') add('row-back', app._label('combat.row.backBadge', 'Back Row'), 'position');
         else if (inCombat && unit.combatRow === 'front') add('row-front', app._label('combat.row.frontBadge', 'Front Row'), 'position');
@@ -83,7 +83,22 @@ const YAW_UNIT_CARD_STATUS = {
         if (status.fear) add('fear', app._label('unit.trait.fear', 'Fear'), 'status');
         if (status.restrained || status.enveloped || status.stuck) add('restrained', app._label('unit.trait.restrained', 'Restrained'), 'status');
         if (stats.MPun > 0 && stats.CPun <= stats.MPun * 0.35) add('wounded', app._label('unit.trait.wounded', 'Wounded'), 'danger');
-        if (maxHunger > 0 && hunger >= maxHunger * 0.7) add('hungry', app._label('unit.trait.hungry', 'Hungry'), 'need');
+        const hungerPressure = app._hungerCombatPressure?.(unit) || { band: 'ordinary' };
+        if (maxHunger > 0 && hungerPressure.band === 'starving') {
+            add(
+                'starving',
+                app._label('unit.trait.starvingCompact', 'Starving -25%'),
+                'danger',
+                app._label('unit.trait.starvingEffect', 'Starving: -25% combat actions, -20% initiative, and -15% flee chance.')
+            );
+        } else if (maxHunger > 0 && hungerPressure.band === 'hungry') {
+            add(
+                'hungry',
+                app._label('unit.trait.hungryCompact', 'Hungry -10%'),
+                'need',
+                app._label('unit.trait.hungryEffect', 'Hungry: -10% combat actions and initiative, and -5% flee chance.')
+            );
+        }
         if (containedCount > 0) add('contains', app._label('unit.trait.contains', 'Contains') + ` ${containedCount}`, 'special');
         if (type === 'party') {
             const role = app._getPartyRole(unit);
@@ -123,7 +138,7 @@ const YAW_UNIT_CARD_STATUS = {
         const chips = this.visibleTraits(app, unit, type, limit);
         if (chips.length === 0) return '';
         const label = app._escapeHtml(app._label('ui.unitTraits', 'Unit traits'));
-        const items = chips.map(chip => `<span class="unit-trait-chip ${app._escapeHtml(chip.tone)}" title="${app._escapeHtml(chip.label)}">${app._escapeHtml(chip.label)}</span>`).join('');
+        const items = chips.map(chip => `<span class="unit-trait-chip ${app._escapeHtml(chip.tone)}" title="${app._escapeHtml(chip.title || chip.label)}">${app._escapeHtml(chip.label)}</span>`).join('');
         return `<div class="unit-traits" aria-label="${label}">${items}</div>`;
     }
 };

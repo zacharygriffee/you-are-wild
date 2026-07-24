@@ -111,13 +111,29 @@ const YAW_COMBAT_LIFECYCLE = {
         enemies.forEach(e => app._normalizeUnit(e, { disposition: app.DISPOSITION.ENEMY }));
         const allCombatants = [...app.party, ...enemies];
         app._assignCombatRows(allCombatants);
+        const ambushAwareness = app._resolveAmbushAwareness?.(enemies) || {
+            detected: [],
+            undetected: enemies.filter(enemy => enemy?.ambushReady)
+        };
         app.combatState.turnQueue = allCombatants
             .filter(c => c.CPun > 0 && !c.knockedOut)
             .map(c => ({ unit: c, initiative: app._calcInitiative(c) + (c.ambushReady ? app._ambushInitiativeBonus() : 0) }))
             .sort((a, b) => b.initiative - a.initiative);
         app.combatState.currentTurn = 0;
-        const ambushers = enemies.filter(e => e.ambushReady);
+        const detectedAmbushers = ambushAwareness.detected || [];
+        const ambushers = ambushAwareness.undetected || enemies.filter(e => e.ambushReady);
+        if (detectedAmbushers.length > 0) {
+            app._pushLog(app._label(
+                'combat.ambushDetected',
+                'Your party spots {names} before they can strike; combat begins normally.',
+                { names: detectedAmbushers.map(e => e.name).join(', ') }
+            ), 'combat', { phase: 'start' });
+        }
         if (ambushers.length > 0) app._pushLog(app._label('combat.ambushStart', '{names} ambush from hiding!', { names: ambushers.map(e => e.name).join(', ') }), 'combat', { phase: 'start' });
+        for (const enemy of [...detectedAmbushers, ...ambushers]) {
+            enemy.ambushReady = false;
+            enemy.ambushResolved = true;
+        }
         app._pushLog(app._label('combat.orderStart', 'Combat! Order: {names}', { names: app.combatState.turnQueue.map(e => e.unit.name).join(', ') }), 'combat', { phase: 'start' });
         app.updateScene(app._label('combat.roundTitle', 'Round {round}', { round: 1 }), app._label('combat.started', 'Combat started!'), true);
         const rangedBackRowEnemies = enemies.filter(unit => unit?.CPun > 0 && unit.ranged && unit.combatRow === 'back');

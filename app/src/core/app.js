@@ -806,6 +806,14 @@
                     starvingMultiplier: 1.4,
                     minimumMultiplier: 0.8,
                     maximumMultiplier: 1.4
+                },
+                combatPressure: {
+                    hungryActionMultiplier: 0.9,
+                    starvingActionMultiplier: 0.75,
+                    hungryInitiativeMultiplier: 0.9,
+                    starvingInitiativeMultiplier: 0.8,
+                    hungryFleePenalty: 0.05,
+                    starvingFleePenalty: 0.15
                 }
             },
 
@@ -2081,6 +2089,12 @@
             _digestionRateState(unit, baseRate = 5) {
                 return YAW_BALANCE_SYSTEM.digestionRateState(this, unit, baseRate);
             },
+            _hungerCombatPressure(unit) {
+                return YAW_BALANCE_SYSTEM.combatPressureState(this, unit);
+            },
+            _applyHungerCombatPressure(value, unit, kind = 'action') {
+                return YAW_BALANCE_SYSTEM.applyCombatPressure(this, value, unit, kind);
+            },
             _applyHungerPressure(unit, amount, context = {}) {
                 return YAW_BALANCE_SYSTEM.applyHungerPressure(this, unit, amount, context);
             },
@@ -2494,6 +2508,10 @@
 
             _ambushInitiativeBonus() {
                 return YAW_COMBAT_ACTOR_STATE.ambushInitiativeBonus(this);
+            },
+
+            _resolveAmbushAwareness(enemies = []) {
+                return YAW_COMBAT_ACTOR_STATE.resolveAmbushAwareness(this, enemies);
             },
 
             _calcInitiative(c) {

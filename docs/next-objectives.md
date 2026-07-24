@@ -91,11 +91,12 @@ This is the short handoff for unfinished work. Completed implementation history 
    identity, journey entry method, resurrection cost, inventory policy, and
    whether travel-only remains the permanent built-in profile.
 2. Implement the player-favoring Standard Adventure survival-pressure and
-   Generator V4 safe-start contracts. This includes visible hunger penalties,
-   player-relative encounter admission, a protected opening region, safer and
-   more predictable roads, visible adjacent-tile danger, and an ambush
-   perception contest that gives Scout and Guard distinct value. Keep an
-   explicit later adventure-pressure setting for players who prefer lethal
+   Generator V4 safe-start contracts. Visible hunger penalties and the
+   deterministic Wisdom/visibility/terrain ambush contest are implemented;
+   Scout improves detection and Guard still mitigates an undetected opening.
+   Remaining work is player-relative encounter admission, a protected opening
+   region, safer and more predictable roads, visible adjacent-tile danger, and
+   an explicit later adventure-pressure setting for players who prefer lethal
    uncertainty.
 3. Run longer Death/Defeat V3 playtests across companion battle settlement,
    save/resume while dead, repeated recovery bags, Hardcore, and interior
@@ -159,12 +160,11 @@ Flow V2 shell without reintroducing separate phone navigation models.
    player before their first meaningful turn. Preserve dangerous outcomes for
    clearly signposted difficult biomes, landmarks, and voluntary danger sites
    rather than relying on invisible damage reduction.
-10. Add an ambush-awareness contract and later difficulty control. Resolve
-    first-entry ambushes through a deterministic perception contest using
-    Wisdom, visibility, terrain, relevant traits/equipment, and existing Scout
-    and Guard party roles. Scout should improve warning or avoidance; Guard
-    should mitigate an ambush that still begins. Detected threats may become
-    ordinary initiative or offer Avoid/Approach, while failed detection grants
+10. Ambush awareness is implemented as a deterministic perception contest
+    using Wisdom, visibility, terrain, darkvision, enemy Speed/temperament, and
+    existing Scout and Guard party roles. Scout improves warning, Guard
+    contributes a smaller warning bonus and mitigates an ambush that still
+    begins, detected enemies enter ordinary initiative, and failed checks grant
     initiative pressure rather than bonus damage. Design an explicit
     adventure-pressure setting so the default remains player-favoring and an
     opt-in profile can retain lethal uncertainty; prefer encounter
@@ -192,27 +192,34 @@ Flow V2 shell without reintroducing separate phone navigation models.
    multi-seed/all-core-species acceptance. Continue strengthening traversal
    metadata, roads/bridges/coasts, POI budgets, and routes around that
    contract.
-4. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
-5. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, the dedicated AI Providers panel, Puter, and session-only browser-direct OpenAI-Compatible text connections now exist. Gather playtest feedback on that lifecycle before adding OAuth, relays, MCP, image/video/audio providers, or localhost sidecars.
-6. After player-POV narration has enough playtest coverage, consider a narrator perspective setting with explicit player, first-person, third-person-limited, and cinematic modes. Keep player POV as the default and preserve the structured viewpoint-role contract across modes.
-7. Continue representative coast, cave, building-interior, and authored-pack visual review for Tileset Pack V1 when those states surface in operator play. The 2026-07-23 live route/POI sample passes at 1280×720 and 390×844, including the 17×17 review map; its accessible center-cell action density is deferred to Mobile Interaction Flow V2 rather than “fixed” by shrinking touch targets. Automated acceptance records current offline/hosted/atlas bytes, estimates the Lightweight/Textured low-bandwidth difference, proves immutable hosted cache reuse, proves Lightweight makes no atlas requests, and keeps degraded startup non-blocking. Keep reduced-motion and emoji/text fallbacks intact.
-8. Playtest Interior Skin V1 across huts, manors, and dungeons now that built structures use continuous masonry floors, perimeter walls with reciprocal openings, and restrained exit thresholds. Author richer structure-specific or mod-pack variants only after the room grammar proves legible; keep cave networks independent.
-9. Playtest Terrain Transition V1 against straight coasts, peninsulas, coves, islands, and diagonal contacts. If the metadata grammar is sound, generalize the same material-pair seam to grass/sand, snow/rock, and swamp/plains without hard-coding biome pairs.
-10. Sprite Pack V1 is implemented as a code-free Asset Bundle presentation with semantic unit, state, facing, bounded strip-animation, reduced-motion, local-lease, and emoji-fallback contracts. Playtest real authored packs before adding action-specific states, diagonals, or skeletal animation.
-11. The owned `media:provide` adapter seam is implemented. Keep concrete later providers ordered in backlog: AI generation as a reviewed Source at priority 3; Electron, Pear, or another packaged-runtime bridge at priority 4; and OPFS as an optional browser-storage optimization at priority 5. None may become a prerequisite for the downloaded `file://` game.
-12. Extend asset/content-pack presentation seams. Optional packs may eventually provide richer tilesets, sprites, portraits, audio, animated 2D media, and capability-gated 3D scenes, but their presentation formats must remain independent from storage providers and the bundle envelope.
-13. Consider archive transport only after real bundle use shows that individually hashed URI resources are insufficient. Archives still need unpacked-size budgets and safe relative paths; publisher signatures and community update discovery remain separate work.
-14. Recovery Mode V1 and the opt-in Ghost pilgrimage are implemented. Continue
+4. After the current Sites release, reduce accidental road circles and
+   redundant short cycles. Prefer a legible route hierarchy with primary
+   anchor-to-anchor paths, bounded branches, and occasional intentional loops
+   for alternate access. Detect and prune small low-value cycles only when
+   doing so preserves POI connectivity, bridge/coast crossings, reciprocal
+   traversal, deterministic generation, and compatibility with road topology
+   tiles.
+5. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
+6. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, the dedicated AI Providers panel, Puter, and session-only browser-direct OpenAI-Compatible text connections now exist. Gather playtest feedback on that lifecycle before adding OAuth, relays, MCP, image/video/audio providers, or localhost sidecars.
+7. After player-POV narration has enough playtest coverage, consider a narrator perspective setting with explicit player, first-person, third-person-limited, and cinematic modes. Keep player POV as the default and preserve the structured viewpoint-role contract across modes.
+8. Continue representative coast, cave, building-interior, and authored-pack visual review for Tileset Pack V1 when those states surface in operator play. The 2026-07-23 live route/POI sample passes at 1280×720 and 390×844, including the 17×17 review map; its accessible center-cell action density is deferred to Mobile Interaction Flow V2 rather than “fixed” by shrinking touch targets. Automated acceptance records current offline/hosted/atlas bytes, estimates the Lightweight/Textured low-bandwidth difference, proves immutable hosted cache reuse, proves Lightweight makes no atlas requests, and keeps degraded startup non-blocking. Keep reduced-motion and emoji/text fallbacks intact.
+9. Playtest Interior Skin V1 across huts, manors, and dungeons now that built structures use continuous masonry floors, perimeter walls with reciprocal openings, and restrained exit thresholds. Author richer structure-specific or mod-pack variants only after the room grammar proves legible; keep cave networks independent.
+10. Playtest Terrain Transition V1 against straight coasts, peninsulas, coves, islands, and diagonal contacts. If the metadata grammar is sound, generalize the same material-pair seam to grass/sand, snow/rock, and swamp/plains without hard-coding biome pairs.
+11. Sprite Pack V1 is implemented as a code-free Asset Bundle presentation with semantic unit, state, facing, bounded strip-animation, reduced-motion, local-lease, and emoji-fallback contracts. Playtest real authored packs before adding action-specific states, diagonals, or skeletal animation.
+12. The owned `media:provide` adapter seam is implemented. Keep concrete later providers ordered in backlog: AI generation as a reviewed Source at priority 3; Electron, Pear, or another packaged-runtime bridge at priority 4; and OPFS as an optional browser-storage optimization at priority 5. None may become a prerequisite for the downloaded `file://` game.
+13. Extend asset/content-pack presentation seams. Optional packs may eventually provide richer tilesets, sprites, portraits, audio, animated 2D media, and capability-gated 3D scenes, but their presentation formats must remain independent from storage providers and the bundle envelope.
+14. Consider archive transport only after real bundle use shows that individually hashed URI resources are insufficient. Archives still need unpacked-size budgets and safe relative paths; publisher signatures and community update discovery remain separate work.
+15. Recovery Mode V1 and the opt-in Ghost pilgrimage are implemented. Continue
     only for a demonstrated recovery contradiction or a separately authorized
     new profile capability; do not reopen core defeat callbacks.
-15. Consider later recovery variants through the same resolver rather than separate death code: surviving companions can extract the player, a healer/faction can resurrect them for a coin debt or quest obligation, and a prior body/death bag can become a map landmark. These are downstream content hooks, not V2 baseline requirements.
-16. Continue the accepted [Mobile Interaction Flow V2](mobile-interaction-flow-v2-decision.md) and [UI Contribution V1](ui-contribution-v1.md): one state-aware Roster sheet with Party/Here/Items or Allies/Enemies tabs, a persistent core-owned place composer, and only five bounded declarative module slots. Do not expand into dock, traversal, Scene Feed, or combat-confirmation ownership without a new product decision.
-17. Before the next Sites publication, resolve the
+16. Consider later recovery variants through the same resolver rather than separate death code: surviving companions can extract the player, a healer/faction can resurrect them for a coin debt or quest obligation, and a prior body/death bag can become a map landmark. These are downstream content hooks, not V2 baseline requirements.
+17. Continue the accepted [Mobile Interaction Flow V2](mobile-interaction-flow-v2-decision.md) and [UI Contribution V1](ui-contribution-v1.md): one state-aware Roster sheet with Party/Here/Items or Allies/Enemies tabs, a persistent core-owned place composer, and only five bounded declarative module slots. Do not expand into dock, traversal, Scene Feed, or combat-confirmation ownership without a new product decision.
+18. Before the next Sites publication, resolve the
     [Ghost recovery product decision](ghost-recovery-prepublish-decision.md).
     The current bounded implementation remains testable, but publication must
     not silently decide shrine identity, companion outcomes, resurrection
     economy, or how an active Ghost journey explains suppressed encounters.
-17. Playtest Locale Pack V1 with a real maintained third language before bundling another locale. Keep English as the offline core fallback, require stable target namespaces and dependency-version floors for cross-module translations, and use diagnostics rather than silently accepting stale key coverage.
+19. Playtest Locale Pack V1 with a real maintained third language before bundling another locale. Keep English as the offline core fallback, require stable target namespaces and dependency-version floors for cross-module translations, and use diagnostics rather than silently accepting stale key coverage.
 
 ### Release / Distribution
 

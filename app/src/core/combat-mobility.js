@@ -45,9 +45,11 @@ const YAW_COMBAT_MOBILITY = {
         }
         app._clearTransientInteractionState();
         app._applyActionCost?.('flee', actor, enemy, {}, { mode: 'combat', source: 'flee', emitScene: true });
+        const hungerPressure = app._hungerCombatPressure?.(actor) || { fleePenalty: 0 };
         const fleeChance = 0.6
             + ((actor.Flee || 10) - (enemy.spd || 10)) * 0.02
-            + (app._combatFleeRowModifier?.(actor, enemies) || 0);
+            + (app._combatFleeRowModifier?.(actor, enemies) || 0)
+            - Number(hungerPressure.fleePenalty || 0);
         const isPlayer = actor.name === app.player?.name;
         const rollKey = isPlayer ? 'combat-player-flee' : 'combat-party-flee';
         const fleeRoll = app._combatStateRoll(rollKey, actor, app._unitSelectionId(enemy));

@@ -37,6 +37,14 @@ const YAW_BALANCE_SYSTEM = {
                 starvingMultiplier: 1.4,
                 minimumMultiplier: 0.8,
                 maximumMultiplier: 1.4
+            },
+            combatPressure: {
+                hungryActionMultiplier: 0.9,
+                starvingActionMultiplier: 0.75,
+                hungryInitiativeMultiplier: 0.9,
+                starvingInitiativeMultiplier: 0.8,
+                hungryFleePenalty: 0.05,
+                starvingFleePenalty: 0.15
             }
         };
     },
@@ -47,7 +55,8 @@ const YAW_BALANCE_SYSTEM = {
             ...(app.BALANCE_V1 || {}),
             costs: { ...this.defaults().costs, ...(app.BALANCE_V1?.costs || {}) },
             relief: { ...this.defaults().relief, ...(app.BALANCE_V1?.relief || {}) },
-            digestion: { ...this.defaults().digestion, ...(app.BALANCE_V1?.digestion || {}) }
+            digestion: { ...this.defaults().digestion, ...(app.BALANCE_V1?.digestion || {}) },
+            combatPressure: { ...this.defaults().combatPressure, ...(app.BALANCE_V1?.combatPressure || {}) }
         };
         return app.BALANCE_V1;
     },
@@ -60,6 +69,46 @@ const YAW_BALANCE_SYSTEM = {
 
     hunger(unit) {
         return Math.max(0, Math.round(Number(unit?.hunger) || 0));
+    },
+
+    combatPressureState(app, unit) {
+        const cfg = this.ensure(app);
+        const pressure = cfg.combatPressure || this.defaults().combatPressure;
+        const hunger = this.hunger(unit);
+        let band = 'ordinary';
+        let actionMultiplier = 1;
+        let initiativeMultiplier = 1;
+        let fleePenalty = 0;
+        if (hunger >= cfg.hungerStarving) {
+            band = 'starving';
+            actionMultiplier = Number(pressure.starvingActionMultiplier ?? 0.75);
+            initiativeMultiplier = Number(pressure.starvingInitiativeMultiplier ?? 0.8);
+            fleePenalty = Number(pressure.starvingFleePenalty ?? 0.15);
+        } else if (hunger >= cfg.hungerHungry) {
+            band = 'hungry';
+            actionMultiplier = Number(pressure.hungryActionMultiplier ?? 0.9);
+            initiativeMultiplier = Number(pressure.hungryInitiativeMultiplier ?? 0.9);
+            fleePenalty = Number(pressure.hungryFleePenalty ?? 0.05);
+        }
+        actionMultiplier = Math.max(0.5, Math.min(1, actionMultiplier));
+        initiativeMultiplier = Math.max(0.5, Math.min(1, initiativeMultiplier));
+        fleePenalty = Math.max(0, Math.min(0.5, fleePenalty));
+        return {
+            hunger,
+            band,
+            actionMultiplier,
+            initiativeMultiplier,
+            fleePenalty,
+            actionPenaltyPercent: Math.round((1 - actionMultiplier) * 100),
+            initiativePenaltyPercent: Math.round((1 - initiativeMultiplier) * 100)
+        };
+    },
+
+    applyCombatPressure(app, value, unit, kind = 'action') {
+        const state = this.combatPressureState(app, unit);
+        const multiplier = kind === 'initiative' ? state.initiativeMultiplier : state.actionMultiplier;
+        const adjusted = Math.max(1, Number(value || 0) * multiplier);
+        return kind === 'initiative' ? adjusted : Math.round(adjusted);
     },
 
     digestionRateState(app, unit, baseRate = 5) {
@@ -378,7 +427,7 @@ const YAW_BALANCE_SYSTEM = {
             ...details
         });
         return {
-            schemaVersion: 1,
+            schemaVersion: 2,
             semantics: {
                 hunger: 'higher-is-hungrier',
                 condition: 'CPun/MPun',
@@ -428,6 +477,22 @@ const YAW_BALANCE_SYSTEM = {
                     reward: { xpOnResolution: 0 }
                 })
             ],
+            combatPressure: {
+                hungryAtOrAbove: Number(cfg.hungerHungry),
+                starvingAtOrAbove: Number(cfg.hungerStarving),
+                hungry: {
+                    actionMultiplier: Number(cfg.combatPressure.hungryActionMultiplier),
+                    initiativeMultiplier: Number(cfg.combatPressure.hungryInitiativeMultiplier),
+                    fleePenalty: Number(cfg.combatPressure.hungryFleePenalty)
+                },
+                starving: {
+                    actionMultiplier: Number(cfg.combatPressure.starvingActionMultiplier),
+                    initiativeMultiplier: Number(cfg.combatPressure.starvingInitiativeMultiplier),
+                    fleePenalty: Number(cfg.combatPressure.starvingFleePenalty)
+                },
+                appliesTo: 'all-living-combatants',
+                invariant: 'does-not-lower-constitution-or-maximum-condition'
+            },
             variants: [
                 variant('feed', 'tend', {
                     target: { condition: 'floor(actor.Feed*2)', hunger: 0, spirit: 0 },

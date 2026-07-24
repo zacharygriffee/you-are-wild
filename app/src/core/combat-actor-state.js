@@ -97,6 +97,85 @@ const YAW_COMBAT_ACTOR_STATE = {
         return Math.max(25, 100 - app._partyRoleEffect('guard', 35, 75));
     },
 
+    ambushAwareness(app, enemy) {
+        const observers = (app.party || []).filter(unit =>
+            unit
+            && unit.CPun > 0
+            && !unit.knockedOut
+            && !unit.fledCombat
+            && !app._isCorpse?.(unit)
+        );
+        const observer = observers.reduce((best, unit) =>
+            !best || Number(unit.wis || 10) > Number(best.wis || 10) ? unit : best
+        , null) || app.player;
+        const observerWis = Math.max(1, Number(observer?.wis || 10));
+        const scoutBonus = app._partyRoleEffect('scout', 7, 14);
+        const guardBonus = app._partyRoleEffect('guard', 2, 6);
+        const night = Boolean(app._isNight?.());
+        const partyDarkvision = Boolean(app._partyHasDarkvision?.());
+        const visibility = night ? (partyDarkvision ? 1 : -4) : 2;
+        const biomeId = app._currentBiomeId?.();
+        const terrainStealth = biomeId === 'cave' || biomeId === 'dungeon'
+            ? 3
+            : (app._isDenseForestBiome?.(biomeId) ? 2 : (biomeId === 'swamp' ? 1 : 0));
+        const temperament = app._getSpeciesTemperament?.(enemy?.species) || {};
+        const enemyStealth = Math.max(1, Number(enemy?.spd || 10))
+            + (temperament.ambush ? 4 : 0)
+            + (temperament.cunning ? 2 : 0)
+            + terrainStealth
+            + (night && (enemy?.darkvision || temperament.nocturnal) ? 2 : 0);
+        const observerId = app._unitSelectionId?.(observer || {}) || 'party';
+        const enemyId = app._unitSelectionId?.(enemy || {}) || enemy?.species || 'ambusher';
+        const x = Number(app.location?.x ?? 0);
+        const y = Number(app.location?.y ?? 0);
+        const awarenessSwing = (app._worldRoll(
+            'ambush-awareness-party',
+            x,
+            y,
+            observerId,
+            enemyId,
+            app.dayCount || 0,
+            app.timeHour || 0
+        ) - 0.5) * 8;
+        const stealthSwing = (app._worldRoll(
+            'ambush-awareness-enemy',
+            x,
+            y,
+            enemyId,
+            observerId,
+            app.dayCount || 0,
+            app.timeHour || 0
+        ) - 0.5) * 8;
+        const awareness = observerWis + scoutBonus + guardBonus + visibility + awarenessSwing;
+        const stealth = enemyStealth + stealthSwing;
+        return {
+            enemy,
+            observer,
+            detected: awareness >= stealth,
+            awareness,
+            stealth,
+            scoutBonus,
+            guardBonus,
+            visibility,
+            biomeId
+        };
+    },
+
+    resolveAmbushAwareness(app, enemies = []) {
+        const candidates = (enemies || []).filter(enemy => enemy?.ambushReady);
+        const results = candidates.map(enemy => this.ambushAwareness(app, enemy));
+        for (const result of results) {
+            if (!result.detected) continue;
+            result.enemy.ambushReady = false;
+            result.enemy.ambushDetected = true;
+        }
+        return {
+            results,
+            detected: results.filter(result => result.detected).map(result => result.enemy),
+            undetected: results.filter(result => !result.detected).map(result => result.enemy)
+        };
+    },
+
     initiative(app, unit) {
         let base = app._effectiveSpeed(unit) + app._combatStateRoll('combat-initiative', unit, 'jitter') * 10;
         if (unit.bodyParts) {
@@ -110,7 +189,7 @@ const YAW_COMBAT_ACTOR_STATE = {
         const stomachSize = (unit.stomach?.length || 0) + (unit.womb?.length || 0) + (unit.balls?.length || 0);
         if (stomachSize >= 3) base -= 2;
         if (stomachSize >= 6) base -= 4;
-        return Math.max(1, base);
+        return app._applyHungerCombatPressure?.(base, unit, 'initiative') ?? Math.max(1, base);
     },
 
     syncActionLabel(app, type) {

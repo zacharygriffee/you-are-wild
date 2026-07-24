@@ -4267,6 +4267,35 @@ test('Balance system applies conservative hunger pressure and relief', () => {
   assertEqual(balance.costTitle(app, 'recruit', 'Recruit'), 'Recruit', 'No-cost contextual actions should not receive misleading cost text');
 });
 
+test('Hunger bands apply visible bounded combat pressure without changing condition', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const actor = makeUnit('You', { id: 'hunger-pressure-player', hunger: 50, spd: 50, con: 22, MPun: 180, CPun: 180 });
+  const target = makeUnit('Target', { id: 'hunger-pressure-target', disposition: App.DISPOSITION.ENEMY });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  App._combatStateRoll = () => 0.5;
+  App._effectiveSpeed = () => 50;
+
+  const ordinaryRating = App._combatActionRating(40, actor, target, 'hunger-pressure');
+  const ordinaryInitiative = App._calcInitiative(actor);
+  const ordinaryCondition = App._effectiveCon(actor);
+  assertEqual(App._hungerCombatPressure(actor).band, 'ordinary', 'Ordinary hunger should not impose combat pressure');
+
+  actor.hunger = 70;
+  assertEqual(App._hungerCombatPressure(actor).band, 'hungry', 'Hungry threshold should expose its named pressure band');
+  assertEqual(App._combatActionRating(40, actor, target, 'hunger-pressure'), Math.round(ordinaryRating * 0.9), 'Hungry combat actions should lose ten percent effectiveness');
+  assertEqual(App._calcInitiative(actor), ordinaryInitiative * 0.9, 'Hungry initiative should lose ten percent');
+  assertEqual(App._hungerCombatPressure(actor).fleePenalty, 0.05, 'Hungry flee attempts should expose a five-point chance penalty');
+
+  actor.hunger = 85;
+  assertEqual(App._hungerCombatPressure(actor).band, 'starving', 'Starving threshold should expose its named pressure band');
+  assertEqual(App._combatActionRating(40, actor, target, 'hunger-pressure'), Math.round(ordinaryRating * 0.75), 'Starving combat actions should lose twenty-five percent effectiveness');
+  assertEqual(App._calcInitiative(actor), ordinaryInitiative * 0.8, 'Starving initiative should lose twenty percent');
+  assertEqual(App._hungerCombatPressure(actor).fleePenalty, 0.15, 'Starving flee attempts should expose a fifteen-point chance penalty');
+  assertEqual(App._effectiveCon(actor), ordinaryCondition, 'Hunger pressure should not lower Constitution or maximum condition and create extra one-hit deaths');
+});
+
 test('Balance scenario baseline reports deterministic survival and digestion pacing', () => {
   const balance = loadBalanceSystemForTest();
   const app = {
@@ -4335,7 +4364,7 @@ test('Interaction balance matrix exposes current resource ownership and unresolv
     XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 50, flirtEnemy: 50, feedAlly: 20, feedEnemy: 25 }
   };
   const matrix = balance.interactionMatrix(app);
-  assertEqual(matrix.schemaVersion, 1, 'Interaction matrix should expose a versioned machine-readable contract');
+  assertEqual(matrix.schemaVersion, 2, 'Interaction matrix should expose a versioned machine-readable contract');
   assertEqual(matrix.semantics.multiTargetCost, 'once-per-actor-command', 'Matrix should record command-level multi-target costs');
   assertEqual(matrix.semantics.groupCost, 'once-per-participant-command', 'Matrix should record participant-level group costs');
   assertEqual(matrix.commands.find(entry => entry.id === 'fight').outcomes.committedFailure.charge, true, 'Matrix should distinguish a charged committed failure from a free blocked selection');
@@ -4349,6 +4378,10 @@ test('Interaction balance matrix exposes current resource ownership and unresolv
   assertEqual(matrix.variants.find(entry => entry.id === 'fuck.seduce').scope, 'both', 'Play should record its shared self/target action route');
   assertEqual(matrix.digestion.hungerScaling.multipliers.satiated, 0.8, 'Matrix should expose the bounded satiated digestion multiplier');
   assertEqual(matrix.digestion.hungerScaling.multipliers.starving, 1.4, 'Matrix should expose the bounded starving digestion multiplier');
+  assertEqual(matrix.combatPressure.hungry.actionMultiplier, 0.9, 'Matrix should expose the Hungry combat-action multiplier');
+  assertEqual(matrix.combatPressure.starving.initiativeMultiplier, 0.8, 'Matrix should expose the Starving initiative multiplier');
+  assertEqual(matrix.combatPressure.starving.fleePenalty, 0.15, 'Matrix should expose the Starving Flee chance penalty');
+  assertContains(matrix.combatPressure.invariant, 'does-not-lower-constitution', 'Matrix should preserve the no-extra-one-hit-death invariant');
   assertEqual(matrix.variants.find(entry => entry.id === 'feed.nurse')?.source?.resource?.key, 'core:nurse', 'Matrix should expose the implemented Nurse resource source');
   assert(matrix.unresolved.some(entry => entry.includes('mass-ledger')), 'Matrix should preserve Offer Piece mass-source tuning as unresolved');
   assert(!matrix.unresolved.some(entry => entry.includes('hunger-scaled passive digestion')), 'Implemented hunger scaling should no longer remain in the unresolved list');
@@ -23242,29 +23275,52 @@ test('Enemy status combat logs localize', () => {
 
 test('Ambush creatures on first-entry encounters get first strike initiative', () => {
   const { App } = loadAppForCombat(() => 0);
-  const player = makeUnit('You', { spd: 30 });
-  const spider = makeUnit('Spider', { species: 'spider', disposition: App.DISPOSITION.ENEMY, spd: 1, ambushReady: true });
+  const player = makeUnit('You', { id: 'ambush-unaware-player', spd: 30, wis: 1 });
+  const spider = makeUnit('Spider', { id: 'ambush-hidden-spider', species: 'spider', disposition: App.DISPOSITION.ENEMY, spd: 20, darkvision: true, ambushReady: true });
   App.player = player;
   App.party = [player];
   App.creatures = [spider];
+  App.timeHour = 22;
   App.processTurn = function() {};
   App.startCombat([spider]);
   assertEqual(App.combatState.turnQueue[0].unit, spider, 'Ambush-ready enemy should act before faster player');
+  assertEqual(spider.ambushReady, false, 'Consumed hidden ambush state should not trigger again after escape or reload');
+  assertEqual(spider.ambushResolved, true, 'Ambush lifecycle should retain an inspectable one-shot resolution marker');
   assertContains(App.log.map(e => e.text).join('\n'), 'ambush from hiding', 'Ambush should be logged');
 });
 
 test('Guard party role reduces ambush first-strike advantage', () => {
   const { App } = loadAppForCombat(() => 0);
-  const player = makeUnit('You', { spd: 80 });
-  const guard = makeUnit('Guard', { id: 'guard-1', partyRole: 'guard', spd: 10 });
-  const spider = makeUnit('Spider', { species: 'spider', disposition: App.DISPOSITION.ENEMY, spd: 1, ambushReady: true });
+  const player = makeUnit('You', { id: 'ambush-guarded-player', spd: 120, wis: 1 });
+  const guard = makeUnit('Guard', { id: 'guard-1', partyRole: 'guard', spd: 10, wis: 1 });
+  const spider = makeUnit('Spider', { id: 'ambush-guard-spider', species: 'spider', disposition: App.DISPOSITION.ENEMY, spd: 20, darkvision: true, ambushReady: true });
   App.player = player;
   App.party = [player, guard];
   App.creatures = [spider];
+  App.timeHour = 22;
   App.processTurn = function() {};
   App.startCombat([spider]);
   assertEqual(App.combatState.turnQueue[0].unit, player, 'Guard role should reduce ambush initiative enough for a very fast leader to react first');
   assertContains(App.log.map(e => e.text).join('\n'), 'ambush from hiding', 'Guard mitigation should not hide the ambush event');
+});
+
+test('Scout awareness can detect an ambush before initiative is rolled', () => {
+  const { App } = loadAppForCombat(() => 0.99);
+  const player = makeUnit('You', { id: 'ambush-aware-player', spd: 30, wis: 18 });
+  const scout = makeUnit('Scout', { id: 'ambush-scout', partyRole: 'scout', spd: 12, wis: 18 });
+  const spider = makeUnit('Spider', { id: 'ambush-spotted-spider', species: 'spider', disposition: App.DISPOSITION.ENEMY, spd: 8, ambushReady: true });
+  App.player = player;
+  App.party = [player, scout];
+  App.creatures = [spider];
+  App.timeHour = 12;
+  App.processTurn = function() {};
+  App.startCombat([spider]);
+  const logs = App.log.map(e => e.text).join('\n');
+  assertEqual(spider.ambushReady, false, 'Detected ambusher should lose its hidden initiative bonus');
+  assertEqual(spider.ambushDetected, true, 'Detected ambusher should retain an inspectable awareness result');
+  assertEqual(App.combatState.turnQueue[0].unit, player, 'Detected ambush should use ordinary initiative');
+  assertContains(logs, 'spots Spider before they can strike', 'Detected ambush should explain why the enemy lost first strike');
+  assertNotContains(logs, 'ambush from hiding', 'Detected ambush should not also report a successful hidden strike');
 });
 
 test('Create accordion keeps only the selected section open', () => {
@@ -24883,7 +24939,8 @@ test('Unit cards and mobile chips render capped localized trait chips', () => {
   assertContains(allyCard, 'Burning', 'Party card should render capped third trait');
   assertNotContains(allyCard, 'class="unit-trait-chip role" title="Guard">Guard</span>', 'Lower-priority role chip should be hidden once cap is reached');
   assertContains(creatureCard, 'Wounded', 'Creature card should expose wounded state as a trait chip');
-  assertContains(creatureCard, 'Hungry', 'Creature card should expose hunger pressure as a trait chip');
+  assertContains(creatureCard, 'Starving -25%', 'Creature card should expose the current hunger combat penalty as a trait chip');
+  assertContains(creatureCard, '-20% initiative', 'Hunger pressure tooltip should explain the distinct initiative penalty');
   assertContains(creatureCard, 'Quest', 'Creature card should expose contextual quest state as a trait chip');
   assertContains(mobileCreatureChip, 'aria-label="Punishment:', 'Mobile micro unit chip should keep tactical status available through stat-ring labels');
 
@@ -24892,6 +24949,7 @@ test('Unit cards and mobile chips render capped localized trait chips', () => {
   assertContains(localizedAllyCard, 'aria-label="Rasgos de unidad"', 'Trait chip label should localize');
   assertContains(localizedAllyCard, 'Dormido', 'Trait chip text should localize');
   assertContains(localizedAllyCard, 'Veneno', 'Danger trait chip text should localize');
+  assertContains(contentContent, "'unit.trait.starvingCompact': 'Famélico -25%'", 'Maintained Spanish content should localize starving combat pressure');
 });
 
 test('Inventory action labels localize with accessible names', () => {

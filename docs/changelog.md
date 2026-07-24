@@ -4,6 +4,14 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Hunger now has explicit tactical consequences for every living combatant.
+  Hungry units take a 10% action/initiative penalty and a five-point Flee
+  penalty; starving units take a 25% action, 20% initiative, and fifteen-point
+  Flee penalty. Cards disclose the active penalty, while Constitution and
+  maximum condition remain unchanged. First-entry ambushes now resolve a
+  deterministic Wisdom/Scout/Guard/visibility/terrain contest: detected
+  ambushers lose first-strike initiative with visible feedback, while Guard
+  continues to mitigate an ambush that remains hidden.
 - Hostile encounter admission now has one authoritative lifecycle gate across
   fresh entry, revisits, direct starts, regeneration, and save/load. A living
   player facing a living hostile enters combat; an unresolved down player

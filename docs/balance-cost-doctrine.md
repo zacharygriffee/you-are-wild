@@ -30,6 +30,8 @@ The default constants live in `YAW_BALANCE_SYSTEM.defaults()` and are mirrored b
 - Rest: `+8` hunger over eight hours, plus eight digestion ticks and existing recovery behavior
 - Stomach containment: `-3 × prey size` immediate fullness, capped at `20`
 - Complete digestion: `-15 × prey size` hunger, capped at `100` and distributed by progress
+- Hungry combat actions and initiative: `0.9x`; Flee chance: `-5` percentage points
+- Starving combat actions: `0.75x`; initiative: `0.8x`; Flee chance: `-15` percentage points
 
 These numbers are deliberately low. The goal is to reveal tradeoffs without making the early game brittle.
 
@@ -45,6 +47,7 @@ These numbers are deliberately low. The goal is to reveal tradeoffs without maki
   an explicit source.
 - Feast gives modest size-scaled fullness when prey enters a stomach. Most nourishment arrives as digestion advances.
 - Fast and slow digestion provide the same total size-scaled nourishment. Slow digestion spreads that relief across more ticks instead of reducing its total. Passive stomach progress uses a bounded hunger curve: at hunger 25 or below it runs at `0.8x`; ordinary hunger uses `1x`; hunger 70–84 uses `1.2x`; and starvation at 85 or above uses a capped `1.4x`. The slow base remains `2%` per tick and the fast base remains `5%`, so even urgent slow digestion (`2.8%`) stays below ordinary fast digestion. The current pace and effective rate are visible in Containers.
+- Hunger 70–84 reduces combat action ratings and initiative by 10% and subtracts five percentage points from Flee chance. Hunger 85–100 reduces combat action ratings by 25%, initiative by 20%, and Flee chance by fifteen percentage points. These penalties apply to every living unit, are visible on tactical cards, and do not lower Constitution or maximum condition.
 - Scavenge continues to use finite Remains Pool relief; this pass does not create itemized creature pieces or permanent stat gains.
 - Inspect, quest, trade, recruit, loot, and structural detail actions do not add hunger pressure.
 
@@ -61,6 +64,18 @@ Rest is recovery and elapsed time, not food. Eight hours of rest add eight hunge
 Successful non-party creature flee relocates the survivor to one deterministic, traversable cardinally adjacent tile or connected interior room. It leaves the current encounter without being deleted from the world. A non-player companion who flees likewise leaves the traveling party and remains friendly and recoverable on a safe adjacent tile or room. A living player retreat moves the traveling party together and resolves combat as escape, never death; known hostile destinations are excluded, and a retreat with no safe route remains in the current encounter.
 
 `Survivable containment` is scoped to containment outcomes only. Terminal digestion under that option leaves a fully softened survivor at minimal condition who can still be released; `Fatal digestion` takes precedence when both variants are enabled. Survivable containment never converts an enemy defeated by Fight into a friendly one. With `Power dynamics` disabled, ordinary Fight defeat follows the ordinary defeated/remains path. With `Power dynamics` enabled, a Fight defeat becomes explicit submission: the survivor remains at one condition, becomes friendly and `recruitReady`, and can be recruited through the normal party-cap and eligibility checks.
+
+## Ambush Awareness
+
+First-entry ambushers do not receive automatic first strike. Core resolves one
+deterministic awareness contest before initiative using the party's highest
+living Wisdom, Scout and Guard role contributions, day/night visibility,
+darkvision, terrain cover, and the ambusher's Speed and temperament. A detected
+ambusher loses `ambushReady`, enters ordinary initiative, and produces an
+explicit Scene/Activity explanation. An undetected ambusher retains the
+existing Guard-mitigated initiative bonus. Scout primarily improves detection;
+Guard supplies a smaller detection contribution and remains the mitigation
+role when detection fails.
 
 ## Spirit Breakthrough
 

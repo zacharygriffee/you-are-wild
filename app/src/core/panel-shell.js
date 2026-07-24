@@ -97,7 +97,15 @@ const YAW_PANEL_SHELL = {
         const html = list.map(unit => {
             const type = partyTab ? 'party' : 'creature';
             const index = partyTab ? app.party.indexOf(unit) : app.creatures.indexOf(unit);
-            return app.renderMobileUnitChip(unit, index, type);
+            const extra = { unit, unitType: type, expanded: unit?.expanded === true };
+            const badgeSlot = partyTab ? 'roster.party.badges' : 'roster.here.badges';
+            const badges = typeof MODULE_SYSTEM !== 'undefined'
+                ? MODULE_SYSTEM.renderUiSlot?.(badgeSlot, extra) || ''
+                : '';
+            const details = typeof MODULE_SYSTEM !== 'undefined'
+                ? MODULE_SYSTEM.renderUiSlot?.('roster.details.sections', extra) || ''
+                : '';
+            return `<article class="mobile-roster-entry" data-unit-type="${type}" data-unit-index="${index}">${app.renderMobileUnitChip(unit, index, type)}${badges}${details}</article>`;
         }).join('');
         const empty = partyTab
             ? app._label('ui.noPartyMembers', 'No party members')

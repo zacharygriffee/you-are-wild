@@ -21,6 +21,7 @@ const NARRATION_DIAGNOSTICS_MOD_PACKAGE = path.join(__dirname, '..', '..', 'opti
 const ELEMENTAL_SPECIES_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-elemental-species.yawmod.json');
 const NEUTRAL_CONFORMANCE_MOD_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'neutral-conformance.yawmod.json');
 const NEUTRAL_CONFORMANCE_LOCALE_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'neutral-conformance-locale-pack.yawmod.json');
+const UI_CONTRIBUTION_EXAMPLE_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'ui-contribution-v1.yawmod.json');
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
 const BALANCE_COST_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'balance-cost-doctrine.md');
@@ -579,8 +580,21 @@ function loadModuleSystemForTest(options = {}) {
     biomes: {},
     species: [],
     items: [],
+    party: [],
+    creatures: [],
+    explorationActorIds: [],
+    explorationTargetIds: [],
     settings: { recoveryMode: 'core:regenerate' },
     log: [],
+    _label(_key, fallback = '') { return fallback; },
+    _escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[character]);
+    },
+    _escapeJsString(value) {
+      return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    },
     renderLog() {},
     saveSettings() {},
     renderRecoveryModeOptions() {}
@@ -743,6 +757,149 @@ asyncTest('Narrative hooks receive a fresh frozen public envelope', async () => 
   await MODULE_SYSTEM.executePublicHook('onSceneBeat', envelope);
   assertEqual(received.length, 2, 'Both narrative hooks should run');
   assert(received[0] !== received[1] && received[0] !== envelope, 'Each hook should receive its own copied envelope');
+});
+
+asyncTest('UI Contribution V1 is permissioned bounded frozen and removed with its owner', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const App = MODULE_SYSTEM._testApp;
+  const unit = {
+    id: 'ally-1',
+    name: '<Ally>',
+    species: 'bunnyfolk',
+    disposition: 'ally',
+    CPun: 8,
+    MPun: 10,
+    status: { brave: true }
+  };
+  App.party = [unit];
+  App.explorationActorIds = ['ally-1'];
+
+  const denied = MODULE_SYSTEM.createModAPI('ui-denied', { permissions: [] });
+  let rejected = false;
+  try {
+    denied.registerUiContribution('roster.party.badges', 'badge', { label: 'Badge' });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'ui:contribute', 'UI registration should name its required permission');
+  }
+  assertEqual(rejected, true, 'UI registration should reject undeclared permission use');
+
+  let callbackContext = null;
+  const api = MODULE_SYSTEM.createModAPI('ui-example', { permissions: ['ui:contribute'] });
+  api.registerUiContribution('roster.party.badges', 'state', {
+    label: 'State',
+    tone: 'info',
+    read(context) {
+      assert(Object.isFrozen(context), 'Badge context should be frozen');
+      assert(Object.isFrozen(context.unit), 'Nested unit context should be frozen');
+      return { label: `${context.unit.name} ready`, tone: 'success' };
+    }
+  });
+  api.registerUiContribution('roster.details.sections', 'facts', {
+    label: 'Module facts',
+    rows: [{ label: 'Source', value: '<bounded data>' }]
+  });
+  api.registerUiContribution('composer.place.after', 'inspect', {
+    label: 'Inspect',
+    description: 'Open a bounded module dialog',
+    icon: '◇',
+    onInvoke(context) {
+      callbackContext = context;
+      return false;
+    }
+  });
+
+  const badgeHtml = MODULE_SYSTEM.renderUiSlot('roster.party.badges', { unit, unitType: 'party' });
+  assertContains(badgeHtml, '&lt;Ally&gt; ready', 'Badge text should be escaped rather than injected as markup');
+  const detailHtml = MODULE_SYSTEM.renderUiSlot('roster.details.sections', { unit, unitType: 'party' });
+  assertContains(detailHtml, '&lt;bounded data&gt;', 'Detail values should be escaped rather than injected as markup');
+  const commandHtml = MODULE_SYSTEM.renderUiSlot('composer.place.after');
+  assertContains(commandHtml, 'invoke-mod-ui', 'Composer contribution should use a core-owned command control');
+  await MODULE_SYSTEM.invokeUiContribution('composer.place.after', 'ui-example:inspect');
+  assert(callbackContext && Object.isFrozen(callbackContext.selection), 'Command callback should receive frozen public selection state');
+
+  MODULE_SYSTEM._removeModuleContributions('ui-example');
+  assertEqual(MODULE_SYSTEM.renderUiSlot('roster.party.badges', { unit, unitType: 'party' }), '', 'Owner unload should remove roster contributions');
+  assertEqual(MODULE_SYSTEM.renderUiSlot('composer.place.after'), '', 'Owner unload should remove command contributions');
+});
+
+test('UI Contribution V1 rejects collisions unsafe fields and excessive ownership', () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const api = MODULE_SYSTEM.createModAPI('ui-limits', { permissions: ['ui:contribute'] });
+  const badge = id => api.registerUiContribution('roster.party.badges', id, { label: id });
+  badge('one');
+  let rejected = false;
+  try {
+    badge('one');
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'already registered', 'Duplicate contribution should report its collision');
+  }
+  assertEqual(rejected, true, 'Duplicate owner/id registration should reject');
+
+  for (const id of ['two', 'three', 'four']) badge(id);
+  rejected = false;
+  try {
+    badge('five');
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'more than 4', 'Per-owner slot limit should be explicit');
+  }
+  assertEqual(rejected, true, 'A module should not crowd a slot beyond its bounded allocation');
+
+  rejected = false;
+  try {
+    api.registerUiContribution('dock.replace', 'unsafe', { label: 'Unsafe' });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'Unsupported UI contribution slot', 'Unknown placement should reject');
+  }
+  assertEqual(rejected, true, 'Modules should not create arbitrary UI placements');
+
+  rejected = false;
+  try {
+    api.registerUiContribution('system.utilities', 'missing-callback', { label: 'Utility' });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'requires onInvoke', 'Command slots should require an owned callback');
+  }
+  assertEqual(rejected, true, 'Passive data should not masquerade as an executable utility');
+
+  rejected = false;
+  try {
+    api.registerUiContribution('roster.here.badges', 'bad-locale', {
+      label: 'Badge',
+      labelKey: 'other-module.badge'
+    });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'ui-limits. locale namespace', 'Cross-owner localization keys should reject');
+  }
+  assertEqual(rejected, true, 'UI localization keys should remain owner-namespaced');
+});
+
+test('UI Contribution V1 remains available to ordinary file-origin modules', () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest({
+    window: {
+      location: { protocol: 'file:', hostname: '', href: 'file:///tmp/you-are-wild.html', origin: 'null' }
+    }
+  });
+  const api = MODULE_SYSTEM.createModAPI('offline-ui', { permissions: ['ui:contribute'] });
+  api.registerUiContribution('roster.here.badges', 'offline', { label: 'Offline' });
+  assertContains(MODULE_SYSTEM.renderUiSlot('roster.here.badges', {
+    unit: { id: 'local-1', name: 'Local' },
+    unitType: 'creature'
+  }), 'Offline', 'Declarative UI should not require HTTPS or network access');
+});
+
+test('Public UI slots are wired without exposing navigation or combat-confirmation ownership', () => {
+  assertContains(centerContextContent, "renderUiSlot?.('composer.place.after')", 'Composer should render its bounded post-place slot');
+  assertContains(panelShellContent, "'roster.party.badges'", 'Unified Roster should render party badges');
+  assertContains(panelShellContent, "'roster.here.badges'", 'Unified Roster should render local-unit badges');
+  assertContains(panelShellContent, "renderUiSlot?.('roster.details.sections'", 'Unified Roster should render bounded detail rows');
+  assertContains(templateContent, 'id="module-system-utilities"', 'App menu should host bounded module utilities');
+  assertNotContains(moduleSystemContent, "'dock.button'", 'Public UI contract should not expose dock navigation');
+  assertNotContains(moduleSystemContent, "'combat.confirmation'", 'Public UI contract should not expose combat confirmation');
 });
 
 test('Narration package is optional and declares bounded provider-neutral settings', () => {
@@ -2961,8 +3118,15 @@ asyncTest('Enabled modules are disabled when content policy is lowered', async (
     code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
   });
   await MODULE_SYSTEM.installModule({
-    manifest: { id: 'mature-module', name: 'Mature Module', version: '1.0.0', contentRating: 'mature' },
-    code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
+    manifest: {
+      id: 'mature-module',
+      name: 'Mature Module',
+      version: '1.0.0',
+      contentRating: 'mature',
+      permissions: ['ui:contribute']
+    },
+    code: `MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));
+      MODS.registerUiContribution('roster.here.badges', 'mature-state', { label: 'Mature state' });`
   });
 
   await MODULE_SYSTEM.setModuleEnabled('safe-module', true);
@@ -2970,6 +3134,7 @@ asyncTest('Enabled modules are disabled when content policy is lowered', async (
   assertEqual(MODULE_SYSTEM.activeModules.has('safe-module'), true, 'Safe module should be active before policy downgrade');
   assertEqual(MODULE_SYSTEM.activeModules.has('mature-module'), true, 'Mature module should be active before policy downgrade');
   assertEqual(MODULE_SYSTEM.hooks.onTick.length, 2, 'Both enabled modules should own hooks before policy downgrade');
+  assertEqual(MODULE_SYSTEM.uiContributions.get('roster.here.badges')?.size, 1, 'Allowed module UI should be visible before policy downgrade');
 
   CONTENT.preferences.maxTier = 0;
   const disabled = await MODULE_SYSTEM.enforceContentPolicy();
@@ -2984,6 +3149,7 @@ asyncTest('Enabled modules are disabled when content policy is lowered', async (
   assertEqual(mature.enabled, false, 'Blocked mature module should be disabled in storage');
   assertEqual(MODULE_SYSTEM.activeModules.has('safe-module'), true, 'Allowed safe module should remain active');
   assertEqual(MODULE_SYSTEM.activeModules.has('mature-module'), false, 'Blocked mature module should unload from active modules');
+  assertEqual(MODULE_SYSTEM.uiContributions.get('roster.here.badges'), undefined, 'Policy downgrade should remove blocked module UI');
 
   const payload = { calls: [] };
   await MODULE_SYSTEM.executeHook('onTick', payload);
@@ -3606,6 +3772,34 @@ asyncTest('Neutral module conformance fixture survives install use reload disabl
   assertEqual(App.SUB_ACTIONS.fuck.shareGreeting, undefined, 'Deleting an enabled reinstalled fixture should remove its Play variant');
   assertEqual(App.sceneTemplates.length, 0, 'Deleting an enabled reinstalled fixture should remove its Scene Feed template');
   assertEqual(CONTENT.getCreationOptions().length, 0, 'Deleting an enabled reinstalled fixture should remove its creation option');
+});
+
+asyncTest('UI Contribution V1 example installs localizes renders and unloads', async () => {
+  const CONTENT = loadContentSystemForTest();
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT });
+  MODULE_SYSTEM.GAME_VERSION = '0.14.0';
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  const App = MODULE_SYSTEM._testApp;
+  App._label = (key, fallback, vars = {}) => {
+    const translated = CONTENT.t(key, vars);
+    return translated === key ? fallback : translated;
+  };
+  const packageData = JSON.parse(fs.readFileSync(UI_CONTRIBUTION_EXAMPLE_PACKAGE, 'utf8'));
+  await MODULE_SYSTEM.installModule(packageData);
+  await MODULE_SYSTEM.setModuleEnabled('yaw_ui_contribution_example', true);
+  assertEqual(MODULE_SYSTEM.uiContributions.size, 5, 'Example should register every stable V1 slot');
+  assertContains(MODULE_SYSTEM.renderUiSlot('system.utilities'), 'Module guide', 'Example utility should render its English locale entry');
+  CONTENT.setLanguage('es');
+  assertContains(MODULE_SYSTEM.renderUiSlot('composer.place.after'), 'Examinar', 'Example composer command should rerender through Spanish locale entries');
+  const details = MODULE_SYSTEM.renderUiSlot('roster.details.sections', {
+    unit: { id: 'ally', name: 'Ally' },
+    unitType: 'party'
+  });
+  assertContains(details, 'Propietario', 'Example detail row label should localize');
+  assertContains(details, 'Módulo de ejemplo', 'Example detail row value should localize');
+  await MODULE_SYSTEM.setModuleEnabled('yaw_ui_contribution_example', false);
+  assertEqual(MODULE_SYSTEM.uiContributions.size, 0, 'Disabling the example should remove every owned UI slot');
+  assertEqual(CONTENT.locales.es['yaw_ui_contribution_example.guide'], undefined, 'Disabling the example should restore its locale entries');
 });
 
 asyncTest('Locale Pack V1 conformance fixture installs selects reloads and unloads with its target', async () => {

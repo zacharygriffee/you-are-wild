@@ -1,0 +1,25 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_ui_contribution_example",
+  "gameVersion": "0.14.0",
+  "module": {
+    "manifest": {
+      "id": "yaw_ui_contribution_example",
+      "name": "UI Contribution V1 Example",
+      "version": "1.0.0",
+      "minGameVersion": "0.14.0",
+      "description": "Neutral conformance example for bounded composer, roster, and utility contributions.",
+      "author": "You Are Wild",
+      "contentRating": "safe",
+      "permissions": [
+        "ui:contribute",
+        "content:add_locale"
+      ],
+      "settings": []
+    },
+    "code": "MODS.registerLocaleEntries('en', { 'yaw_ui_contribution_example.survey': 'Survey', 'yaw_ui_contribution_example.surveyDescription': 'Review a bounded public game snapshot.', 'yaw_ui_contribution_example.attuned': 'Attuned', 'yaw_ui_contribution_example.facts': 'Module facts', 'yaw_ui_contribution_example.owner': 'Owner', 'yaw_ui_contribution_example.ownerValue': 'Example module', 'yaw_ui_contribution_example.guide': 'Module guide', 'yaw_ui_contribution_example.guideDescription': 'Review the UI Contribution V1 example.', 'yaw_ui_contribution_example.guideBody': 'This dialog is rendered and focused by core.' });\nMODS.registerLocaleEntries('es', { 'yaw_ui_contribution_example.survey': 'Examinar', 'yaw_ui_contribution_example.surveyDescription': 'Revisar una instantánea pública limitada del juego.', 'yaw_ui_contribution_example.attuned': 'Armonizado', 'yaw_ui_contribution_example.facts': 'Datos del módulo', 'yaw_ui_contribution_example.owner': 'Propietario', 'yaw_ui_contribution_example.ownerValue': 'Módulo de ejemplo', 'yaw_ui_contribution_example.guide': 'Guía del módulo', 'yaw_ui_contribution_example.guideDescription': 'Revisar el ejemplo de UI Contribution V1.', 'yaw_ui_contribution_example.guideBody': 'Este diálogo es representado y enfocado por el núcleo.' });\nMODS.registerUiContribution('composer.place.after', 'survey', { label: 'Survey', labelKey: 'yaw_ui_contribution_example.survey', description: 'Review a bounded public game snapshot.', descriptionKey: 'yaw_ui_contribution_example.surveyDescription', icon: '◇', onInvoke(context) { return { title: 'Survey', titleKey: 'yaw_ui_contribution_example.survey', description: `Mode: ${context.mode}` }; } });\nfor (const slot of ['roster.party.badges', 'roster.here.badges']) MODS.registerUiContribution(slot, 'attuned', { label: 'Attuned', labelKey: 'yaw_ui_contribution_example.attuned', tone: 'info' });\nMODS.registerUiContribution('roster.details.sections', 'facts', { label: 'Module facts', labelKey: 'yaw_ui_contribution_example.facts', rows: [{ label: 'Owner', labelKey: 'yaw_ui_contribution_example.owner', value: 'Example module', valueKey: 'yaw_ui_contribution_example.ownerValue' }] });\nMODS.registerUiContribution('system.utilities', 'guide', { label: 'Module guide', labelKey: 'yaw_ui_contribution_example.guide', description: 'Review the UI Contribution V1 example.', descriptionKey: 'yaw_ui_contribution_example.guideDescription', icon: '◇', onInvoke() { return { title: 'Module guide', titleKey: 'yaw_ui_contribution_example.guide', description: 'This dialog is rendered and focused by core.', descriptionKey: 'yaw_ui_contribution_example.guideBody' }; } });\nMODS.log('UI Contribution V1 example registered.');",
+    "assets": {},
+    "settings": {}
+  }
+}

@@ -18,6 +18,14 @@ const MODULE_SYSTEM = {
     RUNTIME_ORIGINS: ['file', 'https', 'localhost', 'http'],
     HOST_MANIFEST_SCHEMA: 'yaw-host-modules-v1',
     CONTENT_PROFILE_SCHEMA: 'yaw-content-profile-v1',
+    UI_CONTRIBUTION_VERSION: 1,
+    UI_CONTRIBUTION_SLOTS: Object.freeze([
+        'composer.place.after',
+        'roster.party.badges',
+        'roster.here.badges',
+        'roster.details.sections',
+        'system.utilities'
+    ]),
     SPECIES_PROFILE_VERSION: 1,
     SPECIES_PROFILE_DEFAULT_STATS: Object.freeze({
         MPun: 100, MPle: 100, Figh: 10, Feas: 10, Flir: 10, Fuck: 10,
@@ -31,7 +39,7 @@ const MODULE_SYSTEM = {
     DEFAULT_HOST_MANIFEST_PATH: 'yaw-host.json',
     REMOTE_PACKAGE_MAX_BYTES: 2 * 1024 * 1024,
     REMOTE_PACKAGE_TIMEOUT_MS: 15000,
-    KNOWN_PERMISSIONS: ['ui.read', 'media:read', 'media:provide', 'scene:add_template', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option', 'content:add_action_variant', 'mechanics:add_resource_profile', 'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'],
+    KNOWN_PERMISSIONS: ['ui.read', 'ui:contribute', 'media:read', 'media:provide', 'scene:add_template', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option', 'content:add_action_variant', 'mechanics:add_resource_profile', 'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'],
     db: null,
     hostManifest: null,
     hostManifestState: { status: 'uninitialized', reason: '', url: '' },
@@ -64,6 +72,7 @@ const MODULE_SYSTEM = {
     ownedContributions: new Map(),
     moduleDiagnostics: new Map(),
     settingActions: new Map(),
+    uiContributions: new Map(),
     loadingModuleId: null,
 
     _credentialLikeName(value) {
@@ -1901,7 +1910,8 @@ const MODULE_SYSTEM = {
                 actionVariants: [],
                 resourceProfiles: [],
                 combatTechniques: [],
-                recoveryModes: []
+                recoveryModes: [],
+                uiContributions: []
             });
         }
         return this.ownedContributions.get(moduleId);
@@ -2519,6 +2529,324 @@ const MODULE_SYSTEM = {
         return Object.keys(previous).length;
     },
 
+    _normalizeUiContributionText(value, field, maxLength, options = {}) {
+        const text = String(value ?? '').trim();
+        if (options.required && !text) throw new Error(`UI contribution ${field} is required`);
+        if (text.length > maxLength) throw new Error(`UI contribution ${field} exceeds ${maxLength} characters`);
+        return text;
+    },
+
+    _normalizeUiLocaleKey(moduleId, value, field) {
+        const key = String(value || '').trim();
+        if (!key) return '';
+        if (!key.startsWith(`${moduleId}.`)) {
+            throw new Error(`UI contribution ${field} must use the ${moduleId}. locale namespace`);
+        }
+        if (!/^[a-zA-Z0-9_.:-]+$/.test(key)) throw new Error(`UI contribution ${field} contains unsupported characters`);
+        return key;
+    },
+
+    _normalizeUiRows(rows, label = 'rows', moduleId = '') {
+        if (rows === undefined || rows === null) return [];
+        if (!Array.isArray(rows)) throw new Error(`UI contribution ${label} must be an array`);
+        if (rows.length > 6) throw new Error(`UI contribution ${label} cannot exceed 6 rows`);
+        return rows.map((row, index) => {
+            if (!row || typeof row !== 'object' || Array.isArray(row)) {
+                throw new Error(`UI contribution ${label}[${index}] must be an object`);
+            }
+            return Object.freeze({
+                label: this._normalizeUiContributionText(row.label, `${label}[${index}].label`, 48, { required: true }),
+                labelKey: moduleId ? this._normalizeUiLocaleKey(moduleId, row.labelKey, `${label}[${index}].labelKey`) : '',
+                value: this._normalizeUiContributionText(row.value, `${label}[${index}].value`, 160, { required: true }),
+                valueKey: moduleId ? this._normalizeUiLocaleKey(moduleId, row.valueKey, `${label}[${index}].valueKey`) : ''
+            });
+        });
+    },
+
+    _registerUiContribution(moduleId, slot, contributionId, definition) {
+        const normalizedSlot = String(slot || '').trim();
+        if (!this.UI_CONTRIBUTION_SLOTS.includes(normalizedSlot)) {
+            throw new Error(`Unsupported UI contribution slot ${normalizedSlot || '(empty)'}`);
+        }
+        const id = String(contributionId || '').trim();
+        if (!/^[a-zA-Z0-9_.:-]{1,64}$/.test(id)) {
+            throw new Error('UI contribution id must use 1-64 letters, numbers, underscores, hyphens, dots, or colons');
+        }
+        if (!definition || typeof definition !== 'object' || Array.isArray(definition)) {
+            throw new Error('UI contribution definition must be an object');
+        }
+        const commandSlot = normalizedSlot === 'composer.place.after' || normalizedSlot === 'system.utilities';
+        const detailSlot = normalizedSlot === 'roster.details.sections';
+        const key = `${moduleId}:${id}`;
+        const slotRegistry = this.uiContributions.get(normalizedSlot) || new Map();
+        if (slotRegistry.has(key)) throw new Error(`UI contribution ${key} is already registered in ${normalizedSlot}`);
+        const ownedCount = [...slotRegistry.values()].filter(record => record.owner === moduleId).length;
+        if (ownedCount >= 4) throw new Error(`Module ${moduleId} cannot register more than 4 contributions in ${normalizedSlot}`);
+        if (slotRegistry.size >= 24) throw new Error(`UI contribution slot ${normalizedSlot} is full`);
+        if (commandSlot && typeof definition.onInvoke !== 'function') {
+            throw new Error(`UI contribution ${normalizedSlot} requires onInvoke`);
+        }
+        if (definition.when !== undefined && typeof definition.when !== 'function') {
+            throw new Error('UI contribution when must be a function');
+        }
+        if (definition.read !== undefined && typeof definition.read !== 'function') {
+            throw new Error('UI contribution read must be a function');
+        }
+        if (detailSlot && definition.read === undefined && definition.rows === undefined) {
+            throw new Error('Roster detail contribution requires rows or read');
+        }
+        const tone = String(definition.tone || 'neutral').trim().toLowerCase();
+        if (!['neutral', 'info', 'success', 'warning', 'danger'].includes(tone)) {
+            throw new Error('UI contribution tone is unsupported');
+        }
+        const priorityValue = Number(definition.priority || 0);
+        if (!Number.isFinite(priorityValue) || priorityValue < -10 || priorityValue > 10) {
+            throw new Error('UI contribution priority must be between -10 and 10');
+        }
+        const record = Object.freeze({
+            version: this.UI_CONTRIBUTION_VERSION,
+            slot: normalizedSlot,
+            id,
+            key,
+            owner: moduleId,
+            label: this._normalizeUiContributionText(definition.label, 'label', 48, { required: true }),
+            labelKey: this._normalizeUiLocaleKey(moduleId, definition.labelKey, 'labelKey'),
+            description: this._normalizeUiContributionText(definition.description, 'description', 160),
+            descriptionKey: this._normalizeUiLocaleKey(moduleId, definition.descriptionKey, 'descriptionKey'),
+            icon: this._normalizeUiContributionText(definition.icon, 'icon', 8),
+            tone,
+            priority: Math.trunc(priorityValue),
+            rows: Object.freeze(this._normalizeUiRows(definition.rows, 'rows', moduleId)),
+            when: definition.when || null,
+            read: definition.read || null,
+            onInvoke: definition.onInvoke || null
+        });
+        slotRegistry.set(key, record);
+        this.uiContributions.set(normalizedSlot, slotRegistry);
+        this._contributionRecord(moduleId).uiContributions.push({ slot: normalizedSlot, key });
+        this.refreshUiContributions();
+        return Object.freeze({ version: record.version, slot: record.slot, id: record.id, key: record.key });
+    },
+
+    _removeUiContributionOwner(moduleId) {
+        let changed = false;
+        for (const [slot, registry] of this.uiContributions.entries()) {
+            for (const [key, record] of registry.entries()) {
+                if (record.owner !== moduleId) continue;
+                registry.delete(key);
+                changed = true;
+            }
+            if (!registry.size) this.uiContributions.delete(slot);
+        }
+        if (changed) this.refreshUiContributions();
+        return changed;
+    },
+
+    _uiContributionContext(record, extra = {}) {
+        const context = {
+            ...this.getPublicContext({ limit: 12 }),
+            surface: { slot: record.slot, contributionId: record.id, owner: record.owner },
+            selection: {
+                actorIds: (App.explorationActorIds || []).map(String),
+                targetIds: (App.explorationTargetIds || []).map(String)
+            },
+            unit: extra.unit && typeof extra.unit === 'object' ? this._publicUnitSummary(extra.unit) : null,
+            unitType: extra.unitType === 'party' ? 'party' : (extra.unitType === 'creature' ? 'creature' : null),
+            expanded: extra.expanded === true
+        };
+        return this._deepFreeze(this._serializableCopy(context));
+    },
+
+    _uiContributionText(record, field) {
+        const fallback = String(record[field] || '');
+        const key = String(record[`${field}Key`] || '');
+        return key ? App._label(key, fallback) : fallback;
+    },
+
+    _uiContributionDiagnostic(record, error) {
+        const message = String(error?.message || error || 'UI contribution failed').slice(0, 240);
+        console.error(`UI contribution failed (${record.owner}:${record.id}):`, error);
+        App.log?.push?.({ text: `[${record.owner}] UI contribution ${record.id} failed: ${message}`, type: 'error' });
+        App.renderLog?.();
+    },
+
+    _uiContributionVisible(record, context) {
+        if (!record.when) return true;
+        try {
+            return record.when(context) !== false;
+        } catch (error) {
+            this._uiContributionDiagnostic(record, error);
+            return false;
+        }
+    },
+
+    _uiContributionRecords(slot, extra = {}) {
+        const registry = this.uiContributions.get(String(slot || ''));
+        if (!registry) return [];
+        return [...registry.values()]
+            .sort((left, right) => left.priority - right.priority || left.owner.localeCompare(right.owner) || left.id.localeCompare(right.id))
+            .map(record => ({ record, context: this._uiContributionContext(record, extra) }))
+            .filter(entry => this._uiContributionVisible(entry.record, entry.context));
+    },
+
+    _normalizeUiReadResult(record, result) {
+        if (record.slot === 'roster.details.sections') {
+            return this._normalizeUiRows((Array.isArray(result) ? result : result?.rows) ?? record.rows, 'read.rows', record.owner);
+        }
+        if (result === undefined || result === null || result === '') {
+            return { label: this._uiContributionText(record, 'label'), tone: record.tone };
+        }
+        if (typeof result === 'string' || typeof result === 'number') {
+            return { label: this._normalizeUiContributionText(result, 'read.label', 64, { required: true }), tone: record.tone };
+        }
+        if (!result || typeof result !== 'object' || Array.isArray(result)) {
+            throw new Error('UI contribution read returned unsupported data');
+        }
+        const labelKey = this._normalizeUiLocaleKey(record.owner, result.labelKey, 'read.labelKey');
+        const tone = String(result.tone || record.tone).trim().toLowerCase();
+        if (!['neutral', 'info', 'success', 'warning', 'danger'].includes(tone)) {
+            throw new Error('UI contribution read returned an unsupported tone');
+        }
+        return {
+            label: labelKey
+                ? App._label(labelKey, this._normalizeUiContributionText(result.label ?? record.label, 'read.label', 64, { required: true }))
+                : this._normalizeUiContributionText(result.label, 'read.label', 64, { required: true }),
+            tone
+        };
+    },
+
+    renderUiSlot(slot, extra = {}) {
+        const entries = this._uiContributionRecords(slot, extra);
+        if (!entries.length) return '';
+        if (slot === 'composer.place.after' || slot === 'system.utilities') {
+            return entries.map(({ record }) => {
+                const label = App._escapeHtml(this._uiContributionText(record, 'label'));
+                const description = App._escapeHtml(this._uiContributionText(record, 'description') || label);
+                const icon = App._escapeHtml(record.icon || '◇');
+                const safeSlot = App._escapeJsString(record.slot);
+                const safeKey = App._escapeJsString(record.key);
+                const menuAttrs = slot === 'system.utilities' ? ' role="menuitem"' : '';
+                return `<button class="${slot === 'system.utilities' ? 'nav-btn' : 'action-btn'} mod-ui-command mod-ui-tone-${record.tone}"${menuAttrs} data-module-owner="${App._escapeHtml(record.owner)}" data-ui-contribution="${App._escapeHtml(record.key)}" data-command-surface="${slot === 'system.utilities' ? 'app-system' : 'command-composer'}" data-command-mode="${slot === 'system.utilities' ? 'system' : 'exploration'}" data-command-control="invoke-mod-ui" title="${description}" aria-label="${description}" onclick="App.invokeModUiContribution('${safeSlot}','${safeKey}')"><span aria-hidden="true">${icon}</span> <span>${label}</span></button>`;
+            }).join('');
+        }
+        if (slot === 'roster.party.badges' || slot === 'roster.here.badges') {
+            const badges = entries.map(({ record, context }) => {
+                try {
+                    const value = this._normalizeUiReadResult(record, record.read ? record.read(context) : null);
+                    return `<span class="mod-ui-badge mod-ui-tone-${value.tone}" data-module-owner="${App._escapeHtml(record.owner)}" data-ui-contribution="${App._escapeHtml(record.key)}">${App._escapeHtml(value.label)}</span>`;
+                } catch (error) {
+                    this._uiContributionDiagnostic(record, error);
+                    return '';
+                }
+            }).join('');
+            return badges ? `<div class="mod-ui-badges" aria-label="${App._escapeHtml(App._label('ui.modContributions', 'Module contributions'))}">${badges}</div>` : '';
+        }
+        if (slot === 'roster.details.sections') {
+            return entries.map(({ record, context }) => {
+                try {
+                    const rows = this._normalizeUiReadResult(record, record.read ? record.read(context) : record.rows);
+                    if (!rows.length) return '';
+                    const title = App._escapeHtml(this._uiContributionText(record, 'label'));
+                    return `<section class="mod-ui-detail-section" data-module-owner="${App._escapeHtml(record.owner)}" data-ui-contribution="${App._escapeHtml(record.key)}"><h4>${title}</h4><dl>${rows.map(row => `<div><dt>${App._escapeHtml(row.labelKey ? App._label(row.labelKey, row.label) : row.label)}</dt><dd>${App._escapeHtml(row.valueKey ? App._label(row.valueKey, row.value) : row.value)}</dd></div>`).join('')}</dl></section>`;
+                } catch (error) {
+                    this._uiContributionDiagnostic(record, error);
+                    return '';
+                }
+            }).join('');
+        }
+        return '';
+    },
+
+    _uiUnitExtra(unitType, index) {
+        const type = unitType === 'party' ? 'party' : (unitType === 'creature' ? 'creature' : '');
+        const list = type === 'party' ? App.party : (type === 'creature' ? App.creatures : []);
+        const numericIndex = Number(index);
+        const unit = Number.isInteger(numericIndex) ? list?.[numericIndex] : null;
+        return { unit, unitType: type, expanded: unit?.expanded === true };
+    },
+
+    async invokeUiContribution(slot, key, unitType = '', index = null) {
+        const record = this.uiContributions.get(String(slot || ''))?.get(String(key || ''));
+        if (!record) return false;
+        const context = this._uiContributionContext(record, this._uiUnitExtra(unitType, index));
+        if (!this._uiContributionVisible(record, context) || typeof record.onInvoke !== 'function') return false;
+        try {
+            const result = await record.onInvoke(context);
+            if (result !== undefined && result !== null && result !== false) this.openUiContributionDialog(record, result);
+            return true;
+        } catch (error) {
+            this._uiContributionDiagnostic(record, error);
+            return false;
+        }
+    },
+
+    openUiContributionDialog(record, result) {
+        if (typeof document === 'undefined' || !document.body) return false;
+        this.closeUiContributionDialog();
+        const activeElement = document.activeElement;
+        App._modUiDialogOpener = activeElement?.closest?.('#app-menu')
+            ? document.getElementById('app-menu-toggle')
+            : activeElement;
+        const payload = typeof result === 'string' ? { description: result } : result;
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+            throw new Error('UI contribution callback must return text or a bounded dialog descriptor');
+        }
+        const titleKey = this._normalizeUiLocaleKey(record.owner, payload.titleKey, 'dialog.titleKey');
+        const descriptionKey = this._normalizeUiLocaleKey(record.owner, payload.descriptionKey, 'dialog.descriptionKey');
+        const titleFallback = this._normalizeUiContributionText(payload.title || this._uiContributionText(record, 'label'), 'dialog.title', 80, { required: true });
+        const descriptionFallback = this._normalizeUiContributionText(payload.description, 'dialog.description', 600);
+        const title = titleKey ? App._label(titleKey, titleFallback) : titleFallback;
+        const description = descriptionKey ? App._label(descriptionKey, descriptionFallback) : descriptionFallback;
+        const rows = this._normalizeUiRows(payload.rows, 'dialog.rows', record.owner);
+        const close = App._escapeHtml(App._label('ui.close', 'Close'));
+        const body = `${description ? `<p id="mod-ui-dialog-description">${App._escapeHtml(description)}</p>` : ''}${rows.length ? `<dl class="mod-ui-dialog-rows">${rows.map(row => `<div><dt>${App._escapeHtml(row.labelKey ? App._label(row.labelKey, row.label) : row.label)}</dt><dd>${App._escapeHtml(row.valueKey ? App._label(row.valueKey, row.value) : row.value)}</dd></div>`).join('')}</dl>` : ''}`;
+        const describedBy = description ? ' aria-describedby="mod-ui-dialog-description"' : '';
+        const html = `<div class="app-confirm-backdrop" id="mod-ui-contribution-dialog" role="dialog" aria-modal="true" aria-labelledby="mod-ui-dialog-title"${describedBy} data-command-surface="module-dialog" data-command-mode="system"><div class="app-confirm-card mod-ui-dialog-card"><h3 id="mod-ui-dialog-title">${App._escapeHtml(title)}</h3>${body}<div class="app-confirm-actions"><button class="nav-btn primary" data-command-surface="module-dialog" data-command-mode="system" data-command-control="close-mod-ui-dialog" data-command-slot="exit" onclick="App.closeModUiContributionDialog()">${close}</button></div></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+        const dialog = document.getElementById('mod-ui-contribution-dialog');
+        App._modUiDialogState = typeof YAW_DIALOG_FLOW !== 'undefined'
+            ? YAW_DIALOG_FLOW.isolateUnderlying?.(dialog) || []
+            : [];
+        App._activateFocusTrap?.(dialog, { close: () => App.closeModUiContributionDialog() });
+        return true;
+    },
+
+    closeUiContributionDialog() {
+        const dialog = typeof document !== 'undefined' ? document.getElementById('mod-ui-contribution-dialog') : null;
+        if (!dialog && !App._modUiDialogState) return false;
+        const opener = App._modUiDialogOpener;
+        dialog?.remove?.();
+        if (typeof YAW_DIALOG_FLOW !== 'undefined') {
+            YAW_DIALOG_FLOW.restoreUnderlying?.(App._modUiDialogState || []);
+        }
+        App._modUiDialogState = null;
+        App._modUiDialogOpener = null;
+        App._restoreFocusTrap?.();
+        if (opener?.isConnected && typeof opener.focus === 'function') {
+            requestAnimationFrame(() => {
+                try { opener.focus({ preventScroll: true }); } catch (_error) { opener.focus(); }
+            });
+        }
+        return true;
+    },
+
+    renderSystemUtilities() {
+        const container = typeof document !== 'undefined' ? document.getElementById('module-system-utilities') : null;
+        if (!container) return false;
+        const html = this.renderUiSlot('system.utilities');
+        container.innerHTML = html;
+        container.hidden = !html;
+        return Boolean(html);
+    },
+
+    refreshUiContributions() {
+        this.renderSystemUtilities();
+        App.renderExplorationActions?.();
+        App.renderParty?.();
+        App.renderCreatures?.();
+        if (typeof YAW_PANEL_SHELL !== 'undefined') YAW_PANEL_SHELL.renderRoster?.(App);
+    },
+
     _removeModuleContributions(moduleId) {
         const record = this.ownedContributions.get(moduleId);
         if (!record) return;
@@ -2568,6 +2896,7 @@ const MODULE_SYSTEM = {
         if (typeof YAW_RESOURCE_LEDGER !== 'undefined') YAW_RESOURCE_LEDGER.unregisterOwner?.(moduleId);
         if (typeof YAW_COMBAT_TECHNIQUES !== 'undefined') YAW_COMBAT_TECHNIQUES.unregisterOwner?.(moduleId, App);
         if (typeof YAW_RECOVERY_MODES !== 'undefined') YAW_RECOVERY_MODES.unregisterOwner?.(moduleId, App);
+        this._removeUiContributionOwner(moduleId);
 
         this.ownedContributions.delete(moduleId);
         this.moduleDiagnostics.delete(moduleId);
@@ -2734,6 +3063,11 @@ const MODULE_SYSTEM = {
             getContext(options = {}) {
                 self._requirePermission(moduleId, manifest, 'ui.read');
                 return self.getPublicContext(options);
+            },
+
+            registerUiContribution(slot, contributionId, definition) {
+                self._requirePermission(moduleId, manifest, 'ui:contribute');
+                return self._registerUiContribution(moduleId, slot, contributionId, definition);
             },
 
             media: {

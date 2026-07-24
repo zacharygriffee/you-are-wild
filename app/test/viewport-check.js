@@ -511,6 +511,168 @@ async function checkFileOriginLocalePack(browser) {
   await page.close();
 }
 
+async function checkPublicUiContributions(browser) {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
+  await page.goto(distUrl, { waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App && typeof MODULE_SYSTEM !== 'undefined'), null, { timeout: 5000 });
+  await clearBrowserStorage(page);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App && typeof MODULE_SYSTEM !== 'undefined'), null, { timeout: 5000 });
+  await page.evaluate(makeUnitScript());
+  await page.evaluate(() => App.closeTutorial?.());
+  await page.evaluate(() => {
+    const api = MODULE_SYSTEM.createModAPI('viewport_ui', { permissions: ['ui:contribute'] });
+    api.registerUiContribution('composer.place.after', 'survey', {
+      label: 'Survey',
+      description: 'Review bounded module observations.',
+      icon: '◇',
+      onInvoke() {
+        return {
+          title: 'Survey results',
+          description: 'The module received a frozen public snapshot.',
+          rows: [{ label: 'Safety', value: 'Core-owned dialog' }]
+        };
+      }
+    });
+    api.registerUiContribution('roster.party.badges', 'party-state', {
+      label: 'Attuned',
+      tone: 'success',
+      read(context) {
+        return { label: `${context.unit?.name || 'Unit'} attuned`, tone: 'success' };
+      }
+    });
+    api.registerUiContribution('roster.here.badges', 'local-state', {
+      label: 'Observed',
+      tone: 'info',
+      read(context) {
+        return { label: `${context.unit?.name || 'Unit'} observed`, tone: 'info' };
+      }
+    });
+    api.registerUiContribution('roster.details.sections', 'facts', {
+      label: 'Module facts',
+      rows: [{ label: 'Markup', value: '<escaped>' }]
+    });
+    api.registerUiContribution('system.utilities', 'guide', {
+      label: 'Module guide',
+      description: 'Open the bounded module guide.',
+      icon: '◇',
+      onInvoke() {
+        return { title: 'Module guide', description: 'Owned utility result.' };
+      }
+    });
+    App.settings.fontSize = 20;
+    App.applyAccessibilitySettings();
+    App.renderExplorationActions();
+    App.renderParty();
+    App.renderCreatures();
+  });
+  await page.waitForTimeout(50);
+
+  const composer = await page.evaluate(() => {
+    const command = document.querySelector('#mobile-explore-actions [data-ui-contribution="viewport_ui:survey"]');
+    const rect = command?.getBoundingClientRect();
+    return {
+      visible: Boolean(rect && rect.width > 0 && rect.height > 0),
+      width: rect?.width || 0,
+      height: rect?.height || 0,
+      inside: Boolean(rect && rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(composer.visible, true, 'UI Contribution V1: mobile composer command should render');
+  assert(composer.width >= 44 && composer.height >= 44, `UI Contribution V1: mobile composer command should remain tappable, got ${composer.width}x${composer.height}`);
+  assert.strictEqual(composer.inside, true, 'UI Contribution V1: mobile composer command should stay inside the viewport');
+  assert.strictEqual(composer.pageOverflow, false, 'UI Contribution V1: composer command should not create page overflow');
+
+  await page.evaluate(() => App.openMobileRoster('party'));
+  await page.waitForTimeout(50);
+  const partyRoster = await page.evaluate(() => {
+    const panel = document.getElementById('mobile-roster-tabpanel');
+    const badges = Array.from(panel?.querySelectorAll('[data-module-owner="viewport_ui"].mod-ui-badge') || []);
+    const details = Array.from(panel?.querySelectorAll('[data-ui-contribution="viewport_ui:facts"]') || []);
+    const bounds = [...badges, ...details].map(element => element.getBoundingClientRect());
+    return {
+      badgeText: badges.map(element => element.textContent.trim()),
+      detailCount: details.length,
+      escapedText: details[0]?.textContent?.includes('<escaped>') || false,
+      injectedElement: Boolean(details[0]?.querySelector('escaped')),
+      bounded: bounds.every(rect => rect.left >= -1 && rect.right <= innerWidth + 1 && rect.width > 0 && rect.height > 0),
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert(partyRoster.badgeText.some(text => text.includes('You attuned')), 'UI Contribution V1: party badge should receive the current unit context');
+  assert.strictEqual(partyRoster.detailCount, 2, 'UI Contribution V1: each party roster entry should receive one owned detail section');
+  assert.strictEqual(partyRoster.escapedText, true, 'UI Contribution V1: detail text should remain visible after escaping');
+  assert.strictEqual(partyRoster.injectedElement, false, 'UI Contribution V1: detail values should not become arbitrary markup');
+  assert.strictEqual(partyRoster.bounded, true, 'UI Contribution V1: roster contributions should stay within the phone viewport');
+  assert.strictEqual(partyRoster.pageOverflow, false, 'UI Contribution V1: roster contributions should not create page overflow');
+
+  await page.evaluate(() => App.setMobileRosterTab('here', { focus: false }));
+  const hereRoster = await page.evaluate(() => ({
+    badges: Array.from(document.querySelectorAll('#mobile-roster-tabpanel [data-ui-contribution="viewport_ui:local-state"]')).map(element => element.textContent.trim()),
+    pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  }));
+  assert(hereRoster.badges.some(text => text.includes('Creature observed')), 'UI Contribution V1: Here badge should receive local creature context');
+  assert.strictEqual(hereRoster.pageOverflow, false, 'UI Contribution V1: Here contributions should not create page overflow');
+  await page.evaluate(() => App.closeMobileRoster());
+
+  await page.evaluate(() => App.setAppMenuOpen(true));
+  const utility = page.locator('#module-system-utilities [data-ui-contribution="viewport_ui:guide"]');
+  assert.strictEqual(await utility.count(), 1, 'UI Contribution V1: app menu should contain one owned utility');
+  await utility.click();
+  await page.waitForTimeout(50);
+  const dialog = await page.evaluate(() => {
+    const root = document.getElementById('mod-ui-contribution-dialog');
+    const close = root?.querySelector('[data-command-control="close-mod-ui-dialog"]');
+    const rect = root?.querySelector('.mod-ui-dialog-card')?.getBoundingClientRect();
+    return {
+      role: root?.getAttribute('role') || '',
+      modal: root?.getAttribute('aria-modal') || '',
+      title: root?.querySelector('#mod-ui-dialog-title')?.textContent || '',
+      focusInside: Boolean(root?.contains(document.activeElement)),
+      closeHeight: close?.getBoundingClientRect().height || 0,
+      bounded: Boolean(rect && rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
+      underlyingIsolated: Array.from(document.body.children)
+        .filter(element => element !== root)
+        .every(element => element.hasAttribute('inert') && element.getAttribute('aria-hidden') === 'true')
+    };
+  });
+  assert.strictEqual(dialog.role, 'dialog', 'UI Contribution V1: command result should use dialog semantics');
+  assert.strictEqual(dialog.modal, 'true', 'UI Contribution V1: command result should isolate a modal surface');
+  assert.strictEqual(dialog.title, 'Module guide', 'UI Contribution V1: command result should expose its bounded title');
+  assert.strictEqual(dialog.focusInside, true, 'UI Contribution V1: command result should trap focus');
+  assert(dialog.closeHeight >= 44, 'UI Contribution V1: dialog Close should meet the touch target');
+  assert.strictEqual(dialog.bounded, true, 'UI Contribution V1: module dialog should stay inside the phone viewport');
+  assert.strictEqual(dialog.underlyingIsolated, true, 'UI Contribution V1: module dialog should isolate underlying application content');
+
+  const close = page.locator('#mod-ui-contribution-dialog [data-command-control="close-mod-ui-dialog"]');
+  assert.strictEqual(await close.count(), 1, 'UI Contribution V1: dialog should expose one Close action');
+  await close.click();
+  await page.waitForTimeout(50);
+  const closed = await page.evaluate(() => ({
+    removed: !document.getElementById('mod-ui-contribution-dialog'),
+    focusId: document.activeElement?.id || '',
+    pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  }));
+  assert.strictEqual(closed.removed, true, 'UI Contribution V1: Close should remove the core-owned dialog');
+  assert.strictEqual(closed.focusId, 'app-menu-toggle', 'UI Contribution V1: app-menu utility dialog should restore focus to the app menu trigger');
+  assert.strictEqual(closed.pageOverflow, false, 'UI Contribution V1: dialog lifecycle should not create page overflow');
+
+  await page.evaluate(() => {
+    MODULE_SYSTEM._removeModuleContributions('viewport_ui');
+    App.renderExplorationActions();
+    App.renderParty();
+    App.renderCreatures();
+  });
+  const unloaded = await page.evaluate(() => ({
+    composer: Boolean(document.querySelector('[data-ui-contribution="viewport_ui:survey"]')),
+    utility: Boolean(document.querySelector('[data-ui-contribution="viewport_ui:guide"]')),
+    roster: Boolean(document.querySelector('[data-module-owner="viewport_ui"]'))
+  }));
+  assert.deepStrictEqual(unloaded, { composer: false, utility: false, roster: false }, 'UI Contribution V1: owner unload should remove every rendered contribution');
+  await page.close();
+}
+
 async function checkViewport(browser, name, width, height) {
   const page = await browser.newPage({ viewport: { width, height }, isMobile: width <= 1024 });
   await page.goto(distUrl, { waitUntil: 'load' });
@@ -3198,7 +3360,7 @@ async function checkViewport(browser, name, width, height) {
       const activeTab = panel?.querySelector('[data-roster-tab][aria-selected="true"]');
       const panelRect = panel?.getBoundingClientRect();
       const closeRect = close?.getBoundingClientRect();
-      const compactCards = Array.from(panel?.querySelectorAll('#mobile-roster-tabpanel > .mobile-unit-chip') || []);
+      const compactCards = Array.from(panel?.querySelectorAll('#mobile-roster-tabpanel > .mobile-roster-entry > .mobile-unit-chip') || []);
       const cardRects = compactCards.map(card => card.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
       const ringCounts = compactCards.map(card => card.querySelectorAll('.tactical-stat-ring').length);
       const clippedCardButtons = compactCards.flatMap(card => Array.from(card.querySelectorAll('button')).filter(button => {
@@ -3290,7 +3452,7 @@ async function checkViewport(browser, name, width, height) {
       const activeTab = panel?.querySelector('[data-roster-tab][aria-selected="true"]');
       const panelRect = panel?.getBoundingClientRect();
       const closeRect = close?.getBoundingClientRect();
-      const compactCards = Array.from(panel?.querySelectorAll('#mobile-roster-tabpanel > .mobile-unit-chip') || []);
+      const compactCards = Array.from(panel?.querySelectorAll('#mobile-roster-tabpanel > .mobile-roster-entry > .mobile-unit-chip') || []);
       const cardRects = compactCards.map(card => card.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
       return {
         panelOpen: panel?.classList.contains('open') && !panel.hidden,
@@ -4607,6 +4769,7 @@ async function checkScopedStartupReadiness(browser) {
   try {
     await checkFileOriginFirstRunMenu(browser);
     await checkFileOriginLocalePack(browser);
+    await checkPublicUiContributions(browser);
     await checkScopedStartupReadiness(browser);
     await checkShortMenuScrollFallback(browser);
     await checkViewport(browser, 'small phone 320', 320, 568);

@@ -154,6 +154,7 @@ Implemented permissions:
 | Permission | Capability |
 | --- | --- |
 | `ui.read` | `MODS.getContext()` bounded public context |
+| `ui:contribute` | register owned bounded UI Contribution V1 descriptors |
 | `media:read` | list, inspect, acquire, and release owned media leases |
 | `media:provide` | register an owned trusted-local Media Source/Store adapter |
 | `scene:add_template` | register owned deterministic Scene Feed templates |
@@ -174,6 +175,20 @@ Implemented permissions:
 
 Unknown permissions reject installation. Calling a permissioned API without
 declaring its token fails module enablement and cleans partial contributions.
+
+### UI Contribution V1
+
+`MODS.registerUiContribution(slot, contributionId, definition)` registers
+owned declarative commands, badges, or definition-list rows. It does not
+expose DOM access or arbitrary HTML. The stable V1 slots are
+`composer.place.after`, `roster.party.badges`, `roster.here.badges`,
+`roster.details.sections`, and `system.utilities`. Core retains navigation,
+combat confirmation, ordering, escaping, focus, responsive placement, and
+content-policy enforcement. Callbacks receive only a fresh deeply frozen
+serializable public context; bounded command results open a core-owned dialog.
+Disable/unload removes every owned contribution. See
+[UI Contribution V1](ui-contribution-v1.md) for descriptor fields, limits,
+file-origin behavior, and examples.
 
 `MODS.registerMediaProvider(providerId, adapter)` is reserved for executable
 trusted-local infrastructure modules. It requires `media:provide`, cannot

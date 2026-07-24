@@ -590,7 +590,10 @@ const YAW_CENTER_CONTEXT = {
         if (app.combatState?.active) return;
         const hasMarkedTargets = (app._getExplorationTargets?.() || []).length > 0;
         const hasActorRouting = Boolean(app.mobileActorBeltOpen || app.explorationActorSelectionExplicit);
-        const locationHtml = this.renderActions(app);
+        const modulePlaceHtml = typeof MODULE_SYSTEM !== 'undefined'
+            ? MODULE_SYSTEM.renderUiSlot?.('composer.place.after') || ''
+            : '';
+        const locationHtml = `${this.renderActions(app)}${modulePlaceHtml}`;
         const actorExitHtml = this.actorExitButton(app);
         const focusedExitHtml = this.focusedObjectExitButton(app);
         const selfHtml = this.renderSelfActions(app, 'actor-belt');

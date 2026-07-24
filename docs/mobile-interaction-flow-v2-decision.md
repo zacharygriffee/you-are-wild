@@ -1,7 +1,7 @@
 # Mobile Interaction Flow V2 Decision
 
-Status: **accepted 2026-07-23 — core flow implemented and locally verified;
-public module slots remain gated**
+Status: **accepted 2026-07-23 — core flow and bounded public module slots
+implemented; final verification pending**
 
 This decision must precede a public mod UI-slot contract. A slot is a long-lived
 placement promise; exposing one against the current phone shell would preserve
@@ -128,5 +128,7 @@ The core Roster/composer flow now passes the 313–1365px viewport matrix,
 combat-interaction browser suite, unit suite, English/Spanish parity, high
 contrast, reduced motion, touch-target, focus, and horizontal-overflow gates.
 A rendered 390×844 browser pass also verifies the Party/Here tab relationship,
-bounded sheet, desktop fallback, and temporary-save cleanup. The final bullet
-remains the gate for exposing the public module slot contract.
+bounded sheet, desktop fallback, and temporary-save cleanup. UI Contribution
+V1 now exposes only the five accepted declarative slots with permission,
+namespace, collision, bounded-context, escaping, unload, content-policy, and
+file-origin acceptance. See [UI Contribution V1](ui-contribution-v1.md).

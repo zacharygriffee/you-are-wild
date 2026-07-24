@@ -98,7 +98,7 @@ Flow V2 shell without reintroducing separate phone navigation models.
    The live-game app menu now enters its first available command, supports Arrow/Home/End navigation, consumes those keys before traversal, and returns focus to its trigger on Escape.
    The shared focus trap now rejects hidden, inert, assistive-hidden, CSS-hidden, hidden-input, and negative-tab descendants, with unit and rendered Save Manager coverage.
    Host module compatibility and policy restrictions now retain stable diagnostics while exposing localized reason keys and bounded variables; Spanish `file://` browser coverage verifies Host Catalog origin, policy, provenance, type, status, and install presentation.
-5. Keep the implemented Mobile Interaction Flow V2 green as one state-aware Roster sheet plus the persistent context composer. Preserve the accepted Party/Here/Items and Allies/Enemies tab grammar, selection/focus behavior, and accessibility gates; do not reintroduce separate phone Party and Creatures destinations. Public module UI slots remain gated on their separate collision, policy, callback, unload, and file-origin acceptance.
+5. Keep the implemented Mobile Interaction Flow V2 green as one state-aware Roster sheet plus the persistent context composer. Preserve the accepted Party/Here/Items and Allies/Enemies tab grammar, selection/focus behavior, and accessibility gates; do not reintroduce separate phone Party and Creatures destinations. UI Contribution V1 now exposes only the five accepted bounded declarative slots; retain its collision, policy, callback, unload, file-origin, and rendered accessibility acceptance.
 
 ### UI
 
@@ -141,7 +141,7 @@ Flow V2 shell without reintroducing separate phone navigation models.
     only for a demonstrated recovery contradiction or a separately authorized
     new profile capability; do not reopen core defeat callbacks.
 15. Consider later recovery variants through the same resolver rather than separate death code: surviving companions can extract the player, a healer/faction can resurrect them for a coin debt or quest obligation, and a prior body/death bag can become a map landmark. These are downstream content hooks, not V2 baseline requirements.
-16. Complete the accepted [Mobile Interaction Flow V2](mobile-interaction-flow-v2-decision.md): one state-aware Roster sheet with Party/Here/Items or Allies/Enemies tabs plus a persistent context composer that exclusively owns place actions such as Enter and Search. Expose public UI contribution slots only after the responsive, focus, localization, unload, and file-origin acceptance matrix passes.
+16. Continue the accepted [Mobile Interaction Flow V2](mobile-interaction-flow-v2-decision.md) and [UI Contribution V1](ui-contribution-v1.md): one state-aware Roster sheet with Party/Here/Items or Allies/Enemies tabs, a persistent core-owned place composer, and only five bounded declarative module slots. Do not expand into dock, traversal, Scene Feed, or combat-confirmation ownership without a new product decision.
 17. Before the next Sites publication, resolve the
     [Ghost recovery product decision](ghost-recovery-prepublish-decision.md).
     The current bounded implementation remains testable, but publication must

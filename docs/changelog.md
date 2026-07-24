@@ -4,13 +4,19 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- UI Contribution V1 gives enabled trusted-local modules five stable,
+  permissioned presentation slots: post-place commands, party and local roster
+  badges, roster detail rows, and low-frequency app-menu utilities. Modules
+  provide bounded text/data and callbacks with frozen public context; core owns
+  escaping, focus, dialogs, responsive placement, collision limits, content
+  policy, and unload cleanup. The contract works at file origin and does not
+  expose dock, traversal, Scene Feed, or combat-confirmation replacement.
 - Mobile Interaction Flow V2 replaces the separate phone Party and Creatures
   dock routes with one state-aware Roster. Exploration uses Party/Here and an
   Items tab only when needed; combat uses Allies/Enemies. The bounded sheet
   preserves actor and target state, keeps the context composer available,
   retains 44px controls and accessible tab semantics, and leaves desktop
-  Party/Enemies navigation unchanged. Public module UI slots remain a
-  separately tested contract rather than being frozen by this shell change.
+  Party/Enemies navigation unchanged.
 - Recovery Mode V1 now provides permissioned namespaced declarative terminal
   recovery profiles without exposing defeat callbacks. Core includes ordinary
   Regenerate and an opt-in Ghost pilgrimage: consequences settle once at the

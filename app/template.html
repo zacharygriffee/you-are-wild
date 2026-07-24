@@ -233,6 +233,85 @@
             text-align: left;
         }
 
+        .module-system-utilities:not([hidden]) {
+            display: grid;
+            gap: 6px;
+        }
+
+        .mod-ui-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .mod-ui-badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 2px 7px;
+            border: 1px solid var(--border-default);
+            border-radius: 999px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-size: 11px;
+            line-height: 1.2;
+        }
+
+        .mod-ui-tone-info { border-color: var(--accent-info); }
+        .mod-ui-tone-success { border-color: var(--accent-primary); }
+        .mod-ui-tone-warning { border-color: var(--accent-warning); }
+        .mod-ui-tone-danger { border-color: var(--accent-danger); }
+
+        .mod-ui-detail-section {
+            margin-top: 8px;
+            padding: 10px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+        }
+
+        .mod-ui-detail-section h4 {
+            margin: 0 0 6px;
+            font-size: 12px;
+        }
+
+        .mod-ui-detail-section dl,
+        .mod-ui-dialog-rows {
+            display: grid;
+            gap: 6px;
+            margin: 0;
+        }
+
+        .mod-ui-detail-section dl > div,
+        .mod-ui-dialog-rows > div {
+            display: grid;
+            grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+            gap: 8px;
+        }
+
+        .mod-ui-dialog-card {
+            max-width: min(520px, calc(100vw - 24px));
+            max-height: min(80vh, 680px);
+            overflow: auto;
+        }
+
+        .mod-ui-dialog-card .nav-btn {
+            min-height: 44px;
+        }
+
+        .mod-ui-detail-section dt,
+        .mod-ui-dialog-rows dt {
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .mod-ui-detail-section dd,
+        .mod-ui-dialog-rows dd {
+            margin: 0;
+            overflow-wrap: anywhere;
+        }
+
         .app-nav {
             display: flex;
             gap: var(--space-sm);
@@ -9339,11 +9418,21 @@
                 gap: 8px;
             }
 
-            .mobile-roster-content > .mobile-unit-chip {
+            .mobile-roster-entry {
+                min-width: 0;
+                padding: 0;
+            }
+
+            .mobile-roster-entry > .mobile-unit-chip {
                 width: 100%;
                 max-width: none;
                 min-height: 80px;
                 box-sizing: border-box;
+            }
+
+            .mobile-roster-entry > .mod-ui-badges,
+            .mobile-roster-entry > .mod-ui-detail-section {
+                margin-inline: 4px;
             }
 
             .mobile-roster-empty {
@@ -9832,6 +9921,7 @@
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-holdings" title="Open holdings" aria-label="Open holdings" data-i18n-title="ui.nav.holdingsTitle" data-i18n-aria-label="ui.nav.holdingsTitle" onclick="App.closeAppMenu(); App.showCharacterStats()">📊 <span data-i18n="ui.holdings">Holdings</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-activity-log" title="Open activity log" aria-label="Open activity log" data-i18n-title="ui.activityLog.open" data-i18n-aria-label="ui.activityLog.open" onclick="App.closeAppMenu(); App.showActivityLogScreen()">📜 <span data-i18n="ui.activityLog">Activity Log</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-release-notes" title="Open what's new" aria-label="Open what's new" data-i18n-title="release.openTitle" data-i18n-aria-label="release.openTitle" onclick="App.closeAppMenu(); App.showReleaseNotes()">✨ <span data-i18n="release.whatsNew">What's New</span></button>
+                        <div id="module-system-utilities" class="module-system-utilities" hidden></div>
                         <button class="nav-btn" role="menuitem" data-host-catalog-entry hidden data-command-surface="app-system" data-command-mode="system" data-command-control="open-market" title="Open host catalog" aria-label="Open host catalog" data-i18n-title="market.openHostCatalogTitle" data-i18n-aria-label="market.openHostCatalogTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-mods" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-help" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="App.closeAppMenu(); App.showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>

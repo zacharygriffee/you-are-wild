@@ -5732,6 +5732,7 @@
                 const menu = document.getElementById('app-menu');
                 const toggle = document.getElementById('app-menu-toggle');
                 if (!menu || !toggle) return false;
+                if (open && typeof MODULE_SYSTEM !== 'undefined') MODULE_SYSTEM.renderSystemUtilities?.();
                 menu.classList.toggle('open', Boolean(open));
                 toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
                 return Boolean(open);
@@ -6187,6 +6188,16 @@
                 return typeof MODULE_SYSTEM !== 'undefined'
                     && typeof MODULE_SYSTEM.getHostCatalog === 'function'
                     && MODULE_SYSTEM.getHostCatalog().length > 0;
+            },
+            invokeModUiContribution(slot, key, unitType = '', index = null) {
+                if (typeof MODULE_SYSTEM === 'undefined') return false;
+                this.closeAppMenu();
+                return MODULE_SYSTEM.invokeUiContribution(slot, key, unitType, index);
+            },
+            closeModUiContributionDialog() {
+                return typeof MODULE_SYSTEM !== 'undefined'
+                    ? MODULE_SYSTEM.closeUiContributionDialog()
+                    : false;
             },
             syncHostCatalogControls() {
                 const available = this.hasHostCatalog();

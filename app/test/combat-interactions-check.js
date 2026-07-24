@@ -3732,7 +3732,7 @@ async function runCompactRailRoundTripFlow(page) {
   await page.locator(`#mobile-selection-sentence [data-command-control="open-target-slot"]`).click();
   await page.locator(`#mobile-target-picker-belt button[onclick*="toggleExplorationTarget('creature','merchant-1')"]`).click();
 
-  await page.locator(`.mobile-panel-dock button[data-command-control="toggle-actor-rail"]`).click();
+  await page.locator(`#mobile-selection-sentence [data-command-control="open-actor-slot"]`).click();
   await page.locator(`#mobile-actor-belt button[onclick*="selectExplorationActor(1)"]`).click();
   await page.locator(`#mobile-actor-belt button[onclick*="selectExplorationActor(2)"]`).click();
   await page.locator(`#mobile-actor-belt button[onclick*="toggleExplorationTarget('party','ally-1')"]`).click();
@@ -3773,16 +3773,19 @@ async function runCompactRailRoundTripFlow(page) {
 
   await page.locator(`#mobile-actor-belt .mobile-actor-details`).click();
   state = await page.evaluate(() => ({
-    partyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false,
+    rosterOpen: App.mobileRosterOpen,
+    rosterTab: App.mobileRosterTab,
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort()
   }));
-  assert.strictEqual(state.partyDrawerOpen, true, 'Compact actor rail Details should open the Party drawer');
-  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Party details should preserve selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Opening Party details should preserve mixed and self targets');
+  assert.strictEqual(state.rosterOpen, true, 'Compact actor rail Details should open the unified Roster');
+  assert.strictEqual(state.rosterTab, 'party', 'Compact actor rail Details should open the Party roster tab');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Party roster details should preserve selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Opening Party roster details should preserve mixed and self targets');
   await page.evaluate(() => App.closeAllPanels());
+  await page.waitForTimeout(50);
   state = await page.evaluate(() => ({
-    partyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false,
+    rosterOpen: App.mobileRosterOpen,
     actorRailOpen: App.mobileActorBeltOpen,
     actorButtons: document.querySelectorAll('#mobile-actor-belt button[data-selection-mode="act-actor"]').length,
     actorDetailsVisible: Boolean(document.querySelector('#mobile-actor-belt .mobile-actor-details')),
@@ -3791,10 +3794,10 @@ async function runCompactRailRoundTripFlow(page) {
     targets: [...App.explorationTargetIds].sort(),
     sentence: document.querySelector('#mobile-selection-sentence')?.innerText || ''
   }));
-  assert.strictEqual(state.partyDrawerOpen, false, 'Closing Party details should return to normal mobile play');
-  assert.strictEqual(state.actorRailOpen, true, 'Closing Party details should restore the compact actor rail');
+  assert.strictEqual(state.rosterOpen, false, 'Closing Party roster details should return to normal mobile play');
+  assert.strictEqual(state.actorRailOpen, true, 'Closing Party roster details should restore the compact actor rail');
   assert(state.actorButtons >= 3 && state.actorDetailsVisible, 'Returned actor rail should keep actor controls and Details reachable');
-  assert.strictEqual(state.activeControl, 'focus-actor', 'Closing Party details should return focus to the compact actor rail');
+  assert.strictEqual(state.activeControl, 'open-actor-drawer', 'Closing Party roster details should return focus to its compact-rail opener');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing Party details should keep selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Closing Party details should keep mixed and self targets');
   assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Closing Party details should keep the mobile composer sentence visible');
@@ -3856,16 +3859,19 @@ async function runCompactRailRoundTripFlow(page) {
   }, 'Target picker Details should identify drawer navigation and return context');
   await page.locator(`#mobile-target-picker-belt button[data-command-control="open-target-drawer"]`).click();
   state = await page.evaluate(() => ({
-    creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
+    rosterOpen: App.mobileRosterOpen,
+    rosterTab: App.mobileRosterTab,
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort()
   }));
-  assert.strictEqual(state.creatureDrawerOpen, true, 'Target picker Details should open the Creatures drawer');
-  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Creature details should preserve selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Opening Creature details should preserve mixed and self targets');
+  assert.strictEqual(state.rosterOpen, true, 'Target picker Details should open the unified Roster');
+  assert.strictEqual(state.rosterTab, 'here', 'Target picker Details should open the Here roster tab');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Here roster details should preserve selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Opening Here roster details should preserve mixed and self targets');
   await page.evaluate(() => App.closeAllPanels());
+  await page.waitForTimeout(50);
   state = await page.evaluate(() => ({
-    creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
+    rosterOpen: App.mobileRosterOpen,
     targetPickerOpen: App.mobileTargetPickerOpen,
     targetPickerDisplay: getComputedStyle(document.querySelector('#mobile-target-picker-belt')).display,
     targetButtons: document.querySelectorAll('#mobile-target-picker-belt button[data-command-control="focus-target"]').length,
@@ -3874,11 +3880,11 @@ async function runCompactRailRoundTripFlow(page) {
     targets: [...App.explorationTargetIds].sort(),
     trayText: document.querySelector('#mobile-target-action-tray')?.innerText || ''
   }));
-  assert.strictEqual(state.creatureDrawerOpen, false, 'Closing Creature details should return to normal mobile play');
-  assert.strictEqual(state.targetPickerOpen, true, 'Closing Creature details should restore the target picker');
+  assert.strictEqual(state.rosterOpen, false, 'Closing Here roster details should return to normal mobile play');
+  assert.strictEqual(state.targetPickerOpen, true, 'Closing Here roster details should restore the target picker');
   assert.notStrictEqual(state.targetPickerDisplay, 'none', 'Returned target picker should remain visible');
   assert(state.targetButtons >= 2, 'Returned target picker should keep target controls reachable');
-  assert.strictEqual(state.activeControl, 'focus-target', 'Closing Creature details should return focus to the target picker');
+  assert.strictEqual(state.activeControl, 'open-target-drawer', 'Closing Here roster details should return focus to its target-rail opener');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing Creature details should keep selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Closing Creature details should keep mixed and self targets');
   assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Closing Creature details should keep shared composer intents visible');
@@ -3925,7 +3931,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.targetPickerOpen, true, 'Transaction Back should restore the target picker');
   assert.notStrictEqual(state.targetPickerDisplay, 'none', 'Transaction Back should keep the target picker visible');
   assert(state.targetButtons >= 2, 'Transaction Back should restore target controls');
-  assert.strictEqual(state.activeControl, 'focus-target', 'Transaction Back should restore keyboard focus to a target control');
+  assert.strictEqual(state.activeControl, 'open-target-drawer', 'Transaction Back should restore keyboard focus to the target-rail opener');
   assert.strictEqual(state.focusInsideTargetRail, true, 'Transaction Back should return focus inside the responsive target rail');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Transaction Back should keep selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Transaction Back should keep mixed and self targets');

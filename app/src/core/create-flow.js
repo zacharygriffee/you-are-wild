@@ -280,12 +280,12 @@ const YAW_CREATE_FLOW = {
         app.worldMeta = {
             worldId: `world_${Date.now()}`,
             seed: `${name}:${app.selectedSpecies}:default`,
-            generatorVersion: 3,
+            generatorVersion: 4,
             mapModsHash: 'core',
             createdAt: Date.now()
         };
         app.superPatchMap = new Map();
-        app.currentBiome = 'forest';
+        app.currentBiome = 'grove';
         app.inventory = [];
         app.quests = [];
         app.mode = app.GAME_MODE.NORMAL;
@@ -306,7 +306,8 @@ const YAW_CREATE_FLOW = {
             slotName: app.activeSlot,
             location: { ...app.location }
         });
-        app.exploreTile(0, 0);
+        const startTile = app.exploreTile(0, 0);
+        app.currentBiome = startTile.biome;
         app.revealVisibleTiles(0, 0, app._mapVisibilityRadius());
         app.showScreen('game');
         app._renderTime();
@@ -314,7 +315,12 @@ const YAW_CREATE_FLOW = {
         app.renderParty();
         app.renderCreatures();
         app.renderLog();
-        app.updateScene('The Beginning', 'You awaken in an unfamiliar place. The air smells of ' + app.biomes.forest.name + '.', false);
+        const startBiomeName = app.biomes[startTile.biome]?.name || startTile.biome;
+        app.updateScene(
+            app._label('scene.beginning.title', 'The Beginning'),
+            app._label('scene.beginning.arrival', 'You awaken in an unfamiliar {biome}.', { biome: startBiomeName }),
+            false
+        );
         app._addTileEvent(app._label('ui.tileEvent.arrival', 'You arrive here.'), 'move');
         app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'quests', 'sceneFeed', 'activityLog'], 'new-run');
         app.autoSave();

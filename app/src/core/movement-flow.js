@@ -79,7 +79,12 @@ const YAW_MOVEMENT_FLOW = {
             app.creatures = app._tileCreatures(tile.creatures || []);
             if (!recoveryJourney && tile.structure && !tile.structureSpawned) {
                 app.spawnStructureEncounter(tile, !wasExplored);
-            } else if (!recoveryJourney && app._worldChance('tile-wild-encounter', tile.x, tile.y, biome.encounterChance || 0)) {
+            } else if (!recoveryJourney && app._worldChance(
+                'tile-wild-encounter',
+                tile.x,
+                tile.y,
+                app._encounterChanceForTile?.(tile, biome) ?? (biome.encounterChance || 0)
+            )) {
                 app.spawnWildEncounter(tile, false, !wasExplored);
             }
         }

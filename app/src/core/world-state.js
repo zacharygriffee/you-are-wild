@@ -60,7 +60,7 @@ const YAW_WORLD_STATE = {
     },
 
     defaultWorldMeta() {
-        return { worldId: 'world_v3', seed: 'default', generatorVersion: 3, mapModsHash: 'core' };
+        return { worldId: 'world_v4', seed: 'default', generatorVersion: 4, mapModsHash: 'core' };
     },
 
     normalizeWorldMeta(app, meta, fallback = null) {
@@ -129,6 +129,25 @@ const YAW_WORLD_STATE = {
             ? WorldGen.generateBaseTile(app.worldMeta, x, y, app._regionBiomeKeys())
             : { biome: 'plains', baseBiome: 'plains', macroBiome: 'plains', elevation: 0.5, moisture: 0.5, heat: 0.5, fertility: 0.5, dangerPressure: 0.3, regionCell: null, terrainTags: [] };
         return { x, y, ...generated, explored: false, seen: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], items: [], deathBags: [], structure: generated.structure || null, structureSpawned: false };
+    },
+
+    encounterPressureForTile(app, tile, biomeDef = null) {
+        if (typeof WorldGen === 'undefined' || !tile) {
+            const chance = Number(biomeDef?.encounterChance || 0);
+            return { finalChance: chance, spawnChance: chance };
+        }
+        return WorldGen.getEncounterPressure(tile, {
+            biomeDanger: Number(biomeDef?.danger || 0),
+            baseEncounterChance: Number(biomeDef?.encounterChance || 0),
+            isNight: Boolean(app._isNight?.()),
+            encounterPolicy: tile.encounterPolicy
+        });
+    },
+
+    encounterChanceForTile(app, tile, biomeDef = null) {
+        const legacyChance = Number(biomeDef?.encounterChance || 0);
+        if (Number(app.worldMeta?.generatorVersion || 1) < 4) return legacyChance;
+        return this.encounterPressureForTile(app, tile, biomeDef).spawnChance;
     },
 
     getTileDelta(app, x, y) {
@@ -290,7 +309,12 @@ const YAW_WORLD_STATE = {
                 tile.structure = 'camp';
             }
             if (!tile.structure && typeof WorldGen !== 'undefined' && WorldGen.chance(app._mapSeed(), app.worldMeta?.generatorVersion || 1, 'tile-structure', x, y, biome.structureChance || 0)) {
-                const table = biome.structureTable || [];
+                const table = (biome.structureTable || []).filter(entry => {
+                    if (tile.encounterPolicy?.allowHostileStructures !== false) return true;
+                    const structureId = typeof entry === 'string' ? entry : entry?.id;
+                    const structure = app.STRUCTURES?.[structureId];
+                    return structure && structure.disposition !== 'enemy' && Number(structure.threat || 0) < 2;
+                });
                 tile.structure = WorldGen.pickWeighted(app._mapSeed(), app.worldMeta?.generatorVersion || 1, 'tile-structure-kind', x, y, table) || null;
             }
             app._emitMapGenerate(tile, x, y);

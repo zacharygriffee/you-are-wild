@@ -102,6 +102,66 @@ const WorldGen = (() => {
         return clamp01(1 - distance / Math.max(1, radius));
     }
 
+    function getStartSafetyPolicy(worldMeta, x, y) {
+        const version = Number(worldMeta?.generatorVersion || 1);
+        const distance = Math.max(Math.abs(Number(x) || 0), Math.abs(Number(y) || 0));
+        if (version < 4) {
+            return {
+                version,
+                band: 'legacy',
+                distance,
+                hostileAllowed: true,
+                maxHostiles: null,
+                maxDifficulty: null,
+                allowAmbush: true,
+                allowReinforcement: true,
+                allowHostileStructures: true,
+                encounterMultiplier: 1
+            };
+        }
+        if (distance <= 1) {
+            return {
+                version,
+                band: 'protected',
+                distance,
+                hostileAllowed: false,
+                maxHostiles: 0,
+                maxDifficulty: 0,
+                allowAmbush: false,
+                allowReinforcement: false,
+                allowHostileStructures: false,
+                encounterMultiplier: 0
+            };
+        }
+        if (distance <= 5) {
+            const multipliers = { 2: 0.25, 3: 0.45, 4: 0.65, 5: 0.85 };
+            return {
+                version,
+                band: 'opening',
+                distance,
+                hostileAllowed: true,
+                maxHostiles: 1,
+                maxDifficulty: 1,
+                allowAmbush: false,
+                allowReinforcement: false,
+                allowHostileStructures: false,
+                encounterMultiplier: multipliers[distance] || 0.85
+            };
+        }
+        return {
+            version,
+            band: 'wilderness',
+            distance,
+            hostileAllowed: true,
+            maxHostiles: null,
+            maxDifficulty: null,
+            allowAmbush: true,
+            allowReinforcement: true,
+            allowHostileStructures: true,
+            encounterMultiplier: 1
+        };
+    }
+
     function getTerrainFields(seed, version, x, y) {
         const safeStart = startMask(x, y, 9);
         const elevation = fractalNoise2D(seed, version, 'elevation', x, y, 30, 5, 0.52);
@@ -240,13 +300,21 @@ const WorldGen = (() => {
         const poiModifier = influenceModifier || (poiCategory === 'restSite' || poiCategory === 'settlement' ? -0.08 : 0);
         const timeModifier = context.isNight ? 0.08 : 0;
         const localStateModifier = Number(context.localStateModifier || 0);
+        const policy = context.encounterPolicy || tile.encounterPolicy || null;
+        const encounterMultiplier = Number.isFinite(Number(policy?.encounterMultiplier))
+            ? Math.max(0, Number(policy.encounterMultiplier))
+            : 1;
+        const baseEncounterChance = clamp01(Number(context.baseEncounterChance || 0));
+        const rawSpawnChance = baseEncounterChance + roadModifier + poiModifier + timeModifier + localStateModifier;
         return {
             baseDanger: Number(baseDanger.toFixed(4)),
             roadModifier,
             poiModifier,
             timeModifier,
             localStateModifier,
-            finalChance: Number(clamp01(baseDanger + roadModifier + poiModifier + timeModifier + localStateModifier).toFixed(4))
+            encounterMultiplier,
+            finalChance: Number(clamp01(baseDanger + roadModifier + poiModifier + timeModifier + localStateModifier).toFixed(4)),
+            spawnChance: Number(clamp01(rawSpawnChance * encounterMultiplier).toFixed(4))
         };
     }
 
@@ -790,13 +858,24 @@ const WorldGen = (() => {
     function generateBaseTile(worldMeta, x, y, regionBiomes = []) {
         const seed = worldMeta?.seed || 'default';
         const version = worldMeta?.generatorVersion || 1;
+        const encounterPolicy = getStartSafetyPolicy(worldMeta, x, y);
         const regionCell = cellular2D(seed, version, 'macro-region', x, y, 36);
         const macroBiome = pickWeighted(seed, version, 'macro-biome', regionCell.cellX, regionCell.cellY, regionBiomes.map(id => ({ id, weight: id === 'grove' ? 2 : 1 }))) || 'plains';
         const fields = getTerrainFields(seed, version, x, y);
+        if (encounterPolicy.band === 'protected') {
+            fields.water = false;
+            fields.waterPressure = Math.min(fields.waterPressure, 0.45);
+            fields.dangerPressure = 0;
+        } else if (encounterPolicy.band === 'opening') {
+            fields.dangerPressure *= encounterPolicy.encounterMultiplier;
+        }
         const coast = coastInfo(seed, version, x, y);
         fields.nearWater = coast.nearWater;
         fields.regionInfluence = regionCell.influence;
         let derivedBiome = classifyBiome(fields, macroBiome, regionBiomes);
+        if (encounterPolicy.band === 'protected') {
+            derivedBiome = regionBiomes.includes('grove') ? 'grove' : (regionBiomes.includes('plains') ? 'plains' : derivedBiome);
+        }
         if (version >= 2 && fields.safeStart >= 0.35) {
             const safeStartBiomes = ['grove', 'plains', 'forest', 'beach'];
             if (!safeStartBiomes.includes(derivedBiome)) {
@@ -811,9 +890,11 @@ const WorldGen = (() => {
         const road = fields.water && !bridge ? null : roadCandidate;
         const barriers = getBarrierEdges(seed, version, x, y, fields, road);
         const poiContext = getPoiContextForTile(seed, version, x, y, regionCell);
-        const poi = poiContext.poi;
-        const dangerInfluence = poiContext.dangerInfluence;
-        const cavePortal = getCavePortalForTile(worldMeta, x, y);
+        const poi = !encounterPolicy.allowHostileStructures && poiContext.poi?.category === 'dangerSite'
+            ? null
+            : poiContext.poi;
+        const dangerInfluence = encounterPolicy.allowHostileStructures ? poiContext.dangerInfluence : null;
+        const cavePortal = encounterPolicy.allowHostileStructures ? getCavePortalForTile(worldMeta, x, y) : null;
         const shoreline = derivedBiome === 'beach'
             ? { edges: coast.shorelineEdges.slice(), nearWater: coast.nearWater }
             : null;
@@ -827,7 +908,15 @@ const WorldGen = (() => {
             structure: cavePortal ? { id: 'cave', site: cavePortal } : null
         };
         const traversal = getTraversal({ biome: derivedBiome, baseBiome: derivedBiome, derivedBiome, water: fields.water, overlays });
-        const encounterPressure = getEncounterPressure({ biome: derivedBiome, baseBiome: derivedBiome, derivedBiome, water: fields.water, dangerPressure: fields.dangerPressure, overlays });
+        const encounterPressure = getEncounterPressure({
+            biome: derivedBiome,
+            baseBiome: derivedBiome,
+            derivedBiome,
+            water: fields.water,
+            dangerPressure: fields.dangerPressure,
+            overlays,
+            encounterPolicy
+        }, { encounterPolicy });
         return {
             biome: derivedBiome,
             baseBiome: derivedBiome,
@@ -863,6 +952,7 @@ const WorldGen = (() => {
                 requiredCapability: traversal.requiredCapability,
                 routeModifier: traversal.routeModifier
             },
+            encounterPolicy,
             encounterPressure,
             mapSummary: getTileMapSummary({
                 x,
@@ -874,6 +964,7 @@ const WorldGen = (() => {
                 water: Boolean(fields.water),
                 dangerPressure: Number(fields.dangerPressure.toFixed(4)),
                 overlays,
+                encounterPolicy,
                 terrainTags: terrainTags(fields, derivedBiome, overlays),
                 traversal,
                 encounterPressure,
@@ -901,6 +992,7 @@ const WorldGen = (() => {
         chance,
         pickWeighted,
         getTerrainFields,
+        getStartSafetyPolicy,
         getPoiForTile,
         getDangerInfluenceForTile,
         getPoiBudgetForRegion,

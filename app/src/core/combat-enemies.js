@@ -16,7 +16,7 @@ const YAW_COMBAT_ENEMIES = {
 
     callReinforcement(app, enemy) {
         const temp = app._getSpeciesTemperament(enemy.species);
-        if (!temp.pack || enemy.CPun >= enemy.MPun * 0.5 || enemy.calledReinforcement || app._combatStateRoll('combat-reinforcement', enemy, 'call') >= 0.3) return false;
+        if (enemy.reinforcementBlocked || !temp.pack || enemy.CPun >= enemy.MPun * 0.5 || enemy.calledReinforcement || app._combatStateRoll('combat-reinforcement', enemy, 'call') >= 0.3) return false;
         const sp = app.species.find(s => s.id === enemy.species) || { name: enemy.species || 'Creature', icon: enemy.icon || '❓' };
         const base = app._getSpeciesBaseStats(enemy.species);
         const enemyId = app._unitSelectionId(enemy);

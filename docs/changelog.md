@@ -4,6 +4,15 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Generator V4 is now the default for new runs while recorded older worlds
+  retain their versioned layout. The inner 3×3 is a deterministic passable
+  Grove with no random encounter, hostile structure, danger-site influence,
+  or cave portal. Radius 2–5 releases encounter chance predictably, admits at
+  most one tier-1 creature, and disables opening ambushes and reinforcements.
+  A conservative estimate based on the weakest living party member defers an
+  over-budget hostile to a neutral meeting instead of applying hidden damage
+  reduction. Live movement now consumes this generated encounter policy, and
+  the opening scene names the actual localized starting biome.
 - Hunger now has explicit tactical consequences for every living combatant.
   Hungry units take a 10% action/initiative penalty and a five-point Flee
   penalty; starving units take a 25% action, 20% initiative, and fifteen-point

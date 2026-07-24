@@ -19385,7 +19385,7 @@ test('Versioned start area validation guarantees early route and rest access', (
   const WorldGen = loadWorldGenForTest();
   const { App, elements } = loadAppForCombat();
   const seeds = ['default', 'layout-a', 'layout-b', 'route-seed', 'coastal-seed', 'wet-start', 'mountain-start'];
-  for (const generatorVersion of [2, 3]) {
+  for (const generatorVersion of [2, 3, 4]) {
     for (const seed of seeds) {
     App.worldMeta = { worldId: `world-start-safe-v${generatorVersion}-${seed}`, seed, generatorVersion, mapModsHash: 'core' };
     App.worldMap = new Map();
@@ -19455,6 +19455,112 @@ test('Versioned start area validation guarantees early route and rest access', (
     assertEqual(App.getTile(-2, 0).resourceSearched, true, `Starter resource site should persist consumed state for seed ${seed}`);
     }
   }
+});
+
+test('Generator v4 exposes a protected Grove start and distance-scaled opening policy', () => {
+  const WorldGen = loadWorldGenForTest();
+  const { App } = loadAppForCombat();
+  const seeds = ['default', 'layout-a', 'coastal-seed', 'wet-start', 'mountain-start'];
+  for (const seed of seeds) {
+    App.worldMeta = { worldId: `world-v4-contract-${seed}`, seed, generatorVersion: 4, mapModsHash: 'core' };
+    App.worldMap = new Map();
+    App.tileDeltas = new Map();
+    App.exploredTiles = new Set();
+    for (let y = -1; y <= 1; y++) {
+      for (let x = -1; x <= 1; x++) {
+        const tile = App.getBaseTile(x, y);
+        assertEqual(tile.biome, 'grove', `Generator v4 protected tile ${x},${y} should be Grove for seed ${seed}`);
+        assertEqual(tile.water, false, `Generator v4 protected tile ${x},${y} should not be water for seed ${seed}`);
+        assertEqual(tile.traversal.passable, true, `Generator v4 protected tile ${x},${y} should be passable for seed ${seed}`);
+        assertEqual(tile.encounterPolicy.band, 'protected', `Generator v4 protected tile ${x},${y} should expose its safety band`);
+        assertEqual(tile.encounterPolicy.hostileAllowed, false, `Generator v4 protected tile ${x},${y} should reject hostiles`);
+        const pressure = App._encounterPressureForTile(tile, App.biomes[tile.biome]);
+        assertEqual(pressure.spawnChance, 0, `Generator v4 protected tile ${x},${y} should have zero encounter chance`);
+        assertEqual(tile.overlays?.poi?.category === 'dangerSite', false, `Generator v4 protected tile ${x},${y} should not host a danger site`);
+        assertEqual(Boolean(tile.site), false, `Generator v4 protected tile ${x},${y} should not host a cave portal`);
+      }
+    }
+  }
+
+  const openingPolicies = [2, 3, 4, 5].map(distance => WorldGen.getStartSafetyPolicy(
+    { generatorVersion: 4 },
+    distance,
+    0
+  ));
+  assert(openingPolicies.every(policy => policy.band === 'opening'), 'Radius two through five should use the opening band');
+  assert(openingPolicies.every(policy => policy.maxHostiles === 1 && policy.maxDifficulty === 1), 'Opening band should cap encounters to one tier-one creature');
+  assert(openingPolicies.every(policy => !policy.allowAmbush && !policy.allowReinforcement), 'Opening band should suppress ambush and reinforcement');
+  for (let index = 1; index < openingPolicies.length; index++) {
+    assert(openingPolicies[index].encounterMultiplier > openingPolicies[index - 1].encounterMultiplier, 'Opening encounter pressure should release predictably with distance');
+  }
+  const wilderness = WorldGen.getStartSafetyPolicy({ generatorVersion: 4 }, 6, 0);
+  assertEqual(wilderness.band, 'wilderness', 'Radius beyond five should restore the ordinary wilderness contract');
+  assertEqual(wilderness.allowAmbush, true, 'Wilderness should restore authored ambush behavior');
+  assertEqual(wilderness.allowReinforcement, true, 'Wilderness should restore authored reinforcement behavior');
+});
+
+test('Generator v4 opening encounters use tier-one singletons and defer lethal hostility', () => {
+  const { App } = loadAppForCombat();
+  App.worldMeta = { worldId: 'world-v4-admission', seed: 'opening-admission', generatorVersion: 4, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App.location = { x: 2, y: 0 };
+  App.currentBiome = App.getBaseTile(2, 0).biome;
+  App._calculateEncounterDisposition = () => App.DISPOSITION.ENEMY;
+  let startedWith = null;
+  App.startCombat = enemies => { startedWith = enemies; };
+
+  for (const species of App.species) {
+    const base = App._getSpeciesBaseStats(species.id);
+    App.player = makeUnit(`Starter ${species.id}`, {
+      species: species.id,
+      level: 1,
+      MPun: base.MPun,
+      CPun: base.MPun,
+      con: base.con,
+      combatRow: 'front'
+    });
+    App.party = [App.player];
+    App.creatures = [];
+    App.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
+    startedWith = null;
+    const tile = App.getBaseTile(2, 0);
+    tile.creatures = [];
+    const spawned = App.spawnWildEncounter(tile, false, true);
+    assertEqual(spawned.length, 1, `Opening encounter should create one creature for starter ${species.id}`);
+    const creature = spawned[0];
+    assert((App.SPECIES_DIFFICULTY[creature.species] || 2) <= 1, `Opening encounter should stay tier one for starter ${species.id}`);
+    assertEqual(creature.ambushReady, false, `Opening encounter should not ambush starter ${species.id}`);
+    assertEqual(creature.reinforcementBlocked, true, `Opening encounter should not reinforce against starter ${species.id}`);
+    if (creature.disposition === App.DISPOSITION.ENEMY) {
+      assertEqual(App._openingEncounterAdmitted([creature], tile), true, `Admitted hostile should fit starter ${species.id}'s opening threat budget`);
+      assertEqual(startedWith?.[0], creature, `Admitted hostile should start combat for starter ${species.id}`);
+    } else {
+      assertEqual(creature.encounterSafetyDeferred, true, `Over-budget hostile should visibly defer to neutral for starter ${species.id}`);
+      assertEqual(startedWith, null, `Deferred hostile should not start combat for starter ${species.id}`);
+    }
+  }
+});
+
+test('Generator v4 encounter caps do not alter recorded legacy worlds', () => {
+  const { App } = loadAppForCombat();
+  App.worldMeta = { worldId: 'world-v3-encounter-compat', seed: 'legacy-encounter-compat', generatorVersion: 3, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App.player = makeUnit('Veteran', { level: 5, MPun: 100, CPun: 100 });
+  App.party = [App.player];
+  App.creatures = [];
+  App._worldRoll = () => 0.99;
+  App._calculateEncounterDisposition = () => App.DISPOSITION.NEUTRAL;
+  const tile = App.getBaseTile(2, 0);
+  App.currentBiome = tile.biome;
+  const biome = App.biomes[tile.biome];
+  assertEqual(App._encounterChanceForTile(tile, biome), biome.encounterChance, 'Legacy worlds should retain their authored flat encounter chance');
+  const spawned = App.spawnWildEncounter(tile, false, true);
+  assertEqual(spawned.length, 3, 'Legacy worlds should retain their uncapped level-based encounter count');
+  assert(spawned.every(creature => creature.reinforcementBlocked === false), 'Legacy encounters should retain authored reinforcement behavior');
 });
 
 test('Map summary and encounter pressure expose safe UI metadata', () => {

@@ -863,7 +863,7 @@
             tileDeltas: new Map(),
             exploredTiles: new Set(),
             superPatchMap: new Map(),
-            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 3, mapModsHash: 'core' },
+            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 4, mapModsHash: 'core' },
             PATCH_SIZE: 10,
             SUPER_PATCH_SIZE: 3, // 3x3 patches = 30x30 tiles per biome region
             currentBiome: 'forest',
@@ -2169,6 +2169,12 @@
             getBaseTile(x, y) {
                 return YAW_WORLD_STATE.getBaseTile(this, x, y);
             },
+            _encounterPressureForTile(tile, biomeDef = null) {
+                return YAW_WORLD_STATE.encounterPressureForTile(this, tile, biomeDef);
+            },
+            _encounterChanceForTile(tile, biomeDef = null) {
+                return YAW_WORLD_STATE.encounterChanceForTile(this, tile, biomeDef);
+            },
             getTileDelta(x, y) {
                 return YAW_WORLD_STATE.getTileDelta(this, x, y);
             },
@@ -2315,29 +2321,65 @@
             _anatomyForIdentity(identity, rollValue) {
                 return YAW_ENCOUNTER_PREFERENCES.anatomyForIdentity(identity, rollValue);
             },
+            _estimateOpeningEnemyHit(enemy, target) {
+                const entry = Number(enemy?.Figh || 1);
+                const maxRating = entry > 55 ? entry + 11
+                    : entry > 45 ? entry + 9
+                        : entry > 35 ? entry + 7
+                            : entry > 25 ? entry + 5
+                                : entry + 3;
+                const defense = Number(this._effectiveCon?.(target) ?? target?.con ?? 0);
+                const multiplier = Number(this._physicalDamageMultiplier?.(enemy, target) || 1);
+                return Math.max(1, Math.floor(Math.max(1, maxRating - defense * 0.3 + 6) * multiplier));
+            },
+            _openingEncounterAdmitted(enemies = [], tile = null) {
+                if (tile?.encounterPolicy?.band !== 'opening') return true;
+                const party = (this.party || []).filter(unit => unit && unit.CPun > 0 && !unit.knockedOut);
+                if (party.length === 0) return false;
+                const weakest = party.reduce((current, unit) => {
+                    if (!current) return unit;
+                    return Number(unit.MPun || unit.CPun || 1) < Number(current.MPun || current.CPun || 1) ? unit : current;
+                }, null);
+                const fullHealth = Math.max(1, Number(weakest?.MPun || weakest?.CPun || 1));
+                const estimates = enemies.map(enemy => this._estimateOpeningEnemyHit(enemy, weakest));
+                const worstHit = estimates.length ? Math.max(...estimates) : 0;
+                const openingRound = estimates.reduce((sum, value) => sum + value, 0);
+                return worstHit < fullHealth * 0.65 && openingRound < fullHealth * 0.8;
+            },
             spawnWildEncounter(tile, isBoss = false, firstEntry = false) {
                 const biome = this.biomes[tile.biome];
                 const tileX = Number.isFinite(tile?.x) ? tile.x : 0;
                 const tileY = Number.isFinite(tile?.y) ? tile.y : 0;
                 const tileKey = Number.isFinite(tile?.x) && Number.isFinite(tile?.y) ? `${tile.x}_${tile.y}` : 'unknown';
+                const encounterPolicy = tile?.encounterPolicy || (typeof WorldGen !== 'undefined'
+                    ? WorldGen.getStartSafetyPolicy(this.worldMeta, tileX, tileY)
+                    : null);
+                if (!isBoss && encounterPolicy?.hostileAllowed === false) return false;
                 const roll = (purpose, index = 0, salt = '') => this._worldRoll(`wild-${purpose}`, tileX, tileY, index, salt);
                 const pick = (table, purpose, index = 0, salt = '') => this._weightedPickWorld(table, `wild-${purpose}`, tileX, tileY, index, salt);
-                const count = isBoss ? 1 : Math.max(1, Math.floor(roll('count') * Math.min(3, Math.max(1, this.player.level - 1))) + 1);
+                const rolledCount = isBoss ? 1 : Math.max(1, Math.floor(roll('count') * Math.min(3, Math.max(1, this.player.level - 1))) + 1);
+                const count = encounterPolicy?.maxHostiles != null && Number.isFinite(Number(encounterPolicy.maxHostiles))
+                    ? Math.min(rolledCount, Math.max(1, Number(encounterPolicy.maxHostiles)))
+                    : rolledCount;
                 const creatures = [];
                 for (let i = 0; i < count; i++) {
                     const pool = this._timeAdjustedEncounterTable(biome.encounterTable);
-                    let sid = pick(pool, 'species', i);
                     const danger = biome.danger || 3;
                     const playerMaxDiff = this.player.level <= 3 ? 2 : (this.player.level <= 6 ? 3 : 4);
-                    const maxDiff = isBoss ? 5 : Math.min(danger, playerMaxDiff);
-                    let attempts = 10;
-                    while (attempts > 0) {
-                        const diff = this.SPECIES_DIFFICULTY[sid] || 2;
-                        if (diff <= maxDiff) break;
-                        sid = pick(pool, 'species', i, attempts);
-                        attempts--;
-                    }
+                    const policyMax = encounterPolicy?.maxDifficulty != null && Number.isFinite(Number(encounterPolicy.maxDifficulty))
+                        ? Number(encounterPolicy.maxDifficulty)
+                        : Infinity;
+                    const maxDiff = isBoss ? 5 : Math.min(danger, playerMaxDiff, policyMax);
+                    const eligiblePool = pool.filter(entry => {
+                        const speciesId = typeof entry === 'string' ? entry : entry?.id;
+                        return (this.SPECIES_DIFFICULTY[speciesId] || 2) <= maxDiff;
+                    });
+                    const globalEligible = this.species
+                        .filter(entry => (this.SPECIES_DIFFICULTY[entry.id] || 2) <= maxDiff)
+                        .map(entry => ({ id: entry.id, weight: 1 }));
+                    const sid = pick(eligiblePool.length ? eligiblePool : (globalEligible.length ? globalEligible : pool), 'species', i);
                     const sp = this.species.find(s => s.id === sid);
+                    if (!sp) continue;
                     const lvl = isBoss ? Math.max(1, this.player.level) : Math.max(1, this.player.level - 1 + Math.floor(roll('level', i) * 2));
                     const base = this._getSpeciesBaseStats(sid);
                     const statMult = isBoss ? 1.0 : (0.6 + roll('stat', i) * 0.3);
@@ -2361,11 +2403,19 @@
                         ...this.SPECIES_ABILITIES[sid] || {}
                     };
                     this._applySpeciesCanon(creature);
-                    creature.ambushReady = firstEntry && Boolean(this._getSpeciesTemperament(sid).ambush);
+                    creature.ambushReady = encounterPolicy?.allowAmbush !== false && firstEntry && Boolean(this._getSpeciesTemperament(sid).ambush);
+                    creature.reinforcementBlocked = encounterPolicy?.allowReinforcement === false;
                     this._applyTimeOfDayToCreature(creature);
                     // Calculate disposition based on temperament
                     creature.disposition = this._calculateEncounterDisposition(creature, this.player);
                     creatures.push(creature);
+                }
+                const openingHostiles = this._livingEnemies(creatures);
+                if (!this._openingEncounterAdmitted(openingHostiles, tile)) {
+                    for (const creature of openingHostiles) {
+                        creature.disposition = this.DISPOSITION.NEUTRAL;
+                        creature.encounterSafetyDeferred = true;
+                    }
                 }
                 this.creatures = this._tileCreatures([...(this.creatures || []), ...creatures]);
                 tile.creatures = this._tileCreatures(this.creatures);
@@ -2396,11 +2446,14 @@
                     this.renderCreatures();
                     this.renderExplorationActions();
                 }
+                return creatures;
             },
             spawnStructureEncounter(tile, firstEntry = false) {
                 const biome = this.biomes[tile.biome];
                 if (!tile.structure || !this.STRUCTURES[tile.structure]) return;
                 const struct = this.STRUCTURES[tile.structure];
+                if (tile.encounterPolicy?.allowHostileStructures === false
+                    && (struct.disposition === 'enemy' || Number(struct.threat || 0) >= 2)) return false;
                 tile.structureSpawned = true;
                 const merchant = this._maybeSpawnStructureMerchant(tile);
                 const questGiver = this._maybeSpawnStructureQuestGiver(tile);
@@ -2440,7 +2493,8 @@
                             ...this.SPECIES_ABILITIES[sid] || {}
                         };
                         this._applySpeciesCanon(creature);
-                        creature.ambushReady = firstEntry && Boolean(this._getSpeciesTemperament(sid).ambush);
+                        creature.ambushReady = tile.encounterPolicy?.allowAmbush !== false && firstEntry && Boolean(this._getSpeciesTemperament(sid).ambush);
+                        creature.reinforcementBlocked = tile.encounterPolicy?.allowReinforcement === false;
                         this._applyTimeOfDayToCreature(creature);
                         enemies.push(creature);
                     }

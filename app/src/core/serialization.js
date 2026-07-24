@@ -340,7 +340,7 @@
       party: appState.party || [],
       log: logEntries.map(entry => entry.text),
       currentBiome: appState.currentBiome || 'forest',
-      worldMeta: appState.worldMeta || { worldId: 'world_default', seed: 'default', generatorVersion: 3, mapModsHash: 'core' },
+      worldMeta: appState.worldMeta || { worldId: 'world_default', seed: 'default', generatorVersion: 4, mapModsHash: 'core' },
       worldMap: worldMapObj,
       exploredTiles: exploredArray,
       inventory: appState.inventory || [],

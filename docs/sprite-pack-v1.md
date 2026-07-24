@@ -109,6 +109,16 @@ selection, targetability, and command feedback remain semantic text. Pack and
 semantic keys are exposed as diagnostic data attributes without changing
 gameplay state.
 
+## Maintained real fixture
+
+[`optional-mods/example-sprite-pack/`](../optional-mods/example-sprite-pack/)
+is the maintained installable Sprite Pack V1 example. Its tiny atlas is
+reproducible with `npm run build:example-sprites`. Automated browser acceptance
+installs it over loopback HTTP, verifies IndexedDB retention and local leases,
+reloads without hotlinking, resolves animated idle, wounded, Ghost, and pack
+fallback states, then disables it and verifies emoji restoration. See
+[Real Presentation Pack Acceptance](real-presentation-pack-acceptance.md).
+
 ## V1 non-goals
 
 - no gameplay collision, movement, reach, targeting, or combat declarations;
@@ -116,4 +126,3 @@ gameplay state.
   character generation;
 - no audio, video, 3D, arbitrary CSS, or executable animation;
 - no saved animation cursor or network fetch during ordinary play.
-

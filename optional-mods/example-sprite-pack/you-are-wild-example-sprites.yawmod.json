@@ -1,0 +1,31 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_example_sprites_v1",
+  "gameVersion": "0.14.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_example_sprites_v1",
+      "name": "You Are Wild: Example Sprites",
+      "version": "1.0.0",
+      "description": "Safe development fixture demonstrating a locally retained Sprite Pack V1 presentation.",
+      "type": "presentation_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.14.0",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": ["file", "https", "localhost", "http"],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": true
+      },
+      "permissions": ["media:read"],
+      "contentCategories": [],
+      "gameplayVariants": [],
+      "settings": []
+    },
+    "code": "MODS.log('Example Sprite Pack V1 presentation enabled.');",
+    "assets": {}
+  }
+}

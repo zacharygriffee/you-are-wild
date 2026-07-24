@@ -56,6 +56,12 @@ This is the short handoff for unfinished work. Completed implementation history 
   Asset Bundle V1. Bounded state/facing animation strips use local leases,
   shared unit surfaces, reduced-motion handling, semantic text, and emoji
   fallback; disabling an owner restores presentation without changing saves.
+- Maintained real presentation fixtures now cover a partial French Locale Pack,
+  a reproducible animated Sprite Pack, and a partial Tileset Pack with
+  shoreline and topology-aware interior semantics. Browser acceptance installs
+  each through its real runtime path, verifies IndexedDB/local-lease or locale
+  persistence across reload, and restores core fallback on disable. Subjective
+  translation and artwork review remains operator-owned.
 - Balance acceptance now emits a schema-v2 deterministic reference in addition to survival and digestion pacing: effect per command, expected commands and current XP across a neutral resolution, Starving thresholds, and one-, two-, and four-target Fight values at every practice tier plus authored full-area behavior. Each multi-target row is cross-checked against the live runtime profile. Tend is condition-only care and restoring one full allied target pool now awards at most 20 support XP regardless of command count; self-care and no-op attempts award none.
 - Focused quest/trade windows now localize their title, summary labels, item metadata, quantities, prices, quest-section headings, and empty states through the maintained English/Spanish registry. Responsive checks exercise the longer Spanish presentation at 20px under high contrast and reduced motion, and closing a transaction restores keyboard focus to the originating mobile actor/target rail after the composer rerenders.
 - Passive stomach digestion now uses bounded hunger bands (`0.8x` sated, `1x` ordinary, `1.2x` hungry, `1.4x` starving), re-evaluates its pace after each nutrition-bearing tick, and exposes the effective rate in Containers. Fast and slow modes retain distinct pacing and identical size-scaled total nutrition.
@@ -185,8 +191,8 @@ Flow V2 shell without reintroducing separate phone navigation models.
 
 1. Use `docs/feature-placement.md` to classify expansion proposals before implementation.
 2. Continue public mod-context and example hardening for narrative, structural, and asset/content-pack lanes.
-3. Strengthen deterministic map playability with a Generator V4 safe-start
-   contract. The origin must be Grove with a small Grove inner ring; the
+3. Preserve the Generator V4 safe-start contract inherited by Generator V5
+   and any later generator. The origin must be Grove with a small Grove inner ring; the
    immediate 3x3 must not admit hostile encounters; roughly radius 2–5 may
    introduce at most one tier-1 hostile without ambush or reinforcement; and
    hostile structures/danger sites must remain outside the protected radius.
@@ -208,10 +214,10 @@ Flow V2 shell without reintroducing separate phone navigation models.
 5. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
 6. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, the dedicated AI Providers panel, Puter, and session-only browser-direct OpenAI-Compatible text connections now exist. Gather playtest feedback on that lifecycle before adding OAuth, relays, MCP, image/video/audio providers, or localhost sidecars.
 7. After player-POV narration has enough playtest coverage, consider a narrator perspective setting with explicit player, first-person, third-person-limited, and cinematic modes. Keep player POV as the default and preserve the structured viewpoint-role contract across modes.
-8. Continue representative coast, cave, building-interior, and authored-pack visual review for Tileset Pack V1 when those states surface in operator play. The 2026-07-23 live route/POI sample passes at 1280×720 and 390×844, including the 17×17 review map; its accessible center-cell action density is deferred to Mobile Interaction Flow V2 rather than “fixed” by shrinking touch targets. Automated acceptance records current offline/hosted/atlas bytes, estimates the Lightweight/Textured low-bandwidth difference, proves immutable hosted cache reuse, proves Lightweight makes no atlas requests, and keeps degraded startup non-blocking. Keep reduced-motion and emoji/text fallbacks intact.
-9. Playtest Interior Skin V1 across huts, manors, and dungeons now that built structures use continuous masonry floors, perimeter walls with reciprocal openings, and restrained exit thresholds. Author richer structure-specific or mod-pack variants only after the room grammar proves legible; keep cave networks independent.
-10. Playtest Terrain Transition V1 against straight coasts, peninsulas, coves, islands, and diagonal contacts. If the metadata grammar is sound, generalize the same material-pair seam to grass/sand, snow/rock, and swamp/plains without hard-coding biome pairs.
-11. Sprite Pack V1 is implemented as a code-free Asset Bundle presentation with semantic unit, state, facing, bounded strip-animation, reduced-motion, local-lease, and emoji-fallback contracts. Playtest real authored packs before adding action-specific states, diagonals, or skeletal animation.
+8. Continue representative coast, cave, building-interior, and authored-pack visual review for Tileset Pack V1 when those states surface in operator play. The real partial-pack fixture now proves install/reload/unload for beach material, shoreline edges and corners, building/cave rooms, corridors, and doors; this closes lifecycle validation, not subjective art approval. The 2026-07-23 live route/POI sample passes at 1280×720 and 390×844, including the 17×17 review map. Automated acceptance also records current artifact bytes, proves immutable hosted cache reuse, proves Lightweight makes no atlas requests, and keeps degraded startup non-blocking. Keep reduced-motion and emoji/text fallbacks intact.
+9. Continue operator review of Interior Skin V1 across huts, manors, and dungeons. Automated real-pack coverage now proves module-owned building/cave floors, corridor topology, doors, and fallback without changing reciprocal room graphs. Author richer structure-specific variants only after representative room grammar remains legible; keep cave networks independent.
+10. Continue operator review of Terrain Transition V1 against straight coasts, peninsulas, coves, islands, and diagonal contacts. Automated real-pack coverage now proves cardinal/corner shoreline ownership and fallback. If representative visual review confirms the metadata grammar, generalize the same material-pair seam to grass/sand, snow/rock, and swamp/plains without hard-coding biome pairs.
+11. Sprite Pack V1 now has a maintained real authored fixture with a reproducible atlas. Browser acceptance proves animated idle, wounded, Ghost, default fallback, IndexedDB retention, local leases, no-hotlink reload, and emoji restoration. Continue subjective/unit-density review before adding action-specific states, diagonals, or skeletal animation.
 12. The owned `media:provide` adapter seam is implemented. Keep concrete later providers ordered in backlog: AI generation as a reviewed Source at priority 3; Electron, Pear, or another packaged-runtime bridge at priority 4; and OPFS as an optional browser-storage optimization at priority 5. None may become a prerequisite for the downloaded `file://` game.
 13. Extend asset/content-pack presentation seams. Optional packs may eventually provide richer tilesets, sprites, portraits, audio, animated 2D media, and capability-gated 3D scenes, but their presentation formats must remain independent from storage providers and the bundle envelope.
 14. Consider archive transport only after real bundle use shows that individually hashed URI resources are insufficient. Archives still need unpacked-size budgets and safe relative paths; publisher signatures and community update discovery remain separate work.
@@ -229,7 +235,12 @@ Flow V2 shell without reintroducing separate phone navigation models.
     Authored shrine networks, resurrection economies, or spectral abilities
     belong in separate bounded recovery profiles rather than implicit core
     expansion.
-19. Playtest Locale Pack V1 with a real maintained third language before bundling another locale. Keep English as the offline core fallback, require stable target namespaces and dependency-version floors for cross-module translations, and use diagnostics rather than silently accepting stale key coverage.
+19. French Preview now supplies the maintained real third-language lifecycle
+    test: visible and accessible menu text, dynamic selection, explicit English
+    fallback diagnostics, reload, and unload are browser-verified. Keep it
+    optional and partial until a human translation review expands its coverage;
+    English remains the offline core fallback and stale target namespaces must
+    continue to fail through version floors and diagnostics.
 
 ### Release / Distribution
 

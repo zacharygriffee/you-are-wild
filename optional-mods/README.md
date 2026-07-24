@@ -46,5 +46,9 @@ must remain playable without it.
 
 `example-tileset-pack/` is the maintained code-free Asset Bundle/Tileset Pack
 V1 fixture. It demonstrates reviewed URI resources, local retention, fallback,
-replacement, and removal; it does not imply sprite, animation, audio, video, or
-3D schema support.
+replacement, removal, terrain transitions, and topology-aware interiors.
+
+`example-sprite-pack/` is the maintained code-free Asset Bundle/Sprite Pack V1
+fixture. Its reproducible atlas demonstrates Human and Wolfkin idle strips,
+wounded and Ghost states, pack-local fallback, IndexedDB retention, local
+session leases, reload, and clean emoji restoration on disable.

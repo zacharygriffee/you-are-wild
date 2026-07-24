@@ -4,6 +4,14 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Real presentation-pack acceptance now uses maintained installable fixtures
+  rather than schema-only examples. French Preview proves a partial third
+  language can visibly relabel the menu, report English-fallback diagnostics,
+  survive reload, and unload cleanly. Example Sprite and Tileset bundles prove
+  reviewed HTTP acquisition, IndexedDB retention, local `blob:` leases,
+  no-hotlink reload, fallback restoration, animated/wounded/Ghost unit states,
+  shoreline transitions, and topology-aware building/cave interiors. The
+  fixture Sprite atlas is reproducible from source.
 - Generator V5 is now the new-run default and adds Route Hierarchy V2 without
   changing recorded V4 worlds. Macro anchors form one deterministic connected
   tree, route-capable POIs receive bounded tree-shaped local branches, and
@@ -17,15 +25,16 @@ This is a compact history of completed foundations. Git remains the authoritativ
   distribution, and status. It also makes the existing world-clock boundary
   explicit: ordinary interactions commit turns without advancing hours, while
   traversal, Search, and Rest retain their authored elapsed-time costs.
-- Generator V4 is now the default for new runs while recorded older worlds
-  retain their versioned layout. The inner 3×3 is a deterministic passable
-  Grove with no random encounter, hostile structure, danger-site influence,
-  or cave portal. Radius 2–5 releases encounter chance predictably, admits at
-  most one tier-1 creature, and disables opening ambushes and reinforcements.
-  A conservative estimate based on the weakest living party member defers an
-  over-budget hostile to a neutral meeting instead of applying hidden damage
-  reduction. Live movement now consumes this generated encounter policy, and
-  the opening scene names the actual localized starting biome.
+- Generator V4 introduced the safe-start baseline inherited by V5, while
+  recorded older worlds retain their versioned layout. The inner 3×3 is a
+  deterministic passable Grove with no random encounter, hostile structure,
+  danger-site influence, or cave portal. Radius 2–5 releases encounter chance
+  predictably, admits at most one tier-1 creature, and disables opening
+  ambushes and reinforcements. A conservative estimate based on the weakest
+  living party member defers an over-budget hostile to a neutral meeting
+  instead of applying hidden damage reduction. Live movement consumes this
+  generated encounter policy, and the opening scene names the actual localized
+  starting biome.
 - The built-in Ghost pilgrimage now has an explicit product baseline:
   Settings opt-in, defeat-site entry, ordinary companion battle settlement,
   the selected inventory consequence, traversal-only agency with read-only

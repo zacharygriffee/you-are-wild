@@ -1,0 +1,32 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_french_preview",
+  "gameVersion": "0.14.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_french_preview",
+      "name": "You Are Wild: French Preview",
+      "version": "1.0.0",
+      "minGameVersion": "0.14.0",
+      "description": "Optional French preview for the main navigation, traversal, composer, and activity log. Missing text falls back to English.",
+      "type": "locale_pack",
+      "contentRating": "safe",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": ["file", "https", "localhost", "http"],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": true
+      },
+      "permissions": ["content:add_locale"],
+      "dependencies": [],
+      "contentCategories": [],
+      "gameplayVariants": [],
+      "settings": []
+    },
+    "code": "MODS.registerLocale({ id: 'fr', displayName: 'Français (aperçu)', fallback: 'en', targets: [{ moduleId: 'core', minVersion: '0.14.0' }] });\nMODS.registerLocaleEntries('fr', {\n  'settings.language': 'Langue',\n  'action.fight': 'Combattre',\n  'action.flirt': 'Parler',\n  'action.fuck': 'Jouer',\n  'action.fuck.sfw': 'Jouer',\n  'action.feast': 'Manger',\n  'action.feast.sfw': 'Manger',\n  'action.feed': 'Nourrir',\n  'action.flee': 'Fuir',\n  'action.moveRow': 'Changer de rang',\n  'action.advance': 'Avancer',\n  'action.retreat': 'Reculer',\n  'action.sync': 'Coordonner',\n  'action.skip': 'Passer',\n  'action.search': 'Fouiller',\n  'action.rest': 'Se reposer',\n  'action.setSafePlace': 'Définir le foyer',\n  'action.inventory': 'Objets',\n  'action.takeItems': 'Prendre les objets',\n  'action.stats': 'Caractéristiques',\n  'action.quests': 'Quêtes',\n  'action.acceptQuest': 'Accepter la quête',\n  'action.viewQuest': 'Voir la quête',\n  'action.trade': 'Commercer',\n  'action.loot': 'Ramasser',\n  'action.scavenge': 'Récupérer',\n  'action.interact': 'Interagir',\n  'action.inspect': 'Examiner',\n  'action.recruit': 'Recruter',\n  'action.rejoin': 'Rejoindre',\n  'action.enter': 'Entrer',\n  'action.exit': 'Sortir',\n  'action.map': 'Carte',\n  'action.party': 'Groupe',\n  'action.enemies': 'Ennemis',\n  'ui.close': 'Fermer',\n  'ui.cancel': 'Annuler',\n  'ui.confirm': 'Confirmer',\n  'ui.back': 'Retour',\n  'ui.tagline': 'Explorez. Changez. Survivez.',\n  'ui.menu.continue': 'Continuer la dernière partie',\n  'ui.menu.continueTitle': 'Continuer la dernière partie',\n  'ui.menu.playActions': 'Actions de jeu',\n  'ui.menu.utilityActions': 'Options du jeu',\n  'ui.menu.newGame': 'Nouvelle partie',\n  'ui.menu.newGameTitle': 'Commencer une nouvelle partie',\n  'ui.returnToMenu': 'Retour au menu',\n  'ui.menu.loadGame': 'Charger une partie',\n  'ui.menu.loadGameTitle': 'Charger une partie',\n  'ui.menu.appMenu': 'Menu de l’application',\n  'ui.menu.appMenuTitle': 'Ouvrir le menu de l’application',\n  'ui.menu.settings': 'Paramètres',\n  'ui.menu.settingsTitle': 'Ouvrir les paramètres',\n  'ui.menu.mods': 'Modules',\n  'ui.menu.modsTitle': 'Ouvrir les modules',\n  'ui.menu.tutorial': 'Didacticiel',\n  'ui.menu.tutorialTitle': 'Ouvrir le didacticiel',\n  'ui.nav.mapTitle': 'Afficher la carte',\n  'ui.nav.partyTitle': 'Afficher le groupe',\n  'ui.nav.creaturesTitle': 'Afficher les créatures',\n  'ui.nav.holdingsTitle': 'Ouvrir les possessions',\n  'ui.nav.helpTitle': 'Ouvrir l’aide',\n  'ui.nav.saveTitle': 'Ouvrir les sauvegardes',\n  'ui.nav.loadTitle': 'Ouvrir les chargements',\n  'ui.locationActions': 'Actions du lieu',\n  'ui.creatureActions': 'Actions des créatures',\n  'ui.partyActions': 'Actions du groupe',\n  'ui.tacticalStatus': 'État tactique',\n  'ui.unitTraits': 'Traits de l’unité',\n  'ui.exploration': 'Exploration',\n  'ui.chooseAction': 'Choisissez votre prochaine action.',\n  'ui.here': 'Ici',\n  'ui.roster': 'Participants',\n  'ui.allies': 'Alliés',\n  'ui.items': 'Objets',\n  'ui.enemies': 'Ennemis',\n  'ui.creatures': 'Créatures',\n  'ui.noCreaturesPresent': 'Aucune créature présente',\n  'ui.noEnemiesPresent': 'Aucun ennemi présent',\n  'ui.noPartyMembers': 'Aucun membre du groupe',\n  'ui.map': 'Carte',\n  'ui.reviewMap': 'Examiner la carte',\n  'ui.playSurface': 'Zone de jeu',\n  'ui.currentPlaySurface': 'Zone de jeu actuelle',\n  'ui.traversalGrid': 'Grille de déplacement 3 par 3',\n  'ui.commandComposer': 'Composition de commande',\n  'ui.currentTile': 'Case actuelle',\n  'ui.party': 'Groupe',\n  'ui.stats': 'Caractéristiques',\n  'ui.holdings': 'Possessions',\n  'ui.help': 'Aide',\n  'ui.largeMap.discoveredRegion': 'Région découverte',\n  'ui.largeMap.controls': 'Commandes de la grande carte',\n  'ui.largeMap.zoomIn': 'Agrandir la carte',\n  'ui.largeMap.zoomOut': 'Réduire la carte',\n  'ui.largeMap.panUp': 'Déplacer la carte vers le haut',\n  'ui.largeMap.panLeft': 'Déplacer la carte vers la gauche',\n  'ui.largeMap.recenter': 'Recentrer la carte',\n  'ui.largeMap.panRight': 'Déplacer la carte vers la droite',\n  'ui.largeMap.panDown': 'Déplacer la carte vers le bas',\n  'ui.tileInfo.title': 'Case actuelle',\n  'ui.tileInfo.coords': 'Coordonnées',\n  'ui.tileInfo.biome': 'Biome',\n  'ui.tileInfo.time': 'Heure',\n  'ui.tileInfo.danger': 'Danger',\n  'ui.tileInfo.structure': 'Structure',\n  'ui.tileInfo.landmark': 'Point remarquable',\n  'ui.tileInfo.tags': 'Étiquettes',\n  'ui.tileInfo.none': 'Aucun',\n  'ui.tileInfo.day': 'Jour',\n  'ui.tileInfo.night': 'Nuit',\n  'ui.tileInfo.pressureLow': 'Faible',\n  'ui.tileInfo.pressureElevated': 'Élevée',\n  'ui.tileInfo.pressureHigh': 'Forte',\n  'ui.activityLog': 'Journal d’activité',\n  'ui.activityLog.open': 'Ouvrir le journal d’activité',\n  'ui.log.export': 'Exporter',\n  'ui.log.clear': 'Effacer',\n  'ui.log.expand': 'Développer',\n  'ui.log.minimize': 'Réduire',\n  'ui.log.restore': 'Restaurer',\n  'ui.log.all': 'Tout',\n  'ui.log.combat': 'Combat',\n  'ui.log.discovery': 'Découverte',\n  'ui.log.loot': 'Butin',\n  'ui.log.heal': 'Soins'\n}, { target: 'core' });\nMODS.log('French preview locale registered.');",
+    "assets": {}
+  }
+}

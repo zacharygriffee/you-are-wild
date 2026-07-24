@@ -7,7 +7,7 @@ blocked edges, structures, and exits may not.
 ## Semantic gates
 
 - Versioned start validation runs the maintained seed matrix against generator
-  versions 2 and 3. It checks passable start terrain, cardinal escape, safe
+  versions 2, 3, 4, and 5. It checks passable start terrain, cardinal escape, safe
   early tiles, a resource site, route access, and a reachable rest/recovery
   candidate. The returned `recoveryAnchor` path is also the placement seam for
   a later optional shrine mode.
@@ -68,6 +68,12 @@ desktop, and large-map semantic metadata plus traversal decisions before
 installation, after initial enablement, after reviewed replacement, after a
 full IndexedDB-backed reload, and after disable. Every snapshot must remain
 identical even while the active atlas owner and geometry change.
+
+That maintained fixture now also owns real beach material, cardinal and corner
+shoreline transitions, building and cave room surfaces, a topology-aware
+interior corridor, and a doorway. Contract tests verify those semantic layers
+resolve from the enabled module while gameplay topology remains unchanged.
+See [Real Presentation Pack Acceptance](real-presentation-pack-acceptance.md).
 
 ## Operator visual review
 

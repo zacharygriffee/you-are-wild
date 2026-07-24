@@ -25,9 +25,43 @@
         "nativeTileSize": { "width": 313, "height": 313 },
         "scaling": "smooth",
         "atlases": [
-          { "id": "example", "resourceId": "atlas.example", "density": 1 }
+          { "id": "example", "resourceId": "atlas.example", "density": 1 },
+          { "id": "base", "resourceId": "atlas.base", "density": 1 },
+          { "id": "material", "resourceId": "atlas.material", "density": 1 }
         ],
         "tiles": {
+          "terrain-beach": {
+            "label": "Seamless beach material",
+            "layers": [
+              {
+                "atlasId": "material",
+                "rect": { "x": 0, "y": 0, "width": 512, "height": 512 },
+                "slot": "base",
+                "z": 0,
+                "opacity": 1,
+                "blend": "normal",
+                "anchor": { "x": 0.5, "y": 0.5 },
+                "transform": { "rotate": 0, "flipX": false, "flipY": false }
+              }
+            ]
+          },
+          "shoreline-water-north": {
+            "label": "North water transition material",
+            "layers": [
+              {
+                "atlasId": "base",
+                "rect": { "x": 1330, "y": 0, "width": 222, "height": 221 },
+                "slot": "feature",
+                "z": 0,
+                "opacity": 1,
+                "blend": "normal",
+                "anchor": { "x": 0.5, "y": 0.5 },
+                "transform": { "rotate": 0, "flipX": false, "flipY": false }
+              }
+            ]
+          },
+          "shoreline-water-outer-ne": { "fallback": "shoreline-water-north" },
+          "shoreline-water-inner-ne": { "fallback": "shoreline-water-north" },
           "route-road-vertical": {
             "label": "Stone road override",
             "layers": [
@@ -73,6 +107,66 @@
               }
             ]
           },
+          "interior-room": {
+            "label": "Building interior floor",
+            "layers": [
+              {
+                "atlasId": "base",
+                "rect": { "x": 1552, "y": 665, "width": 222, "height": 222 },
+                "slot": "base",
+                "z": 0,
+                "opacity": 1,
+                "blend": "normal",
+                "anchor": { "x": 0.5, "y": 0.5 },
+                "transform": { "rotate": 0, "flipX": false, "flipY": false }
+              }
+            ]
+          },
+          "interior-cave-room": {
+            "label": "Cave interior floor",
+            "layers": [
+              {
+                "atlasId": "base",
+                "rect": { "x": 0, "y": 221, "width": 221, "height": 222 },
+                "slot": "base",
+                "z": 0,
+                "opacity": 1,
+                "blend": "normal",
+                "anchor": { "x": 0.5, "y": 0.5 },
+                "transform": { "rotate": 0, "flipX": false, "flipY": false }
+              }
+            ]
+          },
+          "interior-path-corner-ne": {
+            "label": "North-east interior corridor",
+            "layers": [
+              {
+                "atlasId": "example",
+                "rect": { "x": 313, "y": 627, "width": 314, "height": 313 },
+                "slot": "route",
+                "z": 0,
+                "opacity": 1,
+                "blend": "normal",
+                "anchor": { "x": 0.5, "y": 0.5 },
+                "transform": { "rotate": 0, "flipX": false, "flipY": false }
+              }
+            ]
+          },
+          "interior-door-north": {
+            "label": "North interior doorway",
+            "layers": [
+              {
+                "atlasId": "example",
+                "rect": { "x": 627, "y": 313, "width": 313, "height": 314 },
+                "slot": "feature",
+                "z": 0,
+                "opacity": 1,
+                "blend": "normal",
+                "anchor": { "x": 0.5, "y": 0.5 },
+                "transform": { "rotate": 0, "flipX": false, "flipY": false }
+              }
+            ]
+          },
           "state-blocked": { "fallback": "state-danger" }
         }
       }
@@ -90,6 +184,36 @@
         "license": "owner-supplied-ai-generated",
         "provenance": {
           "kind": "ai-generated-overlay-atlas",
+          "tool": "ChatGPT Image"
+        }
+      },
+      {
+        "id": "atlas.base",
+        "uri": "../../media/basic-tileset-v1.png",
+        "hash": "6ae193e46a3cce413bb4316e88a1c86debf4281f819ddc877e89fef645e6df78",
+        "mimeType": "image/png",
+        "byteLength": 2498176,
+        "width": 1774,
+        "height": 887,
+        "role": "tileset-atlas",
+        "license": "owner-supplied-ai-generated",
+        "provenance": {
+          "kind": "ai-generated-base-atlas",
+          "tool": "ChatGPT Image"
+        }
+      },
+      {
+        "id": "atlas.material",
+        "uri": "../../media/terrain-sand-seamless-v1.png",
+        "hash": "82bf985a5673eb7ec348814098422db9e861659af85c064f192ce00e8c1cf1b5",
+        "mimeType": "image/png",
+        "byteLength": 391293,
+        "width": 512,
+        "height": 512,
+        "role": "tileset-atlas",
+        "license": "owner-supplied-ai-generated",
+        "provenance": {
+          "kind": "ai-generated-seamless-material",
           "tool": "ChatGPT Image"
         }
       }

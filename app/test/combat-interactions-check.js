@@ -4987,7 +4987,10 @@ async function runUriTilesetLifecycleFlow(browser) {
       await MODULE_SYSTEM.setModuleEnabled(moduleId, true);
       const route = YAW_TILESET_RUNTIME.resolveTile('route-road-vertical');
       const fallback = YAW_TILESET_RUNTIME.resolveTile('terrain-swamp');
-      const shorelineFallback = YAW_TILESET_RUNTIME.resolveTile('shoreline-water-north');
+      const shoreline = YAW_TILESET_RUNTIME.resolveTile('shoreline-water-north');
+      const shorelineCorner = YAW_TILESET_RUNTIME.resolveTile('shoreline-water-outer-ne');
+      const interiorRoom = YAW_TILESET_RUNTIME.resolveTile('interior-room');
+      const interiorPath = YAW_TILESET_RUNTIME.resolveTile('interior-path-corner-ne');
       const dangerInfluenceFallback = YAW_TILESET_RUNTIME.resolveTile('state-danger-influence');
       const layers = YAW_TILESET_RUNTIME.layersForVisual({
         semanticKeys: ['terrain-swamp', 'route-road-vertical', 'state-current'],
@@ -5003,7 +5006,10 @@ async function runUriTilesetLifecycleFlow(browser) {
         healthOk: status.health.ok,
         routeOwner: route?.moduleId || '',
         fallbackOwner: fallback?.moduleId || '',
-        shorelineFallbackOwner: shorelineFallback?.moduleId || '',
+        shorelineOwner: shoreline?.moduleId || '',
+        shorelineCornerOwner: shorelineCorner?.moduleId || '',
+        interiorRoomOwner: interiorRoom?.moduleId || '',
+        interiorPathOwner: interiorPath?.moduleId || '',
         dangerInfluenceFallbackOwner: dangerInfluenceFallback?.moduleId || '',
         activePack: YAW_TILESET_RUNTIME.status(moduleId)?.packId || '',
         layerOwners: layers.layers.map(layer => layer.url),
@@ -5016,7 +5022,10 @@ async function runUriTilesetLifecycleFlow(browser) {
     assert.strictEqual(installed.healthOk, true, 'Real HTTP installation should retain a verified local IndexedDB payload');
     assert.strictEqual(installed.routeOwner, moduleId, 'Example partial pack should override the semantic route it provides');
     assert.strictEqual(installed.fallbackOwner, '__bundled__', 'Missing example semantics should fall through to the bundled pack');
-    assert.strictEqual(installed.shorelineFallbackOwner, '__bundled__', 'URI-installed partial packs should inherit cardinal shoreline semantics from the bundled pack');
+    assert.strictEqual(installed.shorelineOwner, moduleId, 'Real authored pack should own its cardinal shoreline transition');
+    assert.strictEqual(installed.shorelineCornerOwner, moduleId, 'Real authored pack should resolve its pack-local shoreline corner fallback');
+    assert.strictEqual(installed.interiorRoomOwner, moduleId, 'Real authored pack should own its building interior floor');
+    assert.strictEqual(installed.interiorPathOwner, moduleId, 'Real authored pack should own its corridor topology override');
     assert.strictEqual(installed.dangerInfluenceFallbackOwner, '__bundled__', 'URI-installed partial packs should inherit restrained danger influence from the bundled pack');
     assert.strictEqual(installed.activePack, 'yaw.example-partial-v1', 'Enabling the target module should activate its installed Tileset Pack presentation');
     assert.strictEqual(installed.moduleEnabled, true, 'Example target module should be active after explicit enablement');
@@ -5078,6 +5087,212 @@ async function runUriTilesetLifecycleFlow(browser) {
   }
 }
 
+async function runUriSpriteLifecycleFlow(browser) {
+  const fixture = await startTilesetFixtureServer();
+  const page = await browser.newPage({ viewport: { width: 1365, height: 768 } });
+  const moduleId = 'yaw_example_sprites_v1';
+  const atlasRequests = [];
+  page.on('request', request => {
+    if (request.url().endsWith('/media/example-sprite-atlas-v1.png')) atlasRequests.push(request.url());
+  });
+  try {
+    await page.goto(`${fixture.origin}/dist/you-are-wild`, { waitUntil: 'load' });
+    await page.waitForFunction(
+      () => Boolean(window.App) && typeof MODULE_SYSTEM !== 'undefined' && typeof YAW_SPRITE_RUNTIME !== 'undefined',
+      null,
+      { timeout: 10000 }
+    );
+    await clearBrowserStorage(page);
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(
+      () => Boolean(window.App) && typeof MODULE_SYSTEM !== 'undefined' && typeof YAW_SPRITE_RUNTIME !== 'undefined',
+      null,
+      { timeout: 10000 }
+    );
+
+    const installed = await page.evaluate(async ({ origin, moduleId }) => {
+      await MODULE_SYSTEM.init();
+      const modulePackage = await fetch(
+        `${origin}/optional-mods/example-sprite-pack/you-are-wild-example-sprites.yawmod.json`,
+        { cache: 'no-store' }
+      ).then(response => response.json());
+      await MODULE_SYSTEM.installModule(modulePackage);
+      const review = await MODULE_SYSTEM.reviewRemoteModule(
+        `${origin}/optional-mods/example-sprite-pack/bundle.json`
+      );
+      const result = await MODULE_SYSTEM.installReviewedRemoteAssetBundle(review);
+      await MODULE_SYSTEM.setModuleEnabled(moduleId, true);
+      const human = { id: 'sprite-human', name: 'Human Scout', species: 'human', icon: '👤', CPun: 100, MPun: 100 };
+      const wolf = { id: 'sprite-wolf', name: 'Wolf Scout', species: 'wolfkin', icon: '🐺', CPun: 20, MPun: 100 };
+      const ghost = { ...human, id: 'sprite-ghost', recoveryGhost: true };
+      const unknown = { ...human, id: 'sprite-unknown', species: 'dragonkin' };
+      const idle = YAW_SPRITE_RUNTIME.resolveUnit(human);
+      const wounded = YAW_SPRITE_RUNTIME.resolveUnit(wolf);
+      const ghostState = YAW_SPRITE_RUNTIME.resolveUnit(ghost);
+      const fallback = YAW_SPRITE_RUNTIME.resolveUnit(unknown);
+      const rendered = App._unitArtHtml(human, human.icon);
+      const status = await MODULE_SYSTEM.getModuleAssetBundleStatus(moduleId);
+      return {
+        reviewKind: review.kind,
+        version: result.bundle.version,
+        healthOk: status.health.ok,
+        packId: YAW_SPRITE_RUNTIME.status(moduleId)?.packId || '',
+        idleState: idle?.stateKey || '',
+        woundedState: wounded?.stateKey || '',
+        ghostState: ghostState?.stateKey || '',
+        fallbackSemantic: fallback?.semanticKey || '',
+        atlasUrl: idle?.atlas?.url || '',
+        rendered,
+        moduleEnabled: MODULE_SYSTEM.activeModules.has(moduleId)
+      };
+    }, { origin: fixture.origin, moduleId });
+    assert.strictEqual(installed.reviewKind, 'asset_bundle_v1', 'Loopback URI review should recognize the code-free example sprite bundle');
+    assert.strictEqual(installed.version, '1.0.0', 'Example sprite bundle should install its reviewed version');
+    assert.strictEqual(installed.healthOk, true, 'Real sprite installation should retain a verified local IndexedDB payload');
+    assert.strictEqual(installed.packId, 'yaw.example-sprites-v1', 'Enabling the target module should activate its Sprite Pack presentation');
+    assert.strictEqual(installed.idleState, 'idle:any', 'Real Human art should resolve its animated idle strip');
+    assert.strictEqual(installed.woundedState, 'wounded:any', 'Real Wolfkin art should resolve its wounded state');
+    assert.strictEqual(installed.ghostState, 'ghost:any', 'Real Human art should resolve its Ghost state');
+    assert.strictEqual(installed.fallbackSemantic, 'default', 'Uncovered species should resolve through the authored default fallback');
+    assert(installed.atlasUrl.startsWith('blob:'), 'Real Sprite Pack rendering should use a local lease rather than hotlinking the source URI');
+    assert(installed.rendered.includes('data-sprite-pack="yaw.example-sprites-v1"'), 'Shared unit rendering should expose the active real Sprite Pack');
+    assert(installed.rendered.includes('animation:yaw-sprite-strip'), 'Real animated idle strips should use the bounded shared animation path');
+    assert.strictEqual(installed.moduleEnabled, true, 'Example sprite target module should be active after explicit enablement');
+    assert.strictEqual(atlasRequests.length, 1, 'Installing the real Sprite Pack should download its atlas exactly once');
+
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(
+      id => MODULE_SYSTEM.activeModules.has(id) && Boolean(YAW_SPRITE_RUNTIME.status(id)),
+      moduleId,
+      { timeout: 10000 }
+    );
+    const persisted = await page.evaluate(async moduleId => {
+      const resolved = YAW_SPRITE_RUNTIME.resolveUnit({
+        id: 'persisted-human',
+        name: 'Persisted Human',
+        species: 'human',
+        icon: '👤',
+        CPun: 100,
+        MPun: 100
+      });
+      const status = await MODULE_SYSTEM.getModuleAssetBundleStatus(moduleId);
+      return {
+        version: status.version,
+        healthOk: status.health.ok,
+        packId: YAW_SPRITE_RUNTIME.status(moduleId)?.packId || '',
+        atlasUrl: resolved?.atlas?.url || ''
+      };
+    }, moduleId);
+    assert.strictEqual(persisted.version, '1.0.0', 'Real Sprite Pack metadata should survive a browser reload');
+    assert.strictEqual(persisted.healthOk, true, 'Real Sprite Pack payload health should survive a browser reload');
+    assert.strictEqual(persisted.packId, 'yaw.example-sprites-v1', 'Enabled Sprite Pack should reactivate from IndexedDB after reload');
+    assert(persisted.atlasUrl.startsWith('blob:'), 'Reloaded Sprite Pack should reacquire a local session lease');
+    assert.strictEqual(atlasRequests.length, 1, 'Ordinary reload and rendering should not hotlink the retained sprite atlas');
+
+    const restored = await page.evaluate(async moduleId => {
+      await MODULE_SYSTEM.setModuleEnabled(moduleId, false);
+      return {
+        packStatus: YAW_SPRITE_RUNTIME.status(moduleId),
+        resolved: YAW_SPRITE_RUNTIME.resolveUnit({ species: 'human', CPun: 100, MPun: 100 })
+      };
+    }, moduleId);
+    assert.strictEqual(restored.packStatus, null, 'Disabling the real Sprite Pack owner should remove its active presentation');
+    assert.strictEqual(restored.resolved, null, 'Disabling the real Sprite Pack should restore emoji fallback');
+  } finally {
+    await page.close();
+    await fixture.close();
+  }
+}
+
+async function runUriFrenchLocaleLifecycleFlow(browser) {
+  const fixture = await startTilesetFixtureServer();
+  const page = await browser.newPage({ viewport: { width: 1365, height: 768 } });
+  const moduleId = 'yaw_french_preview';
+  try {
+    await page.goto(`${fixture.origin}/dist/you-are-wild`, { waitUntil: 'load' });
+    await page.waitForFunction(
+      () => Boolean(window.App) && typeof MODULE_SYSTEM !== 'undefined' && typeof CONTENT !== 'undefined',
+      null,
+      { timeout: 10000 }
+    );
+    await clearBrowserStorage(page);
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(
+      () => Boolean(window.App) && typeof MODULE_SYSTEM !== 'undefined' && typeof CONTENT !== 'undefined',
+      null,
+      { timeout: 10000 }
+    );
+
+    const installed = await page.evaluate(async ({ origin, moduleId }) => {
+      await MODULE_SYSTEM.init();
+      const modulePackage = await fetch(
+        `${origin}/optional-mods/you-are-wild-french-preview.yawmod.json`,
+        { cache: 'no-store' }
+      ).then(response => response.json());
+      await MODULE_SYSTEM.installModule(modulePackage);
+      await MODULE_SYSTEM.setModuleEnabled(moduleId, true);
+      CONTENT.setLanguage('fr');
+      App.applyStaticLocalization();
+      const newGameButton = document.getElementById('menu-new-game');
+      return {
+        language: CONTENT.preferences.language,
+        fight: CONTENT.t('action.fight'),
+        untranslatedFallback: CONTENT.t('ui.tutorial.ready.title'),
+        newGameText: newGameButton?.textContent?.trim() || '',
+        newGameLabel: newGameButton?.getAttribute('aria-label') || '',
+        diagnostics: MODULE_SYSTEM.getModuleDiagnostics(moduleId),
+        moduleEnabled: MODULE_SYSTEM.activeModules.has(moduleId)
+      };
+    }, { origin: fixture.origin, moduleId });
+    assert.strictEqual(installed.language, 'fr', 'Real French Preview should become the selected runtime language');
+    assert.strictEqual(installed.fight, 'Combattre', 'Real French Preview should translate high-frequency action text');
+    assert.strictEqual(installed.untranslatedFallback, 'Ready', 'Partial French Preview should explicitly fall back to English');
+    assert(installed.newGameText.includes('Nouvelle partie'), 'Real French Preview should visibly relabel the main menu');
+    assert.strictEqual(installed.newGameLabel, 'Commencer une nouvelle partie', 'Real French Preview should localize accessible menu labels');
+    assert(
+      installed.diagnostics.some(entry => entry.code === 'locale_missing_keys' && entry.count > 0),
+      'Real partial locale should expose bounded missing-key diagnostics'
+    );
+    assert.strictEqual(installed.moduleEnabled, true, 'French Preview target module should be active after explicit enablement');
+
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(
+      id => MODULE_SYSTEM.activeModules.has(id) && CONTENT.preferences.language === 'fr',
+      moduleId,
+      { timeout: 10000 }
+    );
+    const persisted = await page.evaluate(() => {
+      App.applyStaticLocalization();
+      const newGameButton = document.getElementById('menu-new-game');
+      return {
+        language: CONTENT.preferences.language,
+        activityLog: CONTENT.t('ui.activityLog'),
+        newGameText: newGameButton?.textContent?.trim() || ''
+      };
+    });
+    assert.strictEqual(persisted.language, 'fr', 'French Preview selection should survive a browser reload');
+    assert.strictEqual(persisted.activityLog, 'Journal d’activité', 'Reloaded French Preview should restore its owned translations');
+    assert(persisted.newGameText.includes('Nouvelle partie'), 'Reloaded French Preview should restore visible localized menu text');
+
+    const restored = await page.evaluate(async moduleId => {
+      await MODULE_SYSTEM.setModuleEnabled(moduleId, false);
+      App.applyStaticLocalization();
+      const newGameButton = document.getElementById('menu-new-game');
+      return {
+        language: CONTENT.preferences.language,
+        locale: CONTENT.localeDefinition('fr'),
+        newGameText: newGameButton?.textContent?.trim() || ''
+      };
+    }, moduleId);
+    assert.strictEqual(restored.language, 'en', 'Disabling French Preview should restore the English language selection');
+    assert.strictEqual(restored.locale, null, 'Disabling French Preview should unload its locale definition');
+    assert(restored.newGameText.includes('New Game'), 'Disabling French Preview should visibly restore English menu text');
+  } finally {
+    await page.close();
+    await fixture.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -5128,6 +5343,8 @@ async function runUriTilesetLifecycleFlow(browser) {
     await runLightweightTilesetEquivalenceFlow(browser, texturedSnapshot);
     await runHostedTilesetCacheFlow(browser);
     await runUriTilesetLifecycleFlow(browser);
+    await runUriSpriteLifecycleFlow(browser);
+    await runUriFrenchLocaleLifecycleFlow(browser);
   } finally {
     await browser.close();
   }

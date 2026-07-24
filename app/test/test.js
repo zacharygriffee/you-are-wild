@@ -21,6 +21,7 @@ const NARRATION_DIAGNOSTICS_MOD_PACKAGE = path.join(__dirname, '..', '..', 'opti
 const ELEMENTAL_SPECIES_MOD_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-elemental-species.yawmod.json');
 const NEUTRAL_CONFORMANCE_MOD_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'neutral-conformance.yawmod.json');
 const NEUTRAL_CONFORMANCE_LOCALE_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'neutral-conformance-locale-pack.yawmod.json');
+const FRENCH_PREVIEW_LOCALE_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-french-preview.yawmod.json');
 const UI_CONTRIBUTION_EXAMPLE_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'ui-contribution-v1.yawmod.json');
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
@@ -3840,6 +3841,54 @@ asyncTest('Locale Pack V1 conformance fixture installs selects reloads and unloa
   await refreshedModules.setModuleEnabled('yaw_neutral_conformance', false, { bypassLifecycle: true });
   assertEqual(refreshedContent.preferences.language, 'en', 'Disabling the translated module should safely fall back to English');
   assertEqual(refreshedContent.localeDefinition('qps-ncon'), null, 'Disabling a translated module should unload its dependent locale definition');
+});
+
+asyncTest('French Preview is a real partial locale pack with explicit fallback diagnostics', async () => {
+  const CONTENT = loadContentSystemForTest();
+  const storyEvents = new Function('YAW_NARRATION_SYSTEM', `${storyEventsContent}\nreturn YAW_STORY_EVENTS;`)(undefined);
+  const subActions = new Function('window', `${subActionsContent}\nreturn YAW_SUB_ACTIONS;`)({});
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT, storyEvents, subActions });
+  MODULE_SYSTEM.GAME_VERSION = '0.14.0';
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+  const App = MODULE_SYSTEM._testApp;
+  App.sceneTemplates = [];
+  App.SUB_ACTIONS = { feed: {}, feast: {}, fight: {}, fuck: {} };
+  App.defaultSubActions = subActions.defaultActions();
+  const packageData = JSON.parse(fs.readFileSync(FRENCH_PREVIEW_LOCALE_PACKAGE, 'utf8'));
+  const normalized = MODULE_SYSTEM._normalizeModulePackage(packageData);
+  assertEqual(normalized.manifest.type, 'locale_pack', 'French Preview should declare the supported locale-pack type');
+  assert(normalized.manifest.permissions.includes('content:add_locale'), 'French Preview should request only the locale contribution capability it uses');
+  await MODULE_SYSTEM.installModule(packageData);
+  await MODULE_SYSTEM.setModuleEnabled('yaw_french_preview', true);
+  CONTENT.setLanguage('fr');
+  assertEqual(CONTENT.t('action.fight'), 'Combattre', 'French Preview should translate a high-frequency composer action');
+  assertEqual(CONTENT.t('ui.reviewMap'), 'Examiner la carte', 'French Preview should translate the review-map surface');
+  assertEqual(CONTENT.t('ui.tutorial.ready.title'), 'Ready', 'Untranslated French Preview keys should fall back explicitly to English');
+  const diagnostics = MODULE_SYSTEM.getModuleDiagnostics('yaw_french_preview');
+  assert(diagnostics.some(entry => entry.code === 'locale_missing_keys' && entry.count > 0), 'A deliberately partial real locale should report bounded missing-key diagnostics');
+
+  const storedPreferences = CONTENT.__testStorage.get('yaw-content-prefs');
+  const refreshedContent = loadContentSystemForTest({ 'yaw-content-prefs': storedPreferences });
+  const refreshedStoryEvents = new Function('YAW_NARRATION_SYSTEM', `${storyEventsContent}\nreturn YAW_STORY_EVENTS;`)(undefined);
+  const refreshedSubActions = new Function('window', `${subActionsContent}\nreturn YAW_SUB_ACTIONS;`)({});
+  const refreshedModules = loadModuleSystemForTest({
+    CONTENT: refreshedContent,
+    storyEvents: refreshedStoryEvents,
+    subActions: refreshedSubActions
+  });
+  refreshedModules.GAME_VERSION = '0.14.0';
+  refreshedModules.db = fakeDb.db;
+  const refreshedApp = refreshedModules._testApp;
+  refreshedApp.sceneTemplates = [];
+  refreshedApp.SUB_ACTIONS = { feed: {}, feast: {}, fight: {}, fuck: {} };
+  refreshedApp.defaultSubActions = refreshedSubActions.defaultActions();
+  await refreshedModules.loadEnabledModules();
+  assertEqual(refreshedContent.preferences.language, 'fr', 'Selected French Preview should restore after runtime module reload');
+  assertEqual(refreshedContent.t('ui.activityLog'), 'Journal d’activité', 'Reloaded French Preview should restore its owned translations');
+  await refreshedModules.setModuleEnabled('yaw_french_preview', false);
+  assertEqual(refreshedContent.preferences.language, 'en', 'Disabling French Preview should safely return to English');
+  assertEqual(refreshedContent.localeDefinition('fr'), null, 'Disabling French Preview should remove its locale definition cleanly');
 });
 
 asyncTest('Persisted enabled modules restore their runtime hooks after refresh', async () => {
@@ -30370,6 +30419,9 @@ test('Example Tileset Pack packages are valid URI-installable module and replace
   assertEqual(initial.bundle.targetModuleId, normalizedModule.manifest.id, 'Example bundle should target its installable presentation module');
   assertEqual(initial.bundle.resources[0].uri, 'http://127.0.0.1:3000/media/basic-tileset-overlays-v1.png', 'Example resource URI should resolve relative to the reviewed loopback manifest');
   assertEqual(initial.bundle.presentations[0].tiles['state-current'].layers[0].rect.x, 627, 'Initial fixture should retain its reviewed partial override geometry');
+  assertEqual(initial.bundle.presentations[0].tiles['shoreline-water-outer-ne'].fallback, 'shoreline-water-north', 'Real example pack should retain pack-local terrain-transition fallback');
+  assertEqual(initial.bundle.presentations[0].tiles['interior-room'].layers[0].atlasId, 'base', 'Real example pack should expose a building interior floor');
+  assertEqual(initial.bundle.presentations[0].tiles['interior-path-corner-ne'].layers[0].slot, 'route', 'Real example pack should expose topology-aware interior corridors');
   assertEqual(replacement.bundle.version, '1.1.0', 'Replacement fixture should publish a newer auditable bundle version');
   assertEqual(replacement.bundle.presentations[0].tiles['state-current'].layers[0].rect.x, 940, 'Replacement fixture should visibly change its current-position presentation');
 });
@@ -30458,6 +30510,38 @@ test('Sprite Pack V1 validates code-free strips states facings and fallbacks', (
     rejected = error.code === 'invalid_sprite_resource';
   }
   assertEqual(rejected, true, 'Sprite atlases should require the dedicated code-free media role');
+});
+
+test('Example Sprite Pack packages are reproducible URI-installable fixtures', () => {
+  const crypto = require('crypto');
+  const fixtureRoot = path.join(__dirname, '..', '..', 'optional-mods', 'example-sprite-pack');
+  const atlasPath = path.join(__dirname, '..', '..', 'media', 'example-sprite-atlas-v1.png');
+  const modulePackage = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'you-are-wild-example-sprites.yawmod.json'), 'utf8'));
+  const bundlePackage = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'bundle.json'), 'utf8'));
+  const media = loadMediaSystemForTest();
+  const MODULE_SYSTEM = loadModuleSystemForTest({
+    assetBundleV1: media.YAW_ASSET_BUNDLE_V1,
+    tilesetPackV1: media.YAW_TILESET_PACK_V1,
+    spritePackV1: media.YAW_SPRITE_PACK_V1
+  });
+  const normalizedModule = MODULE_SYSTEM._normalizeModulePackage(modulePackage);
+  const reviewed = MODULE_SYSTEM._normalizeAssetBundlePackage(
+    bundlePackage,
+    'http://127.0.0.1:3000/optional-mods/example-sprite-pack/bundle.json'
+  );
+  const pack = reviewed.bundle.presentations[0];
+  const resource = reviewed.bundle.resources[0];
+  const atlasBytes = fs.readFileSync(atlasPath);
+  const atlasHash = crypto.createHash('sha256').update(atlasBytes).digest('hex');
+
+  assert(normalizedModule.manifest.permissions.includes('media:read'), 'Example Sprite Pack target should declare media:read');
+  assertEqual(reviewed.bundle.targetModuleId, normalizedModule.manifest.id, 'Example sprite bundle should target its installable presentation module');
+  assertEqual(resource.uri, 'http://127.0.0.1:3000/media/example-sprite-atlas-v1.png', 'Example sprite atlas URI should resolve relative to the reviewed loopback manifest');
+  assertEqual(resource.hash, atlasHash, 'Tracked example sprite atlas should match its reviewed integrity hash');
+  assertEqual(resource.byteLength, atlasBytes.byteLength, 'Tracked example sprite atlas should match its reviewed byte length');
+  assertEqual(pack.sprites['species-human'].states['idle:any'].frameWidth, 64, 'Example Human idle strip should normalize into two exact frames');
+  assertEqual(pack.sprites['species-wolfkin'].states['ghost:any'].rect.y, 64, 'Example Wolfkin Ghost state should remain on its authored atlas row');
+  assertEqual(pack.sprites.default.fallback, 'species-human', 'Uncovered species should retain an explicit pack-local fallback');
 });
 
 asyncTest('Sprite runtime acquires local atlases resolves unit states and restores emoji on unload', async () => {

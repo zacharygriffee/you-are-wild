@@ -89,3 +89,11 @@ and
 [`neutral-conformance-locale-pack.yawmod.json`](examples/neutral-conformance-locale-pack.yawmod.json).
 They cover dependency order, version checks, dynamic selection, fallback,
 reload, and unload without becoming player-facing content.
+
+[`You Are Wild: French Preview`](../optional-mods/you-are-wild-french-preview.yawmod.json)
+is the maintained real partial-language package. It intentionally translates
+only high-frequency navigation, traversal, composer, and Activity Log text.
+Browser acceptance installs and selects it, verifies visible and accessible
+French menu text plus explicit English fallback diagnostics, restores it after
+reload, and returns safely to English on disable. See
+[Real Presentation Pack Acceptance](real-presentation-pack-acceptance.md).

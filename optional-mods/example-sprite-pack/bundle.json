@@ -1,0 +1,105 @@
+{
+  "packageType": "yaw-asset-bundle",
+  "packageVersion": 1,
+  "bundle": {
+    "id": "yaw.example-sprite-assets-v1",
+    "targetModuleId": "yaw_example_sprites_v1",
+    "name": "You Are Wild: Example Sprite Assets",
+    "version": "1.0.0",
+    "description": "A small code-free Sprite Pack V1 used to verify URI review, local retention, animation, state selection, fallback, and unload restoration.",
+    "author": "You Are Wild Project",
+    "license": "CC0-1.0",
+    "contentRating": "safe",
+    "minGameVersion": "0.14.0",
+    "minModuleVersion": "1.0.0",
+    "provenance": {
+      "kind": "first-party-example",
+      "source": "scripts/build-example-sprite-atlas.js"
+    },
+    "presentations": [
+      {
+        "type": "yaw-sprite-pack",
+        "version": 1,
+        "id": "yaw.example-sprites-v1",
+        "name": "Example Human and Wolfkin Sprites",
+        "nativeFrameSize": { "width": 64, "height": 64 },
+        "scaling": "pixelated",
+        "atlases": [
+          { "id": "main", "resourceId": "atlas.sprites", "density": 1 }
+        ],
+        "sprites": {
+          "species-human": {
+            "label": "Human",
+            "states": {
+              "idle:any": {
+                "atlasId": "main",
+                "rect": { "x": 0, "y": 0, "width": 128, "height": 64 },
+                "frameCount": 2,
+                "durationMs": 700,
+                "loop": true,
+                "fit": "contain",
+                "anchor": { "x": 0.5, "y": 0.5 }
+              },
+              "wounded:any": {
+                "atlasId": "main",
+                "rect": { "x": 128, "y": 0, "width": 64, "height": 64 },
+                "fit": "contain",
+                "anchor": { "x": 0.5, "y": 0.5 }
+              },
+              "ghost:any": {
+                "atlasId": "main",
+                "rect": { "x": 192, "y": 0, "width": 64, "height": 64 },
+                "fit": "contain",
+                "anchor": { "x": 0.5, "y": 0.5 }
+              }
+            }
+          },
+          "species-wolfkin": {
+            "label": "Wolfkin",
+            "states": {
+              "idle:any": {
+                "atlasId": "main",
+                "rect": { "x": 0, "y": 64, "width": 128, "height": 64 },
+                "frameCount": 2,
+                "durationMs": 760,
+                "loop": true,
+                "fit": "contain",
+                "anchor": { "x": 0.5, "y": 0.5 }
+              },
+              "wounded:any": {
+                "atlasId": "main",
+                "rect": { "x": 128, "y": 64, "width": 64, "height": 64 },
+                "fit": "contain",
+                "anchor": { "x": 0.5, "y": 0.5 }
+              },
+              "ghost:any": {
+                "atlasId": "main",
+                "rect": { "x": 192, "y": 64, "width": 64, "height": 64 },
+                "fit": "contain",
+                "anchor": { "x": 0.5, "y": 0.5 }
+              }
+            }
+          },
+          "default": { "fallback": "species-human" }
+        }
+      }
+    ],
+    "resources": [
+      {
+        "id": "atlas.sprites",
+        "uri": "../../media/example-sprite-atlas-v1.png",
+        "hash": "f82e20a04316c2fa1894d9d43f91c7ab95254da71f19bd1f563e7e82918608e7",
+        "mimeType": "image/png",
+        "byteLength": 1263,
+        "width": 256,
+        "height": 128,
+        "role": "sprite-atlas",
+        "license": "CC0-1.0",
+        "provenance": {
+          "kind": "deterministic-example-art",
+          "source": "scripts/build-example-sprite-atlas.js"
+        }
+      }
+    ]
+  }
+}

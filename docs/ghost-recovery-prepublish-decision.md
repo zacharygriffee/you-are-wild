@@ -1,48 +1,46 @@
 # Ghost Recovery — Pre-Publish Decision
 
-Status: **product conversation required before the next Sites publication**
+Status: **accepted baseline for the next publication**
 
 Recovery Mode V1 already contains a bounded `core:ghost` journey. A defeated
 player rises at the defeat site, pays the configured inventory consequence
 once, travels cardinally without ordinary encounters or hunger, cannot use
 living-world combat, inventory, interaction, recruitment, or structure
-commands, and resurrects at the validated safe anchor.
+commands, and resurrects at the validated home/safe anchor.
 
-That implementation is deliberately conservative. It proves persistence,
-unload fallback, reachable recovery, and non-repeating consequences, but it
-does not settle the player-facing fantasy or economy.
+The conservative implementation is the accepted built-in product. Richer
+spectral abilities, authored shrine networks, faction costs, and alternate
+resurrection economies remain separate recovery profiles rather than implicit
+expansion of core Ghost.
 
-## Decisions To Make
+## Accepted Decisions
 
 1. **Where resurrection happens**
-   - keep the current home/safe-anchor destination;
-   - use authored world shrines;
-   - or allow either, with the nearest reachable valid destination chosen
-     deterministically.
+   - The current validated home/safe anchor is the destination.
+   - It does not need to be an authored shrine. The stable Recovery Mode V1
+     schema token remains `shrine` for save and module compatibility, but
+     player-facing copy says safe place.
 2. **How Ghost mode is entered**
-   - selected in Game Mode before defeat;
-   - chosen from the ordinary defeat prompt;
-   - or offered only when a qualifying shrine, perk, or item exists.
+   - The player selects Ghost pilgrimage in Settings before defeat.
+   - A defeat prompt does not silently add or switch recovery modes.
 3. **What happens to companions**
-   - preserve the existing terminal battle settlement and leave surviving
-     companions at the defeat tile;
-   - allow a limited spectral view of their outcome;
-   - never teleport or revive them merely because the player resurrects.
+   - Preserve terminal battle settlement.
+   - Living companions remain at the defeat tile; defeated companions retain
+     their actual outcome. Resurrection never teleports or revives them.
 4. **Inventory consequence**
-   - retain inventory;
-   - create the existing death bag;
-   - or defer to the regular-mode inventory setting.
+   - Defer to the ordinary `inventoryRecovery` setting.
+   - The consequence is applied once when the journey begins and never again
+     at resurrection or after save/load.
 5. **Ghost agency**
-   - traversal only;
-   - optional read-only inspection and Scene history;
-   - or a small, explicitly authored spectral ability set.
-   Ordinary combat, containment, trade, quests, recruitment, and structure
-   use remain blocked through their direct command boundaries unless
-   deliberately redesigned.
+   - Core Ghost is traversal-only gameplay. Existing read-only map, Scene, and
+     Activity history remain visible.
+   - Combat, containment, inventory use, trade, quests, recruitment, and
+     structure commands remain blocked through direct command boundaries.
+   - Spectral abilities require a separate authored recovery profile.
 6. **Resurrection cost**
-   - free but inconvenient travel;
-   - time, condition, item, currency, or faction cost;
-   - or a cost supplied by a bounded recovery profile.
+   - No additional item, currency, or faction cost.
+   - The cost is the defeat consequence, the return journey, separated
+     companions, and resurrection at 1% condition.
 7. **Encounter communication — implemented baseline**
    - Ghost travel suppresses ordinary encounters and now records an explicit
      Scene/Activity explanation when a living Hostile is present. It no longer
@@ -54,13 +52,12 @@ does not settle the player-facing fantasy or economy.
      recovery;
    - save/load must resume the journey without charging consequences twice.
 
-## Recommended Conversation Baseline
+## Preservation Invariants
 
-Keep the current mechanics as the safe technical baseline while deciding the
-fantasy: Ghost is opt-in, consequences occur once, companions are resolved by
-the battle rather than teleported, and resurrection can never depend on an
-unreachable destination. The open questions are destination identity, access
-to the mode, player agency during the journey, and resurrection cost.
-
-No answer in this document authorizes a version bump, commit, push, or Sites
-publication.
+- Ghost remains opt-in and cannot replace Hardcore semantics.
+- Consequences occur once.
+- Companions are resolved by the battle rather than teleported.
+- The destination must remain reachable under ethereal traversal.
+- Unavailable module-owned recovery continues to fall back to Regenerate.
+- Save/load resumes the journey without repeating consequences.
+- These decisions do not authorize a Sites publication.

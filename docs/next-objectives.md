@@ -43,7 +43,7 @@ This is the short handoff for unfinished work. Completed implementation history 
   built-in Ghost pilgrimage begins at the defeat site, applies consequences
   once, permits encounter-free ethereal travel, blocks ordinary living
   actions, explicitly explains suppressed hostile encounters, and resurrects
-  only at the validated safe shrine. Legacy saves and unavailable module-owned
+  only at the validated home/safe place. Legacy saves and unavailable module-owned
   journeys fall back safely to ordinary recovery. Direct Eat/Talk, quest,
   trade, inventory, recruitment, and structure routes all enforce the same
   profile restrictions rather than relying on hidden recovery controls.
@@ -94,10 +94,7 @@ This is the short handoff for unfinished work. Completed implementation history 
 
 ### Immediate Next — Current Sites release
 
-1. Finalize the remaining Ghost product choices before publishing: shrine
-   identity, journey entry method, resurrection cost, inventory policy, and
-   whether travel-only remains the permanent built-in profile.
-2. Implement the player-favoring Standard Adventure survival-pressure and
+1. Implement the player-favoring Standard Adventure survival-pressure and
    Generator V4 safe-start contracts. Visible hunger penalties and the
    deterministic Wisdom/visibility/terrain ambush contest are implemented;
    Scout improves detection and Guard still mitigates an undetected opening.
@@ -105,14 +102,14 @@ This is the short handoff for unfinished work. Completed implementation history 
    protected opening region. Remaining pre-publish work is safer and more
    predictable road pressure, visible adjacent-tile danger, and an explicit
    later adventure-pressure setting for players who prefer lethal uncertainty.
-3. Run longer Death/Defeat V3 playtests across companion battle settlement,
+2. Run longer Death/Defeat V3 playtests across companion battle settlement,
    save/resume while dead, repeated recovery bags, Hardcore, and interior
    deaths.
-4. Continue Drop Off/Rejoin testing across overworld and interiors.
-5. Continue mobile/desktop accessibility and localization cleanup.
-6. Expand the interaction balance matrix across Feed costs, multi-target
+3. Continue Drop Off/Rejoin testing across overworld and interiors.
+4. Continue mobile/desktop accessibility and localization cleanup.
+5. Expand the interaction balance matrix across Feed costs, multi-target
    penalties, hunger/digestion, and Combat Technique equipment/row cases.
-7. Exercise real maintained localization, sprite, tileset, interior, and
+6. Exercise real maintained localization, sprite, tileset, interior, and
    terrain-transition packs before extending their contracts.
 
 ### Responsive UI, Accessibility, and Localization
@@ -217,15 +214,19 @@ Flow V2 shell without reintroducing separate phone navigation models.
 13. Extend asset/content-pack presentation seams. Optional packs may eventually provide richer tilesets, sprites, portraits, audio, animated 2D media, and capability-gated 3D scenes, but their presentation formats must remain independent from storage providers and the bundle envelope.
 14. Consider archive transport only after real bundle use shows that individually hashed URI resources are insufficient. Archives still need unpacked-size budgets and safe relative paths; publisher signatures and community update discovery remain separate work.
 15. Recovery Mode V1 and the opt-in Ghost pilgrimage are implemented. Continue
-    only for a demonstrated recovery contradiction or a separately authorized
-    new profile capability; do not reopen core defeat callbacks.
+    the accepted built-in baseline: Settings opt-in, defeat-site entry,
+    ordinary companion settlement, inventory-setting consequences,
+    traversal-only agency, and free resurrection at the validated home/safe
+    place with 1% condition. Continue only for a demonstrated contradiction or
+    a separately authorized new profile capability; do not reopen core defeat
+    callbacks.
 16. Consider later recovery variants through the same resolver rather than separate death code: surviving companions can extract the player, a healer/faction can resurrect them for a coin debt or quest obligation, and a prior body/death bag can become a map landmark. These are downstream content hooks, not V2 baseline requirements.
 17. Continue the accepted [Mobile Interaction Flow V2](mobile-interaction-flow-v2-decision.md) and [UI Contribution V1](ui-contribution-v1.md): one state-aware Roster sheet with Party/Here/Items or Allies/Enemies tabs, a persistent core-owned place composer, and only five bounded declarative module slots. Do not expand into dock, traversal, Scene Feed, or combat-confirmation ownership without a new product decision.
-18. Before the next Sites publication, resolve the
+18. Preserve the accepted
     [Ghost recovery product decision](ghost-recovery-prepublish-decision.md).
-    The current bounded implementation remains testable, but publication must
-    not silently decide shrine identity, companion outcomes, resurrection
-    economy, or how an active Ghost journey explains suppressed encounters.
+    Authored shrine networks, resurrection economies, or spectral abilities
+    belong in separate bounded recovery profiles rather than implicit core
+    expansion.
 19. Playtest Locale Pack V1 with a real maintained third language before bundling another locale. Keep English as the offline core fallback, require stable target namespaces and dependency-version floors for cross-module translations, and use diagnostics rather than silently accepting stale key coverage.
 
 ### Release / Distribution

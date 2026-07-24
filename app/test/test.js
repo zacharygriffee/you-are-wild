@@ -12240,7 +12240,7 @@ test('Defeat regeneration restores the safe anchor without clearing defeated til
   assert(hooks.some(hook => hook.event === 'onRegenerate'), 'Regenerate should emit an onRegenerate module hook');
 });
 
-test('Ghost recovery journeys from the defeat site and resurrects only at the safe shrine', () => {
+test('Ghost recovery journeys from the defeat site and resurrects only at the safe place', () => {
   const { App, elements } = loadAppForCombat(() => 0.5);
   const player = makeUnit('You', { id: 'player-ghost-recovery', CPun: 0, MPun: 100, knockedOut: true });
   const enemy = makeUnit('Wolfkin', { id: 'ghost-recovery-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 20, MPun: 20 });
@@ -12271,6 +12271,11 @@ test('Ghost recovery journeys from the defeat site and resurrects only at the sa
   };
   App.autoSave = () => true;
 
+  const ghostProfile = new Function('window', `${recoveryModesContent}\nreturn YAW_RECOVERY_MODES;`)({}).profile('core:ghost');
+  assertEqual(ghostProfile.entry, 'defeat-site', 'Built-in Ghost should begin at the defeat site');
+  assertEqual(ghostProfile.inventory, 'settings', 'Built-in Ghost should use the ordinary inventory recovery setting');
+  assertEqual(ghostProfile.vitalityPercent, 1, 'Built-in Ghost should resurrect at one percent condition');
+  assertEqual(ghostProfile.restrictions.join(','), 'combat,inventory,hunger,interactions,recruitment,structures', 'Built-in Ghost should remain traversal-only');
   assertEqual(App.beginDefeatRecovery(), true, 'Selected ghost recovery should begin a journey');
   assertEqual(App._isRecoveryJourney(), true, 'Ghost recovery should enter the durable journey phase');
   assertEqual(App.location.x, 1, 'Ghost recovery should begin at the defeat site');
@@ -12346,17 +12351,61 @@ test('Ghost recovery journeys from the defeat site and resurrects only at the sa
   assertEqual(App.inInterior, false, 'Blocked Ghost structure actions should leave the player outside');
   assertContains(App.log.map(entry => entry.text).join('\n'), 'A ghost cannot use ordinary physical or social interactions before resurrection.', 'Blocked Ghost capabilities should explain the restriction');
 
-  assertEqual(App.resurrectFromRecovery(), false, 'Resurrection should fail away from the safe shrine');
+  assertEqual(App.resurrectFromRecovery(), false, 'Resurrection should fail away from the safe place');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'Return to The Beginning', 'Journey controls should explain the required destination');
 
   assertEqual(App.move(-1, 0), true, 'Ethereal recovery should cross an otherwise blocked route');
-  assertEqual(App.location.x, 0, 'Ghost movement should reach the safe shrine');
-  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="resurrect"', 'The safe shrine should expose resurrection');
-  assertEqual(App.resurrectFromRecovery(), true, 'The safe shrine should complete recovery');
+  assertEqual(App.location.x, 0, 'Ghost movement should reach the safe place');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="resurrect"', 'The safe place should expose resurrection');
+  assertEqual(App.resurrectFromRecovery(), true, 'The safe place should complete recovery');
   assertEqual(App.defeatState, null, 'Resurrection should clear the durable defeat state');
   assertEqual(Boolean(App.player.recoveryGhost), false, 'Resurrection should clear ghost state');
   assertEqual(App.player.CPun, 1, 'Resurrection should restore the authored minimum vitality');
   assertEqual(App.inventory.length, 1, 'Completing the journey should not apply inventory consequences twice');
+});
+
+test('Ghost recovery applies the selected death-bag policy once without a second resurrection charge', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-ghost-bag', CPun: 0, MPun: 100, knockedOut: true, gold: 9 });
+  App.player = player;
+  App.party = [player];
+  App.inventory = [{ id: 'ghost-rations', name: 'Rations' }];
+  App.settings.recoveryMode = 'core:ghost';
+  App.settings.inventoryRecovery = 'death-bag';
+  App.location = { x: 1, y: 0 };
+  App.safeAnchor = { x: 0, y: 0, label: 'Home' };
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [], deathBags: [] }],
+    ['1,0', { ...App.getBaseTile(1, 0), explored: true, biome: 'grove', creatures: [], deathBags: [] }]
+  ]);
+  App.defeatState = {
+    schemaVersion: 3,
+    resolutionId: 'ghost-bag-policy',
+    status: 'dead',
+    pending: true,
+    terminal: true,
+    recoveryModeKey: 'core:ghost',
+    recoveryPhase: 'prompt',
+    defeatedAt: { x: 1, y: 0, interior: false },
+    safeAnchor: App.safeAnchor,
+    companionsSettled: true,
+    encounterSettled: true,
+    consequencesApplied: false
+  };
+  App.autoSave = () => true;
+
+  assertEqual(App.beginDefeatRecovery(), true, 'Ghost journey should begin under the selected death-bag policy');
+  assertEqual(App.inventory.length, 0, 'Ghost journey should apply the selected inventory policy when it begins');
+  assertEqual(App.player.gold, 0, 'Ghost journey should move ordinary gold into the recovery bag');
+  const bag = App.getTile(1, 0).deathBags[0];
+  assertEqual(bag.items[0].id, 'ghost-rations', 'Ghost death bag should retain the dropped item');
+  assertEqual(bag.gold, 9, 'Ghost death bag should retain dropped gold');
+  assertEqual(App.move(-1, 0), true, 'Ghost should be able to return to the safe place');
+  assertEqual(App.resurrectFromRecovery(), true, 'Safe-place resurrection should complete without a second resource payment');
+  const persistedBag = App.getTile(1, 0).deathBags[0];
+  assertEqual(persistedBag.items.length, 1, 'Resurrection should not apply or duplicate inventory consequences');
+  assertEqual(persistedBag.gold, 9, 'Resurrection should not apply an additional currency cost');
+  assertEqual(App.player.CPun, 1, 'Free resurrection should still return the player at the accepted one-percent condition');
 });
 
 test('Regular defeat strands companions and creates one recoverable death bag', () => {

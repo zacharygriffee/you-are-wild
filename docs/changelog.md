@@ -13,6 +13,13 @@ This is a compact history of completed foundations. Git remains the authoritativ
   over-budget hostile to a neutral meeting instead of applying hidden damage
   reduction. Live movement now consumes this generated encounter policy, and
   the opening scene names the actual localized starting biome.
+- The built-in Ghost pilgrimage now has an explicit product baseline:
+  Settings opt-in, defeat-site entry, ordinary companion battle settlement,
+  the selected inventory consequence, traversal-only agency with read-only
+  history, and no added item or currency cost. Resurrection occurs at the
+  validated home/safe place with 1% condition. Player-facing copy no longer
+  implies that every valid home anchor is literally a shrine; the stable
+  Recovery Mode V1 `shrine` token remains for save and module compatibility.
 - Hunger now has explicit tactical consequences for every living combatant.
   Hungry units take a 10% action/initiative penalty and a five-point Flee
   penalty; starving units take a 25% action, 20% initiative, and fifteen-point
@@ -48,7 +55,7 @@ This is a compact history of completed foundations. Git remains the authoritativ
   Regenerate and an opt-in Ghost pilgrimage: consequences settle once at the
   defeat site, ethereal travel suppresses hunger and encounters, ordinary
   actions remain restricted, and resurrection becomes available only at the
-  validated safe shrine. Selection, active journeys, legacy migration, and
+  validated home/safe place. Selection, active journeys, legacy migration, and
   owner-unload fallback persist through the authoritative defeat/save flow.
 - Sprite Pack V1 now provides a code-free Asset Bundle presentation for
   species, ability, disposition, and fallback unit art. Bounded static or

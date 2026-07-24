@@ -232,7 +232,7 @@ YAW_RECOVERY_MODES.register('core', 'regenerate', {
 YAW_RECOVERY_MODES.register('core', 'ghost', {
     label: 'Ghost pilgrimage',
     labelKey: 'recovery.mode.ghost',
-    description: 'Rise at the defeat site as a harmless ghost and return to your safe shrine to resurrect.',
+    description: 'Rise at the defeat site as a harmless ghost and return to your safe place to resurrect.',
     descriptionKey: 'recovery.mode.ghost.description',
     icon: '👻',
     entry: 'defeat-site',

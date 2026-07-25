@@ -19,7 +19,7 @@ removal.
   not rely on that behavior for save-stable geography.
 - Asset Bundles, Tileset Packs, and Sprite Packs alter presentation only. They
   never place gameplay content.
-- Core alone owns Generator V5 terrain classification, start safety, roads,
+- Core alone owns Generator V6 terrain classification, start safety, roads,
   bridges, barriers, POIs, cave portals, interior topology, and tile-delta
   persistence.
 

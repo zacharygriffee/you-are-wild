@@ -1,8 +1,8 @@
 # Route Hierarchy V2
 
-Route Hierarchy V2 is the Generator V5 road-graph contract. It replaces the
-independent macro-edge coin flips used by older generators without rewriting
-recorded worlds.
+Route Hierarchy V2 is the connected road-graph contract introduced by
+Generator V5. Generator V6 keeps that macro graph and replaces only its visual
+tile raster for new worlds, without rewriting recorded Generator V5 worlds.
 
 ## Graph contract
 
@@ -21,17 +21,30 @@ recorded worlds.
   tiles connect only when they share a segment, so crossing or nearby roads do
   not invent an unauthored junction.
 
+## Generator V6 raster
+
+- Each route segment follows a deterministic one-tile-wide orthogonal path
+  with one bend instead of selecting every tile near a diagonal line.
+- A region exposes at most two road-served POI anchors. Other landmarks and
+  structures remain discoverable without requiring a road spur.
+- A single segment cannot form a T-junction. Three- and four-way tiles are
+  reserved for locations where independently identified segments actually
+  meet.
+- The maintained garble fixture drops from 93 to at most 40 road tiles in a
+  17×17 window and from 36 false single-segment junctions to zero.
+
 ## Preservation boundaries
 
-Generator V5 inherits the Generator V4 protected-start and encounter-admission
-contract. Roads remain overlays over their base biome, keep their encounter
-and traversal modifiers, and become bridges only when the full bounded water
-span is valid. The starter east-west route remains explicit.
+Generators V5 and V6 inherit the Generator V4 protected-start and
+encounter-admission contract. Roads remain overlays over their base biome,
+keep their encounter and traversal modifiers, and become bridges only when the
+full bounded water span is valid. The starter east-west route remains
+explicit.
 
-Generator V4 and earlier use their original edge selection and road identity
-rules. Saves continue to reconstruct base terrain from the generator version
-recorded in `worldMeta`; there is no in-place migration of an existing road
-network.
+Generator V5 and earlier use their original raster, edge selection, and road
+identity rules. Saves continue to reconstruct base terrain from the generator
+version recorded in `worldMeta`; there is no in-place migration of an existing
+road network.
 
 ## Acceptance
 
@@ -43,6 +56,8 @@ The deterministic acceptance fixture proves:
 - every route-capable POI in a representative multi-anchor region lies on a
   local route branch;
 - a recorded Generator V4 sample retains its prior segment identity and
-  directional connections; and
-- start safety/recovery-anchor acceptance passes Generator V5 alongside the
+  directional connections;
+- a recorded Generator V5 density/topology sample remains unchanged while
+  Generator V6 removes false single-segment junctions; and
+- start safety/recovery-anchor acceptance passes Generator V6 alongside the
   maintained older versions.

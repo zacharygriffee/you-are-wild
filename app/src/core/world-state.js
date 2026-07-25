@@ -60,7 +60,7 @@ const YAW_WORLD_STATE = {
     },
 
     defaultWorldMeta() {
-        return { worldId: 'world_v5', seed: 'default', generatorVersion: 5, mapModsHash: 'core' };
+        return { worldId: 'world_v6', seed: 'default', generatorVersion: 6, mapModsHash: 'core' };
     },
 
     normalizeWorldMeta(app, meta, fallback = null) {

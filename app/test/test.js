@@ -19511,8 +19511,43 @@ test('Generator v5 route hierarchy removes short macro cycles while preserving b
   assertEqual(legacy.connections.join(','), 'east,south,west', 'Recorded Generator v4 worlds should retain their prior road topology');
 
   const { App } = loadAppForCombat();
-  assertEqual(App._defaultWorldMeta().generatorVersion, 5, 'New runs should use the versioned route hierarchy');
-  assertContains(createFlowContent, 'generatorVersion: 5', 'Character creation should record Generator v5 for new runs');
+  assertEqual(App._defaultWorldMeta().generatorVersion, 6, 'New runs should use the clean-raster route hierarchy');
+  assertContains(createFlowContent, 'generatorVersion: 6', 'Character creation should record Generator v6 for new runs');
+});
+
+test('Generator v6 rasterizes one-tile orthogonal routes without rewriting Generator v5', () => {
+  const WorldGen = loadWorldGenForTest();
+  const seed = 'Zx:human:default';
+  const cellX = -1;
+  const cellY = 1;
+  const sample = version => {
+    let roads = 0;
+    let junctions = 0;
+    let falseJunctions = 0;
+    for (let y = cellY * 36 + 10; y <= cellY * 36 + 26; y++) {
+      for (let x = cellX * 36 + 10; x <= cellX * 36 + 26; x++) {
+        const road = WorldGen.getRoadOverlay(seed, version, x, y);
+        if (!road) continue;
+        roads++;
+        const connections = road.connections || [];
+        if (connections.length >= 3) junctions++;
+        if ((road.segmentIds || []).length === 1 && connections.length > 2) falseJunctions++;
+      }
+    }
+    return { roads, junctions, falseJunctions };
+  };
+
+  const legacy = sample(5);
+  const clean = sample(6);
+  assertEqual(legacy.roads, 93, 'Recorded Generator v5 road density should remain unchanged');
+  assertEqual(legacy.junctions, 40, 'Recorded Generator v5 distance-raster topology should remain unchanged');
+  assertEqual(legacy.falseJunctions, 36, 'Generator v5 compatibility should retain its prior single-segment raster shape');
+  assert(clean.roads <= 40, 'Generator v6 should sharply reduce dense local road coverage');
+  assertEqual(clean.falseJunctions, 0, 'A single Generator v6 segment should never rasterize as a false T-junction');
+  assert(clean.junctions <= 4, 'Generator v6 should reserve junction tiles for genuinely shared segments');
+  assert(clean.roads * 2 < legacy.roads, 'Generator v6 should use less than half the road tiles in the demonstrated garbled window');
+  assert(WorldGen.getRouteAnchorsForRegion(seed, 5, cellX, cellY).length > 3, 'Generator v5 should preserve all legacy route-capable POIs');
+  assert(WorldGen.getRouteAnchorsForRegion(seed, 6, cellX, cellY).length <= 2, 'Generator v6 should bound road-served POIs per region');
 });
 
 test('Terrain traversal metadata defines conservative passability and route costs', () => {
@@ -19713,7 +19748,7 @@ test('Versioned start area validation guarantees early route and rest access', (
   const WorldGen = loadWorldGenForTest();
   const { App, elements } = loadAppForCombat();
   const seeds = ['default', 'layout-a', 'layout-b', 'route-seed', 'coastal-seed', 'wet-start', 'mountain-start'];
-  for (const generatorVersion of [2, 3, 4, 5]) {
+  for (const generatorVersion of [2, 3, 4, 5, 6]) {
     for (const seed of seeds) {
     App.worldMeta = { worldId: `world-start-safe-v${generatorVersion}-${seed}`, seed, generatorVersion, mapModsHash: 'core' };
     App.worldMap = new Map();

@@ -4,6 +4,12 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Generator V6 keeps the connected Route Hierarchy V2 macro graph but replaces
+  diagonal distance-to-line rasterization with deterministic one-tile
+  orthogonal routes. It limits each region to two road-served POIs, removes
+  false single-segment T-junctions, and more than halves road coverage in the
+  demonstrated garbled 17×17 window. Existing Generator V5 saves retain their
+  recorded roads.
 - Simple Narrator 0.7 adds selectable player POV, first-person,
   third-person-limited, and cinematic observer perspectives. Player POV
   remains the default; each mode has an isolated cache variant and changes

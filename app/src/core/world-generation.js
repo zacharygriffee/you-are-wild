@@ -616,7 +616,17 @@ const WorldGen = (() => {
     }
 
     function getRouteAnchorsForRegion(seed, version, cellX, cellY) {
-        const anchors = getPoiCandidatesForRegion(seed, version, cellX, cellY).filter(candidate => candidate.routeAnchor);
+        let anchors = getPoiCandidatesForRegion(seed, version, cellX, cellY).filter(candidate => candidate.routeAnchor);
+        if ((version || 1) >= 6) {
+            const priority = { settlement: 0, restSite: 1, structure: 2, landmark: 3 };
+            anchors = anchors
+                .slice()
+                .sort((left, right) =>
+                    (priority[left.category] ?? 9) - (priority[right.category] ?? 9)
+                    || left.id.localeCompare(right.id)
+                )
+                .slice(0, 2);
+        }
         if (anchors.length) return anchors;
         const center = cellCenter(seed, version, 'macro-region', cellX, cellY, 36);
         return [{
@@ -817,6 +827,30 @@ const WorldGen = (() => {
         return segments;
     }
 
+    function coordinateBetween(value, start, end) {
+        return value >= Math.min(start, end) && value <= Math.max(start, end);
+    }
+
+    function orthogonalRouteMatch(seed, version, x, y, segment) {
+        const fromX = Math.round(segment.from.x);
+        const fromY = Math.round(segment.from.y);
+        const toX = Math.round(segment.to.x);
+        const toY = Math.round(segment.to.y);
+        const horizontalFirst = hash01(seed, version, 'road-raster-axis', segment.id) < 0.5;
+        const bendX = horizontalFirst ? toX : fromX;
+        const bendY = horizontalFirst ? fromY : toY;
+        const horizontal = y === bendY && coordinateBetween(x, fromX, toX);
+        const vertical = x === bendX && coordinateBetween(y, fromY, toY);
+        if (!horizontal && !vertical) return null;
+        let direction;
+        if (horizontal && vertical) {
+            direction = Math.abs(toX - fromX) >= Math.abs(toY - fromY) ? 'east-west' : 'north-south';
+        } else {
+            direction = horizontal ? 'east-west' : 'north-south';
+        }
+        return { direction, distance: 0 };
+    }
+
     function getRoadOverlayRaw(seed, version, x, y, fields = null) {
         if ((version || 1) >= 2 && y === 0 && Math.abs(x) <= 6) {
             if ((version || 1) < 5) {
@@ -834,11 +868,13 @@ const WorldGen = (() => {
         if ((version || 1) < 5 && terrainFields.roughness > 0.86) return null;
         const matches = [];
         for (const segment of routeSegmentsForTile(seed, version, x, y)) {
-            const dist = distanceToSegment(x, y, segment.from.x, segment.from.y, segment.to.x, segment.to.y);
-            if (dist.distance > 0.72) continue;
+            const dist = (version || 1) >= 6
+                ? orthogonalRouteMatch(seed, version, x, y, segment)
+                : distanceToSegment(x, y, segment.from.x, segment.from.y, segment.to.x, segment.to.y);
+            if (!dist || dist.distance > 0.72) continue;
             matches.push({
                 id: segment.id,
-                direction: Math.abs(dist.dx) >= Math.abs(dist.dy) ? 'east-west' : 'north-south',
+                direction: dist.direction || (Math.abs(dist.dx) >= Math.abs(dist.dy) ? 'east-west' : 'north-south'),
                 distance: dist.distance,
                 routeTier: segment.tier || 'legacy',
                 cycleLength: segment.cycleLength || 0

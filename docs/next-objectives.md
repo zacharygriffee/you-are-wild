@@ -72,8 +72,13 @@ This is the short handoff for unfinished work. Completed implementation history 
 - Passive stomach digestion now uses bounded hunger bands (`0.8x` sated, `1x` ordinary, `1.2x` hungry, `1.4x` starving), re-evaluates its pace after each nutrition-bearing tick, and exposes the effective rate in Containers. Fast and slow modes retain distinct pacing and identical size-scaled total nutrition.
 - Quest givers and merchants now retain a versioned authored service origin. Containment suspends their service without deleting accepted quest state or stock; release away from that origin keeps Quest/Trade absent from lookup, transaction controls, status chips, map markers, deterministic observations, and narration availability metadata. Repeated swallow/release and save/load preserve the suspension, while returning the same NPC to its authored structure restores the unchanged service state.
 - `Break Down` is the safe-content presentation of Mature `Chew`, not a separate nonterminal move. Its preview now discloses the all-remaining-Vitality consequence, and terminal outcomes consistently become recoverable remains and leave the living combat queue rather than persisting as zero-condition hostiles. Desktop and mobile target surfaces now identify a remains-only result consistently, including the localized mobile rail/dock label, count, and non-danger state while combat teardown is still pending.
-- Map acceptance now executes start safety and recovery-anchor invariants against generator versions 2, 3, 4, and 5, walks between paired cave mouths through the generated reciprocal room graph, and verifies bounded connected cabin, ruins, burrow, manor, and dungeon interiors with exactly one surface exit.
-- Generator V5 is now the new-run default. It retains Generator V4's inner
+- Map acceptance now executes start safety and recovery-anchor invariants against generator versions 2, 3, 4, 5, and 6, walks between paired cave mouths through the generated reciprocal room graph, and verifies bounded connected cabin, ruins, burrow, manor, and dungeon interiors with exactly one surface exit.
+- Generator V6 is now the new-run default. It retains Generator V5's connected
+  acyclic primary road hierarchy while rasterizing each segment as a
+  one-tile-wide orthogonal path and serving at most two POI anchors per region.
+  The demonstrated 17×17 garble window falls below half its prior road density
+  and has no false single-segment T-junctions. Recorded Generator V5 worlds
+  retain their original map. Generator V6 also retains Generator V4's inner
   3×3 passable Grove
   with no encounter roll, danger-site influence, cave portal, or hostile
   structure. Radius 2–5 releases encounter chance by an explicit distance
@@ -211,11 +216,12 @@ Flow V2 shell without reintroducing separate phone navigation models.
    multi-seed/all-core-species acceptance. Continue strengthening traversal
    metadata, roads/bridges/coasts, POI budgets, and routes around that
    contract.
-4. Route Hierarchy V2 is implemented for Generator V5. Continue representative
-   playtesting of its primary anchor tree, route-capable POI branches, rare
-   eight-or-more-edge alternate loops, bridges/coasts, reciprocal raster
-   junctions, and road topology tiles. Keep Generator V4 and earlier immutable;
-   only revise V5 after a concrete connectivity or visual contradiction.
+4. Route Hierarchy V2's graph is retained in Generator V6 with a clean
+   orthogonal raster and at most two road-served POIs per region. Continue
+   representative playtesting of its primary anchor tree, rare
+   eight-or-more-edge alternate loops, bridges/coasts, genuine shared-segment
+   junctions, and road topology tiles. Keep Generator V5 and earlier immutable;
+   use another generator version for any later topology revision.
 5. Keep advanced quests, companion loadouts, richer party roles, Feast extensions, generated narrative, advanced interiors, and major asset packs deferred until placement is decided.
 6. Narration engine seams, exclusive first-party orchestrators, lifecycle reset, the dedicated AI Providers panel, Puter, and session-only browser-direct OpenAI-Compatible text connections now exist. Gather playtest feedback on that lifecycle before adding OAuth, relays, MCP, image/video/audio providers, or localhost sidecars.
 7. Simple Narrator 0.7 now exposes player POV, first-person,

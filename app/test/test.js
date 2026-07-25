@@ -10,6 +10,7 @@ const path = require('path');
 const SRC_DIR = path.join(__dirname, '..', 'src');
 const TEMPLATE = path.join(__dirname, '..', 'template.html');
 const RELEASE_FILE = path.join(__dirname, '..', 'release.json');
+const RELEASE_014_SAVE_FIXTURE = path.join(__dirname, 'fixtures', 'release-0.14.0-save.json');
 const releaseInfo = JSON.parse(fs.readFileSync(RELEASE_FILE, 'utf8'));
 const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mode-contract.md');
 const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.md');
@@ -657,10 +658,13 @@ test('App object is defined', () => {
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.14.0', 'Release manifest should identify the current public version');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('Species Profile V1')), 'Release notes should describe the bounded species profile contract');
-  assert(releaseInfo.notes.en.changed.some(note => note.includes('character creation')), 'Release notes should describe live character-creation refresh');
-  assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('mobile party')), 'Release notes should disclose the deferred mobile interaction-flow redesign');
+  assertEqual(releaseInfo.version, '0.15.0', 'Release manifest should identify the current development version');
+  assertEqual(releaseInfo.status, 'draft', 'Development head should be unmistakably marked as a draft');
+  assertEqual(releaseInfo.channel, 'development', 'Development head must not impersonate the published public-preview channel');
+  assertEqual(releaseInfo.releasedAt, null, 'An unpublished development head should not invent a release date');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('Mobile Interaction Flow V2')), 'Release notes should describe the unified mobile Roster foundation');
+  assert(releaseInfo.notes.en.changed.some(note => note.includes('Generator V6')), 'Release notes should describe current generated-world behavior');
+  assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('development draft')), 'Release notes should disclose that the candidate is not published');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
   assertContains(buildContent, 'window.YAW_RELEASE = Object.freeze', 'Build should inject release metadata into the generated artifact');
@@ -671,7 +675,7 @@ test('Release manifest is the authoritative public version and compatibility sou
 test('Elemental Species package stays within the supported species contribution boundary', () => {
   const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
   const manifest = packageData.module.manifest;
-  assertEqual(packageData.gameVersion, '0.14.0', 'Elemental package should target the current game release');
+  assertEqual(packageData.gameVersion, '0.15.0', 'Elemental package production metadata should target the current game build');
   assertEqual(manifest.minGameVersion, '0.14.0', 'Elemental package should require the doctrine-tested module surface');
   assertEqual(manifest.contentRating, 'safe', 'Elemental species identity content should remain safe-rated');
   assertEqual(manifest.permissions.length, 1, 'Elemental package should request only one capability');
@@ -4446,6 +4450,13 @@ test('Balance scenario baseline reports deterministic survival and digestion pac
   assertEqual(report.commandsToStarvingFromSated.flee, 29, 'Twenty-nine Flee attempts should cross the starving threshold from sated');
   assertEqual(report.emptyRest.restsToHungry, 9, 'Nine empty rests should cross the hungry threshold');
   assertEqual(report.emptyRest.hoursToHungry, 72, 'Empty-rest hunger pacing should report elapsed hours');
+  assertEqual(report.combatPressure.hungry.actionMultiplier, 0.9, 'Scenario output should record the Hungry action multiplier');
+  assertEqual(report.combatPressure.starving.initiativeMultiplier, 0.8, 'Scenario output should record the distinct Starving initiative multiplier');
+  assertEqual(report.combatPressure.changesMaximumCondition, false, 'Scenario output should make the no-maximum-condition-scaling rule explicit');
+  assertEqual(report.standardAdventure.openingMaxHostiles, 1, 'Scenario output should record the bounded opening encounter size');
+  assertEqual(report.standardAdventure.roadPressureModifier, -0.12, 'Scenario output should record the road safety modifier');
+  assertEqual(report.standardAdventure.dangerBands.join(','), 'safe,low,guarded,dangerous,severe', 'Scenario output should record the stable visible danger taxonomy');
+  assertEqual(report.standardAdventure.hiddenDamageScaling, false, 'Scenario output should reject hidden player-relative damage scaling');
   const fastLarge = report.digestion.find(entry => entry.size === 6 && entry.rate === 5);
   const slowLarge = report.digestion.find(entry => entry.size === 6 && entry.rate === 2);
   assertEqual(fastLarge.ticks, 20, 'Fast digestion should complete in twenty ticks');
@@ -7108,6 +7119,36 @@ test('Binary load tolerates old saves without world data', () => {
   assertEqual(loaded.timeHour, 8, 'Old save without time should default to morning');
 });
 
+test('Published 0.14 representative save loads through the current slot migration path', async () => {
+  const fixture = JSON.parse(fs.readFileSync(RELEASE_014_SAVE_FIXTURE, 'utf8'));
+  const bytes = Buffer.from(fixture.data, 'base64');
+  assertEqual(fixture.sourceRelease, '0.14.0', 'Representative fixture should identify its source release');
+  assertEqual(fixture.sourceCommit, 'ec94987', 'Representative fixture should identify the published source commit');
+  assertEqual(fixture.encoding, 'base64', 'Representative fixture should use the declared portable encoding');
+  assertEqual(bytes.length, fixture.bytes, 'Representative fixture byte count should detect accidental corruption');
+
+  const Binary = loadBinaryForTest();
+  const decoded = Binary.loadGame(bytes);
+  assertEqual(decoded.playerName, 'Release 014 Fixture', 'Current serializer should decode the published player');
+  assertEqual(decoded.worldMeta.generatorVersion, 3, 'Current serializer should retain the recorded generator version');
+  assertEqual(decoded.inventory[0].id, 'healing_herb', 'Current serializer should decode published inventory state');
+  assertEqual(decoded.questState.quests[0].id, 'fixture-quest', 'Current serializer should decode published quest state');
+
+  const loaded = loadAppForCombat(() => 0.5, { binary: Binary });
+  loaded.App._dbGet = async () => bytes;
+  loaded.App.loadWorldStateFromMapStore = async () => {};
+  assertEqual(await loaded.App.loadFromSlot('slot1'), true, 'Current slot loader should accept the representative 0.14 save');
+  assertEqual(loaded.App.player.name, 'Release 014 Fixture', 'Current slot migration should restore the player');
+  assertEqual(loaded.App.player.species, 'human', 'Current slot migration should preserve the player species');
+  assertEqual(loaded.App.location.x, 4, 'Current slot migration should restore the saved x coordinate');
+  assertEqual(loaded.App.location.y, -2, 'Current slot migration should restore the saved y coordinate');
+  assertEqual(loaded.App.worldMeta.generatorVersion, 3, 'Current slot migration should not rewrite the recorded generator');
+  assertEqual(loaded.App.inventory[0].id, 'healing_herb', 'Current slot migration should restore inventory');
+  assertEqual(loaded.App.quests[0].id, 'fixture-quest', 'Current slot migration should restore active quests');
+  assertEqual(loaded.App.safeAnchor.x, 0, 'Current slot migration should restore the safe anchor');
+  assertEqual(loaded.App.getTile(4, -2).description, 'A known grove from the 0.14 fixture.', 'Current slot migration should restore durable tile state');
+});
+
 test('Binary save/load preserves structured log metadata when available', async () => {
   const Binary = loadBinaryForTest();
   const player = makeSerializableUnit('Tester', { id: 'log-player' });
@@ -7781,7 +7822,7 @@ test('Public release notes and run-independent diagnostics are reachable from sy
   assertContains(template, 'id="system-log-content"', 'System Activity Log should expose a dedicated live log region');
   assertContains(appContent, 'showActivityLogScreen()', 'App should expose origin-aware Activity Log navigation');
   assertContains(appContent, 'showReleaseNotes()', 'App should expose origin-aware release-note navigation');
-  assertContains(appContent, "this._getStoredValue('releaseSeen') === release.version", 'Update notice should be once per release version');
+  assertContains(appContent, "this._getStoredValue('releaseSeen') === this.releaseIdentity(release)", 'Update notice should be once per version and publication state');
   assertContains(logViewContent, "containerId: 'system-log-content'", 'Shared Activity Log renderer should update the run-independent surface');
 });
 
@@ -9268,6 +9309,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'combat.flee.turnsHostile': '{name} turns hostile!',
           'combat.flee.corneredHostile': '{name} is cornered and turns hostile!',
           'combat.turnTitle': "Round {round} - {actor}'s turn",
+          'scene.failure.generic': '{actors} tries to {action} {targets}, but it does not work.',
+          'scene.failure.player': 'You try to {action} {targets}, but it does not work.',
           'scene.delta.punishment': '{amount} punishment',
           'scene.delta.healing': '{amount} punishment restored',
           'scene.delta.spirit': 'Spirit {current}/{max}',
@@ -9425,6 +9468,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'combat.flee.turnsHostile': '{name} se vuelve hostil!',
           'combat.flee.corneredHostile': '{name} queda acorralado y se vuelve hostil!',
           'combat.turnTitle': 'Ronda {round} - turno de {actor}',
+          'scene.failure.generic': '{actors} intenta {action} contra {targets}, pero no funciona.',
+          'scene.failure.player': 'Intentas {action} contra {targets}, pero no funciona.',
           'scene.delta.punishment': '{amount} de castigo',
           'scene.delta.healing': '{amount} de castigo restaurado',
           'scene.delta.spirit': 'Animo {current}/{max}',
@@ -9885,6 +9930,7 @@ test('Flee ends combat without granting victory XP', () => {
   assertEqual((App.creatures || []).some(unit => unit.disposition === App.DISPOSITION.ENEMY && unit.CPun > 0), false, 'Player retreat should choose an adjacent tile without active enemies');
   assertEqual(player.xp, 0, 'Flee should not grant victory XP');
   assertContains(App.log[0].text, 'Huyes con exito!', 'Successful flee log should localize');
+  assertContains(App.latestStoryEvent?.summary || '', 'Huyes con exito!', 'Successful flee Scene feedback should use localized prose instead of a result token');
   assertNotContains(elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Flee should remove stale combat actions from the desktop composer');
   assertContains(elements.get('party-content').innerHTML, 'Agregar You como actor', 'Flee should restore effective player fallback without showing explicit actor selection');
   assertNotContains(elements.get('party-content').innerHTML, 'Now #', 'Flee should remove stale turn-order badges');
@@ -9921,6 +9967,7 @@ test('Flee failure and no-enemy feedback localize', () => {
   assertEqual(failed.App.syncSelection, null, 'Failed flee should clear stale sync selection');
   assertEqual(failed.App.feedSelection, null, 'Failed flee should clear stale feed selection');
   assertContains(failed.App.log[failed.App.log.length - 1].text, 'Huida fallida! Fast Enemy te intercepta!', 'Failed flee log should localize');
+  assertContains(failed.App.latestStoryEvent?.summary || '', 'Huida fallida! Fast Enemy te intercepta!', 'Failed flee Scene feedback should use localized prose instead of a result token');
 });
 
 test('Player flee refuses to chain directly into an occupied hostile tile', () => {
@@ -16274,26 +16321,26 @@ test('Single exploration action result logs localize', () => {
   assertContains(feeding.App.log[feeding.App.log.length - 1].text, 'restauras 40 de castigo', 'Single Tend amount should interpolate in localized result');
 });
 
-test('One actor needs enough stats to handle multiple exploration targets', () => {
+test('One actor may attempt multiple exploration targets regardless of starting social stats', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('Actor', { id: 'actor-1', Flir: 5, cha: 5 });
-  const targetA = makeUnit('Target A', { id: 'target-a', CPle: 0, MPle: 100 });
-  const targetB = makeUnit('Target B', { id: 'target-b', CPle: 0, MPle: 100 });
+  const targetA = makeUnit('Target A', { id: 'target-a', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
+  const targetB = makeUnit('Target B', { id: 'target-b', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
   App.player = actor;
   App.party = [actor, targetA, targetB];
   App.updateLanguage('es');
   const resolved = App.outsideActionForPartyTargets('flirt', [1, 2]);
-  assertEqual(resolved, false, 'Direct multi-target helper should report stat-gated failure');
-  assertEqual(targetA.CPle, 0, 'Low-stat actor should not affect first multi-target target');
-  assertEqual(targetB.CPle, 0, 'Low-stat actor should not affect second multi-target target');
-  assertContains(App.log[App.log.length - 1].text, 'Actor no puede manejar 2 objetivos con hablar todavia.', 'Failed multi-target action should localize the stat gate');
+  assertEqual(resolved, true, 'Direct multi-target helper should allow an attempt instead of applying a stat gate');
+  assert(targetA.CPle > 0, 'Low-stat actor should still attempt the first multi-target interaction');
+  assert(targetB.CPle > 0, 'Low-stat actor should still attempt the second multi-target interaction');
+  assertContains(App.log[App.log.length - 1].text, 'Actor termina una accion multiobjetivo de hablar sobre Target A, Target B.', 'Completed multi-target attempt should use the localized summary');
 });
 
-test('Marked multi-target stat gate preserves selections for correction', () => {
+test('Marked low-stat multi-target social action resolves and clears selections', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('Actor', { id: 'actor-1', Flir: 5, cha: 5 });
-  const targetA = makeUnit('Target A', { id: 'target-a', CPle: 0, MPle: 100 });
-  const targetB = makeUnit('Target B', { id: 'target-b', CPle: 0, MPle: 100 });
+  const targetA = makeUnit('Target A', { id: 'target-a', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
+  const targetB = makeUnit('Target B', { id: 'target-b', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
   App.player = actor;
   App.party = [actor, targetA, targetB];
   App.explorationActorIds = ['actor-1'];
@@ -16301,12 +16348,12 @@ test('Marked multi-target stat gate preserves selections for correction', () => 
   App.toggleExplorationTarget('party', 'target-a');
   App.toggleExplorationTarget('party', 'target-b');
   const resolved = App.resolveExplorationTargetAction('flirt');
-  assertEqual(resolved, false, 'Marked multi-target action should report stat-gated failure');
-  assertEqual(targetA.CPle, 0, 'Blocked marked multi-target action should not affect first target');
-  assertEqual(targetB.CPle, 0, 'Blocked marked multi-target action should not affect second target');
-  assertEqual(App.explorationActorIds.join(','), 'actor-1', 'Blocked marked multi-target action should preserve selected actor');
-  assertEqual(App.explorationTargetIds.join(','), 'party:target-a,party:target-b', 'Blocked marked multi-target action should preserve selected targets');
-  assertContains(App.log[App.log.length - 1].text, 'Actor no puede manejar 2 objetivos con hablar todavia.', 'Blocked marked multi-target action should localize the stat gate');
+  assertEqual(resolved, true, 'Marked multi-target action should resolve even for a novice actor');
+  assert(targetA.CPle > 0, 'Marked multi-target action should affect the first target');
+  assert(targetB.CPle > 0, 'Marked multi-target action should affect the second target');
+  assertEqual(App.explorationTargetIds.length, 0, 'Resolved marked multi-target action should clear selected targets');
+  assertContains(App.log[App.log.length - 1].text, 'Actor termina una accion multiobjetivo de hablar sobre Target A, Target B.', 'Resolved marked multi-target action should localize its result');
+  assertEqual(App.storyEvents.length, 1, 'Resolved marked multi-target action should emit one consolidated Scene event');
 });
 
 test('Marked target action rejects stale selected actors without falling back to player', () => {
@@ -18034,6 +18081,27 @@ test('Moving tiles clears tile-bound creature targets but keeps party selections
   assertEqual(App.explorationTargetIds.includes('creature:creature-1'), false, 'Selected creature target should clear when leaving its tile');
 });
 
+test('Moving tiles refreshes party cards after travel Hunger changes', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const player = makeUnit('You', { id: 'player-movement-hunger', hunger: 0, maxHunger: 100 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([
+    ['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], items: [], description: 'Start' }],
+    ['1,0', { x: 1, y: 0, biome: 'forest', explored: true, creatures: [], items: [], description: 'Next' }]
+  ]);
+  App.exploredTiles = new Set(['0,0', '1,0']);
+  let partyRenders = 0;
+  App.renderParty = () => { partyRenders += 1; };
+
+  App.move(1, 0);
+
+  assert(player.hunger > 0, 'Travel should apply its Hunger cost before rendering');
+  assertEqual(partyRenders, 1, 'Traversal should refresh desktop and mobile party cards after Hunger changes');
+});
+
 test('Starting and restoring combat clear adventure target marks', () => {
   const fresh = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
@@ -18852,6 +18920,8 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');
   assertNotContains(html, 'selectIntent(', 'Mobile center presence should not duplicate intent controls');
   assertContains(html, 'data-mobile-play-cell="e"', 'Mobile routine play should expose east movement');
+  assertContains(html, 'data-danger-band="', 'Mobile current and adjacent tiles should expose stable danger-band metadata');
+  assertContains(html, 'mobile-play-danger-band', 'Mobile traversal cells should show compact danger bands before movement');
   assertContains(html, 'onclick="App.move(1,0)"', 'Mobile east cell should use normal movement dispatch');
   assertContains(html, adjacentBiome.icon, 'Adjacent tile biome icon should render on mobile play surface');
   assertContains(html, adjacentBiome.name, 'Adjacent tile biome name should be available as label');
@@ -19862,46 +19932,54 @@ test('Generator v4 exposes a protected Grove start and distance-scaled opening p
   assertEqual(wilderness.allowReinforcement, true, 'Wilderness should restore authored reinforcement behavior');
 });
 
-test('Generator v4 opening encounters use tier-one singletons and defer lethal hostility', () => {
+test('Generator v4 safety admission is preserved by the current generator for every core starter', () => {
   const { App } = loadAppForCombat();
-  App.worldMeta = { worldId: 'world-v4-admission', seed: 'opening-admission', generatorVersion: 4, mapModsHash: 'core' };
-  App.worldMap = new Map();
-  App.tileDeltas = new Map();
-  App.exploredTiles = new Set();
-  App.location = { x: 2, y: 0 };
-  App.currentBiome = App.getBaseTile(2, 0).biome;
   App._calculateEncounterDisposition = () => App.DISPOSITION.ENEMY;
   let startedWith = null;
   App.startCombat = enemies => { startedWith = enemies; };
 
-  for (const species of App.species) {
-    const base = App._getSpeciesBaseStats(species.id);
-    App.player = makeUnit(`Starter ${species.id}`, {
-      species: species.id,
-      level: 1,
-      MPun: base.MPun,
-      CPun: base.MPun,
-      con: base.con,
-      combatRow: 'front'
-    });
-    App.party = [App.player];
-    App.creatures = [];
-    App.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
-    startedWith = null;
-    const tile = App.getBaseTile(2, 0);
-    tile.creatures = [];
-    const spawned = App.spawnWildEncounter(tile, false, true);
-    assertEqual(spawned.length, 1, `Opening encounter should create one creature for starter ${species.id}`);
-    const creature = spawned[0];
-    assert((App.SPECIES_DIFFICULTY[creature.species] || 2) <= 1, `Opening encounter should stay tier one for starter ${species.id}`);
-    assertEqual(creature.ambushReady, false, `Opening encounter should not ambush starter ${species.id}`);
-    assertEqual(creature.reinforcementBlocked, true, `Opening encounter should not reinforce against starter ${species.id}`);
-    if (creature.disposition === App.DISPOSITION.ENEMY) {
-      assertEqual(App._openingEncounterAdmitted([creature], tile), true, `Admitted hostile should fit starter ${species.id}'s opening threat budget`);
-      assertEqual(startedWith?.[0], creature, `Admitted hostile should start combat for starter ${species.id}`);
-    } else {
-      assertEqual(creature.encounterSafetyDeferred, true, `Over-budget hostile should visibly defer to neutral for starter ${species.id}`);
-      assertEqual(startedWith, null, `Deferred hostile should not start combat for starter ${species.id}`);
+  for (const generatorVersion of [4, 6]) {
+    App.worldMeta = {
+      worldId: `world-v${generatorVersion}-admission`,
+      seed: 'opening-admission',
+      generatorVersion,
+      mapModsHash: 'core'
+    };
+    App.worldMap = new Map();
+    App.tileDeltas = new Map();
+    App.exploredTiles = new Set();
+    App.location = { x: 2, y: 0 };
+    App.currentBiome = App.getBaseTile(2, 0).biome;
+
+    for (const species of App.species) {
+      const base = App._getSpeciesBaseStats(species.id);
+      App.player = makeUnit(`Starter ${species.id}`, {
+        species: species.id,
+        level: 1,
+        MPun: base.MPun,
+        CPun: base.MPun,
+        con: base.con,
+        combatRow: 'front'
+      });
+      App.party = [App.player];
+      App.creatures = [];
+      App.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
+      startedWith = null;
+      const tile = App.getBaseTile(2, 0);
+      tile.creatures = [];
+      const spawned = App.spawnWildEncounter(tile, false, true);
+      assertEqual(spawned.length, 1, `Generator v${generatorVersion} opening encounter should create one creature for starter ${species.id}`);
+      const creature = spawned[0];
+      assert((App.SPECIES_DIFFICULTY[creature.species] || 2) <= 1, `Generator v${generatorVersion} opening encounter should stay tier one for starter ${species.id}`);
+      assertEqual(creature.ambushReady, false, `Generator v${generatorVersion} opening encounter should not ambush starter ${species.id}`);
+      assertEqual(creature.reinforcementBlocked, true, `Generator v${generatorVersion} opening encounter should not reinforce against starter ${species.id}`);
+      if (creature.disposition === App.DISPOSITION.ENEMY) {
+        assertEqual(App._openingEncounterAdmitted([creature], tile), true, `Admitted hostile should fit generator v${generatorVersion} starter ${species.id}'s opening threat budget`);
+        assertEqual(startedWith?.[0], creature, `Admitted hostile should start combat for generator v${generatorVersion} starter ${species.id}`);
+      } else {
+        assertEqual(creature.encounterSafetyDeferred, true, `Over-budget hostile should visibly defer to neutral for generator v${generatorVersion} starter ${species.id}`);
+        assertEqual(startedWith, null, `Deferred hostile should not start combat for generator v${generatorVersion} starter ${species.id}`);
+      }
     }
   }
 });
@@ -19947,6 +20025,12 @@ test('Map summary and encounter pressure expose safe UI metadata', () => {
   const dangerPressure = WorldGen.getEncounterPressure(dangerTile, { biomeDanger: 3 });
   assert(roadPressure.finalChance < wildPressure.finalChance, 'Road overlay should lower wilderness encounter pressure');
   assert(dangerPressure.finalChance > wildPressure.finalChance, 'Bounded danger-site influence should raise encounter pressure');
+  assertEqual(WorldGen.getDangerBand(roadTile, { biomeDanger: 3 }).id, 'guarded', 'Road safety should be visible as a lower stable danger band');
+  assertEqual(WorldGen.getDangerBand({ ...wildTile, encounterPolicy: { band: 'protected' } }, { biomeDanger: 3 }).id, 'safe', 'Protected opening tiles should always present as Safe');
+  assertEqual(WorldGen.getDangerBand({
+    ...wildTile,
+    creatures: [{ CPun: 20, disposition: 'enemy' }]
+  }, { biomeDanger: 3 }).id, 'severe', 'Known living hostiles should elevate visible danger to Severe');
   const summary = WorldGen.getTileMapSummary({
     ...roadTile,
     structure: 'camp',
@@ -19965,6 +20049,7 @@ test('Map summary and encounter pressure expose safe UI metadata', () => {
   assert(summary.markers.includes('Merchant'), 'Summary should expose merchant markers from tile creatures');
   assert(summary.markers.includes('Quest'), 'Summary should expose quest relevance markers');
   assertEqual(summary.questRelevant, true, 'Summary should preserve quest relevance flag');
+  assertEqual(summary.dangerBand.id, 'guarded', 'Map summaries should expose the same stable danger taxonomy used by traversal cells');
 });
 
 test('POI budgets create stable spaced region candidates and route anchors', () => {
@@ -23560,6 +23645,7 @@ test('Outnumbered low-health enemies can flee', () => {
   assertEqual(App.combatState.active, false, 'Combat should end when the last enemy flees');
   assertEqual(player.xp, 0, 'Enemy fleeing should not award default victory XP');
   assertContains(App.log.map(entry => entry.text).join('\n'), 'Enemy huye aterrorizado!', 'Enemy morale flee log should localize');
+  assertContains(App.latestStoryEvent?.summary || '', 'Enemy huye aterrorizado!', 'Enemy morale flee Scene feedback should use localized prose instead of a result token');
   assertContains(App.log[App.log.length - 1].text, 'The encounter breaks off.', 'Enemy-only flee should use a non-victory disengage outcome');
 });
 
@@ -23790,6 +23876,75 @@ test('Scout awareness can detect an ambush before initiative is rolled', () => {
   assertEqual(App.combatState.turnQueue[0].unit, player, 'Detected ambush should use ordinary initiative');
   assertContains(logs, 'spots Spider before they can strike', 'Detected ambush should explain why the enemy lost first strike');
   assertNotContains(logs, 'ambush from hiding', 'Detected ambush should not also report a successful hidden strike');
+});
+
+test('Detected and failed ambush outcomes remain resolved across save and reload', async () => {
+  const Binary = loadBinaryForTest();
+  const run = async detected => {
+    const savedBuffers = [];
+    const { App } = loadAppForCombat(() => detected ? 0.99 : 0, { binary: Binary });
+    const suffix = detected ? 'detected' : 'failed';
+    const player = makeUnit('You', {
+      id: `ambush-save-player-${suffix}`,
+      spd: 30,
+      wis: detected ? 18 : 1
+    });
+    const scout = detected
+      ? makeUnit('Scout', { id: 'ambush-save-scout', partyRole: 'scout', spd: 12, wis: 18 })
+      : null;
+    const spider = makeUnit('Spider', {
+      id: `ambush-save-spider-${suffix}`,
+      species: 'spider',
+      disposition: App.DISPOSITION.ENEMY,
+      spd: detected ? 8 : 20,
+      darkvision: !detected,
+      ambushReady: true
+    });
+    App.worldMeta = {
+      worldId: `ambush-save-world-${suffix}`,
+      seed: `ambush-save-${suffix}`,
+      generatorVersion: 6,
+      mapModsHash: 'core'
+    };
+    App.player = player;
+    App.party = scout ? [player, scout] : [player];
+    App.creatures = [spider];
+    App.location = { x: 8, y: 0 };
+    App.currentBiome = 'forest';
+    App.timeHour = detected ? 12 : 22;
+    App.worldMap = new Map([['8,0', {
+      ...App.getBaseTile(8, 0),
+      explored: true,
+      biome: 'forest',
+      creatures: [spider],
+      items: []
+    }]]);
+    App.tileDeltas = new Map();
+    App.exploredTiles = new Set(['8,0']);
+    App.processTurn = function() {};
+    App.startCombat([spider]);
+    assertEqual(spider.ambushReady, false, `${suffix} ambush should be consumed before saving`);
+    assertEqual(Boolean(spider.ambushDetected), detected, `${suffix} ambush should record its awareness outcome before saving`);
+    assertEqual(spider.ambushResolved, true, `${suffix} ambush should record that awareness resolution completed before saving`);
+
+    App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+    App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+    assertEqual(await App._saveToSlotConfirmed('slot1'), true, `${suffix} ambush save should complete`);
+
+    const loaded = loadAppForCombat(() => detected ? 0.99 : 0, { binary: Binary });
+    loaded.App._dbGet = async () => savedBuffers[savedBuffers.length - 1];
+    loaded.App.loadWorldStateFromMapStore = async () => {};
+    assertEqual(await loaded.App.loadFromSlot('slot1'), true, `${suffix} ambush save should reload`);
+    const restored = loaded.App.creatures.find(creature => creature.id === spider.id)
+      || loaded.App.combatState.turnQueue.map(entry => entry.unit).find(unit => unit?.id === spider.id);
+    assert(restored, `${suffix} ambusher should retain its identity after reload`);
+    assertEqual(restored.ambushReady, false, `${suffix} ambusher should not receive a second ambush after reload`);
+    assertEqual(Boolean(restored.ambushDetected), detected, `${suffix} awareness result should survive reload`);
+    assertEqual(restored.ambushResolved, true, `${suffix} completed awareness resolution should survive reload`);
+  };
+
+  await run(true);
+  await run(false);
 });
 
 test('Create accordion keeps only the selected section open', () => {
@@ -26332,10 +26487,10 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertContains(sceneFeedDoc, 'Scene Feed is not a filtered view of the Activity Log', 'Scene Feed DSL should document Activity Log separation');
   assertContains(sceneFeedDoc, 'result metadata, tags, deltas, and sub-events', 'Scene Feed DSL should require expanded sheet metadata and effect details');
   assertContains(controlModel, '[Scene Feed DSL](scene-feed-dsl.md)', 'Control model should link to the Scene Feed DSL contract');
-  assertContains(nextObjectives, '# You Are Wild Active Objectives', 'Next objectives should read as a concise active handoff');
-  assertContains(nextObjectives, 'Core gameplay is deterministic and does not depend on an LLM or remote service.', 'Next objectives should preserve the deterministic core boundary');
-  assertContains(nextObjectives, '## Operator-Mediated Decisions', 'Next objectives should keep decision-heavy backlog separate from ready implementation work');
-  assertContains(nextObjectives, '## Autonomous Work Boundary', 'Next objectives should state the autonomous implementation boundary');
+  assertContains(nextObjectives, '# Active Objectives', 'Next objectives should read as a concise active handoff');
+  assertContains(nextObjectives, 'Core gameplay remains deterministic and does not depend on an LLM or remote', 'Next objectives should preserve the deterministic core boundary');
+  assertContains(nextObjectives, '## Explicitly deferred decisions', 'Next objectives should keep decision-heavy backlog separate from ready implementation work');
+  assertContains(nextObjectives, '## Delivery boundary', 'Next objectives should state the autonomous implementation boundary');
   assertNotContains(nextObjectives, '## Open Objectives (Priority Order)', 'Next objectives should not keep stale active-work headings');
   assertNotContains(nextObjectives, '## Next Execution Goals', 'Next objectives should not keep stale execution-goal headings');
 });
@@ -26489,10 +26644,10 @@ test('Control model records accepted mechanics decisions', () => {
   assertContains(controlModel, 'separate Remains Pool', 'Control model should record corpse/remains pool doctrine');
   assertContains(controlModel, 'Feast V2 is stomach-first by default', 'Control model should record stomach-first Feast V2 doctrine');
   assertContains(controlModel, 'Desktop and mobile feedback use the same persistent newest-first Scene Feed contract', 'Scene Feed doctrine should require one responsive stream contract');
-  assertContains(nextObjectives, 'docs/control-model.md', 'Next objectives should link accepted mechanics doctrine');
-  assertContains(nextObjectives, '## Operator-Mediated Decisions', 'Next objectives should separate deferred decisions from autonomous work');
-  assertContains(nextObjectives, 'Final body-build taxonomy and preference model.', 'Next objectives should preserve the unresolved body-build decision');
-  assertContains(nextObjectives, 'docs/feast-containment-v2.md', 'Next objectives should link the implemented Feast V2 doctrine');
+  assertContains(nextObjectives, '`control-model.md`', 'Next objectives should link accepted mechanics doctrine');
+  assertContains(nextObjectives, '## Explicitly deferred decisions', 'Next objectives should separate deferred decisions from autonomous work');
+  assertContains(nextObjectives, 'Gameplay-bearing body-build taxonomy and preference design.', 'Next objectives should preserve the unresolved body-build decision');
+  assertContains(nextObjectives, '`feast-containment-v2.md`', 'Next objectives should link the implemented Feast V2 doctrine');
   assertNotContains(nextObjectives, 'feast/containment redesign, formal row-blocking doctrine', 'Next objectives should not preserve stale undecided feast wording in the status summary');
 });
 
@@ -27043,6 +27198,45 @@ test('Story result bridge renders result-first compact feedback without touching
   assertEqual(elements.get('mobile-story-latest').getAttribute('data-scene-importance'), 'normal', 'Mobile latest beat should expose importance for emphasis styling');
   assertEqual(elements.get('mobile-story-latest').classList.contains('scene-beat-highlight'), true, 'Mobile latest beat should briefly highlight without being timer-dismissed');
   assertNotContains(elements.get('scene-description').innerHTML, 'You trade a careful greeting', 'Story result should not replace current tile description');
+});
+
+test('Generic failure Scene prose conjugates player and third-person actors', () => {
+  const { App } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-failure-grammar' });
+  const ally = makeUnit('Ally', { id: 'ally-failure-grammar' });
+  const target = makeUnit('Bunnyfolk', { id: 'target-failure-grammar' });
+  App.player = you;
+  App.party = [you, ally];
+  App.creatures = [target];
+
+  const playerFailure = App.emitStoryResult({
+    mode: 'combat',
+    actors: [you],
+    targets: [target],
+    action: 'eat',
+    resultKind: 'failure'
+  }, '', { resultKind: 'failure' });
+  assertContains(playerFailure.summary, 'You try to eat Bunnyfolk', `Player failure prose should use second-person verb agreement: ${playerFailure.summary}`);
+  assertNotContains(playerFailure.summary, 'You tries', 'Player failure prose should not use third-person conjugation');
+
+  const allyFailure = App.emitStoryResult({
+    mode: 'combat',
+    actors: [ally],
+    targets: [target],
+    action: 'eat',
+    resultKind: 'failure'
+  }, '', { resultKind: 'failure' });
+  assertContains(allyFailure.summary, 'Ally tries to eat Bunnyfolk', 'Named actor failure prose should retain third-person verb agreement');
+
+  App.updateLanguage('es');
+  const spanishFailure = App.emitStoryResult({
+    mode: 'combat',
+    actors: [you],
+    targets: [target],
+    action: 'eat',
+    resultKind: 'failure'
+  }, '', { resultKind: 'failure' });
+  assertContains(spanishFailure.summary, 'Intentas', 'Player failure prose should use the localized second-person template');
 });
 
 test('Exploration multi-target story emits one consolidated result', () => {
@@ -29785,6 +29979,8 @@ test('Desktop play surface renders adjacent movement cells', () => {
   const north = elements.get('desktop-play-cell-n');
   assertContains(north.innerHTML, 'desktop-play-cell-icon', 'Desktop north cell should render a visible tile icon');
   assertContains(north.innerHTML, 'desktop-play-cell-label', 'Desktop north cell should render a compact tile label');
+  assertContains(north.innerHTML, 'desktop-play-danger-band', 'Desktop adjacent traversal cells should show danger before movement');
+  assert(north.getAttribute('data-danger-band'), 'Desktop adjacent traversal cells should expose stable danger-band metadata');
   assertContains(north.innerHTML, 'North:', 'Desktop north cell should label its movement direction');
   assertEqual(north.getAttribute('onclick'), 'App.move(0,-1)', 'Desktop north cell should move north');
   assertEqual(north.getAttribute('onkeydown'), "if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(0,-1)}", 'Desktop north cell should support keyboard movement');

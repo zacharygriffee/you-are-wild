@@ -101,6 +101,7 @@ const YAW_MOVEMENT_FLOW = {
         if (!app.combatState.active && !recoveryPending) app.showExplorationActions();
         if (YAW_RECOVERY_MODES?.isJourney?.(app)) app._showRecoveryJourney?.();
         else if (recoveryPending) app.showDefeatRecovery?.();
+        app.renderParty();
         app.renderCreatures();
         app.renderLog();
         app._emitModuleHook('onPlayerMove', {

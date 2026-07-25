@@ -3662,23 +3662,6 @@
                 };
             },
 
-            _multiTargetStat(actor, action) {
-                if (action === 'fight') return actor.Figh || actor.str || 10;
-                if (action === 'flirt') return (actor.Flir || 10) + Math.floor((actor.cha || 10) * 0.5);
-                if (action === 'fuck') return (actor.Fuck || 10) + Math.floor((actor.cha || 10) * 0.5);
-                if (action === 'feast') return actor.Feas || actor.str || 10;
-                if (action === 'feed') return actor.Feed || actor.wis || 10;
-                return actor.spd || 10;
-            },
-
-            _canHandleMultipleTargets(actor, action, targets) {
-                const count = (targets || []).length;
-                if (count <= 1) return true;
-                const stat = this._multiTargetStat(actor, action);
-                const difficulty = 12 + (count - 1) * 8;
-                return stat >= difficulty;
-            },
-
             _shouldSkipFullFeedTarget(options = {}) {
                 return !options.subAction || ['tend', 'heal', 'breastfeed'].includes(options.subAction);
             },
@@ -3762,18 +3745,6 @@
                 const targetList = (targets || []).filter(target => target && this._isLivingCreature(target));
                 if (targetList.length === 0) return false;
                 actor = actor || this.player;
-                if (action !== 'fight' && !this._canHandleMultipleTargets(actor, action, targetList)) {
-                    this.log.push({ text: this._label('target.cannotHandleMultiple', '{name} cannot handle {count} targets with {action} yet.', {
-                        name: actor.name,
-                        count: targetList.length,
-                        action: this._uiLabel(action).toLowerCase()
-                    }), type: 'discovery' });
-                    this.renderLog();
-                    this.renderParty();
-                    this.renderCreatures();
-                    this.renderExplorationActions();
-                    return false;
-                }
                 const skipped = [];
                 const skippedSet = new Set();
                 const multiEffect = action === 'fight'
@@ -5416,6 +5387,9 @@
             _dangerPressureLabel(value = 0) {
                 return YAW_MAP_VISUALS.dangerPressureLabel(this, value);
             },
+            _tileDangerBand(tile = null) {
+                return YAW_MAP_VISUALS.tileDangerBand(this, tile);
+            },
             getTileMapSummary(tile = null) {
                 return YAW_MAP_VISUALS.tileMapSummary(this, tile);
             },
@@ -6217,22 +6191,33 @@
             },
             releaseInfo() {
                 return window.YAW_RELEASE || {
-                    version: '0.0.0', releasedAt: '', channel: 'development',
+                    version: '0.0.0', status: 'draft', releasedAt: null, channel: 'development',
                     notes: {}, compatibility: {}
                 };
+            },
+            releaseIdentity(release = this.releaseInfo()) {
+                return `${release.version}:${release.channel || 'development'}:${release.status || 'draft'}`;
+            },
+            releaseDisplayLabel(release = this.releaseInfo()) {
+                if (release.status === 'released') return `v${release.version}`;
+                const status = this._label(
+                    release.status === 'candidate' ? 'release.status.candidate' : 'release.status.draft',
+                    release.status === 'candidate' ? 'Candidate' : 'Development draft'
+                );
+                return `v${release.version} · ${status}`;
             },
             syncReleaseUI() {
                 const release = this.releaseInfo();
                 document.querySelectorAll('[data-release-version]').forEach(element => {
-                    element.textContent = `v${release.version}`;
+                    element.textContent = this.releaseDisplayLabel(release);
                 });
                 const notice = document.getElementById('release-update-notice');
-                if (notice) notice.hidden = this._getStoredValue('releaseSeen') === release.version;
+                if (notice) notice.hidden = this._getStoredValue('releaseSeen') === this.releaseIdentity(release);
                 return release.version;
             },
             dismissReleaseNotice() {
                 const release = this.releaseInfo();
-                this._setStoredValue('releaseSeen', release.version);
+                this._setStoredValue('releaseSeen', this.releaseIdentity(release));
                 const notice = document.getElementById('release-update-notice');
                 if (notice) notice.hidden = true;
                 return release.version;
@@ -6248,7 +6233,12 @@
                 const notes = release.notes?.[language] || release.notes?.en || {};
                 const compatibility = release.compatibility?.[language] || release.compatibility?.en || {};
                 const version = document.getElementById('release-notes-version');
-                if (version) version.textContent = `v${release.version} · ${release.releasedAt} · ${release.channel}`;
+                if (version) {
+                    const parts = [this.releaseDisplayLabel(release)];
+                    if (release.releasedAt) parts.push(release.releasedAt);
+                    if (release.channel) parts.push(release.channel);
+                    version.textContent = parts.join(' · ');
+                }
                 const content = document.getElementById('release-notes-content');
                 if (content) {
                     content.innerHTML = `<div class="release-notes-grid">${this.releaseNoteSection('release.added', 'Added', notes.added)}${this.releaseNoteSection('release.changed', 'Changed', notes.changed)}${this.releaseNoteSection('release.fixed', 'Fixed', notes.fixed)}${this.releaseNoteSection('release.knownIssues', 'Known Issues', notes.knownIssues)}</div><section class="release-compatibility"><h2>${this._escapeHtml(this._label('release.compatibility', 'Compatibility'))}</h2><p><strong>${this._escapeHtml(this._label('release.saves', 'Saves'))}:</strong> ${this._escapeHtml(compatibility.saves || '')}</p><p><strong>${this._escapeHtml(this._label('release.mods', 'Mods'))}:</strong> ${this._escapeHtml(compatibility.mods || '')}</p></section>`;

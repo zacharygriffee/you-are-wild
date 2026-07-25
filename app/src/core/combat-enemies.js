@@ -100,9 +100,10 @@ const YAW_COMBAT_ENEMIES = {
                 app.nextTurn();
                 return;
             }
-            app.log.push({ text: app._label('combat.enemyFlees', '{name} flees in terror!', { name: enemy.name }), type: 'combat' });
+            const fleeText = app._label('combat.enemyFlees', '{name} flees in terror!', { name: enemy.name });
+            app.log.push({ text: fleeText, type: 'combat' });
             enemy.fledCombat = true;
-            app._emitCombatAction('enemy_flee', enemy, null, 'fled');
+            app._emitCombatAction('enemy_flee', enemy, null, fleeText);
             app._relocateFleeingCreature(enemy, { source: 'combat-morale', destination });
             app.renderCreatures();
             app.renderLog();

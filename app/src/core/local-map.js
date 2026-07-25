@@ -117,7 +117,7 @@ const YAW_LOCAL_MAP = {
         return `<span class="mobile-play-presence">${icons}${more}</span>`;
     },
 
-    cellHtml(app, { classes, visual, title, dx, dy, key, moveable }) {
+    cellHtml(app, { classes, visual, title, dx, dy, key, moveable, danger = null }) {
         const escapedTitle = app._escapeHtml(title);
         const movementAttrs = moveable
             ? `data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="${key}" onclick="App.move(${dx},${dy})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(${dx},${dy})}"`
@@ -125,7 +125,11 @@ const YAW_LOCAL_MAP = {
         const presence = key === 'center' ? this.centerPresenceHtml(app) : '';
         const stageSurface = key === 'center' ? 'current-tile' : 'traversal-cell';
         const tileArt = app._mapTileArtHtml(visual);
-        return `<div class="${classes}" data-stage-surface="${stageSurface}" data-stage-layer="tile" data-stage-cell="${key}" data-mobile-play-cell="${key}" data-direction="${key}" ${app._mapTileAttrs(visual)} title="${escapedTitle}" aria-label="${escapedTitle}" ${movementAttrs}>${tileArt}<span class="mobile-play-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span>${presence}</div>`;
+        const dangerAttrs = danger ? ` data-danger-band="${app._escapeHtml(danger.id)}"` : '';
+        const dangerBadge = danger
+            ? `<span class="mobile-play-danger-band ${app._escapeHtml(danger.id)}">${app._escapeHtml(danger.label)}</span>`
+            : '';
+        return `<div class="${classes}" data-stage-surface="${stageSurface}" data-stage-layer="tile" data-stage-cell="${key}" data-mobile-play-cell="${key}" data-direction="${key}"${dangerAttrs} ${app._mapTileAttrs(visual)} title="${escapedTitle}" aria-label="${escapedTitle}" ${movementAttrs}>${tileArt}<span class="mobile-play-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span>${presence}${dangerBadge}</div>`;
     },
 
     renderInterior(app) {
@@ -201,6 +205,7 @@ const YAW_LOCAL_MAP = {
                 }
             });
             const hasCreatures = tile && tile.creatures && tile.creatures.length > 0;
+            const danger = tile ? app._tileDangerBand(tile) : null;
             let classes = 'map-tile mobile-play-cell';
             if (isCenter) classes += ' center';
             else if (!isVisible) classes += ' far';
@@ -211,8 +216,9 @@ const YAW_LOCAL_MAP = {
             let title = tile
                 ? (isCenter ? `${visual.label} (${tx}, ${ty})` : `${app._directionLabel(cell.dx, cell.dy)}: ${visual.label} (${tx}, ${ty})`)
                 : `${tx}, ${ty}`;
+            if (danger) title += ` — ${app._label('ui.tileInfo.danger', 'Danger')}: ${danger.label}`;
             if (!isCenter && traversal && !traversal.allowed) title += ` — ${app._traversalMessage(traversal)}`;
-            html += this.cellHtml(app, { classes, visual, title, dx: cell.dx, dy: cell.dy, key: cell.key, moveable });
+            html += this.cellHtml(app, { classes, visual, title, dx: cell.dx, dy: cell.dy, key: cell.key, moveable, danger });
         });
         this.writeMobileMap(html, 'overworld');
         const mobileCoords = document.getElementById('mobile-coords');

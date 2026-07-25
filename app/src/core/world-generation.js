@@ -319,10 +319,40 @@ const WorldGen = (() => {
         };
     }
 
+    function getDangerBand(tile = {}, context = {}) {
+        const pressure = getEncounterPressure(tile, context);
+        const policy = context.encounterPolicy || tile.encounterPolicy || null;
+        const livingHostile = Array.isArray(tile.creatures) && tile.creatures.some(creature =>
+            creature
+            && Number(creature.CPun ?? 1) > 0
+            && !creature.knockedOut
+            && (creature.disposition === 'enemy' || creature.disposition === 'hostile' || creature.hostile === true)
+        );
+        const voluntaryDanger = tile.overlays?.poi?.category === 'dangerSite'
+            || tile.dangerSite === true;
+        let score = Number(pressure.finalChance || 0);
+        if (livingHostile) score = Math.max(score, 0.72);
+        if (voluntaryDanger) score = Math.max(score, 0.68);
+        if (policy?.band === 'protected') score = 0;
+        if (policy?.band === 'opening') score = Math.min(score, 0.48);
+        score = clamp01(score);
+        const id = score <= 0.1
+            ? 'safe'
+            : score <= 0.28
+                ? 'low'
+                : score <= 0.48
+                    ? 'guarded'
+                    : score <= 0.7
+                        ? 'dangerous'
+                        : 'severe';
+        return { id, score: Number(score.toFixed(4)), pressure };
+    }
+
     function getTileMapSummary(tile = {}, context = {}) {
         const biomeId = tile.displayBiome || tile.derivedBiome || tile.biome || 'plains';
         const traversal = tile.traversal || getTraversal(tile, context.biomeDef);
         const pressure = getEncounterPressure(tile, context);
+        const dangerBand = getDangerBand(tile, context);
         const markers = [];
         if (tile.overlays?.road) markers.push('Road');
         if (tile.overlays?.bridge) markers.push('Bridge');
@@ -346,6 +376,7 @@ const WorldGen = (() => {
                 routeModifier: traversal.routeModifier
             },
             danger: pressure.finalChance >= 0.66 ? 'high' : (pressure.finalChance >= 0.36 ? 'elevated' : 'low'),
+            dangerBand,
             markers,
             discovered: Boolean(tile.explored),
             restAvailable: typeof context.restAvailable === 'boolean'
@@ -1189,6 +1220,7 @@ const WorldGen = (() => {
         getBiomeTraits,
         getTraversal,
         getEncounterPressure,
+        getDangerBand,
         getTileMapSummary,
         validateStartArea,
         classifyBiome,

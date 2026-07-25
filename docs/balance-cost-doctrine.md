@@ -77,6 +77,30 @@ existing Guard-mitigated initiative bonus. Scout primarily improves detection;
 Guard supplies a smaller detection contribution and remains the mitigation
 role when detection fails.
 
+## Standard Adventure danger and admission
+
+Standard Adventure favors readable pressure over surprise lethality:
+
+- Generator V4 introduced a protected passable Grove 3×3 with no hostile
+  encounter, hostile structure, danger influence, ambush, or reinforcement.
+  Generator V5 and V6 inherit that contract; recorded older worlds remain
+  unchanged.
+- Radius 2–5 releases pressure predictably and admits at most one tier-1
+  hostile. A weakest-living-party estimate bounds its worst hit and opening
+  round; an over-budget hostile becomes a visible neutral meeting rather than
+  receiving hidden damage reduction.
+- Roads subtract `0.12` from bounded encounter pressure and reduce spawn chance
+  before the generator's opening-band multiplier.
+- Current and adjacent tiles expose `Safe`, `Low`, `Guarded`, `Dangerous`, or
+  `Severe` before travel. Protected tiles are always Safe; known living
+  hostiles and voluntary danger sites raise the visible band. The label does
+  not disclose hidden rolls.
+- A failed ambush check changes initiative pressure, not damage.
+
+This is a bounded opening contract, not a promise that every wilderness,
+danger site, landmark, or difficult biome is safe. A later opt-in pressure
+profile requires a separate operator decision.
+
 ## Spirit Breakthrough
 
 When social actions raise a non-party target to the V1 Spirit threshold, the target enters a breakthrough state:

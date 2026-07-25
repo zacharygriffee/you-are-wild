@@ -435,6 +435,31 @@ const YAW_MAP_VISUALS = {
         return app._label('ui.tileInfo.pressureLow', 'Low');
     },
 
+    dangerBandLabel(app, band = 'low') {
+        const labels = {
+            safe: ['ui.tileInfo.dangerSafe', 'Safe'],
+            low: ['ui.tileInfo.dangerLow', 'Low'],
+            guarded: ['ui.tileInfo.dangerGuarded', 'Guarded'],
+            dangerous: ['ui.tileInfo.dangerDangerous', 'Dangerous'],
+            severe: ['ui.tileInfo.dangerSevere', 'Severe']
+        };
+        const [key, fallback] = labels[band] || labels.low;
+        return app._label(key, fallback);
+    },
+
+    tileDangerBand(app, tile = null) {
+        const summary = this.tileMapSummary(app, tile);
+        const band = summary?.dangerBand?.id || (
+            summary?.danger === 'high' ? 'dangerous'
+                : summary?.danger === 'elevated' ? 'guarded' : 'low'
+        );
+        return {
+            id: band,
+            label: this.dangerBandLabel(app, band),
+            score: Number(summary?.dangerBand?.score || 0)
+        };
+    },
+
     tileMapSummary(app, tile = null) {
         const current = tile || app.getTile(app.location.x, app.location.y);
         if (typeof WorldGen === 'undefined') {
@@ -474,7 +499,7 @@ const YAW_MAP_VISUALS = {
         const summary = this.tileMapSummary(app, current);
         const tagText = summary.terrain.tags.length || summary.markers.length ? [...new Set([...summary.terrain.tags, ...summary.markers.map(tag => String(tag).toLowerCase())])].join(', ') : app._label('ui.tileInfo.none', 'None');
         const phase = app._isNight() ? app._label('ui.tileInfo.night', 'Night') : app._label('ui.tileInfo.day', 'Day');
-        const danger = this.dangerPressureLabel(app, summary.danger === 'high' ? 0.66 : (summary.danger === 'elevated' ? 0.36 : 0));
+        const danger = this.dangerBandLabel(app, summary.dangerBand?.id || (summary.danger === 'high' ? 'dangerous' : (summary.danger === 'elevated' ? 'guarded' : 'low')));
         return `<div style="font-weight:700;color:var(--text-primary);margin-bottom:4px;">${app._escapeHtml(app._label('ui.tileInfo.title', 'Current Tile'))}</div>` +
             `<div><strong>${app._escapeHtml(app._label('ui.tileInfo.biome', 'Biome'))}:</strong> ${biome.icon || ''} ${app._escapeHtml(biome.name || current.biome)}</div>` +
             `<div><strong>${app._escapeHtml(app._label('ui.tileInfo.coords', 'Coords'))}:</strong> ${current.x}, ${current.y} · <strong>${app._escapeHtml(app._label('ui.tileInfo.time', 'Time'))}:</strong> ${app._escapeHtml(app._timeLabel())} ${app._escapeHtml(phase)}</div>` +
@@ -495,7 +520,7 @@ const YAW_MAP_VISUALS = {
         const biome = app.biomes[current.displayBiome || current.biome] || app.biomes[current.biome] || {};
         const summary = this.tileMapSummary(app, current);
         const phase = app._isNight() ? app._label('ui.tileInfo.night', 'Night') : app._label('ui.tileInfo.day', 'Day');
-        const danger = this.dangerPressureLabel(app, summary.danger === 'high' ? 0.66 : (summary.danger === 'elevated' ? 0.36 : 0));
+        const danger = this.dangerBandLabel(app, summary.dangerBand?.id || (summary.danger === 'high' ? 'dangerous' : (summary.danger === 'elevated' ? 'guarded' : 'low')));
         return `<div class="mobile-tile-summary-row"><span><strong>${app._escapeHtml(app._label('ui.tileInfo.title', 'Current Tile'))}</strong> ${biome.icon || ''} ${app._escapeHtml(biome.name || current.biome)}</span><button class="nav-btn mobile-tile-details-btn" data-command-surface="tile-details" data-command-mode="navigation" data-command-control="open-tile-details" title="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" aria-label="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" onpointerdown="event.stopPropagation()">${detailsLabel}</button></div>`
             + `<div class="mobile-tile-meta-row">${current.x}, ${current.y} · ${app._escapeHtml(app._timeLabel())} ${app._escapeHtml(phase)} · ${app._escapeHtml(app._label('ui.tileInfo.danger', 'Danger'))}: ${app._escapeHtml(danger)}</div>`;
     },

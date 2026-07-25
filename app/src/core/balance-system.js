@@ -308,6 +308,30 @@ const YAW_BALANCE_SYSTEM = {
                 restsToHungry: turnsTo(cfg.hungerHungry, cfg.relief.restHungerPressure),
                 hoursToHungry: turnsTo(cfg.hungerHungry, cfg.relief.restHungerPressure) * 8
             },
+            combatPressure: {
+                hungry: {
+                    actionMultiplier: cfg.combatPressure.hungryActionMultiplier,
+                    initiativeMultiplier: cfg.combatPressure.hungryInitiativeMultiplier,
+                    fleePenalty: cfg.combatPressure.hungryFleePenalty
+                },
+                starving: {
+                    actionMultiplier: cfg.combatPressure.starvingActionMultiplier,
+                    initiativeMultiplier: cfg.combatPressure.starvingInitiativeMultiplier,
+                    fleePenalty: cfg.combatPressure.starvingFleePenalty
+                },
+                changesMaximumCondition: false
+            },
+            standardAdventure: {
+                protectedRadius: 1,
+                openingRadius: 5,
+                openingMaxHostiles: 1,
+                openingMaxDifficulty: 1,
+                openingAllowsAmbush: false,
+                openingAllowsReinforcement: false,
+                roadPressureModifier: -0.12,
+                dangerBands: ['safe', 'low', 'guarded', 'dangerous', 'severe'],
+                hiddenDamageScaling: false
+            },
             digestion: [1, 3, 6].flatMap(size => [digestion(size, 5), digestion(size, 2)]),
             referenceScenario: {
                 assumptions: {

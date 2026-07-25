@@ -21,6 +21,28 @@ at `0` hunger unless stated otherwise.
 An empty eight-hour rest adds 8 hunger. Nine consecutive empty rests (72
 hours) cross Hungry. Rest is healing and elapsed time, not food.
 
+Hungry applies `0.9x` combat action and initiative pressure plus a five-point
+Flee penalty. Starving applies `0.75x` action, `0.8x` initiative, and a
+fifteen-point Flee penalty. The same contract applies to every living unit and
+never reduces Constitution or maximum Condition.
+
+## Standard Adventure opening reference
+
+| Situation | Declared result |
+| --- | --- |
+| Origin and visible inner 3×3 | Grove, passable, Safe, no hostile encounter |
+| Radius 2–5 | Increasing pressure; at most one tier-1 hostile |
+| First opening hostile | No ambush or reinforcement |
+| Over-budget opening hostility | Visible neutral meeting; no hidden damage scaling |
+| Road versus equal wilderness | `-0.12` bounded encounter pressure |
+| Known living hostile | Severe visible danger |
+| Failed ambush awareness | Initiative pressure, never opaque bonus damage |
+
+The multi-seed/all-core-species acceptance uses the weakest current starter as
+the threat reference and keeps a recovery anchor reachable. Generator V4
+introduced this contract; current Generator V6 inherits it while changing road
+rasterization only.
+
 ## Containment nutrition
 
 Stomach entry provides immediate fullness of `3 × prey size`, capped at 20.

@@ -4,7 +4,10 @@
 compatibility, sparse-save metadata, the generated single-file artifact,
 player-facing version labels, hosted packaging, and release notes consume that
 record. Package versions and first-party package `gameVersion` fields are
-mirrors; the build rejects mismatches.
+mirrors; the build rejects mismatches. The Sites project synchronizes its
+release mirror and hosted first-party packages from the authoritative sources;
+its chooser and development changelog derive candidate identity from that
+mirror instead of hard-coded version strings.
 
 ## Pre-1.0 Versioning
 
@@ -17,7 +20,10 @@ mirrors; the build rejects mismatches.
 
 Published artifacts use the `public-preview` channel until the operator
 promotes the project. Development builds may use a development channel but may
-not impersonate a published version.
+not impersonate a published version. Unpublished records use numeric semantic
+versioning, `status: draft` or `candidate`, `channel: development`, and
+`releasedAt: null`. Public publication requires `status: released`,
+`channel: public-preview`, and the actual release date.
 
 ## Required Release Record
 
@@ -118,3 +124,17 @@ request.
   existing species modules that omit a profile retain their original behavior.
 - Modules using Species Profile V1 must declare game version 0.14.0 or newer.
 - First-party package production metadata is stamped with 0.14.0.
+
+## Version 0.15.0 Candidate Compatibility
+
+- The development head is stamped 0.15.0 with explicit draft/development
+  metadata; it is not the published 0.15.0 public preview.
+- Save schema remains 11 and module API remains 1.
+- Existing minimum module-version declarations remain valid. First-party
+  package production metadata mirrors the candidate while intentional
+  `minGameVersion` floors remain unchanged.
+- Generator V4 introduced the safe-start contract, Generator V5 introduced the
+  route graph, and Generator V6 changes new-world road rasterization. Recorded
+  older generator versions remain immutable.
+- Final compatibility claims require exact-candidate old-save and package
+  lifecycle smoke before the record may become `released`.

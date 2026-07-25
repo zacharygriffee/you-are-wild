@@ -45,10 +45,13 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         setOrRemove('data-immediate-danger', visual.immediateDanger ? 'true' : '');
     },
 
-    cellHtml(app, visual, label) {
+    cellHtml(app, visual, label, danger = null) {
         const escapedLabel = app._escapeHtml(label);
         const tileArt = app._mapTileArtHtml(visual);
-        return `${tileArt}<span class="desktop-play-cell-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span><span class="desktop-play-cell-label">${escapedLabel}</span>`;
+        const dangerBadge = danger
+            ? `<span class="desktop-play-danger-band ${app._escapeHtml(danger.id)}">${app._escapeHtml(danger.label)}</span>`
+            : '';
+        return `${tileArt}<span class="desktop-play-cell-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span>${dangerBadge}<span class="desktop-play-cell-label">${escapedLabel}</span>`;
     },
 
     directionLabel(app, dx, dy) {
@@ -178,12 +181,12 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         }
     },
 
-    updateCell(app, el, visual, label, dx, dy, moveable = true) {
+    updateCell(app, el, visual, label, dx, dy, moveable = true, danger = null) {
         if (!el) return;
         const classes = `desktop-play-cell${moveable ? ' moveable' : ''} ${visual.classes || ''}`;
         const escapedLabel = app._escapeHtml(label);
         el.className = classes;
-        el.innerHTML = this.cellHtml(app, visual, label);
+        el.innerHTML = this.cellHtml(app, visual, label, danger);
         if (typeof el.setAttribute === 'function') {
             el.setAttribute('title', escapedLabel);
             el.setAttribute('aria-label', escapedLabel);
@@ -195,6 +198,8 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             el.setAttribute('data-stage-layer', 'tile');
             el.setAttribute('data-stage-cell', `${dx},${dy}`);
             el.setAttribute('data-stage-direction', `${dx},${dy}`);
+            if (danger?.id) el.setAttribute('data-danger-band', danger.id);
+            else el.removeAttribute?.('data-danger-band');
             el.removeAttribute?.('aria-hidden');
             if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
             else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
@@ -372,8 +377,9 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             const direction = this.directionLabel(app, cell.dx, cell.dy);
             const moveable = traversal.allowed && !inCombat;
             const blocked = traversal.allowed ? '' : ` — ${app._traversalMessage(traversal)}`;
-            const label = `${direction}: ${visual.label} (${tx}, ${ty})${blocked}`;
-            this.updateCell(app, el, visual, label, cell.dx, cell.dy, moveable);
+            const danger = app._tileDangerBand(tile);
+            const label = `${direction}: ${visual.label} · ${danger.label} (${tx}, ${ty})${blocked}`;
+            this.updateCell(app, el, visual, label, cell.dx, cell.dy, moveable, danger);
         });
         const currentTile = app.getTile(cx, cy);
         const currentVisual = app._mapTileVisual(currentTile, {

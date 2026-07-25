@@ -1,68 +1,92 @@
 {
   "schema": 1,
-  "version": "0.14.0",
-  "releasedAt": "2026-07-21",
-  "channel": "public-preview",
+  "version": "0.15.0",
+  "status": "draft",
+  "releasedAt": null,
+  "channel": "development",
+  "candidateFor": "public-preview",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Existing 0.10.x through 0.13.0 saves load automatically; Species Profile V1 adds no required save migration.",
-      "mods": "Existing modules remain compatible. Modules using Species Profile V1 profiles require game version 0.14.0 or newer."
+      "saves": "Candidate expectation: existing 0.10.x through 0.14.0 saves load through maintained migrations. Recorded generator versions remain unchanged.",
+      "mods": "Module API remains version 1. Existing minimum-version declarations remain valid; additive V1 contracts keep their documented version floors."
     },
     "es": {
-      "saves": "Las partidas existentes desde 0.10.x hasta 0.13.0 se cargan automaticamente; Species Profile V1 no requiere migracion de partidas.",
-      "mods": "Los modulos existentes siguen siendo compatibles. Los perfiles Species Profile V1 requieren la version 0.14.0 o posterior."
+      "saves": "Expectativa de la candidata: las partidas 0.10.x a 0.14.0 cargan mediante las migraciones mantenidas. Las versiones de generador registradas no cambian.",
+      "mods": "La API de modulos sigue en la version 1. Los requisitos minimos existentes siguen validos; los contratos V1 aditivos conservan sus versiones minimas documentadas."
     }
   },
   "notes": {
     "en": {
       "added": [
-        "Species Profile V1 lets trusted content packs define bounded starting stats, size, difficulty, anatomy, existing abilities, temperament, canon, and encounter placement.",
-        "Elemental Species is supplied by the Sites host as an optional, disabled-by-default pack with Emberkin, Tidekin, and Stonekin.",
-        "Species contributions and their owned encounter entries are removed cleanly when their module is disabled."
+        "Mobile Interaction Flow V2 provides one state-aware mobile Roster with a persistent actor-target-intent composer.",
+        "Hungry and Starving now apply visible bounded pressure to players, companions, and creatures without lowering maximum Condition.",
+        "Standard Adventure exposes localized Safe, Low, Guarded, Dangerous, and Severe danger bands for current and adjacent tiles.",
+        "Deterministic ambush awareness uses Wisdom, visibility, terrain, darkvision, Scout, Guard, and enemy temperament.",
+        "Locale Pack, Sprite Pack, UI Contribution, Combat Technique, Resource Ledger, and Recovery Mode V1 foundations are available to bounded modules."
       ],
       "changed": [
-        "The character creation species grid refreshes immediately when a species module is enabled or disabled.",
-        "Character creation preserves a valid selection and safely returns to Human when the selected mod species becomes unavailable.",
-        "Player creation and normalization now honor validated species-authored profiles without granting arbitrary mechanics."
+        "New worlds use Generator V6 clean orthogonal roads while retaining Generator V4 safe-start and opening-admission behavior.",
+        "Opening encounters use group, tier, ambush, reinforcement, and weakest-party threat bounds instead of hidden damage reduction.",
+        "Roads reduce encounter pressure relative to surrounding wilderness.",
+        "Mobile and desktop share selection grammar, contextual subinteraction menus, target confirmation, and deterministic group accounting.",
+        "The conservative opt-in Ghost pilgrimage is traversal-only and resurrects at the validated home or safe place."
       ],
       "fixed": [
-        "Newly enabled species no longer require a page reload before appearing in character creation.",
-        "Disabling a species pack no longer leaves stale species choices or owned encounter entries behind.",
-        "Invalid or unsupported profile fields are rejected at the module boundary instead of leaking into runtime state."
+        "Hostile encounter lifecycle consistently enters combat for living hostiles and keeps living retreat separate from death recovery.",
+        "Death and defeat settle companion-led combat before recovery and preserve stranded survivors, recovery bags, and interior placement.",
+        "Multi-party and multi-target interactions preserve selections, costs, reach outcomes, and save or reload state.",
+        "Novice one-to-many social interactions resolve as real attempts instead of stopping at an obsolete aggregate-stat gate.",
+        "Party cards refresh immediately after travel Hunger changes instead of showing stale values until reload.",
+        "Successful, failed, and enemy Flee results use localized prose in the Scene feed instead of internal result tokens.",
+        "Generic failed-attempt Scene prose uses correct player and third-person verb agreement.",
+        "Generator V6 removes dense false road junction meshes caused by diagonal segment rasterization.",
+        "Responsive focus, localization, long-text, touch-target, and horizontal-overflow regressions are covered by the maintained viewport matrix."
       ],
       "knownIssues": [
-        "Elemental traits are descriptive; elemental damage and resistance are not yet executable mechanics.",
-        "Browser-direct AI connections still depend on endpoint TLS and CORS support.",
-        "Combat balance, survival pacing, and longer-save defeat recovery remain active alpha playtest areas.",
-        "The broader mobile party, enemy, and structure-action flow is scheduled for a future interaction redesign.",
-        "The first textured visit transfers approximately 4 MB of atlas media; Lightweight mode avoids that transfer."
+        "This is a development draft, not the published 0.15.0 public preview.",
+        "Long-form combat and survival balance testing is scheduled against the exact published artifact.",
+        "Ghost is intentionally traversal-only; richer spectral play requires a separate recovery profile.",
+        "Physical-device comfort, authored art, and human translation quality still require operator review.",
+        "Browser-direct AI narration depends on endpoint TLS, CORS, response shape, token budget, and timeout behavior.",
+        "The first Textured visit downloads atlas media; Lightweight avoids that transfer."
       ]
     },
     "es": {
       "added": [
-        "Species Profile V1 permite que paquetes confiables definan estadisticas iniciales limitadas, tamano, dificultad, anatomia, habilidades existentes, temperamento, canon y encuentros.",
-        "Elemental Species se entrega desde Sites como paquete opcional y desactivado por defecto con Emberkin, Tidekin y Stonekin.",
-        "Las especies y encuentros propios del modulo se eliminan limpiamente al desactivarlo."
+        "Mobile Interaction Flow V2 ofrece un solo Plantel movil contextual con un compositor persistente de actor, objetivo e intencion.",
+        "Hambriento y Famélico ahora aplican presion visible y limitada a jugadores, companeros y criaturas sin reducir la Condicion maxima.",
+        "Aventura estandar muestra bandas localizadas Seguro, Bajo, Vigilado, Peligroso y Severo para la casilla actual y las adyacentes.",
+        "La deteccion determinista de emboscadas usa Sabiduria, visibilidad, terreno, vision nocturna, Explorador, Guardia y temperamento enemigo.",
+        "Los fundamentos Locale Pack, Sprite Pack, UI Contribution, Combat Technique, Resource Ledger y Recovery Mode V1 estan disponibles para modulos limitados."
       ],
       "changed": [
-        "La seleccion de especies se actualiza inmediatamente al activar o desactivar un modulo de especies.",
-        "La creacion conserva una seleccion valida y vuelve de forma segura a Human si la especie del modulo deja de estar disponible.",
-        "La creacion y normalizacion del jugador respetan perfiles validados sin conceder mecanicas arbitrarias."
+        "Los mundos nuevos usan las carreteras ortogonales limpias del Generador V6 y conservan el inicio seguro y la admision inicial del Generador V4.",
+        "Los encuentros iniciales usan limites de grupo, nivel, emboscada, refuerzo y amenaza del miembro mas debil, sin reducir dano de forma oculta.",
+        "Las carreteras reducen la presion de encuentros frente al entorno silvestre.",
+        "Movil y escritorio comparten seleccion, subinteracciones contextuales, confirmacion de objetivos y contabilidad determinista de grupo.",
+        "La peregrinacion Fantasma conservadora y opcional solo permite viajar y resucita en el hogar o lugar seguro validado."
       ],
       "fixed": [
-        "Las especies recien activadas ya no requieren recargar la pagina para aparecer.",
-        "Desactivar un paquete ya no deja especies ni encuentros propios obsoletos.",
-        "Los campos de perfil invalidos o incompatibles se rechazan en el limite del modulo."
+        "El ciclo de encuentros hostiles inicia combate de forma consistente y mantiene la huida con vida separada de la recuperacion por muerte.",
+        "La derrota resuelve el combate de los companeros antes de recuperar al jugador y conserva supervivientes, bolsas e interiores.",
+        "Las interacciones de grupo y multiobjetivo conservan seleccion, costos, alcance y estado al guardar o cargar.",
+        "Las interacciones sociales multiobjetivo de principiantes se resuelven como intentos reales en vez de detenerse por un limite estadistico obsoleto.",
+        "Las tarjetas del grupo actualizan el Hambre inmediatamente despues de viajar en vez de mostrar valores obsoletos hasta recargar.",
+        "Los resultados de Huida exitosos, fallidos y enemigos usan prosa localizada en Escena en vez de codigos internos.",
+        "La prosa generica de intentos fallidos usa formas correctas para el jugador y otros personajes.",
+        "El Generador V6 elimina las mallas densas de cruces falsos causadas por segmentos diagonales.",
+        "La matriz adaptable cubre regresiones de foco, localizacion, texto largo, controles tactiles y desbordamiento horizontal."
       ],
       "knownIssues": [
-        "Los rasgos elementales son descriptivos; el dano y la resistencia elemental aun no son mecanicas ejecutables.",
-        "Las conexiones directas desde el navegador dependen de TLS y CORS del endpoint.",
-        "El equilibrio de combate, el ritmo de supervivencia y la recuperacion en partidas largas siguen en pruebas alfa.",
-        "El flujo movil entre grupo, enemigos y acciones de estructuras queda reservado para un futuro rediseno.",
-        "La primera visita con texturas transfiere aproximadamente 4 MB de atlas; el modo Ligero evita esa transferencia."
+        "Esta es una compilacion de desarrollo, no la version publica 0.15.0.",
+        "Las pruebas largas de combate y supervivencia se haran contra el artefacto publicado exacto.",
+        "Fantasma solo permite viajar de forma intencional; habilidades espectrales requieren otro perfil.",
+        "La comodidad en dispositivos fisicos, el arte y la calidad de traduccion humana requieren revision del operador.",
+        "La narracion de IA directa depende de TLS, CORS, formato de respuesta, presupuesto de tokens y tiempo de espera.",
+        "La primera visita con texturas descarga medios; el modo Ligero evita esa transferencia."
       ]
     }
   }

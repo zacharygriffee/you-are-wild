@@ -80,11 +80,18 @@ const YAW_STORY_EVENTS = {
                 const actors = ctx.actorNames.join(', ') || app._label('target.actorRole', 'Actor');
                 const targets = ctx.targetNames.join(', ') || app._label('target.targetRole', 'Target');
                 const action = this.intentLabel(app, ctx.action);
-                const summary = ctx.outcome.summary || app._label('scene.failure.generic', '{actors} tries {action} on {targets}, but it does not work.', {
-                    actors,
-                    action,
-                    targets
-                });
+                const playerActs = ctx.actors.some(unit => unit === app.player
+                    || (unit?.id && app.player?.id && String(unit.id) === String(app.player.id)));
+                const summary = ctx.outcome.summary || (playerActs
+                    ? app._label('scene.failure.player', 'You try to {action} {targets}, but it does not work.', {
+                        action,
+                        targets
+                    })
+                    : app._label('scene.failure.generic', '{actors} tries to {action} {targets}, but it does not work.', {
+                        actors,
+                        action,
+                        targets
+                    }));
                 return {
                     summary,
                     passage: ctx.outcome.passage || summary
@@ -169,6 +176,7 @@ const YAW_STORY_EVENTS = {
             actorNames: this.unitNames(app, actors),
             targetNames: this.unitNames(app, targets),
             defaultSummary,
+            resultKind: outcome.resultKind || 'resolved',
             contentTier: outcome.contentTier ?? this.currentContentTier(),
             tags: [...new Set([...(Array.isArray(plan.tags) ? plan.tags : []), ...(Array.isArray(outcome.tags) ? outcome.tags : [])].map(String))]
         };

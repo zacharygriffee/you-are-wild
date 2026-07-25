@@ -1,6 +1,6 @@
 {
   "name": "you-are-wild",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "private": true,
   "description": "Creature-focused exploration RPG built as a single-file HTML game with modular source",
   "scripts": {

@@ -29,6 +29,8 @@ const FIRST_PARTY_PACKAGE_MIRRORS = [
   'you-are-wild-template-narration.yawmod.json',
   'you-are-wild-waystone-recovery.yawmod.json'
 ];
+const SITE_RELEASE_MIRROR = path.join(ROOT_DIR, 'site', 'release.json');
+const SITE_HOST_MANIFEST = path.join(ROOT_DIR, 'site', 'public', 'yaw-host.json');
 
 function loadRelease() {
   let release;
@@ -38,7 +40,19 @@ function loadRelease() {
     throw new Error(`release.json is missing or invalid: ${error.message}`);
   }
   if (!/^\d+\.\d+\.\d+$/.test(String(release.version || ''))) throw new Error('release.json version must use numeric semver');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(release.releasedAt || ''))) throw new Error('release.json releasedAt must use YYYY-MM-DD');
+  if (!['draft', 'candidate', 'released'].includes(String(release.status || ''))) {
+    throw new Error('release.json status must be draft, candidate, or released');
+  }
+  const hasReleaseDate = /^\d{4}-\d{2}-\d{2}$/.test(String(release.releasedAt || ''));
+  if (release.status === 'released' && !hasReleaseDate) {
+    throw new Error('released release.json records require releasedAt in YYYY-MM-DD format');
+  }
+  if (release.status !== 'released' && release.releasedAt !== null && !hasReleaseDate) {
+    throw new Error('development release.json releasedAt must be null or use YYYY-MM-DD');
+  }
+  if (release.channel === 'public-preview' && release.status !== 'released') {
+    throw new Error('public-preview release.json records must use released status');
+  }
   if (!Number.isInteger(release.saveSchema) || release.saveSchema < 1) throw new Error('release.json saveSchema must be a positive integer');
   if (!Number.isInteger(release.moduleApi) || release.moduleApi < 1) throw new Error('release.json moduleApi must be a positive integer');
   const packageMirrors = [
@@ -59,6 +73,36 @@ function loadRelease() {
       const packageData = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (packageData.gameVersion && packageData.gameVersion !== release.version) {
         throw new Error(`${path.relative(ROOT_DIR, file)} gameVersion must mirror release.json (${release.version})`);
+      }
+    }
+  }
+  if (fs.existsSync(SITE_RELEASE_MIRROR)) {
+    const siteRelease = JSON.parse(fs.readFileSync(SITE_RELEASE_MIRROR, 'utf8'));
+    for (const key of ['version', 'status', 'releasedAt', 'channel', 'saveSchema', 'moduleApi']) {
+      if (siteRelease[key] !== release[key]) {
+        throw new Error(`${path.relative(ROOT_DIR, SITE_RELEASE_MIRROR)} ${key} must mirror app/release.json`);
+      }
+    }
+  }
+  if (fs.existsSync(SITE_HOST_MANIFEST)) {
+    const hostManifest = JSON.parse(fs.readFileSync(SITE_HOST_MANIFEST, 'utf8'));
+    if (hostManifest.schema !== 'yaw-host-modules-v1' || !Array.isArray(hostManifest.catalog)) {
+      throw new Error(`${path.relative(ROOT_DIR, SITE_HOST_MANIFEST)} must contain a valid host catalog`);
+    }
+    for (const entry of hostManifest.catalog) {
+      const packagePath = path.join(ROOT_DIR, 'site', 'public', String(entry.url || '').replace(/^\/+/, ''));
+      if (!fs.existsSync(packagePath)) {
+        throw new Error(`Missing hosted package advertised by ${entry.id}: ${path.relative(ROOT_DIR, packagePath)}`);
+      }
+      const packageData = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+      if (packageData.packageId !== entry.id) {
+        throw new Error(`${path.relative(ROOT_DIR, packagePath)} packageId must match host catalog entry ${entry.id}`);
+      }
+      if (packageData.module?.manifest?.version !== entry.version) {
+        throw new Error(`${path.relative(ROOT_DIR, packagePath)} version must match host catalog (${entry.version})`);
+      }
+      if (packageData.gameVersion !== release.version) {
+        throw new Error(`${path.relative(ROOT_DIR, packagePath)} gameVersion must mirror release.json (${release.version})`);
       }
     }
   }

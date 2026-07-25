@@ -54,13 +54,14 @@ const YAW_COMBAT_MOBILITY = {
         const rollKey = isPlayer ? 'combat-player-flee' : 'combat-party-flee';
         const fleeRoll = app._combatStateRoll(rollKey, actor, app._unitSelectionId(enemy));
         if (fleeRoll < Math.max(0.1, Math.min(0.95, fleeChance))) {
+            const resultText = isPlayer
+                ? app._label('combat.flee.success', 'You flee successfully!')
+                : app._label('combat.flee.actorSuccess', '{name} flees from the fight!', { name: actor.name });
             app.log.push({
-                text: isPlayer
-                    ? app._label('combat.flee.success', 'You flee successfully!')
-                    : app._label('combat.flee.actorSuccess', '{name} flees from the fight!', { name: actor.name }),
+                text: resultText,
                 type: 'combat'
             });
-            app._emitCombatAction('flee', actor, enemy, 'success');
+            app._emitCombatAction('flee', actor, enemy, resultText);
             if (isPlayer) {
                 app._retreatPartyFromCombat?.(actor, { source: 'combat-flee', destination });
                 app.endCombat('flee');
@@ -72,13 +73,14 @@ const YAW_COMBAT_MOBILITY = {
                 app.nextTurn();
             }
         } else {
+            const resultText = isPlayer
+                ? app._label('combat.flee.failed', 'Flee failed! {name} intercepts you!', { name: enemy.name })
+                : app._label('combat.flee.actorFailed', '{actor} tries to flee, but {enemy} intercepts!', { actor: actor.name, enemy: enemy.name });
             app.log.push({
-                text: isPlayer
-                    ? app._label('combat.flee.failed', 'Flee failed! {name} intercepts you!', { name: enemy.name })
-                    : app._label('combat.flee.actorFailed', '{actor} tries to flee, but {enemy} intercepts!', { actor: actor.name, enemy: enemy.name }),
+                text: resultText,
                 type: 'combat'
             });
-            app._emitCombatAction('flee', actor, enemy, 'failed');
+            app._emitCombatAction('flee', actor, enemy, resultText);
             app.renderLog();
             app.nextTurn();
         }

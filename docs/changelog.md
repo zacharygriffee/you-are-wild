@@ -4,6 +4,38 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- One-to-many social commands now follow the shared attempt-first interaction
+  contract. A novice can address mixed companion and local-creature targets in
+  one command, individual results still determine who is affected, and the
+  command emits one consolidated Scene result instead of silently stopping at
+  an obsolete aggregate-stat gate. Multi-target Fight remains the only
+  practice-scaled distributed effect.
+- Candidate compatibility now includes a binary save fixture produced by the
+  published 0.14.0 serializer and loaded through the current slot migration
+  path. The Sites chooser and development archive consume a synchronized
+  release mirror, while root and Sites builds reject stale host-catalog
+  versions, hosted package copies, or package `gameVersion` metadata.
+- Travel now refreshes party presentation after applying Hunger cost. Desktop
+  and mobile cards no longer retain a pre-move Hunger value until save/reload;
+  the clean-origin candidate smoke and a focused regression test cover the
+  live update.
+- Player and enemy Flee beats now send their localized resolved text through
+  the semantic Scene layer. Successful and failed retreats no longer expose
+  raw `success`, `failed`, or `fled` tokens to players.
+- Generic narrative failures now conjugate player and named actors separately,
+  avoiding output such as “You tries” while preserving localized templates.
+- Release identity now separates numeric compatibility from publication state.
+  The post-0.14 head identifies itself as a 0.15.0 development draft with no
+  release date; only an operator-approved record may use the public-preview
+  channel and released status. Authoritative documentation is consolidated
+  into current architecture, active objectives, evidence audit, focused
+  doctrine, and explicitly superseded history.
+- Standard Adventure now exposes the same deterministic pressure used by
+  encounter admission as five localized current/adjacent travel bands: Safe,
+  Low, Guarded, Dangerous, and Severe. Protected opening tiles are always
+  Safe, known living hostiles become Severe, voluntary danger sites remain
+  visibly elevated, and roads retain their lower pressure without revealing
+  hidden rolls.
 - Generator V6 keeps the connected Route Hierarchy V2 macro graph but replaces
   diagonal distance-to-line rasterization with deterministic one-tile
   orthogonal routes. It limits each region to two road-served POIs, removes

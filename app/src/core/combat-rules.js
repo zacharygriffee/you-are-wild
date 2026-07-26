@@ -232,45 +232,54 @@ const YAW_COMBAT_RULES = {
         const actorText = actorList.map(unit => unit?.name).filter(Boolean).join(', ') || app._label('target.actorRole', 'Actor');
         const targetName = target?.name || app._label('target.targetRole', 'Target');
         const actionLabel = app._uiLabel ? app._uiLabel(String(action || '').replace(/^sync_/, '')) : String(action || 'action');
+        const attemptVerb = app.settings?.language === 'es'
+            ? (actorList.length === 1 ? 'intenta' : 'intentan')
+            : (actorList.length === 1 ? 'tries' : 'try');
         const reason = reach?.reason || 'cannot-reach';
         if (reason === 'target-flying-contact') {
-            return app._label('combat.reachFail.flyingContact', '{actors} tries {action} on {target}, but close contact cannot reach {target} in the air. Use flying, anti-flying, or explicit contact reach.', {
+            return app._label('combat.reachFail.flyingContact', '{actors} {attemptVerb} {action} on {target}, but close contact cannot reach {target} in the air. Use flying, anti-flying, or explicit contact reach.', {
                 actors: actorText,
+                attemptVerb,
                 action: actionLabel,
                 target: targetName
             });
         }
         if (reason === 'target-flying') {
-            return app._label('combat.reachFail.flying', '{actors} tries {action} on {target}, but {target} stays out of reach in the air. Use flying, ranged, or anti-flying reach.', {
+            return app._label('combat.reachFail.flying', '{actors} {attemptVerb} {action} on {target}, but {target} stays out of reach in the air. Use flying, ranged, or anti-flying reach.', {
                 actors: actorText,
+                attemptVerb,
                 action: actionLabel,
                 target: targetName
             });
         }
         if (reason === 'target-protected-back-row' || reason === 'target-back-row') {
-            return app._label('combat.reachFail.protectedBackRow', '{actors} tries {action} on {target}, but the front row closes ranks and keeps {target} out of reach. Open the front line, use ranged or flying reach, or try a social action.', {
+            return app._label('combat.reachFail.protectedBackRow', '{actors} {attemptVerb} {action} on {target}, but the front row closes ranks and keeps {target} out of reach. Open the front line, use ranged or flying reach, or try a social action.', {
                 actors: actorText,
+                attemptVerb,
                 action: actionLabel,
                 target: targetName
             });
         }
         if (reason === 'contact-protected-back-row' || reason === 'contact-back-row') {
-            return app._label('combat.reachFail.contactProtectedBackRow', '{actors} tries {action} on {target}, but the front row blocks every path to close contact.', {
+            return app._label('combat.reachFail.contactProtectedBackRow', '{actors} {attemptVerb} {action} on {target}, but the front row blocks every path to close contact.', {
                 actors: actorText,
+                attemptVerb,
                 action: actionLabel,
                 target: targetName
             });
         }
         if (reason === 'melee-needs-front-row') {
-            return app._label('combat.reachFail.meleeNeedsFront', '{actors} tries {action} on {target}, but ordinary melee needs the front row. Advance first, use ranged or flying reach, or try a social action.', {
+            return app._label('combat.reachFail.meleeNeedsFront', '{actors} {attemptVerb} {action} on {target}, but ordinary melee needs the front row. Advance first, use ranged or flying reach, or try a social action.', {
                 actors: actorText,
+                attemptVerb,
                 action: actionLabel,
                 target: targetName
             });
         }
         if (reason === 'contact-needs-front-row') {
-            return app._label('combat.reachFail.contactNeedsFront', '{actors} tries {action} on {target}, but close contact needs the front row. Advance first or try a social action.', {
+            return app._label('combat.reachFail.contactNeedsFront', '{actors} {attemptVerb} {action} on {target}, but close contact needs the front row. Advance first or try a social action.', {
                 actors: actorText,
+                attemptVerb,
                 action: actionLabel,
                 target: targetName
             });

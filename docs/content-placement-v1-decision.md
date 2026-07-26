@@ -19,6 +19,11 @@ removal.
   not rely on that behavior for save-stable geography.
 - Asset Bundles, Tileset Packs, and Sprite Packs alter presentation only. They
   never place gameplay content.
+- Quest World Directives V1 may reserve a bounded registered creature/item or
+  temporarily boost its weighted encounter/search probability while a
+  specific accepted quest is active. Those directives are quest-owned,
+  materialized as ordinary tile deltas, and cleaned up through the quest
+  lifecycle; they are not a world recipe or terrain-generation extension.
 - Core alone owns Generator V6 terrain classification, start safety, roads,
   bridges, barriers, POIs, cave portals, interior topology, and tile-delta
   persistence.
@@ -35,6 +40,11 @@ traversal, route-connectivity, and placement-budget invariants.
 
 Content Placement V1 therefore does **not** expose executable world-generation
 callbacks, DOM/render callbacks, or mutation hooks.
+
+Quest World Directives do not weaken this rule. A module supplies bounded data
+to an accepted quest; core chooses reachable coordinates, enforces caps, and
+persists the result. Directives cannot classify terrain, create routes,
+replace structures, or execute module code during generation.
 
 ## Required recipe before a placement API
 

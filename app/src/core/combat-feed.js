@@ -163,7 +163,9 @@ const YAW_COMBAT_FEED = {
                 checkRows: true,
                 minActors: grouped ? 2 : 1,
                 minTargets: 1,
-                maxTargets: isFight ? YAW_COMBAT_TECHNIQUES.MAX_TARGETS : 1
+                maxTargets: isFight || (action === 'feast' && subId === 'chew')
+                    ? YAW_COMBAT_TECHNIQUES.MAX_TARGETS
+                    : 1
             },
             metadata: { phase: 'action-variant', baseAction: action, consumeCurrentTurn: true }
         });
@@ -199,7 +201,9 @@ const YAW_COMBAT_FEED = {
         const actorName = actor.name === app.player?.name ? 'You' : actor.name;
         const actorVerb = actor.name === app.player?.name ? '' : 's';
         app._applyActionCost?.(action, actor, target, {}, { mode: 'combat', source: 'combat-variant', emitScene: true });
-        const result = app._doSubAction(action, subId, actor, target, actorName, actorVerb);
+        const result = app._doSubAction(action, subId, actor, target, actorName, actorVerb, {
+            mode: 'combat'
+        });
         app.log.push({ text: result, type: action === 'feed' ? 'heal' : 'combat' });
         app._emitSubAction?.(action, subId, actor, target, result);
         app._emitCombatAction(action, actor, target, result);

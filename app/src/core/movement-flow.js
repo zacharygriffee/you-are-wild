@@ -77,9 +77,10 @@ const YAW_MOVEMENT_FLOW = {
             }
         } else {
             app.creatures = app._tileCreatures(tile.creatures || []);
+            const hasQuestReservedEncounter = app.creatures.some(unit => unit?.questWorldDirective);
             if (!recoveryJourney && tile.structure && !tile.structureSpawned) {
                 app.spawnStructureEncounter(tile, !wasExplored);
-            } else if (!recoveryJourney && app._worldChance(
+            } else if (!recoveryJourney && !hasQuestReservedEncounter && app._worldChance(
                 'tile-wild-encounter',
                 tile.x,
                 tile.y,

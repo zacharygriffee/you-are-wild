@@ -11,7 +11,7 @@ const YAW_SUB_ACTIONS = {
     definitions: {
         feast: {
             swallow: { label: 'Swallow', sfwLabel: 'Eat', icon: '🍽️', validate: (a, t) => Boolean(a && t) && a !== t, execute: 'swallowWhole', setting: null, requirements: ['reach', 'capacity', 'willingness'] },
-            chew: { label: 'Chew', sfwLabel: 'Break Down', icon: '🦷', validate: (a, t) => a !== t && App.settings.chewing, execute: 'chewPrey', setting: 'chewing', settingLabelKey: 'settings.variant.chewing', hintKey: 'feast.chewHint', hint: 'Terminal attempt: success depletes all remaining vitality and leaves remains.', minPosture: 'mature', requirements: ['reach', 'cost'] },
+            chew: { label: 'Chew', sfwLabel: 'Break Down', icon: '🦷', validate: (a, t) => a !== t && App.settings.chewing, execute: 'chewPrey', setting: 'chewing', settingLabelKey: 'settings.variant.chewing', hintKey: 'feast.chewHint', hint: 'Vitality attack: damage also reduces punishment. A survivor may flee or fight.', minPosture: 'mature', requirements: ['reach', 'cost'] },
             cockVore: { label: 'Capture', sfwLabel: 'Capture', icon: '📦', validate: (a, t) => Boolean(a && t) && a !== t && App.settings.cockVoreEnabled && a.parts === 'cock', execute: 'cockVore', setting: 'cockVoreEnabled', settingLabelKey: 'variant.setting.capture', contentCategory: 'explicit.sexual', requirements: ['reach', 'capacity'] },
             unbirth: { label: 'Engulf', sfwLabel: 'Engulf', icon: '🔮', validate: (a, t) => Boolean(a && t) && a !== t && App.settings.unbirthEnabled && a.parts === 'clit', execute: 'unbirth', setting: 'unbirthEnabled', settingLabelKey: 'variant.setting.engulf', contentCategory: 'explicit.sexual', requirements: ['reach', 'capacity'] },
             digest: { label: 'Digest', sfwLabel: 'Break Down', icon: '💀', validate: (a) => App._activeContainedPrey?.(a, 'stomach')?.length > 0, execute: 'digestPrey', setting: null, scope: 'self', requirements: ['capacity'] },
@@ -302,7 +302,7 @@ const YAW_SUB_ACTIONS = {
                     const pressure = app._canAffordActionPressure?.(action, pair.actor, { mode: context.mode || 'adventure' }) || { ok: true };
                     const available = this.isAvailable(app, def, pair.actor, pair.target, holder)
                         && pressure.ok !== false;
-                    const attempt = available && action === 'feast' && ['swallow', 'chew', 'cockVore', 'unbirth'].includes(id)
+                    const attempt = available && action === 'feast' && ['swallow', 'cockVore', 'unbirth'].includes(id)
                         ? this.feastAttemptAssessment(app, pair.actor, pair.target, {
                             container: id === 'cockVore' ? 'balls' : (id === 'unbirth' ? 'womb' : 'stomach'),
                             requireCapacity: id !== 'chew',
@@ -424,9 +424,13 @@ const YAW_SUB_ACTIONS = {
 
     label(app, action, subAction) {
         const legacyExplicit = CONTENT.preferences.maxTier >= 2 && CONTENT.preferences.explicitDescriptions === true;
-        const isSFW = CONTENT?.isCategoryEnabled?.('explicit.sexual') !== true && !legacyExplicit;
         const subDefs = app.SUB_ACTIONS[action];
         if (!subDefs || !subDefs[subAction]) return subAction;
+        const matureCoreLabel = subDefs[subAction].minPosture === 'mature'
+            && (Number(CONTENT.preferences.maxTier || 0) >= 1 || CONTENT.preferences.posture === 'mature');
+        const isSFW = !matureCoreLabel
+            && CONTENT?.isCategoryEnabled?.('explicit.sexual') !== true
+            && !legacyExplicit;
         const fallback = isSFW ? (subDefs[subAction].sfwLabel || subDefs[subAction].label) : subDefs[subAction].label;
         return app._label(`subaction.${action}.${subAction}${isSFW ? '.sfw' : ''}`, fallback);
     },

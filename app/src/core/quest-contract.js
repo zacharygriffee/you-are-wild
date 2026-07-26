@@ -19,6 +19,15 @@ const YAW_QUEST_CONTRACT = {
         NAMED_LOCATION: 'named_location',
         AUTHORIZED_FACTION: 'authorized_faction'
     }),
+    WORLD_DIRECTIVE_VERSION: 1,
+    WORLD_DIRECTIVE_TYPES: Object.freeze({
+        PLACE: 'place',
+        BOOST: 'boost'
+    }),
+    WORLD_CONTENT_KINDS: Object.freeze({
+        CREATURE: 'creature',
+        ITEM: 'item'
+    }),
 
     normalizeLocation(value = null) {
         if (!value || !Number.isFinite(Number(value.x)) || !Number.isFinite(Number(value.y))) return null;
@@ -204,6 +213,131 @@ const YAW_QUEST_CONTRACT = {
         };
     },
 
+    normalizeWorldContent(app, source = {}, options = {}) {
+        const content = source.content && typeof source.content === 'object' && !Array.isArray(source.content)
+            ? source.content
+            : {};
+        const inferredKind = source.species ? this.WORLD_CONTENT_KINDS.CREATURE
+            : (source.item ? this.WORLD_CONTENT_KINDS.ITEM : null);
+        const kind = String(source.kind || content.kind || inferredKind || '').trim().toLowerCase();
+        if (!Object.values(this.WORLD_CONTENT_KINDS).includes(kind)) {
+            throw new Error(`Quest world directive content kind must be creature or item: ${kind || '(empty)'}`);
+        }
+        const rawId = content.id
+            || content.definitionId
+            || source.species
+            || source.item
+            || (typeof source.content === 'string' ? source.content : '');
+        const id = String(rawId || '').trim();
+        if (!id || id.length > 120 || !/^[a-zA-Z0-9_.:-]+$/.test(id)) {
+            throw new Error('Quest world directive content id must be a token string');
+        }
+        if (kind === this.WORLD_CONTENT_KINDS.CREATURE) {
+            if (!options.allowUnavailable && !(app.species || []).some(species => String(species.id) === id)) {
+                throw new Error(`Quest world directive references unknown species: ${id}`);
+            }
+        } else {
+            const definition = app._getItemDef?.(id) || {};
+            const known = Boolean(definition.id)
+                || Object.entries(app.ITEMS || {}).some(([name, entry]) => name === id || String(entry?.id || '') === id);
+            if (!options.allowUnavailable && !known) throw new Error(`Quest world directive references unknown item: ${id}`);
+        }
+        return { kind, id };
+    },
+
+    normalizeWorldDirectives(app, directives = [], questId = 'quest', options = {}) {
+        if (directives == null) return [];
+        this.assertSerializableData(directives, 'Quest world directives');
+        if (!Array.isArray(directives)) throw new Error('Quest world directives must be an array');
+        if (directives.length > 8) throw new Error('Quest world directives support at most 8 entries');
+        const seen = new Set();
+        const allowedFields = new Set([
+            'id', 'type', 'content', 'kind', 'species', 'item', 'count', 'distance',
+            'location', 'center', 'radius', 'biomes', 'multiplier', 'objectiveId',
+            'disposition', 'locationLabel', 'resolvedLocation', 'resolvedCenter',
+            'materializedIds', 'active', 'contractVersion'
+        ]);
+        return directives.map((directive, index) => {
+            if (!directive || typeof directive !== 'object' || Array.isArray(directive)) {
+                throw new Error('Quest world directive must be an object');
+            }
+            for (const key of Object.keys(directive)) {
+                if (!allowedFields.has(key)) throw new Error(`Unsupported quest world directive field: ${key}`);
+            }
+            const type = String(directive.type || '').trim().toLowerCase();
+            if (!Object.values(this.WORLD_DIRECTIVE_TYPES).includes(type)) {
+                throw new Error(`Unsupported quest world directive type: ${type || '(empty)'}`);
+            }
+            const rawId = String(directive.id || `${questId}_world_${index}`).trim();
+            if (!rawId || rawId.length > 120 || !/^[a-zA-Z0-9_.:-]+$/.test(rawId) || seen.has(rawId)) {
+                throw new Error(`Quest world directive id must be a unique token: ${rawId || '(empty)'}`);
+            }
+            seen.add(rawId);
+            const content = this.normalizeWorldContent(app, directive, options);
+            const biomes = Array.isArray(directive.biomes) ? [...new Set(directive.biomes.map(String))] : [];
+            if (biomes.length > 16) throw new Error('Quest world directive supports at most 16 biomes');
+            for (const biome of biomes) {
+                if (!/^[a-zA-Z0-9_.:-]+$/.test(biome)) throw new Error(`Invalid quest world directive biome: ${biome}`);
+                if (Object.keys(app.biomes || {}).length && !app.biomes?.[biome]) {
+                    throw new Error(`Quest world directive references unknown biome: ${biome}`);
+                }
+            }
+            const normalized = {
+                contractVersion: this.WORLD_DIRECTIVE_VERSION,
+                id: rawId,
+                type,
+                content,
+                biomes,
+                objectiveId: directive.objectiveId == null ? null : String(directive.objectiveId),
+                locationLabel: String(directive.locationLabel || '').trim().slice(0, 120),
+                active: directive.active !== false,
+                materializedIds: [...new Set((Array.isArray(directive.materializedIds) ? directive.materializedIds : [])
+                    .map(value => String(value || '').trim())
+                    .filter(Boolean))].slice(0, 32)
+            };
+            const resolvedLocation = this.normalizeLocation(directive.resolvedLocation);
+            const resolvedCenter = this.normalizeLocation(directive.resolvedCenter);
+            if (resolvedLocation) normalized.resolvedLocation = resolvedLocation;
+            if (resolvedCenter) normalized.resolvedCenter = resolvedCenter;
+            if (type === this.WORLD_DIRECTIVE_TYPES.PLACE) {
+                const count = Math.floor(Number(directive.count) || 1);
+                if (count < 1 || count > 8) throw new Error('Quest place directive count must be between 1 and 8');
+                const requestedDistance = directive.distance && typeof directive.distance === 'object' && !Array.isArray(directive.distance)
+                    ? directive.distance
+                    : {};
+                const min = Math.floor(Number(requestedDistance.min) || 2);
+                const max = Math.floor(Number(requestedDistance.max) || Math.max(min, 5));
+                if (min < 1 || max < min || max > 32) {
+                    throw new Error('Quest place directive distance must use min >= 1 and max <= 32');
+                }
+                const location = this.normalizeLocation(directive.location);
+                normalized.count = count;
+                normalized.distance = { min, max };
+                normalized.disposition = String(directive.disposition || (content.kind === this.WORLD_CONTENT_KINDS.CREATURE ? 'enemy' : '')).trim().toLowerCase();
+                if (content.kind === this.WORLD_CONTENT_KINDS.CREATURE
+                    && !['enemy', 'neutral', 'friendly'].includes(normalized.disposition)) {
+                    throw new Error('Quest creature placement disposition must be enemy, neutral, or friendly');
+                }
+                if (location) normalized.location = location;
+            } else {
+                const radius = Math.floor(Number(directive.radius) || 3);
+                const multiplier = Number(directive.multiplier) || 2;
+                const center = String(directive.center || 'destination').trim().toLowerCase();
+                if (radius < 1 || radius > 32) throw new Error('Quest boost directive radius must be between 1 and 32');
+                if (!Number.isFinite(multiplier) || multiplier <= 1 || multiplier > 10) {
+                    throw new Error('Quest boost directive multiplier must be greater than 1 and at most 10');
+                }
+                if (!['origin', 'destination'].includes(center)) {
+                    throw new Error('Quest boost directive center must be origin or destination');
+                }
+                normalized.radius = radius;
+                normalized.multiplier = multiplier;
+                normalized.center = center;
+            }
+            return normalized;
+        });
+    },
+
     stageMatch(app, transition, payload = {}) {
         const match = transition?.match || {};
         if (match.objectiveId && String(match.objectiveId) !== String(payload.objectiveId || '')) return false;
@@ -341,6 +475,260 @@ const YAW_QUEST_CONTRACT = {
         return { x: selected.x, y: selected.y };
     },
 
+    worldDirectiveOrigin(app, quest) {
+        return this.normalizeLocation(quest?.giverLocation)
+            || this.normalizeLocation(quest?.authoredOrigin?.location)
+            || { x: Number(app.location?.x || 0), y: Number(app.location?.y || 0) };
+    },
+
+    worldDirectivePlacementCoordinate(app, quest, directive) {
+        const explicit = this.normalizeLocation(directive.location);
+        if (explicit) return explicit;
+        const origin = this.worldDirectiveOrigin(app, quest);
+        const min = directive.distance?.min || 2;
+        const max = directive.distance?.max || Math.max(min, 5);
+        const directions = [
+            { id: 'east', dx: 1, dy: 0 },
+            { id: 'south', dx: 0, dy: 1 },
+            { id: 'west', dx: -1, dy: 0 },
+            { id: 'north', dx: 0, dy: -1 }
+        ];
+        const queue = [{ ...origin, depth: 0 }];
+        const visited = new Set([`${origin.x},${origin.y}`]);
+        const preferred = [];
+        const fallback = [];
+        while (queue.length) {
+            const current = queue.shift();
+            if (current.depth >= max) continue;
+            for (const direction of directions) {
+                const next = {
+                    x: current.x + direction.dx,
+                    y: current.y + direction.dy,
+                    depth: current.depth + 1
+                };
+                const key = `${next.x},${next.y}`;
+                if (visited.has(key) || !this.proceduralEdgePassable(app, current, next, direction.id)) continue;
+                visited.add(key);
+                queue.push(next);
+                if (next.depth < min) continue;
+                const tile = app.getBaseTile?.(next.x, next.y) || app.getTile?.(next.x, next.y);
+                fallback.push(next);
+                if (!directive.biomes?.length || directive.biomes.includes(String(tile?.biome || ''))) preferred.push(next);
+            }
+        }
+        const candidates = preferred.length ? preferred : fallback;
+        if (!candidates.length) return { x: origin.x, y: origin.y };
+        const roll = app._worldRoll?.(
+            'quest-world-place',
+            origin.x,
+            origin.y,
+            quest.id,
+            directive.id,
+            directive.content.id
+        ) ?? 0;
+        const selected = candidates[Math.min(candidates.length - 1, Math.floor(roll * candidates.length))];
+        return { x: selected.x, y: selected.y };
+    },
+
+    worldDirectiveObjective(quest, directive) {
+        const objectives = quest?.objectives || [];
+        if (directive.objectiveId) {
+            return objectives.find(objective => String(objective.id) === String(directive.objectiveId)) || null;
+        }
+        return objectives.find(objective => {
+            if (directive.content.kind === this.WORLD_CONTENT_KINDS.CREATURE) {
+                return String(objective.species || '') === String(directive.content.id);
+            }
+            const item = objective.item;
+            const itemId = item && typeof item === 'object' ? item.definitionId || item.id : item;
+            return String(itemId || '') === String(directive.content.id);
+        }) || null;
+    },
+
+    worldDirectiveLocationLabel(app, directive) {
+        if (directive.locationLabel) return directive.locationLabel;
+        if (directive.content.kind === this.WORLD_CONTENT_KINDS.CREATURE) {
+            const species = (app.species || []).find(entry => String(entry.id) === String(directive.content.id));
+            return `${species?.name || directive.content.id} signs`;
+        }
+        const definition = app._getItemDef?.(directive.content.id) || {};
+        return `${definition.name || directive.content.id} search area`;
+    },
+
+    materializeWorldDirective(app, quest, directive) {
+        const location = directive.resolvedLocation
+            || this.worldDirectivePlacementCoordinate(app, quest, directive);
+        directive.resolvedLocation = {
+            x: Number(location.x),
+            y: Number(location.y),
+            label: location.label || this.worldDirectiveLocationLabel(app, directive)
+        };
+        const objective = this.worldDirectiveObjective(quest, directive);
+        if (objective && !objective.location) {
+            objective.location = { ...directive.resolvedLocation };
+        }
+        const tile = app.getTile?.(directive.resolvedLocation.x, directive.resolvedLocation.y);
+        if (!tile) return false;
+        if (!Array.isArray(tile.creatures)) tile.creatures = [];
+        if (!Array.isArray(tile.items)) tile.items = [];
+        const createdIds = [];
+        for (let index = 0; index < directive.count; index++) {
+            const entityId = `quest_${app._stableIdPart?.(quest.id, 'quest') || 'quest'}_${app._stableIdPart?.(directive.id, 'world') || 'world'}_${index}`;
+            const alreadyMaterialized = tile.creatures.some(unit => String(unit?.id) === entityId)
+                || tile.items.some(item => String(item?.id) === entityId);
+            if (!alreadyMaterialized && !directive.materializedIds.includes(entityId)) {
+                if (directive.content.kind === this.WORLD_CONTENT_KINDS.CREATURE) {
+                    const species = (app.species || []).find(entry => String(entry.id) === String(directive.content.id));
+                    const disposition = {
+                        enemy: app.DISPOSITION?.ENEMY || 'enemy',
+                        neutral: app.DISPOSITION?.NEUTRAL || 'neutral',
+                        friendly: app.DISPOSITION?.FRIENDLY || 'friendly'
+                    }[directive.disposition] || app.DISPOSITION?.ENEMY || 'enemy';
+                    const roll = app._worldRoll?.(
+                        'quest-world-creature',
+                        directive.resolvedLocation.x,
+                        directive.resolvedLocation.y,
+                        quest.id,
+                        directive.id,
+                        index
+                    ) ?? 0;
+                    const identity = app._pickEncounterIdentity?.(roll) || 'female';
+                    const anatomy = app._anatomyForIdentity?.(identity, roll) || {};
+                    const unitData = {
+                        id: entityId,
+                        questResolutionId: entityId,
+                        name: `${species?.name || directive.content.id}${directive.count > 1 ? ` ${index + 1}` : ''}`,
+                        species: directive.content.id,
+                        icon: species?.icon || '👤',
+                        identity,
+                        gender: identity,
+                        parts: anatomy.parts,
+                        chest: anatomy.chest,
+                        level: Math.max(1, Math.floor(Number(quest.difficulty || app.player?.level) || 1)),
+                        disposition,
+                        expanded: false,
+                        hero: false,
+                        ally: false,
+                        mc: false,
+                        obedient: false,
+                        willing: disposition === (app.DISPOSITION?.FRIENDLY || 'friendly'),
+                        questWorldDirective: {
+                            version: this.WORLD_DIRECTIVE_VERSION,
+                            questId: quest.id,
+                            directiveId: directive.id
+                        }
+                    };
+                    const creature = app._normalizeUnit?.(unitData, { disposition }) || unitData;
+                    tile.creatures.push(creature);
+                } else {
+                    const definition = app._getItemDef?.(directive.content.id) || {};
+                    const itemData = {
+                        id: entityId,
+                        definitionId: definition.id || directive.content.id,
+                        name: definition.name || directive.content.id,
+                        questWorldDirective: {
+                            version: this.WORLD_DIRECTIVE_VERSION,
+                            questId: quest.id,
+                            directiveId: directive.id
+                        }
+                    };
+                    const item = app._createItemInstance?.(directive.content.id, itemData) || itemData;
+                    tile.items.push(item);
+                }
+            }
+            createdIds.push(entityId);
+        }
+        directive.materializedIds = [...new Set([...directive.materializedIds, ...createdIds])].slice(0, 32);
+        if (Number(app.location?.x) === Number(tile.x) && Number(app.location?.y) === Number(tile.y)) {
+            app.creatures = app._tileCreatures?.(tile.creatures) || tile.creatures;
+        }
+        app.persistTileDelta?.(tile.x, tile.y, tile, { reason: 'quest-world-place' });
+        return true;
+    },
+
+    resolveWorldBoost(app, quest, directive) {
+        if (directive.resolvedCenter) return directive.resolvedCenter;
+        const requested = directive.center === 'origin'
+            ? this.worldDirectiveOrigin(app, quest)
+            : (this.normalizeLocation(quest.destination) || this.worldDirectiveOrigin(app, quest));
+        directive.resolvedCenter = { x: Number(requested.x), y: Number(requested.y), ...(requested.label ? { label: requested.label } : {}) };
+        const objective = this.worldDirectiveObjective(quest, directive);
+        if (objective && !objective.location) {
+            objective.location = {
+                ...directive.resolvedCenter,
+                label: directive.locationLabel || this.worldDirectiveLocationLabel(app, directive)
+            };
+        }
+        return directive.resolvedCenter;
+    },
+
+    activateWorldDirectives(app, quest) {
+        if (!quest || quest.lifecycleState !== this.STATES.ACTIVE) return false;
+        let changed = false;
+        for (const directive of quest.worldDirectives || []) {
+            if (directive.active === false) continue;
+            if (directive.type === this.WORLD_DIRECTIVE_TYPES.PLACE) {
+                changed = this.materializeWorldDirective(app, quest, directive) || changed;
+            } else if (directive.type === this.WORLD_DIRECTIVE_TYPES.BOOST) {
+                this.resolveWorldBoost(app, quest, directive);
+                changed = true;
+            }
+        }
+        return changed;
+    },
+
+    deactivateWorldDirectives(app, quest) {
+        if (!quest) return false;
+        const reservedIds = new Set();
+        for (const directive of quest.worldDirectives || []) {
+            directive.active = false;
+            for (const id of directive.materializedIds || []) reservedIds.add(String(id));
+        }
+        if (!reservedIds.size) return false;
+        let changed = false;
+        for (const tile of app.worldMap?.values?.() || []) {
+            const beforeCreatures = (tile.creatures || []).length;
+            const beforeItems = (tile.items || []).length;
+            tile.creatures = (tile.creatures || []).filter(unit => !reservedIds.has(String(unit?.id || '')));
+            tile.items = (tile.items || []).filter(item => !reservedIds.has(String(item?.id || '')));
+            if (tile.creatures.length !== beforeCreatures || tile.items.length !== beforeItems) {
+                app.persistTileDelta?.(tile.x, tile.y, tile, { reason: 'quest-world-cleanup' });
+                changed = true;
+            }
+        }
+        if (Array.isArray(app.creatures)) {
+            app.creatures = app.creatures.filter(unit => !reservedIds.has(String(unit?.id || '')));
+        }
+        return changed;
+    },
+
+    worldBoostApplies(app, quest, directive, kind, tile) {
+        if (!quest || quest.lifecycleState !== this.STATES.ACTIVE || directive.active === false) return false;
+        if (directive.type !== this.WORLD_DIRECTIVE_TYPES.BOOST || directive.content.kind !== kind) return false;
+        if (directive.biomes?.length && !directive.biomes.includes(String(tile?.biome || ''))) return false;
+        const center = directive.resolvedCenter || this.resolveWorldBoost(app, quest, directive);
+        const distance = Math.abs(Number(tile?.x || 0) - Number(center.x))
+            + Math.abs(Number(tile?.y || 0) - Number(center.y));
+        return distance <= directive.radius;
+    },
+
+    boostWeightedTable(app, table, kind, tile) {
+        const multipliers = new Map();
+        for (const quest of app.quests || []) {
+            for (const directive of quest.worldDirectives || []) {
+                if (!this.worldBoostApplies(app, quest, directive, kind, tile)) continue;
+                const current = multipliers.get(directive.content.id) || 1;
+                multipliers.set(directive.content.id, Math.min(20, current * directive.multiplier));
+            }
+        }
+        if (!multipliers.size) return table;
+        return (table || []).map(entry => {
+            const source = typeof entry === 'string' ? { id: entry, weight: 1 } : entry;
+            const multiplier = multipliers.get(String(source?.id || '')) || 1;
+            return { ...source, weight: Math.max(1, Number(source?.weight) || 1) * multiplier };
+        });
+    },
+
     generate(app, archetype, context = {}) {
         const supported = ['hunt', 'gather', 'deliver', 'survey', 'escort', 'recover'];
         if (!supported.includes(archetype)) throw new Error(`Unsupported procedural quest archetype: ${archetype}`);
@@ -380,6 +768,7 @@ const YAW_QUEST_CONTRACT = {
             const candidates = ['rat', 'snake', 'wolf', 'boar'].filter(id => (app.species || []).some(species => species.id === id));
             const species = candidates[Math.floor(app._worldRoll('quest-v2-hunt-species', origin.x, origin.y, sequence) * Math.max(1, candidates.length)) % Math.max(1, candidates.length)] || 'wolf';
             const speciesName = (app.species || []).find(entry => entry.id === species)?.name || species;
+            const required = Math.max(1, Math.min(3, Math.ceil(danger / 2)));
             return {
                 ...common,
                 title: `Hunt: ${speciesName}`,
@@ -389,7 +778,17 @@ const YAW_QUEST_CONTRACT = {
                 descriptionKey: 'quest.procedural.hunt.description',
                 descriptionParams: { species: speciesName },
                 turnInPolicy: { type: this.POLICIES.ORIGINAL_GIVER, giverId: common.giverId },
-                objectives: [{ type: 'defeat', species, required: Math.max(1, Math.min(3, Math.ceil(danger / 2))), location: destination }],
+                objectives: [{ id: 'hunt_target', type: 'defeat', species, required, location: destination }],
+                worldDirectives: [{
+                    id: 'hunt_encounter',
+                    type: this.WORLD_DIRECTIVE_TYPES.PLACE,
+                    content: { kind: this.WORLD_CONTENT_KINDS.CREATURE, id: species },
+                    count: required,
+                    location: destination,
+                    objectiveId: 'hunt_target',
+                    disposition: 'enemy',
+                    locationLabel: `${speciesName} signs`
+                }],
                 turnInRequired: true
             };
         }
@@ -406,7 +805,17 @@ const YAW_QUEST_CONTRACT = {
                 descriptionKey: 'quest.procedural.gather.description',
                 descriptionParams: { item: definition.name || itemId },
                 turnInPolicy: { type: this.POLICIES.ORIGINAL_GIVER, giverId: common.giverId },
-                objectives: [{ type: 'find', item: { definitionId: itemId, name: definition.name }, required: Math.max(1, Math.min(3, Math.ceil(danger / 3))) }],
+                objectives: [{ id: 'gather_target', type: 'find', item: { definitionId: itemId, name: definition.name }, location: destination, required: Math.max(1, Math.min(3, Math.ceil(danger / 3))) }],
+                worldDirectives: [{
+                    id: 'gather_search_boost',
+                    type: this.WORLD_DIRECTIVE_TYPES.BOOST,
+                    content: { kind: this.WORLD_CONTENT_KINDS.ITEM, id: itemId },
+                    center: 'destination',
+                    radius: 3,
+                    multiplier: 6,
+                    objectiveId: 'gather_target',
+                    locationLabel: `${definition.name || itemId} search area`
+                }],
                 consumeOnTurnIn: [itemId],
                 turnInRequired: true
             };

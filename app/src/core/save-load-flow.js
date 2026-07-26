@@ -242,6 +242,9 @@ const YAW_SAVE_LOAD_FLOW = {
             if (!hasInlineWorldMap) {
                 await app.loadWorldStateFromMapStore().catch(e => console.warn('World map load failed', e));
             }
+            for (const quest of app.quests || []) {
+                YAW_QUEST_CONTRACT.activateWorldDirectives(app, quest);
+            }
             const loadedDefeated = app._sanitizeLoadedDefeatState(loaded);
             if (!loadedDefeated) app._restoreCombatState(loaded.questState?.combatState);
             if (!app.combatState?.active) YAW_COMBAT_STATUS.clearCombatOnlyStatuses([app.player, ...app.party, ...app.creatures]);

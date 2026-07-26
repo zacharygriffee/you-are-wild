@@ -4,7 +4,7 @@
  */
 
 const YAW_TILE_RESOURCES = {
-    searchableItemEntries(app) {
+    searchableItemEntries(app, tile = app._currentExplorationTile?.()) {
         const entries = Object.entries(app.ITEMS || {}).flatMap(([name, raw]) => {
             const definition = app._getItemDef(raw?.id || name);
             const weight = Number(definition.acquisition?.searchWeight);
@@ -19,7 +19,13 @@ const YAW_TILE_RESOURCES = {
                 });
             }
         }
-        return [...new Map(entries.map(entry => [entry.id, entry])).values()];
+        const unique = [...new Map(entries.map(entry => [entry.id, entry])).values()];
+        return YAW_QUEST_CONTRACT.boostWeightedTable(
+            app,
+            unique,
+            YAW_QUEST_CONTRACT.WORLD_CONTENT_KINDS.ITEM,
+            tile
+        );
     },
 
     search(app) {
@@ -37,7 +43,7 @@ const YAW_TILE_RESOURCES = {
         const questItemRef = app._questSearchItemForLocation?.(tile) || null;
         const resourceSite = tile?.overlays?.poi?.category === 'resourceSite' && !tile.resourceSearched;
         if (questItemRef || resourceSite) {
-            const items = this.searchableItemEntries(app);
+            const items = this.searchableItemEntries(app, tile);
             const itemRef = questItemRef || app._weightedPickWorld(items, 'resource-site-search-item-name', tileX, tileY, searchDay) || items[0]?.id || 'Old Coin';
             const definition = app._getItemDef(itemRef);
             const iname = definition.name || itemRef;
@@ -57,7 +63,7 @@ const YAW_TILE_RESOURCES = {
         } else if (roll < findChance) {
             const struct = tile?.structure ? app.STRUCTURES[tile.structure] : null;
             const authoredLoot = struct?.lootTable && !tile.structureLooted ? app._lootItemNameFromTable(struct.lootTable, 'structure-search-loot', tileX, tileY, searchDay, searchHour) : null;
-            const items = this.searchableItemEntries(app);
+            const items = this.searchableItemEntries(app, tile);
             const itemRef = authoredLoot || app._weightedPickWorld(items, 'search-item-name', tileX, tileY, searchDay, searchHour);
             const definition = app._getItemDef(itemRef);
             const iname = definition.name || itemRef;

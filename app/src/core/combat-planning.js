@@ -176,7 +176,7 @@ const YAW_COMBAT_PLANNING = {
         if (typeof YAW_COMBAT_SYNC !== 'undefined' && YAW_COMBAT_SYNC.typeForIntent) {
             return YAW_COMBAT_SYNC.typeForIntent(action);
         }
-        const map = { fight: 'sync_fight', flirt: 'sync_flirt', fuck: 'sync_fuck', feed: 'sync_feed' };
+        const map = { fight: 'sync_fight', flirt: 'sync_flirt', fuck: 'sync_fuck', feed: 'sync_feed', feast: 'feast' };
         return map[action] || null;
     },
 

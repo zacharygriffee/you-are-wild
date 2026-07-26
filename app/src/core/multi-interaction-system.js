@@ -10,6 +10,12 @@ const YAW_MULTI_INTERACTION = {
             practiceKey: 'fight',
             maxPracticeXp: 200,
             encounterPracticeCap: 12
+        },
+        chew: {
+            id: 'chew',
+            practiceKey: 'chew',
+            maxPracticeXp: 200,
+            encounterPracticeCap: 12
         }
     },
 

@@ -1,6 +1,6 @@
 # Progression V2
 
-Status: **implemented; integrated acceptance pending**
+Status: **implemented; integrated acceptance complete**
 
 Progression V2 keeps advancement deterministic and separates permanent power,
 action practice, equipment, and authored techniques. An AI provider may choose
@@ -27,10 +27,11 @@ techniques.
 
 ### Practice
 
-Multi-target Fight practice is a separate saved progression track. It improves
-effect distribution for the practiced action; it does not award character XP
-or silently improve unrelated actions. Practice is charged once per committed
-actor command and uses bounded per-encounter diminishing returns.
+Multi-target Fight and Chew practice are separate saved progression tracks.
+Each improves effect distribution only for its practiced action; neither
+awards character XP nor silently improves unrelated actions. Practice is
+charged once per committed actor command and uses bounded per-encounter
+diminishing returns.
 
 ### Equipment and techniques
 

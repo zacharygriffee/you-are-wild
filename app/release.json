@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.15.0",
+  "version": "0.16.0",
   "status": "draft",
   "releasedAt": null,
   "channel": "development",
@@ -10,83 +10,81 @@
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Candidate expectation: existing 0.10.x through 0.14.0 saves load through maintained migrations. Recorded generator versions remain unchanged.",
-      "mods": "Module API remains version 1. Existing minimum-version declarations remain valid; additive V1 contracts keep their documented version floors."
+      "saves": "Candidate expectation: existing 0.10.x through 0.15.0 saves load through maintained additive migrations. Recorded generator versions remain unchanged.",
+      "mods": "Module API remains version 1. Existing minimum-version declarations remain valid; modules using Item Definition V2 or Perk Profile V1 should require game version 0.16.0 or newer."
     },
     "es": {
-      "saves": "Expectativa de la candidata: las partidas 0.10.x a 0.14.0 cargan mediante las migraciones mantenidas. Las versiones de generador registradas no cambian.",
-      "mods": "La API de modulos sigue en la version 1. Los requisitos minimos existentes siguen validos; los contratos V1 aditivos conservan sus versiones minimas documentadas."
+      "saves": "Expectativa de la candidata: las partidas 0.10.x a 0.15.0 cargan mediante migraciones aditivas mantenidas. Las versiones de generador registradas no cambian.",
+      "mods": "La API de modulos sigue en la version 1. Los requisitos minimos existentes siguen validos; los modulos que usan Item Definition V2 o Perk Profile V1 deben requerir la version 0.16.0 o posterior."
     }
   },
   "notes": {
     "en": {
       "added": [
-        "Mobile Interaction Flow V2 provides one state-aware mobile Roster with a persistent actor-target-intent composer.",
-        "Hungry and Starving now apply visible bounded pressure to players, companions, and creatures without lowering maximum Condition.",
-        "Standard Adventure exposes localized Safe, Low, Guarded, Dangerous, and Severe danger bands for current and adjacent tiles.",
-        "Deterministic ambush awareness uses Wisdom, visibility, terrain, darkvision, Scout, Guard, and enemy temperament.",
-        "Locale Pack, Sprite Pack, UI Contribution, Combat Technique, Resource Ledger, and Recovery Mode V1 foundations are available to bounded modules."
+        "Item Registry V2 gives core and module items stable identities, bounded stacks and capacity, honest acquisition routes, healing effects, and quest-item protection.",
+        "Quest Contract V2 provides a six-state lifecycle, physical turn-in policies, deterministic procedural archetypes, bounded authored stages, and duplicate-reward protection.",
+        "Quest World Directives V1 lets core and module quests deterministically reserve required creatures or items and apply bounded encounter or search-weight boosts without executable world callbacks.",
+        "Review Map V2 adds quest, turn-in, giver, structure, danger, party, recovery, and point-of-interest layers with tracking guidance and a selected-tile inspector.",
+        "Companion Behavior V2 separates Duty, Stance, and Control, with deterministic autonomy and optional provider-backed choices that fall back safely.",
+        "Progression V2 adds versioned perk effects, deterministic eligibility, anti-farming boundaries, and a visible-only Perk Frontier.",
+        "Progressive Tutorial V2 unlocks replayable lessons and point-of-choice guidance when each mechanic becomes relevant."
       ],
       "changed": [
-        "New worlds use Generator V6 clean orthogonal roads while retaining Generator V4 safe-start and opening-admission behavior.",
-        "Opening encounters use group, tier, ambush, reinforcement, and weakest-party threat bounds instead of hidden damage reduction.",
-        "Roads reduce encounter pressure relative to surrounding wilderness.",
-        "Mobile and desktop share selection grammar, contextual subinteraction menus, target confirmation, and deterministic group accounting.",
-        "The conservative opt-in Ghost pilgrimage is traversal-only and resurrects at the validated home or safe place."
+        "Procedural quests return to their original giver by default and expose direction, distance, next step, and known-route guidance.",
+        "The item catalog no longer promises crafting before a crafting system exists; supported items have an implemented use or an explicit trade, quest, or key purpose.",
+        "Legacy companion Role and AI Order values migrate into separate Duty, Stance, and Control records while remaining compatibility mirrors.",
+        "Perk selection shows only choices available now, recomputes from saved progression facts, and keeps confirmed respec free during alpha.",
+        "AI remains advisory: manual, deterministic, and provider-assisted companion choices share the same legal validator and outcome resolver.",
+        "Chew is now a progressive Feast-based attack that reduces Vitality and condition equally; surviving exploration targets flee or enter combat instead of being terminally depleted by a successful threshold check."
       ],
       "fixed": [
-        "Hostile encounter lifecycle consistently enters combat for living hostiles and keeps living retreat separate from death recovery.",
-        "Death and defeat settle companion-led combat before recovery and preserve stranded survivors, recovery bags, and interior placement.",
-        "Multi-party and multi-target interactions preserve selections, costs, reach outcomes, and save or reload state.",
-        "Novice one-to-many social interactions resolve as real attempts instead of stopping at an obsolete aggregate-stat gate.",
-        "Party cards refresh immediately after travel Hunger changes instead of showing stale values until reload.",
-        "Successful, failed, and enemy Flee results use localized prose in the Scene feed instead of internal result tokens.",
-        "Generic failed-attempt Scene prose uses correct player and third-person verb agreement.",
-        "Generator V6 removes dense false road junction meshes caused by diagonal segment rasterization.",
-        "Responsive focus, localization, long-text, touch-target, and horizontal-overflow regressions are covered by the maintained viewport matrix."
+        "Legacy item names, saved perks, quests, tracked objectives, and companion behavior normalize without losing supported state.",
+        "Disabled or missing module providers remain inert and recover their owned item or perk definitions when safely re-enabled.",
+        "Containment, release, recruitment, drop-off, defeat, and save or reload no longer duplicate quest services, rewards, or companion behavior seeds.",
+        "Defeat objectives now credit each hostile once when the player or an autonomous companion slays, subdues, or contains it; fleeing, unrelated actors, and release or re-containment do not create false progress.",
+        "Unknown map tiles remain unmaterialized while known cells stay operable with mouse, keyboard, touch, zoom, and long localized labels.",
+        "Tutorial navigation, focus, active-lesson contrast, enlarged text, high contrast, reduced motion, and bounded mobile layout pass the maintained viewport matrix."
       ],
       "knownIssues": [
-        "This is a development draft, not the published 0.15.0 public preview.",
-        "Long-form combat and survival balance testing is scheduled against the exact published artifact.",
-        "Ghost is intentionally traversal-only; richer spectral play requires a separate recovery profile.",
+        "This is a development draft, not the published 0.16.0 public preview.",
+        "Long-form external and physical-phone playtesting is still needed for balance, pacing, clarity, and enjoyment.",
+        "Crafting, evolving companion emotions, new difficulty profiles, and richer recovery economies remain deliberately deferred.",
         "Physical-device comfort, authored art, and human translation quality still require operator review.",
-        "Browser-direct AI narration depends on endpoint TLS, CORS, response shape, token budget, and timeout behavior.",
-        "The first Textured visit downloads atlas media; Lightweight avoids that transfer."
+        "Provider-backed companion control and AI narration remain optional and depend on endpoint availability; deterministic play does not."
       ]
     },
     "es": {
       "added": [
-        "Mobile Interaction Flow V2 ofrece un solo Plantel movil contextual con un compositor persistente de actor, objetivo e intencion.",
-        "Hambriento y Famélico ahora aplican presion visible y limitada a jugadores, companeros y criaturas sin reducir la Condicion maxima.",
-        "Aventura estandar muestra bandas localizadas Seguro, Bajo, Vigilado, Peligroso y Severo para la casilla actual y las adyacentes.",
-        "La deteccion determinista de emboscadas usa Sabiduria, visibilidad, terreno, vision nocturna, Explorador, Guardia y temperamento enemigo.",
-        "Los fundamentos Locale Pack, Sprite Pack, UI Contribution, Combat Technique, Resource Ledger y Recovery Mode V1 estan disponibles para modulos limitados."
+        "Item Registry V2 ofrece identidades estables, pilas y capacidad limitadas, rutas de adquisicion claras, efectos curativos y proteccion de objetos de mision.",
+        "Quest Contract V2 ofrece seis estados, entrega fisica, arquetipos procedurales deterministas, etapas limitadas y proteccion contra recompensas duplicadas.",
+        "Quest World Directives V1 permite que las misiones centrales y de modulos reserven criaturas u objetos necesarios y aumenten pesos de encuentro o busqueda de forma determinista y limitada, sin callbacks ejecutables.",
+        "Review Map V2 agrega capas de misiones, entregas, guias, estructuras, peligro, grupo, recuperacion y puntos de interes con seguimiento e inspector.",
+        "Companion Behavior V2 separa Deber, Postura y Control, con autonomia determinista y seleccion opcional por proveedor con respaldo seguro.",
+        "Progression V2 agrega efectos de ventajas versionados, elegibilidad determinista, limites contra explotacion y una Frontera visible.",
+        "Progressive Tutorial V2 desbloquea lecciones repetibles y ayuda contextual cuando cada mecanica se vuelve relevante."
       ],
       "changed": [
-        "Los mundos nuevos usan las carreteras ortogonales limpias del Generador V6 y conservan el inicio seguro y la admision inicial del Generador V4.",
-        "Los encuentros iniciales usan limites de grupo, nivel, emboscada, refuerzo y amenaza del miembro mas debil, sin reducir dano de forma oculta.",
-        "Las carreteras reducen la presion de encuentros frente al entorno silvestre.",
-        "Movil y escritorio comparten seleccion, subinteracciones contextuales, confirmacion de objetivos y contabilidad determinista de grupo.",
-        "La peregrinacion Fantasma conservadora y opcional solo permite viajar y resucita en el hogar o lugar seguro validado."
+        "Las misiones procedurales regresan a su guia original por defecto y muestran direccion, distancia, siguiente paso y ruta conocida.",
+        "El catalogo ya no promete fabricacion antes de existir el sistema; cada objeto tiene uso implementado o un proposito claro de comercio, mision o llave.",
+        "Los valores antiguos de Rol y Orden IA migran a registros separados de Deber, Postura y Control sin perder compatibilidad.",
+        "La seleccion de ventajas muestra solo opciones disponibles, se recalcula desde el progreso guardado y mantiene la reasignacion confirmada gratuita durante alfa.",
+        "La IA sigue siendo consultiva: las decisiones manuales, deterministas y asistidas usan el mismo validador legal y resolutor.",
+        "Masticar ahora es un ataque progresivo basado en Festin que reduce por igual Vitalidad y condicion; los objetivos que sobreviven durante la exploracion huyen o entran en combate en vez de agotarse por una sola comprobacion."
       ],
       "fixed": [
-        "El ciclo de encuentros hostiles inicia combate de forma consistente y mantiene la huida con vida separada de la recuperacion por muerte.",
-        "La derrota resuelve el combate de los companeros antes de recuperar al jugador y conserva supervivientes, bolsas e interiores.",
-        "Las interacciones de grupo y multiobjetivo conservan seleccion, costos, alcance y estado al guardar o cargar.",
-        "Las interacciones sociales multiobjetivo de principiantes se resuelven como intentos reales en vez de detenerse por un limite estadistico obsoleto.",
-        "Las tarjetas del grupo actualizan el Hambre inmediatamente despues de viajar en vez de mostrar valores obsoletos hasta recargar.",
-        "Los resultados de Huida exitosos, fallidos y enemigos usan prosa localizada en Escena en vez de codigos internos.",
-        "La prosa generica de intentos fallidos usa formas correctas para el jugador y otros personajes.",
-        "El Generador V6 elimina las mallas densas de cruces falsos causadas por segmentos diagonales.",
-        "La matriz adaptable cubre regresiones de foco, localizacion, texto largo, controles tactiles y desbordamiento horizontal."
+        "Los nombres antiguos de objetos, ventajas, misiones, objetivos seguidos y comportamiento de companeros se normalizan sin perder estado compatible.",
+        "Los proveedores de modulos desactivados o ausentes permanecen inertes y recuperan sus objetos o ventajas al reactivarse de forma segura.",
+        "Contencion, liberacion, reclutamiento, abandono, derrota y guardado o carga ya no duplican servicios, recompensas ni semillas de comportamiento.",
+        "Los objetivos de derrota ahora cuentan una sola vez a cada hostil que el jugador o un companero autonomo elimina, somete o contiene; huir, los actores ajenos y liberar o volver a contener no crean progreso falso.",
+        "Las casillas desconocidas no se materializan y las conocidas funcionan con raton, teclado, tacto, zoom y etiquetas localizadas largas.",
+        "La navegacion del tutorial, foco, contraste activo, texto ampliado, alto contraste, movimiento reducido y diseno movil limitado pasan la matriz."
       ],
       "knownIssues": [
-        "Esta es una compilacion de desarrollo, no la version publica 0.15.0.",
-        "Las pruebas largas de combate y supervivencia se haran contra el artefacto publicado exacto.",
-        "Fantasma solo permite viajar de forma intencional; habilidades espectrales requieren otro perfil.",
+        "Esta es una compilacion de desarrollo, no la version publica 0.16.0.",
+        "Aun se necesitan pruebas externas y en telefonos fisicos para equilibrio, ritmo, claridad y disfrute.",
+        "La fabricacion, emociones evolutivas, nuevos perfiles de dificultad y economias de recuperacion siguen aplazados.",
         "La comodidad en dispositivos fisicos, el arte y la calidad de traduccion humana requieren revision del operador.",
-        "La narracion de IA directa depende de TLS, CORS, formato de respuesta, presupuesto de tokens y tiempo de espera.",
-        "La primera visita con texturas descarga medios; el modo Ligero evita esa transferencia."
+        "El control de companeros por proveedor y la narracion IA siguen opcionales y dependen del endpoint; el juego determinista no."
       ]
     }
   }

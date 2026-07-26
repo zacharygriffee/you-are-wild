@@ -14,7 +14,7 @@ Sites deployment.
 | --- | --- |
 | Starter and danger contract | Canonical scenario baselines, weakest-starter multi-seed checks, current Generator V6 inheritance of the protected V4 opening contract, and localized current/adjacent danger metadata |
 | Items and economy | Stable definition and instance identity, bounded stacks and capacity, honest core purposes and acquisition, healing effects, quest-item protection, merchant/loot/search routes, legacy aliases, and missing-provider recovery |
-| Quests | Six-state lifecycle, deterministic procedural archetypes, bounded authored stages, stable giver/destination/reward state, physical turn-in policies, service suspension, and duplicate-reward protection |
+| Quests | Six-state lifecycle, deterministic procedural archetypes, bounded authored stages, stable giver/destination/reward state, physical turn-in policies, service suspension, duplicate-reward protection, and one-time party-attributed hostile resolution across slaying, subdual, and containment |
 | Review Map | Known-world quest, giver, turn-in, structure, danger, party, recovery, and POI layers; tracked guidance; operable cells; inspector; zoom, pan, recenter, filters, desktop dock, and mobile sheet |
 | Companion behavior | Separate Duty, Stance, and Control; deterministic legal-action scoring; recruitment continuity; bounded exploration reactions; shared manual/autonomous validation; provider fallback; containment, drop-off, defeat, and save behavior |
 | Progression and perks | Versioned effects, visible-only frontier, deterministic eligibility, anti-farming boundaries, apply/rollback, free confirmed alpha respec, cheat isolation, localization, and module lifecycle |
@@ -57,11 +57,11 @@ Sites deployment.
 No core-mechanic decision blocks handoff. The following actions require
 operator direction:
 
-1. Choose the next semantic version and whether this program forms a new minor
-   release rather than being folded into the existing 0.15.0 draft identity.
-2. Authorize the intentional commit and push boundary.
-3. Observe and record green remote CI for that exact commit.
-4. Reconcile release notes, compatibility text, and the Sites changelog with
-   the chosen version.
+1. Version decision resolved: this compatible gameplay program forms the
+   0.16.0 minor line while Save Schema 11 and Module API 1 remain unchanged.
+2. Core implementation commit and push completed at `f0f79c4`.
+3. Observe and record green remote CI for the exact release-candidate commit.
+4. Reconcile and validate the 0.16 release artifact, metadata, localized notes,
+   poster, compatibility text, and Sites changelog.
 5. Select and record the rollback artifact/version.
 6. Authorize Sites publication.

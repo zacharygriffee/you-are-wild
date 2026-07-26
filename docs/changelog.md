@@ -4,12 +4,36 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Quest World Directives V1 lets core and module-authored quests declaratively
+  reserve required creatures/items or boost matching encounter/search weights
+  inside a bounded area. Core owns deterministic reachable placement, stable
+  IDs, map guidance, save/load idempotence, lifecycle cleanup, validation, and
+  caps; callbacks and general world-generation ownership remain unavailable.
+  Camp Safety now reserves one nearby Wolfkin, and procedural Hunt/Gather
+  quests use guaranteed placement or scoped probability according to whether
+  the objective must exist.
+- Chew now follows one progressive attack contract across exploration and
+  combat. Feas-based damage reduces Vitality and current condition equally;
+  depletion creates recoverable remains, while surviving non-party targets
+  flee or enter combat. Single, group, and multi-target routes share the same
+  resolver and distributed-effect practice without automatic healing,
+  nourishment, or Consume credit.
+- Generic Defeat quests now use one party-attributed resolution contract.
+  Player and autonomous companion slaying, subdual, and containment each count
+  once per hostile; fleeing, third-party outcomes, and release/re-containment
+  cycles do not advance the objective. The bounded identity ledger survives
+  save and resume.
+- Core Game Maturity closes the everyday 0.16 loops: Item Registry V2,
+  Quest Contract V2, Review Map V2, Companion Behavior V2, Progression V2,
+  the visible-only Perk Frontier, and Progressive Tutorial V2. Each contract
+  remains deterministic and offline-capable, migrates supported legacy state,
+  and gives optional providers bounded advisory or data-only ownership.
 - One-to-many social commands now follow the shared attempt-first interaction
   contract. A novice can address mixed companion and local-creature targets in
   one command, individual results still determine who is affected, and the
   command emits one consolidated Scene result instead of silently stopping at
-  an obsolete aggregate-stat gate. Multi-target Fight remains the only
-  practice-scaled distributed effect.
+  an obsolete aggregate-stat gate. Multi-target Fight and explicit Chew use
+  separate practice-scaled distributed effects.
 - Candidate compatibility now includes a binary save fixture produced by the
   published 0.14.0 serializer and loaded through the current slot migration
   path. The Sites chooser and development archive consume a synchronized
@@ -227,7 +251,7 @@ This is a compact history of completed foundations. Git remains the authoritativ
 - Persistent game scaffolding now follows the selected interface language: app-menu Holdings, tile-details headings and exits, Scene Feed triggers/streams/sheet controls, desktop traversal groups, and the command composer expose matching visible and accessible English/Spanish labels. Browser coverage verifies the longer Spanish presentation without horizontal overflow.
 - Map acceptance now executes the Lightweight `?graphics=emoji` build as a real browser presentation path. It matches Textured road, base-terrain, blocked-edge, and traversal semantics across mobile, desktop, and large maps while loading no atlas layers; simulated atlas acquisition failure remains non-blocking, explains fallback graphics, and records an Activity Log error.
 - Character-creation species, identity, trait, provider-choice, and encounter-preference cards now expose `aria-pressed` selection state and keep it synchronized after pointer or keyboard changes. Module-authored species names, descriptions, and icons are escaped before rendering; authored locale keys remain supported. Default-trait, empty-trait, and interior-location scaffolding now use the maintained English/Spanish registry.
-- Safe-content `Break Down` and Mature `Chew` now share one explicit terminal contract: the option warns that success spends all remaining Vitality, depleted targets become recoverable remains with a `chew` cause, and combat removes them from the living turn queue instead of leaving a zero-condition hostile card. The same lifecycle applies to single and multi-target exploration outcomes. Responsive target rails and dock controls now retitle a remains-only result as localized `Remains`, retain a discoverable count, and clear enemy danger styling even before combat teardown finishes.
+- Mature `Chew` now shares the recoverable-remains lifecycle with other defeat paths without remaining an automatic terminal shortcut. Its progressive damage reduces Vitality and current condition equally, and combat removes a depleted target from the living turn queue instead of leaving a zero-condition hostile card. Responsive target rails and dock controls retitle a remains-only result as localized `Remains`, retain a discoverable count, and clear enemy danger styling even before combat teardown finishes.
 - Holdings Pack entries now resolve maintained item-category types through the active locale instead of exposing internal `consumable` or `equipment` tokens. Trade and Holdings therefore share the same English/Spanish category vocabulary while authored item names and descriptions remain authored content.
 - Capacity-failure feedback now resolves nameless actor, owner, and target fallbacks through the maintained locale registry, so malformed or compatibility-era unit data cannot leak English placeholders into Spanish Feast outcomes.
 - Core/UI label coverage is now registry-complete: combat correction and synchronization copy, Holdings ground/remains summaries, responsive target controls, deterministic observation/recruitment Scene Beats, tile/presence helpers, tactical row accessible names, and contextual variant scopes no longer rely on English-only fallback strings. A source-scanning regression reports any future literal `_label` key that is absent from the maintained English/Spanish tables, including its owning file.

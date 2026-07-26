@@ -65,11 +65,14 @@ const YAW_COMBAT_RESOLUTION = {
             let resolved = false;
             let meaningfulAttempt = false;
             const resultLines = [];
-            const multiEffect = command.action === 'fight'
-                ? app._multiInteractionEffect?.(actor, 'fight', targets.length, { techniqueKey: command.subAction })
+            const spreadAction = command.action === 'fight'
+                ? 'fight'
+                : (command.action === 'feast' && command.subAction === 'chew' ? 'chew' : null);
+            const multiEffect = spreadAction
+                ? app._multiInteractionEffect?.(actor, spreadAction, targets.length, { techniqueKey: command.subAction })
                 : null;
-            const spreadText = command.action === 'fight'
-                ? app._multiInteractionOutcomeText?.('fight', [actor], targets)
+            const spreadText = spreadAction
+                ? app._multiInteractionOutcomeText?.(spreadAction, [actor], targets)
                 : '';
             for (const multiTarget of targets) {
                 if (!app.combatState?.active) break;
@@ -108,8 +111,8 @@ const YAW_COMBAT_RESOLUTION = {
                     });
                 if (spreadText) summary += ` ${spreadText}`;
                 app.emitStoryResult?.({ ...command, shape: command.shape || 'one-to-many' }, summary, { mode: 'combat' });
-                if (command.action === 'fight') {
-                    app._awardMultiInteractionPractice?.([actor], 'fight', targets, { success: meaningfulAttempt });
+                if (spreadAction) {
+                    app._awardMultiInteractionPractice?.([actor], spreadAction, targets, { success: meaningfulAttempt });
                 }
             }
             app.renderCombatSceneForTurn(actor);
@@ -263,7 +266,7 @@ const YAW_COMBAT_RESOLUTION = {
                         if (app.settings.powerDynamics) {
                             app._subdueCreature(target, actor, { source: 'combat-fight' });
                             result += ` ${app._label('combat.subduedRecruitable', '{name} yields and may be recruited.', { name: target.name })}`;
-                        } else app._makeCorpse(target, 'fight');
+                        } else app._makeCorpse(target, 'fight', { actor, source: 'combat-fight' });
                     }
                 }
                 break;
@@ -366,7 +369,10 @@ const YAW_COMBAT_RESOLUTION = {
             }
             case 'feast': {
                 const subId = options.subAction || app._getDefaultSubAction('feast');
-                result = app._doSubAction('feast', subId, actor, target, actorName, actorVerb);
+                result = app._doSubAction('feast', subId, actor, target, actorName, actorVerb, {
+                    mode: 'combat',
+                    multiEffect: options.multiEffect
+                });
                 app._emitSubAction('feast', subId, actor, target, result);
                 break;
             }

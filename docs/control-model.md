@@ -87,7 +87,7 @@ These decisions are settled doctrine until a later explicit mechanics pass reope
 - Party size uses a hard default cap for performance and UI readability. Mods may raise or replace that cap for players who opt into larger parties on capable devices.
 - Recruited NPCs lose shop or quest-giver duties by default. Keeping those functions requires a special authored companion role or future explicit role-retention mechanic.
 - Pre-beta containment save changes may break old saves if a clean versioned schema becomes necessary. Prefer compatibility adapters when practical, but do not compromise central containment mechanics merely to preserve unreleased legacy saves.
-- Feast/containment uses regular damage and vital damage as separate living-creature tracks, with corpse/remains scavenging handled through a separate Remains Pool. Normal fight damage does not reduce vital integrity by default. Digestion, chew, slurp, and fragment can apply vital damage, scavenge consumes finite remains mass, and core should represent these as state/ledger data rather than creature-piece inventory items. Feast V2 is stomach-first by default: non-stomach containers, pass-through, nested simulation, itemized butchering, and permanent stat gain remain compatibility, modded, or future mechanics rather than default core behavior.
+- Feast/containment uses regular damage and vital damage as separate living-creature tracks, with corpse/remains scavenging handled through a separate Remains Pool. Normal fight damage does not reduce vital integrity by default. Chew is the explicit exception: it is a progressive Feas-based attack that reduces Vitality and current condition by the same amount, with surviving exploration targets fleeing or entering combat. Digestion, slurp, and fragment can also apply vital damage, scavenge consumes finite remains mass, and core should represent these as state/ledger data rather than creature-piece inventory items. Feast V2 is stomach-first by default: non-stomach containers, pass-through, nested simulation, itemized butchering, and permanent stat gain remain compatibility, modded, or future mechanics rather than default core behavior.
 - Desktop and mobile feedback use the same persistent newest-first Scene Feed contract. New exchange groups appear above older groups, beats within an exchange stay chronological, and the stream grows through the layout's primary scroll container without covering the composer, action controls, actor/target pickers, or dock. Transient highlighting may draw attention to a new beat, but transient-only feedback is not sufficient; the expanded Scene Feed sheet remains available for detailed review.
 
 ### Quest Species Matching Doctrine
@@ -97,6 +97,13 @@ Quest species objectives use exact internal species IDs, not fuzzy animal catego
 Player-facing quest text should render species display names from the species registry. The internal ID `wolf` can therefore appear to the player as `Wolfkin`, and generated quest objective labels should prefer that display name when no explicit authored label is provided. Existing authored labels remain authoritative, but default content should avoid exposing raw internal IDs when a display name exists.
 
 Generated quest objectives and structure quest-giver species pools should use registered species IDs from the currently enabled species registry. Mod species become valid quest targets when a quest asks for that exact registered species ID. Family/tag/taxonomy selectors such as `questFamilies`, `speciesFamily`, or broad canid-like grouping are deferred until a later authored-taxonomy pass.
+
+Required quest content must not depend on ambient generation luck. Quest World
+Directives may reserve a sparse registered creature/item at a deterministic
+reachable location, while optional gathering and encounter flavor may use a
+bounded active-quest weight boost. Both core and module quests use the same
+data-only contract; core retains coordinate choice, persistence, map guidance,
+caps, and cleanup.
 
 ### Traversal mode
 

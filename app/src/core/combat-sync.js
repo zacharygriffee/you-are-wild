@@ -142,7 +142,8 @@ const YAW_COMBAT_SYNC = {
             fight: 'sync_fight',
             flirt: 'sync_flirt',
             fuck: 'sync_fuck',
-            feed: 'sync_feed'
+            feed: 'sync_feed',
+            feast: 'feast'
         };
         return map[action] || null;
     },
@@ -362,8 +363,11 @@ const YAW_COMBAT_SYNC = {
                 techniqueKey: sync.techniqueKey || sync.plan?.subAction
             })]))
             : new Map();
-        const spreadText = baseAction === 'fight'
-            ? app._multiInteractionOutcomeText?.('fight', sync.participants || [], queuedTargets)
+        const spreadAction = baseAction === 'fight'
+            ? 'fight'
+            : (baseAction === 'feast' && (sync.techniqueKey || sync.plan?.subAction) === 'chew' ? 'chew' : null);
+        const spreadText = spreadAction
+            ? app._multiInteractionOutcomeText?.(spreadAction, sync.participants || [], queuedTargets)
             : '';
         let meaningfulAttempt = false;
         for (let targetIndex = 0; targetIndex < queuedTargets.length; targetIndex++) {
@@ -492,7 +496,7 @@ const YAW_COMBAT_SYNC = {
                     if (app.settings.powerDynamics) {
                         app._subdueCreature(sync.target, sync.participants[0], { source: 'group-fight' });
                         result += ` ${app._label('combat.subduedRecruitable', '{name} yields and may be recruited.', { name: sync.target.name })}`;
-                    } else app._makeCorpse(sync.target, 'fight');
+                    } else app._makeCorpse(sync.target, 'fight', { actor: sync.participants[0], source: 'group-fight' });
                 }
                 break;
             }
@@ -517,13 +521,47 @@ const YAW_COMBAT_SYNC = {
                 }
                 break;
             }
+            case 'feast': {
+                const subAction = sync.techniqueKey
+                    || sync.plan?.subAction
+                    || (app.settings.chewing ? 'chew' : app._getDefaultSubAction('feast'));
+                if (subAction === 'chew') {
+                    const multiEffect = queuedTargets.length > 1
+                        ? app._multiInteractionEffect?.(sync.participants[0], 'chew', queuedTargets.length)
+                        : null;
+                    result = app._groupChewFeast(sync.participants, sync.target, {
+                        mode: 'combat',
+                        multiEffect
+                    });
+                    meaningfulAttempt = true;
+                    break;
+                }
+                const selection = app._selectGroupFeastPrimary(sync.participants, sync.target);
+                if (!selection.primary || !selection.canOverpower) {
+                    result = app._label('group.feast.resisted', '{actors} try to eat {target}, but {target} resists the group.', {
+                        actors: participantNames,
+                        target: sync.target.name
+                    });
+                    break;
+                }
+                const helpers = sync.participants.filter(participant => participant !== selection.primary);
+                app._containTargetIn(selection.primary, sync.target, 'stomach');
+                app._awardCombatXP(app.XP_REWARDS.consumeEnemy);
+                result = app._label('group.feast.swallow', '{helpers} help {primary} eat {target}.', {
+                    helpers: helpers.map(participant => participant.name).join(', ') || selection.primary.name,
+                    primary: selection.primary.name,
+                    target: sync.target.name
+                });
+                meaningfulAttempt = true;
+                break;
+            }
             }
             if (targetIndex === 0 && spreadText) result += ` ${spreadText}`;
             app.log.push({ text: result, type: 'combat' });
             app._emitCombatAction(sync.type, sync.participants, sync.target, result);
         }
-        if (baseAction === 'fight') {
-            app._awardMultiInteractionPractice?.(sync.participants || [], 'fight', queuedTargets, { success: meaningfulAttempt });
+        if (spreadAction) {
+            app._awardMultiInteractionPractice?.(sync.participants || [], spreadAction, queuedTargets, { success: meaningfulAttempt });
         }
         sync.target = queuedTargets[0];
         app.renderLog();

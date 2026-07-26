@@ -275,6 +275,15 @@ MODS.addQuestTemplate({
     item: { definitionId: 'example_mod:courier_satchel', quantity: 1 },
     required: 1
   }],
+  worldDirectives: [{
+    id: 'satchel-search',
+    type: 'boost',
+    content: { kind: 'item', id: 'example_mod:courier_satchel' },
+    center: 'destination',
+    radius: 3,
+    multiplier: 5,
+    objectiveId: 'recover_satchel'
+  }],
   reward: { gold: 18 },
   stageGraph: {
     initialStage: 'search',
@@ -308,13 +317,33 @@ structure placements, but already-issued saved quest records remain bounded
 data so a player's history is not silently deleted. Re-enabling restores one
 copy of each owned placement.
 
-World placement is deliberately narrower than content registration. Species
-Profile V1 may contribute rare encounters to existing biome tables.
-`world:add_biome` contributes a runtime definition, but modules must not assume
-that it snapshots a world recipe or survives owner removal for unmaterialized
-tiles. There is no public structure, landmark, resource-site, route, or
-interior placement callback. The prerequisites and proposed declarative
-boundary are recorded in
+Quest World Directives V1 adds two bounded, declarative behaviors to an owned
+quest template:
+
+- `place` reserves one to eight registered creatures or items at a stable,
+  reachable coordinate. It accepts either an explicit `location` or a
+  `distance: { min, max }` search, optional existing `biomes`, an optional
+  related `objectiveId`, and `enemy`, `neutral`, or `friendly` creature
+  disposition.
+- `boost` multiplies the matching registered creature or item weight within a
+  Manhattan `radius` around the quest `origin` or `destination`. It may be
+  restricted to existing `biomes`. A boost stops when the quest is no longer
+  actively seeking its objective.
+
+Core owns coordinate choice, stable entity IDs, persistence, map guidance,
+idempotence, lifecycle cleanup, and bounds. Functions, callbacks, unknown
+content, arbitrary fields, more than eight directives, placement counts above
+eight, radii above thirty-two, and multipliers above ten reject registration.
+Use `place` for a mandatory objective; probability alone must not make a
+required quest impossible. Already-issued module quests remain serializable
+when their provider is disabled, but unavailable provider content is not
+re-created.
+
+This quest-scoped contract does not expose general world generation. Species
+Profile V1 may still contribute rare encounters to existing biome tables, and
+`world:add_biome` remains a runtime definition seam. There is no public
+structure, landmark, resource-site, route, interior, or executable placement
+callback. The separate world-recipe prerequisites remain documented in
 [Content Placement V1 Decision](content-placement-v1-decision.md).
 
 ### UI Contribution V1

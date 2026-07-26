@@ -2,7 +2,7 @@
   "packageType": "yaw-module",
   "packageVersion": 1,
   "packageId": "yaw_french_preview",
-  "gameVersion": "0.15.0",
+  "gameVersion": "0.16.0",
   "trustBoundary": "trusted-local",
   "module": {
     "manifest": {

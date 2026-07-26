@@ -6,6 +6,7 @@
 const YAW_RECRUITMENT_FLOW = {
     subdue(app, target, actor = app.player, options = {}) {
         if (!target || app._isCorpse(target)) return null;
+        const wasHostile = target.disposition === app.DISPOSITION.ENEMY;
         target.CPun = 1;
         target.alive = true;
         target.knockedOut = false;
@@ -20,6 +21,10 @@ const YAW_RECRUITMENT_FLOW = {
             source: options.source || 'fight'
         };
         app._normalizeUnit?.(target, { disposition: app.DISPOSITION.FRIENDLY });
+        app._recordQuestDefeat?.(target, actor, 'subdued', {
+            wasHostile,
+            source: options.source || 'fight'
+        });
         return target;
     },
 

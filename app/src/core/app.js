@@ -692,7 +692,18 @@
                 camp_safety: {
                     title: 'Camp Safety',
                     description: 'A traveler wants the local predators thinned out.',
-                    objectives: [{ type: 'defeat', species: 'wolf', required: 1, label: 'Defeat a Wolfkin' }],
+                    objectives: [{ id: 'camp_safety_wolf', type: 'defeat', species: 'wolf', required: 1, label: 'Defeat a Wolfkin' }],
+                    worldDirectives: [{
+                        id: 'nearby_wolf',
+                        type: 'place',
+                        content: { kind: 'creature', id: 'wolf' },
+                        count: 1,
+                        distance: { min: 2, max: 5 },
+                        biomes: ['forest'],
+                        objectiveId: 'camp_safety_wolf',
+                        disposition: 'enemy',
+                        locationLabel: 'Wolfkin signs'
+                    }],
                     reward: { xp: 20, gold: 12 }
                 },
                 ruins_cleanup: {
@@ -1575,6 +1586,62 @@
             _applyVitalDamage(recordOrUnit, amount = 0, context = {}) {
                 return YAW_UNIT_CONTAINMENT.applyVitalDamage(recordOrUnit, amount, context);
             },
+            _chewDamageValue(actor, target, options = {}) {
+                if (!actor || !target) return 0;
+                const mode = options.mode === 'combat' ? 'combat' : 'adventure';
+                const actors = [...new Set((options.actors || [actor]).filter(unit => unit && this._isLivingCreature(unit)))];
+                const primary = actors[0] || actor;
+                const contribution = actors.reduce((sum, unit, index) => {
+                    const weight = index === 0 ? 1 : 0.5;
+                    return sum + Math.max(1, Number(unit.Feas) || 10) * weight;
+                }, 0);
+                const purpose = `chew:${actors.map(unit => this._unitSelectionId(unit)).join('|')}`;
+                const rating = mode === 'combat'
+                    ? this._combatActionRating(contribution, primary, target, purpose)
+                    : this._explorationActionRating(contribution, primary, target, purpose);
+                const variance = mode === 'combat'
+                    ? this._combatDamageVariance(primary, target, purpose)
+                    : this._explorationDamageVariance(primary, target, purpose);
+                const defense = Number(this._effectiveCon?.(target) ?? target.con ?? 10);
+                const sizeGap = (Number(primary.size) || 0) - (Number(target.size) || 0);
+                const sizeModifier = Math.max(-6, Math.min(6, sizeGap * 1.5));
+                const baseDamage = Math.max(1, Math.floor(
+                    (rating - defense * 0.3 + variance + sizeModifier)
+                    * (Number(this._physicalDamageMultiplier?.(primary, target)) || 1)
+                ));
+                return options.multiEffect
+                    ? this._multiInteractionScaleValue(baseDamage, options.multiEffect)
+                    : baseDamage;
+            },
+            _resolveChewAttack(actor, target, options = {}) {
+                if (!actor || !target || actor === target || !this._isLivingCreature(target)) {
+                    return { damage: 0, depleted: false, target };
+                }
+                const targetWasParty = this.party.includes(target);
+                const targetWasHostile = target.disposition === this.DISPOSITION.ENEMY;
+                const actors = [...new Set((options.actors || [actor]).filter(unit => unit && this._isLivingCreature(unit)))];
+                const damage = this._chewDamageValue(actor, target, { ...options, actors });
+                this._applyVitalDamage(target, damage, {
+                    source: actors.length > 1 ? 'group-chew' : 'chew',
+                    terminal: false
+                });
+                this._wakeOnDamage?.(target);
+                const depleted = Number(target.CPun) <= 0 || Number(target.vitalRemaining) <= 0;
+                if (depleted) {
+                    this._resolveVitalDepletion(target, actors.length > 1 ? 'group-chew' : 'chew', actors[0] || actor);
+                    if (!targetWasParty && targetWasHostile && options.awardXP !== false) {
+                        this._awardCombatXP(this.XP_REWARDS.defeatEnemy);
+                    }
+                }
+                return {
+                    damage,
+                    depleted,
+                    target,
+                    actors,
+                    vitalRemaining: Math.max(0, Number(target.vitalRemaining) || 0),
+                    conditionRemaining: Math.max(0, Number(target.CPun) || 0)
+                };
+            },
             _vitalRatio(record) {
                 return YAW_UNIT_CONTAINMENT.vitalRatio(record);
             },
@@ -1724,6 +1791,7 @@
             },
             _containTargetIn(predator, target, container = 'stomach', extra = {}) {
                 if (!predator || !target) return null;
+                const wasHostile = target.disposition === this.DISPOSITION.ENEMY;
                 const prey = this._createStomachPrey(target, {
                     ...extra,
                     holder: predator,
@@ -1741,6 +1809,10 @@
                 target.CPun = 0;
                 target.CPle = 0;
                 this._removeContainedTarget(target);
+                this._recordQuestDefeat(target, predator, 'contained', {
+                    wasHostile,
+                    source: extra.source || `containment-${container}`
+                });
                 this.markAutoSaveDirty?.(['manifest', 'party', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'containment-contained');
                 return prey;
             },
@@ -1872,9 +1944,10 @@
                 this.renderLog();
                 return false;
             },
-            _makeCorpse(target, cause = 'fight') {
+            _makeCorpse(target, cause = 'fight', options = {}) {
                 if (!target) return target;
                 const wasLiving = this._isLivingCreature(target);
+                const wasHostile = target.disposition === this.DISPOSITION.ENEMY;
                 if (Array.isArray(this.explorationTargetIds) && this.explorationTargetIds.length) {
                     this.explorationTargetIds = this.explorationTargetIds.filter(key => {
                         if (!String(key).startsWith('creature:')) return true;
@@ -1901,13 +1974,16 @@
                 target.knockedOut = false;
                 this._normalizeExplorationSelections();
                 this._syncCurrentTileCreatures();
-                if (wasLiving && cause === 'fight') {
-                    this._updateQuestProgress('defeat', { target, targetId: target.id || target.name, species: target.species, name: target.name });
+                if (wasLiving) {
+                    this._recordQuestDefeat(target, options.actor, 'slain', {
+                        wasHostile,
+                        source: options.source || cause
+                    });
                 }
                 return target;
             },
 
-            _resolveVitalDepletion(target, cause = 'chew') {
+            _resolveVitalDepletion(target, cause = 'chew', actor = null) {
                 if (!target) return target;
                 target.CPun = 0;
                 target.CPle = 0;
@@ -1920,12 +1996,48 @@
                 } else if (targetWasParty) {
                     this._dropPartyCorpse(target, cause);
                 } else {
-                    this._makeCorpse(target, cause);
+                    this._makeCorpse(target, cause, { actor, source: cause });
                     if (this.combatState?.turnQueue) {
                         this.combatState.turnQueue = this.combatState.turnQueue.filter(entry => entry.unit !== target);
                     }
                 }
                 return target;
+            },
+
+            _resolveChewSurvivorReaction(target, threat = this.player) {
+                if (!target || !this._isLivingCreature(target) || this.party.includes(target)) {
+                    return { fled: false, hostiles: [], text: '' };
+                }
+                if (target.disposition !== this.DISPOSITION.ENEMY) {
+                    const reaction = this._reactToNonHostileAttack(target, threat);
+                    return {
+                        fled: !this.creatures.includes(target),
+                        hostiles: [...new Set(reaction?.hostiles || [])],
+                        text: reaction?.text || ''
+                    };
+                }
+                const conditionRatio = this._safeRatio(target.CPun, target.MPun, 1);
+                const vitalRatio = this._vitalRatio(target);
+                const mayFlee = this._shouldFleeThreat(target) || conditionRatio <= 0.3 || vitalRatio <= 0.3;
+                if (mayFlee) {
+                    const chance = Math.min(0.75, Math.max(0.15, (Number(target.Flee) || 10) / 30));
+                    if (this._threatReactionRoll(target, threat, 'chew-survivor') < chance) {
+                        const reaction = this._makeCreatureFlee(target, threat);
+                        return {
+                            fled: reaction?.fled === true,
+                            hostiles: reaction?.hostile ? [reaction.hostile] : [],
+                            text: reaction?.text || ''
+                        };
+                    }
+                }
+                this._turnCreatureHostile(target);
+                return {
+                    fled: false,
+                    hostiles: [target],
+                    text: this._label('feast.chewSurvivorFights', '{target} survives the attack and fights back!', {
+                        target: target.name || this._label('ui.unknown', 'Unknown')
+                    })
+                };
             },
 
             _applySpeciesAbilities(unit) {
@@ -2395,7 +2507,12 @@
                     : rolledCount;
                 const creatures = [];
                 for (let i = 0; i < count; i++) {
-                    const pool = this._timeAdjustedEncounterTable(biome.encounterTable);
+                    const pool = YAW_QUEST_CONTRACT.boostWeightedTable(
+                        this,
+                        this._timeAdjustedEncounterTable(biome.encounterTable),
+                        YAW_QUEST_CONTRACT.WORLD_CONTENT_KINDS.CREATURE,
+                        tile
+                    );
                     const danger = biome.danger || 3;
                     const playerMaxDiff = this.player.level <= 3 ? 2 : (this.player.level <= 6 ? 3 : 4);
                     const policyMax = encounterPolicy?.maxDifficulty != null && Number.isFinite(Number(encounterPolicy.maxDifficulty))
@@ -2493,7 +2610,12 @@
                 // Structure always has an encounter inside
                 if (this._worldChance('structure-encounter', tile.x, tile.y, struct.encounterChance || 0)) {
                     // Pick from structure-appropriate pool or biome pool
-                    const pool = this._timeAdjustedEncounterTable(biome.encounterTable);
+                    const pool = YAW_QUEST_CONTRACT.boostWeightedTable(
+                        this,
+                        this._timeAdjustedEncounterTable(biome.encounterTable),
+                        YAW_QUEST_CONTRACT.WORLD_CONTENT_KINDS.CREATURE,
+                        tile
+                    );
                     const sid = this._weightedPickWorld(pool, 'structure-encounter-species', tile.x, tile.y);
                     const sp = this.species.find(s => s.id === sid);
                     if (!sp) return;
@@ -2915,7 +3037,7 @@
             },
 
             // ===== SUB-ACTION ENGINE =====
-            _doSubAction(action, subId, actor, target, actorName, actorVerb) {
+            _doSubAction(action, subId, actor, target, actorName, actorVerb, options = {}) {
                 const subDef = this.SUB_ACTIONS[action] && this.SUB_ACTIONS[action][subId];
                 if (!subDef) return `[Unknown sub-action ${action}.${subId}]`;
                 const actorIsPlayer = actor === this.player || actor?.name === this.player?.name;
@@ -2954,24 +3076,26 @@
                         break;
                     }
                     case 'feast.chew': {
-                        const targetWasParty = this.party.includes(target);
-                        const attempt = this._assessFeastAttempt(actor, target, { requireCapacity: false });
-                        if (!attempt.succeeds) {
-                            result = this._label('feast.attempt.chewResisted', '{actor} tries to break down {target}, but {target} resists.', { actor: actorName, target: target.name });
-                            break;
-                        }
-                        this._applyVitalDamage(target, target.MPun || target.CPun || 1, { source: 'chew', terminal: false });
-                        this._resolveVitalDepletion(target, 'chew');
-                        actor.CPun = Math.min(actor.MPun, actor.CPun + 30);
-                        actor.Feas += 2;
-                        if (!targetWasParty) {
-                            this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
-                            this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
-                        }
-                        result = this._label('feast.chewResult', "{actor} breaks down {target}'s vitality. {target} is depleted and leaves recoverable remains.", {
-                            actor: actorName,
-                            target: target.name
+                        const outcome = this._resolveChewAttack(actor, target, {
+                            mode: options.mode,
+                            multiEffect: options.multiEffect,
+                            awardXP: options.awardXP
                         });
+                        result = outcome.depleted
+                            ? this._label(actorIsPlayer ? 'feast.chewResult.player' : 'feast.chewResult', actorIsPlayer
+                                ? '{actor} chew into {target} for {amount} vitality and punishment damage. {target} is depleted and leaves recoverable remains.'
+                                : '{actor} chews into {target} for {amount} vitality and punishment damage. {target} is depleted and leaves recoverable remains.', {
+                                actor: actorName,
+                                target: target.name,
+                                amount: outcome.damage
+                            })
+                            : this._label(actorIsPlayer ? 'feast.chewDamageResult.player' : 'feast.chewDamageResult', actorIsPlayer
+                                ? '{actor} chew into {target} for {amount} vitality and punishment damage.'
+                                : '{actor} chews into {target} for {amount} vitality and punishment damage.', {
+                                actor: actorName,
+                                target: target.name,
+                                amount: outcome.damage
+                            });
                         break;
                     }
                     case 'feast.cockVore': {
@@ -3685,7 +3809,7 @@
                 target.CPun -= dmg;
                 if (target.CPun <= 0) {
                     if (this.settings.partyPlayFightMode === 'lethal') {
-                        this._makeCorpse(target, 'fight');
+                        this._makeCorpse(target, 'fight', { actor: actors[0], source: 'party-play-fight' });
                         return this._label('group.fight.roughCollapse', '{name} collapses from the rough play.', { name: target.name });
                     }
                     target.CPun = 1;
@@ -3694,22 +3818,19 @@
                 return '';
             },
 
-            _groupChewFeast(actors, target) {
+            _groupChewFeast(actors, target, options = {}) {
                 const participants = actors.filter(actor => actor && actor !== target);
                 if (participants.length === 0) return this._label('group.feast.noHelpers', '{target} cannot be reduced without helpers.', { target: target.name });
-                const vitalDamage = Math.max(1, participants.reduce((sum, actor) => sum + Math.max(1, Math.floor((actor.Feas || 10) * 0.5)), 0));
-                this._applyVitalDamage(target, vitalDamage, { source: 'group-chew', terminal: false });
-                for (const actor of participants) {
-                    actor.hunger = Math.max(0, (actor.hunger || 0) - 25);
-                }
-                if (target.vitalRemaining <= 0 || target.CPun <= 0) {
-                    const targetWasParty = this.party.includes(target);
-                    this._resolveVitalDepletion(target, 'group-chew');
-                    if (!targetWasParty) this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
-                }
-                return this._label('group.feast.split', '{actors} reduce {target} through vital damage.', {
+                const outcome = this._resolveChewAttack(participants[0], target, {
+                    ...options,
+                    actors: participants
+                });
+                return this._label(outcome.depleted ? 'group.feast.chewDepleted' : 'group.feast.split', outcome.depleted
+                    ? '{actors} chew into {target} for {amount} vitality and punishment damage. {target} is depleted and leaves recoverable remains.'
+                    : '{actors} chew into {target} for {amount} vitality and punishment damage.', {
                     actors: participants.map(actor => actor.name).join(', '),
-                    target: target.name
+                    target: target.name,
+                    amount: outcome.damage
                 });
             },
             _selectGroupFeastPrimary(actors, target) {
@@ -3821,12 +3942,15 @@
                 actor = actor || this.player;
                 const skipped = [];
                 const skippedSet = new Set();
-                const multiEffect = action === 'fight'
-                    ? this._multiInteractionEffect(actor, 'fight', targetList.length)
+                const usesChewSpread = action === 'feast' && options.subAction === 'chew';
+                const spreadAction = action === 'fight' ? 'fight' : (usesChewSpread ? 'chew' : null);
+                const multiEffect = spreadAction
+                    ? this._multiInteractionEffect(actor, spreadAction, targetList.length)
                     : null;
-                const spreadText = action === 'fight'
-                    ? this._multiInteractionOutcomeText('fight', [actor], targetList)
+                const spreadText = spreadAction
+                    ? this._multiInteractionOutcomeText(spreadAction, [actor], targetList)
                     : '';
+                const combatTargets = new Set();
                 for (const target of targetList) {
                     if (action === 'feed' && this._shouldSkipFullFeedTarget(options) && this.party.includes(target) && target.CPun >= target.MPun) {
                         skipped.push(target.name);
@@ -3838,8 +3962,10 @@
                         allowPartySacrifice: false,
                         suppressStory: true,
                         applyCost: false,
+                        deferCombat: true,
                         multiEffect
                     });
+                    for (const combatTarget of this.lastActionResolution?.combatTargets || []) combatTargets.add(combatTarget);
                     if (resolved === false || this.lastActionResolution?.affected === false) skippedSet.add(target);
                 }
                 const affected = targetList.filter(target => !skippedSet.has(target)).map(t => t.name);
@@ -3863,15 +3989,16 @@
                         emitScene: true
                     });
                 }
-                if (action === 'fight') {
-                    this._awardMultiInteractionPractice([actor], 'fight', targetList, { success: affected.length > 0 });
+                if (spreadAction) {
+                    this._awardMultiInteractionPractice([actor], spreadAction, targetList, { success: affected.length > 0 });
                 }
                 this.emitStoryResult({ mode: 'adventure', actors: [actor], targets: targetList, action, shape: 'one-to-many' }, summary);
                 this._normalizeExplorationSelections();
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
-                this.renderExplorationActions();
+                if (combatTargets.size > 0) this.startCombat([...combatTargets]);
+                else this.renderExplorationActions();
                 return true;
             },
 
@@ -4016,8 +4143,11 @@
                 if (livingActors.length < 2 || targetList.length < 2) return false;
                 const resolutions = [];
                 const combatTargets = new Set();
-                const spreadText = action === 'fight'
-                    ? this._multiInteractionOutcomeText('fight', livingActors, targetList)
+                const spreadAction = action === 'fight'
+                    ? 'fight'
+                    : (action === 'feast' && options.subAction === 'chew' ? 'chew' : null);
+                const spreadText = spreadAction
+                    ? this._multiInteractionOutcomeText(spreadAction, livingActors, targetList)
                     : '';
                 for (const target of targetList) {
                     const resolved = this.outsideGroupActionOnTarget(action, target, livingActors, {
@@ -4049,8 +4179,8 @@
                         emitScene: true
                     });
                 });
-                if (action === 'fight') {
-                    this._awardMultiInteractionPractice(livingActors, 'fight', targetList, { success: resolutions.length > 0 });
+                if (spreadAction) {
+                    this._awardMultiInteractionPractice(livingActors, spreadAction, targetList, { success: resolutions.length > 0 });
                 }
                 this.log.push({ text: summary, type: 'discovery' });
                 this.emitStoryResult({
@@ -4145,7 +4275,7 @@
                             target.CPun -= dmg;
                         }
                         if (!this.party.includes(target) && target.CPun <= 0) {
-                            this._makeCorpse(target, 'fight');
+                            this._makeCorpse(target, 'fight', { actor: livingActors[0], source: 'group-fight' });
                             result += ` ${this._label('group.fight.collapses', '{target} collapses.', { target: target.name })}`;
                         }
                         break;
@@ -4192,7 +4322,20 @@
                         }
                         const shouldChew = selectedSubAction === 'chew' || (!selectedSubAction && this.settings.chewing);
                         if (shouldChew && livingActors.length > 1) {
-                            result = this._groupChewFeast(livingActors, target);
+                            const targetCount = Math.max(1, Number(options.multiTargetCount) || 1);
+                            const multiEffect = targetCount > 1
+                                ? this._multiInteractionEffect(livingActors[0], 'chew', targetCount)
+                                : null;
+                            result = this._groupChewFeast(livingActors, target, {
+                                mode: 'adventure',
+                                multiEffect
+                            });
+                            if (this._isLivingCreature(target) && !this.party.includes(target)) {
+                                const reaction = this._resolveChewSurvivorReaction(target, livingActors[0]);
+                                if (reaction.text) result += ` ${reaction.text}`;
+                                combatTargets = [...new Set(reaction.hostiles || [])];
+                                startCombatAfter = combatTargets.length > 0;
+                            }
                             break;
                         }
                         const selection = this._selectGroupFeastPrimary(livingActors, target);
@@ -4360,7 +4503,10 @@
                         const oldPle = target.CPle;
                         if (charm > resist) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
-                            result = this._label('explore.fuck.success', '{actor} plays with {target}. Spirit rises to {current}/{max}.', {
+                            const playerActor = actor === this.player || actor.name === this.player?.name;
+                            result = this._label(playerActor ? 'explore.fuck.successPlayer' : 'explore.fuck.success', playerActor
+                                ? '{actor} play with {target}. Spirit rises to {current}/{max}.'
+                                : '{actor} plays with {target}. Spirit rises to {current}/{max}.', {
                                 actor: actorName,
                                 target: target.name,
                                 current: target.CPle,
@@ -4390,8 +4536,17 @@
                     }
                     case 'feast': {
                         if (selectedSubAction) {
-                            result = this._doSubAction('feast', selectedSubAction, actor, target, actorName, actor.name === this.player?.name ? '' : 's');
+                            result = this._doSubAction('feast', selectedSubAction, actor, target, actorName, actor.name === this.player?.name ? '' : 's', {
+                                mode: 'adventure',
+                                multiEffect: options.multiEffect
+                            });
                             this._cleanupOutsideSubActionTarget(action, selectedSubAction, actor, target);
+                            if (selectedSubAction === 'chew' && this._isLivingCreature(target) && !this.party.includes(target)) {
+                                const reaction = this._resolveChewSurvivorReaction(target, actor);
+                                if (reaction.text) result += ` ${reaction.text}`;
+                                combatTargets = [...new Set(reaction.hostiles || [])];
+                                startCombatAfter = combatTargets.length > 0;
+                            }
                             break;
                         }
                         if (actor === target) {
@@ -4505,7 +4660,7 @@
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
-                if (startCombatAfter) {
+                if (startCombatAfter && !options.deferCombat) {
                     this.startCombat(combatTargets);
                     return true;
                 }
@@ -5014,6 +5169,10 @@
 
             _updateQuestProgress(type, payload = {}) {
                 return YAW_QUEST_FLOW.updateProgress(this, type, payload);
+            },
+
+            _recordQuestDefeat(target, actor, resolution, options = {}) {
+                return YAW_QUEST_FLOW.recordDefeat(this, target, actor, resolution, options);
             },
 
             _grantQuestReward(quest) {
@@ -6180,7 +6339,11 @@
                     message: this._label('combat.instantWinSuccess', 'Instant Win! All enemies are defeated.')
                 }), type: 'combat' });
                 this.renderLog();
-                this.creatures.forEach(c => { if (c.disposition === this.DISPOSITION.ENEMY && this._isLivingCreature(c)) this._makeCorpse(c, 'fight'); });
+                this.creatures.forEach(c => {
+                    if (c.disposition === this.DISPOSITION.ENEMY && this._isLivingCreature(c)) {
+                        this._makeCorpse(c, 'fight', { actor: this.player, source: 'instant-win' });
+                    }
+                });
                 this._emitCombatAction('instant_win', this.player, null, 'success');
                 this.endCombat(true);
             },

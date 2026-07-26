@@ -19,7 +19,8 @@ These decisions are settled for V2 implementation unless a later explicit mechan
 - `swallow` / `ingest` creates intact containment.
 - `swallow` does little or no immediate vital damage by default.
 - Digestion ticks reduce `vitalRemaining` over time.
-- `chew` applies immediate vital damage.
+- `chew` is a progressive attack that applies equal immediate Vitality and
+  current-condition damage.
 - `slurp` / `fragment` use vital-damage semantics for explicit slurpable, breakable, or divisible targets.
 - Release is possible while `vitalRemaining > 0`.
 - Release is not a full undo; the target returns weakened or reduced.
@@ -100,7 +101,12 @@ Corpse/remains records should normalize these neutral fields while preserving cu
 ## Verb Doctrine
 
 - `swallow` / `ingest`: places an intact target into a container. It should do little or no immediate vital damage by default. Digestion ticks later reduce `vitalRemaining`. Release is possible while `vitalRemaining > 0`.
-- `chew`: applies immediate vital damage. It may defeat or deplete the target, but core should not create creature-piece inventory items.
+- `chew`: applies one Feas-based attack's damage equally to Vitality and
+  current condition. It does not automatically spend the full Vital Pool,
+  heal the attacker, relieve hunger, or grant consumption credit. If either
+  track reaches zero, the target becomes recoverable remains. A non-party
+  exploration survivor flees to an adjacent valid tile or becomes hostile and
+  enters combat. Core does not create creature-piece inventory items.
 - `slurp` / `fragment`: applies vital damage to divisible or soft targets. The target can remain active, weakened, or depleted. Core should not create itemized fragments.
 - `release`: returns a contained creature when `vitalRemaining > 0`, at reduced condition and possibly with Vital Weakness. Release is not a full undo.
 - `terminal digestion` / `depletion`: occurs when `vitalRemaining <= 0` or containment progress reaches terminal threshold. Ordinary release is no longer available unless a future mechanic or mod says otherwise.

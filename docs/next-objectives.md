@@ -4,9 +4,9 @@ This file contains unfinished, approved, actionable work only. Completed work
 belongs in `changelog.md`; requirement evidence belongs in
 `backlog-completion-audit.md`; subsystem behavior belongs in focused doctrine.
 
-## Scope freeze for 0.15.0
+## Scope freeze for 0.16.0
 
-Until the 0.15.0 readiness goal is closed, do not introduce new module
+Until the 0.16.0 readiness goal is closed, do not introduce new module
 permissions, public UI slots, media providers, asset/sprite contract versions,
 recovery profiles, resource profile types, combat-technique capabilities,
 row/reach rules, narration providers, containers, Feast variants,
@@ -20,23 +20,17 @@ hardening.
 Core gameplay remains deterministic and does not depend on an LLM or remote
 service.
 
-## Immediate — 0.15.0 public-preview candidate
+## Immediate — 0.16.0 public-preview candidate
 
 1. Keep authoritative documentation coherent:
    - current architecture describes the shipped runtime;
    - this file contains unfinished work only;
    - superseded plans are visibly historical;
    - release evidence and deferred decisions remain distinct.
-2. Complete the Standard Adventure bounded-safety evidence:
-   - preserve visible Hungry/Starving penalties for every living unit without
-     lowering maximum Condition;
-   - preserve Generator V4's safe-start contract through current Generator V6;
-   - expose stable current/adjacent danger bands before movement;
-   - keep roads materially safer or more predictable;
-   - preserve player-relative opening admission and deterministic
-     Scout/Guard ambush awareness.
-3. Complete `release-readiness-0.15.0.md`:
-   - current save and mod compatibility;
+2. Preserve the accepted Core Game Maturity contracts without expanding their
+   bounded vocabularies during release preparation.
+3. Create and complete the 0.16 release-readiness record:
+   - current save, quest, item, perk, companion, and mod compatibility;
    - local full-build, branding, and diff evidence;
    - mobile `412x915` and desktop `1365x768` smoke;
    - English/Spanish at 20px, high contrast, and reduced motion;
@@ -44,10 +38,10 @@ service.
    - observed green CI;
    - rollback artifact.
 4. Keep the accepted conservative Ghost baseline explicit in
-   `ghost-recovery-prepublish-decision.md` and the 0.15.0 notes. Do not add a
+   `ghost-recovery-prepublish-decision.md` and the 0.16.0 notes. Do not add a
    shrine economy, entry prompt, spectral actions, or altered companion
    outcomes.
-5. Prepare an accurate 0.15.0 record and development identity. Do not publish
+5. Prepare an accurate 0.16.0 record and development identity. Do not publish
    or mark the candidate released without operator authorization.
 
 ## Completed locally — Core Game Maturity
@@ -129,7 +123,7 @@ These are observational unless a concrete contradiction is demonstrated:
 ## Later work with prerequisites
 
 - Post-publication autonomous and human long-form playtests must use the exact
-  published 0.15.0 artifact, record seed/build/device/action/save evidence, and
+  published 0.16.0 artifact, record seed/build/device/action/save evidence, and
   must not retune mechanics during the run.
 - Compatible demonstrated defects may ship as patch releases. Balance opinions
   require scenario evidence before tuning.
@@ -148,6 +142,8 @@ Sites publication remain operator-mediated. Publication is never automatic.
 
 - `architecture.md`
 - `backlog-completion-audit.md`
+- `release-readiness-0.16.0.md`
+- `releases/0.16.0.md`
 - `release-readiness-0.15.0.md`
 - `releases/0.15.0.md`
 - `balance-cost-doctrine.md`

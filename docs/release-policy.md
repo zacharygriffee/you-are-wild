@@ -9,14 +9,19 @@ release mirror and hosted first-party packages from the authoritative sources;
 its chooser and development changelog derive candidate identity from that
 mirror instead of hard-coded version strings.
 
-## Pre-1.0 Versioning
+## Product Versioning
 
 - Patch (`0.11.1`): compatible fixes, copy, diagnostics, accessibility, and
   presentation changes that do not intentionally change save or mod contracts.
 - Minor (`0.12.0`): new player-facing features or compatible API additions.
-- Breaking pre-1.0 minor: any intentional save or module contract break must be
-  called out as breaking in release notes, include migration or recovery
-  guidance, and receive operator approval.
+- Major (`1.0.0`, then `2.0.0`): an intentional incompatible save or module
+  contract that cannot be loaded through a safe automatic migration. It must
+  be called out as breaking, include recovery guidance, and receive operator
+  approval.
+- A save-schema field or schema-version increment is not automatically a
+  product major when it is additive and safely migrated. Product SemVer
+  follows player and module compatibility; the separate save-schema and
+  module-API numbers identify the technical contract being loaded.
 
 Published artifacts use the `public-preview` channel until the operator
 promotes the project. Development builds may use a development channel but may
@@ -133,6 +138,20 @@ request.
 - Existing minimum module-version declarations remain valid. First-party
   package production metadata mirrors the candidate while intentional
   `minGameVersion` floors remain unchanged.
+
+## Version 0.16.0 Candidate Compatibility
+
+- Existing 0.10.x through 0.15.0 saves load through maintained additive
+  normalization. Save schema remains 11 and recorded generator versions remain
+  unchanged.
+- Module API remains 1. Existing module minimum-version declarations remain
+  valid.
+- Modules using Item Definition V2 or Perk Profile V1 should require game
+  version 0.16.0 or newer. Missing providers remain inert without deleting
+  saved compatible instances or selected effects.
+- Chew practice is additive compatibility metadata alongside existing
+  multi-target Fight practice. Older units begin Chew at Novice without a save
+  schema migration.
 - Generator V4 introduced the safe-start contract, Generator V5 introduced the
   route graph, and Generator V6 changes new-world road rasterization. Recorded
   older generator versions remain immutable.

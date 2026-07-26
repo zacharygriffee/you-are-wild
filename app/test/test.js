@@ -697,12 +697,12 @@ test('App object is defined', () => {
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.15.0', 'Release manifest should identify the current development version');
+  assertEqual(releaseInfo.version, '0.16.0', 'Release manifest should identify the current development version');
   assertEqual(releaseInfo.status, 'draft', 'Development head should be unmistakably marked as a draft');
   assertEqual(releaseInfo.channel, 'development', 'Development head must not impersonate the published public-preview channel');
   assertEqual(releaseInfo.releasedAt, null, 'An unpublished development head should not invent a release date');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('Mobile Interaction Flow V2')), 'Release notes should describe the unified mobile Roster foundation');
-  assert(releaseInfo.notes.en.changed.some(note => note.includes('Generator V6')), 'Release notes should describe current generated-world behavior');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('Quest Contract V2')), 'Release notes should describe the complete quest lifecycle');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('Companion Behavior V2')), 'Release notes should describe the companion behavior contract');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('development draft')), 'Release notes should disclose that the candidate is not published');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
@@ -714,7 +714,7 @@ test('Release manifest is the authoritative public version and compatibility sou
 test('Elemental Species package stays within the supported species contribution boundary', () => {
   const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
   const manifest = packageData.module.manifest;
-  assertEqual(packageData.gameVersion, '0.15.0', 'Elemental package production metadata should target the current game build');
+  assertEqual(packageData.gameVersion, '0.16.0', 'Elemental package production metadata should target the current game build');
   assertEqual(manifest.minGameVersion, '0.14.0', 'Elemental package should require the doctrine-tested module surface');
   assertEqual(manifest.contentRating, 'safe', 'Elemental species identity content should remain safe-rated');
   assertEqual(manifest.permissions.length, 1, 'Elemental package should request only one capability');
@@ -3767,6 +3767,7 @@ asyncTest('Module quest templates are permissioned bounded owned and reversible'
   MODULE_SYSTEM.db = createFakeIndexedDb().db;
   const App = MODULE_SYSTEM._testApp;
   App.QUEST_TEMPLATES = {};
+  App.species = [{ id: 'wolf', name: 'Wolfkin', icon: '🐺' }];
   App.STRUCTURES = {
     cabin: { quest: { templates: ['core-cabin'] } },
     camp: { quest: { templates: [] } }
@@ -3792,6 +3793,14 @@ asyncTest('Module quest templates are permissioned bounded owned and reversible'
         location: { x: 4, y: 6 },
         required: 1
       }],
+      worldDirectives: [{
+        id: 'trail-wolf',
+        type: 'place',
+        content: { kind: 'creature', id: 'wolf' },
+        distance: { min: 2, max: 4 },
+        count: 1,
+        disposition: 'enemy'
+      }],
       reward: { gold: 12 },
       stageGraph: {
         initialStage: 'survey',
@@ -3815,6 +3824,7 @@ asyncTest('Module quest templates are permissioned bounded owned and reversible'
   assert(template, 'Enabled module should register its namespaced quest template');
   assertEqual(template.authoredOrigin.moduleId, 'quest-route-module', 'Quest template should preserve authored provider ownership');
   assertEqual(template.stageGraph.stages.length, 2, 'Quest template should retain a bounded authored stage graph');
+  assertEqual(template.worldDirectives[0].content.id, 'wolf', 'Module quest templates should retain validated declarative world directives');
   const firstIssued = MODULE_SYSTEM._testQuestFlow.templateForStructure(App, 'camp', { x: 2, y: 3 });
   const secondIssued = MODULE_SYSTEM._testQuestFlow.templateForStructure(App, 'camp', { x: 4, y: 5 });
   assertEqual(firstIssued.id, 'quest-route-module:trail_task_2_3', 'Issued module quest should derive stable instance identity from its template and location');
@@ -7466,7 +7476,12 @@ test('Binary save compatibility metadata preserves multi-action practice and mod
   const Binary = loadBinaryForTest();
   const player = makeSerializableUnit('You', {
     id: 'binary-practice-player',
-    multiActionPractice: { multi: { fight: { xp: 73, commands: 9, contextKey: 'combat:test', contextGain: 4 } } },
+    multiActionPractice: {
+      multi: {
+        fight: { xp: 73, commands: 9, contextKey: 'combat:test', contextGain: 4 },
+        chew: { xp: 31, commands: 4, contextKey: 'combat:chew', contextGain: 2 }
+      }
+    },
     creationOptions: { 'test-provider': { 'crest-style': 'ember' } },
     resourceLedger: { 'test-provider:ember': { current: 2, progress: 1 } }
   });
@@ -7477,6 +7492,7 @@ test('Binary save compatibility metadata preserves multi-action practice and mod
     currentBiome: 'forest'
   }));
   assertEqual(loaded.questState.partyMultiActionPractice[0].multi.fight.xp, 73, 'Binary export/import metadata should preserve Fight practice even though the legacy unit codec is fixed');
+  assertEqual(loaded.questState.partyMultiActionPractice[0].multi.chew.xp, 31, 'Binary export/import metadata should preserve additive Chew practice without a save-schema migration');
   assertEqual(loaded.questState.playerCompatibility.creationOptions['test-provider']['crest-style'], 'ember', 'Binary compatibility metadata should preserve bounded provider-owned creation choices');
   assertEqual(loaded.questState.partyResourceLedgers[0]['test-provider:ember'].current, 2, 'Binary compatibility metadata should preserve namespaced unit resource state outside the fixed legacy unit codec');
 });
@@ -9924,7 +9940,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.newRun': 'New Run', 'save.load': 'Load', 'save.save': 'Save', 'save.delete': 'Delete', 'save.close': 'Close', 'save.action.newGame': 'Choose a slot for a new game', 'save.action.useEmpty': 'Start new game in {slot}', 'save.action.overwrite': 'Overwrite {slot} with a new game', 'save.action.newRun': 'Start a new run in {slot}', 'save.action.load': 'Load {slot}', 'save.action.save': 'Save and continue in {slot}', 'save.action.delete': 'Delete {slot}',
           'settings.confirmClearAllData': 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?', 'settings.clearAllDataDone': 'All data cleared. Refresh the page to start fresh.', 'settings.clearAllDataFailed': 'Failed to clear all data: {message}',
           'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', 'save.confirm.manualOverwrite': 'Overwrite {slot} with the current game and continue auto-saving there? This cannot be undone.', 'save.confirm.deleteSlot': 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', 'save.confirmDeleteAll': 'Delete ALL save data? This cannot be undone!', 'save.error.noGame': 'No game to save!', 'save.error.noSave': 'No save in {slot}', 'save.success.saved': 'Game saved to {slot}. Auto-save now updates this slot.', 'save.success.deletedAll': 'All saves deleted.', 'save.recoveredOnLoad': 'You were revived from the brink of defeat. Welcome back, {name}.', 'save.error.saveFailed': 'Save failed: {message}', 'save.error.loadFailed': 'Load failed: {message}', 'save.error.deleteFailed': 'Delete failed: {message}', 'save.error.deleteAllFailed': 'Delete saves failed: {message}', 'save.recovery.prompt': 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:', 'save.recovery.deleted': 'Save deleted.', 'save.recovery.backupDownloaded': 'Backup downloaded. Save remains intact.',
-          'target.actors': 'Actors', 'target.primaryActor': 'Primary', 'target.helpers': 'Helpers', 'target.targets': 'Targets', 'target.act': 'Actor', 'target.mark': 'Mark', 'target.pick': 'Pick', 'target.actorRole': 'Actor', 'target.targetRole': 'Target', 'target.markedRole': 'Marked', 'target.selectActorFor': 'Set {name} as actor', 'target.addActorFor': 'Add {name} as actor', 'target.removeActorFor': 'Remove {name} from actors', 'target.markFor': 'Mark {name} as target', 'target.removeTargetFor': 'Remove {name} from targets', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group {action} actions. Current selection has {actorCount} actors and {targetCount} targets.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.pairedActionDone': 'Paired {action} actions resolved: {pairs}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.intentControls': 'Target intent controls', 'target.clearSelected': 'Clear selected targets', 'explore.fight.hit': '{actor} hits {target} for {amount} punishment.', 'explore.fight.subdued': '{target} is subdued.', 'explore.fuck.success': '{actor} plays with {target}. Spirit rises to {current}/{max}.', 'explore.fuck.devoted': '{target} relaxes and becomes completely friendly.', 'explore.fuck.recover': '{target} needs a moment to catch their breath...', 'explore.fuck.resists': '{target} does not want to play.', 'explore.feast.swallow': '{actor} eats {target}. They are held in {owner} belly.', 'explore.feast.tooStrong': '{target} is too large or strong to eat.', 'explore.flirt.success': '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', 'explore.flirt.charmed': '{target} is convinced and becomes friendly!', 'explore.flirt.rebuff': '{target} rejects the conversation!', 'explore.feed.success': '{actor} tends {target}, restoring {amount} punishment.', 'explore.recruit.possible': '{target} may be willing to join the party.', 'group.feed.selfBlocked': '{name} cannot feed into themself yet.', 'group.feed.playerBlocked': '{name} cannot be handed off as prey right now.', 'group.feed.partyToConsumer': '{prey} is fed to {consumer} and settles in their belly.', 'group.feed.helpers': '{helpers} help feed {prey} to {target}.', 'group.feed.tend': '{actors} tend {target}, restoring {amount} punishment.', 'group.feed.tendTogether': '{actors} tend {target} together, restoring {amount} punishment.', 'group.feed.creature': '{actors} tend {target}, restoring {amount} punishment.', 'group.fight.roughCollapse': '{name} collapses from the rough play.', 'group.fight.pinned': 'They are pinned but not seriously hurt.', 'group.fight.sparTogether': '{actors} spar together, each taking {amount} punishment.', 'group.mutual.feed': '{actors} tend each other, restoring {amount} punishment where needed.', 'group.mutual.feastBlocked': '{actors} cannot eat themselves as a mutual group. Choose a primary target instead.', 'group.mutual.fight': '{actors} spar as a mutual group, each taking {amount} punishment.', 'group.mutual.social': '{actors} share {action} as a mutual group. Spirit rises for everyone involved.', 'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.', 'group.fight.collapses': '{target} collapses.', 'group.feast.noHelpers': '{target} cannot be reduced without helpers.', 'group.feast.split': '{actors} reduce {target} through vital damage.', 'group.feast.selfBlocked': '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', 'group.feast.tooStrong': '{target} is too large or strong for {actors} to eat.', 'group.feast.swallow': '{helpers} help {primary} eat {target}.', 'group.social.share': '{actors} share {action} with {target}. Spirit spreads through the group; {target} rises to {current}/{max}.', 'group.social.focus': '{actors} focus on {target}. Spirit rises to {current}/{max}.', 'group.social.resists': "{target} resists the group's attention."
+          'target.actors': 'Actors', 'target.primaryActor': 'Primary', 'target.helpers': 'Helpers', 'target.targets': 'Targets', 'target.act': 'Actor', 'target.mark': 'Mark', 'target.pick': 'Pick', 'target.actorRole': 'Actor', 'target.targetRole': 'Target', 'target.markedRole': 'Marked', 'target.selectActorFor': 'Set {name} as actor', 'target.addActorFor': 'Add {name} as actor', 'target.removeActorFor': 'Remove {name} from actors', 'target.markFor': 'Mark {name} as target', 'target.removeTargetFor': 'Remove {name} from targets', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group {action} actions. Current selection has {actorCount} actors and {targetCount} targets.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.pairedActionDone': 'Paired {action} actions resolved: {pairs}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.intentControls': 'Target intent controls', 'target.clearSelected': 'Clear selected targets', 'explore.fight.hit': '{actor} hits {target} for {amount} punishment.', 'explore.fight.subdued': '{target} is subdued.', 'explore.fuck.success': '{actor} plays with {target}. Spirit rises to {current}/{max}.', 'explore.fuck.devoted': '{target} relaxes and becomes completely friendly.', 'explore.fuck.recover': '{target} needs a moment to catch their breath...', 'explore.fuck.resists': '{target} does not want to play.', 'explore.feast.swallow': '{actor} eats {target}. They are held in {owner} belly.', 'explore.feast.tooStrong': '{target} is too large or strong to eat.', 'explore.flirt.success': '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', 'explore.flirt.charmed': '{target} is convinced and becomes friendly!', 'explore.flirt.rebuff': '{target} rejects the conversation!', 'explore.feed.success': '{actor} tends {target}, restoring {amount} punishment.', 'explore.recruit.possible': '{target} may be willing to join the party.', 'group.feed.selfBlocked': '{name} cannot feed into themself yet.', 'group.feed.playerBlocked': '{name} cannot be handed off as prey right now.', 'group.feed.partyToConsumer': '{prey} is fed to {consumer} and settles in their belly.', 'group.feed.helpers': '{helpers} help feed {prey} to {target}.', 'group.feed.tend': '{actors} tend {target}, restoring {amount} punishment.', 'group.feed.tendTogether': '{actors} tend {target} together, restoring {amount} punishment.', 'group.feed.creature': '{actors} tend {target}, restoring {amount} punishment.', 'group.fight.roughCollapse': '{name} collapses from the rough play.', 'group.fight.pinned': 'They are pinned but not seriously hurt.', 'group.fight.sparTogether': '{actors} spar together, each taking {amount} punishment.', 'group.mutual.feed': '{actors} tend each other, restoring {amount} punishment where needed.', 'group.mutual.feastBlocked': '{actors} cannot eat themselves as a mutual group. Choose a primary target instead.', 'group.mutual.fight': '{actors} spar as a mutual group, each taking {amount} punishment.', 'group.mutual.social': '{actors} share {action} as a mutual group. Spirit rises for everyone involved.', 'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.', 'group.fight.collapses': '{target} collapses.', 'group.feast.noHelpers': '{target} cannot be reduced without helpers.', 'group.feast.split': '{actors} chew into {target} for {amount} vitality and punishment damage.', 'group.feast.chewDepleted': '{actors} chew into {target} for {amount} vitality and punishment damage. {target} is depleted and leaves recoverable remains.', 'group.feast.selfBlocked': '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', 'group.feast.tooStrong': '{target} is too large or strong for {actors} to eat.', 'group.feast.swallow': '{helpers} help {primary} eat {target}.', 'group.social.share': '{actors} share {action} with {target}. Spirit spreads through the group; {target} rises to {current}/{max}.', 'group.social.focus': '{actors} focus on {target}. Spirit rises to {current}/{max}.', 'group.social.resists': "{target} resists the group's attention."
         },
         es: {
           'ui.back': 'Volver',
@@ -11138,7 +11154,8 @@ test('Feast variants respect content posture and never expose internal setting k
   content.preferences.maxTier = 1;
   resolution = App._resolveActionVariants('feast', { actors: [actor], targets: [target] });
   assertEqual(resolution.variants.some(variant => variant.id === 'chew'), true, 'Mature Feast should expose its posture-appropriate chewing variant');
-  assertContains(resolution.variants.find(variant => variant.id === 'chew')?.hint || '', 'depletes all remaining vitality', 'Chew should disclose its terminal vitality consequence before commitment');
+  assertContains(resolution.variants.find(variant => variant.id === 'chew')?.hint || '', 'damage also reduces punishment', 'Chew should disclose its shared Vitality and condition damage before commitment');
+  assertContains(resolution.variants.find(variant => variant.id === 'chew')?.hint || '', 'may flee or fight', 'Chew should disclose survivor escalation before commitment');
   assertEqual(resolution.variants.some(variant => variant.id === 'cockVore' || variant.id === 'unbirth'), false, 'Mature Feast should still hide explicit-only variants without category opt-in');
   assertNotContains(resolution.variants.find(variant => variant.id === 'chew')?.reason || '', 'chewing', 'Mature unavailable copy should use the public setting label rather than its internal key');
 
@@ -16339,7 +16356,7 @@ test('Intent feast sub-action affects outside-combat resolution and cleanup', ()
   assertEqual(App.creatures.includes(prey), true, 'Outside-combat chew should preserve recoverable remains on the tile');
   assertEqual(App._isCorpse(prey), true, 'Outside-combat chew should convert the depleted target into remains');
   assertEqual(prey.source, 'chew', 'Outside-combat chew remains should retain their terminal cause');
-  assertContains(App.log.map(entry => entry.text).join('\n'), 'breaks down', 'Sub-action result should be logged');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'chews into', 'Sub-action result should be logged');
 });
 
 test('Legacy forceFeed remains callable for compatibility but is hidden from the canonical picker', () => {
@@ -16753,7 +16770,7 @@ test('Chewing-enabled group feast applies vital damage without splitting pieces'
   assertEqual(eaterB.stomach.length, 0, 'Second group eater should not receive a synthetic prey portion');
   assertEqual(App.party.includes(prey), true, 'Nonterminal vital-damage target should remain active');
   assert(prey.vitalRemaining < prey.vitalMax, 'Group chew should reduce prey vital integrity');
-  assertContains(App.log[App.log.length - 1].text, 'reduce Prey through vital damage', 'Group chew feast should log vital reduction behavior');
+  assertContains(App.log[App.log.length - 1].text, 'chew into Prey', 'Group chew feast should log progressive vital and punishment damage');
 });
 
 test('Group feast respects explicit swallow sub-action when chewing is enabled', () => {
@@ -17508,6 +17525,66 @@ test('Combat group planner queues and resolves one collective effort across mult
   assertEqual(advanced, 2, 'Group queue and eventual resolution should each advance exactly once');
 });
 
+test('Combat group planner maps Eat into progressive Feast resolution', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'planner-feast-player', Feas: 24, hunger: 10, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'planner-feast-ally', Feas: 20, hunger: 20, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', {
+    id: 'planner-feast-enemy',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 100,
+    MPun: 100,
+    con: 20,
+    combatRow: 'front'
+  });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.settings.chewing = true;
+  App.defaultSubActions.feast = 'swallow';
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    sceneExchangeId: 'planner-feast-exchange',
+    turnQueue: [
+      { unit: player, initiative: 30 },
+      { unit: ally, initiative: 20 },
+      { unit: enemy, initiative: 10 }
+    ],
+    syncActions: []
+  };
+  [player, ally, enemy].forEach(unit => App._normalizeUnit(unit));
+  App.activeActor = player;
+  App._combatActionRating = unit => unit.Feas;
+  App._combatDamageVariance = () => 0;
+  App._physicalDamageMultiplier = () => 1;
+  App._effectiveCon = target => target.con;
+  App.combatPlanSelection = {
+    active: true,
+    source: 'combat-planner',
+    actorIds: [App._unitSelectionId(player), App._unitSelectionId(ally)],
+    pendingIntent: 'feast',
+    explicitActors: true,
+    hadGroupActors: true
+  };
+  App.combatTargetIds = [App._unitSelectionId(enemy)];
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
+  assertEqual(App.confirmCombatPlan(), true, 'Group Eat should queue through the combat planner');
+  assertEqual(App.combatState.syncActions.length, 1, 'Group Eat should create one coordinated Feast action');
+  const sync = App.combatState.syncActions[0];
+  assertEqual(sync.type, 'feast', 'Group Eat should preserve Feast as the synchronized resolver type');
+  App._resolveSyncAction(sync);
+  assertEqual(enemy.CPun < enemy.MPun, true, 'Chewing-enabled group Eat should reduce punishment');
+  assertEqual(enemy.vitalRemaining < enemy.vitalMax, true, 'Chewing-enabled group Eat should reduce Vitality');
+  assertEqual(player.stomach.length, 0, 'Progressive group Chew should not silently fall back to containment');
+  assertEqual(advanced, 2, 'Group Eat queue and resolution should each advance exactly once');
+});
+
 test('Many-to-many Fight continues in deterministic target order after an early target falls', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'fall-through-player', Figh: 40, hunger: 10, combatRow: 'front' });
@@ -17559,6 +17636,79 @@ test('Many-to-many Fight continues in deterministic target order after an early 
   assertEqual(player.multiActionPractice.multi.fight.commands, 1, 'Lead should train once despite defeating multiple targets');
   assertEqual(ally.multiActionPractice.multi.fight.commands, 1, 'Helper should train once despite defeating multiple targets');
   assertEqual(advanced, 1, 'Collective resolution should advance exactly once after all targets resolve');
+});
+
+test('Many-to-many combat Chew resolves progressively with one cost and one practice command', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'group-chew-player', Feas: 24, hunger: 10, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'group-chew-ally', Feas: 20, hunger: 20, combatRow: 'front' });
+  const first = makeUnit('First Enemy', {
+    id: 'group-chew-enemy-a',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 100,
+    MPun: 100,
+    con: 20,
+    combatRow: 'front'
+  });
+  const second = makeUnit('Second Enemy', {
+    id: 'group-chew-enemy-b',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 100,
+    MPun: 100,
+    con: 20,
+    combatRow: 'front'
+  });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [first, second];
+  App.settings.chewing = true;
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    sceneExchangeId: 'group-chew-exchange',
+    turnQueue: [
+      { unit: player, initiative: 30 },
+      { unit: ally, initiative: 20 },
+      { unit: first, initiative: 10 },
+      { unit: second, initiative: 9 }
+    ],
+    syncActions: []
+  };
+  [player, ally, first, second].forEach(unit => App._normalizeUnit(unit));
+  App.activeActor = player;
+  App._combatActionRating = unit => unit.Feas;
+  App._combatDamageVariance = () => 0;
+  App._physicalDamageMultiplier = () => 1;
+  App._effectiveCon = target => target.con;
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+  const sync = {
+    type: 'feast',
+    techniqueKey: 'chew',
+    participants: [player, ally],
+    target: first,
+    targets: [first, second],
+    plan: { subAction: 'chew' },
+    resolved: false
+  };
+
+  App._resolveSyncAction(sync);
+
+  for (const target of [first, second]) {
+    const punishmentDamage = target.MPun - target.CPun;
+    const vitalityDamage = target.vitalMax - target.vitalRemaining;
+    assert(punishmentDamage > 0, 'Group Chew should damage every marked target');
+    assertEqual(vitalityDamage, punishmentDamage, 'Group Chew should preserve equal Vitality and punishment damage on every target');
+    assertEqual(App._isCorpse(target), false, 'A progressive group Chew should leave a sufficiently healthy target standing');
+  }
+  assertEqual(player.hunger, 12, 'Group Chew lead should pay the Feast cost once for the command');
+  assertEqual(ally.hunger, 22, 'Group Chew helper should pay the Feast cost once for the command');
+  assertEqual(player.multiActionPractice.multi.chew.commands, 1, 'Group Chew lead should train once across all targets');
+  assertEqual(ally.multiActionPractice.multi.chew.commands, 1, 'Group Chew helper should train once across all targets');
+  assertEqual(advanced, 1, 'Group Chew should advance exactly once after resolving all targets');
 });
 
 test('Queued group action drops an unavailable target and resolves remaining valid marks', () => {
@@ -23157,6 +23307,10 @@ test('Intent reach profiles separate social ranged flying anti-flying and contac
   ranged.combatRow = 'front';
   assertEqual(App._combatReachResult(ranged, flyingTarget, 'feast').canSucceed, false, 'Ranged should not count as close-contact reach against flying targets');
   assertContains(App._combatReachFailureText([ranged], flyingTarget, 'feast', App._combatReachResult(ranged, flyingTarget, 'feast')), 'close contact cannot reach', 'Flying contact failure should not recommend ranged as contact reach');
+  assertContains(App._combatReachFailureText([ground, ranged], flyingTarget, 'feast', App._combatReachResult(ranged, flyingTarget, 'feast')), 'Ground, Ranged try Eat', 'Grouped English reach failures should use plural agreement');
+  App.settings.language = 'es';
+  assertContains(App._combatReachFailureText([ground, ranged], flyingTarget, 'feast', App._combatReachResult(ranged, flyingTarget, 'feast')), 'Ground, Ranged intentan Comer', 'Grouped Spanish reach failures should use plural agreement');
+  App.settings.language = 'en';
   ranged.combatRow = 'back';
   flyingTarget.CPun = 100;
   flyingTarget.combatRow = 'back';
@@ -24988,12 +25142,195 @@ test('Quest progress completes defeat objectives and grants rewards', () => {
     reward: { xp: 10, gold: 7, items: ['Old Coin'] }
   }];
   const wolf = makeUnit('Wolf', { id: 'wolf-1', species: 'wolf', disposition: App.DISPOSITION.ENEMY });
-  App._makeCorpse(wolf, 'fight');
+  App._makeCorpse(wolf, 'fight', { actor: App.player, source: 'test-fight' });
   assertEqual(App.quests[0].status, 'completed', 'Defeat objective should complete quest');
   assertEqual(App.player.gold, 7, 'Quest reward should grant gold');
   assertEqual(App.player.xp, 10, 'Quest reward should grant XP');
   assertEqual(App.inventory[0].name, 'Old Coin', 'Quest reward should grant item');
   assertEqual(App.inventory[0].id, 'quest_item_wolf-hunt_old-coin_0', 'Quest reward item id should be stable without timestamp entropy');
+});
+
+test('Defeat objectives credit party-caused slain, subdued, and contained hostile resolutions', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'defeat-contract-player', xp: 0, xpToNext: 100 });
+  const companion = makeUnit('Human', {
+    id: 'defeat-contract-companion',
+    disposition: App.DISPOSITION.PARTY,
+    ally: true,
+    size: 8,
+    appetite: 8,
+    stomach: []
+  });
+  App.player = player;
+  App.party = [player, companion];
+  App.inventory = [];
+  App.quests = [App._normalizeQuest({
+    id: 'defeat_contract',
+    title: 'Defeat Contract',
+    status: 'active',
+    objectives: [{ type: 'defeat', species: 'wolf', required: 3 }],
+    reward: {}
+  })];
+  const slain = makeUnit('Wolfkin 1', { id: 'defeat-slain', species: 'wolf', disposition: App.DISPOSITION.ENEMY });
+  const subdued = makeUnit('Wolfkin 2', { id: 'defeat-subdued', species: 'wolf', disposition: App.DISPOSITION.ENEMY });
+  const contained = makeUnit('Wolfkin 3', {
+    id: 'defeat-contained',
+    species: 'wolf',
+    disposition: App.DISPOSITION.ENEMY,
+    size: 2
+  });
+  App.creatures = [slain, subdued, contained];
+
+  App._makeCorpse(slain, 'fight', { actor: player, source: 'combat-fight' });
+  App._subdueCreature(subdued, companion, { source: 'combat-fight' });
+  App._containTargetIn(companion, contained, 'stomach', { source: 'combat-swallow' });
+
+  const objective = App.quests[0].objectives[0];
+  assertEqual(objective.progress, 3, 'Every canonical party-caused hostile resolution should advance Defeat');
+  assertEqual(objective.complete, true, 'Three distinct resolved hostiles should complete the objective');
+  assertEqual(objective.resolvedTargetIds.join(','), 'defeat-slain,defeat-subdued,defeat-contained', 'Defeat should retain a bounded stable target ledger');
+});
+
+test('Defeat objectives do not double-credit release and re-containment of the same hostile', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'defeat-dedupe-player' });
+  const companion = makeUnit('Human', {
+    id: 'defeat-dedupe-companion',
+    disposition: App.DISPOSITION.PARTY,
+    ally: true,
+    size: 8,
+    appetite: 8,
+    stomach: []
+  });
+  const wolf = makeUnit('Wolfkin', {
+    id: 'defeat-dedupe-wolf',
+    species: 'wolf',
+    disposition: App.DISPOSITION.ENEMY,
+    size: 2
+  });
+  App.player = player;
+  App.party = [player, companion];
+  App.creatures = [wolf];
+  App.quests = [App._normalizeQuest({
+    id: 'defeat_dedupe',
+    title: 'Defeat Dedupe',
+    status: 'active',
+    objectives: [{ type: 'defeat', species: 'wolf', required: 2 }],
+    reward: {}
+  })];
+
+  App._containTargetIn(companion, wolf, 'stomach');
+  assertEqual(App.quests[0].objectives[0].progress, 1, 'Initial companion containment should advance Defeat immediately');
+  App._doSubAction('feast', 'release', companion, companion, companion.name, 's');
+  const released = App.creatures.find(unit => unit.id === wolf.id);
+  assert(released, 'The credited hostile should remain releasable');
+  App._containTargetIn(companion, released, 'stomach');
+
+  assertEqual(App.quests[0].objectives[0].progress, 1, 'Re-containing the same stable creature should not farm Defeat progress');
+  assertEqual(App.quests[0].objectives[0].complete, false, 'A duplicate resolution should not complete a multi-target objective');
+});
+
+test('Autonomous companion combat Feast credits Defeat at successful containment', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'defeat-companion-player' });
+  const companion = makeUnit('Human', {
+    id: 'defeat-companion-human',
+    disposition: App.DISPOSITION.PARTY,
+    ally: true,
+    Feas: 80,
+    Flee: 30,
+    size: 8,
+    appetite: 8,
+    stomach: []
+  });
+  const wolf = makeUnit('Wolfkin', {
+    id: 'defeat-companion-wolf',
+    species: 'wolf',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 1,
+    MPun: 100,
+    Flee: 1,
+    size: 2
+  });
+  App.player = player;
+  App.party = [player, companion];
+  App.creatures = [wolf];
+  App.quests = [App._normalizeQuest({
+    id: 'defeat_companion_combat',
+    title: 'Companion Combat Defeat',
+    status: 'active',
+    objectives: [{ type: 'defeat', species: 'wolf', required: 1 }],
+    reward: {}
+  })];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: companion, initiative: 20 }, { unit: wolf, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = companion;
+  App.nextTurn = function() {};
+
+  const resolved = App.executeActionAgainstTarget('feast', companion, wolf, { subAction: 'swallow' });
+
+  assertEqual(resolved, true, 'Companion combat Feast should resolve through the ordinary combat command');
+  assertEqual(companion.stomach.some(prey => prey.id === wolf.id), true, 'The companion should contain the hostile');
+  assertEqual(App.quests[0].objectives[0].progress, 1, 'Companion containment should satisfy Defeat immediately');
+  assertEqual(App.quests[0].objectives[0].complete, true, 'The companion resolution should complete the objective without waiting for digestion');
+});
+
+test('Defeat objective target ledgers survive save normalization and reject repeated credit', () => {
+  const Binary = loadBinaryForTest();
+  const first = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'defeat-save-player' });
+  first.App.player = player;
+  first.App.party = [player];
+  first.App.quests = [first.App._normalizeQuest({
+    id: 'defeat_save',
+    title: 'Defeat Save',
+    status: 'active',
+    objectives: [{ type: 'defeat', species: 'wolf', required: 2 }],
+    reward: {}
+  })];
+  const wolf = makeUnit('Wolfkin', { id: 'defeat-save-wolf', species: 'wolf', disposition: first.App.DISPOSITION.ENEMY });
+  first.App._recordQuestDefeat(wolf, player, 'contained', { wasHostile: true, source: 'test-containment' });
+  const loaded = Binary.loadGame(Binary.saveGame(first.App));
+
+  const resumed = loadAppForCombat(() => 0);
+  const resumedPlayer = makeUnit('You', { id: 'defeat-save-player' });
+  resumed.App.player = resumedPlayer;
+  resumed.App.party = [resumedPlayer];
+  resumed.App.quests = loaded.questState.quests.map(quest => resumed.App._normalizeQuest(quest));
+  const sameWolf = makeUnit('Wolfkin', { id: 'defeat-save-wolf', species: 'wolf', disposition: resumed.App.DISPOSITION.ENEMY });
+  resumed.App._recordQuestDefeat(sameWolf, resumedPlayer, 'contained', { wasHostile: true, source: 'test-containment' });
+
+  assertEqual(resumed.App.quests[0].objectives[0].progress, 1, 'Save and resume should preserve one-time Defeat credit');
+  assertEqual(resumed.App.quests[0].objectives[0].resolvedTargetIds[0], 'defeat-save-wolf', 'Save and resume should preserve the credited creature identity');
+});
+
+test('Defeat objectives exclude fleeing, non-hostile targets, and unrelated actors', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'defeat-exclusion-player' });
+  const thirdParty = makeUnit('Third Party', { id: 'defeat-exclusion-third-party', disposition: App.DISPOSITION.ENEMY });
+  const wolf = makeUnit('Wolfkin', { id: 'defeat-exclusion-wolf', species: 'wolf', disposition: App.DISPOSITION.ENEMY });
+  const friendlyWolf = makeUnit('Friendly Wolfkin', { id: 'defeat-exclusion-friendly', species: 'wolf', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player];
+  App.quests = [App._normalizeQuest({
+    id: 'defeat_exclusions',
+    title: 'Defeat Exclusions',
+    status: 'active',
+    objectives: [{ type: 'defeat', species: 'wolf', required: 1 }],
+    reward: {}
+  })];
+
+  assertEqual(App._recordQuestDefeat(wolf, player, 'fled', { wasHostile: true }), false, 'Flee should not satisfy a generic Defeat objective');
+  assertEqual(App._recordQuestDefeat(wolf, thirdParty, 'contained', { wasHostile: true }), false, 'An unrelated actor should not award party Defeat credit');
+  assertEqual(App._recordQuestDefeat(friendlyWolf, player, 'contained', { wasHostile: false }), false, 'Resolving a non-hostile should not award Defeat credit');
+  assertEqual(App.quests[0].objectives[0].progress, 0, 'Excluded outcomes should leave Defeat progress unchanged');
 });
 
 test('Quest species objectives match exact internal ids and display species labels', () => {
@@ -25066,6 +25403,7 @@ test('Generated and mod species quest objectives use exact registered ids', () =
   });
   assertEqual(App.QUEST_TEMPLATES.camp_safety.objectives[0].species, 'wolf', 'Camp safety should keep the internal wolf species id');
   assertEqual(App.QUEST_TEMPLATES.camp_safety.objectives[0].label, 'Defeat a Wolfkin', 'Camp safety should display the player-facing Wolfkin label');
+  assertEqual(App.QUEST_TEMPLATES.camp_safety.worldDirectives[0].content.id, 'wolf', 'Camp safety should reserve a nearby Wolfkin instead of depending on ambient biome luck');
 
   App.STRUCTURES.test_invalid_quest_giver = {
     name: 'Test Outpost',
@@ -25109,7 +25447,7 @@ test('Quest turn-in can defer rewards until claimed from quest log', () => {
     reward: { xp: 10, gold: 7, items: ['Old Coin'] }
   }];
   const wolf = makeUnit('Wolf', { id: 'wolf-1', species: 'wolf', disposition: App.DISPOSITION.ENEMY });
-  App._makeCorpse(wolf, 'fight');
+  App._makeCorpse(wolf, 'fight', { actor: App.player, source: 'test-fight' });
   assertEqual(App.quests[0].status, 'completed', 'Deferred quest should complete objectives');
   assertEqual(App.quests[0].rewardClaimed, false, 'Deferred quest should not mark reward claimed before turn-in');
   assertEqual(App.player.gold, 0, 'Deferred quest should not grant gold immediately');
@@ -25265,6 +25603,10 @@ test('Procedural Quest V2 deterministically generates every bounded archetype wi
       `Procedural archetype ${index} should have a reachable non-origin destination`
     );
   });
+  assertEqual(low.quests[0].worldDirectives[0].type, 'place', 'Procedural Hunt should guarantee its required target through placement');
+  assertEqual(low.quests[0].worldDirectives[0].objectiveId, 'hunt_target', 'Procedural Hunt placement should bind to its map objective');
+  assertEqual(low.quests[1].worldDirectives[0].type, 'boost', 'Procedural Gather should use a scoped probability boost');
+  assertEqual(low.quests[1].worldDirectives[0].objectiveId, 'gather_target', 'Procedural Gather boost should bind to its search objective');
   low.App.updateLanguage('es');
   assertContains(low.App._questTitleLabel(low.quests[0]), 'Caza:', 'Procedural quest titles should localize after creation instead of persisting English-only presentation');
   assertContains(low.App._questDescriptionLabel(low.quests[2]), 'paquete protegido', 'Procedural quest descriptions should localize from stable presentation keys');
@@ -25350,6 +25692,135 @@ test('Procedural recover quests inject their protected objective only when searc
   assertEqual(App.inventory[0].definitionId, 'core:waystone_sigil', 'Marked-tile search should acquire the stable protected recovery object');
   assertEqual(App.quests[0].lifecycleState, 'ready_for_turn_in', 'Recovering the objective should make the quest ready for original-giver turn-in');
   assertEqual(App._isQuestProtectedItem(App.inventory[0]), true, 'Recovered objective should remain protected before turn-in');
+});
+
+test('Quest World Directives V1 place deterministic required content exactly once and clean up on failure', () => {
+  const { App, window } = loadAppForCombat(() => 0.35);
+  App.worldMeta = { worldId: 'quest-directive-world', seed: 'quest-directive-seed', generatorVersion: 6, mapModsHash: 'core' };
+  App.player = makeUnit('You', { id: 'directive-player', level: 2 });
+  App.party = [App.player];
+  App.inventory = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App.autoSave = () => true;
+  const giver = makeUnit('Trail Guide', { id: 'directive-guide', disposition: App.DISPOSITION.QUEST_GIVER });
+  const quest = {
+    id: 'nearby-wolf-contract',
+    title: 'Nearby Wolf Contract',
+    giverLocation: { x: 0, y: 0, label: 'Trail Guide' },
+    objectives: [{ id: 'wolf-target', type: 'defeat', species: 'wolf', required: 1 }],
+    worldDirectives: [{
+      id: 'reserve-wolf',
+      type: 'place',
+      content: { kind: 'creature', id: 'wolf' },
+      count: 1,
+      distance: { min: 2, max: 5 },
+      biomes: ['forest'],
+      objectiveId: 'wolf-target',
+      disposition: 'enemy'
+    }],
+    reward: { gold: 1 }
+  };
+
+  const accepted = App.acceptQuest(quest, giver);
+  const objective = accepted.objectives[0];
+  assert(objective.location, 'Accepting a placed-content quest should resolve a map location for its objective');
+  const distance = Math.abs(objective.location.x) + Math.abs(objective.location.y);
+  assert(distance >= 2 && distance <= 5, 'Resolved quest content should remain within the authored distance bounds');
+  const targetTile = App.getTile(objective.location.x, objective.location.y);
+  const reserved = targetTile.creatures.filter(unit => unit.questWorldDirective?.questId === accepted.id);
+  assertEqual(reserved.length, 1, 'Acceptance should materialize one quest-bound creature');
+  assertEqual(reserved[0].species, 'wolf', 'Placed quest creature should use the exact registered species id');
+  assertEqual(reserved[0].questResolutionId, reserved[0].id, 'Placed creature should expose a stable Defeat resolution identity');
+
+  window.YAW_QUEST_CONTRACT.activateWorldDirectives(App, accepted);
+  assertEqual(targetTile.creatures.filter(unit => unit.questWorldDirective?.questId === accepted.id).length, 1, 'Repeated activation should not duplicate reserved quest content');
+
+  App.failQuest(accepted.id, 'test cleanup');
+  assertEqual(targetTile.creatures.some(unit => unit.questWorldDirective?.questId === accepted.id), false, 'Failing a quest should remove its untouched reserved creature');
+  assertEqual(accepted.worldDirectives[0].active, false, 'Failed quest directives should become inactive');
+});
+
+test('Quest World Directives V1 boost matching weighted content only inside the active bounded area', () => {
+  const { App, window } = loadAppForCombat(() => 0.4);
+  App.player = makeUnit('You', { id: 'boost-player' });
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.quests = [App._normalizeQuest({
+    id: 'coin-search-area',
+    title: 'Coin Search Area',
+    status: 'active',
+    destination: { x: 4, y: 3, label: 'Old Trail' },
+    objectives: [{
+      id: 'coin-target',
+      type: 'find',
+      item: { definitionId: 'core:old_coin', name: 'Old Coin' },
+      required: 1
+    }],
+    worldDirectives: [{
+      id: 'coin-boost',
+      type: 'boost',
+      content: { kind: 'item', id: 'core:old_coin' },
+      center: 'destination',
+      radius: 3,
+      multiplier: 4,
+      biomes: ['forest'],
+      objectiveId: 'coin-target'
+    }]
+  })];
+  const quest = App.quests[0];
+  window.YAW_QUEST_CONTRACT.activateWorldDirectives(App, quest);
+  const table = [
+    { id: 'core:old_coin', weight: 2 },
+    { id: 'core:healing_herb', weight: 8 }
+  ];
+  const nearby = window.YAW_QUEST_CONTRACT.boostWeightedTable(App, table, 'item', { x: 5, y: 3, biome: 'forest' });
+  const wrongBiome = window.YAW_QUEST_CONTRACT.boostWeightedTable(App, table, 'item', { x: 5, y: 3, biome: 'plains' });
+  const distant = window.YAW_QUEST_CONTRACT.boostWeightedTable(App, table, 'item', { x: 12, y: 3, biome: 'forest' });
+
+  assertEqual(nearby[0].weight, 8, 'Matching active boost should multiply only its content weight inside the authored area');
+  assertEqual(nearby[1].weight, 8, 'Quest boost should leave unrelated content weights unchanged');
+  assertEqual(wrongBiome[0].weight, 2, 'Quest boost should not apply in an unlisted biome');
+  assertEqual(distant[0].weight, 2, 'Quest boost should not apply outside its bounded radius');
+  assertEqual(quest.objectives[0].location.x, 4, 'Boost activation should give the related objective a map-search center');
+
+  quest.lifecycleState = 'ready_for_turn_in';
+  const completed = window.YAW_QUEST_CONTRACT.boostWeightedTable(App, table, 'item', { x: 5, y: 3, biome: 'forest' });
+  assertEqual(completed[0].weight, 2, 'Boost should stop as soon as the quest is no longer actively seeking the objective');
+});
+
+test('Quest World Directives V1 reject unknown content, arbitrary fields, and unsafe bounds', () => {
+  const { App } = loadAppForCombat();
+  const invalidCases = [
+    {
+      worldDirectives: [{ id: 'missing-species', type: 'place', content: { kind: 'creature', id: 'not_registered' } }],
+      message: 'unknown species'
+    },
+    {
+      worldDirectives: [{ id: 'scripted', type: 'place', content: { kind: 'creature', id: 'wolf' }, callback: 'spawnEverything()' }],
+      message: 'Unsupported quest world directive field'
+    },
+    {
+      worldDirectives: [{ id: 'flood', type: 'place', content: { kind: 'creature', id: 'wolf' }, count: 99 }],
+      message: 'count must be between 1 and 8'
+    },
+    {
+      worldDirectives: [{ id: 'unbounded', type: 'boost', content: { kind: 'item', id: 'core:old_coin' }, radius: 999, multiplier: 4 }],
+      message: 'radius must be between 1 and 32'
+    }
+  ];
+  for (const [index, entry] of invalidCases.entries()) {
+    let rejected = false;
+    try {
+      App._normalizeQuest({ id: `invalid-world-directive-${index}`, objectives: [], ...entry });
+    } catch (error) {
+      rejected = true;
+      assertContains(error.message, entry.message, 'Invalid world directive should explain its bounded-contract violation');
+    }
+    assertEqual(rejected, true, 'Invalid world directive should reject quest normalization');
+  }
 });
 
 test('Authored Quest V2 stage graphs advance through bounded declarative events and persist', () => {
@@ -31314,6 +31785,17 @@ test('Chew slurp and fragment use vital damage without creature-piece inventory'
   assertEqual(actor.stomach.some(prey => String(prey.name || '').includes('portion')), false, 'Chew/slurp/fragment should not create stomach portion records');
 });
 
+test('Chew uses its canonical label in Mature posture and its safe label in SFW', () => {
+  const { App, content } = loadAppForCombat(() => 0);
+  content.preferences.posture = 'mature';
+  content.preferences.maxTier = 1;
+  content.preferences.explicitDescriptions = false;
+  assertEqual(App._getActionLabel('feast', 'chew'), 'Chew', 'Mature posture should present the canonical Chew label');
+  content.preferences.posture = 'sfw';
+  content.preferences.maxTier = 0;
+  assertEqual(App._getActionLabel('feast', 'chew'), 'Break Down', 'SFW posture should retain the safe Chew label');
+});
+
 test('Group chew applies vital damage without synthetic portion records', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', { id: 'group-vital-1', Feas: 30, hunger: 50, stomach: [] });
@@ -31327,8 +31809,196 @@ test('Group chew applies vital damage without synthetic portion records', () => 
 
   assertContains(result, 'vital', 'Group chew should describe vital reduction');
   assert(target.vitalRemaining < target.vitalMax, 'Group chew should reduce target vital integrity');
+  assertEqual(target.vitalMax - target.vitalRemaining, target.MPun - target.CPun, 'Group chew should reduce Vitality and punishment by the same amount');
+  assertEqual(actor.hunger, 50, 'Group chew should not grant automatic nourishment before action costs');
+  assertEqual(helper.hunger, 50, 'Chew helpers should not receive automatic nourishment');
   assertEqual(actor.stomach.length, 0, 'Group chew should not create actor portion records');
   assertEqual(helper.stomach.length, 0, 'Group chew should not create helper portion records');
+});
+
+test('Chew is progressive equal Vitality and punishment damage without healing or consumption credit', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'progressive-chew-actor', Feas: 20, CPun: 45, MPun: 100, hunger: 30 });
+  const target = makeUnit('Target', {
+    id: 'progressive-chew-target',
+    disposition: App.DISPOSITION.ENEMY,
+    Feas: 10,
+    con: 20,
+    CPun: 100,
+    MPun: 100,
+    size: 4
+  });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  App._explorationActionRating = () => 20;
+  App._explorationDamageVariance = () => 0;
+  App._physicalDamageMultiplier = () => 1;
+  let defeatXp = 0;
+  const questEvents = [];
+  App._awardCombatXP = amount => { defeatXp += amount; };
+  App._updateQuestProgress = (type, context) => { questEvents.push({ type, context }); };
+  const expectedDamage = App._chewDamageValue(actor, target, { mode: 'adventure' });
+
+  const result = App._doSubAction('feast', 'chew', actor, target, 'You', '', { mode: 'adventure' });
+
+  assertContains(result, `${expectedDamage} vitality and punishment damage`, 'Progressive Chew should report its shared damage amount');
+  assertEqual(target.CPun, 100 - expectedDamage, 'Progressive Chew should reduce punishment without forcing terminal depletion');
+  assertEqual(target.vitalRemaining, 100 - expectedDamage, 'Progressive Chew should reduce Vitality by the same amount');
+  assertEqual(target.alive === false, false, 'A surviving Chew target should remain alive');
+  assertEqual(actor.CPun, 45, 'Chew should not heal its actor');
+  assertEqual(actor.hunger, 30, 'The sub-action should not provide immediate nourishment');
+  assertEqual(actor.Feas, 20, 'Chew should not directly inflate the Feas stat');
+  assertEqual(defeatXp, 0, 'A surviving Chew target should not grant defeat XP');
+  assertEqual(questEvents.some(event => event.type === 'consume'), false, 'Chew damage should not count as consumption');
+});
+
+test('Terminal Chew leaves remains and awards hostile Defeat rather than Consume', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'terminal-chew-actor', Feas: 40 });
+  const target = makeUnit('Target', {
+    id: 'terminal-chew-target',
+    disposition: App.DISPOSITION.ENEMY,
+    con: 10,
+    CPun: 10,
+    MPun: 100,
+    size: 4
+  });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  App._explorationActionRating = () => 40;
+  App._explorationDamageVariance = () => 0;
+  App._physicalDamageMultiplier = () => 1;
+  let awarded = 0;
+  const questEvents = [];
+  App._awardCombatXP = amount => { awarded += amount; };
+  App._updateQuestProgress = (type, context) => { questEvents.push({ type, context }); };
+
+  const result = App._doSubAction('feast', 'chew', actor, target, 'You', '', { mode: 'adventure' });
+
+  assertContains(result, 'depleted and leaves recoverable remains', 'Terminal Chew should explain its remains outcome');
+  assertEqual(App._isCorpse(target), true, 'Terminal Chew should preserve the shared remains lifecycle');
+  assertEqual(target.source, 'chew', 'Terminal Chew remains should retain the Chew cause');
+  assertEqual(awarded, App.XP_REWARDS.defeatEnemy, 'Terminal hostile Chew should award the standard Defeat reward');
+  assertEqual(questEvents.some(event => event.type === 'consume'), false, 'Terminal Chew should not grant Consume progress without actual consumption');
+});
+
+test('Exploration Chew survivors flee or enter combat after damage', () => {
+  const fleeing = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'chew-escalation-actor', Feas: 20 });
+  const timid = makeUnit('Timid', {
+    id: 'chew-escalation-timid',
+    disposition: fleeing.App.DISPOSITION.ENEMY,
+    timid: true,
+    con: 20,
+    CPun: 100,
+    MPun: 100,
+    Flee: 20
+  });
+  fleeing.App.player = actor;
+  fleeing.App.party = [actor];
+  fleeing.App.creatures = [timid];
+  fleeing.App.settings.chewing = true;
+  fleeing.App._explorationActionRating = () => 20;
+  fleeing.App._explorationDamageVariance = () => 0;
+  fleeing.App._physicalDamageMultiplier = () => 1;
+  fleeing.App._threatReactionRoll = () => 0;
+  fleeing.App._makeCreatureFlee = target => {
+    fleeing.App.creatures = fleeing.App.creatures.filter(unit => unit !== target);
+    return { fled: true, text: `${target.name} flees!` };
+  };
+  let fleeingCombat = false;
+  fleeing.App.startCombat = () => { fleeingCombat = true; };
+
+  assertEqual(fleeing.App.outsideActionOnTarget('feast', timid, actor, { subAction: 'chew' }), true, 'Exploration Chew should resolve against a surviving target');
+  assertEqual(timid.CPun < timid.MPun, true, 'The fleeing target should take Chew damage before relocating');
+  assertEqual(fleeingCombat, false, 'A successfully fleeing Chew survivor should not begin combat');
+  assertContains(fleeing.App.lastActionResolution.message, 'flees', 'The Scene result should explain the survivor flee outcome');
+
+  const fighting = loadAppForCombat(() => 0);
+  const fighter = makeUnit('You', { id: 'chew-escalation-fighter', Feas: 20 });
+  const hostile = makeUnit('Hostile', {
+    id: 'chew-escalation-hostile',
+    disposition: fighting.App.DISPOSITION.ENEMY,
+    con: 20,
+    CPun: 100,
+    MPun: 100,
+    Flee: 5
+  });
+  fighting.App.player = fighter;
+  fighting.App.party = [fighter];
+  fighting.App.creatures = [hostile];
+  fighting.App.settings.chewing = true;
+  fighting.App._explorationActionRating = () => 20;
+  fighting.App._explorationDamageVariance = () => 0;
+  fighting.App._physicalDamageMultiplier = () => 1;
+  fighting.App._shouldFleeThreat = () => false;
+  let combatTargets = [];
+  fighting.App.startCombat = targets => { combatTargets = targets; };
+
+  assertEqual(fighting.App.outsideActionOnTarget('feast', hostile, fighter, { subAction: 'chew' }), true, 'A standing Chew survivor should resolve');
+  assertEqual(combatTargets.includes(hostile), true, 'A standing non-party survivor should enter combat');
+  assertContains(fighting.App.lastActionResolution.message, 'fights back', 'The Scene result should explain combat escalation');
+});
+
+test('Combat and multi-target Chew use action cost and spread scaling', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', {
+    id: 'combat-chew-actor',
+    Feas: 20,
+    CPun: 50,
+    MPun: 100,
+    hunger: 10,
+    combatRow: 'front'
+  });
+  const first = makeUnit('First', {
+    id: 'combat-chew-first',
+    disposition: App.DISPOSITION.ENEMY,
+    con: 20,
+    CPun: 100,
+    MPun: 100,
+    combatRow: 'front'
+  });
+  const second = makeUnit('Second', {
+    id: 'combat-chew-second',
+    disposition: App.DISPOSITION.ENEMY,
+    con: 20,
+    CPun: 100,
+    MPun: 100,
+    combatRow: 'front'
+  });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [first, second];
+  App.settings.chewing = true;
+  App._combatActionRating = () => 20;
+  App._combatDamageVariance = () => 0;
+  App._physicalDamageMultiplier = () => 1;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: actor, initiative: 20 }, { unit: first, initiative: 10 }, { unit: second, initiative: 9 }],
+    syncActions: []
+  };
+  App.activeActor = actor;
+  App.nextTurn = function() { this._chewTurnAdvanced = true; };
+  const expectedDamage = App._chewDamageValue(actor, first, { mode: 'combat' });
+
+  App.executeActionAgainstTarget('feast', actor, first, { subAction: 'chew' });
+  assertEqual(first.CPun, 100 - expectedDamage, 'Combat Chew should use the shared progressive damage contract');
+  assertEqual(first.vitalRemaining, 100 - expectedDamage, 'Combat Chew should apply equal Vitality damage');
+  assertEqual(actor.CPun, 50, 'Combat Chew should not heal the attacker');
+  assertEqual(actor.hunger, 12, 'Combat Chew should charge the Feast hunger cost exactly once');
+  assertEqual(App._chewTurnAdvanced, true, 'Combat Chew should spend the acting turn');
+
+  const singleDamage = App._chewDamageValue(actor, second, { mode: 'combat' });
+  const spread = App._multiInteractionEffect(actor, 'chew', 2);
+  const spreadDamage = App._chewDamageValue(actor, second, { mode: 'combat', multiEffect: spread });
+  assertEqual(spread.percent, 50, 'A novice two-target Chew should begin at half effect per target');
+  assertEqual(spreadDamage, Math.max(1, Math.floor(singleDamage * 0.5)), 'Multi-target Chew should use the shared mastery scaling');
 });
 
 test('Corpse scavenge uses Remains Pool without creature-piece inventory', () => {

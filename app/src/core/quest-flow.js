@@ -33,6 +33,11 @@ const YAW_QUEST_FLOW = {
             grantOnAccept: Array.isArray(source.grantOnAccept) ? source.grantOnAccept.map(item => ({ ...item })) : [],
             consumeOnTurnIn: Array.isArray(source.consumeOnTurnIn) ? [...source.consumeOnTurnIn] : [],
             stageGraph: YAW_QUEST_CONTRACT.normalizeStageGraph(source.stageGraph),
+            worldDirectives: YAW_QUEST_CONTRACT.normalizeWorldDirectives(app, source.worldDirectives, id, {
+                allowUnavailable: source.authoredOrigin?.kind === 'module'
+                    && source.lifecycleState != null
+                    && source.lifecycleState !== YAW_QUEST_CONTRACT.STATES.AVAILABLE
+            }),
             ...metadata
         };
         return YAW_QUEST_CONTRACT.sync(normalized, metadata.lifecycleState);
@@ -70,12 +75,21 @@ const YAW_QUEST_FLOW = {
             targetId: objective.targetId || null,
             species: objective.species || null,
             item: objective.item || null,
-            location: location ? { x: Number(location.x), y: Number(location.y) } : null,
+            location: location ? {
+                x: Number(location.x),
+                y: Number(location.y),
+                ...(location.label ? { label: String(location.label) } : {})
+            } : null,
             checkpoints,
             required,
             progress: objective.progress || 0,
             complete: Boolean(objective.complete)
         };
+        if (normalized.type === 'defeat') {
+            normalized.resolvedTargetIds = [...new Set((Array.isArray(objective.resolvedTargetIds) ? objective.resolvedTargetIds : [])
+                .map(value => String(value || '').trim())
+                .filter(Boolean))].slice(-256);
+        }
         if (normalized.type === 'escort' && normalized.checkpoints.length) {
             normalized.progress = Math.min(normalized.progress, normalized.checkpoints.length);
             normalized.required = normalized.checkpoints.length;
@@ -343,6 +357,7 @@ const YAW_QUEST_FLOW = {
         }
         YAW_QUEST_CONTRACT.sync(normalized, YAW_QUEST_CONTRACT.STATES.ACTIVE);
         app.quests.push(normalized);
+        YAW_QUEST_CONTRACT.activateWorldDirectives(app, normalized);
         acceptanceItems.forEach((item, index) => {
             const itemRef = item?.definitionId || item?.id || item?.name;
             app._addInventoryItem(itemRef, {
@@ -543,6 +558,51 @@ const YAW_QUEST_FLOW = {
         return this.nextCheckpoint(app, objective) || objective.location || null;
     },
 
+    partyActor(app, actor) {
+        if (!actor) return null;
+        const actorRef = app._unitSelectionId?.(actor) || actor.id || actor.name || null;
+        return (app.party || []).find(unit => {
+            if (unit === actor) return true;
+            const unitRef = app._unitSelectionId?.(unit) || unit?.id || unit?.name || null;
+            return actorRef && unitRef && String(actorRef) === String(unitRef);
+        }) || null;
+    },
+
+    resolutionTargetId(app, target) {
+        if (!target) return '';
+        return String(
+            target.questResolutionId
+            || target.containedId
+            || target.id
+            || app._unitSelectionId?.(target)
+            || target.name
+            || ''
+        ).trim();
+    },
+
+    recordDefeat(app, target, actor, resolution, options = {}) {
+        const allowed = new Set(['slain', 'subdued', 'contained']);
+        if (!target || !allowed.has(String(resolution || ''))) return false;
+        if (!this.partyActor(app, actor)) return false;
+        const wasHostile = typeof options.wasHostile === 'boolean'
+            ? options.wasHostile
+            : target.disposition === app.DISPOSITION.ENEMY;
+        if (!wasHostile) return false;
+        const resolutionId = this.resolutionTargetId(app, target);
+        if (!resolutionId) return false;
+        return this.updateProgress(app, 'defeat', {
+            target,
+            targetId: target.id || target.containedId || target.name,
+            species: target.species,
+            name: target.name,
+            resolution: String(resolution),
+            resolutionId,
+            actorId: app._unitSelectionId?.(actor) || actor.id || actor.name,
+            partyCaused: true,
+            source: options.source || null
+        });
+    },
+
     updateProgress(app, type, payload = {}) {
         let changed = false;
         for (const rawQuest of app.quests || []) {
@@ -551,6 +611,8 @@ const YAW_QUEST_FLOW = {
             quest.rewardClaimed = Boolean(quest.rewardClaimed);
             for (const objective of quest.objectives || []) {
                 if (!this.objectiveMatches(app, type, payload, objective)) continue;
+                const resolutionId = type === 'defeat' ? String(payload.resolutionId || '').trim() : '';
+                if (resolutionId && (objective.resolvedTargetIds || []).includes(resolutionId)) continue;
                 if (objective.type === 'escort' && objective.checkpoints?.length) {
                     const checkpoint = this.nextCheckpoint(app, objective);
                     if (!checkpoint || Number(checkpoint.x) !== Number(payload.x) || Number(checkpoint.y) !== Number(payload.y)) continue;
@@ -558,6 +620,12 @@ const YAW_QUEST_FLOW = {
                 }
                 objective.progress = Math.min(objective.required, (objective.progress || 0) + (payload.count || 1));
                 objective.complete = objective.progress >= objective.required;
+                if (resolutionId) {
+                    objective.resolvedTargetIds = [...new Set([
+                        ...(objective.resolvedTargetIds || []),
+                        resolutionId
+                    ])].slice(-256);
+                }
                 this.applyStageEvent(app, quest, type, { ...payload, objectiveId: objective.id });
                 changed = true;
             }
@@ -607,6 +675,7 @@ const YAW_QUEST_FLOW = {
             app.party.push(recruit);
         }
         quest.rewardClaimed = true;
+        YAW_QUEST_CONTRACT.deactivateWorldDirectives(app, quest);
         YAW_QUEST_CONTRACT.sync(quest, YAW_QUEST_CONTRACT.STATES.TURNED_IN);
         return true;
     },
@@ -615,6 +684,7 @@ const YAW_QUEST_FLOW = {
         const quest = this.ensure(app, this.byId(app, questId));
         if (!quest || [YAW_QUEST_CONTRACT.STATES.TURNED_IN, YAW_QUEST_CONTRACT.STATES.FAILED].includes(quest.lifecycleState)) return false;
         YAW_QUEST_CONTRACT.sync(quest, YAW_QUEST_CONTRACT.STATES.FAILED);
+        YAW_QUEST_CONTRACT.deactivateWorldDirectives(app, quest);
         quest.failureReason = String(reason || '');
         this.applyStageEvent(app, quest, 'fail', { reason: quest.failureReason });
         const text = app._label('quest.failed', 'Quest failed: {title}.', { title: this.titleLabel(app, quest) });

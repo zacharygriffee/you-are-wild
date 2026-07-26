@@ -23,16 +23,17 @@ mirror instead of hard-coded version strings.
   follows player and module compatibility; the separate save-schema and
   module-API numbers identify the technical contract being loaded.
 
-Published artifacts use the `public-preview` channel until the operator
+Select-group releases use `status: released`, `channel: alpha`, and the actual
+release date. They are intentionally not general-public releases. General
+public alpha distribution uses the `public-preview` channel until the operator
 promotes the project. Development builds may use a development channel but may
-not impersonate a published version. Unpublished records use numeric semantic
+not impersonate a released version. Unpublished records use numeric semantic
 versioning, `status: draft` or `candidate`, `channel: development`, and
-`releasedAt: null`. Public publication requires `status: released`,
-`channel: public-preview`, and the actual release date.
+`releasedAt: null`.
 
 ## Required Release Record
 
-Every public release declares:
+Every released build declares:
 
 - semantic version and release date;
 - release channel;

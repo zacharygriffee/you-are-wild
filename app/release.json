@@ -1,10 +1,9 @@
 {
   "schema": 1,
   "version": "0.16.0",
-  "status": "draft",
-  "releasedAt": null,
-  "channel": "development",
-  "candidateFor": "public-preview",
+  "status": "released",
+  "releasedAt": "2026-07-26",
+  "channel": "alpha",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
@@ -46,7 +45,7 @@
         "Tutorial navigation, focus, active-lesson contrast, enlarged text, high contrast, reduced motion, and bounded mobile layout pass the maintained viewport matrix."
       ],
       "knownIssues": [
-        "This is a development draft, not the published 0.16.0 public preview.",
+        "This alpha release is intended for a select playtest group, not general public distribution.",
         "Long-form external and physical-phone playtesting is still needed for balance, pacing, clarity, and enjoyment.",
         "Crafting, evolving companion emotions, new difficulty profiles, and richer recovery economies remain deliberately deferred.",
         "Physical-device comfort, authored art, and human translation quality still require operator review.",
@@ -80,7 +79,7 @@
         "La navegacion del tutorial, foco, contraste activo, texto ampliado, alto contraste, movimiento reducido y diseno movil limitado pasan la matriz."
       ],
       "knownIssues": [
-        "Esta es una compilacion de desarrollo, no la version publica 0.16.0.",
+        "Esta version alfa esta destinada a un grupo selecto de pruebas, no a distribucion publica general.",
         "Aun se necesitan pruebas externas y en telefonos fisicos para equilibrio, ritmo, claridad y disfrute.",
         "La fabricacion, emociones evolutivas, nuevos perfiles de dificultad y economias de recuperacion siguen aplazados.",
         "La comodidad en dispositivos fisicos, el arte y la calidad de traduccion humana requieren revision del operador.",

@@ -1,23 +1,23 @@
 # Release Readiness — 0.16.0
 
-Status: **in progress — not published**
+Status: **approved select-group alpha — awaiting Sites deployment**
 
-This checklist records evidence for the exact 0.16.0 Core Game Maturity
-candidate. A checked local gate is not evidence of a green remote workflow,
-rollback readiness, or operator publication approval.
+This checklist records evidence for the exact 0.16.0 Core Game Maturity alpha.
+A checked local gate is not evidence of a green remote workflow, rollback
+readiness, or completed Sites deployment.
 
 Local evidence last refreshed: **2026-07-26**.
 
 ## Documentation and identity
 
-- [x] `app/release.json` identifies 0.16.0 as a development draft.
+- [x] `app/release.json` identifies 0.16.0 as a dated select-group alpha.
 - [x] English and Spanish Added, Changed, Fixed, Known Issues, and
   compatibility copy describe the Core Game Maturity candidate.
 - [x] `docs/releases/0.16.0.md` records the candidate boundary.
 - [x] Package, first-party module, and Sites release mirrors identify 0.16.0.
 - [x] The Sites changelog retains 0.15.0 as history and presents 0.16.0 first.
 - [x] The generated 9:16 0.16 poster is inspected and installed.
-- [ ] Public-preview release date and channel are assigned by the operator.
+- [x] Alpha release date and select-group channel are assigned by the operator.
 
 ## Core Game Maturity contracts
 
@@ -72,11 +72,12 @@ Local evidence last refreshed: **2026-07-26**.
 
 ## External/operator gates
 
-- [ ] Candidate metadata and poster commit pushed with operator authorization
+- [x] Candidate metadata and poster commit pushed with operator authorization
 - [ ] CI workflow observed green for that exact commit
 - [ ] Rollback-ready Sites version selected
-- [ ] English and Spanish release copy reconciled with the exact artifact
-- [ ] Operator approves Sites publication
+- [x] English and Spanish release copy reconciled with the exact artifact
+- [x] Operator approves 0.16.0 as a select-group alpha
+- [ ] Operator explicitly approves the final Sites deployment
 
 Sites publication remains operator-mediated and is never performed
 automatically.

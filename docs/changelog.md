@@ -13,7 +13,7 @@ This is a compact history of completed foundations. Git remains the authoritativ
   quests use guaranteed placement or scoped probability according to whether
   the objective must exist.
 - Chew now follows one progressive attack contract across exploration and
-  combat. Feas-based damage reduces Vitality and current condition equally;
+  combat. Feast-based damage reduces Vitality and current condition equally;
   depletion creates recoverable remains, while surviving non-party targets
   flee or enter combat. Single, group, and multi-target routes share the same
   resolver and distributed-effect practice without automatic healing,
@@ -48,12 +48,12 @@ This is a compact history of completed foundations. Git remains the authoritativ
   raw `success`, `failed`, or `fled` tokens to players.
 - Generic narrative failures now conjugate player and named actors separately,
   avoiding output such as “You tries” while preserving localized templates.
-- Release identity now separates numeric compatibility from publication state.
-  The post-0.14 head identifies itself as a 0.15.0 development draft with no
-  release date; only an operator-approved record may use the public-preview
-  channel and released status. Authoritative documentation is consolidated
-  into current architecture, active objectives, evidence audit, focused
-  doctrine, and explicitly superseded history.
+- Release identity now separates numeric compatibility, select-group alpha,
+  and general-public distribution. Version 0.16.0 is a dated alpha for a select
+  playtest group; `public-preview` remains reserved for a later explicit
+  general-public decision. Authoritative documentation is consolidated into
+  current architecture, active objectives, evidence audit, focused doctrine,
+  and explicitly superseded history.
 - Standard Adventure now exposes the same deterministic pressure used by
   encounter admission as five localized current/adjacent travel bands: Safe,
   Low, Guarded, Dangerous, and Severe. Protected opening tiles are always

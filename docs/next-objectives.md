@@ -20,7 +20,7 @@ hardening.
 Core gameplay remains deterministic and does not depend on an LLM or remote
 service.
 
-## Immediate — 0.16.0 public-preview candidate
+## Immediate — 0.16.0 select-group alpha
 
 1. Keep authoritative documentation coherent:
    - current architecture describes the shipped runtime;
@@ -41,8 +41,9 @@ service.
    `ghost-recovery-prepublish-decision.md` and the 0.16.0 notes. Do not add a
    shrine economy, entry prompt, spectral actions, or altered companion
    outcomes.
-5. Prepare an accurate 0.16.0 record and development identity. Do not publish
-   or mark the candidate released without operator authorization.
+5. Preserve the approved 0.16.0 alpha identity and select-group distribution
+   boundary. Beta and general-public promotion require separate operator
+   decisions.
 
 ## Completed locally — Core Game Maturity
 

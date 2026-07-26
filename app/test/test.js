@@ -697,13 +697,13 @@ test('App object is defined', () => {
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.16.0', 'Release manifest should identify the current development version');
-  assertEqual(releaseInfo.status, 'draft', 'Development head should be unmistakably marked as a draft');
-  assertEqual(releaseInfo.channel, 'development', 'Development head must not impersonate the published public-preview channel');
-  assertEqual(releaseInfo.releasedAt, null, 'An unpublished development head should not invent a release date');
+  assertEqual(releaseInfo.version, '0.16.0', 'Release manifest should identify the current release version');
+  assertEqual(releaseInfo.status, 'released', 'The approved alpha should be marked as released');
+  assertEqual(releaseInfo.channel, 'alpha', 'The select-group alpha must not impersonate the general public-preview channel');
+  assertEqual(releaseInfo.releasedAt, '2026-07-26', 'The approved alpha should carry its operator-assigned release date');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Quest Contract V2')), 'Release notes should describe the complete quest lifecycle');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Companion Behavior V2')), 'Release notes should describe the companion behavior contract');
-  assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('development draft')), 'Release notes should disclose that the candidate is not published');
+  assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('select playtest group')), 'Release notes should disclose the alpha distribution boundary');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
   assertContains(buildContent, 'window.YAW_RELEASE = Object.freeze', 'Build should inject release metadata into the generated artifact');
@@ -23308,9 +23308,9 @@ test('Intent reach profiles separate social ranged flying anti-flying and contac
   assertEqual(App._combatReachResult(ranged, flyingTarget, 'feast').canSucceed, false, 'Ranged should not count as close-contact reach against flying targets');
   assertContains(App._combatReachFailureText([ranged], flyingTarget, 'feast', App._combatReachResult(ranged, flyingTarget, 'feast')), 'close contact cannot reach', 'Flying contact failure should not recommend ranged as contact reach');
   assertContains(App._combatReachFailureText([ground, ranged], flyingTarget, 'feast', App._combatReachResult(ranged, flyingTarget, 'feast')), 'Ground, Ranged try Eat', 'Grouped English reach failures should use plural agreement');
-  App.settings.language = 'es';
+  App.updateLanguage('es');
   assertContains(App._combatReachFailureText([ground, ranged], flyingTarget, 'feast', App._combatReachResult(ranged, flyingTarget, 'feast')), 'Ground, Ranged intentan Comer', 'Grouped Spanish reach failures should use plural agreement');
-  App.settings.language = 'en';
+  App.updateLanguage('en');
   ranged.combatRow = 'back';
   flyingTarget.CPun = 100;
   flyingTarget.combatRow = 'back';

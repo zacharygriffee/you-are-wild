@@ -4,6 +4,24 @@
  */
 
 const YAW_TILE_RESOURCES = {
+    searchableItemEntries(app) {
+        const entries = Object.entries(app.ITEMS || {}).flatMap(([name, raw]) => {
+            const definition = app._getItemDef(raw?.id || name);
+            const weight = Number(definition.acquisition?.searchWeight);
+            return Number.isFinite(weight) && weight > 0 ? [{ id: definition.id || name, weight }] : [];
+        });
+        if (typeof YAW_ITEM_REGISTRY !== 'undefined') {
+            for (const definition of YAW_ITEM_REGISTRY.list(app)) {
+                if (definition.owner === YAW_ITEM_REGISTRY.CORE_OWNER || definition.acquisition?.search !== true) continue;
+                entries.push({
+                    id: definition.id,
+                    weight: Math.max(1, Math.min(100, Number(definition.acquisition?.searchWeight) || 1))
+                });
+            }
+        }
+        return [...new Map(entries.map(entry => [entry.id, entry])).values()];
+    },
+
     search(app) {
         app._advanceTime(1);
         app._applyActionCost?.('search', app.player, null, {}, { mode: 'adventure', source: 'search', emitScene: true });
@@ -16,33 +34,46 @@ const YAW_TILE_RESOURCES = {
         const findChance = Math.min(0.85, 0.3 + (app._hasEquipmentEffect(app.player, 'luckyFind') ? 0.15 : 0) + (app._hasPerkEffect('predatorScent') ? 0.1 : 0) + app._partyRoleEffect('gatherer', 0.1, 0.25));
         let result = '';
         let foundItem = false;
+        const questItemRef = app._questSearchItemForLocation?.(tile) || null;
         const resourceSite = tile?.overlays?.poi?.category === 'resourceSite' && !tile.resourceSearched;
-        if (resourceSite && app.inventory.length >= app.MAX_INVENTORY) {
-            result = app._label('inventory.full', 'Inventory is full.');
-        } else if (resourceSite) {
-            const items = Object.keys(app.ITEMS);
-            const iname = app._pickWorldList(items, 'resource-site-search-item-name', tileX, tileY, searchDay) || items[0] || 'Old Coin';
-            const iid = `resource_${tileX}_${tileY}_${searchDay}`;
-            app.inventory.push({ id: iid, name: iname });
-            tile.resourceSearched = true;
-            app.persistTileDelta(tileX, tileY, tile);
-            app._updateQuestProgress('find', { item: iname, name: iname });
-            result = app._label('search.foundItem', 'You found a {item}!', { item: iname });
-            foundItem = true;
+        if (questItemRef || resourceSite) {
+            const items = this.searchableItemEntries(app);
+            const itemRef = questItemRef || app._weightedPickWorld(items, 'resource-site-search-item-name', tileX, tileY, searchDay) || items[0]?.id || 'Old Coin';
+            const definition = app._getItemDef(itemRef);
+            const iname = definition.name || itemRef;
+            if (!app._canAddInventoryItem(itemRef, 1)) {
+                result = app._label('inventory.full', 'Inventory is full.');
+            } else {
+                const iid = `resource_${tileX}_${tileY}_${searchDay}`;
+                app._addInventoryItem(itemRef, { id: iid });
+                if (resourceSite) {
+                    tile.resourceSearched = true;
+                    app.persistTileDelta(tileX, tileY, tile);
+                }
+                app._updateQuestProgress('find', { item: iname, name: iname, definitionId: definition.id || null, x: tileX, y: tileY });
+                result = app._label('search.foundItem', 'You found a {item}!', { item: iname });
+                foundItem = true;
+            }
         } else if (roll < findChance) {
             const struct = tile?.structure ? app.STRUCTURES[tile.structure] : null;
             const authoredLoot = struct?.lootTable && !tile.structureLooted ? app._lootItemNameFromTable(struct.lootTable, 'structure-search-loot', tileX, tileY, searchDay, searchHour) : null;
-            const items = Object.keys(app.ITEMS);
-            const iname = authoredLoot || app._pickWorldList(items, 'search-item-name', tileX, tileY, searchDay, searchHour);
+            const items = this.searchableItemEntries(app);
+            const itemRef = authoredLoot || app._weightedPickWorld(items, 'search-item-name', tileX, tileY, searchDay, searchHour);
+            const definition = app._getItemDef(itemRef);
+            const iname = definition.name || itemRef;
             if (authoredLoot) {
                 tile.structureLooted = true;
                 app.persistTileDelta(tileX, tileY, tile);
             }
-            const iid = `item_${tileX}_${tileY}_${searchDay}_${searchHour}`;
-            app.inventory.push({ id: iid, name: iname });
-            app._updateQuestProgress('find', { item: iname, name: iname });
-            result = app._label('search.foundItem', 'You found a {item}!', { item: iname });
-            foundItem = true;
+            if (!app._canAddInventoryItem(itemRef, 1)) {
+                result = app._label('inventory.full', 'Inventory is full.');
+            } else {
+                const iid = `item_${tileX}_${tileY}_${searchDay}_${searchHour}`;
+                app._addInventoryItem(itemRef, { id: iid });
+                app._updateQuestProgress('find', { item: iname, name: iname, definitionId: definition.id || null, x: tileX, y: tileY });
+                result = app._label('search.foundItem', 'You found a {item}!', { item: iname });
+                foundItem = true;
+            }
         } else if (roll < 0.6) {
             result = app._label('search.explored', 'You explore the area. {description}', { description: tile.description || '' });
         } else {
@@ -91,8 +122,28 @@ const YAW_TILE_RESOURCES = {
     takeTileItems(app) {
         const tile = app._currentExplorationTile();
         if (!this.canTakeTileItems(tile)) return false;
-        const space = Math.max(0, app.MAX_INVENTORY - app.inventory.length);
-        if (space <= 0) {
+        const taken = [];
+        const remaining = [];
+        tile.items.forEach((item, index) => {
+            let normalized;
+            if (item && typeof item === 'object' && !Array.isArray(item)) {
+                normalized = app._normalizeItemInstance(app._cloneTileValue(item));
+            } else {
+                const tileX = Number(tile.x ?? app.location?.x ?? 0);
+                const tileY = Number(tile.y ?? app.location?.y ?? 0);
+                normalized = app._createItemInstance(this.tileItemLabel(app, item), { id: `tile_item_${tileX}_${tileY}_${index}` });
+            }
+            const itemRef = normalized.definitionId || normalized.name;
+            const quantity = Math.max(1, Math.floor(Number(normalized.quantity) || 1));
+            if (!app._canAddInventoryItem(itemRef, quantity)) {
+                remaining.push(item);
+                return;
+            }
+            app._addInventoryItem(itemRef, normalized);
+            taken.push(normalized);
+        });
+        tile.items = remaining;
+        if (taken.length === 0) {
             const fullText = app._label('inventory.full', 'Inventory is full.');
             app.log.push({ text: fullText, type: 'loot' });
             app._addTileEvent(fullText, 'loot');
@@ -102,13 +153,6 @@ const YAW_TILE_RESOURCES = {
             app.autoSave();
             return true;
         }
-        const taken = tile.items.splice(0, space).map((item, index) => {
-            if (item && typeof item === 'object' && !Array.isArray(item)) return app._cloneTileValue(item);
-            const tileX = Number(tile.x ?? app.location?.x ?? 0);
-            const tileY = Number(tile.y ?? app.location?.y ?? 0);
-            return { id: `tile_item_${tileX}_${tileY}_${index}`, name: this.tileItemLabel(app, item) };
-        });
-        app.inventory.push(...taken);
         app._persistCurrentExplorationTile(tile);
         const itemNames = taken.map(item => this.tileItemLabel(app, item)).join(', ');
         const tookText = app._label('log.tookTileItems', 'Picked up {items}.', { items: itemNames });

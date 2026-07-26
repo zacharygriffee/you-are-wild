@@ -281,6 +281,10 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
     const partyRoles = {};
     const partyAIOrders = {};
+    const partyDuties = {};
+    const partyStances = {};
+    const partyControls = {};
+    const partyRecruitmentContinuity = {};
     const partyUnitRefs = (appState.party || []).map(unit => ({
       id: unit?.id ? String(unit.id) : null,
       name: unit?.name || '',
@@ -288,10 +292,17 @@
     }));
     const partyCompatibility = (appState.party || []).map(unitCompatibility);
     for (const unit of appState.party || []) {
+      const behavior = unit?.companionBehavior || {};
+      const duty = behavior.duty || unit.partyRole || null;
+      const stance = behavior.stance || unit.aiOrder || null;
       const keys = [unit?.id, unit?.name].filter(Boolean).map(String);
       for (const key of keys) {
-        if (unit.partyRole) partyRoles[key] = unit.partyRole;
-        if (unit.aiOrder) partyAIOrders[key] = unit.aiOrder;
+        if (duty) partyRoles[key] = duty;
+        if (stance) partyAIOrders[key] = stance;
+        if (duty) partyDuties[key] = duty;
+        if (stance) partyStances[key] = stance;
+        if (behavior.control) partyControls[key] = behavior.control;
+        if (behavior.recruitmentContinuity) partyRecruitmentContinuity[key] = behavior.recruitmentContinuity;
       }
     }
     const explorationActorIds = (appState.explorationActorIds || (appState.explorationActorId ? [appState.explorationActorId] : []))
@@ -347,6 +358,7 @@
       timeHour: appState.timeHour || 0,
       questState: {
         quests: appState.quests || [],
+        trackedQuestId: appState.trackedQuestId || null,
         storyEvents: appState.storyEvents || [],
         sceneNarrations: typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedRecords(appState) : [],
         tileNarrationCache: typeof YAW_NARRATION_SYSTEM !== 'undefined' ? YAW_NARRATION_SYSTEM.persistedTileCache(appState) : [],
@@ -366,6 +378,10 @@
         partyResourceLedgers: (appState.party || []).map(unit => unit?.resourceLedger || null),
         partyRoles,
         partyAIOrders,
+        partyDuties,
+        partyStances,
+        partyControls,
+        partyRecruitmentContinuity,
         logEntries,
         explorationActorIds,
         explorationPartyTargetIds,

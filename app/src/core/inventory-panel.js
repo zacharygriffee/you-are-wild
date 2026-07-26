@@ -324,21 +324,32 @@ const YAW_HOLDINGS = {
     },
 
     renderPackItem(app, item, owner = app.player) {
-        const def = app.ITEMS[item.name] || { icon: '?', desc: app._label('item.unknown', 'Unknown') };
-        const canUse = def.effect === 'heal';
+        const def = app._getItemDef(item);
+        const providerUnavailable = Boolean(item?.definitionId && !def.id);
+        const displayDef = def.id ? def : {
+            icon: '?',
+            desc: providerUnavailable
+                ? app._label('item.providerUnavailable', 'Content provider unavailable')
+                : app._label('item.unknown', 'Unknown')
+        };
+        const canUse = YAW_ITEM_EFFECTS.canResolve(def);
         const choosingTarget = canUse && String(app.holdingsWindow?.pendingItemUseId || '') === String(item.id);
         const canEquip = app._isEquippable(item);
         const itemKey = app._escapeJsString(item.id);
-        const name = app._escapeHtml(item.name || app._label('ui.item', 'item'));
+        const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+        const quantitySuffix = quantity > 1 ? ` ×${quantity}` : '';
+        const name = app._escapeHtml(`${item.name || app._label('ui.item', 'item')}${quantitySuffix}`);
         const useLabel = app._escapeHtml(app._label('inventory.use', 'Use'));
         const equipLabel = app._escapeHtml(app._label('inventory.equip', 'Equip'));
         const dropLabel = app._escapeHtml(app._label('inventory.drop', 'Drop'));
         const useTitle = app._escapeHtml(app._label('inventory.useItem', 'Use {name}', { name: item.name }));
         const equipTitle = app._escapeHtml(app._label('inventory.equipItem', 'Equip {name}', { name: item.name }));
         const dropTitle = app._escapeHtml(app._label('inventory.dropItem', 'Drop {name}', { name: item.name }));
+        const questProtected = app._isQuestProtectedItem?.(item) === true;
+        const protectedTitle = app._escapeHtml(app._label('inventory.questProtected', '{name} is needed for an active quest.', { name: item.name }));
         const recoveryLocked = YAW_RECOVERY_MODES?.restricts?.(app, 'inventory') === true;
-        let html = `<div class="holdings-entry pack-entry" data-holding-kind="pack-item"><div class="holding-entry-main"><div class="holding-entry-name"><span>${app._escapeHtml(def.icon || '?')}</span> ${name}</div>`;
-        html += `<div class="holding-entry-meta">${app._escapeHtml(this.itemTypeLabel(app, def.type))} · ${app._escapeHtml(def.desc || '')}${canEquip ? '<br>' + app._equipmentBonusText(item) : ''}</div></div><div class="holding-entry-actions">`;
+        let html = `<div class="holdings-entry pack-entry" data-holding-kind="pack-item"><div class="holding-entry-main"><div class="holding-entry-name"><span>${app._escapeHtml(displayDef.icon || '?')}</span> ${name}</div>`;
+        html += `<div class="holding-entry-meta">${app._escapeHtml(this.itemTypeLabel(app, displayDef.type))} · ${app._escapeHtml(displayDef.desc || '')}${canEquip ? '<br>' + app._equipmentBonusText(item) : ''}</div></div><div class="holding-entry-actions">`;
         if (!recoveryLocked && canUse && !choosingTarget) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="use-item" title="${useTitle}" aria-label="${useTitle}" onclick="App.requestUseItem('${itemKey}')">${useLabel}</button>`;
         if (!recoveryLocked && choosingTarget) {
             const prompt = app._escapeHtml(app._label('inventory.chooseHealingTarget', 'Use {item} on:', { item: item.name }));
@@ -362,7 +373,7 @@ const YAW_HOLDINGS = {
             html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="cancel-use-item" data-command-slot="exit" onclick="App.cancelUseItem()">${cancel}</button></div>`;
         }
         if (!recoveryLocked && canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="equip-item" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${itemKey}')">${equipLabel}</button>`;
-        if (!recoveryLocked) html += `<button class="nav-btn danger" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="drop-item" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button>`;
+        if (!recoveryLocked) html += `<button class="nav-btn danger${questProtected ? ' disabled' : ''}" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="drop-item" title="${questProtected ? protectedTitle : dropTitle}" aria-label="${questProtected ? protectedTitle : dropTitle}"${questProtected ? ' disabled aria-disabled="true"' : ''} onclick="App.dropItem('${itemKey}')">${dropLabel}</button>`;
         html += `</div></div>`;
         return html;
     },
@@ -452,7 +463,7 @@ const YAW_HOLDINGS = {
         if (!unit) return '';
         const stats = app._unitDisplayStats(unit);
         const noneText = app._escapeHtml(app._label('party.none', 'None'));
-        const perks = (unit.perks || []).map(perk => app._escapeHtml(perk.name)).join(', ') || noneText;
+        const perks = (unit.perks || []).map(perk => app._escapeHtml(app._perkDisplayName(perk, unit))).join(', ') || noneText;
         const bodyParts = (unit.bodyParts || []).map(part => app._escapeHtml(app.BODY_PARTS?.[part]?.label || part)).join(', ') || noneText;
         const bodyTypeLabel = value => ({
             clit: app._label('anatomy.adult.vulva', 'Lower Option A'),
@@ -469,7 +480,6 @@ const YAW_HOLDINGS = {
         const pendingCount = unit.pendingPerkChoices || 0;
         const choosePerkLabel = app._escapeHtml(app._label('perk.chooseCount', 'Choose Perk ({count})', { count: pendingCount }));
         const respecLabel = app._escapeHtml(app._label('perk.respec', 'Respec Perks'));
-        const debugGrantLabel = app._escapeHtml(app._label('perk.debugGrant', 'Debug +1 Perk Choice'));
         const respecDisabled = (unit.perks || []).length ? '' : ' disabled';
         const perkButton = pendingCount > 0 ? `<button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="open-perk-selection" title="${choosePerkLabel}" aria-label="${choosePerkLabel}" onclick="App.showPerkSelection()">${choosePerkLabel}</button>` : '';
         const bodySummary = safeTier
@@ -489,7 +499,7 @@ const YAW_HOLDINGS = {
                 ${card(app._label('character.body', 'Body'), bodySummary)}
                 ${card(app._label('party.equipment', 'Equipment'), app._equipmentSummary(unit))}
                 ${card(app._label('party.perks', 'Perks'), perks)}
-                ${card(app._label('character.perkTools', 'Perk Tools'), `<span style="color:var(--text-muted);font-size:12px">${app._escapeHtml(app._label('character.perkToolsHelp', 'Balance/debug controls.'))}</span><br>${perkButton}<button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="respec-perks" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button><button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="debug-grant-perk" title="${debugGrantLabel}" aria-label="${debugGrantLabel}" onclick="App.debugGrantPerkChoice(1)">${debugGrantLabel}</button>`)}
+                ${card(app._label('character.perkTools', 'Perk Tools'), `<span style="color:var(--text-muted);font-size:12px">${app._escapeHtml(app._label('character.perkToolsHelp', 'Respec is free during alpha and requires confirmation.'))}</span><br>${perkButton}<button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="respec-perks" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button>`)}
             </div>
         </section>`;
     },
@@ -590,30 +600,15 @@ const YAW_HOLDINGS = {
     renderPerkSelectionBody(app) {
         const pending = app.player?.pendingPerkChoices || 0;
         const choices = app._availablePerkChoices();
-        const filters = app._availablePerkTreeFilters(app.player);
-        if (!filters.some(([value]) => value === app.perkTreeFilter)) app.perkTreeFilter = 'all';
-        const visibleTrees = Object.entries(app._perkTreesForUnit(app.player)).filter(([treeId]) => app.perkTreeFilter === 'all' || app.perkTreeFilter === treeId);
         const pendingLabel = app._escapeHtml(app._label('perk.pending', 'Pending choices: {count}', { count: pending }));
-        const treesLabel = app._escapeHtml(app._label('perk.trees', 'Perk trees'));
-        let html = `<div class="perk-selection-detail holdings-perk-selection" data-command-surface="perk-selection-detail" data-command-mode="exploration"><p class="holding-entry-meta">${pendingLabel}</p><div class="action-legend" role="tablist" aria-label="${treesLabel}">`;
-        filters.forEach(([value, label]) => {
-            const active = app.perkTreeFilter === value ? ' selected' : '';
-            const escapedValue = app._escapeHtml(value);
-            const filterLabel = app._escapeHtml(label);
-            html += `<button class="action-chip${active}" role="tab" aria-selected="${app.perkTreeFilter === value ? 'true' : 'false'}" data-perk-filter="${escapedValue}" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="filter-perk-tree" title="${filterLabel}" aria-label="${filterLabel}" onclick="App.setPerkTreeFilter('${app._escapeJsString(value)}')">${filterLabel}</button>`;
+        const frontierHelp = app._escapeHtml(app._label('perk.frontierHelp', 'Only perks you can choose now are shown.'));
+        let html = `<div class="perk-selection-detail holdings-perk-selection" data-command-surface="perk-selection-detail" data-command-mode="exploration"><p class="holding-entry-meta">${pendingLabel}</p><p class="holding-entry-meta">${frontierHelp}</p><div class="holdings-entry-grid holdings-perk-grid" data-perk-frontier="current">`;
+        choices.forEach(perk => {
+            const disabled = pending <= 0 ? ' disabled' : '';
+            const chooseTitle = app._escapeHtml(app._label('perk.chooseNamed', 'Choose {name}', { name: perk.name }));
+            html += `<button class="nav-btn option-card" data-perk-frontier-choice="${app._escapeHtml(perk.id)}" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="choose-perk" data-command-intent="choosePerk" title="${chooseTitle}" aria-label="${chooseTitle}"${disabled} onclick="App.choosePerk('${app._escapeJsString(perk.id)}')"><strong>${app._escapeHtml(perk.name)}</strong> <span style="color:var(--text-muted);font-size:11px">[${app._escapeHtml(perk.treeLabel)}]</span><br><span style="font-size:11px;color:var(--text-muted)">${app._escapeHtml(perk.desc)}</span><br><span style="font-size:11px;color:var(--accent-primary)">${app._escapeHtml(perk.availabilityReason)}</span></button>`;
         });
-        html += `</div><div class="holdings-entry-grid holdings-perk-grid">`;
-        for (const [treeId, tree] of visibleTrees) {
-            html += `<section class="holdings-section option-card" data-perk-tree="${app._escapeHtml(treeId)}"><div class="holdings-section-title">${app._escapeHtml(tree.label)}</div><div style="display:grid;gap:8px;">`;
-            choices.filter(perk => perk.tree === treeId).forEach(perk => {
-                const disabled = pending <= 0 || !perk.available ? ' disabled' : '';
-                const reqTree = perk.requires?.tree ? app._perkTreesForUnit(app.player)[perk.requires.tree]?.label || perk.requires.tree : null;
-                const req = perk.requires ? (perk.requires.perk ? ` Requires ${perk.requires.perk}.` : ` Requires ${perk.requires.count || 1} ${reqTree} perk${(perk.requires.count || 1) === 1 ? '' : 's'}.`) : '';
-                const chooseTitle = app._escapeHtml(app._label('perk.chooseNamed', 'Choose {name}', { name: perk.name }));
-                html += `<button class="nav-btn" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="choose-perk" data-command-intent="choosePerk" title="${chooseTitle}" aria-label="${chooseTitle}" ${disabled} onclick="App.choosePerk('${app._escapeJsString(perk.id)}')"><strong>${app._escapeHtml(perk.name)}</strong> <span style="color:var(--text-muted);font-size:11px">[${app._escapeHtml(perk.treeLabel)}]</span><br><span style="font-size:11px;color:var(--text-muted)">${app._escapeHtml(perk.desc)}${app._escapeHtml(req)}</span></button>`;
-            });
-            html += `</div></section>`;
-        }
+        if (!choices.length) html += `<p class="holding-entry-meta">${app._escapeHtml(app._label('perk.frontierEmpty', 'No new perks are available from your current progress.'))}</p>`;
         return `${html}</div></div>`;
     },
 
@@ -645,7 +640,7 @@ const YAW_HOLDINGS = {
                         <h2 id="holdings-window-title">${titleLabel}</h2>
                         <p id="holdings-window-description" class="holding-entry-meta">${descriptionLabel}</p>
                     </div>
-                    <div class="holdings-window-actions">
+                    <div class="holdings-window-actions mobile-screen-exit-source">
                         <button class="nav-btn" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="back-to-stats" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="App.showCharacterStats()">${backLabel}</button>
                         <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
                     </div>
@@ -653,12 +648,19 @@ const YAW_HOLDINGS = {
                 <div class="holdings-window-body inventory-panel-detail holdings-panel-detail" data-command-surface="holdings-window" data-command-mode="exploration" data-command-grammar="holdings-management">
                     ${this.renderPerkSelectionBody(app)}
                 </div>
+                <footer class="mobile-screen-exit-bar" data-command-surface="holdings-window" data-command-mode="exploration">
+                    <button class="nav-btn" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="back-to-stats" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="App.showCharacterStats()">${backLabel}</button>
+                    <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
+                </footer>
             </section>`;
         document.getElementById('app')?.classList?.add('holdings-window-open');
         this.setUnderlyingInert(true);
         const dialog = root.querySelector('.holdings-window');
         app._activateFocusTrap?.(dialog, { close: () => app.closeHoldingsWindow() });
-        try { root.querySelector('.holdings-close')?.focus({ preventScroll: true }); } catch (e) { root.querySelector('.holdings-close')?.focus(); }
+        const closeControl = window.innerWidth <= 1024
+            ? root.querySelector('.mobile-screen-exit-bar .holdings-close')
+            : root.querySelector('.mobile-screen-exit-source .holdings-close, .mobile-screen-exit-source.holdings-close, .holdings-close');
+        try { closeControl?.focus({ preventScroll: true }); } catch (e) { closeControl?.focus(); }
         return true;
     },
 
@@ -674,7 +676,7 @@ const YAW_HOLDINGS = {
             ownerType: 'party',
             ownerId: this.ownerId(app, storedOwner)
         };
-        const count = app.inventory?.length || 0;
+        const count = app._packCapacityUsed?.() ?? app.inventory?.length ?? 0;
         const titleText = app._label('holdings.titleWithInventory', 'Holdings / Inventory ({count}/{max})', { count, max: app.MAX_INVENTORY });
         const closeLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
         const title = app._escapeHtml(titleText);
@@ -694,7 +696,7 @@ const YAW_HOLDINGS = {
                         <h2 id="holdings-window-title">${title}</h2>
                         <p id="holdings-window-description" class="holding-entry-meta">${description}</p>
                     </div>
-                    <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
+                    <button class="nav-btn holdings-close mobile-screen-exit-source" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
                 </header>
                 <div class="holdings-control-shelf" data-surface-role="holdings-controls">
                     <nav class="holdings-tabs" role="tablist" aria-label="${app._escapeHtml(app._label('holdings.tabs', 'Holdings sections'))}">
@@ -705,12 +707,18 @@ const YAW_HOLDINGS = {
                 <div class="holdings-window-body inventory-panel-detail holdings-panel-detail" data-command-surface="holdings-window" data-command-mode="exploration" data-command-grammar="holdings-management">
                     ${this.renderTabBody(app, owner, tab)}
                 </div>
+                <footer class="mobile-screen-exit-bar" data-command-surface="holdings-window" data-command-mode="exploration">
+                    <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
+                </footer>
             </section>`;
         document.getElementById('app')?.classList?.add('holdings-window-open');
         this.setUnderlyingInert(true);
         const dialog = root.querySelector('.holdings-window');
         app._activateFocusTrap?.(dialog, { close: () => app.closeHoldingsWindow() });
-        try { root.querySelector('.holdings-close')?.focus({ preventScroll: true }); } catch (e) { root.querySelector('.holdings-close')?.focus(); }
+        const closeControl = window.innerWidth <= 1024
+            ? root.querySelector('.mobile-screen-exit-bar .holdings-close')
+            : root.querySelector('.mobile-screen-exit-source.holdings-close, .holdings-close');
+        try { closeControl?.focus({ preventScroll: true }); } catch (e) { closeControl?.focus(); }
         return true;
     },
 
@@ -735,15 +743,21 @@ const YAW_HOLDINGS = {
             <section class="holdings-window" role="dialog" aria-modal="true" aria-labelledby="holdings-window-title" aria-describedby="holdings-window-description" data-surface-role="holdings-window" data-command-surface="holdings-window" data-command-mode="exploration">
                 <header class="holdings-window-header">
                     <div><div class="holdings-window-eyebrow">${app._escapeHtml(this.tabLabel(app, 'containers'))}</div><h2 id="holdings-window-title">${app._escapeHtml(detail.title)}</h2><p id="holdings-window-description" class="holding-entry-meta">${description}</p></div>
-                    <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
+                    <button class="nav-btn holdings-close mobile-screen-exit-source" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
                 </header>
                 <div class="holdings-window-body">${detail.html}</div>
+                <footer class="mobile-screen-exit-bar" data-command-surface="holdings-window" data-command-mode="exploration">
+                    <button class="nav-btn holdings-close" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="close-holdings" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeHoldingsWindow()">${closeLabel}</button>
+                </footer>
             </section>`;
         document.getElementById('app')?.classList?.add('holdings-window-open');
         this.setUnderlyingInert(true);
         const dialog = root.querySelector('.holdings-window');
         app._activateFocusTrap?.(dialog, { close: () => app.closeHoldingsWindow() });
-        try { root.querySelector('.holdings-close')?.focus({ preventScroll: true }); } catch (e) { root.querySelector('.holdings-close')?.focus(); }
+        const closeControl = window.innerWidth <= 1024
+            ? root.querySelector('.mobile-screen-exit-bar .holdings-close')
+            : root.querySelector('.mobile-screen-exit-source.holdings-close, .holdings-close');
+        try { closeControl?.focus({ preventScroll: true }); } catch (e) { closeControl?.focus(); }
         return true;
     }
 };
@@ -768,7 +782,7 @@ const YAW_INVENTORY_PANEL = {
     requestUse(app, itemId) {
         if (!app._guardRecoveryCapability?.('inventory', { action: 'use-item' })) return false;
         const item = (app.inventory || []).find(entry => String(entry?.id) === String(itemId));
-        if (!item || app._getItemDef(item).effect !== 'heal') return false;
+        if (!item || !YAW_ITEM_EFFECTS.canResolve(app._getItemDef(item))) return false;
         if (YAW_HOLDINGS.partyOwners(app).length <= 1) return this.use(app, itemId);
         if (!app.holdingsWindow) YAW_HOLDINGS.show(app, app.player, { tab: 'pack' });
         app.holdingsWindow = {
@@ -792,7 +806,7 @@ const YAW_INVENTORY_PANEL = {
         if (index < 0) return false;
         const item = app.inventory[index];
         const def = app._getItemDef(item);
-        if (def.effect !== 'heal') return false;
+        if (!YAW_ITEM_EFFECTS.canResolve(def)) return false;
         const player = app._syncPlayerPartyReference?.() || app.player;
         const target = targetId == null
             ? player
@@ -829,10 +843,10 @@ const YAW_INVENTORY_PANEL = {
             app.renderLog?.();
             return false;
         }
-        const requested = Math.max(1, Math.floor(Number(def.healAmount ?? def.value) || 1));
-        const healed = Math.min(requested, maximum - current);
-        target.CPun = current + healed;
-        app.inventory.splice(index, 1);
+        const effectResult = YAW_ITEM_EFFECTS.resolve(app, item, { actor: player, target, mode: inCombat ? 'combat' : 'adventure' });
+        if (!effectResult.ok) return false;
+        const healed = effectResult.amount;
+        app._removeInventoryItem(itemId, 1);
         const actorName = YAW_HOLDINGS.ownerLabel(app, player);
         const targetName = YAW_HOLDINGS.ownerLabel(app, target);
         const text = target === player
@@ -927,6 +941,12 @@ const YAW_INVENTORY_PANEL = {
         if (!app._guardRecoveryCapability?.('inventory', { action: 'drop-item' })) return false;
         const index = app.inventory.findIndex(item => String(item?.id) === String(itemId));
         if (index === -1) return false;
+        if (app._isQuestProtectedItem?.(app.inventory[index])) {
+            const text = app._label('inventory.questProtected', '{name} is needed for an active quest.', { name: app.inventory[index].name });
+            app.log.push({ text, type: 'discovery' });
+            app.renderLog();
+            return false;
+        }
         const tile = app._currentExplorationTile();
         if (!tile) return false;
         const [item] = app.inventory.splice(index, 1);

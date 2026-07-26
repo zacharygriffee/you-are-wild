@@ -2538,10 +2538,10 @@ async function runDesktopCompactCardRoundTripFlow(page) {
       beltActorCount: belt?.getAttribute('data-command-actor-count') || '',
       beltTargetCount: belt?.getAttribute('data-command-target-count') || '',
       trayText: belt?.innerText || '',
-      allySelected: Boolean(Array.from(document.querySelectorAll('#party-content .compact-tactical-card')).find(card => card.textContent.includes('Ally'))?.classList.contains('selected-actor')),
-      scoutSelected: Boolean(Array.from(document.querySelectorAll('#party-content .compact-tactical-card')).find(card => card.textContent.includes('Scout'))?.classList.contains('selected-actor')),
-      playerTargeted: Boolean(Array.from(document.querySelectorAll('#party-content .compact-tactical-card')).find(card => card.textContent.includes('You'))?.classList.contains('selected-target')),
-      friendlyTargeted: Boolean(Array.from(document.querySelectorAll('#enemies-content .compact-tactical-card')).find(card => card.textContent.includes('Friendly'))?.classList.contains('selected-target')),
+      allySelected: Boolean(Array.from(document.querySelectorAll('#party-content .compact-tactical-card')).find(card => card.querySelector('.unit-name')?.textContent.trim() === 'Ally')?.classList.contains('selected-actor')),
+      scoutSelected: Boolean(Array.from(document.querySelectorAll('#party-content .compact-tactical-card')).find(card => card.querySelector('.unit-name')?.textContent.trim() === 'Scout')?.classList.contains('selected-actor')),
+      playerTargeted: Boolean(Array.from(document.querySelectorAll('#party-content .compact-tactical-card')).find(card => card.querySelector('.unit-card-status')?.textContent.includes('You'))?.classList.contains('selected-target')),
+      friendlyTargeted: Boolean(Array.from(document.querySelectorAll('#enemies-content .compact-tactical-card')).find(card => card.querySelector('.unit-name')?.textContent.trim() === 'Friendly')?.classList.contains('selected-target')),
       partyDetailOpen: Boolean(document.querySelector('#party-content .party-panel-detail')),
       targetDetailOpen: Boolean(document.querySelector('#enemies-content .creature-panel-detail')),
       sidePanelDirectIntents: /resolveExplorationTargetAction|showIntentMenu\('creature'|selectIntent\('creature'/.test(`${partyHtml}${targetHtml}`),
@@ -2600,7 +2600,7 @@ async function runDesktopCompactCardRoundTripFlow(page) {
   assert.strictEqual(state.centerLeak, false, 'Desktop Stats should not leak detail markup into center presentation');
   assert.strictEqual(state.centerHasActorControls, false, 'Desktop Stats should keep center free of actor controls');
 
-  await page.locator(`#holdings-window-root button[data-command-control="close-holdings"]`).first().click();
+  await page.locator('#holdings-window-root button[data-command-control="close-holdings"]:visible').click();
   state = await page.evaluate(() => ({
     holdingsOpen: !document.querySelector('#holdings-window-root')?.hidden,
     actors: App._getExplorationActors().map(unit => unit.id),
@@ -3818,7 +3818,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert(state.holdingsOwnerText.includes('Ally'), 'Mobile party stats detail should target the selected party member in Holdings');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening party Holdings detail should preserve selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Opening party Holdings detail should preserve mixed and self targets');
-  await page.locator('#holdings-window-root button[data-command-control="close-holdings"]').click();
+  await page.locator('#holdings-window-root button[data-command-control="close-holdings"]:visible').click();
   state = await page.evaluate(() => ({
     holdingsOpen: !document.querySelector('#holdings-window-root')?.hidden,
     actorRailOpen: App.mobileActorBeltOpen,

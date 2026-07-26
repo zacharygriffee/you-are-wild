@@ -164,7 +164,7 @@ const MODULE_MARKETPLACE = {
                             <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-module-tools" title="${create}" aria-label="${create}" onclick="MODULE_MARKETPLACE.ui.showCreate()">
                                 ✏️ ${create}
                             </button>
-                            <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="${closeTitle}" aria-label="${closeTitle}" onclick="returnToGame()">
+                            <button class="nav-btn mobile-screen-exit-source" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="${closeTitle}" aria-label="${closeTitle}" onclick="returnToGame()">
                                 ${closeLabel}
                             </button>
                         </div>
@@ -203,6 +203,11 @@ const MODULE_MARKETPLACE = {
                         ${this.filteredModules().map(m => this.renderModuleCard(m)).join('')}
                     </div>
                     
+                    <div class="mobile-screen-exit-bar" data-command-surface="marketplace" data-command-mode="system">
+                        <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="${closeTitle}" aria-label="${closeTitle}" onclick="returnToGame()">
+                            ${closeLabel}
+                        </button>
+                    </div>
                 </div>
             `;
             

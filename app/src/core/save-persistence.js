@@ -408,15 +408,29 @@ const YAW_SAVE_PERSISTENCE = {
         } : null;
         const partyRoles = {};
         const partyAIOrders = {};
+        const partyDuties = {};
+        const partyStances = {};
+        const partyControls = {};
+        const partyRecruitmentContinuity = {};
         for (const unit of app.party || []) {
+            const behavior = typeof YAW_COMPANION_BEHAVIOR !== 'undefined'
+                ? YAW_COMPANION_BEHAVIOR.get(app, unit)
+                : null;
             const keys = [unit?.id, unit?.name].filter(Boolean).map(String);
             for (const key of keys) {
                 if (unit.partyRole) partyRoles[key] = unit.partyRole;
                 if (unit.aiOrder) partyAIOrders[key] = unit.aiOrder;
+                if (behavior?.duty) partyDuties[key] = behavior.duty;
+                if (behavior?.stance) partyStances[key] = behavior.stance;
+                if (behavior?.control) partyControls[key] = behavior.control;
+                if (behavior?.recruitmentContinuity) {
+                    partyRecruitmentContinuity[key] = this.serializableClone(behavior.recruitmentContinuity, null);
+                }
             }
         }
         return {
             quests: this.serializableClone(app.quests || [], []),
+            trackedQuestId: app.trackedQuestId || null,
             playerGold: app.player?.gold || 0,
             dayCount: app.dayCount || 0,
             playerEquipment: this.serializableClone(app.player?.equipment || {}, {}),
@@ -431,6 +445,10 @@ const YAW_SAVE_PERSISTENCE = {
             partyResourceLedgers: (app.party || []).map(unit => this.serializableClone(unit?.resourceLedger || null, null)),
             partyRoles,
             partyAIOrders,
+            partyDuties,
+            partyStances,
+            partyControls,
+            partyRecruitmentContinuity,
             logEntries: this.serializableClone(app.log || [], []),
             explorationActorIds: this.serializableClone(app.explorationActorIds || [], []),
             explorationPartyTargetIds: this.serializableClone(app.explorationTargetIds || [], []),

@@ -20,7 +20,7 @@ const YAW_TRADE_FLOW = {
     },
 
     requiresPurchaseConfirmation(app, item) {
-        const def = app.ITEMS[item?.name] || {};
+        const def = app._getItemDef(item);
         return Boolean(def.rare || item?.rare || (item?.price || 0) >= 50);
     },
 
@@ -36,6 +36,15 @@ const YAW_TRADE_FLOW = {
         const merchant = app._findMerchantById(targetId);
         const item = merchant?.stock?.[stockIndex];
         if (!merchant || !item || item.qty <= 0) return;
+        if (item.definitionId && !app._isItemDefinitionAvailable(item)) {
+            app.log.push({
+                text: app._label('item.providerUnavailableAction', '{name} is unavailable until its content provider is enabled.', { name: item.name }),
+                type: 'discovery'
+            });
+            app.renderLog();
+            app.showTrade(targetId);
+            return false;
+        }
         if ((app.player.gold || 0) < item.price) {
             app.log.push({ text: app._label('trade.needGold', 'You need {price} gold to buy {name}.', { price: item.price, name: item.name }), type: 'discovery' });
             app.emitTransactionSceneBeat?.(merchant, 'trade', 'blocked', {
@@ -47,7 +56,7 @@ const YAW_TRADE_FLOW = {
             app.showTrade(targetId);
             return;
         }
-        if (app.inventory.length >= app.MAX_INVENTORY) {
+        if (!app._canAddInventoryItem(item.definitionId || item.name, 1)) {
             app.log.push({ text: app._label('inventory.full', 'Inventory is full.'), type: 'discovery' });
             app.emitTransactionSceneBeat?.(merchant, 'trade', 'blocked', {
                 itemName: item.name,
@@ -60,7 +69,10 @@ const YAW_TRADE_FLOW = {
         }
         app.player.gold -= item.price;
         item.qty -= 1;
-        app.inventory.push({ id: `buy_${app._stableIdPart(targetId, 'merchant')}_${app._stableIdPart(item.name)}_${app.inventory.length}`, name: item.name });
+        app._addInventoryItem(item.definitionId || item.name, {
+            id: `buy_${app._stableIdPart(targetId, 'merchant')}_${app._stableIdPart(item.name)}_${app.inventory.length}`,
+            name: item.name
+        });
         app.log.push({ text: app._label('trade.bought', 'Bought {name} for {price} gold.', { name: item.name, price: item.price }), type: 'loot' });
         app.emitTransactionSceneBeat?.(merchant, 'trade', 'bought', {
             itemName: item.name,
@@ -99,13 +111,37 @@ const YAW_TRADE_FLOW = {
         if (!merchant) return;
         const item = app.inventory.find(i => String(i.id) === String(itemId));
         if (!item) return;
-        const def = app.ITEMS[item.name] || { value: 1 };
+        if (app._isQuestProtectedItem?.(item)) {
+            app.log.push({ text: app._label('inventory.questProtected', '{name} is needed for an active quest.', { name: item.name }), type: 'discovery' });
+            app.renderLog();
+            app.showTrade(targetId);
+            return false;
+        }
+        const def = app._getItemDef(item);
+        if (item.definitionId && !def.id) {
+            app.log.push({
+                text: app._label('item.providerUnavailableAction', '{name} is unavailable until its content provider is enabled.', { name: item.name }),
+                type: 'discovery'
+            });
+            app.renderLog();
+            app.showTrade(targetId);
+            return false;
+        }
         const price = Math.max(1, Math.floor((def.value || 1) * 0.5));
-        app.inventory = app.inventory.filter(i => String(i.id) !== String(itemId));
+        app._removeInventoryItem(itemId, 1);
         app.player.gold = (app.player.gold || 0) + price;
-        const existing = merchant.stock.find(s => s.name === item.name);
+        const definitionId = def.id || item.definitionId || null;
+        const existing = merchant.stock.find(stock => definitionId
+            ? stock.definitionId === definitionId
+            : !stock.definitionId && stock.name === item.name);
         if (existing) existing.qty += 1;
-        else merchant.stock.push({ id: `sold_${app._stableIdPart(targetId, 'merchant')}_${app._stableIdPart(item.name)}_${merchant.stock.length}`, name: item.name, price: def.value || price, qty: 1 });
+        else merchant.stock.push({
+            id: `sold_${app._stableIdPart(targetId, 'merchant')}_${app._stableIdPart(item.name)}_${merchant.stock.length}`,
+            ...(definitionId ? { definitionId } : {}),
+            name: item.name,
+            price: def.value || price,
+            qty: 1
+        });
         app.log.push({ text: app._label('trade.sold', 'Sold {name} for {price} gold.', { name: item.name, price }), type: 'loot' });
         app.emitTransactionSceneBeat?.(merchant, 'trade', 'sold', {
             itemName: item.name,

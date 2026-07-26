@@ -28,7 +28,7 @@ const YAW_STATS_PANEL = {
         const levelText = app._escapeHtml(app._label('party.levelSpecies', 'Level {level} {species}', { level: stats.level, species: unit.species }));
         const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
         const backLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
-        const perks = (unit.perks || []).map(perk => app._escapeHtml(perk.name)).join(', ') || app._escapeHtml(app._label('party.none', 'None'));
+        const perks = (unit.perks || []).map(perk => app._escapeHtml(app._perkDisplayName(perk, unit))).join(', ') || app._escapeHtml(app._label('party.none', 'None'));
         const html = `<div class="party-stats-view" data-command-surface="stats-detail" data-command-mode="exploration" role="region" aria-label="${app._escapeHtml(app._label('party.statsFor', 'Show stats for {name}', { name: unit.name }))}">
             <div class="party-stats-header">
                 <div><h3>${unit.icon || ''} ${app._escapeHtml(unit.name)}</h3><p style="color:var(--text-muted);margin-top:4px">${statusText} | ${levelText}</p></div>
@@ -54,7 +54,6 @@ const YAW_STATS_PANEL = {
         const pendingCount = p.pendingPerkChoices || 0;
         const choosePerkLabel = app._escapeHtml(app._label('perk.chooseCount', 'Choose Perk ({count})', { count: pendingCount }));
         const respecLabel = app._escapeHtml(app._label('perk.respec', 'Respec Perks'));
-        const debugGrantLabel = app._escapeHtml(app._label('perk.debugGrant', 'Debug +1 Perk Choice'));
         const closeLabel = app._escapeHtml(app._label('perk.closeStats', 'Close'));
         const perkButton = pendingCount > 0 ? `<button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="open-perk-selection" style="margin-top:12px" title="${choosePerkLabel}" aria-label="${choosePerkLabel}" onclick="App.showPerkSelection()">${choosePerkLabel}</button>` : '';
         const respecDisabled = (p.perks || []).length ? '' : ' disabled';
@@ -71,7 +70,7 @@ const YAW_STATS_PANEL = {
         const bodySummary = safeTier
             ? `${app._escapeHtml(app._label('character.size', 'Size'))}: ${p.size} | ${app._escapeHtml(app._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${app._escapeHtml(app._label('character.bodyParts', 'Body'))}: ${bodyParts}`
             : `${app._escapeHtml(app._label('character.size', 'Size'))}: ${p.size} | ${app._escapeHtml(app._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${app._escapeHtml(app._label('character.parts', 'Parts'))}: ${parts} | ${app._escapeHtml(app._label('character.chest', 'Chest'))}: ${chest}<br>${app._escapeHtml(app._label('character.bodyParts', 'Body'))}: ${bodyParts}`;
-        const perks = (p.perks || []).map(pk => app._escapeHtml(pk.name)).join(', ') || noneText;
+        const perks = (p.perks || []).map(pk => app._escapeHtml(app._perkDisplayName(pk, p))).join(', ') || noneText;
         const html = `<div class="party-stats-view character-stats-view" data-command-surface="stats-detail" data-command-mode="exploration" role="region" aria-label="${closeLabel}">
             <div class="party-stats-header">
                 <div><h1 style="color:var(--accent-primary)">📊 ${app._escapeHtml(p.name)}</h1><p style="color:var(--text-muted);margin-top:4px">${levelText} | ${xpText}</p></div>
@@ -85,7 +84,7 @@ const YAW_STATS_PANEL = {
                 ${this.statCard(app, 'character.body', 'Body', bodySummary)}
                 ${this.statCard(app, 'party.equipment', 'Equipment', app._equipmentSummary(p))}
                 ${this.statCard(app, 'party.perks', 'Perks', perks)}
-                ${this.statCard(app, 'character.perkTools', 'Perk Tools', `<span style="color:var(--text-muted);font-size:12px">${app._escapeHtml(app._label('character.perkToolsHelp', 'Balance/debug controls.'))}</span><br><button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="respec-perks" style="margin-top:8px" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button><button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="debug-grant-perk" style="margin-top:8px" title="${debugGrantLabel}" aria-label="${debugGrantLabel}" onclick="App.debugGrantPerkChoice(1)">${debugGrantLabel}</button>`)}
+                ${this.statCard(app, 'character.perkTools', 'Perk Tools', `<span style="color:var(--text-muted);font-size:12px">${app._escapeHtml(app._label('character.perkToolsHelp', 'Respec is free during alpha and requires confirmation.'))}</span><br><button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="respec-perks" style="margin-top:8px" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button>`)}
             </div>
             <div class="party-stats-footer">${perkButton}<button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="close-stats" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button></div></div>`;
         app.showPartyPanelDetail(`${p.name} ${app._label('party.stats', 'Stats')}`, html);
@@ -95,32 +94,17 @@ const YAW_STATS_PANEL = {
         if (!app.player) return;
         const pending = app.player.pendingPerkChoices || 0;
         const choices = app._availablePerkChoices();
-        const filters = app._availablePerkTreeFilters(app.player);
-        if (!filters.some(([value]) => value === app.perkTreeFilter)) app.perkTreeFilter = 'all';
-        const visibleTrees = Object.entries(app._perkTreesForUnit(app.player)).filter(([treeId]) => app.perkTreeFilter === 'all' || app.perkTreeFilter === treeId);
         const titleLabel = app._escapeHtml(app._label('perk.choose', 'Choose Perk'));
         const pendingLabel = app._escapeHtml(app._label('perk.pending', 'Pending choices: {count}', { count: pending }));
-        const treesLabel = app._escapeHtml(app._label('perk.trees', 'Perk trees'));
+        const frontierHelp = app._escapeHtml(app._label('perk.frontierHelp', 'Only perks you can choose now are shown.'));
         const backLabel = app._escapeHtml(app._label('perk.back', 'Back'));
-        let html = `<div class="perk-selection-detail" data-command-surface="perk-selection-detail" data-command-mode="exploration"><h3>${titleLabel}</h3><p style="color:var(--text-muted);margin:4px 0 12px;">${pendingLabel}</p><div class="action-legend" role="tablist" aria-label="${treesLabel}" style="margin-bottom:12px;">`;
-        filters.forEach(([value, label]) => {
-            const active = app.perkTreeFilter === value ? ' selected' : '';
-            const escapedValue = app._escapeHtml(value);
-            const filterLabel = app._escapeHtml(label);
-            html += `<button class="action-chip${active}" role="tab" aria-selected="${app.perkTreeFilter === value ? 'true' : 'false'}" data-perk-filter="${escapedValue}" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="filter-perk-tree" title="${filterLabel}" aria-label="${filterLabel}" onclick="App.setPerkTreeFilter('${escapedValue}')">${filterLabel}</button>`;
+        let html = `<div class="perk-selection-detail" data-command-surface="perk-selection-detail" data-command-mode="exploration"><h3>${titleLabel}</h3><p style="color:var(--text-muted);margin:4px 0 4px;">${pendingLabel}</p><p style="color:var(--text-muted);margin:0 0 12px;">${frontierHelp}</p><div style="display:grid;gap:10px;" data-perk-frontier="current">`;
+        choices.forEach(perk => {
+            const disabled = pending <= 0 ? ' disabled' : '';
+            const chooseTitle = app._escapeHtml(app._label('perk.chooseNamed', 'Choose {name}', { name: perk.name }));
+            html += `<button class="nav-btn" data-perk-frontier-choice="${app._escapeHtml(perk.id)}" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="choose-perk" data-command-intent="choosePerk" style="text-align:left;white-space:normal;padding:10px;" title="${chooseTitle}" aria-label="${chooseTitle}"${disabled} onclick="App.choosePerk('${app._escapeJsString(perk.id)}')"><strong>${app._escapeHtml(perk.name)}</strong> <span style="color:var(--text-muted);font-size:11px">[${app._escapeHtml(perk.treeLabel)}]</span><br><span style="font-size:11px;color:var(--text-muted)">${app._escapeHtml(perk.desc)}</span><br><span style="font-size:11px;color:var(--accent-primary)">${app._escapeHtml(perk.availabilityReason)}</span></button>`;
         });
-        html += `</div><div style="display:grid;gap:12px;">`;
-        for (const [treeId, tree] of visibleTrees) {
-            html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${tree.label}</div><div style="display:grid;gap:8px;margin-top:8px;">`;
-            choices.filter(perk => perk.tree === treeId).forEach(perk => {
-                const disabled = pending <= 0 || !perk.available ? ' disabled' : '';
-                const reqTree = perk.requires?.tree ? app._perkTreesForUnit(app.player)[perk.requires.tree]?.label || perk.requires.tree : null;
-                const req = perk.requires ? (perk.requires.perk ? ` Requires ${perk.requires.perk}.` : ` Requires ${perk.requires.count || 1} ${reqTree} perk${(perk.requires.count || 1) === 1 ? '' : 's'}.`) : '';
-                const chooseTitle = app._escapeHtml(app._label('perk.chooseNamed', 'Choose {name}', { name: perk.name }));
-                html += `<button class="nav-btn" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="choose-perk" data-command-intent="choosePerk" style="text-align:left;white-space:normal;padding:8px;" title="${chooseTitle}" aria-label="${chooseTitle}" ${disabled} onclick="App.choosePerk('${perk.id}')"><strong>${perk.name}</strong> <span style="color:var(--text-muted);font-size:11px">[${perk.treeLabel}]</span><br><span style="font-size:11px;color:var(--text-muted)">${perk.desc}${req}</span></button>`;
-            });
-            html += `</div></div>`;
-        }
+        if (!choices.length) html += `<p class="holding-entry-meta">${app._escapeHtml(app._label('perk.frontierEmpty', 'No new perks are available from your current progress.'))}</p>`;
         html += `</div><button class="nav-btn" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="back-to-stats" data-command-slot="exit" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showCharacterStats()">${backLabel}</button></div>`;
         app.showPartyPanelDetail(titleLabel, html);
     }

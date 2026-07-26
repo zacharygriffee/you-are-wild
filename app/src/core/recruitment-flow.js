@@ -88,6 +88,10 @@ const YAW_RECRUITMENT_FLOW = {
             return false;
         }
         const rejoining = Boolean(target.droppedOffCompanion);
+        YAW_COMPANION_BEHAVIOR.seedRecruitment(app, target, actor, {
+            rejoining,
+            source: options.source || target.submission?.source || 'recruitment'
+        });
         target.disposition = app.DISPOSITION.PARTY;
         target.ally = true;
         target.obedient = true;

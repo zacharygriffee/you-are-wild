@@ -50,6 +50,36 @@ service.
 5. Prepare an accurate 0.15.0 record and development identity. Do not publish
    or mark the candidate released without operator authorization.
 
+## Completed locally — Core Game Maturity
+
+`core-maturity-backlog.md` and its ordered
+`core-maturity-implementation-plan.md` are implemented and locally accepted.
+The program brings the everyday game loops up to the maturity of the existing
+technical foundation:
+
+- Quest Contract V2 and Review Map V2;
+- companion Duty, Stance, Control, and Recruitment Continuity;
+- deterministic offline autonomy as the canonical fallback for optional AI
+  character control;
+- Item Contract V2, a coherent core economy, and an honest deferred-crafting
+  boundary;
+- a coherent progression and reward loop across quests, combat, exploration,
+  equipment, perks, and companions;
+- a compact Perk Frontier V2 that renders only current choices and derives
+  deterministic offers from authored, saved progression facts;
+- progressive tutorial, point-of-choice explanations, and strategy tips;
+- canonical acceptance scenarios before broad external playtesting.
+
+Duty describes capability (Guard, Scout, Support, Gatherer). Stance describes
+autonomous posture (Aggressive, Balanced, Defensive, Passive). They may share
+one Companion Behavior UI but remain separate persisted concepts. Healer and
+Scavenger become Duty-derived priorities rather than peer stances.
+
+Exact-worktree evidence is recorded in `core-maturity-acceptance.md`. The
+remaining work is release handoff: choose the semantic release boundary,
+commit and push intentionally, observe CI, reconcile release notes and
+compatibility, select a rollback artifact, and authorize Sites publication.
+
 ## Evidence-led release smoke
 
 Before operator publication approval, exercise the exact candidate:
@@ -90,8 +120,8 @@ These are observational unless a concrete contradiction is demonstrated:
 - Archive transport until a real pack demonstrates request-latency, portable
   handoff, CORS, or repair pressure.
 - Gameplay-bearing body-build taxonomy and preference design.
-- Advanced quests, companion loadouts, richer party roles, richer structure
-  skins, audio, generated media, and 3D presentation.
+- Companion loadouts, richer structure skins, audio, generated media, and 3D
+  presentation beyond the approved Core Game Maturity program.
 - New content-placement APIs until a canonical new-world recipe,
   `mapModsHash`, arbitration, materialization, missing-owner behavior, and
   offline reconstruction are designed.
@@ -122,6 +152,9 @@ Sites publication remain operator-mediated. Publication is never automatic.
 - `releases/0.15.0.md`
 - `balance-cost-doctrine.md`
 - `balance-scenario-baseline.md`
+- `core-maturity-backlog.md`
+- `core-maturity-implementation-plan.md`
+- `core-maturity-baseline.md`
 - `ghost-recovery-prepublish-decision.md`
 - `route-hierarchy-v2.md`
 - `mobile-interaction-flow-v2-decision.md`

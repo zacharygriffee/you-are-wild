@@ -15,7 +15,7 @@ const YAW_UNIT_CARD = {
             ? app._label('unit.partyMember', 'party member')
             : app._label('unit.creature', 'creature'));
         const escapedUnitName = app._escapeHtml(unitName);
-        const roleLabel = isAlly ? app._escapeHtml(app._partyRoleLabel(app._getPartyRole(unit))) : '';
+        const roleLabel = isAlly ? app._escapeHtml(app._companionDutyLabel(app._getCompanionDuty(unit))) : '';
         const canDragPartyMember = isAlly && !app.combatState.active;
         const dragAttrs = canDragPartyMember ? ` draggable="true" data-party-index="${index}" ondragstart="event.stopPropagation();App.startPartyDrag(${index})" ondragover="App.dragPartyOver(event)" ondrop="event.stopPropagation();App.dropPartyMember(${index})" ondragend="App.clearPartyDrag()"` : '';
         const cardClass = `unit-card${isExpanded ? ' expanded' : ''}${canDragPartyMember ? ' party-draggable' : ''}${app._unitSelectionClass(unit, type)}`;
@@ -71,16 +71,15 @@ const YAW_UNIT_CARD = {
                 partyManagementControls += `<button class="action-btn" ${managementAttrs} data-command-control="move-party-member-down" title="${moveDownTitle}" aria-label="${moveDownTitle}" onclick="event.stopPropagation();App.movePartyMember(${index},1)">↓</button>`;
             }
             if (isAlly) {
-                const role = app._getPartyRole(unit);
-                const roleOptions = Object.keys(app.PARTY_ROLES).map(key => `<option value="${key}" ${role === key ? 'selected' : ''}>${app._escapeHtml(app._partyRoleLabel(key))}</option>`).join('');
-                const roleTitle = app._escapeHtml(`${app._label('party.role', 'Role')}: ${app._partyRoleDescription(role)}`);
-                const roleAria = app._escapeHtml(app._label('party.roleFor', 'Party role for {name}', { name: unitName }));
-                partyManagementControls += `<select class="nav-btn" ${managementAttrs} data-command-control="set-party-role" style="padding:4px 8px;font-size:11px;" title="${roleTitle}" aria-label="${roleAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyRole(${index},this.value)">${roleOptions}</select>`;
-                const order = app._getPartyAIOrder(unit);
-                const options = Object.keys(app.PARTY_AI_ORDERS).map(key => `<option value="${key}" ${order === key ? 'selected' : ''}>${app._escapeHtml(app._partyAIOrderLabel(key))}</option>`).join('');
-                const orderTitle = app._escapeHtml(`${app._label('party.aiOrder', 'AI Order')}: ${app._partyAIOrderDescription(order)}`);
-                const orderAria = app._escapeHtml(app._label('party.aiOrderFor', 'AI order for {name}', { name: unitName }));
-                partyManagementControls += `<select class="nav-btn" ${managementAttrs} data-command-control="set-party-ai-order" style="padding:4px 8px;font-size:11px;" title="${orderTitle}" aria-label="${orderAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${options}</select>`;
+                const behavior = app._getCompanionBehavior(unit);
+                const dutyOptions = Object.keys(app.PARTY_DUTIES).map(key => `<option value="${key}" ${behavior.duty === key ? 'selected' : ''}>${app._escapeHtml(app._companionDutyLabel(key))}</option>`).join('');
+                const stanceOptions = Object.keys(app.PARTY_STANCES).map(key => `<option value="${key}" ${behavior.stance === key ? 'selected' : ''}>${app._escapeHtml(app._companionStanceLabel(key))}</option>`).join('');
+                const controlOptions = Object.keys(app.PARTY_CONTROLS).map(key => `<option value="${key}" ${behavior.control === key ? 'selected' : ''}>${app._escapeHtml(app._companionControlLabel(key))}</option>`).join('');
+                const dutyPreview = `${app._companionDutyDescription(behavior.duty)} ${app._label('party.tradeoff', 'Tradeoff')}: ${app._companionDutyTradeoff(behavior.duty)}`;
+                partyManagementControls += `<label class="companion-behavior-field"><span>${app._escapeHtml(app._label('party.duty', 'Duty'))}</span><select class="nav-btn" ${managementAttrs} data-command-control="set-companion-duty" style="padding:4px 8px;font-size:11px;" title="${app._escapeHtml(dutyPreview)}" aria-label="${app._escapeHtml(app._label('party.dutyFor', 'Duty for {name}', { name: unitName }))}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setCompanionDuty(${index},this.value)">${dutyOptions}</select></label>`;
+                partyManagementControls += `<label class="companion-behavior-field"><span>${app._escapeHtml(app._label('party.stance', 'Stance'))}</span><select class="nav-btn" ${managementAttrs} data-command-control="set-companion-stance" style="padding:4px 8px;font-size:11px;" title="${app._escapeHtml(app._companionStanceDescription(behavior.stance))}" aria-label="${app._escapeHtml(app._label('party.stanceFor', 'Stance for {name}', { name: unitName }))}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setCompanionStance(${index},this.value)">${stanceOptions}</select></label>`;
+                partyManagementControls += `<label class="companion-behavior-field"><span>${app._escapeHtml(app._label('party.control', 'Control'))}</span><select class="nav-btn" ${managementAttrs} data-command-control="set-companion-control" style="padding:4px 8px;font-size:11px;" title="${app._escapeHtml(app._companionControlDescription(behavior.control))}" aria-label="${app._escapeHtml(app._label('party.controlFor', 'Control for {name}', { name: unitName }))}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setCompanionControl(${index},this.value)">${controlOptions}</select></label>`;
+                partyManagementControls += `<small class="companion-behavior-preview">${app._escapeHtml(dutyPreview)}</small>`;
                 const dismissLabel = app._escapeHtml(app._label('party.dismiss', 'Dismiss'));
                 const dismissTitle = app._escapeHtml(app._label('party.dismissFor', 'Dismiss {name}', { name: unitName }));
                 const dropOffLabel = app._escapeHtml(app._label('party.dropOff', 'Drop Off'));

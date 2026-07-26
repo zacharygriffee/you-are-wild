@@ -13,75 +13,129 @@ const YAW_PARTY_MANAGEMENT = {
     },
 
     getAIOrder(app, unit) {
-        const order = unit?.aiOrder || 'aggressive';
-        return app.PARTY_AI_ORDERS[order] ? order : 'aggressive';
+        return this.getStance(app, unit);
     },
 
     getRole(app, unit) {
-        const role = unit?.partyRole || 'companion';
-        return app.PARTY_ROLES[role] ? role : 'companion';
+        return this.getDuty(app, unit);
+    },
+
+    getDuty(app, unit) {
+        return YAW_COMPANION_BEHAVIOR.get(app, unit).duty;
+    },
+
+    getStance(app, unit) {
+        return YAW_COMPANION_BEHAVIOR.get(app, unit).stance;
+    },
+
+    getControl(app, unit) {
+        return YAW_COMPANION_BEHAVIOR.get(app, unit).control;
     },
 
     aiOrderLabel(app, order) {
-        const key = app.PARTY_AI_ORDERS[order] ? order : 'aggressive';
-        return app._label(`party.aiOrder.${key}`, app.PARTY_AI_ORDERS[key]);
+        return this.stanceLabel(app, YAW_COMPANION_BEHAVIOR.legacyStance(order));
     },
 
     roleLabel(app, role) {
-        const key = app.PARTY_ROLES[role] ? role : 'companion';
-        return app._label(`party.role.${key}`, app.PARTY_ROLES[key]);
+        return this.dutyLabel(app, YAW_COMPANION_BEHAVIOR.legacyDuty(role));
     },
 
     aiOrderDescription(app, order) {
-        const key = app.PARTY_AI_ORDERS[order] ? order : 'aggressive';
-        const fallback = {
-            aggressive: 'Prioritizes attacking reachable threats.',
-            defensive: 'Favors safer positioning and protecting allies.',
-            healer: 'Feeds the most wounded ally first.',
-            scavenger: 'Looks for corpse-feast opportunities after victory.',
-            passive: 'Avoids acting unless wounded or pressured.'
-        }[key];
-        return app._label(`party.aiOrderDescription.${key}`, fallback);
+        return this.stanceDescription(app, YAW_COMPANION_BEHAVIOR.legacyStance(order));
     },
 
     roleDescription(app, role) {
-        const key = app.PARTY_ROLES[role] ? role : 'companion';
+        const key = app.PARTY_DUTIES[role] ? role : YAW_COMPANION_BEHAVIOR.legacyDuty(role);
         const fallback = {
-            companion: 'No special exploration role.',
             scout: 'Improves night visibility and route awareness.',
             guard: 'Reduces ambush advantage and helps protect camp.',
             support: 'Improves recovery when resting somewhere safe.',
             gatherer: 'Improves search and foraging results.'
         }[key];
-        return app._label(`party.roleDescription.${key}`, fallback);
+        return app._label(`party.dutyDescription.${key}`, app._label(`party.roleDescription.${key}`, fallback));
+    },
+
+    dutyLabel(app, duty) {
+        const key = app.PARTY_DUTIES[duty] ? duty : 'support';
+        return app._label(`party.duty.${key}`, app.PARTY_DUTIES[key].label);
+    },
+
+    dutyDescription(app, duty) {
+        const key = app.PARTY_DUTIES[duty] ? duty : 'support';
+        return app._label(`party.dutyDescription.${key}`, app.PARTY_DUTIES[key].description);
+    },
+
+    dutyTradeoff(app, duty) {
+        const key = app.PARTY_DUTIES[duty] ? duty : 'support';
+        return app._label(`party.dutyTradeoff.${key}`, app.PARTY_DUTIES[key].tradeoff);
+    },
+
+    stanceLabel(app, stance) {
+        const key = app.PARTY_STANCES[stance] ? stance : 'balanced';
+        return app._label(`party.stance.${key}`, app.PARTY_STANCES[key].label);
+    },
+
+    stanceDescription(app, stance) {
+        const key = app.PARTY_STANCES[stance] ? stance : 'balanced';
+        return app._label(`party.stanceDescription.${key}`, app.PARTY_STANCES[key].description);
+    },
+
+    controlLabel(app, control) {
+        const key = app.PARTY_CONTROLS[control] ? control : 'manual';
+        return app._label(`party.control.${key}`, app.PARTY_CONTROLS[key].label);
+    },
+
+    controlDescription(app, control) {
+        const key = app.PARTY_CONTROLS[control] ? control : 'manual';
+        return app._label(`party.controlDescription.${key}`, app.PARTY_CONTROLS[key].description);
+    },
+
+    saveBehaviorChange(app, unit, field, value, label) {
+        if (!YAW_COMPANION_BEHAVIOR.set(app, unit, field, value)) return false;
+        app.log.push({
+            text: app._label(`party.${field}Set`, '{name}: {field} is now {value}.', {
+                name: unit.name,
+                field: app._label(`party.${field}`, field),
+                value: label.toLowerCase()
+            }),
+            type: 'discovery'
+        });
+        app.renderParty();
+        app.renderLog();
+        app.markAutoSaveDirty?.(['manifest', 'party', 'quests', 'activityLog'], `party-${field}`);
+        app.autoSave();
+        return true;
+    },
+
+    setDuty(app, index, duty) {
+        const unit = app.party[index];
+        return this.saveBehaviorChange(app, unit, 'duty', duty, this.dutyLabel(app, duty));
+    },
+
+    setStance(app, index, stance) {
+        const unit = app.party[index];
+        return this.saveBehaviorChange(app, unit, 'stance', stance, this.stanceLabel(app, stance));
+    },
+
+    setControl(app, index, control) {
+        const unit = app.party[index];
+        return this.saveBehaviorChange(app, unit, 'control', control, this.controlLabel(app, control));
     },
 
     setAIOrder(app, index, order) {
-        const unit = app.party[index];
-        if (!unit || unit === app.player || !app.PARTY_AI_ORDERS[order]) return;
-        unit.aiOrder = order;
-        app.log.push({ text: app._label('party.aiOrderSet', '{name} will act {order}.', {
-            name: unit.name,
-            order: this.aiOrderLabel(app, order).toLowerCase()
-        }), type: 'discovery' });
-        app.renderParty();
-        app.renderLog();
-        app.markAutoSaveDirty?.(['manifest', 'party', 'quests', 'activityLog'], 'party-ai-order');
-        app.autoSave();
+        if (order === 'healer') {
+            this.setDuty(app, index, 'support');
+            return this.setStance(app, index, 'balanced');
+        }
+        if (order === 'scavenger') {
+            this.setDuty(app, index, 'gatherer');
+            return this.setStance(app, index, 'balanced');
+        }
+        return this.setStance(app, index, YAW_COMPANION_BEHAVIOR.legacyStance(order));
     },
 
     setRole(app, index, role) {
-        const unit = app.party[index];
-        if (!unit || unit === app.player || !app.PARTY_ROLES[role]) return;
-        unit.partyRole = role;
-        app.log.push({ text: app._label('party.roleSet', '{name} is assigned as {role}.', {
-            name: unit.name,
-            role: this.roleLabel(app, role).toLowerCase()
-        }), type: 'discovery' });
-        app.renderParty();
-        app.renderLog();
-        app.markAutoSaveDirty?.(['manifest', 'party', 'quests', 'activityLog'], 'party-role');
-        app.autoSave();
+        return this.setDuty(app, index, YAW_COMPANION_BEHAVIOR.legacyDuty(role));
     },
 
     leader(app) {
@@ -149,7 +203,7 @@ const YAW_PARTY_MANAGEMENT = {
             obedient: false,
             formerPartyMember: true,
             formerPartyRole: this.getRole(app, unit),
-            partyRole: 'companion'
+            partyRole: this.getDuty(app, unit)
         }, {});
         const sameUnit = candidate => app._unitSelectionId(candidate) === app._unitSelectionId(dismissed);
         app.creatures = app._tileCreatures([...(app.creatures || []).filter(candidate => !sameUnit(candidate)), dismissed]);

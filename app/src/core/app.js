@@ -143,6 +143,9 @@
                 support: 'Support',
                 gatherer: 'Gatherer'
             },
+            PARTY_DUTIES: YAW_COMPANION_BEHAVIOR.DUTIES,
+            PARTY_STANCES: YAW_COMPANION_BEHAVIOR.STANCES,
+            PARTY_CONTROLS: YAW_COMPANION_BEHAVIOR.CONTROLS,
             MULTI_TARGET_TECHNIQUES: {
                 sweep: { id: 'sweep', actions: ['fight'], recovery: 0.25, maxTargets: 3 },
                 multiStrike: { id: 'multiStrike', actions: ['fight'], recovery: 0.4, maxTargets: 4 },
@@ -624,19 +627,22 @@
             MAX_PARTY_SIZE: 6,
             MAX_INVENTORY: 20,
             ITEMS: {
-                'Healing Herb': { type: 'consumable', icon: '🌿', effect: 'heal', healAmount: 30, value: 30, desc: 'Restores 30 HP' },
-                'Shiny Gem': { type: 'valuable', icon: '💎', effect: 'sell', value: 50, desc: 'Worth 50 gold' },
-                'Strange Mushroom': { type: 'consumable', icon: '🍄', effect: 'heal', healAmount: 50, value: 50, desc: 'Restores 50 HP' },
-                'Old Coin': { type: 'valuable', icon: '🪙', effect: 'sell', value: 10, desc: 'Worth 10 gold' },
-                'Monster Fang': { type: 'material', icon: '🦷', effect: 'craft', value: 25, desc: 'Crafting material' },
-                'Crystal Shard': { type: 'material', icon: '💠', effect: 'craft', value: 40, desc: 'Crafting material' },
-                'Vial of Venom': { type: 'consumable', icon: '🧪', effect: 'damage', value: 40, desc: 'Deals 40 poison damage' },
-                'Enchanted Berry': { type: 'consumable', icon: '🫐', effect: 'buff', value: 5, desc: 'Temporarily boosts STR by 5' },
-                'Leather Cap': { type: 'equipment', icon: '🎩', slot: 'head', equipBonus: { con: 1 }, value: 20, desc: 'Headwear. CON +1' },
-                'Hide Armor': { type: 'equipment', icon: '🦺', slot: 'body', equipBonus: { con: 3 }, value: 60, desc: 'Body armor. CON +3' },
-                'Clawed Gloves': { type: 'equipment', icon: '🧤', slot: 'hands', equipBonus: { Figh: 2, str: 1 }, value: 45, desc: 'Handwear. Figh +2, STR +1' },
-                'Lucky Charm': { type: 'equipment', icon: '📿', slot: 'accessory1', equipBonus: { Flee: 2, wis: 1 }, equipEffect: 'luckyFind', value: 35, desc: 'Accessory. Flee +2, WIS +1. Improves search finds.' },
-                'Focus Ring': { type: 'equipment', icon: '💍', slot: 'accessory2', equipBonus: { Flir: 2, cha: 1 }, equipEffect: 'focusGuard', value: 55, desc: 'Ring. Flir +2, CHA +1. Resists charm confusion.' }
+                'Healing Herb': { id: 'core:healing_herb', type: 'consumable', purpose: 'use', stackable: true, maxStack: 20, acquisition: { searchWeight: 8 }, icon: '🌿', effect: 'heal', healAmount: 30, value: 30, desc: 'Restores 30 condition' },
+                'Shiny Gem': { id: 'core:shiny_gem', type: 'valuable', purpose: 'trade', stackable: true, maxStack: 20, acquisition: { searchWeight: 1 }, icon: '💎', effect: 'sell', value: 50, desc: 'Trade good worth 50 gold' },
+                'Strange Mushroom': { id: 'core:strange_mushroom', type: 'consumable', purpose: 'use', stackable: true, maxStack: 20, acquisition: { searchWeight: 3 }, icon: '🍄', effect: 'heal', healAmount: 50, value: 50, desc: 'Restores 50 condition' },
+                'Old Coin': { id: 'core:old_coin', type: 'valuable', purpose: 'trade', stackable: true, maxStack: 20, acquisition: { searchWeight: 8 }, icon: '🪙', effect: 'sell', value: 10, desc: 'Trade good worth 10 gold' },
+                'Monster Fang': { id: 'core:monster_fang', type: 'material', purpose: 'trade', stackable: true, maxStack: 20, acquisition: { searchWeight: 5 }, icon: '🦷', effect: 'craft', value: 25, desc: 'Trade good worth 25 gold' },
+                'Crystal Shard': { id: 'core:crystal_shard', type: 'material', purpose: 'trade', stackable: true, maxStack: 20, acquisition: { searchWeight: 2 }, icon: '💠', effect: 'craft', value: 40, desc: 'Trade good worth 40 gold' },
+                'Vial of Venom': { id: 'core:vial_of_venom', type: 'valuable', purpose: 'trade', stackable: true, maxStack: 20, acquisition: { searchWeight: 2 }, icon: '🧪', effect: 'sell', futureEffect: 'damage', value: 40, desc: 'Sealed trade good worth 40 gold' },
+                'Enchanted Berry': { id: 'core:enchanted_berry', type: 'valuable', purpose: 'trade', stackable: true, maxStack: 20, acquisition: { searchWeight: 5 }, icon: '🫐', effect: 'sell', futureEffect: 'buff', value: 5, desc: 'Unstable trade good worth 5 gold' },
+                'Sealed Parcel': { id: 'core:sealed_parcel', type: 'quest', purpose: 'quest', stackable: false, icon: '📦', questItem: true, acquisition: { questArchetypes: ['deliver'] }, value: 0, desc: 'A protected delivery for an active quest' },
+                'Waystone Sigil': { id: 'core:waystone_sigil', type: 'key', purpose: 'key', stackable: false, icon: '🔑', keyItem: true, acquisition: { questArchetypes: ['recover'] }, value: 0, desc: 'A protected objective recovered for an active quest' },
+                'Leather Cap': { id: 'core:leather_cap', type: 'equipment', purpose: 'equip', stackable: false, icon: '🎩', slot: 'head', equipBonus: { con: 1 }, value: 20, desc: 'Headwear. CON +1' },
+                'Hide Armor': { id: 'core:hide_armor', type: 'equipment', purpose: 'equip', stackable: false, icon: '🦺', slot: 'body', equipBonus: { con: 3 }, value: 60, desc: 'Body armor. CON +3' },
+                'Clawed Gloves': { id: 'core:clawed_gloves', type: 'equipment', purpose: 'equip', stackable: false, icon: '🧤', slot: 'hands', equipBonus: { Figh: 2, str: 1 }, value: 45, desc: 'Handwear. Figh +2, STR +1' },
+                'Trail Boots': { id: 'core:trail_boots', type: 'equipment', purpose: 'equip', stackable: false, icon: '🥾', slot: 'feet', equipBonus: { Flee: 1, spd: 1 }, value: 30, desc: 'Footwear. Flee +1, SPD +1' },
+                'Lucky Charm': { id: 'core:lucky_charm', type: 'equipment', purpose: 'equip', stackable: false, icon: '📿', slot: 'accessory1', equipBonus: { Flee: 2, wis: 1 }, equipEffect: 'luckyFind', value: 35, desc: 'Accessory. Flee +2, WIS +1. Improves search finds.' },
+                'Focus Ring': { id: 'core:focus_ring', type: 'equipment', purpose: 'equip', stackable: false, icon: '💍', slot: 'accessory2', equipBonus: { Flir: 2, cha: 1 }, equipEffect: 'focusGuard', value: 55, desc: 'Ring. Flir +2, CHA +1. Resists charm confusion.' }
             },
             MERCHANT_STOCK_TABLES: {
                 general: [
@@ -647,22 +653,26 @@
                 traveler: [
                     { name: 'Healing Herb', qty: 1 },
                     { name: 'Leather Cap', qty: 1 },
+                    { name: 'Trail Boots', qty: 1 },
                     { name: 'Lucky Charm', qty: 1 }
                 ],
                 herbalist: [
                     { name: 'Healing Herb', qty: 3 },
                     { name: 'Strange Mushroom', qty: 1 },
-                    { name: 'Enchanted Berry', qty: 2 }
+                    { name: 'Enchanted Berry', qty: 2 },
+                    { name: 'Vial of Venom', qty: 1 }
                 ],
                 relic: [
                     { name: 'Old Coin', qty: 3 },
+                    { name: 'Shiny Gem', qty: 1 },
                     { name: 'Crystal Shard', qty: 1 },
                     { name: 'Focus Ring', qty: 1 }
                 ],
                 outfitter: [
                     { name: 'Leather Cap', qty: 1 },
                     { name: 'Hide Armor', qty: 1 },
-                    { name: 'Clawed Gloves', qty: 1 }
+                    { name: 'Clawed Gloves', qty: 1 },
+                    { name: 'Trail Boots', qty: 1 }
                 ]
             },
             QUEST_TEMPLATES: {
@@ -695,6 +705,7 @@
             EQUIPMENT_LOOT_TABLES: {
                 basicGear: [
                     { id: 'Leather Cap', weight: 4 },
+                    { id: 'Trail Boots', weight: 3 },
                     { id: 'Lucky Charm', weight: 2 }
                 ],
                 armory: [
@@ -740,7 +751,18 @@
                 human: {
                     label: 'Human',
                     perks: [
-                        { id: 'human_adaptable', name: 'Adaptable', stat: 'int', val: 2, desc: 'INT +2.' },
+                        {
+                            id: 'human_adaptable',
+                            name: 'Adaptable',
+                            desc: 'Flee +1 and Feed +1.',
+                            effectProfile: {
+                                version: 2,
+                                effects: [
+                                    { kind: 'stat', key: 'Flee', amount: 1 },
+                                    { kind: 'stat', key: 'Feed', amount: 1 }
+                                ]
+                            }
+                        },
                         { id: 'human_resolve', name: 'Steady Resolve', stat: 'wis', val: 2, desc: 'WIS +2.', requires: { perk: 'human_adaptable' } }
                     ]
                 },
@@ -859,6 +881,13 @@
             mobileMapZoom: 1,
             largeMapRadius: 8,
             largeMapOffset: { x: 0, y: 0 },
+            largeMapSelected: null,
+            largeMapDocked: false,
+            largeMapFilters: {
+                objective: true, turnIn: true, giver: true, structure: true,
+                danger: true, party: true, recovery: true, poi: true
+            },
+            trackedQuestId: null,
             worldMap: new Map(),
             tileDeltas: new Map(),
             exploredTiles: new Set(),
@@ -1093,21 +1122,21 @@
             // ===== STRUCTURES (tile features) =====
             STRUCTURES: {
                 cabin: { name: 'Cabin', icon: '🏠', enterable: true, interior: { enabled: true, profile: 'small-building' }, encounterChance: 0.25, disposition: 'neutral', threat: 1,
-                    merchant: { chance: 0.25, stockTable: 'general', species: ['human', 'cat'] }, quest: { chance: 0.35, templates: ['cabin_supplies'], species: ['human', 'cat'] }, lootTable: 'basicGear',
+                    merchant: { chance: 0.25, stockTable: 'general', species: ['human', 'cat'] }, quest: { chance: 0.35, templates: ['cabin_supplies'], archetypes: ['gather', 'deliver'], species: ['human', 'cat'] }, lootTable: 'basicGear',
                     descriptions: ['A small wooden cabin stands before you.','A lone cabin, smoke curling from its chimney.','A weathered cabin with a welcoming glow.'] },
                 hut: { name: 'Hut', icon: '🛖', enterable: true, interior: { enabled: true, profile: 'small-building' }, encounterChance: 0.20, disposition: 'neutral', threat: 1,
-                    merchant: { chance: 0.20, stockTable: 'herbalist', species: ['human', 'shroom'] }, quest: { chance: 0.25, templates: ['cabin_supplies'], species: ['human', 'shroom'] },
+                    merchant: { chance: 0.20, stockTable: 'herbalist', species: ['human', 'shroom'] }, quest: { chance: 0.25, templates: ['cabin_supplies'], archetypes: ['gather', 'recover'], species: ['human', 'shroom'] },
                     descriptions: ['A rustic hut built from sticks and mud.','A simple hut with a thatched roof.','A travelers hut, abandoned or inhabited.'] },
                 cave: { name: 'Cave Mouth', icon: '🕳️', enterable: true, interior: { enabled: true, profile: 'cave-network' }, encounterChance: 0.35, disposition: 'enemy', threat: 3,
                     descriptions: ['A dark cave mouth yawns before you.','A shallow cave, something stirs within.','A narrow cave, the air is cold and damp.'] },
                 ruins: { name: 'Ruins', icon: '🏛️', enterable: true, interior: { enabled: true, profile: 'large-building' }, encounterChance: 0.30, disposition: 'enemy', threat: 3,
-                    quest: { chance: 0.20, templates: ['ruins_cleanup', 'shrine_relic'], species: ['human', 'drow'] }, lootTable: 'relicGear',
+                    quest: { chance: 0.20, templates: ['ruins_cleanup', 'shrine_relic'], archetypes: ['survey', 'recover'], species: ['human', 'drow'] }, lootTable: 'relicGear',
                     descriptions: ['Ancient ruins crumble around you.','A collapsed structure, something lurks.','A forgotten ruin, treasures and dangers.'] },
                 camp: { name: 'Camp', icon: '⛺', encounterChance: 0.15, disposition: 'neutral', threat: 1,
-                    merchant: { chance: 0.45, stockTable: 'traveler', species: ['human', 'horse', 'fox'] }, quest: { chance: 0.30, templates: ['camp_safety'], species: ['human', 'horse', 'fox'] }, lootTable: 'armory',
+                    merchant: { chance: 0.45, stockTable: 'traveler', species: ['human', 'horse', 'fox'] }, quest: { chance: 0.30, templates: ['camp_safety'], archetypes: ['hunt', 'escort', 'survey'], species: ['human', 'horse', 'fox'] }, lootTable: 'armory',
                     descriptions: ['A small campsite, recently used.','A bandit camp, abandoned or occupied.','A makeshift camp, signs of recent travelers.'] },
                 shrine: { name: 'Shrine', icon: '⛩️', enterable: true, interior: { enabled: true, profile: 'small-building' }, encounterChance: 0.10, disposition: 'neutral', threat: 0,
-                    merchant: { chance: 0.25, stockTable: 'relic', species: ['human', 'drow'] }, quest: { chance: 0.45, templates: ['shrine_relic'], species: ['human', 'drow'] }, lootTable: 'relicGear',
+                    merchant: { chance: 0.25, stockTable: 'relic', species: ['human', 'drow'] }, quest: { chance: 0.45, templates: ['shrine_relic'], archetypes: ['recover', 'deliver'], species: ['human', 'drow'] }, lootTable: 'relicGear',
                     descriptions: ['A tiny shrine to a forgotten deity.','A weathered shrine, offerings still fresh.','A serene shrine, peaceful energy radiates.'] },
                 pond: { name: 'Pond', icon: '🏞️', encounterChance: 0.15, disposition: 'neutral', threat: 1,
                     descriptions: ['A crystal-clear pond reflects the sky.','A murky pond, something swims beneath.','A still pond, dragonflies dance overhead.'] },
@@ -1139,6 +1168,7 @@
             storageKeys: {
                 hasPlayed: 'yaw-has-played',
                 tutorialComplete: 'yaw-tutorial-complete',
+                tutorialState: 'yaw-tutorial-v2',
                 settings: 'yaw-settings',
                 contentPrefs: 'yaw-content-prefs',
                 logView: 'yaw-log-view',
@@ -1965,12 +1995,13 @@
                 unit.tags = unit.tags || [species?.name || unit.species || 'Unknown'];
                 this._applySpeciesCanon(unit);
                 unit.perks = unit.perks || [];
+                YAW_PERK_EFFECTS.normalizeUnit(unit);
                 unit.pendingPerkChoices = unit.pendingPerkChoices || 0;
                 unit.stomach = unit.stomach || [];
                 unit.womb = unit.womb || [];
                 unit.balls = unit.balls || [];
-                unit.inventory = unit.inventory || [];
-                unit.equipment = unit.equipment || {};
+                unit.inventory = YAW_ITEM_REGISTRY.normalizeCollection(this, unit.inventory);
+                unit.equipment = YAW_ITEM_REGISTRY.normalizeEquipment(this, unit.equipment);
                 for (const slot of Object.keys(this.EQUIPMENT_SLOTS)) {
                     if (!(slot in unit.equipment)) unit.equipment[slot] = null;
                 }
@@ -1996,6 +2027,7 @@
                 unit.willing = unit.willing ?? false;
                 unit.aiOrder = unit.aiOrder || (unit.mc ? 'aggressive' : 'aggressive');
                 unit.partyRole = this.PARTY_ROLES[unit.partyRole] ? unit.partyRole : 'companion';
+                YAW_COMPANION_BEHAVIOR.normalize(this, unit);
                 YAW_MULTI_INTERACTION.normalizeUnit(unit);
                 this._applySpeciesAbilities(unit);
                 return unit;
@@ -3282,6 +3314,18 @@
             _getPartyRole(unit) {
                 return YAW_PARTY_MANAGEMENT.getRole(this, unit);
             },
+            _getCompanionBehavior(unit) {
+                return YAW_COMPANION_BEHAVIOR.get(this, unit);
+            },
+            _getCompanionDuty(unit) {
+                return YAW_PARTY_MANAGEMENT.getDuty(this, unit);
+            },
+            _getCompanionStance(unit) {
+                return YAW_PARTY_MANAGEMENT.getStance(this, unit);
+            },
+            _getCompanionControl(unit) {
+                return YAW_PARTY_MANAGEMENT.getControl(this, unit);
+            },
             _partyAIOrderLabel(order) {
                 return YAW_PARTY_MANAGEMENT.aiOrderLabel(this, order);
             },
@@ -3294,11 +3338,41 @@
             _partyRoleDescription(role) {
                 return YAW_PARTY_MANAGEMENT.roleDescription(this, role);
             },
+            _companionDutyLabel(duty) {
+                return YAW_PARTY_MANAGEMENT.dutyLabel(this, duty);
+            },
+            _companionDutyDescription(duty) {
+                return YAW_PARTY_MANAGEMENT.dutyDescription(this, duty);
+            },
+            _companionDutyTradeoff(duty) {
+                return YAW_PARTY_MANAGEMENT.dutyTradeoff(this, duty);
+            },
+            _companionStanceLabel(stance) {
+                return YAW_PARTY_MANAGEMENT.stanceLabel(this, stance);
+            },
+            _companionStanceDescription(stance) {
+                return YAW_PARTY_MANAGEMENT.stanceDescription(this, stance);
+            },
+            _companionControlLabel(control) {
+                return YAW_PARTY_MANAGEMENT.controlLabel(this, control);
+            },
+            _companionControlDescription(control) {
+                return YAW_PARTY_MANAGEMENT.controlDescription(this, control);
+            },
             setPartyAIOrder(index, order) {
                 return YAW_PARTY_MANAGEMENT.setAIOrder(this, index, order);
             },
             setPartyRole(index, role) {
                 return YAW_PARTY_MANAGEMENT.setRole(this, index, role);
+            },
+            setCompanionDuty(index, duty) {
+                return YAW_PARTY_MANAGEMENT.setDuty(this, index, duty);
+            },
+            setCompanionStance(index, stance) {
+                return YAW_PARTY_MANAGEMENT.setStance(this, index, stance);
+            },
+            setCompanionControl(index, control) {
+                return YAW_PARTY_MANAGEMENT.setControl(this, index, control);
             },
             _allyHealWounded(ally) {
                 return YAW_COMBAT_ALLIES.healWounded(this, ally);
@@ -4516,14 +4590,16 @@
                 if (!corpse.looted) {
                     const corpseKey = String(corpse.id || corpse.name || targetId || 'corpse');
                     const authoredLoot = corpse.lootTable ? this._lootItemNameFromTable(corpse.lootTable, 'corpse-authored-loot', 0, 0, corpseKey) : null;
-                    if (authoredLoot && this.inventory.length < this.MAX_INVENTORY) {
-                        item = { id: `loot_${corpseKey}`, name: authoredLoot };
-                        this.inventory.push(item);
-                    } else if (this.inventory.length < this.MAX_INVENTORY && this._worldChance('corpse-loot-item', 0, 0, 0.5, corpseKey)) {
+                    if (authoredLoot && this._canAddInventoryItem(authoredLoot, 1)) {
+                        item = this._createItemInstance(authoredLoot, { id: `loot_${corpseKey}` });
+                        this._addInventoryItem(authoredLoot, item);
+                    } else if (this._worldChance('corpse-loot-item', 0, 0, 0.5, corpseKey)) {
                         const items = Object.keys(this.ITEMS);
                         const name = this._pickWorldList(items, 'corpse-loot-item-name', 0, 0, corpseKey);
-                        item = { id: `loot_${corpseKey}`, name };
-                        this.inventory.push(item);
+                        if (this._canAddInventoryItem(name, 1)) {
+                            item = this._createItemInstance(name, { id: `loot_${corpseKey}` });
+                            this._addInventoryItem(name, item);
+                        }
                     }
                     const authoredGold = Number(corpse.goldLoot);
                     gold = Number.isFinite(authoredGold)
@@ -4714,6 +4790,10 @@
                 return YAW_PERK_FLOW.availableChoices(this, unit);
             },
 
+            _perkDisplayName(perk, unit = this.player) {
+                return YAW_PERK_FLOW.selectedName(this, perk, unit);
+            },
+
             _availablePerkTreeFilters(unit = this.player) {
                 return YAW_PERK_FLOW.availableFilters(this, unit);
             },
@@ -4761,6 +4841,10 @@
 
             _questTemplateForStructure(structureId, tile = null) {
                 return YAW_QUEST_FLOW.templateForStructure(this, structureId, tile);
+            },
+
+            generateProceduralQuest(archetype, context = {}) {
+                return YAW_QUEST_FLOW.generateProcedural(this, archetype, context);
             },
 
             _createStructureQuestGiver(structureId, tile) {
@@ -4876,12 +4960,20 @@
                 return YAW_QUEST_FLOW.titleLabel(this, quest);
             },
 
+            _questDescriptionLabel(quest) {
+                return YAW_QUEST_FLOW.descriptionLabel(this, quest);
+            },
+
             questSpeciesLabel(speciesId) {
                 return YAW_QUEST_FLOW.speciesLabel(this, speciesId);
             },
 
             _questRewardPreviewText(reward = {}) {
                 return YAW_QUEST_FLOW.rewardPreviewText(this, reward);
+            },
+
+            _isQuestProtectedItem(item) {
+                return YAW_QUEST_FLOW.protectsItem(this, item);
             },
 
             _getQuestById(questId) {
@@ -4928,8 +5020,20 @@
                 return YAW_QUEST_FLOW.grantReward(this, quest);
             },
 
-            turnInQuest(questId) {
-                return YAW_QUEST_FLOW.turnIn(this, questId);
+            _questTurnInEligibility(quest, context = {}) {
+                return YAW_QUEST_FLOW.turnInEligibility(this, quest, context);
+            },
+
+            _questSearchItemForLocation(tile = this._currentExplorationTile()) {
+                return YAW_QUEST_FLOW.recoverableSearchItem(this, tile);
+            },
+
+            turnInQuest(questId, context = {}) {
+                return YAW_QUEST_FLOW.turnIn(this, questId, context);
+            },
+
+            failQuest(questId, reason = '') {
+                return YAW_QUEST_FLOW.fail(this, questId, reason);
             },
 
             _questProgressText(quest) {
@@ -5003,6 +5107,38 @@
             // ===== EQUIPMENT =====
             _getItemDef(item) {
                 return YAW_EQUIPMENT_SYSTEM.itemDef(this, item);
+            },
+
+            _itemDefinitionId(item) {
+                return YAW_ITEM_REGISTRY.definitionId(this, item);
+            },
+
+            _isItemDefinitionAvailable(item) {
+                return YAW_ITEM_REGISTRY.isAvailable(this, item);
+            },
+
+            _normalizeItemInstance(item) {
+                return YAW_ITEM_REGISTRY.normalizeInstance(this, item);
+            },
+
+            _createItemInstance(itemOrId, instance = {}) {
+                return YAW_ITEM_REGISTRY.createInstance(this, itemOrId, instance);
+            },
+
+            _packCapacityUsed() {
+                return YAW_ITEM_REGISTRY.capacityUsed(this.inventory);
+            },
+
+            _canAddInventoryItem(itemOrId, quantity = 1) {
+                return YAW_ITEM_REGISTRY.canAccept(this, this.inventory, itemOrId, quantity, this.MAX_INVENTORY);
+            },
+
+            _addInventoryItem(itemOrId, instance = {}) {
+                return YAW_ITEM_REGISTRY.addToCollection(this, this.inventory, itemOrId, instance, this.MAX_INVENTORY);
+            },
+
+            _removeInventoryItem(itemId, quantity = 1) {
+                return YAW_ITEM_REGISTRY.removeFromCollection(this, this.inventory, itemId, quantity);
             },
 
             _isEquippable(item) {
@@ -5153,6 +5289,7 @@
 
             // ===== RENDERING =====
             renderParty() {
+                YAW_TUTORIAL_SYSTEM.sync(this, { notify: true });
                 return YAW_PANEL_RENDERING.party(this);
             },
             showPartyPanelDetail(title, html) {
@@ -5378,6 +5515,22 @@
 
             recenterLargeMap() {
                 return YAW_LARGE_MAP.recenter(this);
+            },
+
+            selectLargeMapTile(x, y) {
+                return YAW_LARGE_MAP.selectTile(this, x, y);
+            },
+
+            toggleLargeMapFilter(kind) {
+                return YAW_LARGE_MAP.toggleFilter(this, kind);
+            },
+
+            trackQuestOnMap(questId) {
+                return YAW_LARGE_MAP.trackQuest(this, questId);
+            },
+
+            toggleLargeMapDock() {
+                return YAW_LARGE_MAP.toggleDock(this);
             },
 
             renderLargeMap() {
@@ -6276,48 +6429,24 @@
                 return this.openOverlayScreen('market');
             },
             showTutorial() {
-                this.tutorialStep = 0;
-                const overlay = document.getElementById('tutorial-overlay');
-                if (!overlay) return false;
-                if (Array.isArray(this.tutorialBackgroundState)) {
-                    YAW_DIALOG_FLOW.restoreUnderlying(this.tutorialBackgroundState);
-                }
-                overlay.setAttribute('aria-hidden', 'false');
-                overlay.style.display = 'flex';
-                this.tutorialBackgroundState = YAW_DIALOG_FLOW.isolateUnderlying(overlay);
-                this._activateFocusTrap(overlay, { close: () => this.closeTutorial() });
-                this.nextTutorial();
-                return true;
+                return YAW_TUTORIAL_SYSTEM.open(this);
             },
             closeTutorial() {
-                const overlay = document.getElementById('tutorial-overlay');
-                if (overlay) {
-                    overlay.style.display = 'none';
-                    overlay.setAttribute('aria-hidden', 'true');
-                }
-                YAW_DIALOG_FLOW.restoreUnderlying(this.tutorialBackgroundState || []);
-                this.tutorialBackgroundState = null;
-                this._restoreFocusTrap();
-                return true;
+                return YAW_TUTORIAL_SYSTEM.close(this);
             },
             nextTutorial() {
-                const steps = [
-                    { titleKey: 'ui.tutorial.welcome.title', contentKey: 'ui.tutorial.welcome.content', title: 'Welcome', content: 'You are wild in a strange living world. Explore, learn your limits, and grow stronger. Choose your risks carefully.' },
-                    { titleKey: 'ui.tutorial.combat.title', contentKey: 'ui.tutorial.combat.content', title: 'Combat', content: 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Select actors, mark targets, choose an intent, then commit group plans. Each intent owns its reach: social actions can cross rows, while physical attempts may fail and explain why in the Scene Feed.' },
-                    { titleKey: 'ui.tutorial.feast.title', contentKey: 'ui.tutorial.feast.content', title: 'Eat', content: 'Eat weakened targets to hold them safely. Capacity matters, and mods can add alternate outcomes.' },
-                    { titleKey: 'ui.tutorial.party.title', contentKey: 'ui.tutorial.party.content', title: 'Party', content: 'Recruit willing creatures, assign roles, choose AI orders, and manage who acts in exploration or combat.' },
-                    { titleKey: 'ui.tutorial.ready.title', contentKey: 'ui.tutorial.ready.content', title: 'Ready', content: 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.' }
-                ];
-                if (this.tutorialStep >= steps.length) {
-                    this.closeTutorial();
-                    return;
-                }
-                const step = steps[this.tutorialStep];
-                document.getElementById('tutorial-title').textContent = this._label(step.titleKey, step.title);
-                document.getElementById('tutorial-content').textContent = this._label(step.contentKey, step.content);
-                this.tutorialStep++;
+                return YAW_TUTORIAL_SYSTEM.move(this, 1);
             },
-            skipTutorial() { this.closeTutorial(); },
+            previousTutorial() {
+                return YAW_TUTORIAL_SYSTEM.move(this, -1);
+            },
+            selectTutorialLesson(lessonId) {
+                return YAW_TUTORIAL_SYSTEM.select(this, lessonId);
+            },
+            resetTutorialLessons() {
+                return YAW_TUTORIAL_SYSTEM.reset(this);
+            },
+            skipTutorial() { return this.closeTutorial(); },
             continueLastGame() { return this.loadLastPlayed(); },
             executeCombatIntent(action, actor = this.activeActor || this._currentCombatActor()) {
                 return YAW_COMBAT_INTENTS.execute(this, action, actor);
@@ -6444,6 +6573,9 @@
             },
             mobilePartyContextSetAIOrder(index, order) {
                 return YAW_MOBILE_CONTEXT_MENU.setPartyAIOrder(this, index, order);
+            },
+            mobilePartyContextSetBehavior(index, field, value) {
+                return YAW_MOBILE_CONTEXT_MENU.setBehavior(this, index, field, value);
             },
             showMobileCreatureContext(targetId) {
                 return YAW_MOBILE_CONTEXT_MENU.showCreature(this, targetId);

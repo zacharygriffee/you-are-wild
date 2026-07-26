@@ -121,7 +121,10 @@ const YAW_COMBAT_TURNS = {
         app.renderMobileCombatToolbelt();
         app._writeCombatRefreshSnapshot();
         const isParty = app.party.includes(currentUnit);
-        if (isParty && (currentUnit.name === app.player.name || currentUnit.obedient !== false)) {
+        const companionControl = isParty && currentUnit !== app.player
+            ? app._getCompanionControl?.(currentUnit)
+            : 'manual';
+        if (isParty && (currentUnit.name === app.player.name || companionControl === 'manual')) {
             app.showActorActions(currentUnit);
         } else if (isParty) {
             app.allyTurn(currentUnit);

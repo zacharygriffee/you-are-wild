@@ -154,12 +154,34 @@ const YAW_SAVE_LOAD_FLOW = {
 
             const savedRoles = loaded.questState?.partyRoles || {};
             const savedAIOrders = loaded.questState?.partyAIOrders || {};
+            const savedDuties = loaded.questState?.partyDuties || {};
+            const savedStances = loaded.questState?.partyStances || {};
+            const savedControls = loaded.questState?.partyControls || {};
+            const savedContinuity = loaded.questState?.partyRecruitmentContinuity || {};
             for (const unit of app.party) {
                 const keys = [unit.id, unit.name].filter(Boolean).map(String);
                 const role = keys.map(key => savedRoles[key]).find(value => app.PARTY_ROLES[value]);
                 const order = keys.map(key => savedAIOrders[key]).find(value => app.PARTY_AI_ORDERS[value]);
                 if (role) unit.partyRole = role;
                 if (order) unit.aiOrder = order;
+                const duty = keys.map(key => savedDuties[key]).find(value => app.PARTY_DUTIES[value]);
+                const stance = keys.map(key => savedStances[key]).find(value => app.PARTY_STANCES[value]);
+                const control = keys.map(key => savedControls[key]).find(value => app.PARTY_CONTROLS[value]);
+                const recruitmentContinuity = keys.map(key => savedContinuity[key]).find(value => value && typeof value === 'object') || null;
+                if (duty || stance || control || recruitmentContinuity) {
+                    unit.companionBehavior = {
+                        ...(unit.companionBehavior || {}),
+                        ...(duty ? { duty } : {}),
+                        ...(stance ? { stance } : {}),
+                        ...(control ? { control } : {}),
+                        ...(recruitmentContinuity ? { recruitmentContinuity } : {})
+                    };
+                }
+                YAW_COMPANION_BEHAVIOR.normalize(app, unit, {
+                    duty: role,
+                    stance: order,
+                    recruitmentContinuity
+                });
             }
 
             app.explorationActorIds = Array.isArray(loaded.questState?.explorationActorIds) ? loaded.questState.explorationActorIds.map(String) : [];
@@ -190,10 +212,14 @@ const YAW_SAVE_LOAD_FLOW = {
                 YAW_NARRATION_SYSTEM.restore(app, loaded.questState?.sceneNarrations || [], loaded.questState?.tileNarrationCache || []);
             }
             app.creatures = [];
-            app.inventory = loaded.inventory || [];
-            app.quests = loaded.questState?.quests || [];
+            app.inventory = YAW_ITEM_REGISTRY.normalizeCollection(app, loaded.inventory);
+            app.quests = (loaded.questState?.quests || []).map(quest => app._normalizeQuest(quest));
+            app.trackedQuestId = loaded.questState?.trackedQuestId
+                && app.quests.some(quest => String(quest.id) === String(loaded.questState.trackedQuestId))
+                ? String(loaded.questState.trackedQuestId)
+                : null;
             app.player.gold = loaded.questState?.playerGold || app.player.gold || 0;
-            app.player.equipment = loaded.questState?.playerEquipment || app.player.equipment || {};
+            app.player.equipment = YAW_ITEM_REGISTRY.normalizeEquipment(app, loaded.questState?.playerEquipment || app.player.equipment);
             app.player.equipmentBaseStats = loaded.questState?.playerEquipmentBaseStats || null;
             app._recalculateEquipment(app.player, { inferBase: !loaded.questState?.playerEquipmentBaseStats });
             app.player.perks = loaded.questState?.playerPerks || app.player.perks || [];

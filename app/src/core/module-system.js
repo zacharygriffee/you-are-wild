@@ -39,7 +39,7 @@ const MODULE_SYSTEM = {
     DEFAULT_HOST_MANIFEST_PATH: 'yaw-host.json',
     REMOTE_PACKAGE_MAX_BYTES: 2 * 1024 * 1024,
     REMOTE_PACKAGE_TIMEOUT_MS: 15000,
-    KNOWN_PERMISSIONS: ['ui.read', 'ui:contribute', 'media:read', 'media:provide', 'scene:add_template', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template', 'content:add_locale', 'content:add_creation_option', 'content:add_action_variant', 'mechanics:add_resource_profile', 'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'],
+    KNOWN_PERMISSIONS: ['ui.read', 'ui:contribute', 'media:read', 'media:provide', 'scene:add_template', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_quest', 'content:add_template', 'content:add_locale', 'content:add_creation_option', 'content:add_action_variant', 'content:add_perk_profile', 'mechanics:add_resource_profile', 'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'],
     db: null,
     hostManifest: null,
     hostManifestState: { status: 'uninitialized', reason: '', url: '' },
@@ -1903,6 +1903,9 @@ const MODULE_SYSTEM = {
                 species: new Set(),
                 speciesProfiles: [],
                 items: new Set(),
+                itemPlacements: [],
+                questTemplates: new Map(),
+                questPlacements: [],
                 templates: [],
                 sceneTemplates: [],
                 locales: [],
@@ -1911,6 +1914,7 @@ const MODULE_SYSTEM = {
                 resourceProfiles: [],
                 combatTechniques: [],
                 recoveryModes: [],
+                perkProfiles: [],
                 uiContributions: []
             });
         }
@@ -2231,6 +2235,146 @@ const MODULE_SYSTEM = {
         App[collectionName] = App[collectionName] || [];
         App[collectionName].push(entry);
         this._contributionRecord(moduleId)[collectionName].add(entry);
+    },
+
+    _addOwnedItem(moduleId, value) {
+        if (typeof YAW_ITEM_REGISTRY === 'undefined') throw new Error('Item Registry V2 is unavailable');
+        if (typeof YAW_ITEM_EFFECTS === 'undefined') throw new Error('Item Effects V1 is unavailable');
+        const source = this._normalizeDataContribution(value, 'Item');
+        const purpose = source.purpose || (source.effect === 'heal' ? 'use' : 'trade');
+        const entry = {
+            ...source,
+            type: source.type || 'material',
+            purpose,
+            effect: source.effect || (purpose === 'trade' ? 'sell' : ''),
+            value: Math.max(0, Math.min(1000, Math.floor(Number(source.value) || 0))),
+            ...(purpose === 'quest' ? { questItem: true } : {}),
+            ...(purpose === 'key' ? { keyItem: true } : {})
+        };
+        if (entry.type === 'equipment' || entry.purpose === 'equip' || entry.slot || entry.equipBonus || entry.equipEffect) {
+            throw new Error('Module equipment items are not available in Item Definition V2');
+        }
+        if (!['consumable', 'valuable', 'material', 'quest', 'key'].includes(entry.type)) {
+            throw new Error('Module item type must be consumable, valuable, material, quest, or key');
+        }
+        if (!['use', 'trade', 'quest', 'key'].includes(entry.purpose)) {
+            throw new Error('Module item purpose must be use, trade, quest, or key');
+        }
+        YAW_ITEM_EFFECTS.validateDefinition(entry, { module: true });
+        const rawId = String(entry.id || '').trim();
+        const namespace = String(moduleId).toLowerCase();
+        const id = (rawId.includes(':') ? rawId : `${namespace}:${rawId}`).toLowerCase();
+        if (!id.startsWith(`${namespace}:`)) {
+            throw new Error(`Item definition id must use the ${namespace}: namespace`);
+        }
+        const registered = YAW_ITEM_REGISTRY.register(App, moduleId, {
+            ...entry,
+            id
+        }, {
+            legacyNames: Array.isArray(entry.legacyNames) ? entry.legacyNames : []
+        });
+        App.items = App.items || [];
+        App.items.push(registered);
+        const record = this._contributionRecord(moduleId);
+        record.items.add(registered);
+        this._placeOwnedItem(moduleId, registered, record);
+        return registered;
+    },
+
+    _placeOwnedItem(moduleId, definition, record = this._contributionRecord(moduleId)) {
+        const acquisition = definition.acquisition;
+        if (acquisition == null) return;
+        if (!acquisition || typeof acquisition !== 'object' || Array.isArray(acquisition)) {
+            throw new Error('Item acquisition must be an object');
+        }
+        const allowed = new Set(['merchantTables', 'lootTables', 'search', 'searchWeight']);
+        for (const key of Object.keys(acquisition)) {
+            if (!allowed.has(key)) throw new Error(`Unsupported item acquisition field: ${key}`);
+        }
+        if (acquisition.search != null && typeof acquisition.search !== 'boolean') {
+            throw new Error('Item acquisition search must be boolean');
+        }
+        if (acquisition.searchWeight != null) {
+            const searchWeight = Number(acquisition.searchWeight);
+            if (!Number.isFinite(searchWeight) || searchWeight < 1 || searchWeight > 100) {
+                throw new Error('Item acquisition searchWeight must be between 1 and 100');
+            }
+        }
+        const merchantTables = Array.isArray(acquisition.merchantTables) ? acquisition.merchantTables : [];
+        if (merchantTables.length > 16) throw new Error('Item acquisition supports at most 16 merchant tables');
+        for (const raw of merchantTables) {
+            const request = typeof raw === 'string' ? { id: raw } : raw;
+            const tableId = String(request?.id || request?.table || '').trim();
+            const table = App.MERCHANT_STOCK_TABLES?.[tableId];
+            if (!tableId || !Array.isArray(table)) throw new Error(`Unknown merchant stock table: ${tableId || '(empty)'}`);
+            const quantity = Math.max(1, Math.min(20, Math.floor(Number(request.qty ?? request.quantity) || 1)));
+            const entry = { definitionId: definition.id, name: definition.name, qty: quantity };
+            table.push(entry);
+            record.itemPlacements.push({ kind: 'merchant', tableId, entry });
+        }
+        const lootTables = Array.isArray(acquisition.lootTables) ? acquisition.lootTables : [];
+        if (lootTables.length > 16) throw new Error('Item acquisition supports at most 16 loot tables');
+        for (const raw of lootTables) {
+            const request = typeof raw === 'string' ? { id: raw } : raw;
+            const tableId = String(request?.id || request?.table || '').trim();
+            const table = App.EQUIPMENT_LOOT_TABLES?.[tableId];
+            if (!tableId || !Array.isArray(table)) throw new Error(`Unknown loot table: ${tableId || '(empty)'}`);
+            const weight = Math.max(1, Math.min(100, Math.floor(Number(request.weight) || 1)));
+            const entry = { id: definition.id, weight };
+            table.push(entry);
+            record.itemPlacements.push({ kind: 'loot', tableId, entry });
+        }
+    },
+
+    _addOwnedQuestTemplate(moduleId, questDef) {
+        const entry = this._normalizeDataContribution(questDef, 'Quest template');
+        const namespace = String(moduleId).toLowerCase();
+        const rawId = String(entry.id || '').trim();
+        if (!rawId) throw new Error('Quest template id is required');
+        const id = (rawId.includes(':') ? rawId : `${namespace}:${rawId}`).toLowerCase();
+        if (!id.startsWith(`${namespace}:`)) throw new Error(`Quest template id must use the ${namespace}: namespace`);
+        App.QUEST_TEMPLATES = App.QUEST_TEMPLATES || {};
+        if (Object.prototype.hasOwnProperty.call(App.QUEST_TEMPLATES, id)) {
+            throw new Error(`Quest template already registered: ${id}`);
+        }
+        const acquisition = entry.acquisition == null ? {} : entry.acquisition;
+        if (!acquisition || typeof acquisition !== 'object' || Array.isArray(acquisition)) {
+            throw new Error('Quest template acquisition must be an object');
+        }
+        const allowed = new Set(['structures']);
+        for (const key of Object.keys(acquisition)) {
+            if (!allowed.has(key)) throw new Error(`Unsupported quest template acquisition field: ${key}`);
+        }
+        const structures = Array.isArray(acquisition.structures) ? acquisition.structures : [];
+        if (structures.length < 1 || structures.length > 16) {
+            throw new Error('Quest template requires 1 to 16 structure acquisition routes');
+        }
+        for (const structureId of structures) {
+            const structure = App.STRUCTURES?.[String(structureId)];
+            if (!structure?.quest || !Array.isArray(structure.quest.templates)) {
+                throw new Error(`Unknown quest structure route: ${String(structureId)}`);
+            }
+        }
+        const normalized = YAW_QUEST_FLOW.normalize(App, {
+            ...entry,
+            id,
+            templateId: id,
+            status: 'available',
+            authoredOrigin: {
+                kind: 'module',
+                moduleId,
+                templateId: id
+            }
+        });
+        delete normalized.id;
+        const record = this._contributionRecord(moduleId);
+        App.QUEST_TEMPLATES[id] = normalized;
+        record.questTemplates.set(id, normalized);
+        for (const structureId of structures) {
+            App.STRUCTURES[String(structureId)].quest.templates.push(id);
+            record.questPlacements.push({ structureId: String(structureId), id });
+        }
+        return normalized;
     },
 
     _addOwnedResourceProfile(moduleId, resourceId, definition) {
@@ -2877,6 +3021,25 @@ const MODULE_SYSTEM = {
         if (Array.isArray(App.items)) {
             App.items = App.items.filter(entry => !record.items.has(entry));
         }
+        for (const placement of [...record.itemPlacements].reverse()) {
+            const tables = placement.kind === 'merchant' ? App.MERCHANT_STOCK_TABLES : App.EQUIPMENT_LOOT_TABLES;
+            const table = tables?.[placement.tableId];
+            if (!Array.isArray(table)) continue;
+            const index = table.indexOf(placement.entry);
+            if (index >= 0) table.splice(index, 1);
+        }
+        if (typeof YAW_ITEM_REGISTRY !== 'undefined') {
+            YAW_ITEM_REGISTRY.unregisterOwner?.(App, moduleId);
+        }
+        for (const placement of [...record.questPlacements].reverse()) {
+            const templates = App.STRUCTURES?.[placement.structureId]?.quest?.templates;
+            if (!Array.isArray(templates)) continue;
+            const index = templates.lastIndexOf(placement.id);
+            if (index >= 0) templates.splice(index, 1);
+        }
+        for (const [id, template] of record.questTemplates.entries()) {
+            if (App.QUEST_TEMPLATES?.[id] === template) delete App.QUEST_TEMPLATES[id];
+        }
         for (const contribution of [...record.templates].reverse()) {
             CONTENT?.registerTemplateTier?.(contribution.category, contribution.type, contribution.variant, contribution.tier, contribution.previous ?? null);
         }
@@ -2896,6 +3059,7 @@ const MODULE_SYSTEM = {
         if (typeof YAW_RESOURCE_LEDGER !== 'undefined') YAW_RESOURCE_LEDGER.unregisterOwner?.(moduleId);
         if (typeof YAW_COMBAT_TECHNIQUES !== 'undefined') YAW_COMBAT_TECHNIQUES.unregisterOwner?.(moduleId, App);
         if (typeof YAW_RECOVERY_MODES !== 'undefined') YAW_RECOVERY_MODES.unregisterOwner?.(moduleId, App);
+        if (typeof YAW_PERK_REGISTRY !== 'undefined') YAW_PERK_REGISTRY.unregisterOwner?.(moduleId);
         this._removeUiContributionOwner(moduleId);
 
         this.ownedContributions.delete(moduleId);
@@ -2975,7 +3139,12 @@ const MODULE_SYSTEM = {
             
             addItem(itemDef) {
                 self._requirePermission(moduleId, manifest, 'content:add_item');
-                self._addOwnedArrayEntry(moduleId, 'items', itemDef);
+                return self._addOwnedItem(moduleId, itemDef);
+            },
+
+            addQuestTemplate(questDef) {
+                self._requirePermission(moduleId, manifest, 'content:add_quest');
+                return self._addOwnedQuestTemplate(moduleId, questDef);
             },
 
             registerContentTemplate(category, type, variant, tier, renderer) {
@@ -3025,6 +3194,14 @@ const MODULE_SYSTEM = {
             registerRecoveryMode(modeId, definition) {
                 self._requirePermission(moduleId, manifest, 'mechanics:add_recovery_mode');
                 return self._addOwnedRecoveryMode(moduleId, modeId, definition);
+            },
+
+            registerPerkProfile(definition) {
+                self._requirePermission(moduleId, manifest, 'content:add_perk_profile');
+                self._assertSerializableData(definition, 'Perk profile');
+                const registered = YAW_PERK_REGISTRY.register(App, moduleId, definition);
+                self._contributionRecord(moduleId).perkProfiles.push({ id: registered.id });
+                return registered;
             },
 
             resources: {

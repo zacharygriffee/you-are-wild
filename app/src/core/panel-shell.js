@@ -141,7 +141,7 @@ const YAW_PANEL_SHELL = {
             const detail = app.mobileRosterDetail;
             if (detail && detail.tab === activeTab) {
                 const back = app._escapeHtml(app._label('ui.back', 'Back'));
-                panel.innerHTML = `<div class="mobile-roster-detail"><div class="mobile-roster-detail-toolbar"><button type="button" class="nav-btn" data-command-surface="roster" data-command-mode="navigation" data-command-control="close-roster-detail" title="${back}" aria-label="${back}" onclick="App.clearMobileRosterDetail()">${back}</button><strong>${app._escapeHtml(detail.title || '')}</strong></div>${detail.html || ''}</div>`;
+                panel.innerHTML = `<div class="mobile-roster-detail"><div class="mobile-roster-detail-toolbar"><strong>${app._escapeHtml(detail.title || '')}</strong></div>${detail.html || ''}<div class="mobile-screen-exit-bar" data-command-surface="roster" data-command-mode="navigation"><button type="button" class="nav-btn" data-command-surface="roster" data-command-mode="navigation" data-command-control="close-roster-detail" data-command-slot="exit" title="${back}" aria-label="${back}" onclick="App.clearMobileRosterDetail()">${back}</button></div></div>`;
             } else {
                 panel.innerHTML = this.rosterCards(app, activeTab);
             }

@@ -42,6 +42,7 @@ const YAW_SETTINGS_DATA_FLOW = {
             app._removeStoredValue('lastSaveTime');
             app._removeStoredValue('hasPlayed');
             app._removeStoredValue('tutorialComplete');
+            app._removeStoredValue('tutorialState');
             app._removeStoredValue('settings');
             app._removeStoredValue('contentPrefs');
             app._removeStoredValue('logView');

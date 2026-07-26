@@ -338,6 +338,7 @@ const YAW_STRUCTURE_NAVIGATION = {
             app.spawnWildEncounter(room, false, true);
         }
         room.creatures = app._tileCreatures(app.creatures);
+        YAW_COMPANION_BEHAVIOR?.reactToTile?.(app, room, { wasExplored, interior: true });
         app.renderMap();
         app.renderCreatures();
         app.renderLog();

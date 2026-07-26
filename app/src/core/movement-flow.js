@@ -91,6 +91,7 @@ const YAW_MOVEMENT_FLOW = {
         tile.creatures = app._tileCreatures(app.creatures);
         app.persistTileDelta(tile.x, tile.y, tile);
         app.emitTileObservation?.(tile, { wasExplored });
+        YAW_COMPANION_BEHAVIOR?.reactToTile?.(app, tile, { wasExplored, interior: false });
         if (!recoveryJourney) {
             app._updateQuestProgress('escort', { x: app.location.x, y: app.location.y });
             app._updateQuestProgress('travel', { x: app.location.x, y: app.location.y });

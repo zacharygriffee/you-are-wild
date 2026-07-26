@@ -296,7 +296,7 @@ async function checkFileOriginFirstRunMenu(browser) {
   assert.strictEqual(firstRun.modal, 'true', 'first-run tutorial should identify itself as modal');
   assert.strictEqual(firstRun.ariaHidden, 'false', 'visible first-run tutorial should enter the accessibility tree');
   assert.strictEqual(firstRun.labelledBy, 'tutorial-title', 'first-run tutorial should reference its changing title');
-  assert.strictEqual(firstRun.describedBy, 'tutorial-content', 'first-run tutorial should reference its changing instructions');
+  assert.strictEqual(firstRun.describedBy, 'tutorial-content tutorial-tip', 'first-run tutorial should reference its changing instructions and strategy tip');
   assert.strictEqual(firstRun.menuInert, true, 'first-run tutorial should isolate the underlying menu from interaction');
   assert.strictEqual(firstRun.menuAriaHidden, 'true', 'first-run tutorial should hide the underlying menu from assistive technology');
 
@@ -429,7 +429,7 @@ async function checkFileOriginFirstRunMenu(browser) {
       assert.strictEqual(closedImport.ariaHidden, 'true', 'canceling URI importer should remove the region from the accessibility tree');
       assert.strictEqual(closedImport.focusId, 'remote-module-import-toggle', 'canceling URI importer should restore focus to its opener');
     }
-    await page.locator(`#${screenId} [data-command-control="${closeControl}"]`).click();
+    await page.locator(`#${screenId} [data-command-control="${closeControl}"]:visible`).click();
     await page.waitForFunction(() => App.screen === 'menu' && getComputedStyle(document.getElementById('screen-menu')).display === 'flex');
   }
 
@@ -484,6 +484,10 @@ async function checkFileOriginFirstRunMenu(browser) {
   assert(localizedHostCatalog.titleText.includes('Catalogo del host'), 'runtime Host Catalog referenced title should resolve after localized rerender');
   assert(localizedHostCatalog.descriptionText.includes('Modulos suministrados'), 'runtime Host Catalog referenced description should resolve after localized rerender');
 
+  await page.evaluate(() => {
+    App.log = [{ type: 'combat' }];
+    YAW_TUTORIAL_SYSTEM.sync(App);
+  });
   const helpControl = page.locator('#screen-menu [data-command-control="open-help"]');
   await helpControl.focus();
   await helpControl.click();
@@ -494,8 +498,8 @@ async function checkFileOriginFirstRunMenu(browser) {
     description: document.getElementById('tutorial-content')?.textContent || '',
     focusInside: document.getElementById('tutorial-overlay')?.contains(document.activeElement) || false
   }));
-  assert.strictEqual(steppedTutorial.title, 'Combat', 'tutorial should update its accessible title with the current step');
-  assert(steppedTutorial.description.includes('Select actors'), 'tutorial should update its accessible description with the current step');
+  assert.strictEqual(steppedTutorial.title, 'Combat Turns', 'tutorial should update its accessible title with the current lesson');
+  assert(steppedTutorial.description.includes('visible turn order'), 'tutorial should update its accessible description with the current lesson');
   assert.strictEqual(steppedTutorial.focusInside, true, 'tutorial step changes should retain focus containment');
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => getComputedStyle(document.getElementById('tutorial-overlay')).display === 'none');
@@ -897,7 +901,7 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(cancelledProviderEditor.focusControl, 'edit-provider-connection', `${name}: provider editor Cancel should restore focus to Edit Connection`);
   assert.strictEqual(cancelledProviderEditor.focusProfileId, savedProviderEditor.editProfileId, `${name}: provider editor Cancel should restore the matching profile's Edit control`);
 
-  await page.locator('#screen-providers [data-command-control="close-ai-providers"]').click();
+  await page.locator('#screen-providers [data-command-control="close-ai-providers"]:visible').click();
   await page.waitForTimeout(50);
   const returnedSettings = await page.evaluate(() => ({
     appScreen: App.screen,
@@ -1482,7 +1486,11 @@ async function checkViewport(browser, name, width, height) {
     await page.waitForTimeout(50);
     const opened = await page.evaluate(({ screenName, closeControl }) => {
       const overlay = document.getElementById(`screen-${screenName}`);
-      const close = overlay?.querySelector(`[data-command-control="${closeControl}"]`);
+      const close = Array.from(overlay?.querySelectorAll(`[data-command-control="${closeControl}"]`) || []).find(control => {
+        const controlRect = control.getBoundingClientRect?.();
+        const style = getComputedStyle(control);
+        return style.display !== 'none' && style.visibility !== 'hidden' && controlRect && controlRect.width > 0 && controlRect.height > 0;
+      });
       const app = document.getElementById('app');
       const menu = document.getElementById('screen-menu');
       const overlayRect = overlay.getBoundingClientRect();
@@ -1521,7 +1529,7 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(opened.focusInside, true, `${name}: main-menu ${label} should move focus into the active overlay`);
     assert.strictEqual(opened.pageOverflow, false, `${name}: main-menu ${label} should not create horizontal overflow`);
 
-    await page.locator(`#screen-${screenName} [data-command-control="${closeControl}"]`).first().click();
+    await page.locator(`#screen-${screenName} [data-command-control="${closeControl}"]:visible`).click();
     await page.waitForTimeout(50);
     const returned = await page.evaluate(({ screenName }) => {
       const overlay = document.getElementById(`screen-${screenName}`);
@@ -1586,7 +1594,7 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(guardedCatalog.focusTrapId, 'screen-mods', `${name}: Mod Manager should retain the focus trap`);
   assert.strictEqual(guardedCatalog.pageOverflow, false, `${name}: guarded catalog routing should not create horizontal overflow`);
 
-  await page.locator('#screen-mods [data-command-control="close-modules"]').click();
+  await page.locator('#screen-mods [data-command-control="close-modules"]:visible').click();
   await page.waitForTimeout(50);
   assert.strictEqual(await page.evaluate(() => App.screen), 'menu', `${name}: closing returned Mods should restore the main menu`);
 
@@ -1692,7 +1700,11 @@ async function checkViewport(browser, name, width, height) {
   const tradeWindow = await page.evaluate(() => {
     const root = document.getElementById('transaction-window-root');
     const modal = root?.querySelector('.transaction-window');
-    const close = root?.querySelector('[data-command-control="close-transaction"]');
+    const close = Array.from(root?.querySelectorAll('[data-command-control="close-transaction"]') || []).find(control => {
+      const controlRect = control.getBoundingClientRect?.();
+      const style = getComputedStyle(control);
+      return style.display !== 'none' && style.visibility !== 'hidden' && controlRect && controlRect.width > 0 && controlRect.height > 0;
+    });
     const composer = document.getElementById(innerWidth <= 1024 ? 'mobile-control-belt' : 'desktop-command-composer');
     const rect = modal?.getBoundingClientRect();
     const closeRect = close?.getBoundingClientRect();
@@ -1818,8 +1830,9 @@ async function checkViewport(browser, name, width, height) {
     App.showMobilePartyContext(1);
     const dialog = document.getElementById('mobile-context-menu');
     const dialogTitle = dialog?.querySelector('#mobile-context-menu-title')?.textContent || '';
-    const roleLabel = dialog?.querySelector('[data-command-control="set-party-role"]')?.getAttribute('aria-label') || '';
-    const orderLabel = dialog?.querySelector('[data-command-control="set-party-ai-order"]')?.getAttribute('aria-label') || '';
+    const dutyLabel = dialog?.querySelector('[data-command-control="set-companion-duty"]')?.getAttribute('aria-label') || '';
+    const stanceLabel = dialog?.querySelector('[data-command-control="set-companion-stance"]')?.getAttribute('aria-label') || '';
+    const controlLabel = dialog?.querySelector('[data-command-control="set-companion-control"]')?.getAttribute('aria-label') || '';
     const dialogRole = dialog?.getAttribute('role') || '';
     App.closeMobileContextMenu();
     return {
@@ -1828,8 +1841,9 @@ async function checkViewport(browser, name, width, height) {
       dialogTitle,
       dialogDescription: dialog?.querySelector('#mobile-context-menu-description')?.textContent || '',
       describedBy: dialog?.getAttribute('aria-describedby') || '',
-      roleLabel,
-      orderLabel,
+      dutyLabel,
+      stanceLabel,
+      controlLabel,
       dialogRole,
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     };
@@ -1843,8 +1857,9 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(localizedFallbackUnits.describedBy, 'mobile-context-menu-description', `${name}: unnamed-party context dialog should reference its visible purpose`);
   assert(localizedFallbackUnits.dialogDescription.includes('miembro del grupo'), `${name}: unnamed-party context purpose should use the localized visible name`);
   assert(localizedFallbackUnits.dialogTitle.includes('miembro del grupo'), `${name}: unnamed-party context dialog should use the localized visible name`);
-  assert(localizedFallbackUnits.roleLabel.includes('miembro del grupo'), `${name}: unnamed-party role selector should use the localized accessible name`);
-  assert(localizedFallbackUnits.orderLabel.includes('miembro del grupo'), `${name}: unnamed-party AI selector should use the localized accessible name`);
+  assert(localizedFallbackUnits.dutyLabel.includes('miembro del grupo'), `${name}: unnamed-party Duty selector should use the localized accessible name`);
+  assert(localizedFallbackUnits.stanceLabel.includes('miembro del grupo'), `${name}: unnamed-party Stance selector should use the localized accessible name`);
+  assert(localizedFallbackUnits.controlLabel.includes('miembro del grupo'), `${name}: unnamed-party Control selector should use the localized accessible name`);
   assert.strictEqual(localizedFallbackUnits.pageOverflow, false, `${name}: longer fallback names should not create horizontal overflow`);
   await page.evaluate(() => App.updateLanguage('en'));
   await page.evaluate(makeUnitScript());
@@ -1952,7 +1967,11 @@ async function checkViewport(browser, name, width, height) {
     await page.waitForTimeout(50);
     const opened = await page.evaluate(({ screenName, closeControl }) => {
       const overlay = document.getElementById(`screen-${screenName}`);
-      const close = overlay?.querySelector(`[data-command-control="${closeControl}"]`);
+      const close = Array.from(overlay?.querySelectorAll(`[data-command-control="${closeControl}"]`) || []).find(control => {
+        const controlRect = control.getBoundingClientRect?.();
+        const style = getComputedStyle(control);
+        return style.display !== 'none' && style.visibility !== 'hidden' && controlRect && controlRect.width > 0 && controlRect.height > 0;
+      });
       const app = document.getElementById('app');
       const game = document.getElementById('screen-game');
       const appMenu = document.getElementById('app-menu');
@@ -1991,7 +2010,7 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(opened.focusTrapId, `screen-${screenName}`, `${name}: live-game ${label} should activate the shared focus trap`);
     assert.strictEqual(opened.pageOverflow, false, `${name}: live-game ${label} should not create horizontal overflow`);
 
-    await page.locator(`#screen-${screenName} [data-command-control="${closeControl}"]`).first().click();
+    await page.locator(`#screen-${screenName} [data-command-control="${closeControl}"]:visible`).click();
     await page.waitForTimeout(50);
     const returned = await page.evaluate(({ screenName }) => {
       const overlay = document.getElementById(`screen-${screenName}`);
@@ -2112,7 +2131,11 @@ async function checkViewport(browser, name, width, height) {
   const holdingsWindow = await page.evaluate(() => {
     const root = document.getElementById('holdings-window-root');
     const dialog = root?.querySelector('.holdings-window');
-    const close = root?.querySelector('.holdings-close[data-command-control="close-holdings"]');
+    const close = Array.from(root?.querySelectorAll('.holdings-close[data-command-control="close-holdings"]') || []).find(control => {
+      const controlRect = control.getBoundingClientRect?.();
+      const style = getComputedStyle(control);
+      return style.display !== 'none' && style.visibility !== 'hidden' && controlRect && controlRect.width > 0 && controlRect.height > 0;
+    });
     const tabs = Array.from(root?.querySelectorAll('[data-command-control="switch-holdings-tab"]') || []);
     const body = root?.querySelector('.holdings-window-body');
     const controlShelf = root?.querySelector('.holdings-control-shelf');
@@ -2261,7 +2284,11 @@ async function checkViewport(browser, name, width, height) {
     const root = document.getElementById('holdings-window-root');
     const dialog = root?.querySelector('.holdings-window');
     const title = root?.querySelector('#holdings-window-title');
-    const close = root?.querySelector('.holdings-close[data-command-control="close-holdings"]');
+    const close = Array.from(root?.querySelectorAll('.holdings-close[data-command-control="close-holdings"]') || []).find(control => {
+      const controlRect = control.getBoundingClientRect?.();
+      const style = getComputedStyle(control);
+      return style.display !== 'none' && style.visibility !== 'hidden' && controlRect && controlRect.width > 0 && controlRect.height > 0;
+    });
     const back = root?.querySelector('[data-command-control="back-holdings"]');
     const release = root?.querySelector('[data-command-control="release-contained"]');
     const digest = root?.querySelector('[data-command-control="digest-contained"]');
@@ -2309,7 +2336,7 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedContainers.selectedTab, 'containers', `${name}: contained Inspect Back should return to the Containers tab`);
   assert.strictEqual(returnedContainers.hasContainerEntries, true, `${name}: contained Inspect Back should restore the container entry list`);
 
-  await page.locator('#holdings-window-root .holdings-close[data-command-control="close-holdings"]').click();
+  await page.locator('#holdings-window-root .holdings-close[data-command-control="close-holdings"]:visible').click();
   await page.waitForTimeout(50);
   const returnedHoldings = await page.evaluate(() => {
     const root = document.getElementById('holdings-window-root');

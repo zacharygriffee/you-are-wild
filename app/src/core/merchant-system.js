@@ -7,9 +7,11 @@ const YAW_MERCHANT_SYSTEM = {
     normalizeStock(app, stock = []) {
         return stock.map((entry, index) => {
             const itemName = typeof entry === 'string' ? entry : entry.name;
-            const def = app.ITEMS[itemName] || {};
+            const itemRef = typeof entry === 'string' ? { name: itemName } : entry;
+            const def = app._getItemDef(itemRef);
             return {
                 id: entry.id || `stock_${itemName || 'item'}_${index}`,
+                ...(def.id || entry.definitionId ? { definitionId: def.id || entry.definitionId } : {}),
                 name: itemName || 'Unknown Item',
                 price: entry.price || def.value || 10,
                 qty: entry.qty ?? 1
@@ -138,8 +140,14 @@ const YAW_MERCHANT_SYSTEM = {
 
     defaultStock(app, merchant = null, day = app.dayCount || 0) {
         return ['Healing Herb', 'Old Coin', 'Monster Fang'].map((name, index) => {
-            const def = app.ITEMS[name] || {};
-            return { id: `default_stock_${index}`, name, price: def.value || 10, qty: this.stockQuantity(app, merchant, name, index, day) };
+            const def = app._getItemDef({ name });
+            return {
+                id: `default_stock_${index}`,
+                definitionId: def.id,
+                name,
+                price: def.value || 10,
+                qty: this.stockQuantity(app, merchant, name, index, day)
+            };
         });
     },
 

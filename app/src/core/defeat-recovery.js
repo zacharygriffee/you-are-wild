@@ -681,8 +681,8 @@ const YAW_DEFEAT_RECOVERY = {
         return true;
     },
 
-    isProtectedItem(item) {
-        return Boolean(item && typeof item === 'object' && (item.bound || item.quest || item.questItem || item.protectedOnDefeat));
+    isProtectedItem(app, item) {
+        return Boolean(item && typeof item === 'object' && (item.bound || item.quest || item.questItem || item.protectedOnDefeat || app._isQuestProtectedItem?.(item)));
     },
 
     isUnsafeDropTile(tile) {
@@ -744,8 +744,8 @@ const YAW_DEFEAT_RECOVERY = {
             ? mode.inventory
             : app.settings?.inventoryRecovery;
         if (inventoryPolicy !== 'retain') {
-            const dropped = (app.inventory || []).filter(item => !this.isProtectedItem(item));
-            const retained = (app.inventory || []).filter(item => this.isProtectedItem(item));
+            const dropped = (app.inventory || []).filter(item => !this.isProtectedItem(app, item));
+            const retained = (app.inventory || []).filter(item => this.isProtectedItem(app, item));
             const gold = Math.max(0, Number(app.player?.gold) || 0);
             if (dropped.length || gold > 0) {
                 const tile = this.deathBagTile(app, state.defeatedAt);
@@ -778,16 +778,28 @@ const YAW_DEFEAT_RECOVERY = {
         const index = bags.findIndex(bag => String(bag.id) === String(bagId));
         if (index < 0) return false;
         const bag = bags[index];
-        const space = Math.max(0, app.MAX_INVENTORY - (app.inventory || []).length);
-        const taken = (bag.items || []).splice(0, space);
-        app.inventory.push(...this.clone(taken, []));
+        const taken = [];
+        const remaining = [];
+        for (const source of this.clone(bag.items || [], [])) {
+            const item = app._normalizeItemInstance(source);
+            const itemRef = item.definitionId || item.name;
+            const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+            if (!app._canAddInventoryItem(itemRef, quantity)) {
+                remaining.push(source);
+                continue;
+            }
+            app._addInventoryItem(itemRef, item);
+            taken.push(item);
+        }
+        bag.items = remaining;
         const gold = Math.max(0, Number(bag.gold) || 0);
         if (app.player) app.player.gold = (Number(app.player.gold) || 0) + gold;
         bag.gold = 0;
         if ((bag.items || []).length === 0) bags.splice(index, 1);
         if (typeof app._persistCurrentExplorationTile === 'function') app._persistCurrentExplorationTile(tile);
         else app.persistTileDelta(tile.x, tile.y, tile, { reason: 'collect-death-bag' });
-        const text = app._label('recovery.deathBagCollected', 'Recovered {items} item(s) and {gold} gold.', { items: taken.length, gold });
+        const takenQuantity = taken.reduce((sum, item) => sum + Math.max(1, Math.floor(Number(item.quantity) || 1)), 0);
+        const text = app._label('recovery.deathBagCollected', 'Recovered {items} item(s) and {gold} gold.', { items: takenQuantity, gold });
         app.log.push({ text, type: 'loot' });
         app._addTileEvent?.(text, 'loot');
         app.renderLog?.();

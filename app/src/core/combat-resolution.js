@@ -208,6 +208,17 @@ const YAW_COMBAT_RESOLUTION = {
                     });
                     break;
                 }
+                const actorCanCounterFlight = actor.ranged || actor.antiflying;
+                const targetDodge = target.flying && !actorCanCounterFlight
+                    ? 0.5
+                    : (target.swimming && !actor.antiswimming ? 0.3 : (target.floopy ? 0.3 : 0));
+                if (targetDodge > 0 && app._targetDodgeRoll(actor, target, 'fight') < targetDodge) {
+                    result = app._label('combat.allyAttackDodged', "{target} dodges {ally}'s attack!", {
+                        target: target.name,
+                        ally: actorName
+                    });
+                    break;
+                }
                 const ar = app._combatActionRating(actor.Figh, actor, target, 'player-fight');
                 const def = app._effectiveCon(target);
                 const baseDmg = Math.max(1, ar - def * 0.3 + app._combatDamageVariance(actor, target, 'player-fight'));

@@ -116,7 +116,8 @@ const YAW_QUEST_PANEL = {
             ['all', app._label('quest.filter.all', 'All')],
             ['active', app._label('quest.filter.active', 'Active')],
             ['turn-in', app._label('quest.filter.turnIn', 'Turn In')],
-            ['completed', app._label('quest.filter.completed', 'Completed')]
+            ['completed', app._label('quest.filter.completed', 'Completed')],
+            ['failed', app._label('quest.filter.failed', 'Failed')]
         ];
         const sortOptions = [
             ['status', app._label('quest.sort.status', 'Status')],
@@ -137,9 +138,11 @@ const YAW_QUEST_PANEL = {
     },
 
     statusLabel(app, quest) {
-        const needsTurnIn = quest.status === 'completed' && quest.turnInRequired && !quest.rewardClaimed;
-        if (needsTurnIn) return app._label('quest.status.turnIn', 'Turn In');
-        if (quest.status === 'completed') return app._label('quest.status.completed', 'Completed');
+        if (quest.lifecycleState === 'ready_for_turn_in') return app._label('quest.status.turnIn', 'Turn In');
+        if (quest.lifecycleState === 'turned_in') return app._label('quest.status.turnedIn', 'Turned In');
+        if (quest.lifecycleState === 'failed') return app._label('quest.status.failed', 'Failed');
+        if (quest.lifecycleState === 'objectives_complete') return app._label('quest.status.objectivesComplete', 'Objectives Complete');
+        if (quest.lifecycleState === 'available') return app._label('quest.status.available', 'Available');
         return app._label('quest.status.active', 'Active');
     },
 
@@ -175,11 +178,12 @@ const YAW_QUEST_PANEL = {
         }
         html += `<div style="display:grid;gap:12px;margin-top:12px;">`;
         visibleQuests.forEach(quest => {
-            const needsTurnIn = quest.status === 'completed' && quest.turnInRequired && !quest.rewardClaimed;
+            const needsTurnIn = quest.lifecycleState === 'ready_for_turn_in';
             const status = app._escapeHtml(app._questStatusLabel(quest));
             const questTitle = app._questTitleLabel(quest);
+            const questDescription = app._questDescriptionLabel(quest);
             html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${app._escapeHtml(questTitle)} <span style="font-size:11px;color:var(--text-muted)">[${status}]</span></div>`;
-            if (quest.description) html += `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${app._escapeHtml(quest.description)}</div>`;
+            if (questDescription) html += `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${app._escapeHtml(questDescription)}</div>`;
             html += `<div style="font-size:12px;color:var(--text-primary);margin-top:8px;line-height:1.6">${app._questProgressText(quest)}</div>`;
             for (const objective of quest.objectives || []) {
                 const routePreview = app._questRoutePreviewText(objective);
@@ -201,9 +205,11 @@ const YAW_QUEST_PANEL = {
                     const showTurnInTitle = app._escapeHtml(app._label('quest.showTurnInFor', 'Show turn-in for {name}', { name: questTitle }));
                     html += `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="show-quest-turn-in-route" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showTurnInTitle}" aria-label="${showTurnInTitle}" onclick="App.focusQuestTurnInOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showTurnInLabel}</button>`;
                 }
-                const turnInLabel = app._escapeHtml(app._label('quest.turnIn', 'Turn In'));
-                const turnInTitle = app._escapeHtml(app._label('quest.turnInQuest', 'Turn in {name}', { name: questTitle }));
-                html += `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="turn-in-quest" data-command-intent="turnInQuest" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${turnInTitle}" aria-label="${turnInTitle}" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">${turnInLabel}</button>`;
+                if (app._questTurnInEligibility(quest).ok) {
+                    const turnInLabel = app._escapeHtml(app._label('quest.turnIn', 'Turn In'));
+                    const turnInTitle = app._escapeHtml(app._label('quest.turnInQuest', 'Turn in {name}', { name: questTitle }));
+                    html += `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="turn-in-quest" data-command-intent="turnInQuest" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${turnInTitle}" aria-label="${turnInTitle}" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">${turnInLabel}</button>`;
+                }
             }
             html += `</div>`;
         });

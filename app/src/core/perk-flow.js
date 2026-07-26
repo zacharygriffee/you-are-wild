@@ -13,7 +13,7 @@ const YAW_PERK_FLOW = {
     },
 
     hasEffect(app, effect, unit = app.player) {
-        return (unit?.perks || []).some(perk => perk.perkEffect === effect);
+        return YAW_PERK_EFFECTS.hasFlag(unit, effect);
     },
 
     canChoose(app, perk, treeId, unit = app.player) {
@@ -21,28 +21,97 @@ const YAW_PERK_FLOW = {
         if (!perk.requires) return true;
         if (perk.requires.perk && !this.hasPerk(app, perk.requires.perk, unit)) return false;
         if (perk.requires.tree && this.treeCount(app, perk.requires.tree, unit) < (perk.requires.count || 1)) return false;
+        if (perk.requires.level && Number(unit.level || 1) < Number(perk.requires.level)) return false;
+        if (perk.requires.practice) {
+            const record = unit.multiActionPractice?.multi?.[perk.requires.practice.key];
+            if (Number(record?.attempts || 0) < Number(perk.requires.practice.count || 1)) return false;
+        }
+        if (perk.requires.equipmentEffect && !app._hasEquipmentEffect?.(unit, perk.requires.equipmentEffect)) return false;
+        if (perk.requires.milestone && !unit.progressionMilestones?.[perk.requires.milestone]) return false;
         return true;
     },
 
+    localizeTree(app, treeId, tree) {
+        if (!tree || tree.owner) return tree;
+        const isSpecies = treeId.startsWith('species:');
+        const treeKey = isSpecies ? treeId.slice('species:'.length) : treeId;
+        return {
+            ...tree,
+            label: app._label(`perk.tree.${treeKey}`, tree.label),
+            perks: (tree.perks || []).map(perk => ({
+                ...perk,
+                name: app._label(`perk.name.${perk.id}`, perk.name),
+                desc: app._label(`perk.desc.${perk.id}`, perk.desc)
+            }))
+        };
+    },
+
     treesForUnit(app, unit = app.player) {
-        const trees = { ...app.PERK_TREES };
+        const trees = Object.fromEntries(Object.entries(app.PERK_TREES)
+            .map(([treeId, tree]) => [treeId, this.localizeTree(app, treeId, tree)]));
+        Object.assign(trees, YAW_PERK_REGISTRY.forUnit(app, unit));
         const speciesTree = app.SPECIES_PERK_TREES[unit?.species];
-        if (speciesTree) trees[`species:${unit.species}`] = speciesTree;
+        if (speciesTree) {
+            const treeId = `species:${unit.species}`;
+            trees[treeId] = this.localizeTree(app, treeId, speciesTree);
+        }
         return trees;
+    },
+
+    definitionFor(app, perkId, unit = app.player) {
+        for (const tree of Object.values(this.treesForUnit(app, unit))) {
+            const definition = (tree.perks || []).find(perk => perk.id === perkId);
+            if (definition) return definition;
+        }
+        return null;
+    },
+
+    selectedName(app, selectedPerk, unit = app.player) {
+        return this.definitionFor(app, selectedPerk?.id, unit)?.name
+            || selectedPerk?.name
+            || selectedPerk?.id
+            || '';
     },
 
     availableChoices(app, unit = app.player) {
         const choices = [];
         for (const [treeId, tree] of Object.entries(this.treesForUnit(app, unit))) {
             for (const perk of tree.perks) {
-                choices.push({ ...perk, tree: treeId, treeLabel: tree.label, available: this.canChoose(app, perk, treeId, unit) });
+                if (!this.canChoose(app, perk, treeId, unit)) continue;
+                choices.push({
+                    ...perk,
+                    tree: treeId,
+                    treeLabel: tree.label,
+                    available: true,
+                    availabilityReason: this.availabilityReason(app, perk, treeId, tree, unit)
+                });
             }
         }
         return choices;
     },
 
+    availabilityReason(app, perk, treeId, tree, unit = app.player) {
+        if (perk.requires?.perk) {
+            const prerequisite = this.definitionFor(app, perk.requires.perk, unit);
+            return app._label('perk.available.fromPerk', 'Unlocked by {name}.', {
+                name: prerequisite?.name || perk.requires.perk
+            });
+        }
+        if (perk.requires?.tree) {
+            return app._label('perk.available.fromPath', 'Unlocked by your {path} path.', {
+                path: this.treesForUnit(app, unit)[perk.requires.tree]?.label || perk.requires.tree
+            });
+        }
+        if (treeId.startsWith('species:')) {
+            return app._label('perk.available.fromSpecies', 'Available to your {species} lineage.', {
+                species: tree.label || unit?.species || ''
+            });
+        }
+        return app._label('perk.available.current', 'Available from your current experience.');
+    },
+
     availableFilters(app, unit = app.player) {
-        return [['all', app._label('perk.filter.all', 'All')], ...Object.entries(this.treesForUnit(app, unit)).map(([treeId, tree]) => [treeId, tree.label])];
+        return [['all', app._label('perk.frontier', 'Current choices')]];
     },
 
     setFilter(app, filter) {
@@ -61,6 +130,7 @@ const YAW_PERK_FLOW = {
             return;
         }
         app.player.perks = app.player.perks || [];
+        const effectProfile = YAW_PERK_EFFECTS.apply(app.player, choice);
         app.player.perks.push({
             id: choice.id,
             tree: choice.tree,
@@ -69,9 +139,15 @@ const YAW_PERK_FLOW = {
             stat: choice.stat,
             val: choice.val,
             perkEffect: choice.perkEffect || null,
-            desc: choice.desc
+            desc: choice.desc,
+            definitionVersion: 2,
+            effectVersion: effectProfile.version,
+            effectProfile: {
+                version: effectProfile.version,
+                effects: effectProfile.effects.map(effect => ({ ...effect }))
+            },
+            availabilityReason: choice.availabilityReason
         });
-        if (choice.stat) app.player[choice.stat] = (app.player[choice.stat] || 0) + (choice.val || 0);
         app.player.pendingPerkChoices = Math.max(0, (app.player.pendingPerkChoices || 0) - 1);
         app.log.push({ text: app._label('perk.chosen', 'Perk chosen: {name}. {description}', { name: choice.name, description: choice.desc }), type: 'discovery' });
         app.renderLog();
@@ -90,11 +166,7 @@ const YAW_PERK_FLOW = {
             app.renderLog();
             return;
         }
-        selected.forEach(perk => {
-            if (perk.stat && typeof perk.val === 'number') {
-                app.player[perk.stat] = Math.max(0, (app.player[perk.stat] || 0) - perk.val);
-            }
-        });
+        selected.forEach(perk => YAW_PERK_EFFECTS.rollback(app.player, perk));
         app.player.pendingPerkChoices = (app.player.pendingPerkChoices || 0) + selected.length;
         app.player.perks = [];
         app.perkTreeFilter = 'all';

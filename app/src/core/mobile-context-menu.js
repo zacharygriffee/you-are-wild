@@ -11,8 +11,7 @@ const YAW_MOBILE_CONTEXT_MENU = {
     const unitName = unit.name || fallbackName;
     const dialogTitle = app._label('ui.partyActionsFor', 'Party actions for {name}', { name: unitName });
     const dialogDescription = app._label('ui.partyActionsDescription', "Manage {name}'s holdings, party role, and companion actions.", { name: unitName });
-    const role = app._getPartyRole(unit);
-    const order = app._getPartyAIOrder(unit);
+    const behavior = app._getCompanionBehavior(unit);
     const commandControls = {
       stats: 'open-party-stats',
       lead: 'make-leader',
@@ -25,20 +24,17 @@ const YAW_MOBILE_CONTEXT_MENU = {
       const exitAttr = action === 'close' ? ' data-command-slot="exit"' : '';
       return `<button class="action-btn${extraClass}" role="menuitem" ${detailAttrs} data-command-control="${app._escapeHtml(commandControls[action] || action)}"${exitAttr} title="${app._escapeHtml(label)}" aria-label="${app._escapeHtml(label)}" onclick="App.mobilePartyContextAction('${action}',${index})">${app._escapeHtml(label)}</button>`;
     };
-    const roleOptions = Object.keys(app.PARTY_ROLES).map(key => `<option value="${key}" ${role === key ? 'selected' : ''}>${app._escapeHtml(app._partyRoleLabel(key))}</option>`).join('');
-    const orderOptions = Object.keys(app.PARTY_AI_ORDERS).map(key => `<option value="${key}" ${order === key ? 'selected' : ''}>${app._escapeHtml(app._partyAIOrderLabel(key))}</option>`).join('');
-    const roleLabel = app._label('party.role', 'Role');
-    const orderLabel = app._label('party.aiOrder', 'AI Order');
-    const roleAria = app._label('party.roleFor', 'Party role for {name}', { name: unitName });
-    const orderAria = app._label('party.aiOrderFor', 'AI order for {name}', { name: unitName });
-    const roleDescription = app._partyRoleDescription(role);
-    const orderDescription = app._partyAIOrderDescription(order);
+    const dutyOptions = Object.keys(app.PARTY_DUTIES).map(key => `<option value="${key}" ${behavior.duty === key ? 'selected' : ''}>${app._escapeHtml(app._companionDutyLabel(key))}</option>`).join('');
+    const stanceOptions = Object.keys(app.PARTY_STANCES).map(key => `<option value="${key}" ${behavior.stance === key ? 'selected' : ''}>${app._escapeHtml(app._companionStanceLabel(key))}</option>`).join('');
+    const controlOptions = Object.keys(app.PARTY_CONTROLS).map(key => `<option value="${key}" ${behavior.control === key ? 'selected' : ''}>${app._escapeHtml(app._companionControlLabel(key))}</option>`).join('');
+    const dutyDescription = `${app._companionDutyDescription(behavior.duty)} ${app._label('party.tradeoff', 'Tradeoff')}: ${app._companionDutyTradeoff(behavior.duty)}`;
     let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-labelledby="mobile-context-menu-title" aria-describedby="mobile-context-menu-description" data-command-surface="detail-management" data-command-mode="exploration"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${unit.icon || ''} ${app._escapeHtml(dialogTitle)}</div><p class="mobile-context-menu-description" id="mobile-context-menu-description">${app._escapeHtml(dialogDescription)}</p><div class="mobile-context-menu-actions" role="menu" aria-label="${app._escapeHtml(dialogTitle)}" data-command-surface="detail-management" data-command-mode="exploration">`;
     html += actionButton(app._label('ui.holdings', 'Holdings'), 'stats');
     if (unit !== app.player && !unit.mc) {
       if (app._getPartyLeader() !== unit) html += actionButton(app._label('party.makeLeader', 'Make Leader'), 'lead');
-      html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${app._escapeHtml(roleLabel)}</span><select class="nav-btn" ${detailAttrs} data-command-control="set-party-role" aria-label="${app._escapeHtml(roleAria)}" title="${app._escapeHtml(roleDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetRole(${index},this.value)">${roleOptions}</select><small>${app._escapeHtml(roleDescription)}</small></label>`;
-      html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${app._escapeHtml(orderLabel)}</span><select class="nav-btn" ${detailAttrs} data-command-control="set-party-ai-order" aria-label="${app._escapeHtml(orderAria)}" title="${app._escapeHtml(orderDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetAIOrder(${index},this.value)">${orderOptions}</select><small>${app._escapeHtml(orderDescription)}</small></label>`;
+      html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${app._escapeHtml(app._label('party.duty', 'Duty'))}</span><select class="nav-btn" ${detailAttrs} data-command-control="set-companion-duty" aria-label="${app._escapeHtml(app._label('party.dutyFor', 'Duty for {name}', { name: unitName }))}" title="${app._escapeHtml(dutyDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetBehavior(${index},'duty',this.value)">${dutyOptions}</select><small>${app._escapeHtml(dutyDescription)}</small></label>`;
+      html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${app._escapeHtml(app._label('party.stance', 'Stance'))}</span><select class="nav-btn" ${detailAttrs} data-command-control="set-companion-stance" aria-label="${app._escapeHtml(app._label('party.stanceFor', 'Stance for {name}', { name: unitName }))}" title="${app._escapeHtml(app._companionStanceDescription(behavior.stance))}" onchange="event.stopPropagation();App.mobilePartyContextSetBehavior(${index},'stance',this.value)">${stanceOptions}</select><small>${app._escapeHtml(app._companionStanceDescription(behavior.stance))}</small></label>`;
+      html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${app._escapeHtml(app._label('party.control', 'Control'))}</span><select class="nav-btn" ${detailAttrs} data-command-control="set-companion-control" aria-label="${app._escapeHtml(app._label('party.controlFor', 'Control for {name}', { name: unitName }))}" title="${app._escapeHtml(app._companionControlDescription(behavior.control))}" onchange="event.stopPropagation();App.mobilePartyContextSetBehavior(${index},'control',this.value)">${controlOptions}</select><small>${app._escapeHtml(app._companionControlDescription(behavior.control))}</small></label>`;
       html += actionButton(app._label('party.dropOff', 'Drop Off'), 'dropoff');
       html += actionButton(app._label('party.dismiss', 'Dismiss'), 'dismiss', ' danger');
     }
@@ -72,6 +68,15 @@ const YAW_MOBILE_CONTEXT_MENU = {
   setPartyAIOrder(app, index, order) {
     app._haptic(8);
     app.setPartyAIOrder(index, order);
+    if (app.party[index] && document.getElementById('mobile-context-menu')) {
+      app.showMobilePartyContext(index);
+    }
+  },
+  setBehavior(app, index, field, value) {
+    app._haptic(8);
+    if (field === 'duty') app.setCompanionDuty(index, value);
+    if (field === 'stance') app.setCompanionStance(index, value);
+    if (field === 'control') app.setCompanionControl(index, value);
     if (app.party[index] && document.getElementById('mobile-context-menu')) {
       app.showMobilePartyContext(index);
     }

@@ -175,18 +175,24 @@ const YAW_TRANSACTION_WINDOW = {
                         <h2 id="transaction-window-title">${app._escapeHtml(title)}</h2>
                         <p id="transaction-window-description" class="holding-entry-meta">${app._escapeHtml(description)}</p>
                     </div>
-                    <button class="nav-btn transaction-close" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="close-transaction" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeTransactionWindow()">${closeLabel}</button>
+                    <button class="nav-btn transaction-close mobile-screen-exit-source" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="close-transaction" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeTransactionWindow()">${closeLabel}</button>
                 </header>
                 ${this.summary(app, npc)}
                 <div class="transaction-body">
                     ${kind === 'trade' ? this.tradeBody(app, npc) : this.questBody(app, npc)}
                 </div>
+                <footer class="mobile-screen-exit-bar" data-command-surface="transaction-window" data-command-mode="exploration">
+                    <button class="nav-btn transaction-close" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="close-transaction" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeTransactionWindow()">${closeLabel}</button>
+                </footer>
             </section>`;
         document.getElementById('app')?.classList?.add('transaction-window-open');
         this.setUnderlyingInert(true);
         const dialog = root.querySelector('.transaction-window');
         app._activateFocusTrap?.(dialog, { close: () => app.closeTransactionWindow() });
-        try { root.querySelector('.transaction-close')?.focus({ preventScroll: true }); } catch (e) { root.querySelector('.transaction-close')?.focus(); }
+        const closeControl = window.innerWidth <= 1024
+            ? root.querySelector('.mobile-screen-exit-bar .transaction-close')
+            : root.querySelector('.mobile-screen-exit-source.transaction-close, .transaction-close');
+        try { closeControl?.focus({ preventScroll: true }); } catch (e) { closeControl?.focus(); }
         return true;
     },
 
@@ -220,9 +226,18 @@ const YAW_TRANSACTION_WINDOW = {
         } else {
             stockEntries.forEach(({ item, index }) => {
                 const unknown = app._label('item.unknown', 'Unknown');
-                const def = app.ITEMS[item.name] || { icon: '?', desc: unknown, type: 'misc' };
-                const disabled = (app.player.gold || 0) < item.price || item.qty <= 0 || app.inventory.length >= app.MAX_INVENTORY ? ' disabled aria-disabled="true"' : '';
-                const buyTitle = app._escapeHtml(app._label('trade.buyItem', 'Buy {name}', { name: item.name }));
+                const resolved = app._getItemDef(item);
+                const providerUnavailable = Boolean(item.definitionId && !resolved.id);
+                const def = Object.keys(resolved).length ? resolved : {
+                    icon: '?',
+                    desc: providerUnavailable ? app._label('item.providerUnavailable', 'Content provider unavailable') : unknown,
+                    type: 'misc'
+                };
+                const blocked = providerUnavailable || (app.player.gold || 0) < item.price || item.qty <= 0 || !app._canAddInventoryItem(item.definitionId || item.name, 1);
+                const disabled = blocked ? ' disabled aria-disabled="true"' : '';
+                const buyTitle = app._escapeHtml(providerUnavailable
+                    ? app._label('item.providerUnavailableAction', '{name} is unavailable until its content provider is enabled.', { name: item.name })
+                    : app._label('trade.buyItem', 'Buy {name}', { name: item.name }));
                 const typeLabel = app._escapeHtml(this.itemTypeLabel(app, def.type));
                 const quantity = app._escapeHtml(app._label('trade.quantity', 'Qty {count}', { count: item.qty }));
                 const price = app._escapeHtml(app._label('trade.goldCompact', '{amount}g', { amount: item.price }));
@@ -242,15 +257,28 @@ const YAW_TRANSACTION_WINDOW = {
         } else {
             sellEntries.forEach(({ item }) => {
                 const unknown = app._label('item.unknown', 'Unknown');
-                const def = app.ITEMS[item.name] || { icon: '?', value: 1, desc: unknown, type: 'misc' };
-                const price = Math.max(1, Math.floor((def.value || 1) * 0.5));
-                const sellTitle = app._escapeHtml(app._label('trade.sellItem', 'Sell {name}', { name: item.name }));
+                const resolved = app._getItemDef(item);
+                const providerUnavailable = Boolean(item.definitionId && !resolved.id);
+                const def = Object.keys(resolved).length ? resolved : {
+                    icon: '?',
+                    value: 0,
+                    desc: providerUnavailable ? app._label('item.providerUnavailable', 'Content provider unavailable') : unknown,
+                    type: 'misc'
+                };
+                const price = providerUnavailable ? 0 : Math.max(1, Math.floor((def.value || 1) * 0.5));
+                const questProtected = app._isQuestProtectedItem?.(item) === true;
+                const blocked = questProtected || providerUnavailable;
+                const sellTitle = app._escapeHtml(providerUnavailable
+                    ? app._label('item.providerUnavailableAction', '{name} is unavailable until its content provider is enabled.', { name: item.name })
+                    : questProtected
+                        ? app._label('inventory.questProtected', '{name} is needed for an active quest.', { name: item.name })
+                        : app._label('trade.sellItem', 'Sell {name}', { name: item.name }));
                 const typeLabel = app._escapeHtml(this.itemTypeLabel(app, def.type));
                 const priceLabel = app._escapeHtml(app._label('trade.goldCompact', '{amount}g', { amount: price }));
                 html += `<article class="transaction-item">
                     <div><strong>${app._escapeHtml(def.icon || '?')} ${app._escapeHtml(item.name)}</strong><small>${typeLabel} · ${app._escapeHtml(def.desc || '')}</small></div>
                     <div class="transaction-item-meta"><span>${priceLabel}</span></div>
-                    <button class="nav-btn" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="sell-item" data-command-intent="trade" title="${sellTitle}" aria-label="${sellTitle}" onclick="App.sellToMerchant('${targetId}','${String(item.id).replace(/'/g, "\\'")}')">${sellLabel}</button>
+                    <button class="nav-btn${blocked ? ' disabled' : ''}" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="sell-item" data-command-intent="trade" title="${sellTitle}" aria-label="${sellTitle}"${blocked ? ' disabled aria-disabled="true"' : ''} onclick="App.sellToMerchant('${targetId}','${String(item.id).replace(/'/g, "\\'")}')">${sellLabel}</button>
                 </article>`;
             });
         }
@@ -276,11 +304,13 @@ const YAW_TRANSACTION_WINDOW = {
         if (!quests.length) return `${html}${this.empty(app, app._label('quest.window.none', 'None'))}</div></section>`;
         quests.forEach(quest => {
             const normalized = app._normalizeQuest(quest, giver);
+            const questTitle = app._questTitleLabel(normalized);
+            const questDescription = app._questDescriptionLabel(normalized);
             const targetId = app._unitKey(giver);
             const reward = app._questRewardPreviewText(normalized.reward);
             html += `<article class="transaction-quest">
-                <strong>${app._escapeHtml(normalized.title)}</strong>
-                ${normalized.description ? `<p>${app._escapeHtml(normalized.description)}</p>` : ''}
+                <strong>${app._escapeHtml(questTitle)}</strong>
+                ${questDescription ? `<p>${app._escapeHtml(questDescription)}</p>` : ''}
                 <div class="transaction-quest-progress">${app._questProgressText(normalized)}</div>
                 <small>${reward}</small>`;
             if (section === 'available') {
@@ -288,7 +318,7 @@ const YAW_TRANSACTION_WINDOW = {
                 html += `<button class="nav-btn primary" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="confirm-quest" data-command-intent="acceptQuest" onclick="App.acceptQuestFromUnit('${targetId}')">${acceptLabel}</button>`;
             } else if (section === 'completed' && normalized.turnInRequired && !normalized.rewardClaimed) {
                 const turnInLabel = app._escapeHtml(app._label('quest.turnIn', 'Turn In'));
-                html += `<button class="nav-btn primary" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="turn-in-quest" data-command-intent="turnInQuest" onclick="App.turnInQuest('${String(normalized.id).replace(/'/g, "\\'")}')">${turnInLabel}</button>`;
+                html += `<button class="nav-btn primary" data-command-surface="transaction-window" data-command-mode="exploration" data-command-control="turn-in-quest" data-command-intent="turnInQuest" onclick="App.turnInQuest('${String(normalized.id).replace(/'/g, "\\'")}',{giverId:'${String(targetId).replace(/'/g, "\\'")}'})">${turnInLabel}</button>`;
             }
             html += `</article>`;
         });

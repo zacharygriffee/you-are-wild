@@ -1,0 +1,140 @@
+{
+  "schema": "yaw-core-maturity-migration-baseline-v1",
+  "saveSchema": 11,
+  "scenarios": {
+    "newSave": {
+      "inventory": [],
+      "quests": [],
+      "partyRoles": {},
+      "partyAIOrders": {},
+      "playerPerks": [],
+      "pendingPerkChoices": 0
+    },
+    "questLifecycle": [
+      {
+        "id": "fixture_available",
+        "status": "available",
+        "giverId": "guide_fixture",
+        "giverLocation": { "x": 2, "y": 1, "label": "Fixture Camp" },
+        "turnInRequired": true,
+        "rewardClaimed": false,
+        "objectives": [
+          { "id": "fixture_available_0", "type": "find", "item": "Old Coin", "required": 1, "progress": 0, "complete": false }
+        ],
+        "reward": { "gold": 5, "items": ["Healing Herb"] }
+      },
+      {
+        "id": "fixture_active",
+        "status": "active",
+        "giverId": "guide_fixture",
+        "giverLocation": { "x": 2, "y": 1, "label": "Fixture Camp" },
+        "turnInRequired": true,
+        "rewardClaimed": false,
+        "objectives": [
+          { "id": "fixture_active_0", "type": "travel", "location": { "x": 5, "y": 3 }, "required": 1, "progress": 0, "complete": false }
+        ],
+        "reward": { "xp": 20 }
+      },
+      {
+        "id": "fixture_ready",
+        "status": "completed",
+        "giverId": "guide_fixture",
+        "giverLocation": { "x": 2, "y": 1, "label": "Fixture Camp" },
+        "turnInRequired": true,
+        "rewardClaimed": false,
+        "objectives": [
+          { "id": "fixture_ready_0", "type": "defeat", "species": "wolf", "required": 1, "progress": 1, "complete": true }
+        ],
+        "reward": { "xp": 25, "gold": 8 }
+      },
+      {
+        "id": "fixture_turned_in",
+        "status": "completed",
+        "giverId": "guide_fixture",
+        "giverLocation": { "x": 2, "y": 1, "label": "Fixture Camp" },
+        "turnInRequired": true,
+        "rewardClaimed": true,
+        "objectives": [
+          { "id": "fixture_turned_in_0", "type": "find", "item": "Crystal Shard", "required": 1, "progress": 1, "complete": true }
+        ],
+        "reward": { "gold": 12 }
+      }
+    ],
+    "serviceSuspension": {
+      "id": "guide_fixture",
+      "disposition": "quest_giver",
+      "serviceSuspended": true,
+      "containedBy": "fixture_player",
+      "serviceOrigin": { "x": 2, "y": 1, "structureId": "camp" }
+    },
+    "companionBehavior": {
+      "party": [
+        { "id": "fixture_player", "name": "You", "partyRole": "companion", "aiOrder": "aggressive" },
+        { "id": "fixture_scout", "name": "Scout", "partyRole": "scout", "aiOrder": "defensive" },
+        { "id": "fixture_guard", "name": "Guard", "partyRole": "guard", "aiOrder": "aggressive" },
+        { "id": "fixture_support", "name": "Support", "partyRole": "support", "aiOrder": "healer" },
+        { "id": "fixture_gatherer", "name": "Gatherer", "partyRole": "gatherer", "aiOrder": "scavenger" },
+        { "id": "fixture_passive", "name": "Passive", "partyRole": "companion", "aiOrder": "passive" }
+      ],
+      "partyRoles": {
+        "fixture_scout": "scout",
+        "Scout": "scout",
+        "fixture_guard": "guard",
+        "Guard": "guard"
+      },
+      "partyAIOrders": {
+        "fixture_scout": "defensive",
+        "Scout": "defensive",
+        "fixture_guard": "aggressive",
+        "Guard": "aggressive"
+      },
+      "droppedOff": {
+        "id": "fixture_dropped",
+        "formerPartyMember": true,
+        "droppedOffCompanion": true,
+        "dropOffLocation": { "x": 7, "y": 4, "interior": false, "interiorX": 0, "interiorY": 0 }
+      },
+      "interiorDroppedOff": {
+        "id": "fixture_interior_dropped",
+        "formerPartyMember": true,
+        "droppedOffCompanion": true,
+        "dropOffLocation": { "x": 7, "y": 4, "interior": true, "interiorX": 1, "interiorY": 0 }
+      },
+      "strandedAfterDefeat": {
+        "id": "fixture_stranded",
+        "status": "stranded",
+        "x": 9,
+        "y": 6,
+        "interior": false
+      }
+    },
+    "progression": {
+      "playerPerks": [
+        { "id": "toughness_1", "tree": "survival", "species": null, "name": "Toughness", "stat": "MPun", "val": 10, "perkEffect": null },
+        { "id": "night_eyes", "tree": "species:wolf", "species": "wolf", "name": "Night Eyes", "stat": null, "val": 0, "perkEffect": "nightVision" }
+      ],
+      "pendingPerkChoices": 1,
+      "respecRefundCount": 2
+    },
+    "reviewMap": {
+      "knownObjective": { "x": 5, "y": 3, "explored": true, "questId": "fixture_active", "kind": "objective" },
+      "knownTurnIn": { "x": 2, "y": 1, "explored": true, "questId": "fixture_ready", "kind": "turn-in" },
+      "unknownDestination": { "x": 12, "y": 8, "explored": false, "questId": "fixture_unknown", "kind": "objective" },
+      "exploredTiles": ["0,0", "1,0", "2,1", "5,3"]
+    },
+    "merchantAndModule": {
+      "merchant": {
+        "id": "merchant_fixture",
+        "merchantStockTable": "general",
+        "merchantStockDay": 4,
+        "merchantStock": [
+          { "id": "merchant_fixture_4_0", "name": "Healing Herb", "price": 8, "quantity": 2 },
+          { "id": "merchant_fixture_4_1", "name": "Monster Fang", "price": 12, "quantity": 1 }
+        ]
+      },
+      "soldInstance": { "id": "sold_fixture", "definitionId": "core:old_coin", "name": "Old Coin" },
+      "enabledProvider": { "definitionId": "fixture-items:tonic", "name": "Fixture Tonic" },
+      "missingProvider": { "definitionId": "missing-items:tonic", "name": "Fixture Tonic" }
+    }
+  }
+}

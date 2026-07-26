@@ -5,7 +5,7 @@
 
 const YAW_EQUIPMENT_SYSTEM = {
     itemDef(app, item) {
-        return app.ITEMS[item?.name] || {};
+        return YAW_ITEM_REGISTRY.definition(app, item);
     },
 
     isEquippable(app, item) {

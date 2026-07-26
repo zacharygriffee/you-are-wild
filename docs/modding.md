@@ -164,17 +164,149 @@ Implemented permissions:
 | `ai:provide` | register a trusted provider adapter and session connection |
 | `world:add_biome` | add or temporarily replace an owned biome definition; this legacy seam is not a save-stable geography-placement promise |
 | `content:add_species` | add owned serializable species data |
-| `content:add_item` | add owned serializable item data |
+| `content:add_item` | register an owned Item Definition V2 |
+| `content:add_quest` | register an owned bounded Quest Contract V2 template |
 | `content:add_template` | register owned legacy content templates for documented core request keys |
 | `content:add_locale` | register an owned locale definition and bounded target-owned translation entries |
 | `content:add_creation_option` | register owned creation choices persisted under the provider namespace |
 | `content:add_action_variant` | register an owned Feed, Feast, or Play variant |
+| `content:add_perk_profile` | register an owned data-only Perk Profile V1 |
 | `mechanics:add_resource_profile` | register and mutate an owned bounded Resource Ledger V1 profile |
 | `mechanics:add_combat_technique` | register an owned declarative Combat Technique V1 Fight profile |
 | `mechanics:add_recovery_mode` | register an owned declarative Recovery Mode V1 profile |
 
 Unknown permissions reject installation. Calling a permissioned API without
 declaring its token fails module enablement and cleans partial contributions.
+
+### Item Definition V2
+
+`MODS.addItem(definition)` registers an immutable, owned item definition in
+the same lookup used by core inventory, equipment, merchants, and trade. The
+definition must be serializable data and must include:
+
+- `id`: an owner-local token such as `tonic`, or the full
+  `<module-id>:tonic` identity;
+- `name`: the English compatibility label used by legacy name-only saves;
+- an honest supported purpose such as `type: "material"` for a trade good.
+
+Fungible definitions may declare `stackable: true` and `maxStack` from 2 to
+99; omitted limits default to 20. Equipment, quest/key objects, unknown
+provider items, and definitions without that explicit flag remain individual
+instances. Pack capacity counts occupied stacks.
+
+The current bounded actionable effect vocabulary contains only:
+
+```js
+{
+  type: "consumable",
+  purpose: "use",
+  effect: "heal",
+  healAmount: 15 // integer from 1 through 100
+}
+```
+
+Trade definitions use `purpose: "trade"` with inert `effect: "sell"` or the
+legacy future-compatible `effect: "craft"`. Quest/key definitions use
+`purpose: "quest"` or `"key"` and are protected from ordinary sale/drop while
+required. Module equipment is not yet part of Item Definition V2; declaring
+slots, bonuses, or equipment effects rejects enablement instead of silently
+granting an unbounded mechanic.
+
+An item can opt into existing core acquisition tables without owning world
+generation:
+
+```js
+acquisition: {
+  merchantTables: [{ id: "general", qty: 2 }],
+  lootTables: [{ id: "basicGear", weight: 3 }],
+  search: true,
+  searchWeight: 2
+}
+```
+
+Only existing merchant/loot table IDs are accepted. Merchant quantity is
+bounded to 1–20, loot weight to 1–100, and each list to 16 entries. Unknown
+tables or fields reject module enablement and roll back partial placement.
+Search inclusion is opt-in, with an optional search weight from 1–100
+(default 1). Disable/delete removes the exact owned placements; re-enable
+restores one copy.
+
+An owner-local ID is normalized to the module namespace. A module may not
+register inside another owner's namespace, replace a core definition, or
+claim a display-name alias already owned by another definition. Item
+instances persist the stable identity in `definitionId`; their unique `id`
+remains instance identity and is never treated as a definition ID.
+
+Disabling or deleting the provider removes its live definition. Saved
+instances are retained as opaque unavailable-provider objects and must not be
+reinterpreted through a coincidentally matching core label. Re-enabling the
+same compatible provider restores lookup. Modules should not rename an
+existing definition ID's compatibility `name` until explicit alias migration
+support is documented.
+
+The V2 registry does not grant arbitrary item mechanics. Function-backed
+effects reject registration. Damage, buffs, cures, utility actions, rated
+effects, direct quest rewards, new stock-table creation, and new loot-table
+creation remain unavailable until the corresponding bounded declarative
+contract is documented and implemented. A registered item with no supported
+mechanical resolver must identify itself honestly as trade-only or quest/key
+data rather than advertise a nonfunctional action.
+
+### Quest Contract V2
+
+`MODS.addQuestTemplate(definition)` registers one owned, serializable quest
+template using the same lifecycle as core quests. It requires
+`content:add_quest`. Owner-local IDs become
+`<module-id>:<quest-id>` and may not replace core or another provider's
+template.
+
+Every template declares one to sixteen existing structure routes:
+
+```js
+MODS.addQuestTemplate({
+  id: 'lost_satchel',
+  title: 'The Lost Satchel',
+  description: 'Recover a courier satchel from the marked trail.',
+  acquisition: { structures: ['cabin', 'camp'] },
+  turnInPolicy: { type: 'original_giver' },
+  objectives: [{
+    id: 'recover_satchel',
+    type: 'recover',
+    item: { definitionId: 'example_mod:courier_satchel', quantity: 1 },
+    required: 1
+  }],
+  reward: { gold: 18 },
+  stageGraph: {
+    initialStage: 'search',
+    stages: [{
+      id: 'search',
+      transitions: [{
+        event: 'objective_complete',
+        to: 'return',
+        effects: [{ type: 'log', text: 'The satchel is secure.' }]
+      }]
+    }, {
+      id: 'return',
+      transitions: []
+    }]
+  }
+});
+```
+
+Supported lifecycle states are Available, Active, Objectives Complete, Ready
+for Turn-In, Turned In, and Failed. Turn-in policy may be `automatic`,
+`original_giver`, `named_location`, or `authorized_faction`; policies that
+need a destination or identity must provide it. Ordinary quest/item
+requirements use stable Item Definition V2 IDs.
+
+The optional stage graph is bounded to sixteen stages, eight transitions per
+stage, and eight declarative effects per transition. Supported events and
+effects are validated by core. Functions, callbacks, non-finite values,
+circular data, unknown transitions, and arbitrary script effects reject
+enablement. Disabling or deleting a provider removes its template and exact
+structure placements, but already-issued saved quest records remain bounded
+data so a player's history is not silently deleted. Re-enabling restores one
+copy of each owned placement.
 
 World placement is deliberately narrower than content registration. Species
 Profile V1 may contribute rare encounters to existing biome tables.
@@ -297,6 +429,42 @@ game already consumes. A label such as `fire` in `canon.traits` is descriptive;
 it does not create fire damage, resistance, new actions, predator/prey rules,
 or perks. Those require a separately documented extension seam. Do not present
 descriptive fields as executable powers.
+
+### Perk Profile V1
+
+`content:add_perk_profile` permits a module to add one bounded authored path
+to the visible-only Perk Frontier:
+
+```js
+MODS.registerPerkProfile({
+  id: 'example_mod:wayfinder',
+  label: 'Wayfinder',
+  labelKey: 'example_mod.perkProfile.wayfinder',
+  species: ['human', 'wolf'],
+  perks: [{
+    id: 'example_mod:trailwise',
+    name: 'Trailwise',
+    nameKey: 'example_mod.perk.trailwise',
+    desc: 'Your practiced routes improve awareness.',
+    descKey: 'example_mod.perk.trailwise.desc',
+    stat: 'wis',
+    val: 2
+  }]
+});
+```
+
+The profile and every perk ID must use the module namespace. A profile contains
+one to six serializable definitions and may use only the core stat and named
+flag effect vocabulary plus bounded declarative eligibility. It cannot supply
+callbacks, award its own choices, mutate XP, inspect hidden state, or resolve
+effects.
+
+Eligible definitions join the same flat current frontier as core perks.
+Locked definitions remain absent. Locale keys must use the module's dot
+namespace and should be supplied through `content:add_locale`. On unload,
+future offers disappear immediately while already-selected player records and
+their frozen core-owned effect profiles remain saveable and safely reversible.
+Re-enable restores eligibility without duplicating a selected perk.
 
 ### Resource Ledger V1
 

@@ -1,0 +1,51 @@
+{
+  "schema": "yaw-core-maturity-item-registry-fixtures-v1",
+  "legacyNameOnly": {
+    "inventory": [
+      {
+        "id": "legacy-herb-instance",
+        "name": "Healing Herb"
+      },
+      {
+        "id": "legacy-fang-instance",
+        "name": "Monster Fang"
+      }
+    ],
+    "equipment": {
+      "head": {
+        "id": "legacy-cap-instance",
+        "name": "Leather Cap"
+      }
+    }
+  },
+  "stableDefinitionIds": {
+    "inventory": [
+      {
+        "id": "stable-herb-instance",
+        "definitionId": "core:healing_herb",
+        "name": "Healing Herb"
+      },
+      {
+        "id": "stable-fang-instance",
+        "definitionId": "core:monster_fang",
+        "name": "Monster Fang"
+      }
+    ],
+    "equipment": {
+      "head": {
+        "id": "stable-cap-instance",
+        "definitionId": "core:leather_cap",
+        "name": "Leather Cap"
+      }
+    }
+  },
+  "missingProvider": {
+    "inventory": [
+      {
+        "id": "missing-provider-instance",
+        "definitionId": "example_items:moon_berry",
+        "name": "Moon Berry"
+      }
+    ]
+  }
+}

@@ -11,6 +11,8 @@ const SRC_DIR = path.join(__dirname, '..', 'src');
 const TEMPLATE = path.join(__dirname, '..', 'template.html');
 const RELEASE_FILE = path.join(__dirname, '..', 'release.json');
 const RELEASE_014_SAVE_FIXTURE = path.join(__dirname, 'fixtures', 'release-0.14.0-save.json');
+const ITEM_REGISTRY_V2_FIXTURE = path.join(__dirname, 'fixtures', 'core-maturity-item-registry-v2.json');
+const CORE_MATURITY_BASELINE_FIXTURE = path.join(__dirname, 'fixtures', 'core-maturity-migration-baseline-v1.json');
 const releaseInfo = JSON.parse(fs.readFileSync(RELEASE_FILE, 'utf8'));
 const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mode-contract.md');
 const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.md');
@@ -157,6 +159,7 @@ const defeatRecoveryContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'defeat
 const logViewContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'log-view.js'), 'utf8');
 const storyEventsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'story-events.js'), 'utf8');
 const balanceSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'balance-system.js'), 'utf8');
+const tutorialSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tutorial-system.js'), 'utf8');
 const tileEventFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-event-feed.js'), 'utf8');
 const structureNavigationContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'structure-navigation.js'), 'utf8');
 const movementFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'movement-flow.js'), 'utf8');
@@ -179,6 +182,7 @@ const multiInteractionSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core',
 const interactionPlanContent = `${multiInteractionSystemContent}\n${fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-plan.js'), 'utf8')}`;
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
 const interactionStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-state.js'), 'utf8');
+const companionBehaviorContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'companion-behavior.js'), 'utf8');
 const explorationSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'exploration-selection.js'), 'utf8');
 const markedTargetActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marked-target-actions.js'), 'utf8');
 const recruitmentFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'recruitment-flow.js'), 'utf8');
@@ -206,12 +210,17 @@ const combatActorStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'comb
 const tacticalCardContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tactical-card.js'), 'utf8');
 const mobileUnitChipContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-chip.js'), 'utf8');
 const unitCardContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card.js'), 'utf8');
+const itemRegistryContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'item-registry.js'), 'utf8');
+const itemEffectsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'item-effects.js'), 'utf8');
 const equipmentSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'equipment-system.js'), 'utf8');
 const merchantSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'merchant-system.js'), 'utf8');
 const inventoryPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'inventory-panel.js'), 'utf8');
 const tradeFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'trade-flow.js'), 'utf8');
-const perkFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'perk-flow.js'), 'utf8');
+const perkEffectsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'perk-effects.js'), 'utf8');
+const perkRegistryContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'perk-registry.js'), 'utf8');
+const perkFlowContent = `${perkEffectsContent}\n${perkRegistryContent}\n${fs.readFileSync(path.join(SRC_DIR, 'core', 'perk-flow.js'), 'utf8')}`;
 const statsPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'stats-panel.js'), 'utf8');
+const questContractContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'quest-contract.js'), 'utf8');
 const questFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'quest-flow.js'), 'utf8');
 const questPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'quest-panel.js'), 'utf8');
 const transactionWindowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'transaction-window.js'), 'utf8');
@@ -222,7 +231,7 @@ const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-se
 const partyManagementContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'party-management.js'), 'utf8');
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
-const dialogFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'dialog-flow.js'), 'utf8');
+const dialogFlowContent = `${fs.readFileSync(path.join(SRC_DIR, 'core', 'dialog-flow.js'), 'utf8')}\n${tutorialSystemContent}`;
 const settingsFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'settings-flow.js'), 'utf8');
 const settingsDataFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'settings-data-flow.js'), 'utf8');
 const mobileGesturesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-gestures.js'), 'utf8');
@@ -584,12 +593,23 @@ function loadModuleSystemForTest(options = {}) {
     biomes: {},
     species: [],
     items: [],
+    ITEMS: {},
+    QUEST_TEMPLATES: {},
+    STRUCTURES: {},
+    MERCHANT_STOCK_TABLES: {},
+    EQUIPMENT_LOOT_TABLES: {},
     party: [],
     creatures: [],
     explorationActorIds: [],
     explorationTargetIds: [],
     settings: { recoveryMode: 'core:regenerate' },
     log: [],
+    quests: [],
+    location: { x: 0, y: 0 },
+    _stableIdPart(value, fallback = 'id') {
+      const normalized = String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      return normalized || fallback;
+    },
     _label(_key, fallback = '') { return fallback; },
     _escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -618,11 +638,30 @@ function loadModuleSystemForTest(options = {}) {
   const resourceLedger = options.resourceLedger || new Function('window', `${resourceLedgerContent}\nreturn YAW_RESOURCE_LEDGER;`)({});
   const combatTechniques = options.combatTechniques || new Function('window', `${combatTechniqueContent}\nreturn YAW_COMBAT_TECHNIQUES;`)({});
   const recoveryModes = options.recoveryModes || new Function('window', `${recoveryModesContent}\nreturn YAW_RECOVERY_MODES;`)({});
-  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SPRITE_PACK_V1', 'YAW_SPRITE_RUNTIME', 'YAW_SUB_ACTIONS', 'YAW_STORY_EVENTS', 'YAW_RESOURCE_LEDGER', 'YAW_COMBAT_TECHNIQUES', 'YAW_RECOVERY_MODES', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, spritePackV1, spriteRuntime, options.subActions, options.storyEvents, resourceLedger, combatTechniques, recoveryModes);
+  const itemRegistry = options.itemRegistry || new Function('window', `${itemRegistryContent}\nreturn YAW_ITEM_REGISTRY;`)({});
+  const itemEffects = options.itemEffects || new Function('window', `${itemEffectsContent}\nreturn YAW_ITEM_EFFECTS;`)({});
+  const perkRuntime = options.perkRuntime || new Function(
+    'window',
+    `${perkEffectsContent}\n${perkRegistryContent}\nreturn { YAW_PERK_EFFECTS, YAW_PERK_REGISTRY };`
+  )({});
+  const questRuntime = options.questRuntime || new Function(
+    'window',
+    `${questContractContent}\n${questFlowContent}\nreturn { YAW_QUEST_CONTRACT, YAW_QUEST_FLOW };`
+  )({});
+  App._getItemDef = item => itemRegistry.definition(App, item);
+  App._itemDefinitionId = item => itemRegistry.definitionId(App, item);
+  App._normalizeItemInstance = item => itemRegistry.normalizeInstance(App, item);
+  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SPRITE_PACK_V1', 'YAW_SPRITE_RUNTIME', 'YAW_SUB_ACTIONS', 'YAW_STORY_EVENTS', 'YAW_RESOURCE_LEDGER', 'YAW_COMBAT_TECHNIQUES', 'YAW_RECOVERY_MODES', 'YAW_ITEM_REGISTRY', 'YAW_ITEM_EFFECTS', 'YAW_PERK_REGISTRY', 'YAW_QUEST_FLOW', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, spritePackV1, spriteRuntime, options.subActions, options.storyEvents, resourceLedger, combatTechniques, recoveryModes, itemRegistry, itemEffects, perkRuntime.YAW_PERK_REGISTRY, questRuntime.YAW_QUEST_FLOW);
   MODULE_SYSTEM._testApp = App;
+  MODULE_SYSTEM._testItemRegistry = itemRegistry;
+  MODULE_SYSTEM._testItemEffects = itemEffects;
+  MODULE_SYSTEM._testPerkEffects = perkRuntime.YAW_PERK_EFFECTS;
+  MODULE_SYSTEM._testPerkRegistry = perkRuntime.YAW_PERK_REGISTRY;
   MODULE_SYSTEM._testResourceLedger = resourceLedger;
   MODULE_SYSTEM._testCombatTechniques = combatTechniques;
   MODULE_SYSTEM._testRecoveryModes = recoveryModes;
+  MODULE_SYSTEM._testQuestContract = questRuntime.YAW_QUEST_CONTRACT;
+  MODULE_SYSTEM._testQuestFlow = questRuntime.YAW_QUEST_FLOW;
   return MODULE_SYSTEM;
 }
 
@@ -3522,18 +3561,25 @@ asyncTest('Module data contributions are owned and removed on disable before rel
   assertEqual(App.biomes.mod_bog.name, 'Mod Bog', 'Module-added biome should be visible while enabled');
   assertEqual(App.species.length, 1, 'Module-added species should be appended while enabled');
   assertEqual(App.items.length, 1, 'Module-added item should be appended while enabled');
+  assertEqual(App.items[0].id, 'data-module:mod_item', 'Unqualified module item ids should be normalized into the owner namespace');
+  assertEqual(App.items[0].purpose, 'trade', 'Legacy module item data should normalize to an honest trade-only purpose');
+  assertEqual(App.items[0].effect, 'sell', 'Legacy module item data should not acquire an arbitrary action');
+  assertEqual(App._getItemDef({ definitionId: 'data-module:mod_item', name: 'Renamed Mod Item' }).name, 'Mod Item', 'Enabled module items should resolve through the canonical registry');
+  assertEqual(App._normalizeItemInstance({ id: 'saved-mod-item', name: 'Mod Item' }).definitionId, 'data-module:mod_item', 'Legacy module item names should migrate to stable provider identity while enabled');
 
   await MODULE_SYSTEM.setModuleEnabled('data-module', false);
   assertEqual(App.biomes.grove.name, 'Original Grove', 'Disabling module should restore overwritten biome');
   assertEqual(App.biomes.mod_bog, undefined, 'Disabling module should remove module-added biome');
   assertEqual(App.species.length, 0, 'Disabling module should remove module-added species');
   assertEqual(App.items.length, 0, 'Disabling module should remove module-added item');
+  assertEqual(Object.keys(App._getItemDef({ definitionId: 'data-module:mod_item', name: 'Healing Herb' })).length, 0, 'Disabled module identities should remain opaque even when their saved label matches core content');
   assertEqual(MODULE_SYSTEM.ownedContributions.has('data-module'), false, 'Disabling module should clear owned contribution records');
 
   await MODULE_SYSTEM.setModuleEnabled('data-module', true);
   await MODULE_SYSTEM.setModuleEnabled('data-module', true);
   assertEqual(App.species.length, 1, 'Reloading an enabled module should not duplicate module-added species');
   assertEqual(App.items.length, 1, 'Reloading an enabled module should not duplicate module-added items');
+  assertEqual(App._getItemDef({ definitionId: 'data-module:mod_item' }).owner, 'data-module', 'Re-enabling a provider should restore its saved item identities');
   assertEqual(App.biomes.mod_bog.name, 'Mod Bog', 'Reloaded module-added biome should remain visible once');
 
   await MODULE_SYSTEM.deleteModule('data-module');
@@ -3541,6 +3587,7 @@ asyncTest('Module data contributions are owned and removed on disable before rel
   assertEqual(App.biomes.mod_bog, undefined, 'Deleting module should remove module-added biome');
   assertEqual(App.species.length, 0, 'Deleting module should remove module-added species');
   assertEqual(App.items.length, 0, 'Deleting module should remove module-added item');
+  assertEqual(Object.keys(App._getItemDef({ definitionId: 'data-module:mod_item' })).length, 0, 'Deleting a provider should leave saved item identity unresolved');
 
   await MODULE_SYSTEM.installModule({
     manifest: { id: 'failing-data-module', name: 'Failing Data Module', version: '1.0.0', permissions: ['content:add_item'] },
@@ -3623,6 +3670,218 @@ asyncTest('Module data contributions are owned and removed on disable before rel
   assertEqual(App.items.length, 0, 'Non-serializable item contribution should not add live item data');
   const badItemStoredModule = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'bad-item-module');
   assertEqual(badItemStoredModule.enabled, false, 'Invalid item contribution should leave module disabled in storage');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'unsupported-item-module', name: 'Unsupported Item Module', version: '1.0.0', permissions: ['content:add_item'] },
+    code: "MODS.addItem({ id: 'venom', name: 'Active Venom', type: 'consumable', purpose: 'use', effect: 'damage', value: 30 });"
+  });
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('unsupported-item-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'Unsupported item effect: damage', 'Unsupported module item mechanics should identify the rejected effect');
+  }
+  assertEqual(rejected, true, 'Modules should not advertise an item action outside the bounded resolver');
+  assertEqual(App.items.length, 0, 'Rejected effects should not leave partial item definitions');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'healing-item-module', name: 'Healing Item Module', version: '1.0.0', permissions: ['content:add_item'] },
+    code: "MODS.addItem({ id: 'tonic', name: 'Small Tonic', type: 'consumable', purpose: 'use', effect: 'heal', healAmount: 15, stackable: true, maxStack: 10, value: 12 });"
+  });
+  await MODULE_SYSTEM.setModuleEnabled('healing-item-module', true);
+  const tonic = App._getItemDef({ definitionId: 'healing-item-module:tonic' });
+  assertEqual(tonic.healAmount, 15, 'Bounded module healing definitions should register');
+  assertEqual(tonic.maxStack, 10, 'Bounded module healing definitions should retain stack policy');
+  await MODULE_SYSTEM.setModuleEnabled('healing-item-module', false);
+  assertEqual(Object.keys(App._getItemDef({ definitionId: 'healing-item-module:tonic' })).length, 0, 'Disabling bounded healing provider should remove its live definition');
+});
+
+asyncTest('Module item acquisition routes are bounded owned and reversible', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+  const App = MODULE_SYSTEM._testApp;
+  App.MERCHANT_STOCK_TABLES = { general: [] };
+  App.EQUIPMENT_LOOT_TABLES = { basicGear: [] };
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'item-route-module', name: 'Item Route Module', version: '1.0.0', permissions: ['content:add_item'] },
+    code: `MODS.addItem({
+      id: 'tonic',
+      name: 'Route Tonic',
+      type: 'consumable',
+      purpose: 'use',
+      effect: 'heal',
+      healAmount: 12,
+      stackable: true,
+      maxStack: 8,
+      value: 15,
+      acquisition: {
+        merchantTables: [{ id: 'general', qty: 2 }],
+        lootTables: [{ id: 'basicGear', weight: 3 }],
+        search: true
+      }
+    });`
+  });
+
+  await MODULE_SYSTEM.setModuleEnabled('item-route-module', true);
+  const definition = App._getItemDef({ definitionId: 'item-route-module:tonic' });
+  assertEqual(definition.acquisition.search, true, 'Module item should retain explicit search eligibility');
+  assertEqual(App.MERCHANT_STOCK_TABLES.general.length, 1, 'Enabled module should add one merchant route');
+  assertEqual(App.MERCHANT_STOCK_TABLES.general[0].definitionId, 'item-route-module:tonic', 'Merchant route should use stable definition identity');
+  assertEqual(App.MERCHANT_STOCK_TABLES.general[0].qty, 2, 'Merchant route should retain bounded quantity');
+  assertEqual(App.EQUIPMENT_LOOT_TABLES.basicGear.length, 1, 'Enabled module should add one loot route');
+  assertEqual(App.EQUIPMENT_LOOT_TABLES.basicGear[0].id, 'item-route-module:tonic', 'Loot route should use stable definition identity');
+  assertEqual(App.EQUIPMENT_LOOT_TABLES.basicGear[0].weight, 3, 'Loot route should retain bounded weight');
+
+  await MODULE_SYSTEM.setModuleEnabled('item-route-module', false);
+  assertEqual(App.MERCHANT_STOCK_TABLES.general.length, 0, 'Disable should remove owned merchant placement');
+  assertEqual(App.EQUIPMENT_LOOT_TABLES.basicGear.length, 0, 'Disable should remove owned loot placement');
+  assertEqual(Object.keys(App._getItemDef({ definitionId: 'item-route-module:tonic' })).length, 0, 'Disable should remove the live definition');
+
+  await MODULE_SYSTEM.setModuleEnabled('item-route-module', true);
+  assertEqual(App.MERCHANT_STOCK_TABLES.general.length, 1, 'Re-enable should restore one merchant placement without duplication');
+  assertEqual(App.EQUIPMENT_LOOT_TABLES.basicGear.length, 1, 'Re-enable should restore one loot placement without duplication');
+  await MODULE_SYSTEM.deleteModule('item-route-module');
+  assertEqual(App.MERCHANT_STOCK_TABLES.general.length, 0, 'Delete should remove owned merchant placement');
+  assertEqual(App.EQUIPMENT_LOOT_TABLES.basicGear.length, 0, 'Delete should remove owned loot placement');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'bad-route-module', name: 'Bad Route Module', version: '1.0.0', permissions: ['content:add_item'] },
+    code: "MODS.addItem({ id: 'bad', name: 'Bad Route', acquisition: { merchantTables: ['unknown'] } });"
+  });
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('bad-route-module', true);
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'Unknown merchant stock table', 'Unknown acquisition targets should explain the rejected table');
+  }
+  assertEqual(rejected, true, 'Unknown acquisition tables should reject module enable');
+  assertEqual(App.items.length, 0, 'Rejected acquisition should clean its partially registered definition');
+});
+
+asyncTest('Module quest templates are permissioned bounded owned and reversible', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  MODULE_SYSTEM.db = createFakeIndexedDb().db;
+  const App = MODULE_SYSTEM._testApp;
+  App.QUEST_TEMPLATES = {};
+  App.STRUCTURES = {
+    cabin: { quest: { templates: ['core-cabin'] } },
+    camp: { quest: { templates: [] } }
+  };
+
+  await MODULE_SYSTEM.installModule({
+    manifest: {
+      id: 'quest-route-module',
+      name: 'Quest Route Module',
+      version: '1.0.0',
+      permissions: ['content:add_quest']
+    },
+    code: `MODS.addQuestTemplate({
+      id: 'trail_task',
+      title: 'Trail Task',
+      description: 'Survey the marked trail and return.',
+      acquisition: { structures: ['cabin', 'camp'] },
+      turnInPolicy: { type: 'original_giver', giverId: 'trail-guide' },
+      objectives: [{
+        id: 'survey-trail',
+        type: 'travel',
+        label: 'Survey the trail',
+        location: { x: 4, y: 6 },
+        required: 1
+      }],
+      reward: { gold: 12 },
+      stageGraph: {
+        initialStage: 'survey',
+        stages: [{
+          id: 'survey',
+          transitions: [{
+            event: 'objective_complete',
+            to: 'return',
+            effects: [{ type: 'set_branch', branch: 'trail-cleared' }]
+          }]
+        }, {
+          id: 'return',
+          transitions: []
+        }]
+      }
+    });`
+  });
+
+  await MODULE_SYSTEM.setModuleEnabled('quest-route-module', true);
+  const template = App.QUEST_TEMPLATES['quest-route-module:trail_task'];
+  assert(template, 'Enabled module should register its namespaced quest template');
+  assertEqual(template.authoredOrigin.moduleId, 'quest-route-module', 'Quest template should preserve authored provider ownership');
+  assertEqual(template.stageGraph.stages.length, 2, 'Quest template should retain a bounded authored stage graph');
+  const firstIssued = MODULE_SYSTEM._testQuestFlow.templateForStructure(App, 'camp', { x: 2, y: 3 });
+  const secondIssued = MODULE_SYSTEM._testQuestFlow.templateForStructure(App, 'camp', { x: 4, y: 5 });
+  assertEqual(firstIssued.id, 'quest-route-module:trail_task_2_3', 'Issued module quest should derive stable instance identity from its template and location');
+  assertEqual(secondIssued.id, 'quest-route-module:trail_task_4_5', 'A second structure should receive a distinct quest instance identity');
+  assertEqual(firstIssued.templateId, 'quest-route-module:trail_task', 'Issued quest should retain stable template provenance');
+  assertEqual(App.STRUCTURES.cabin.quest.templates.filter(id => id === 'quest-route-module:trail_task').length, 1, 'Quest route should be placed once at the cabin');
+  assertEqual(App.STRUCTURES.camp.quest.templates.filter(id => id === 'quest-route-module:trail_task').length, 1, 'Quest route should be placed once at the camp');
+
+  App.quests.push(JSON.parse(JSON.stringify({ ...firstIssued, id: 'issued-trail-task', status: 'active', lifecycleState: 'active' })));
+  await MODULE_SYSTEM.setModuleEnabled('quest-route-module', false);
+  assertEqual(App.QUEST_TEMPLATES['quest-route-module:trail_task'], undefined, 'Disable should remove the live owned quest template');
+  assertEqual(App.STRUCTURES.cabin.quest.templates.join(','), 'core-cabin', 'Disable should remove only the exact owned cabin placement');
+  assertEqual(App.STRUCTURES.camp.quest.templates.length, 0, 'Disable should remove the exact owned camp placement');
+  assertEqual(App.quests[0].id, 'issued-trail-task', 'Disable should retain an already-issued saved quest as bounded data');
+  assertEqual(App.quests[0].authoredOrigin.moduleId, 'quest-route-module', 'Retained issued quest should preserve its authored origin');
+
+  await MODULE_SYSTEM.setModuleEnabled('quest-route-module', true);
+  assertEqual(App.STRUCTURES.cabin.quest.templates.filter(id => id === 'quest-route-module:trail_task').length, 1, 'Re-enable should restore one cabin placement without duplication');
+  await MODULE_SYSTEM.setModuleEnabled('quest-route-module', true);
+  assertEqual(App.STRUCTURES.cabin.quest.templates.filter(id => id === 'quest-route-module:trail_task').length, 1, 'Repeated enable should not duplicate quest routes');
+  await MODULE_SYSTEM.deleteModule('quest-route-module');
+  assertEqual(App.QUEST_TEMPLATES['quest-route-module:trail_task'], undefined, 'Delete should remove the owned live quest template');
+  assertEqual(App.STRUCTURES.cabin.quest.templates.join(','), 'core-cabin', 'Delete should leave unrelated core routes intact');
+  assertEqual(App.quests.length, 1, 'Deleting a provider should not erase already-issued quest history');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'bad-quest-effect', name: 'Bad Quest Effect', version: '1.0.0', permissions: ['content:add_quest'] },
+    code: `MODS.addQuestTemplate({
+      id: 'unsafe',
+      title: 'Unsafe Quest',
+      acquisition: { structures: ['cabin'] },
+      objectives: [{ type: 'find', label: 'Find safety', targetId: 'safety' }],
+      stageGraph: { stages: [{ id: 'start', transitions: [{
+        event: 'find',
+        effects: [{ type: 'run_script', source: 'grantEverything()' }]
+      }] }] }
+    });`
+  });
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('bad-quest-effect', true);
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'Unsupported quest stage effect', 'Arbitrary quest stage effects should report their bounded-contract violation');
+  }
+  assertEqual(rejected, true, 'Arbitrary quest stage effects should reject module enable');
+  assertEqual(App.QUEST_TEMPLATES['bad-quest-effect:unsafe'], undefined, 'Rejected quest effects should not leave a live template');
+  assertEqual(App.STRUCTURES.cabin.quest.templates.join(','), 'core-cabin', 'Rejected quest effects should not leave a structure route');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'bad-quest-route', name: 'Bad Quest Route', version: '1.0.0', permissions: ['content:add_quest'] },
+    code: `MODS.addQuestTemplate({
+      id: 'lost',
+      title: 'Lost Route',
+      acquisition: { structures: ['unknown-structure'] },
+      objectives: [{ type: 'find', label: 'Find a route', targetId: 'route' }]
+    });`
+  });
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('bad-quest-route', true);
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'Unknown quest structure route', 'Unknown quest structure acquisition should explain the rejected route');
+  }
+  assertEqual(rejected, true, 'Unknown quest structure routes should reject module enable');
+  assertEqual(App.STRUCTURES.cabin.quest.templates.join(','), 'core-cabin', 'Rejected quest routes should leave core placement unchanged');
 });
 
 asyncTest('Module content provider contributions are permissioned, owned, and removed on disable', async () => {
@@ -5511,6 +5770,185 @@ test('Interaction state helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_INTERACTION_STATE.toggleSyncParticipantById(this, id)', 'App sync toggle wrapper should delegate to the helper');
 });
 
+test('Companion Behavior V2 is registered before recruitment combat and app code', () => {
+  assertContains(buildContent, "'src/core/companion-behavior.js'", 'Companion behavior contract should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/companion-behavior.js'") < buildContent.indexOf("'src/core/recruitment-flow.js'"), 'Recruitment should be able to seed companion continuity');
+  assert(buildContent.indexOf("'src/core/companion-behavior.js'") < buildContent.indexOf("'src/core/combat-turns.js'"), 'Combat turns should consume the companion control contract');
+  assert(buildContent.indexOf("'src/core/companion-behavior.js'") < buildContent.indexOf("'src/core/app.js'"), 'Companion behavior should load before app.js');
+  assertContains(companionBehaviorContent, 'DUTIES:', 'Companion behavior should define Duty separately');
+  assertContains(companionBehaviorContent, 'STANCES:', 'Companion behavior should define Stance separately');
+  assertContains(companionBehaviorContent, 'CONTROLS:', 'Companion behavior should define Control separately');
+  assertContains(companionBehaviorContent, "control: 'deterministic'", 'New recruitment should seed deterministic autonomy');
+  assertContains(companionBehaviorContent, "source: 'companion-autonomy'", 'Autonomous choices should use the shared interaction command route');
+  assertContains(companionBehaviorContent, 'app._validateInteractionCommand', 'Autonomous candidates should pass through the shared legality validator');
+  assertContains(companionBehaviorContent, 'app._dispatchInteractionCommand(choice.command)', 'Autonomous choices should use the shared resolver path');
+  assertContains(companionBehaviorContent, 'providerFallback', 'Unavailable AI control should expose deterministic fallback evidence');
+  assertContains(recruitmentFlowContent, 'YAW_COMPANION_BEHAVIOR.seedRecruitment', 'Recruitment should record continuity and seed initial behavior');
+  assertContains(savePersistenceContent, 'partyDuties', 'Sparse compatibility metadata should persist Duty explicitly');
+  assertContains(savePersistenceContent, 'partyStances', 'Sparse compatibility metadata should persist Stance explicitly');
+  assertContains(savePersistenceContent, 'partyControls', 'Sparse compatibility metadata should persist Control explicitly');
+});
+
+test('Companion Behavior V2 migrates legacy companions and seeds recruitment continuity', () => {
+  const behavior = new Function('window', `${companionBehaviorContent}\nreturn YAW_COMPANION_BEHAVIOR;`)({});
+  const player = { id: 'player', name: 'You', mc: true };
+  const app = {
+    player,
+    DISPOSITION: { ENEMY: 'enemy', FRIENDLY: 'friendly' },
+    dayCount: 3,
+    timeHour: 14,
+    _unitSelectionId(unit) { return unit.id || unit.name; }
+  };
+  const healer = { id: 'legacy-healer', name: 'Healer', partyRole: 'companion', aiOrder: 'healer', obedient: true };
+  const healerBehavior = behavior.normalize(app, healer);
+  assertEqual(healerBehavior.duty, 'support', 'Legacy healer order should migrate to Support Duty');
+  assertEqual(healerBehavior.stance, 'balanced', 'Legacy healer order should migrate to Balanced Stance');
+  assertEqual(healerBehavior.control, 'manual', 'Legacy obedient companions should preserve manual control');
+
+  const subdued = {
+    id: 'subdued',
+    name: 'Subdued',
+    disposition: 'friendly',
+    CPle: 0,
+    MPle: 100,
+    submission: { by: 'player', day: 2, hour: 8, source: 'combat-fight' }
+  };
+  const recruited = behavior.seedRecruitment(app, subdued, player);
+  assertEqual(recruited.duty, 'guard', 'Combat-subdued recruitment should seed Guard Duty');
+  assertEqual(recruited.stance, 'passive', 'Combat-subdued recruitment should seed Passive Stance');
+  assertEqual(recruited.control, 'deterministic', 'New recruitment should seed deterministic autonomy');
+  assertEqual(recruited.recruitmentContinuity.kind, 'submitted', 'Recruitment should preserve how the relationship began');
+  assertEqual(recruited.recruitmentContinuity.source, 'combat-fight', 'Recruitment continuity should retain its source');
+});
+
+test('Companion Behavior V2 ranks every Duty and Stance combination through legal deterministic candidates', () => {
+  const behavior = new Function('window', `${companionBehaviorContent}\nreturn YAW_COMPANION_BEHAVIOR;`)({});
+  const player = { id: 'player', name: 'You', CPun: 80, MPun: 100 };
+  const ally = {
+    id: 'ally',
+    name: 'Ally',
+    CPun: 75,
+    MPun: 100,
+    CPle: 20,
+    MPle: 100,
+    hunger: 35,
+    partyRole: 'scout',
+    aiOrder: 'balanced'
+  };
+  const enemy = { id: 'enemy', name: 'Enemy', disposition: 'enemy', CPun: 70, MPun: 100, Figh: 12 };
+  const app = {
+    player,
+    party: [player, ally],
+    creatures: [enemy],
+    DISPOSITION: { ENEMY: 'enemy' },
+    _buildPanelInteractionCommand(context) {
+      return {
+        ...context,
+        actorIds: context.actors.map(unit => unit.id),
+        targetIds: context.targets.map(unit => unit.id)
+      };
+    },
+    _validateInteractionCommand(command) {
+      return command.actors.length === 1 && command.targets.every(target => target.CPun > 0)
+        ? { ok: true }
+        : { ok: false, reason: 'invalid' };
+    },
+    _canScavengeCorpse() { return false; },
+    _combatStateRoll() { return 0.25; }
+  };
+  for (const duty of Object.keys(behavior.DUTIES)) {
+    for (const stance of Object.keys(behavior.STANCES)) {
+      ally.companionBehavior = { version: 2, duty, stance, control: 'deterministic' };
+      const first = behavior.ranked(app, ally);
+      const second = behavior.ranked(app, ally);
+      assert(first.length > 1, `${duty}/${stance} should retain at least one legal action plus Hold`);
+      assertEqual(first[0].action, second[0].action, `${duty}/${stance} should rank deterministically`);
+      assert(first[0].action === 'hold' || first[0].command, `${duty}/${stance} should produce a dispatchable command or Hold`);
+    }
+  }
+});
+
+test('Companion AI control falls back to deterministic autonomy without losing a choice', () => {
+  const behavior = new Function('window', `${companionBehaviorContent}\nreturn YAW_COMPANION_BEHAVIOR;`)({});
+  const player = { id: 'player', name: 'You', CPun: 100, MPun: 100 };
+  const ally = {
+    id: 'ally',
+    name: 'Ally',
+    CPun: 100,
+    MPun: 100,
+    CPle: 0,
+    MPle: 100,
+    hunger: 0,
+    companionBehavior: { version: 2, duty: 'guard', stance: 'aggressive', control: 'provider' }
+  };
+  const enemy = { id: 'enemy', name: 'Enemy', disposition: 'enemy', CPun: 100, MPun: 100, Figh: 10 };
+  const app = {
+    player,
+    party: [player, ally],
+    creatures: [enemy],
+    DISPOSITION: { ENEMY: 'enemy' },
+    _buildPanelInteractionCommand(context) { return { ...context }; },
+    _validateInteractionCommand() { return { ok: true }; },
+    _canScavengeCorpse() { return false; },
+    _combatStateRoll() { return 0.5; }
+  };
+  const result = behavior.choose(app, ally);
+  assert(result.choice, 'Provider failure should still yield a deterministic choice');
+  assertEqual(result.fallbackReason, 'provider-unavailable', 'Provider absence should expose a bounded fallback reason');
+  app.companionDecisionProvider = { chooseAction() { return { action: 'invented', targetId: 'enemy' }; } };
+  const illegal = behavior.choose(app, ally);
+  assert(illegal.choice, 'Illegal provider output should still yield a deterministic choice');
+  assertEqual(illegal.fallbackReason, 'provider-illegal-choice', 'Illegal provider output should be identified without consuming the turn');
+});
+
+test('Companion tile reactions are bounded observations and never hidden actions', () => {
+  const behavior = new Function('window', `${companionBehaviorContent}\nreturn YAW_COMPANION_BEHAVIOR;`)({});
+  const player = { id: 'player', name: 'You', mc: true, CPun: 100, MPun: 100 };
+  const scout = {
+    id: 'scout',
+    name: 'Scout',
+    CPun: 100,
+    MPun: 100,
+    companionBehavior: { version: 2, duty: 'scout', stance: 'balanced', control: 'deterministic' }
+  };
+  const logs = [];
+  const beats = [];
+  const tileEvents = [];
+  const app = {
+    player,
+    party: [player, scout],
+    creatures: [],
+    combatState: { active: false },
+    DISPOSITION: { ENEMY: 'enemy' },
+    dayCount: 2,
+    location: { x: 4, y: 7 },
+    _canSearchHere() { return false; },
+    _label(key, fallback, values = {}) {
+      return String(fallback).replace('{name}', values.name || '');
+    },
+    _pushLog(text, type, metadata) { logs.push({ text, type, metadata }); },
+    _addTileEvent(text, type) { tileEvents.push({ text, type }); },
+    emitSceneBeat(command, text, options) { beats.push({ command, text, options }); }
+  };
+  const tile = { x: 4, y: 7 };
+  const first = behavior.reactToTile(app, tile, { wasExplored: false, interior: false });
+  const duplicate = behavior.reactToTile(app, tile, { wasExplored: false, interior: false });
+  assert(first, 'An autonomous Scout should react to an unfamiliar tile');
+  assertEqual(duplicate, null, 'The same companion reaction should be bounded to once per tile and day');
+  assertEqual(logs.length, 1, 'A tile reaction should add one Activity Log observation');
+  assertEqual(tileEvents.length, 1, 'A tile reaction should add one Scene event');
+  assertEqual(beats.length, 1, 'A tile reaction should emit one structured Scene Beat');
+  assertEqual(beats[0].command.action, 'observe', 'Tile reactions should be observations, not implicit resource or combat actions');
+
+  scout.companionBehavior.control = 'manual';
+  app.dayCount = 3;
+  assertEqual(
+    behavior.reactToTile(app, tile, { wasExplored: false, interior: false }),
+    null,
+    'Manual companions should not take autonomous traversal reactions'
+  );
+});
+
 test('Exploration selection helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/exploration-selection.js'", 'Exploration selection helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/exploration-selection.js'") < buildContent.indexOf("'src/core/app.js'"), 'Exploration selection helper should load before app.js');
@@ -5806,7 +6244,8 @@ test('Combat ally helper module is registered before app code', () => {
   assertContains(combatAlliesContent, 'selectAttackTarget(app, ally, enemies)', 'Combat ally helper should own ally target selection');
   assertContains(combatAlliesContent, 'runPostCombatScavengers(app)', 'Combat ally helper should own post-combat scavenger cleanup');
   assertContains(combatAlliesContent, 'takeTurn(app, ally)', 'Combat ally helper should own ally turn AI');
-  assertContains(combatAlliesContent, "app._combatStateRoll('combat-ally-dumb-ai'", 'Combat ally helper should preserve deterministic ally AI rolls');
+  assertContains(combatAlliesContent, 'YAW_COMPANION_BEHAVIOR.takeTurn(app, ally)', 'Combat ally turns should use Companion Behavior V2');
+  assertContains(companionBehaviorContent, "app._combatStateRoll(", 'Companion behavior should preserve deterministic action tie-breaks');
   assertNotContains(combatAlliesContent, 'Math.random', 'Combat ally helper should not use ambient randomness');
   assertContains(appContent, 'YAW_COMBAT_ALLIES.healWounded(this, ally)', 'App ally heal wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ALLIES.selectAttackTarget(this, ally, enemies)', 'App ally target wrapper should delegate to the helper');
@@ -6041,6 +6480,18 @@ test('Unit card helper module is registered before app code', () => {
 });
 
 test('Equipment system helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/item-registry.js'", 'Item Registry V2 should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/item-registry.js'") < buildContent.indexOf("'src/core/equipment-system.js'"), 'Item registry should load before equipment consumers');
+  assert(buildContent.indexOf("'src/core/item-registry.js'") < buildContent.indexOf("'src/core/app.js'"), 'Item registry should load before app.js');
+  assertContains(itemRegistryContent, 'const YAW_ITEM_REGISTRY = {', 'Item registry helper should expose the V2 service');
+  assertContains(itemRegistryContent, 'definition(app, itemOrId)', 'Item registry should own stable and compatibility definition lookup');
+  assertContains(itemRegistryContent, 'normalizeInstance(app, item)', 'Item registry should own compatibility instance normalization');
+  assertContains(buildContent, "'src/core/item-effects.js'", 'Bounded Item Effects V1 should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/item-registry.js'") < buildContent.indexOf("'src/core/item-effects.js'"), 'Item definitions should load before their effect resolver');
+  assert(buildContent.indexOf("'src/core/item-effects.js'") < buildContent.indexOf("'src/core/inventory-panel.js'"), 'Item effects should load before inventory actions');
+  assertContains(itemEffectsContent, 'const YAW_ITEM_EFFECTS = {', 'Item Effects V1 should expose a bounded resolver');
+  assertContains(itemEffectsContent, "EFFECTS: new Set(['heal'])", 'Item Effects V1 should enumerate its supported action vocabulary');
+  assertContains(inventoryPanelContent, 'YAW_ITEM_EFFECTS.resolve(app, item', 'Inventory use should delegate mutation to Item Effects V1');
   assertContains(buildContent, "'src/core/equipment-system.js'", 'Equipment system helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/equipment-system.js'") < buildContent.indexOf("'src/core/app.js'"), 'Equipment system helper should load before app.js');
   assert(buildContent.indexOf("'src/core/equipment-system.js'") < buildContent.indexOf("'src/core/inventory-panel.js'"), 'Equipment helper should load before inventory panel helper');
@@ -6048,7 +6499,10 @@ test('Equipment system helper module is registered before app code', () => {
   assertContains(equipmentSystemContent, 'captureBaseStats(app, unit', 'Equipment helper should own base stat capture');
   assertContains(equipmentSystemContent, 'recalculate(app, unit', 'Equipment helper should own equipment recalculation');
   assertContains(equipmentSystemContent, 'compactSummary(app, unit = app.player)', 'Equipment helper should own compact equipment summaries');
+  assertContains(equipmentSystemContent, 'YAW_ITEM_REGISTRY.definition(app, item)', 'Equipment lookup should route through Item Registry V2');
   assertContains(appContent, 'YAW_EQUIPMENT_SYSTEM.itemDef(this, item)', 'App item definition wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_ITEM_REGISTRY.definitionId(this, item)', 'App should expose stable item definition identity');
+  assertContains(appContent, 'YAW_ITEM_REGISTRY.normalizeInstance(this, item)', 'App should expose item instance compatibility normalization');
   assertContains(appContent, 'YAW_EQUIPMENT_SYSTEM.recalculate(this, unit, { inferBase })', 'App equipment recalculation wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_EQUIPMENT_SYSTEM.compactSummary(this, unit)', 'App compact equipment summary wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_EQUIPMENT_SYSTEM.bonusText(this, item)', 'App equipment bonus text wrapper should delegate to the helper');
@@ -6134,8 +6588,17 @@ test('Trade flow helper module is registered before app code', () => {
 });
 
 test('Perk flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/perk-effects.js'", 'Perk effects contract should be included in SCRIPT_ORDER');
+  assertContains(buildContent, "'src/core/perk-registry.js'", 'Perk Profile registry should be included in SCRIPT_ORDER');
   assertContains(buildContent, "'src/core/perk-flow.js'", 'Perk flow helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/perk-effects.js'") < buildContent.indexOf("'src/core/perk-flow.js'"), 'Perk effects should load before perk flow');
+  assert(buildContent.indexOf("'src/core/perk-registry.js'") < buildContent.indexOf("'src/core/perk-flow.js'"), 'Perk registry should load before perk flow');
   assert(buildContent.indexOf("'src/core/perk-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Perk flow helper should load before app.js');
+  assertContains(perkEffectsContent, 'const YAW_PERK_EFFECTS = {', 'Perk effects should expose a bounded effect registry');
+  assertContains(perkEffectsContent, 'rollback(unit, selectedPerk = {})', 'Perk effects should define symmetric rollback');
+  assertContains(perkRegistryContent, 'const YAW_PERK_REGISTRY = {', 'Perk Profiles should use an owned data-only registry');
+  assertContains(moduleSystemContent, "'content:add_perk_profile'", 'Module permissions should include the bounded Perk Profile capability');
+  assertContains(moduleSystemContent, 'registerPerkProfile(definition)', 'Public module API should expose data-only Perk Profile registration');
   assertContains(perkFlowContent, 'const YAW_PERK_FLOW = {', 'Perk flow helper should expose the perk flow service');
   assertContains(perkFlowContent, 'availableChoices(app', 'Perk flow helper should own perk availability');
   assertContains(perkFlowContent, 'choose(app, perkId)', 'Perk flow helper should own perk choice behavior');
@@ -6161,9 +6624,11 @@ test('Stats panel helper module is registered before app code', () => {
   assertContains(statsPanelContent, 'data-command-control="close-stats"', 'Stats close controls should identify their drawer exit');
   assertContains(statsPanelContent, 'data-command-control="open-perk-selection"', 'Stats pending perk control should identify its drawer route');
   assertContains(statsPanelContent, 'data-command-control="respec-perks"', 'Stats respec control should identify its drawer action');
-  assertContains(statsPanelContent, 'data-command-control="debug-grant-perk"', 'Stats debug grant control should identify its drawer action');
+  assertNotContains(statsPanelContent, 'data-command-control="debug-grant-perk"', 'Stats should not expose debug perk grants as ordinary progression controls');
+  assertContains(templateContent, 'data-command-control="debug-grant-perk"', 'Debug perk grants should remain available only in the Cheats section');
   assertContains(statsPanelContent, 'data-command-surface="perk-selection-detail"', 'Perk selection should identify its detail command surface');
-  assertContains(statsPanelContent, 'data-command-control="filter-perk-tree"', 'Perk tree filters should identify their drawer control');
+  assertNotContains(statsPanelContent, 'data-command-control="filter-perk-tree"', 'Visible-only Perk Frontier should not retain tree filter management');
+  assertContains(statsPanelContent, 'data-perk-frontier="current"', 'Perk picker should identify the current visible frontier');
   assertContains(statsPanelContent, 'data-command-control="choose-perk"', 'Perk choice buttons should identify their drawer action');
   assertContains(statsPanelContent, 'data-command-control="back-to-stats"', 'Perk picker back control should identify its drawer exit');
   assertNotContains(statsPanelContent, "document.getElementById('scene-description')", 'Stats panel helper should not render into center tile content');
@@ -6173,6 +6638,8 @@ test('Stats panel helper module is registered before app code', () => {
 });
 
 test('Quest flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/quest-contract.js'", 'Quest Contract V2 should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/quest-contract.js'") < buildContent.indexOf("'src/core/quest-flow.js'"), 'Quest contract should load before quest flow');
   assertContains(buildContent, "'src/core/quest-flow.js'", 'Quest flow helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/quest-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Quest flow helper should load before app.js');
   assert(buildContent.indexOf("'src/core/quest-flow.js'") < buildContent.indexOf("'src/core/quest-panel.js'"), 'Quest flow helper should load before quest panel rendering');
@@ -6182,7 +6649,8 @@ test('Quest flow helper module is registered before app code', () => {
   assertContains(questFlowContent, 'accept(app, quest, giver = null)', 'Quest flow helper should own quest acceptance');
   assertContains(questFlowContent, 'updateProgress(app, type, payload = {})', 'Quest flow helper should own quest progress updates');
   assertContains(questFlowContent, 'grantReward(app, quest)', 'Quest flow helper should own quest reward grants');
-  assertContains(questFlowContent, 'turnIn(app, questId)', 'Quest flow helper should own quest turn-in behavior');
+  assertContains(questContractContent, 'const YAW_QUEST_CONTRACT = {', 'Quest contract should expose the canonical lifecycle service');
+  assertContains(questFlowContent, 'turnIn(app, questId, context = {})', 'Quest flow helper should own contextual quest turn-in behavior');
   assertContains(questFlowContent, 'focusObjectiveOnMap(app, questId, objectiveId)', 'Quest flow helper should own objective map focus behavior');
   assertContains(questFlowContent, 'templateForStructure(app, structureId, tile = null)', 'Quest flow helper should own structure quest template selection');
   assertContains(questFlowContent, 'createStructureGiver(app, structureId, tile)', 'Quest flow helper should own structure quest-giver creation');
@@ -6206,7 +6674,7 @@ test('Quest flow helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_QUEST_FLOW.normalize(this, quest, giver)', 'App quest normalization wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_QUEST_FLOW.accept(this, quest, giver)', 'App accept quest wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_QUEST_FLOW.updateProgress(this, type, payload)', 'App quest progress wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_QUEST_FLOW.turnIn(this, questId)', 'App quest turn-in wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_QUEST_FLOW.turnIn(this, questId, context)', 'App contextual quest turn-in wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_QUEST_FLOW.filteredEntries(this)', 'App quest filtering wrapper should delegate to the helper');
 });
 
@@ -7765,6 +8233,7 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertContains(moduleSystemContent, "'world:add_biome'", 'Module biome mutation permission should be explicit');
   assertContains(moduleSystemContent, "'content:add_species'", 'Module species mutation permission should be explicit');
   assertContains(moduleSystemContent, "'content:add_item'", 'Module item mutation permission should be explicit');
+  assertContains(moduleSystemContent, "'content:add_quest'", 'Module quest mutation permission should be explicit');
   assertContains(moduleSystemContent, 'TRUST_BOUNDARY', 'Module trust boundary should be explicit in source');
   assertContains(moduleSystemContent, 'trusted-local', 'Module trust boundary should be named trusted-local');
   assertContains(moduleSystemContent, 'trusted-local module runtime context', 'Module execution wording should describe a trusted-local runtime context');
@@ -7786,7 +8255,7 @@ test('Canonical module doctrine matches the implemented package and capability b
   assertContains(doctrine, 'The installer still accepts the older bare `{ manifest, code, assets }` shape', 'Module doctrine should distinguish compatibility input from the authoring format');
   for (const permission of [
     'ui.read', 'media:read', 'scene:add_template', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide',
-    'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_template',
+    'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_quest', 'content:add_template',
     'content:add_locale', 'content:add_creation_option', 'content:add_action_variant',
     'mechanics:add_resource_profile', 'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'
   ]) {
@@ -8426,7 +8895,7 @@ test('Persistent shell controls opt into localization', () => {
   assertContains(template, '<div id="mobile-combat-actions" class="action-bar" style="display: none;"></div>', 'Legacy mobile combat shell should not ship static fallback buttons');
   assertContains(mobileCombatToolbeltContent, 'app._combatActionButtons(actor', 'Mobile combat toolbelt should use the shared localized combat action helper');
   assertNotContains(template, 'onclick="App.showInventory()"', 'Static shell should not expose carried inventory from center context');
-  assertContains(template, 'data-i18n="ui.tutorial.skip"', 'Tutorial skip button should opt into localization');
+  assertContains(template, 'data-i18n="ui.tutorial.close"', 'Tutorial close button should opt into localization');
   assertContains(template, 'data-i18n="ui.tutorial.next"', 'Tutorial next button should opt into localization');
   assertContains(template, 'data-i18n="mod.loading"', 'Module loading fallback should opt into localization');
   assertContains(settingsNavContent, 'App.applyStaticLocalization?.(nav)', 'Injected settings nav should refresh static localization after insertion');
@@ -8624,6 +9093,26 @@ test('Mobile game shell prevents horizontal overflow', () => {
   assertContains(template, '.combat-selected-intent', 'combat center should style selected intent feedback');
   assertNotContains(template, 'left: -85vw', 'mobile panels should not sit at negative viewport offsets');
   assertNotContains(template, 'right: -85vw', 'mobile panels should not sit at negative viewport offsets');
+});
+
+test('Long mobile screens keep their exit controls in a safe-area bottom bar', () => {
+  assertContains(template, '.mobile-screen-exit-bar {\n            display: none;', 'Shared mobile exit bars should remain hidden outside the mobile breakpoint');
+  assertContains(template, '.mobile-screen-exit-source {\n                display: none !important;', 'Mobile layouts should hide the redundant desktop header exit');
+  assertContains(template, 'bottom: max(8px, env(safe-area-inset-bottom));', 'Mobile exit bars should stay above the device safe area');
+  assertContains(template, '.mobile-screen-exit-bar .nav-btn {\n                flex: 1 1 0;', 'Mobile exit controls should fill a stable thumb-width action bar');
+  assertContains(template, 'padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;', 'Long system screens should reserve scroll clearance for the fixed mobile exit bar');
+  assertContains(template, 'data-command-surface="ai-providers" data-command-mode="system"><button class="nav-btn" type="button" data-command-surface="ai-providers"', 'AI Providers should expose a mobile bottom exit');
+  assertContains(template, 'data-command-surface="release-notes" data-command-mode="system"><button class="nav-btn" type="button" data-command-surface="release-notes"', 'Release notes should expose a mobile bottom exit');
+  assertContains(template, 'data-command-surface="activity-log" data-command-mode="system"><button class="nav-btn" type="button" data-command-surface="activity-log"', 'Activity Log should expose a mobile bottom exit');
+  assertContains(template, 'data-command-surface="module-manager" data-command-mode="system"><button class="nav-btn" data-command-surface="module-manager"', 'Mod Manager should expose a mobile bottom exit');
+  assertContains(template, 'data-command-surface="marketplace" data-command-mode="system"><button class="nav-btn" data-command-surface="marketplace"', 'Host Catalog fallback should expose a mobile bottom exit');
+  assertContains(marketScreenContent, 'class="mobile-screen-exit-bar" data-command-surface="marketplace"', 'Runtime Host Catalog should preserve its mobile bottom exit after rerender');
+  assertContains(inventoryPanelContent, 'class="mobile-screen-exit-bar" data-command-surface="holdings-window"', 'Holdings and contained detail routes should expose a mobile bottom exit');
+  assertContains(inventoryPanelContent, "root.querySelector('.mobile-screen-exit-bar .holdings-close')", 'Holdings should focus the visible mobile exit rather than its hidden desktop copy');
+  assertContains(transactionWindowContent, 'class="mobile-screen-exit-bar" data-command-surface="transaction-window"', 'Quest and trade windows should expose a mobile bottom exit');
+  assertContains(transactionWindowContent, "root.querySelector('.mobile-screen-exit-bar .transaction-close')", 'Transactions should focus the visible mobile exit rather than its hidden desktop copy');
+  assertContains(panelShellContent, 'class="mobile-screen-exit-bar" data-command-surface="roster"', 'Nested roster details should move Back below long detail content');
+  assertContains(template, '.mobile-roster-detail .mobile-screen-exit-bar {\n                position: sticky;', 'Roster detail Back should remain within its sheet instead of colliding with the global mobile dock');
 });
 
 test('Mobile panels and actions expose map holdings and the unified roster', () => {
@@ -9181,7 +9670,15 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     'holdings-window-root',
     'toast-stack',
     'story-sheet',
-    'story-sheet-list'
+    'story-sheet-list',
+    'tutorial-overlay',
+    'tutorial-title',
+    'tutorial-content',
+    'tutorial-tip',
+    'tutorial-lesson-list',
+    'tutorial-progress',
+    'tutorial-previous',
+    'tutorial-next'
   ].forEach(id => {
     if (!elements.has(id)) elements.set(id, makeElement());
   });
@@ -9211,7 +9708,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${spritePackV1Content}\n${spriteRuntimeContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${recoveryModesContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${balanceSystemContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${resourceLedgerContent}\n${combatTechniqueContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${spritePackV1Content}\n${spriteRuntimeContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${recoveryModesContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${balanceSystemContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${resourceLedgerContent}\n${combatTechniqueContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${companionBehaviorContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${itemRegistryContent}\n${itemEffectsContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questContractContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -9247,7 +9744,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'ui.log.combat': 'Combat',
           'ui.log.discovery': 'Discovery',
           'ui.partyActionsFor': 'Party actions for {name}',
-          'ui.partyActionsDescription': "Manage {name}'s holdings, party role, and companion actions.",
+          'ui.partyActionsDescription': "Manage {name}'s holdings, Duty, Stance, and Control.",
           'holdings.perkDescription': 'Choose an available perk, or return to character stats.',
           'transaction.tradeDescription': 'Review wares, prices, and inventory with {name}.',
           'transaction.questDescription': 'Review available and active quests from {name}.',
@@ -9259,6 +9756,20 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'quest.objective.seduce': 'Seduce',
           'quest.objective.travel': 'Travel to',
           'quest.objective.escort': 'Escort to',
+          'quest.objective.deliver': 'Deliver',
+          'quest.objective.recover': 'Recover',
+          'quest.procedural.hunt.title': 'Hunt: {species}',
+          'quest.procedural.hunt.description': 'Track a nearby {species} threat and return with news.',
+          'quest.procedural.gather.title': 'Gather: {item}',
+          'quest.procedural.gather.description': 'Find {item} and return it to the original giver.',
+          'quest.procedural.deliver.title': 'Sealed Delivery',
+          'quest.procedural.deliver.description': 'Carry the protected parcel to the marked destination.',
+          'quest.procedural.survey.title': 'Survey the Wilds',
+          'quest.procedural.survey.description': 'Reach the marked area and record a safe route.',
+          'quest.procedural.escort.title': 'Guide the Route',
+          'quest.procedural.escort.description': 'Guide the traveler through each marked checkpoint.',
+          'quest.procedural.recover.title': 'Recover the Waystone Sigil',
+          'quest.procedural.recover.description': 'Search the marked area for a protected waystone sigil.',
           'quest.untitled': 'Untitled Quest',
           'quest.giverFallback': 'Quest giver',
           'quest.checkpointNumber': 'Checkpoint {index}',
@@ -9373,14 +9884,40 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'containment.beat.softened': '{target} is fully softened inside {holder}, but remains alive and can be released.',
           'containment.beat.released': "{target} is released from {holder}'s stomach, weakened but alive.",
           'containment.beat.terminal': '{target} is fully digested inside {holder}. {holder} feels restored.',
+          'perk.frontier': 'Current choices',
+          'perk.frontierHelp': 'Only perks you can choose now are shown.',
+          'perk.frontierEmpty': 'No new perks are available from your current progress.',
+          'perk.available.current': 'Available from your current experience.',
+          'perk.available.fromPerk': 'Unlocked by {name}.',
+          'perk.available.fromPath': 'Unlocked by your {path} path.',
+          'perk.available.fromSpecies': 'Available to your {species} lineage.',
+          'perk.tree.predator': 'Predator', 'perk.tree.seducer': 'Seducer', 'perk.tree.survivor': 'Survivor', 'perk.tree.human': 'Human', 'perk.tree.wolf': 'Wolf', 'perk.tree.bunny': 'Bunny', 'perk.tree.dragon': 'Dragon',
+          'perk.name.predator_instinct': 'Predator Instinct', 'perk.desc.predator_instinct': 'Figh +2. Improves search finds.',
+          'perk.name.voracious': 'Voracious', 'perk.desc.voracious': 'Feas +3.',
+          'perk.name.apex_pressure': 'Apex Pressure', 'perk.desc.apex_pressure': 'STR +2.',
+          'perk.name.soft_approach': 'Soft Approach', 'perk.desc.soft_approach': 'Flir +2.',
+          'perk.name.seductive_aura': 'Seductive Aura', 'perk.desc.seductive_aura': 'CHA +2.',
+          'perk.name.devoted_attention': 'Devoted Attention', 'perk.desc.devoted_attention': 'Play +3.',
+          'perk.name.iron_will': 'Iron Will', 'perk.desc.iron_will': 'WIS +2. Resists fear turn loss.',
+          'perk.name.swift_strides': 'Swift Strides', 'perk.desc.swift_strides': 'SPD +2.',
+          'perk.name.iron_gut': 'Iron Gut', 'perk.desc.iron_gut': 'CON +3.',
+          'perk.name.human_adaptable': 'Adaptable', 'perk.desc.human_adaptable': 'Flee +1 and Feed +1.',
+          'perk.name.human_resolve': 'Steady Resolve', 'perk.desc.human_resolve': 'WIS +2.',
+          'perk.name.wolf_pack_instinct': 'Pack Instinct', 'perk.desc.wolf_pack_instinct': 'Figh +2.',
+          'perk.name.wolf_relentless_hunger': 'Relentless Hunger', 'perk.desc.wolf_relentless_hunger': 'Feas +2.',
+          'perk.name.bunny_quickstep': 'Quickstep', 'perk.desc.bunny_quickstep': 'Flee +3.',
+          'perk.name.bunny_soft_charm': 'Soft Charm', 'perk.desc.bunny_soft_charm': 'Flir +2.',
+          'perk.name.dragon_ancient_bulk': 'Ancient Bulk', 'perk.desc.dragon_ancient_bulk': 'CON +3.',
+          'perk.name.dragon_dominant_appetite': 'Dominant Appetite', 'perk.desc.dragon_dominant_appetite': 'Feas +3.',
           'action.fight': 'Fight', 'action.flirt': 'Talk', 'action.fuck': 'Play', 'action.feast': 'Eat', 'action.feed': 'Feed', 'action.flee': 'Flee', 'action.moveRow': 'Move Row', 'action.advance': 'Advance', 'action.retreat': 'Retreat', 'action.sync': 'Sync', 'action.skip': 'Skip', 'action.search': 'Search', 'action.rest': 'Rest', 'action.inventory': 'Items', 'action.interact': 'Interact', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge', 'action.scavenged': 'Scavenged',
           'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}', 'inventory.full': 'Inventory is full.', 'inventory.empty': 'Empty.', 'inventory.noItemsMatch': 'No items match the current filter.', 'inventory.titleWithCount': 'Inventory ({count}/{max})', 'inventory.equippedSection': 'Equipped', 'holdings.titleWithInventory': 'Holdings / Inventory ({count}/{max})', 'holdings.umbrella': 'Character / Holdings', 'holdings.tabs': 'Holdings sections', 'holdings.pack': 'Pack / Inventory', 'holdings.containers': 'Containers', 'holdings.ground': 'Here / Ground', 'inventory.equipped': 'Equipped {name}.', 'inventory.unequipped': 'Unequipped {name}.', 'inventory.noEquipment': 'No equipment', 'inventory.noBonus': 'No bonus', 'inventory.effect': 'Effect',
-          'item.category': 'Category', 'item.category.all': 'All', 'item.category.consumable': 'Consumable', 'item.category.equipment': 'Equipment', 'item.category.valuable': 'Valuable', 'item.category.material': 'Material', 'item.category.misc': 'Misc', 'item.sort': 'Sort', 'item.sort.name': 'Name', 'item.sort.type': 'Type', 'item.sort.valueDesc': 'Value ↓', 'item.sort.valueAsc': 'Value ↑', 'item.unknown': 'Unknown',
+          'item.category': 'Category', 'item.category.all': 'All', 'item.category.consumable': 'Consumable', 'item.category.equipment': 'Equipment', 'item.category.valuable': 'Valuable', 'item.category.material': 'Trade Good', 'item.category.misc': 'Misc', 'item.sort': 'Sort', 'item.sort.name': 'Name', 'item.sort.type': 'Type', 'item.sort.valueDesc': 'Value ↓', 'item.sort.valueAsc': 'Value ↑', 'item.unknown': 'Unknown',
           'trade.title': '{name} Trade', 'trade.gold': 'Gold: {gold}', 'trade.quantity': 'Qty {count}', 'trade.goldCompact': '{amount}g', 'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}', 'trade.needGold': 'You need {price} gold to buy {name}.', 'trade.confirmBuy': 'Buy {name} for {price} gold?', 'trade.purchaseCancelled': 'Purchase cancelled: {name}.', 'trade.bought': 'Bought {name} for {price} gold.', 'trade.sold': 'Sold {name} for {price} gold.', 'trade.noStockMatches': 'No stock matches the current filter.', 'trade.noItemsToSell': 'No items to sell.', 'trade.noInventoryMatches': 'No inventory items match the current filter.',
           'quest.title': 'Quests', 'quest.windowTitle': '{name} Quests', 'quest.window.available': 'Available', 'quest.window.accepted': 'Accepted', 'quest.window.completed': 'Completed', 'quest.window.none': 'None', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}', 'quest.status.active': 'Active', 'quest.status.completed': 'Completed', 'quest.status.turnIn': 'Turn In', 'quest.noneActive': 'No active quests.', 'quest.noneMatchFilter': 'No quests match the current filter.', 'quest.alreadyInLog': '{title} is already in your quest log.', 'quest.accepted': 'Quest accepted: {title}.', 'quest.completed': 'Quest completed: {title}.', 'quest.completedTurnIn': 'Quest completed: {title}. Return to {giver} for your reward.', 'quest.defaultGiver': 'the quest giver', 'quest.notReadyTurnIn': 'That quest is not ready to turn in.', 'quest.alreadyTurnedIn': '{title} has already been turned in.', 'quest.turnedIn': 'Quest turned in: {title}.', 'quest.noObjectiveMarker': 'No map marker is available for that quest objective.', 'quest.mapFocusedObjective': 'Map focused on {title}: {label}.', 'quest.noTurnInLocation': 'No turn-in location is available for that quest.', 'quest.mapFocusedTurnIn': 'Map focused on {title} turn-in: {label}.', 'quest.checkpoint': 'Checkpoint', 'quest.checkpoint.complete': 'Complete', 'quest.checkpoint.current': 'Current', 'quest.checkpoint.pending': 'Pending', 'quest.checkpointAria': '{state} checkpoint {index}: {label} at {x}, {y}{guidance}', 'quest.youAreHere': 'You are here', 'quest.direction.north': '{count} north', 'quest.direction.south': '{count} south', 'quest.direction.east': '{count} east', 'quest.direction.west': '{count} west', 'quest.step.singular': 'step', 'quest.step.plural': 'steps', 'quest.guidance': '{distance} {stepLabel} {directions}', 'quest.terrainKnownRoute': 'known route crosses {parts}', 'quest.terrainRoad': '{count} road', 'quest.terrainBridge': '{count} bridge', 'quest.terrainRough': '{count} rough terrain', 'quest.markerPreview': 'Marker: {label} ({x}, {y})', 'quest.turnInPreview': 'Turn in with {label} ({x}, {y})', 'transaction.summary.npc': 'NPC', 'transaction.summary.location': 'Location', 'transaction.summary.gold': 'Gold', 'transaction.summary.inventory': 'Inventory',
           'perk.choose': 'Choose Perk', 'perk.chooseCount': 'Choose Perk ({count})', 'perk.pending': 'Pending choices: {count}', 'perk.trees': 'Perk trees', 'perk.filter.all': 'All', 'perk.chooseNamed': 'Choose {name}', 'perk.back': 'Back', 'perk.respec': 'Respec Perks', 'perk.debugGrant': 'Debug +1 Perk Choice', 'perk.closeStats': 'Close', 'perk.levelUp': 'Level up! You are now level {level}. All stats increased!', 'perk.chooseNew': 'Choose a new perk from the perk tree.', 'perk.notAvailable': 'That perk is not available yet.', 'perk.chosen': 'Perk chosen: {name}. {description}', 'perk.noneToRespec': 'No perks selected to respec.', 'perk.confirmRespec': 'Reset selected perks and refund their choices?', 'perk.respecDoneOne': 'Perks reset. Refunded {count} choice.', 'perk.respecDoneMany': 'Perks reset. Refunded {count} choices.',
           'ui.close': 'Close', 'ui.cancel': 'Cancel', 'ui.actionLegend': 'Action legend', 'ui.menu.newGame': 'New Game', 'ui.menu.newGameTitle': 'Start a new game', 'ui.returnToMenu': 'Return to Menu', 'ui.menu.tutorialTitle': 'Open tutorial', 'ui.nav.holdingsTitle': 'Open holdings', 'ui.holdings': 'Holdings', 'ui.tutorial.skip': 'Skip Tutorial', 'ui.tutorial.next': 'Next ->', 'ui.tutorial.welcome.title': 'Welcome', 'ui.tutorial.welcome.content': 'You are wild in a strange living world. Explore, learn your limits, and grow stronger. Choose your risks carefully.', 'ui.tutorial.combat.title': 'Combat', 'ui.tutorial.combat.content': 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Sync actions let multiple allies act together.', 'ui.tutorial.feast.title': 'Eat', 'ui.tutorial.feast.content': 'Eat weakened targets to hold them safely. Capacity matters, and optional modules can add alternate outcomes.', 'ui.tutorial.party.title': 'Party', 'ui.tutorial.party.content': 'Recruit willing creatures, assign roles, choose AI orders, and manage who acts in exploration or combat.', 'ui.tutorial.ready.title': 'Ready', 'ui.tutorial.ready.content': 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.', 'ui.log.search': 'Search log', 'ui.log.visibleCount': '{count} visible entries', 'ui.log.visibleCount.one': '1 visible entry', 'ui.toast.notifications': 'Notifications', 'ui.toast.dismiss': 'Dismiss notification', 'settings.title': 'Settings', 'settings.interfaceLanguage': 'Interface Language', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions', 'ui.tacticalStatus': 'Tactical status', 'ui.unitTraits': 'Unit traits', 'unit.cardShowDetails': 'Show details for {name}', 'unit.cardHideDetails': 'Hide details for {name}', 'ui.exploration': 'Exploration', 'ui.chooseAction': 'Choose your next action.', 'ui.actorActing': '{name} is acting...', 'mobile.combat.actor': '{name} to act', 'mobile.combat.chooseAction': 'Choose an action, then tap a target.', 'mobile.combat.enemyTurn': '{name} is acting.', 'mobile.combat.pickTarget': 'Pick a target for {action}.', 'mobile.combat.status': 'Round {round} · Turn {turn}/{total}', 'mobile.combat.targeting': 'Targeting: {action}', 'ui.welcomeLog': 'Welcome to You Are Wild', 'ui.scene.wildernessTitle': 'The Wilderness', 'ui.scene.wildernessIntro': 'You find yourself in an untamed land where predators roam and only the strong survive.', 'ui.scene.wildernessAmbient': 'The air is thick with the scent of pine and the distant calls of creatures unknown.', 'ui.log.createdCharacter': 'Created your character. The journey begins...', 'ui.area': 'Area', 'ui.enemies': 'Enemies', 'ui.creatures': 'Creatures', 'ui.noCreaturesPresent': 'No creatures present', 'ui.noCreaturesHere': 'No creatures here', 'target.chooseFromPanel': 'Select a target from the creature panel.', 'target.cancelAction': 'Cancel {action}', 'log.movedTo': 'Moved to {x}, {y} ({biome})', 'log.inCombatCannotMove': 'You are in combat! Use Flee to escape.', 'log.discoveredLandmark': 'Discovered {name}!', 'log.restUnavailable': 'There is no safe place to rest here.', 'log.rested': 'Rested and recovered.', 'log.noEntriesMatchFilter': 'No log entries match the current filter.', 'recruit.partyFull': 'Party is full! Cannot recruit {name}', 'recruit.notReady': '{name} is not ready to join the party.', 'recruit.joined': '{name} joins your party!', 'recruit.confirmSubmissive': '{name} is ready to follow. Recruit them to your party?', 'feed.optionsTitle': 'Feed Options', 'feed.noOptions': 'No feed options available right now.', 'feed.noWoundedAllies': 'No wounded allies to feed.', 'feed.noWillingLivestock': 'No willing livestock to sacrifice.', 'feed.noForceFeedEnemies': 'No enemies to force-feed.', 'feed.noValidTarget': 'No valid target for this feed action.',
           'disposition.hostile': 'Hostile', 'disposition.friendly': 'Friendly', 'disposition.neutral': 'Neutral', 'disposition.quest': 'Quest', 'disposition.merchant': 'Merchant', 'disposition.remains': 'Remains', 'unit.trait.asleep': 'Asleep', 'unit.trait.poisoned': 'Poison', 'unit.trait.burning': 'Burning', 'unit.trait.bleeding': 'Bleeding', 'unit.trait.stunned': 'Stunned', 'unit.trait.frozen': 'Frozen', 'unit.trait.fear': 'Fear', 'unit.trait.restrained': 'Restrained', 'unit.trait.wounded': 'Wounded', 'unit.trait.hungry': 'Hungry', 'unit.trait.flying': 'Flying', 'unit.trait.darkvision': 'Darkvision', 'combat.row': 'Row', 'combat.row.front': 'Front', 'combat.row.back': 'Back', 'combat.group': 'Group', 'combat.turnOrder': 'Turn order', 'combat.status.current': '{name} is the current combat actor at turn {order}.', 'combat.status.queued': '{name} is queued at turn {order}.', 'combat.status.queuedActed': '{name} is queued at turn {order} and has already acted this round.', 'combat.panelActions': 'Combat actions', 'combat.status.syncParticipant': '{name} is participant in queued group {action} resolving at turn {order}.', 'combat.status.syncTarget': '{name} is target of queued group {action} resolving at turn {order}.', 'combat.status.canTarget': '{name} can be selected as the {action} target.', 'combat.status.cannotTarget': '{name} cannot be selected as the {action} target.', 'combat.status.choosingTarget': '{name} is choosing a {action} target.', 'combat.moveRowLog': '{name} moves to the {row} row.', 'combat.advanceLog': '{name} advances to the front row.', 'combat.retreatLog': '{name} retreats to the back row.', 'combat.cannotReachTarget': '{actor} cannot reach {target} from here.', 'combat.flee.noEnemies': 'No enemies to flee from!', 'combat.flee.success': 'You flee successfully!', 'combat.flee.failed': 'Flee failed! {name} intercepts you!', 'combat.godModeSaved': 'God Mode saved you from death!', 'combat.playerFallen': 'You have fallen! Game Over!', 'combat.hardcoreSaveDeleted': 'HARDCORE MODE: Your save has been deleted.', 'combat.playerKnockedOut': 'You have been knocked out! Your party must finish the fight...', 'combat.partyWipedOut': 'Your party has been wiped out!', 'combat.alliesContinue': 'Your allies continue the fight...', 'combat.playerComesTo': '{name} comes to after the fight.', 'combat.victory': 'Victory! Enemies defeated or subdued.', 'combat.escapedEncounter': 'You escaped the encounter.', 'combat.defeat': 'Defeat...', 'combat.confirmReturnToMenu': 'Defeat! Return to menu?', 'recovery.regenerate': 'Regenerate', 'recovery.endGame': 'End Game', 'combat.notInCombat': 'Not in combat!', 'combat.instantWin': 'Instant Win', 'combat.instantWinTitle': 'Instantly defeat all enemies', 'combat.instantWinNotInCombat': 'Not in combat! Instant Win only works during combat.', 'combat.instantWinRequiresOverpowered': 'Instant Win requires Overpowered mode.', 'combat.instantWinSuccess': 'Instant Win! All enemies are defeated.', 'combat.allyScavenges': "{ally} scavenges {target}'s remains after the fight.", 'combat.scavengeRemains': '{actor} uses {count} portion(s) from {target}.', 'corpse.portionsRemaining': '{count} portions left', 'corpse.depleted': 'Scavenged', 'combat.allyHolds': '{name} holds position.', 'combat.allyCannotReach': '{name} cannot reach any target.', 'combat.enemyReinforces': '{enemy} calls for help! {reinforcement} joins the fight.', 'combat.enemyRage': '{name} enters a rage!', 'combat.enemyFlees': '{name} flees in terror!', 'combat.status.poisoned': '{name} is poisoned!', 'combat.status.constricted': '{actor} constricts {target}! They are restrained.', 'combat.status.enveloped': '{actor} envelops {target}!', 'combat.status.stunned': '{name} is stunned and loses their turn!', 'combat.status.frozen': '{name} is frozen in place and loses their turn!', 'combat.status.asleep': '{name} is asleep and cannot act!', 'combat.status.fearFlee': '{name} panics and flees from fear!', 'combat.status.fearFrozen': '{name} freezes in fear and loses their turn!', 'combat.status.recovering': '{name} is recovering and skips their turn.', 'combat.status.restrainedSkip': '{name} is restrained and cannot act!', 'combat.status.stuck': '{name} is stuck in the terrain and loses their turn!', 'combat.allyFlees': '{name} loses their nerve and flees from the fight!', 'combat.allyFleeFailed': '{name} tries to flee but cannot get away!', 'combat.allyTooAroused': '{name} is too distracted to act!', 'combat.enemyCannotReach': '{enemy} cannot reach {target}.', 'cheat.toggled': 'Cheat {name}: {state}', 'cheat.state.on': 'ON', 'cheat.state.off': 'OFF', 'cheat.overpoweredMaxed': 'Overpowered! All stats maxed.', 'combat.waitForTurn': 'Wait for your turn!', 'combat.notYourTurn': 'Not your turn!', 'combat.sync.chooseAction': 'Choose Sync Action', 'combat.sync.noAllies': 'No allies available for sync.', 'combat.sync.action.fuck': 'Group Play', 'combat.sync.action.flirt': 'Group Talk', 'combat.sync.action.fight': 'Group Fight', 'combat.sync.action.feed': 'Group Feed', 'combat.sync.participantRole': 'Participant', 'combat.sync.selectParticipants': 'Select participants for sync', 'combat.sync.selectParticipantFor': 'Select {name} for sync', 'combat.sync.confirmParticipants': 'Confirm Participants', 'combat.sync.needParticipants': 'Need at least 2 participants for a sync action.', 'combat.sync.selectTarget': 'Select sync target', 'combat.sync.selectTargetFor': 'Select {name} as sync target', 'combat.sync.failedNoQueue': 'Sync failed! Participants are no longer in the turn queue.', 'combat.sync.failedIncapacitated': 'Sync failed! {names} cannot participate.', 'capacity.stomach': 'Belly', 'capacity.womb': 'Inner', 'capacity.balls': 'Reserve', 'capacity.owner.your': 'Your', 'capacity.owner.named': "{name}'s", 'capacity.tooFull': '{owner} {container} is too full for {target}!', 'structure.noStructure': 'There is no structure to enter here.', 'structure.entered': 'Entered {name}.', 'structure.exited': 'Exited {name}.', 'structure.movedInside': 'Moved inside {name} to {x}, {y}.', 'structure.fallbackName': 'the structure', 'structure.wallBlocked': 'A wall blocks the way.',
+          'party.duty': 'Duty', 'party.stance': 'Stance', 'party.control': 'Control', 'party.tradeoff': 'Tradeoff', 'party.duty.guard': 'Guard', 'party.duty.scout': 'Scout', 'party.duty.support': 'Support', 'party.duty.gatherer': 'Gatherer', 'party.dutyDescription.guard': 'Protects vulnerable allies and reduces ambush pressure.', 'party.dutyDescription.scout': 'Improves visibility, route awareness, and ambush detection.', 'party.dutyDescription.support': 'Improves recovery and prioritizes tending wounded allies.', 'party.dutyDescription.gatherer': 'Improves searching, foraging, and recovery of useful remains.', 'party.dutyTradeoff.guard': 'Prioritizes immediate threats over exploration and resources.', 'party.dutyTradeoff.scout': 'Avoids prolonged exchanges when a safer opening exists.', 'party.dutyTradeoff.support': 'Gives up offensive tempo when the party needs care.', 'party.dutyTradeoff.gatherer': 'Prioritizes resources over pressing an advantage.', 'party.stance.aggressive': 'Aggressive', 'party.stance.balanced': 'Balanced', 'party.stance.defensive': 'Defensive', 'party.stance.passive': 'Passive', 'party.stanceDescription.aggressive': 'Presses reachable threats and accepts more risk.', 'party.stanceDescription.balanced': 'Balances pressure, safety, care, and opportunity.', 'party.stanceDescription.defensive': 'Protects the party and favors lower-risk actions.', 'party.stanceDescription.passive': 'Avoids escalation unless an ally is endangered.', 'party.control.manual': 'Manual', 'party.control.deterministic': 'Autonomous', 'party.control.provider': 'AI assisted', 'party.controlDescription.manual': 'You choose this companion’s actions.', 'party.controlDescription.deterministic': 'The companion chooses legal actions from Duty, Stance, and current conditions.', 'party.controlDescription.provider': 'A configured character controller may choose; deterministic autonomy is the safe fallback.', 'party.dutyFor': 'Duty for {name}', 'party.stanceFor': 'Stance for {name}', 'party.controlFor': 'Control for {name}', 'party.dutySet': '{name}: duty is now {value}.', 'party.stanceSet': '{name}: stance is now {value}.', 'party.controlSet': '{name}: control is now {value}.',
           'party.stats': 'Stats', 'party.you': 'You', 'party.ally': 'Ally', 'party.leader': 'Leader', 'party.levelSpecies': 'Level {level} {species}', 'party.punishment': 'Punishment', 'party.pleasure': 'Spirit', 'party.hunger': 'Hunger', 'party.combat': 'Combat', 'party.attributes': 'Attributes', 'party.capacity': 'Capacity', 'party.equipment': 'Equipment', 'party.perks': 'Perks', 'party.none': 'None', 'character.xp': 'XP: {xp}/{xpToNext}', 'character.combatStats': 'Combat Stats', 'character.body': 'Body', 'character.size': 'Size', 'character.appetite': 'Appetite', 'character.parts': 'Lower Anatomy', 'character.lowerAnatomy': 'Lower anatomy', 'character.chest': 'Chest Shape', 'character.chestShape': 'Chest shape', 'anatomy.lowerA': 'Lower Option A', 'anatomy.lowerB': 'Lower Option B', 'anatomy.chestA': 'Chest Option A', 'anatomy.chestB': 'Chest Option B', 'anatomy.adult.vulva': 'Vulva', 'anatomy.adult.penis': 'Penis', 'anatomy.adult.breasts': 'Breasts', 'anatomy.adult.pecs': 'Pecs', 'character.bodyParts': 'Body', 'character.perkTools': 'Perk Tools', 'character.perkToolsHelp': 'Balance/debug controls.', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.role.companion': 'Companion', 'party.role.scout': 'Scout', 'party.role.guard': 'Guard', 'party.role.support': 'Support', 'party.role.gatherer': 'Gatherer', 'party.roleDescription.companion': 'No special exploration role.', 'party.roleDescription.scout': 'Improves night visibility and route awareness.', 'party.roleDescription.guard': 'Reduces ambush advantage and helps protect camp.', 'party.roleDescription.support': 'Improves recovery when resting somewhere safe.', 'party.roleDescription.gatherer': 'Improves search and foraging results.', 'party.aiOrder.aggressive': 'Aggressive', 'party.aiOrder.defensive': 'Defensive', 'party.aiOrder.healer': 'Healer', 'party.aiOrder.scavenger': 'Scavenger', 'party.aiOrder.passive': 'Passive', 'party.aiOrderDescription.aggressive': 'Prioritizes attacking reachable threats.', 'party.aiOrderDescription.defensive': 'Favors safer positioning and protecting allies.', 'party.aiOrderDescription.healer': 'Feeds the most wounded ally first.', 'party.aiOrderDescription.scavenger': 'Looks for scavenging opportunities after victory.', 'party.aiOrderDescription.passive': 'Avoids acting unless wounded or pressured.', 'party.dismiss': 'Dismiss', 'party.statsFor': 'Show stats for {name}', 'party.makeLeaderFor': 'Make {name} party leader', 'party.dragToReorder': 'Drag {name} to reorder', 'party.moveUp': 'Move {name} up', 'party.moveDown': 'Move {name} down', 'party.dismissFor': 'Dismiss {name}', 'party.confirmDismiss': 'Dismiss {name} from the party?', 'party.dismissed': '{name} leaves the party.', 'party.dismissedNearby': '{name} leaves the party and remains nearby.', 'party.roleSet': '{name} is assigned as {role}.', 'party.aiOrderSet': '{name} will act {order}.', 'party.leaderSet': '{name} is now party leader.', 'party.positionChanged': '{name} changes party position.', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
           'save.title': 'Save Slots', 'save.loadTitle': 'Load Game', 'save.saveTitle': 'Save Game', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.loadDescription': 'Choose a save to load, start a new run in a slot, or delete one slot.', 'save.saveDescription': 'Choose the slot that will continue this run. Auto-save will keep updating the saved slot; the previous active slot stops progressing.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
           'save.toolbarNew': 'New Game', 'save.toolbarHint': 'Choose a slot next; occupied slots warn before overwrite.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Saved game', 'save.openSlot': 'Open slot', 'save.empty': 'Empty', 'save.slotHint.emptyLoad': 'Empty slot: start a new game here.', 'save.slotHint.occupiedLoad': 'Saved slot: load, start a new run, or delete this slot only.', 'save.slotHint.emptySave': 'Empty slot: save here and continue auto-saving to this slot.', 'save.slotHint.occupiedSave': 'Occupied slot: saving here makes this the active auto-save slot.', 'save.slotHint.emptyNew': 'Empty slot: ready for a new run.', 'save.slotHint.occupiedNew': 'Occupied slot: overwriting requires confirmation.', 'save.slotActions.label': 'Available slot actions', 'save.slotActions.emptyLoad': 'Actions: New Game', 'save.slotActions.occupiedLoad': 'Actions: Load, New Run, Delete', 'save.slotActions.emptySave': 'Actions: Save', 'save.slotActions.occupiedSave': 'Actions: Save, Delete', 'save.slotActions.emptyNew': 'Actions: Use Empty Slot', 'save.slotActions.occupiedNew': 'Actions: Overwrite, Delete', 'save.useEmpty': 'Use Empty Slot', 'save.overwriteSlot': 'Overwrite Slot',
@@ -9406,7 +9943,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'ui.log.combat': 'Combate',
           'ui.log.discovery': 'Descubrimiento',
           'ui.partyActionsFor': 'Acciones del grupo para {name}',
-          'ui.partyActionsDescription': 'Administra las pertenencias, el rol de grupo y las acciones de compañero de {name}.',
+          'ui.partyActionsDescription': 'Administra las pertenencias, la funcion, la actitud y el control de {name}.',
           'holdings.perkDescription': 'Elige una ventaja disponible o vuelve a los atributos del personaje.',
           'transaction.tradeDescription': 'Revisa mercancías, precios e inventario con {name}.',
           'transaction.questDescription': 'Revisa las misiones disponibles y activas de {name}.',
@@ -9418,6 +9955,20 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'quest.objective.seduce': 'Seducir',
           'quest.objective.travel': 'Viajar a',
           'quest.objective.escort': 'Escoltar a',
+          'quest.objective.deliver': 'Entregar',
+          'quest.objective.recover': 'Recuperar',
+          'quest.procedural.hunt.title': 'Caza: {species}',
+          'quest.procedural.hunt.description': 'Rastrea una amenaza {species} cercana y regresa con noticias.',
+          'quest.procedural.gather.title': 'Recolectar: {item}',
+          'quest.procedural.gather.description': 'Encuentra {item} y regresa con la persona que dio la misión.',
+          'quest.procedural.deliver.title': 'Entrega sellada',
+          'quest.procedural.deliver.description': 'Lleva el paquete protegido al destino marcado.',
+          'quest.procedural.survey.title': 'Explorar las tierras salvajes',
+          'quest.procedural.survey.description': 'Llega a la zona marcada y registra una ruta segura.',
+          'quest.procedural.escort.title': 'Guiar la ruta',
+          'quest.procedural.escort.description': 'Guía a la persona viajera por cada punto de ruta marcado.',
+          'quest.procedural.recover.title': 'Recuperar el sigilo de piedra guía',
+          'quest.procedural.recover.description': 'Busca en la zona marcada un sigilo de piedra guía protegido.',
           'quest.untitled': 'Mision sin titulo',
           'quest.giverFallback': 'Persona de mision',
           'quest.checkpointNumber': 'Punto de ruta {index}',
@@ -9532,14 +10083,40 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'containment.beat.softened': '{target} queda completamente ablandado dentro de {holder}, pero sigue vivo y puede ser liberado.',
           'containment.beat.released': '{target} es liberado del estomago de {holder}, debilitado pero vivo.',
           'containment.beat.terminal': '{target} es digerido por completo dentro de {holder}. {holder} se siente restaurado.',
+          'perk.frontier': 'Opciones actuales',
+          'perk.frontierHelp': 'Solo se muestran las mejoras que puedes elegir ahora.',
+          'perk.frontierEmpty': 'No hay mejoras nuevas disponibles con tu progreso actual.',
+          'perk.available.current': 'Disponible por tu experiencia actual.',
+          'perk.available.fromPerk': 'Desbloqueada por {name}.',
+          'perk.available.fromPath': 'Desbloqueada por tu ruta de {path}.',
+          'perk.available.fromSpecies': 'Disponible para tu linaje {species}.',
+          'perk.tree.predator': 'Depredador', 'perk.tree.seducer': 'Seductor', 'perk.tree.survivor': 'Superviviente', 'perk.tree.human': 'Humano', 'perk.tree.wolf': 'Lobo', 'perk.tree.bunny': 'Conejo', 'perk.tree.dragon': 'Dragon',
+          'perk.name.predator_instinct': 'Instinto depredador', 'perk.desc.predator_instinct': 'Lucha +2. Mejora los hallazgos al buscar.',
+          'perk.name.voracious': 'Voraz', 'perk.desc.voracious': 'Festin +3.',
+          'perk.name.apex_pressure': 'Presion del apex', 'perk.desc.apex_pressure': 'FUE +2.',
+          'perk.name.soft_approach': 'Acercamiento suave', 'perk.desc.soft_approach': 'Coqueteo +2.',
+          'perk.name.seductive_aura': 'Aura seductora', 'perk.desc.seductive_aura': 'CAR +2.',
+          'perk.name.devoted_attention': 'Atencion dedicada', 'perk.desc.devoted_attention': 'Juego +3.',
+          'perk.name.iron_will': 'Voluntad de hierro', 'perk.desc.iron_will': 'SAB +2. Resiste la perdida de turno por miedo.',
+          'perk.name.swift_strides': 'Paso veloz', 'perk.desc.swift_strides': 'VEL +2.',
+          'perk.name.iron_gut': 'Estomago de hierro', 'perk.desc.iron_gut': 'CON +3.',
+          'perk.name.human_adaptable': 'Adaptable', 'perk.desc.human_adaptable': 'Huida +1 y Alimentar +1.',
+          'perk.name.human_resolve': 'Firme determinacion', 'perk.desc.human_resolve': 'SAB +2.',
+          'perk.name.wolf_pack_instinct': 'Instinto de manada', 'perk.desc.wolf_pack_instinct': 'Lucha +2.',
+          'perk.name.wolf_relentless_hunger': 'Hambre implacable', 'perk.desc.wolf_relentless_hunger': 'Festin +2.',
+          'perk.name.bunny_quickstep': 'Paso ligero', 'perk.desc.bunny_quickstep': 'Huida +3.',
+          'perk.name.bunny_soft_charm': 'Encanto suave', 'perk.desc.bunny_soft_charm': 'Coqueteo +2.',
+          'perk.name.dragon_ancient_bulk': 'Corpulencia ancestral', 'perk.desc.dragon_ancient_bulk': 'CON +3.',
+          'perk.name.dragon_dominant_appetite': 'Apetito dominante', 'perk.desc.dragon_dominant_appetite': 'Festin +3.',
           'action.fight': 'Luchar', 'action.flirt': 'Hablar', 'action.fuck': 'Jugar', 'action.feast': 'Comer', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.advance': 'Avanzar', 'action.retreat': 'Retirarse', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.search': 'Buscar', 'action.rest': 'Descansar', 'action.inventory': 'Objetos', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar', 'action.scavenged': 'Rebuscado',
           'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}', 'inventory.full': 'El inventario esta lleno.', 'inventory.empty': 'Vacio.', 'inventory.noItemsMatch': 'No hay articulos que coincidan con el filtro actual.', 'inventory.titleWithCount': 'Inventario ({count}/{max})', 'inventory.equippedSection': 'Equipado', 'holdings.titleWithInventory': 'Inventario / Pertenencias ({count}/{max})', 'holdings.umbrella': 'Personaje / Pertenencias', 'holdings.tabs': 'Secciones de pertenencias', 'holdings.pack': 'Mochila / Inventario', 'holdings.containers': 'Contenedores', 'holdings.ground': 'Aqui / Suelo', 'inventory.equipped': 'Equipaste {name}.', 'inventory.unequipped': 'Desequipaste {name}.', 'inventory.noEquipment': 'Sin equipo', 'inventory.noBonus': 'Sin bonificacion', 'inventory.effect': 'Efecto',
-          'item.category': 'Categoria', 'item.category.all': 'Todos', 'item.category.consumable': 'Consumible', 'item.category.equipment': 'Equipo', 'item.category.valuable': 'Valioso', 'item.category.material': 'Material', 'item.category.misc': 'Varios', 'item.sort': 'Ordenar', 'item.sort.name': 'Nombre', 'item.sort.type': 'Tipo', 'item.sort.valueDesc': 'Valor ↓', 'item.sort.valueAsc': 'Valor ↑', 'item.unknown': 'Desconocido',
+          'item.category': 'Categoria', 'item.category.all': 'Todos', 'item.category.consumable': 'Consumible', 'item.category.equipment': 'Equipo', 'item.category.valuable': 'Valioso', 'item.category.material': 'Mercancía', 'item.category.misc': 'Varios', 'item.sort': 'Ordenar', 'item.sort.name': 'Nombre', 'item.sort.type': 'Tipo', 'item.sort.valueDesc': 'Valor ↓', 'item.sort.valueAsc': 'Valor ↑', 'item.unknown': 'Desconocido',
           'trade.title': 'Comercio con {name}', 'trade.gold': 'Oro: {gold}', 'trade.quantity': 'Cant. {count}', 'trade.goldCompact': '{amount} oro', 'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}', 'trade.needGold': 'Necesitas {price} de oro para comprar {name}.', 'trade.confirmBuy': 'Comprar {name} por {price} de oro?', 'trade.purchaseCancelled': 'Compra cancelada: {name}.', 'trade.bought': 'Compraste {name} por {price} de oro.', 'trade.sold': 'Vendiste {name} por {price} de oro.', 'trade.noStockMatches': 'No hay existencias que coincidan con el filtro actual.', 'trade.noItemsToSell': 'No hay articulos para vender.', 'trade.noInventoryMatches': 'No hay articulos de inventario que coincidan con el filtro actual.',
           'quest.title': 'Misiones', 'quest.windowTitle': 'Misiones de {name}', 'quest.window.available': 'Disponibles', 'quest.window.accepted': 'Aceptadas', 'quest.window.completed': 'Completadas', 'quest.window.none': 'Ninguna', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}', 'quest.status.active': 'Activa', 'quest.status.completed': 'Completada', 'quest.status.turnIn': 'Entregar', 'quest.noneActive': 'No hay misiones activas.', 'quest.noneMatchFilter': 'No hay misiones que coincidan con el filtro actual.', 'quest.alreadyInLog': '{title} ya esta en tu registro de misiones.', 'quest.accepted': 'Mision aceptada: {title}.', 'quest.completed': 'Mision completada: {title}.', 'quest.completedTurnIn': 'Mision completada: {title}. Vuelve con {giver} para recibir tu recompensa.', 'quest.defaultGiver': 'quien dio la mision', 'quest.notReadyTurnIn': 'Esa mision aun no esta lista para entregar.', 'quest.alreadyTurnedIn': '{title} ya fue entregada.', 'quest.turnedIn': 'Mision entregada: {title}.', 'quest.noObjectiveMarker': 'No hay marcador de mapa disponible para ese objetivo de mision.', 'quest.mapFocusedObjective': 'Mapa enfocado en {title}: {label}.', 'quest.noTurnInLocation': 'No hay ubicacion de entrega disponible para esa mision.', 'quest.mapFocusedTurnIn': 'Mapa enfocado en entrega de {title}: {label}.', 'quest.checkpoint': 'Punto de ruta', 'quest.checkpoint.complete': 'Completado', 'quest.checkpoint.current': 'Actual', 'quest.checkpoint.pending': 'Pendiente', 'quest.checkpointAria': '{state} punto de ruta {index}: {label} en {x}, {y}{guidance}', 'quest.youAreHere': 'Estas aqui', 'quest.direction.north': '{count} norte', 'quest.direction.south': '{count} sur', 'quest.direction.east': '{count} este', 'quest.direction.west': '{count} oeste', 'quest.step.singular': 'paso', 'quest.step.plural': 'pasos', 'quest.guidance': '{distance} {stepLabel} {directions}', 'quest.terrainKnownRoute': 'la ruta conocida cruza {parts}', 'quest.terrainRoad': '{count} camino', 'quest.terrainBridge': '{count} puente', 'quest.terrainRough': '{count} terreno dificil', 'quest.markerPreview': 'Marcador: {label} ({x}, {y})', 'quest.turnInPreview': 'Entregar con {label} ({x}, {y})', 'transaction.summary.npc': 'PNJ', 'transaction.summary.location': 'Ubicacion', 'transaction.summary.gold': 'Oro', 'transaction.summary.inventory': 'Inventario',
           'perk.choose': 'Elegir mejora', 'perk.chooseCount': 'Elegir mejora ({count})', 'perk.pending': 'Opciones pendientes: {count}', 'perk.trees': 'Arboles de mejoras', 'perk.filter.all': 'Todas', 'perk.chooseNamed': 'Elegir {name}', 'perk.back': 'Volver', 'perk.respec': 'Reiniciar mejoras', 'perk.debugGrant': 'Debug +1 opcion de mejora', 'perk.closeStats': 'Cerrar', 'perk.levelUp': 'Subiste de nivel! Ahora eres nivel {level}. Todas las estadisticas aumentaron!', 'perk.chooseNew': 'Elige una nueva mejora del arbol de mejoras.', 'perk.notAvailable': 'Esa mejora aun no esta disponible.', 'perk.chosen': 'Mejora elegida: {name}. {description}', 'perk.noneToRespec': 'No hay mejoras seleccionadas para reiniciar.', 'perk.confirmRespec': 'Reiniciar mejoras seleccionadas y reembolsar sus opciones?', 'perk.respecDoneOne': 'Mejoras reiniciadas. Se reembolso {count} opcion.', 'perk.respecDoneMany': 'Mejoras reiniciadas. Se reembolsaron {count} opciones.',
           'ui.close': 'Cerrar', 'ui.cancel': 'Cancelar', 'ui.actionLegend': 'Leyenda de acciones', 'ui.menu.newGame': 'Nueva partida', 'ui.menu.newGameTitle': 'Iniciar una partida nueva', 'ui.returnToMenu': 'Volver al menu', 'ui.menu.tutorialTitle': 'Abrir tutorial', 'ui.nav.holdingsTitle': 'Abrir pertenencias', 'ui.holdings': 'Pertenencias', 'ui.tutorial.skip': 'Saltar tutorial', 'ui.tutorial.next': 'Siguiente ->', 'ui.tutorial.welcome.title': 'Bienvenida', 'ui.tutorial.welcome.content': 'Eres salvaje en un mundo vivo y extrano. Explora, aprende tus limites y hazte mas fuerte. Elige tus riesgos con cuidado.', 'ui.tutorial.combat.title': 'Combate', 'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Hablar, Comer, Jugar, Alimentar o Huir. Las acciones sincronizadas permiten que varios aliados actuen juntos.', 'ui.tutorial.feast.title': 'Comer', 'ui.tutorial.feast.content': 'Come objetivos debilitados para retenerlos de forma segura. La capacidad importa, y los modulos opcionales pueden agregar resultados alternativos.', 'ui.tutorial.party.title': 'Grupo', 'ui.tutorial.party.content': 'Recluta criaturas dispuestas, asigna roles, elige ordenes de IA y gestiona quien actua durante exploracion o combate.', 'ui.tutorial.ready.title': 'Listo', 'ui.tutorial.ready.content': 'Empieza a explorar cuando estes listo. Usa los paneles de mapa, grupo y criaturas para mantener el flujo manejable.', 'ui.log.search': 'Buscar registro', 'ui.log.visibleCount': '{count} entradas visibles', 'ui.log.visibleCount.one': '1 entrada visible', 'ui.toast.notifications': 'Notificaciones', 'ui.toast.dismiss': 'Descartar notificacion', 'settings.title': 'Ajustes', 'settings.interfaceLanguage': 'Idioma de interfaz', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo', 'ui.tacticalStatus': 'Estado tactico', 'ui.unitTraits': 'Rasgos de unidad', 'unit.cardShowDetails': 'Mostrar detalles de {name}', 'unit.cardHideDetails': 'Ocultar detalles de {name}', 'ui.exploration': 'Exploracion', 'ui.chooseAction': 'Elige tu proxima accion.', 'ui.actorActing': '{name} esta actuando...', 'mobile.combat.actor': '{name} actua', 'mobile.combat.chooseAction': 'Elige una accion y luego toca un objetivo.', 'mobile.combat.enemyTurn': '{name} esta actuando.', 'mobile.combat.pickTarget': 'Elige un objetivo en la fila enemiga para {action}.', 'mobile.combat.status': 'Ronda {round} · Turno {turn}/{total}', 'mobile.combat.targeting': 'Objetivo: {action}', 'ui.welcomeLog': 'Bienvenido a You Are Wild', 'ui.scene.wildernessTitle': 'La Naturaleza', 'ui.scene.wildernessIntro': 'Te encuentras en una tierra indomita donde acechan depredadores y solo sobreviven los fuertes.', 'ui.scene.wildernessAmbient': 'El aire esta cargado de aroma a pino y llamadas lejanas de criaturas desconocidas.', 'ui.log.createdCharacter': 'Creaste tu personaje. El viaje comienza...', 'ui.area': 'Area', 'ui.enemies': 'Enemigos', 'ui.creatures': 'Criaturas', 'ui.noCreaturesPresent': 'No hay criaturas presentes', 'ui.noCreaturesHere': 'No hay criaturas aqui', 'target.chooseFromPanel': 'Selecciona un objetivo desde el panel de criaturas.', 'target.cancelAction': 'Cancelar {action}', 'log.movedTo': 'Movimiento a {x}, {y} ({biome})', 'log.inCombatCannotMove': 'Estas en combate! Usa Huir para escapar.', 'log.discoveredLandmark': 'Descubriste {name}!', 'log.restUnavailable': 'No hay un lugar seguro para descansar aqui.', 'log.rested': 'Descansaste y te recuperaste.', 'log.noEntriesMatchFilter': 'No hay entradas de registro que coincidan con el filtro actual.', 'recruit.partyFull': 'El grupo esta lleno! No se puede reclutar a {name}', 'recruit.notReady': '{name} aun no esta listo para unirse al grupo.', 'recruit.joined': '{name} se une a tu grupo!', 'recruit.confirmSubmissive': '{name} esta listo para seguirte. Reclutarlo para tu grupo?', 'feed.optionsTitle': 'Opciones de alimentacion', 'feed.noOptions': 'No hay opciones de alimentacion disponibles ahora.', 'feed.noWoundedAllies': 'No hay aliados heridos para alimentar.', 'feed.noWillingLivestock': 'No hay ganado dispuesto para sacrificar.', 'feed.noForceFeedEnemies': 'No hay enemigos para forzar alimentacion.', 'feed.noValidTarget': 'No hay objetivo valido para esta accion de alimentar.',
           'disposition.hostile': 'Hostil', 'disposition.friendly': 'Amistoso', 'disposition.neutral': 'Neutral', 'disposition.quest': 'Mision', 'disposition.merchant': 'Mercader', 'disposition.remains': 'Restos', 'unit.trait.asleep': 'Dormido', 'unit.trait.poisoned': 'Veneno', 'unit.trait.burning': 'Ardiendo', 'unit.trait.bleeding': 'Sangrando', 'unit.trait.stunned': 'Aturdido', 'unit.trait.frozen': 'Congelado', 'unit.trait.fear': 'Miedo', 'unit.trait.restrained': 'Inmovilizado', 'unit.trait.wounded': 'Herido', 'unit.trait.hungry': 'Hambriento', 'unit.trait.flying': 'Volador', 'unit.trait.darkvision': 'Vision nocturna', 'combat.row': 'Fila', 'combat.row.front': 'Frente', 'combat.row.back': 'Retaguardia', 'combat.group': 'Grupo', 'combat.turnOrder': 'Orden de turno', 'combat.status.current': '{name} es el actor de combate actual en el turno {order}.', 'combat.status.queued': '{name} esta en cola para el turno {order}.', 'combat.status.queuedActed': '{name} esta en cola para el turno {order} y ya actuo esta ronda.', 'combat.panelActions': 'Acciones de combate', 'combat.status.syncParticipant': '{name} participa en el grupo {action} en cola que se resolvera en el turno {order}.', 'combat.status.syncTarget': '{name} es objetivo del grupo {action} en cola que se resolvera en el turno {order}.', 'combat.status.canTarget': '{name} puede seleccionarse como objetivo de {action}.', 'combat.status.cannotTarget': '{name} no puede seleccionarse como objetivo de {action}.', 'combat.status.choosingTarget': '{name} esta eligiendo un objetivo de {action}.', 'combat.moveRowLog': '{name} se mueve a la fila {row}.', 'combat.advanceLog': '{name} avanza a la vanguardia.', 'combat.retreatLog': '{name} se retira a la retaguardia.', 'combat.cannotReachTarget': '{actor} no puede alcanzar a {target} desde aqui.', 'combat.flee.noEnemies': 'No hay enemigos de los que huir!', 'combat.flee.success': 'Huyes con exito!', 'combat.flee.failed': 'Huida fallida! {name} te intercepta!', 'combat.godModeSaved': 'El modo dios te salvo de la derrota!', 'combat.playerFallen': 'Has caido! Fin de la partida!', 'combat.hardcoreSaveDeleted': 'MODO EXTREMO: Tu partida guardada fue borrada.', 'combat.playerKnockedOut': 'Has quedado fuera de combate! Tu grupo debe terminar la pelea...', 'combat.partyWipedOut': 'Tu grupo fue derrotado por completo!', 'combat.alliesContinue': 'Tus aliados continuan la pelea...', 'combat.playerComesTo': '{name} despierta despues de la pelea.', 'combat.victory': 'Victoria! Los enemigos fueron derrotados o sometidos.', 'combat.escapedEncounter': 'Escapaste del encuentro.', 'combat.defeat': 'Derrota...', 'combat.confirmReturnToMenu': 'Derrota! Volver al menu?', 'recovery.regenerate': 'Regenerar', 'recovery.endGame': 'Terminar partida', 'combat.notInCombat': 'No estas en combate!', 'combat.instantWin': 'Victoria instantanea', 'combat.instantWinTitle': 'Derrotar al instante a todos los enemigos', 'combat.instantWinNotInCombat': 'No estas en combate! Victoria instantanea solo funciona durante combate.', 'combat.instantWinRequiresOverpowered': 'Victoria instantanea requiere modo Sobrepotenciado.', 'combat.instantWinSuccess': 'Victoria instantanea! Todos los enemigos fueron derrotados.', 'combat.allyScavenges': '{ally} rebusca los restos de {target} despues del combate.', 'combat.scavengeRemains': '{actor} usa {count} porcion(es) de {target}.', 'corpse.portionsRemaining': '{count} porciones restantes', 'corpse.depleted': 'Rebuscado', 'combat.allyHolds': '{name} mantiene la posicion.', 'combat.allyCannotReach': '{name} no puede alcanzar ningun objetivo.', 'combat.enemyReinforces': '{enemy} pide ayuda! {reinforcement} se une al combate.', 'combat.enemyRage': '{name} entra en furia!', 'combat.enemyFlees': '{name} huye aterrorizado!', 'combat.status.poisoned': '{name} queda envenenado!', 'combat.status.constricted': '{actor} constrine a {target}! Queda inmovilizado.', 'combat.status.enveloped': '{actor} envuelve a {target}!', 'combat.status.stunned': '{name} queda aturdido y pierde su turno!', 'combat.status.frozen': '{name} queda congelado y pierde su turno!', 'combat.status.asleep': '{name} esta dormido y no puede actuar!', 'combat.status.fearFlee': '{name} entra en panico y huye por miedo!', 'combat.status.fearFrozen': '{name} se paraliza de miedo y pierde su turno!', 'combat.status.recovering': '{name} se esta recuperando y pierde su turno.', 'combat.status.restrainedSkip': '{name} esta inmovilizado y no puede actuar!', 'combat.status.stuck': '{name} queda atrapado en el terreno y pierde su turno!', 'combat.allyFlees': '{name} pierde el valor y huye del combate!', 'combat.allyFleeFailed': '{name} intenta huir pero no logra escapar!', 'combat.allyTooAroused': '{name} esta demasiado distraido para actuar!', 'combat.enemyCannotReach': '{enemy} no puede alcanzar a {target}.', 'cheat.toggled': 'Truco {name}: {state}', 'cheat.state.on': 'ACTIVADO', 'cheat.state.off': 'DESACTIVADO', 'cheat.overpoweredMaxed': 'Sobrepotenciado! Todas las estadisticas al maximo.', 'combat.waitForTurn': 'Espera tu turno!', 'combat.notYourTurn': 'No es tu turno!', 'combat.sync.chooseAction': 'Elegir accion sincronizada', 'combat.sync.noAllies': 'No hay aliados disponibles para sincronizar.', 'combat.sync.action.fuck': 'Juego grupal', 'combat.sync.action.flirt': 'Conversacion grupal', 'combat.sync.action.fight': 'Ataque grupal', 'combat.sync.action.feed': 'Alimentacion grupal', 'combat.sync.participantRole': 'Participante', 'combat.sync.selectParticipants': 'Seleccionar participantes para sincronizar', 'combat.sync.selectParticipantFor': 'Seleccionar {name} para sincronizar', 'combat.sync.confirmParticipants': 'Confirmar participantes', 'combat.sync.needParticipants': 'Necesitas al menos 2 participantes para una accion sincronizada.', 'combat.sync.selectTarget': 'Seleccionar objetivo sincronizado', 'combat.sync.selectTargetFor': 'Seleccionar {name} como objetivo sincronizado', 'combat.sync.failedNoQueue': 'Sincronizacion fallida! Los participantes ya no estan en la cola de turnos.', 'combat.sync.failedIncapacitated': 'Sincronizacion fallida! {names} no puede participar.', 'capacity.stomach': 'Barriga', 'capacity.womb': 'Interior', 'capacity.balls': 'Reserva', 'capacity.owner.your': 'Tu', 'capacity.owner.named': 'De {name}', 'capacity.tooFull': '{owner} {container} esta demasiado lleno para {target}!', 'structure.noStructure': 'No hay una estructura para entrar aqui.', 'structure.entered': 'Entraste en {name}.', 'structure.exited': 'Saliste de {name}.', 'structure.movedInside': 'Movimiento dentro de {name} a {x}, {y}.', 'structure.fallbackName': 'la estructura', 'structure.wallBlocked': 'Una pared bloquea el camino.',
+          'party.duty': 'Funcion', 'party.stance': 'Actitud', 'party.control': 'Control', 'party.tradeoff': 'Costo', 'party.duty.guard': 'Guardia', 'party.duty.scout': 'Explorador', 'party.duty.support': 'Apoyo', 'party.duty.gatherer': 'Recolector', 'party.dutyDescription.guard': 'Protege aliados vulnerables y reduce la presion de emboscadas.', 'party.dutyDescription.scout': 'Mejora visibilidad, rutas y deteccion de emboscadas.', 'party.dutyDescription.support': 'Mejora la recuperacion y prioriza atender aliados heridos.', 'party.dutyDescription.gatherer': 'Mejora la busqueda, recoleccion y uso de restos.', 'party.dutyTradeoff.guard': 'Prioriza amenazas inmediatas sobre exploracion y recursos.', 'party.dutyTradeoff.scout': 'Evita intercambios largos si existe una opcion mas segura.', 'party.dutyTradeoff.support': 'Cede ritmo ofensivo cuando el grupo necesita cuidados.', 'party.dutyTradeoff.gatherer': 'Prioriza recursos sobre aprovechar una ventaja.', 'party.stance.aggressive': 'Agresiva', 'party.stance.balanced': 'Equilibrada', 'party.stance.defensive': 'Defensiva', 'party.stance.passive': 'Pasiva', 'party.stanceDescription.aggressive': 'Presiona amenazas alcanzables y acepta mas riesgo.', 'party.stanceDescription.balanced': 'Equilibra presion, seguridad, cuidado y oportunidad.', 'party.stanceDescription.defensive': 'Protege al grupo y favorece acciones de menor riesgo.', 'party.stanceDescription.passive': 'Evita escalar salvo que un aliado este en peligro.', 'party.control.manual': 'Manual', 'party.control.deterministic': 'Autonomo', 'party.control.provider': 'Asistido por IA', 'party.controlDescription.manual': 'Tu eliges las acciones de este companero.', 'party.controlDescription.deterministic': 'El companero elige acciones legales segun funcion, actitud y condiciones.', 'party.controlDescription.provider': 'Un controlador configurado puede elegir; la autonomia determinista es el respaldo seguro.', 'party.dutyFor': 'Funcion de {name}', 'party.stanceFor': 'Actitud de {name}', 'party.controlFor': 'Control de {name}', 'party.dutySet': '{name}: la funcion ahora es {value}.', 'party.stanceSet': '{name}: la actitud ahora es {value}.', 'party.controlSet': '{name}: el control ahora es {value}.',
           'party.stats': 'Estadisticas', 'party.you': 'Tu', 'party.ally': 'Aliado', 'party.leader': 'Lider', 'party.levelSpecies': 'Nivel {level} {species}', 'party.punishment': 'Castigo', 'party.pleasure': 'Animo', 'party.hunger': 'Hambre', 'party.combat': 'Combate', 'party.attributes': 'Atributos', 'party.capacity': 'Capacidad', 'party.equipment': 'Equipo', 'party.perks': 'Mejoras', 'party.none': 'Ninguno', 'character.xp': 'XP: {xp}/{xpToNext}', 'character.combatStats': 'Estadisticas de combate', 'character.body': 'Cuerpo', 'character.size': 'Tamano', 'character.appetite': 'Apetito', 'character.parts': 'Anatomia inferior', 'character.lowerAnatomy': 'Anatomia inferior', 'character.chest': 'Forma de torso', 'character.chestShape': 'Forma de torso', 'anatomy.lowerA': 'Opcion inferior A', 'anatomy.lowerB': 'Opcion inferior B', 'anatomy.chestA': 'Opcion de torso A', 'anatomy.chestB': 'Opcion de torso B', 'anatomy.adult.vulva': 'Vulva', 'anatomy.adult.penis': 'Pene', 'anatomy.adult.breasts': 'Pechos', 'anatomy.adult.pecs': 'Pectorales', 'character.bodyParts': 'Cuerpo', 'character.perkTools': 'Herramientas de mejoras', 'character.perkToolsHelp': 'Controles de balance/debug.', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.role.companion': 'Companero', 'party.role.scout': 'Explorador', 'party.role.guard': 'Guardia', 'party.role.support': 'Apoyo', 'party.role.gatherer': 'Recolector', 'party.roleDescription.companion': 'Sin rol especial de exploracion.', 'party.roleDescription.scout': 'Mejora la visibilidad nocturna y la lectura de rutas.', 'party.roleDescription.guard': 'Reduce la ventaja de emboscadas y ayuda a proteger el campamento.', 'party.roleDescription.support': 'Mejora la recuperacion al descansar en un lugar seguro.', 'party.roleDescription.gatherer': 'Mejora resultados de busqueda y recoleccion.', 'party.aiOrder.aggressive': 'Agresivo', 'party.aiOrder.defensive': 'Defensivo', 'party.aiOrder.healer': 'Sanador', 'party.aiOrder.scavenger': 'Carronero', 'party.aiOrder.passive': 'Pasivo', 'party.aiOrderDescription.aggressive': 'Prioriza atacar amenazas alcanzables.', 'party.aiOrderDescription.defensive': 'Prefiere posicionarse con cuidado y proteger aliados.', 'party.aiOrderDescription.healer': 'Alimenta primero al aliado mas herido.', 'party.aiOrderDescription.scavenger': 'Busca oportunidades de rebuscar despues de la victoria.', 'party.aiOrderDescription.passive': 'Evita actuar salvo si esta herido o bajo presion.', 'party.dismiss': 'Despedir', 'party.statsFor': 'Mostrar estadisticas de {name}', 'party.makeLeaderFor': 'Hacer lider a {name}', 'party.dragToReorder': 'Arrastrar {name} para reordenar', 'party.moveUp': 'Mover {name} arriba', 'party.moveDown': 'Mover {name} abajo', 'party.dismissFor': 'Despedir a {name}', 'party.confirmDismiss': 'Despedir a {name} del grupo?', 'party.dismissed': '{name} deja el grupo.', 'party.dismissedNearby': '{name} deja el grupo y permanece cerca.', 'party.roleSet': '{name} queda asignado como {role}.', 'party.aiOrderSet': '{name} actuara en modo {order}.', 'party.leaderSet': '{name} ahora lidera el grupo.', 'party.positionChanged': '{name} cambia de posicion en el grupo.', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
           'save.title': 'Partidas', 'save.loadTitle': 'Cargar partida', 'save.saveTitle': 'Guardar partida', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.loadDescription': 'Elige una partida para cargar, inicia una nueva partida en un slot, o borra un solo slot.', 'save.saveDescription': 'Elige el slot que continuara esta partida. El autoguardado seguira actualizando ese slot; el slot activo anterior deja de avanzar.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
           'save.toolbarNew': 'Nueva partida', 'save.toolbarHint': 'Elige un slot despues; los slots ocupados avisan antes de sobrescribir.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Partida guardada', 'save.openSlot': 'Slot abierto', 'save.empty': 'Vacio', 'save.slotHint.emptyLoad': 'Slot vacio: inicia una partida nueva aqui.', 'save.slotHint.occupiedLoad': 'Slot guardado: carga, inicia una nueva partida o borra solo este slot.', 'save.slotHint.emptySave': 'Slot vacio: guarda aqui y continua autoguardando en este slot.', 'save.slotHint.occupiedSave': 'Slot ocupado: guardar aqui hace que este sea el slot activo de autoguardado.', 'save.slotHint.emptyNew': 'Slot vacio: listo para una nueva partida.', 'save.slotHint.occupiedNew': 'Slot ocupado: sobrescribir requiere confirmacion.', 'save.slotActions.label': 'Acciones disponibles del slot', 'save.slotActions.emptyLoad': 'Acciones: Nueva partida', 'save.slotActions.occupiedLoad': 'Acciones: Cargar, Nueva partida, Borrar', 'save.slotActions.emptySave': 'Acciones: Guardar', 'save.slotActions.occupiedSave': 'Acciones: Guardar, Borrar', 'save.slotActions.emptyNew': 'Acciones: Usar slot vacio', 'save.slotActions.occupiedNew': 'Acciones: Sobrescribir, Borrar', 'save.useEmpty': 'Usar slot vacio', 'save.overwriteSlot': 'Sobrescribir slot',
@@ -9600,12 +10177,20 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   App._label = function(key, fallback, vars = {}) {
     const currentOverrides = {
       en: {
+        'ui.tutorial.lesson.welcome.title': 'Welcome',
+        'ui.tutorial.lesson.welcome.content': 'Explore, learn your limits, and grow stronger. The Help menu reveals short lessons as their mechanics become relevant.',
+        'ui.tutorial.lesson.combat.title': 'Combat Turns',
+        'ui.tutorial.lesson.combat.content': 'Combat follows the visible turn order. Manual companions wait for your choice; autonomous companions choose through the same legal action rules. Skip and Flee remain available when no target works.',
         'ui.tutorial.combat.content': 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Select actors, mark targets, choose an intent, then commit group plans. Each intent owns its reach: social actions can cross rows, while physical attempts may fail and explain why in the Scene Feed.',
         'structure.notEnterable': 'There is no interior to enter here.',
         'capacity.tooFull': '{actor} tries, but {owner} {container} is too full for {target}.',
         'target.manyToManyActionDone': '{actors} act together with {targets}: {results}'
       },
       es: {
+        'ui.tutorial.lesson.welcome.title': 'Bienvenida',
+        'ui.tutorial.lesson.welcome.content': 'Explora, aprende tus limites y hazte mas fuerte. El menu de Ayuda revela lecciones breves cuando sus mecanicas se vuelven relevantes.',
+        'ui.tutorial.lesson.combat.title': 'Turnos de combate',
+        'ui.tutorial.lesson.combat.content': 'El combate sigue el orden visible. Los companeros manuales esperan tu eleccion; los autonomos eligen con las mismas reglas legales. Saltar y Huir siguen disponibles cuando ningun objetivo funciona.',
         'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Hablar, Comer, Jugar, Alimentar o Huir. Selecciona actores, marca objetivos, elige una intencion y confirma planes grupales. Cada intencion tiene su propio alcance: las acciones sociales pueden cruzar filas, mientras que los intentos fisicos pueden fallar y explicarse en la Scene Feed.',
         'structure.notEnterable': 'No hay un interior para entrar aqui.',
         'capacity.tooFull': '{actor} lo intenta, pero no hay espacio para {target} en {owner} {container}.',
@@ -10944,6 +11529,55 @@ test('Module recovery modes are permissioned owned and safely fall back on unloa
   assertEqual(app.defeatState.recoveryPhase, 'prompt', 'An unavailable journey should return to an explicit recovery prompt');
   assertEqual(app.defeatState.status, 'dead', 'An unavailable journey should no longer leave the player in ghost state');
   assertEqual(app._recoveryMenuClosed, true, 'Unloading the active recovery owner should close transient recovery UI');
+});
+
+test('Module Perk Profiles are data-only namespaced and unload without corrupting selected effects', () => {
+  const modules = loadModuleSystemForTest();
+  const app = modules._testApp;
+  let denied = false;
+  try {
+    modules.createModAPI('denied-perks', { permissions: [] }).registerPerkProfile({
+      id: 'denied-perks:path',
+      label: 'Denied',
+      perks: [{ id: 'denied-perks:root', name: 'Root', desc: 'Denied root.', stat: 'wis', val: 1 }]
+    });
+  } catch (error) {
+    denied = /permission/.test(error.message);
+  }
+  assertEqual(denied, true, 'Modules should need the explicit perk-profile permission');
+
+  const api = modules.createModAPI('perk-module', { permissions: ['content:add_perk_profile'] });
+  const profile = api.registerPerkProfile({
+    id: 'perk-module:elemental',
+    label: 'Elemental',
+    labelKey: 'perk-module.profile.elemental',
+    species: ['human'],
+    perks: [
+      {
+        id: 'perk-module:ember-step',
+        name: 'Ember Step',
+        nameKey: 'perk-module.perk.emberStep',
+        desc: 'Move with practiced heat.',
+        descKey: 'perk-module.perk.emberStep.desc',
+        stat: 'spd',
+        val: 2
+      }
+    ]
+  });
+  assertEqual(profile.owner, 'perk-module', 'Registered Perk Profile should retain its owner');
+  const visible = modules._testPerkRegistry.forUnit(app, { species: 'human' });
+  assert(visible['perk-module:elemental'], 'Matching species should receive the active module frontier profile');
+  assertEqual(Object.isFrozen(profile.perks[0].effectProfile.effects), true, 'Module perk effects should be deeply frozen bounded data');
+
+  const unit = { spd: 10, perks: [] };
+  const effectProfile = modules._testPerkEffects.apply(unit, profile.perks[0]);
+  unit.perks.push({ ...profile.perks[0], effectProfile: { version: effectProfile.version, effects: effectProfile.effects.map(effect => ({ ...effect })) } });
+  assertEqual(unit.spd, 12, 'Selected module perk should apply through the core effect vocabulary');
+  modules.unloadModule('perk-module');
+  assertEqual(modules._testPerkRegistry.forUnit(app, { species: 'human' })['perk-module:elemental'], undefined, 'Unload should remove future offers from the active frontier');
+  assertEqual(unit.perks[0].id, 'perk-module:ember-step', 'Unload should preserve the player-owned selected perk record');
+  modules._testPerkEffects.rollback(unit, unit.perks[0]);
+  assertEqual(unit.spd, 10, 'Saved bounded effect data should remain safely reversible after provider unload');
 });
 
 asyncTest('Waystone Recovery is an offline optional profile with owned locale and unload behavior', async () => {
@@ -14103,6 +14737,7 @@ test('Looting a corpse can grant an item without starting combat', () => {
   assertEqual(looted, true, 'Loot corpse should report successful action');
   assertEqual(corpse.looted, true, 'Looted corpse should be marked');
   assertEqual(App.inventory.length, 1, 'Successful corpse loot should add one item');
+  assert(App.inventory[0].definitionId?.startsWith('core:'), 'Corpse loot should persist stable definition identity');
   assertEqual(App.player.gold, 2, 'Corpse loot should grant generated gold');
   assertEqual(App.combatState.active, false, 'Corpse loot should not start combat');
   assertContains(App.log[App.log.length - 1].text, App.inventory[0].name, 'Loot log should mention found item');
@@ -14190,6 +14825,7 @@ test('Resource-site search is deterministic visible and one-time', () => {
     assertContains(elements.get('desktop-context-belt').innerHTML, 'App.search()', 'Resource-site context belt should expose Search');
     App.search();
     assertEqual(App.inventory.length, 1, 'Resource-site search should grant exactly one item');
+    assert(App.inventory[0].definitionId?.startsWith('core:'), 'Resource-site search should persist stable definition identity');
     assertEqual(App.getTile(2, 0).resourceSearched, true, 'Resource-site search should mark the tile consumed');
     assertEqual(App.getTileDelta(2, 0).resourceSearched, true, 'Resource-site search state should persist as a tile delta');
     assertNotContains(elements.get('desktop-context-belt').innerHTML, 'App.search()', 'Consumed resource sites should stop exposing Search');
@@ -18469,7 +19105,7 @@ test('Holdings pack renders maintained item categories through the active locale
   const spanish = holdingsHtml(elements);
   assertContains(spanish, 'Consumible', 'Consumable pack category should render in Spanish');
   assertContains(spanish, 'Equipo', 'Equipment pack category should render in Spanish');
-  assertContains(spanish, 'Material', 'Material pack category should use the maintained locale label');
+  assertContains(spanish, 'Mercancía', 'Trade-good pack category should use the maintained locale label');
   assertNotContains(spanish, '>consumable ·', 'Holdings should not expose the raw consumable token');
   assertNotContains(spanish, '>equipment ·', 'Holdings should not expose the raw equipment token');
 
@@ -18478,6 +19114,215 @@ test('Holdings pack renders maintained item categories through the active locale
   const english = holdingsHtml(elements);
   assertContains(english, 'Consumable', 'Consumable pack category should re-render in English');
   assertContains(english, 'Equipment', 'Equipment pack category should re-render in English');
+  assertContains(english, 'Trade Good', 'Future-compatible material items should present their current trade purpose');
+  assertNotContains(english, 'Crafting material', 'Core inventory should not promise an unavailable crafting system');
+  assertEqual(App.ITEMS['Monster Fang'].effect, 'craft', 'Trade goods may retain internal future-use compatibility metadata');
+});
+
+test('Item Registry V2 resolves stable ids and legacy name-only fixtures without confusing instance ids', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const fixture = JSON.parse(fs.readFileSync(ITEM_REGISTRY_V2_FIXTURE, 'utf8'));
+  const coreDefinitions = Object.values(App.ITEMS);
+  const ids = coreDefinitions.map(definition => definition.id);
+
+  assertEqual(fixture.schema, 'yaw-core-maturity-item-registry-fixtures-v1', 'Item migration fixture should declare its bounded schema');
+  assertEqual(new Set(ids).size, coreDefinitions.length, 'Every core item definition should have a unique stable id');
+  ids.forEach(id => assert(/^core:[a-z0-9_]+$/.test(id), `Core item definition id should be namespaced: ${id}`));
+
+  const legacyHerb = fixture.legacyNameOnly.inventory[0];
+  const stableHerb = fixture.stableDefinitionIds.inventory[0];
+  assertEqual(App._getItemDef(legacyHerb).id, 'core:healing_herb', 'Legacy name-only inventory should resolve through the compatibility alias');
+  assertEqual(App._getItemDef(stableHerb).healAmount, 30, 'Stable definition identity should resolve the canonical healing definition');
+  assertEqual(App._getItemDef({ ...stableHerb, name: 'Localized Herb Label' }).id, 'core:healing_herb', 'Stable identity should not depend on the current display name');
+  assertEqual(App._getItemDef(fixture.legacyNameOnly.equipment.head).slot, 'head', 'Legacy name-only equipment should retain its canonical slot');
+  assertEqual(App._getItemDef(fixture.stableDefinitionIds.equipment.head).equipBonus.con, 1, 'Stable equipment identity should retain its canonical bonus');
+  assertEqual(App._itemDefinitionId(legacyHerb), 'core:healing_herb', 'Compatibility lookup should expose the stable id for migration');
+
+  const normalized = App._normalizeItemInstance(legacyHerb);
+  assertEqual(normalized.id, legacyHerb.id, 'Normalizing an item should preserve its unique instance id');
+  assertEqual(normalized.definitionId, 'core:healing_herb', 'Normalizing a legacy item should add stable definition identity');
+  assertEqual(legacyHerb.definitionId, undefined, 'Compatibility normalization should not mutate the source fixture');
+  const created = App._createItemInstance('Healing Herb', { id: 'created-herb' });
+  assertEqual(created.definitionId, 'core:healing_herb', 'New item producers should create stable definition identity');
+  assertEqual(created.id, 'created-herb', 'New item producers should preserve unique instance identity');
+
+  const legacyUnit = makeUnit('Legacy Carrier', {
+    inventory: [{ id: 'legacy-carried-herb', name: 'Healing Herb' }],
+    equipment: { head: { id: 'legacy-worn-cap', name: 'Leather Cap' } }
+  });
+  App._normalizeUnit(legacyUnit);
+  assertEqual(legacyUnit.inventory[0].definitionId, 'core:healing_herb', 'Unit normalization should migrate legacy carried items');
+  assertEqual(legacyUnit.equipment.head.definitionId, 'core:leather_cap', 'Unit normalization should migrate legacy equipped items');
+
+  const missing = fixture.missingProvider.inventory[0];
+  assertEqual(Object.keys(App._getItemDef(missing)).length, 0, 'Unavailable provider definitions should remain unresolved instead of being reinterpreted');
+  assertEqual(Object.keys(App._getItemDef({ ...missing, name: 'Healing Herb' })).length, 0, 'Explicit missing-provider identity should not fall back to a matching core display name');
+  assertEqual(App._normalizeItemInstance(missing).definitionId, missing.definitionId, 'Missing-provider normalization should preserve opaque saved identity');
+  assertEqual(Object.keys(App._getItemDef({ id: 'core:healing_herb', name: 'Not A Real Item' })).length, 0, 'Unique instance ids must never be treated as definition ids');
+});
+
+test('Core maturity migration baseline covers every pre-V2 persisted domain and legacy behavior value', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const fixture = JSON.parse(fs.readFileSync(CORE_MATURITY_BASELINE_FIXTURE, 'utf8'));
+  const scenarios = fixture.scenarios;
+
+  assertEqual(fixture.schema, 'yaw-core-maturity-migration-baseline-v1', 'Core migration fixture should declare its bounded schema');
+  assertEqual(fixture.saveSchema, releaseInfo.saveSchema, 'Core migration fixture should identify the current save schema');
+  ['newSave', 'questLifecycle', 'serviceSuspension', 'companionBehavior', 'progression', 'reviewMap', 'merchantAndModule']
+    .forEach(key => assert(scenarios[key], `Core migration fixture should include ${key}`));
+
+  const questStates = new Set(scenarios.questLifecycle.map(quest => `${quest.status}:${quest.rewardClaimed}`));
+  assert(questStates.has('available:false'), 'Quest fixture should preserve available state');
+  assert(questStates.has('active:false'), 'Quest fixture should preserve active state');
+  assert(questStates.has('completed:false'), 'Quest fixture should preserve completed but unclaimed turn-in state');
+  assert(questStates.has('completed:true'), 'Quest fixture should preserve claimed completion state');
+  assertEqual(scenarios.serviceSuspension.serviceSuspended, true, 'Quest fixture should preserve contained service suspension');
+
+  const fixtureRoles = new Set(scenarios.companionBehavior.party.map(unit => unit.partyRole));
+  const fixtureOrders = new Set(scenarios.companionBehavior.party.map(unit => unit.aiOrder));
+  Object.keys(App.PARTY_ROLES).forEach(role => assert(fixtureRoles.has(role), `Companion fixture should cover legacy role ${role}`));
+  Object.keys(App.PARTY_AI_ORDERS).forEach(order => assert(fixtureOrders.has(order), `Companion fixture should cover legacy order ${order}`));
+  assertEqual(scenarios.companionBehavior.droppedOff.droppedOffCompanion, true, 'Companion fixture should preserve overworld drop-off state');
+  assertEqual(scenarios.companionBehavior.interiorDroppedOff.dropOffLocation.interior, true, 'Companion fixture should preserve interior drop-off state');
+  assertEqual(scenarios.companionBehavior.strandedAfterDefeat.status, 'stranded', 'Companion fixture should preserve defeat stranding');
+
+  assert(scenarios.progression.playerPerks.some(perk => typeof perk.val === 'number' && perk.stat), 'Progression fixture should cover numeric perks');
+  assert(scenarios.progression.playerPerks.some(perk => perk.perkEffect), 'Progression fixture should cover named-effect perks');
+  assert(scenarios.progression.pendingPerkChoices > 0, 'Progression fixture should cover pending choices');
+  assertEqual(scenarios.progression.respecRefundCount, scenarios.progression.playerPerks.length, 'Progression fixture should state the legacy respec refund invariant');
+
+  assertEqual(scenarios.reviewMap.knownObjective.explored, true, 'Review Map fixture should cover a known objective');
+  assertEqual(scenarios.reviewMap.knownTurnIn.kind, 'turn-in', 'Review Map fixture should cover a known turn-in');
+  assertEqual(scenarios.reviewMap.unknownDestination.explored, false, 'Review Map fixture should preserve an unknown destination without materializing it');
+  assert(scenarios.merchantAndModule.merchant.merchantStock.length > 0, 'Merchant fixture should preserve refreshed stock');
+  assert(scenarios.merchantAndModule.soldInstance.definitionId, 'Merchant fixture should preserve a sold stable item identity');
+  assert(scenarios.merchantAndModule.missingProvider.definitionId.startsWith('missing-items:'), 'Module fixture should cover an unavailable provider');
+});
+
+test('Item Registry V2 stacks fungible goods while equipment and missing-provider items remain individual', () => {
+  const { App, window } = loadAppForCombat(() => 0.5);
+  const normalized = window.YAW_ITEM_REGISTRY.normalizeCollection(App, [
+    { id: 'legacy-herb-a', name: 'Healing Herb' },
+    { id: 'legacy-herb-b', name: 'Healing Herb' },
+    { id: 'legacy-cap-a', name: 'Leather Cap' },
+    { id: 'legacy-cap-b', name: 'Leather Cap' },
+    { id: 'missing-a', definitionId: 'missing-pack:tonic', name: 'Tonic' },
+    { id: 'missing-b', definitionId: 'missing-pack:tonic', name: 'Tonic' }
+  ]);
+  assertEqual(normalized.length, 5, 'Two legacy herbs should merge while equipment and unavailable-provider instances remain individual');
+  assertEqual(normalized.find(item => item.definitionId === 'core:healing_herb').quantity, 2, 'Legacy fungible items should migrate into a quantity stack');
+  assertEqual(normalized.filter(item => item.definitionId === 'core:leather_cap').length, 2, 'Equipment should remain individual instances');
+  assertEqual(normalized.filter(item => item.definitionId === 'missing-pack:tonic').length, 2, 'Unavailable-provider items should not guess stacking policy');
+
+  App.inventory = [
+    { id: 'existing-herbs', definitionId: 'core:healing_herb', name: 'Healing Herb', quantity: 19 },
+    ...Array.from({ length: App.MAX_INVENTORY - 1 }, (_, index) => ({ id: `cap-${index}`, definitionId: 'core:leather_cap', name: 'Leather Cap' }))
+  ];
+  assertEqual(App._packCapacityUsed(), App.MAX_INVENTORY, 'Pack capacity should count occupied stacks');
+  assertEqual(App._canAddInventoryItem('core:healing_herb', 1), true, 'A full pack should accept an item into an open compatible stack');
+  const added = App._addInventoryItem('core:healing_herb', { id: 'merge-herb' });
+  assertEqual(added.added, 1, 'Stack insertion should report the added quantity');
+  assertEqual(App.inventory[0].quantity, 20, 'Stack insertion should fill the existing stack');
+  assertEqual(App._canAddInventoryItem('core:healing_herb', 1), false, 'A full pack with a full stack should reject another unit');
+  assertEqual(App._canAddInventoryItem('core:leather_cap', 1), false, 'A full pack should reject another individual equipment instance');
+});
+
+test('Module item instances survive save reload and provider loss without becoming usable or tradable', () => {
+  const Binary = loadBinaryForTest();
+  const { App, window, elements } = loadAppForCombat(() => 0.5);
+  const moduleDefinition = {
+    id: 'fixture-items:restorative',
+    name: 'Fixture Restorative',
+    type: 'consumable',
+    purpose: 'use',
+    effect: 'heal',
+    healAmount: 15,
+    stackable: true,
+    maxStack: 8,
+    value: 24
+  };
+  window.YAW_ITEM_REGISTRY.register(App, 'fixture-items', moduleDefinition);
+  const player = makeUnit('You', { id: 'provider-lifecycle-player', CPun: 30, MPun: 100, gold: 20 });
+  App.player = player;
+  App.party = [player];
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'forest';
+  App.worldMap = new Map();
+  App.exploredTiles = new Set();
+  App.inventory = [App._createItemInstance(moduleDefinition.id, { id: 'saved-restorative', quantity: 2 })];
+
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  assertEqual(loaded.inventory[0].definitionId, moduleDefinition.id, 'Save/reload should preserve module definition identity');
+  assertEqual(loaded.inventory[0].quantity, 2, 'Save/reload should preserve module stack quantity');
+
+  window.YAW_ITEM_REGISTRY.unregisterOwner(App, 'fixture-items');
+  App.inventory = loaded.inventory.map(item => App._normalizeItemInstance(item));
+  const merchant = makeUnit('Provider Trader', {
+    id: 'provider-trader',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [{ definitionId: moduleDefinition.id, name: moduleDefinition.name, price: 12, qty: 1 }]
+  });
+  App.creatures = [merchant];
+  App.autoSave = () => true;
+
+  App.showInventory();
+  App.setHoldingsTab('pack');
+  const unavailablePack = holdingsHtml(elements);
+  assertContains(unavailablePack, 'Content provider unavailable', 'Missing-provider inventory should explain its unavailable state');
+  assertNotContains(unavailablePack, 'data-command-control="use-item"', 'Missing-provider inventory should not expose its former Use action');
+  assertEqual(App.useItem('saved-restorative'), false, 'Missing-provider item should not resolve its former effect');
+  assertEqual(App.inventory[0].quantity, 2, 'Blocked missing-provider use should preserve the saved stack');
+
+  const goldBeforeSell = App.player.gold;
+  assertEqual(App.sellToMerchant(merchant.id, 'saved-restorative'), false, 'Missing-provider item should not be sold as guessed one-gold content');
+  assertEqual(App.player.gold, goldBeforeSell, 'Blocked missing-provider sale should not change gold');
+  assertEqual(App.inventory[0].quantity, 2, 'Blocked missing-provider sale should preserve the saved stack');
+
+  const stockBeforeBuy = merchant.stock[0].qty;
+  assertEqual(App._completeMerchantPurchase(merchant.id, 0), false, 'Missing-provider stock should not be purchased into a lossy instance');
+  assertEqual(merchant.stock[0].qty, stockBeforeBuy, 'Blocked missing-provider purchase should preserve merchant stock');
+  assertEqual(App.player.gold, goldBeforeSell, 'Blocked missing-provider purchase should preserve gold');
+
+  App.openTransactionWindow('trade', merchant.id);
+  const unavailableTrade = elements.get('transaction-window-root').innerHTML;
+  assertContains(unavailableTrade, 'Content provider unavailable', 'Trade should label missing-provider inventory and stock');
+  assertContains(unavailableTrade, 'disabled aria-disabled="true"', 'Trade should disable missing-provider buy and sell controls');
+
+  window.YAW_ITEM_REGISTRY.register(App, 'fixture-items', moduleDefinition);
+  assertEqual(App._getItemDef(App.inventory[0]).id, moduleDefinition.id, 'Re-enabled provider should restore the saved identity');
+  assertEqual(App.useItem('saved-restorative'), true, 'Re-enabled provider should restore the bounded item effect');
+  assertEqual(App.inventory[0].quantity, 1, 'Restored item use should consume one saved stack unit');
+});
+
+test('Core item catalog has honest purposes, bounded stack policy, and acquisition coverage for every equipment slot', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const definitions = Object.entries(App.ITEMS).map(([name, definition]) => ({ ...definition, name }));
+  const merchantNames = new Set(Object.values(App.MERCHANT_STOCK_TABLES).flat().map(entry => entry.name));
+  const lootNames = new Set(Object.values(App.EQUIPMENT_LOOT_TABLES).flat().map(entry => entry.id));
+
+  definitions.forEach(definition => {
+    assert(['use', 'equip', 'trade', 'quest', 'key'].includes(definition.purpose), `${definition.id} should declare an honest current purpose`);
+    if (definition.purpose === 'use') assertEqual(definition.effect, 'heal', `${definition.id} should only advertise the implemented healing resolver`);
+    if (definition.purpose === 'trade') assert(['sell', 'craft'].includes(definition.effect), `${definition.id} should remain trade-only even when future metadata is retained`);
+    if (definition.stackable) {
+      assert(definition.maxStack >= 2 && definition.maxStack <= 99, `${definition.id} should use a bounded stack limit`);
+    } else {
+      assert(['equipment', 'quest', 'key'].includes(definition.type), `${definition.id} should remain individual only for equipment or protected quest/key objects`);
+    }
+  });
+
+  Object.keys(App.EQUIPMENT_SLOTS).forEach(slot => {
+    const candidates = definitions.filter(definition => definition.type === 'equipment' && definition.slot === slot);
+    assert(candidates.length > 0, `Core catalog should provide equipment for ${slot}`);
+    assert(candidates.some(definition => merchantNames.has(definition.name) || lootNames.has(definition.name)), `${slot} equipment should have a deterministic merchant or loot route`);
+  });
+  definitions.filter(definition => definition.purpose === 'trade').forEach(definition => {
+    assert(merchantNames.has(definition.name), `${definition.id} should have an explicit merchant acquisition route`);
+  });
+  definitions.filter(definition => ['quest', 'key'].includes(definition.purpose)).forEach(definition => {
+    assert(definition.questItem || definition.keyItem, `${definition.id} should declare protected objective identity`);
+    assert(Array.isArray(definition.acquisition?.questArchetypes) && definition.acquisition.questArchetypes.length > 0, `${definition.id} should declare its quest acquisition route`);
+  });
 });
 
 test('Healing consumables restore capped player condition and consume exactly one item', () => {
@@ -18504,6 +19349,20 @@ test('Healing consumables restore capped player condition and consume exactly on
   assertEqual(App.inventory.length, 1, 'Blocked full-condition use should retain the item');
   assertEqual(autoSaveCalls, 1, 'Blocked full-condition use should not autosave an unchanged item state');
   assertContains(App.log[App.log.length - 1].text, 'already at full condition', 'Blocked use should explain why the item was retained');
+});
+
+test('Using one healing item decrements a stack without discarding the remaining quantity', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'stack-heal-player', CPun: 20, MPun: 100 });
+  App.player = player;
+  App.party = [player];
+  App.inventory = [{ id: 'stacked-herbs', definitionId: 'core:healing_herb', name: 'Healing Herb', quantity: 3 }];
+  App.combatState.active = false;
+  App.autoSave = () => true;
+
+  assertEqual(App.useItem('stacked-herbs'), true, 'A stacked healing item should be usable');
+  assertEqual(App.inventory.length, 1, 'Using one unit should retain the stack');
+  assertEqual(App.inventory[0].quantity, 2, 'Using one unit should decrement quantity by exactly one');
 });
 
 test('Healing consumables explicitly target living party members without changing player condition', () => {
@@ -18670,6 +19529,43 @@ test('Dropping carried inventory creates tile-local pickup state', () => {
   assertContains(App._renderContextActions(), 'App.takeTileItems()', 'Dropped tile-local items should expose pickup from the composer belt');
   assertContains(App.log[App.log.length - 1].text, 'Dropped Old Coin.', 'Dropping should log the item transfer');
   assertEqual(autoSaveCalls, 1, 'Dropping should autosave changed world and inventory state');
+});
+
+test('Active quest requirements protect matching stable items from ordinary drop and sale', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'quest-protection-player', gold: 0 });
+  const merchant = makeUnit('Trader', {
+    id: 'quest-protection-merchant',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: []
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [merchant];
+  App.inventory = [{ id: 'required-shard', definitionId: 'core:crystal_shard', name: 'Localized Shard Label', quantity: 1 }];
+  App.quests = [{
+    id: 'protected-delivery',
+    status: 'active',
+    rewardClaimed: false,
+    objectives: [{ type: 'deliver', item: { definitionId: 'core:crystal_shard', name: 'Crystal Shard' }, required: 1, progress: 0, complete: false }]
+  }];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'grove', explored: true, creatures: [], items: [] }]]);
+  App.autoSave = () => true;
+
+  assertEqual(App.dropItem('required-shard'), false, 'An active quest item should reject ordinary drop');
+  assertEqual(App.sellToMerchant('quest-protection-merchant', 'required-shard'), false, 'An active quest item should reject ordinary sale');
+  assertEqual(App.inventory.length, 1, 'Blocked disposal should retain the required item');
+  assertContains(App.log[App.log.length - 1].text, 'needed for an active quest', 'Blocked disposal should explain quest protection');
+
+  App.showInventory();
+  const html = elements.get('holdings-window-root').innerHTML;
+  assertContains(html, 'data-command-control="drop-item"', 'Protected item should remain visible in Holdings');
+  assertContains(html, 'disabled aria-disabled="true"', 'Protected item drop should be visibly disabled');
+
+  App.quests[0].rewardClaimed = true;
+  App.sellToMerchant('quest-protection-merchant', 'required-shard');
+  assertEqual(App.inventory.length, 0, 'Resolved quest item should return to ordinary trade behavior');
 });
 
 test('Interior item pickup and drop persist through structure tile deltas', () => {
@@ -20752,6 +21648,53 @@ test('Large map renders next quest checkpoint markers', () => {
   assertContains(elements.get('large-map').innerHTML, 'large-map-tile quest', 'Large map should style quest checkpoint tile');
   assertContains(elements.get('large-map-pois').innerHTML, 'Route Marker: Safe Camp', 'POI list should include quest checkpoint');
   assertEqual(App.worldMap.has('2,0'), false, 'Quest marker should not materialize unknown generated tile');
+});
+
+test('Review Map V2 layers, tracking, selection, and filters remain bounded', () => {
+  const { App, elements } = loadAppForCombat(() => 1);
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0', '1,0']);
+  App.getTile(0, 0).explored = true;
+  const known = App.getTile(1, 0);
+  known.explored = true;
+  known.structure = 'camp';
+  known.deathBags = [{ id: 'bag-map-v2', items: [], gold: 1 }];
+  known.creatures = [{ ...makeUnit('Waiting Ally'), ally: false, droppedOffCompanion: true }];
+  App.persistTileDelta(1, 0, known);
+  App.quests = [App._normalizeQuest({
+    id: 'map-v2-quest',
+    title: 'Map V2 Quest',
+    status: 'active',
+    giverName: 'Guide',
+    giverLocation: { x: 0, y: 0, label: 'Guide' },
+    objectives: [{ type: 'travel', label: 'Reach Camp', location: { x: 1, y: 0, label: 'Camp' } }],
+    reward: {}
+  })];
+  App.autoSave = () => true;
+  App.renderLargeMap();
+
+  assertContains(elements.get('large-map').innerHTML, '<button', 'Known review-map tiles should be keyboard-operable buttons');
+  assertContains(elements.get('large-map').innerHTML, 'Map V2 Quest', 'Objective layer should label the tracked quest destination');
+  assertContains(elements.get('large-map').innerHTML, 'Recovery bag', 'Recovery layer should expose known death bags');
+  assertContains(elements.get('large-map').innerHTML, 'Waiting Ally', 'Party layer should expose dropped-off companions');
+  assertContains(elements.get('large-map-filters').innerHTML, 'aria-pressed=\"true\"', 'Layer filters should expose pressed state');
+  assertContains(elements.get('large-map-tracked').innerHTML, 'Known route', 'Tracked quest guidance should expose a known route when available');
+
+  App.selectLargeMapTile(1, 0);
+  assertEqual(App.largeMapSelected.x, 1, 'Selecting a known tile should retain x coordinate');
+  assertContains(elements.get('large-map-inspector').innerHTML, '1, 0', 'Selected tile inspector should expose coordinates');
+
+  App.toggleLargeMapFilter('recovery');
+  assertEqual(App.largeMapFilters.recovery, false, 'Layer filters should toggle independently');
+  assertEqual(elements.get('large-map').innerHTML.includes('Recovery bag'), false, 'Disabled recovery layer should hide its marker');
+
+  App.trackQuestOnMap('map-v2-quest');
+  assertEqual(App.trackedQuestId, 'map-v2-quest', 'Tracked quest identity should be stable');
+  assertEqual(App.worldMap.has('7,7'), false, 'Review Map V2 should not materialize unrelated unknown tiles');
 });
 
 test('Movement and search advance the in-game hour', () => {
@@ -22865,7 +23808,7 @@ test('Combat action exceptions recover the current actor composer', () => {
   assertEqual(App.combatProgressDiagnostic.reason, 'combat-action-error', 'Action recovery should retain a diagnostic reason');
 });
 
-test('Party panel exposes per-ally AI order controls', () => {
+test('Party panel exposes separate companion Duty Stance and Control selectors', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You');
   const ally = makeUnit('Ally', { aiOrder: 'defensive', expanded: true });
@@ -22873,8 +23816,10 @@ test('Party panel exposes per-ally AI order controls', () => {
   App.party = [player, ally];
   App.renderParty();
   const html = elements.get('party-content').innerHTML;
-  assertContains(html, 'setPartyAIOrder(1,this.value)', 'Ally card should expose AI order selector');
-  assertContains(html, 'value="defensive" selected', 'Selected AI order should be reflected in the selector');
+  assertContains(html, 'setCompanionDuty(1,this.value)', 'Ally card should expose a Duty selector');
+  assertContains(html, 'setCompanionStance(1,this.value)', 'Ally card should expose a Stance selector');
+  assertContains(html, 'setCompanionControl(1,this.value)', 'Ally card should expose a Control selector');
+  assertContains(html, 'value="defensive" selected', 'Selected Stance should be reflected in the selector');
 });
 
 test('Party panel exposes management controls and leader badge', () => {
@@ -22893,7 +23838,7 @@ test('Party panel exposes management controls and leader badge', () => {
   assertContains(html, 'draggable="true"', 'Ally card should expose drag reorder affordance');
   assertContains(html, 'startPartyDrag(1)', 'Ally card should start drag reorder');
   assertContains(html, 'dropPartyMember(1)', 'Ally card should accept drag reorder drops');
-  assertNotContains(html, 'setPartyRole(1,this.value)', 'Default party card should keep role management out of the compact action row');
+  assertNotContains(html, 'setCompanionDuty(1,this.value)', 'Default party card should keep behavior management out of the compact action row');
   ally.expanded = true;
   App.renderParty();
   html = elements.get('party-content').innerHTML;
@@ -22901,8 +23846,10 @@ test('Party panel exposes management controls and leader badge', () => {
   assertContains(html, '>Holdings<', 'Expanded party card should label deep management as Holdings');
   assertContains(html, 'setPartyLeader(1)', 'Expanded party card should expose set leader action');
   assertContains(html, 'dismissPartyMember(1)', 'Expanded ally card should expose dismiss action');
-  assertContains(html, 'setPartyRole(1,this.value)', 'Ally card should expose party role selector');
-  assertContains(html, 'Party role for Ally', 'Party role selector should be labeled');
+  assertContains(html, 'setCompanionDuty(1,this.value)', 'Ally card should expose the Duty selector');
+  assertContains(html, 'setCompanionStance(1,this.value)', 'Ally card should expose the Stance selector');
+  assertContains(html, 'setCompanionControl(1,this.value)', 'Ally card should expose the Control selector');
+  assertContains(html, 'Duty for Ally', 'Duty selector should be labeled');
 });
 
 test('Desktop party card management labels localize', () => {
@@ -22925,7 +23872,7 @@ test('Desktop party card management labels localize', () => {
   assertNotContains(html, 'aria-label="Luchar Ally B"', 'Party card should not show primary action spam by default');
   assertNotContains(html, 'aria-label="Mostrar estadisticas de Ally B"', 'Collapsed stats control should stay behind the detail expansion');
   assertNotContains(html, 'aria-label="Hacer lider a Ally B"', 'Compact party card should not expose leader management by default');
-  assertNotContains(html, 'aria-label="Rol de grupo para Ally B"', 'Compact party card should not expose role selector by default');
+  assertNotContains(html, 'aria-label="Funcion de Ally B"', 'Compact party card should not expose Duty by default');
   allyB.expanded = true;
   App.renderParty();
   html = elements.get('party-content').innerHTML;
@@ -22935,14 +23882,13 @@ test('Desktop party card management labels localize', () => {
   assertContains(html, '>Hacer lider<', 'Leader visible label should localize');
   assertContains(html, 'aria-label="Arrastrar Ally B para reordenar"', 'Drag reorder handle should expose localized accessible label');
   assertContains(html, 'aria-label="Mover Ally B arriba"', 'Move-up control should expose localized accessible label');
-  assertContains(html, 'aria-label="Rol de grupo para Ally B"', 'Party role selector should expose localized accessible label');
-  assertContains(html, 'title="Rol: Sin rol especial de exploracion."', 'Party role selector title should include localized role description');
-  assertContains(html, '<option value="companion" selected>Companero</option>', 'Selected role option text should localize');
-  assertContains(html, '<option value="guard" >Guardia</option>', 'Role option text should localize');
-  assertContains(html, 'aria-label="Orden IA para Ally B"', 'AI order selector should expose localized accessible label');
-  assertContains(html, 'title="Orden IA: Prefiere posicionarse con cuidado y proteger aliados."', 'AI order selector title should include localized AI order description');
-  assertContains(html, '<option value="defensive" selected>Defensivo</option>', 'Selected AI order option text should localize');
-  assertContains(html, '<option value="passive" >Pasivo</option>', 'AI order option text should localize');
+  assertContains(html, 'aria-label="Funcion de Ally B"', 'Duty selector should expose a localized accessible label');
+  assertContains(html, '<option value="scout" selected>Explorador</option>', 'Migrated Duty option text should localize');
+  assertContains(html, '<option value="guard" >Guardia</option>', 'Duty option text should localize');
+  assertContains(html, 'aria-label="Actitud de Ally B"', 'Stance selector should expose a localized accessible label');
+  assertContains(html, '<option value="defensive" selected>Defensiva</option>', 'Selected Stance option text should localize');
+  assertContains(html, '<option value="passive" >Pasiva</option>', 'Stance option text should localize');
+  assertContains(html, 'aria-label="Control de Ally B"', 'Control selector should expose a localized accessible label');
   assertContains(html, 'aria-label="Despedir a Ally B"', 'Dismiss control should expose localized accessible label');
   assertContains(html, '>Despedir<', 'Dismiss visible label should localize');
   App.selectExplorationActor(1);
@@ -23017,7 +23963,16 @@ test('Party management can reorder set leader and dismiss allies', () => {
 test('Party companions can be dropped off persistently and rejoin without duplicate recruitment XP', () => {
   const { App } = loadAppForCombat(() => 0.5);
   const player = makeUnit('You', { id: 'player-drop-off' });
-  const companion = makeUnit('Harpy', { id: 'companion-drop-off', partyRole: 'guard', aiOrder: 'defensive' });
+  const companion = makeUnit('Harpy', {
+    id: 'companion-drop-off',
+    companionBehavior: {
+      version: 2,
+      duty: 'guard',
+      stance: 'defensive',
+      control: 'deterministic',
+      recruitmentContinuity: { kind: 'befriended', source: 'talk', by: 'player-drop-off', day: 1, hour: 9 }
+    }
+  });
   App.player = player;
   App.party = [player, companion];
   App.location = { x: 2, y: -3 };
@@ -23040,6 +23995,8 @@ test('Party companions can be dropped off persistently and rejoin without duplic
   assertEqual(App.party.some(unit => unit.id === 'companion-drop-off'), true, 'Rejoined companion should return to the traveling party');
   assertEqual(App.party.find(unit => unit.id === 'companion-drop-off').partyRole, 'guard', 'Rejoining should preserve the companion role');
   assertEqual(App.party.find(unit => unit.id === 'companion-drop-off').aiOrder, 'defensive', 'Rejoining should preserve the AI order');
+  assertEqual(App.party.find(unit => unit.id === 'companion-drop-off').companionBehavior.control, 'deterministic', 'Rejoining should preserve companion Control');
+  assertEqual(App.party.find(unit => unit.id === 'companion-drop-off').companionBehavior.recruitmentContinuity.kind, 'befriended', 'Rejoining should preserve recruitment continuity');
   assertEqual(App.worldMap.get('2,-3').creatures.some(unit => unit.id === 'companion-drop-off'), false, 'Rejoining should remove the persistent tile placement');
   assertEqual(xpGranted, 0, 'Rejoining an existing companion should not grant recruitment XP again');
   assertContains(App.log[App.log.length - 1].text, 'rejoins your party', 'Rejoining should use distinct player-facing feedback');
@@ -23272,7 +24229,7 @@ test('Party dismissal confirmation and log localize', () => {
   assertContains(approved.App.log[approved.App.log.length - 1].text, 'deja el grupo y permanece cerca', 'Dismiss nearby log should localize');
 });
 
-test('Party role and AI order change logs localize', () => {
+test('Companion Duty Stance and Control change logs localize', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const ally = makeUnit('Ally', { id: 'ally-1' });
@@ -23280,11 +24237,12 @@ test('Party role and AI order change logs localize', () => {
   App.party = [player, ally];
   App.updateLanguage('es');
 
-  App.setPartyRole(1, 'guard');
-  assertEqual(App.log[App.log.length - 1].text, 'Ally queda asignado como guardia.', 'Party role change log should localize');
-
-  App.setPartyAIOrder(1, 'defensive');
-  assertEqual(App.log[App.log.length - 1].text, 'Ally actuara en modo defensivo.', 'Party AI order change log should localize');
+  App.setCompanionDuty(1, 'guard');
+  assertEqual(App.log[App.log.length - 1].text, 'Ally: la funcion ahora es guardia.', 'Duty change log should localize');
+  App.setCompanionStance(1, 'defensive');
+  assertEqual(App.log[App.log.length - 1].text, 'Ally: la actitud ahora es defensiva.', 'Stance change log should localize');
+  App.setCompanionControl(1, 'deterministic');
+  assertEqual(App.log[App.log.length - 1].text, 'Ally: el control ahora es autonomo.', 'Control change log should localize');
 });
 
 test('Party leader and reorder logs localize', () => {
@@ -23318,17 +24276,23 @@ test('Party drag reorder keeps player anchored', () => {
   assertEqual(App.party[0], player, 'Player should stay anchored at the first slot');
 });
 
-test('Party role and AI order state persist through binary saves', () => {
+test('Companion Duty Stance and Control persist through binary saves', () => {
   const Binary = loadBinaryForTest();
   const { App } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });
-  const ally = makeUnit('Ally', { id: 'ally-1', partyRole: 'scout', aiOrder: 'defensive' });
+  const ally = makeUnit('Ally', {
+    id: 'ally-1',
+    companionBehavior: { version: 2, duty: 'scout', stance: 'defensive', control: 'deterministic' }
+  });
   App.player = player;
   App.party = [player, ally];
   const loaded = Binary.loadGame(Binary.saveGame(App));
   assertEqual(loaded.questState.partyRoles['ally-1'], 'scout', 'Party role should persist by id');
   assertEqual(loaded.questState.partyRoles.Ally, 'scout', 'Party role should persist by name fallback');
   assertEqual(loaded.questState.partyAIOrders['ally-1'], 'defensive', 'AI order should persist by id');
+  assertEqual(loaded.questState.partyDuties['ally-1'], 'scout', 'Duty should persist by id');
+  assertEqual(loaded.questState.partyStances['ally-1'], 'defensive', 'Stance should persist by id');
+  assertEqual(loaded.questState.partyControls['ally-1'], 'deterministic', 'Control should persist by id');
 });
 
 test('Enemy target priority prefers party leader when no prey override applies', () => {
@@ -24156,18 +25120,24 @@ test('Quest turn-in can defer rewards until claimed from quest log', () => {
   assertContains(elements.get('party-content').innerHTML, 'Show Turn-In', 'Quest log should expose map focus for turn-in location');
   assertContains(elements.get('party-content').innerHTML, 'data-command-surface="quest-log-detail"', 'Quest log should render as a detail command surface');
   assertContains(elements.get('party-content').innerHTML, 'data-command-control="show-quest-turn-in-route"', 'Quest log turn-in route should expose its detail control role');
-  assertContains(elements.get('party-content').innerHTML, 'data-command-control="turn-in-quest"', 'Quest log turn-in should expose its detail control role');
-  assertContains(elements.get('party-content').innerHTML, 'data-command-intent="turnInQuest"', 'Quest log turn-in should expose its stable intent id');
+  assertNotContains(elements.get('party-content').innerHTML, 'data-command-control="turn-in-quest"', 'Quest log should not remotely collect an original-giver reward');
   assertNotContains(elements.get('scene-description').innerHTML, 'Deferred Wolf Hunt', 'Quest log should not replace center presentation content');
   const focused = App.focusQuestTurnInOnMap('deferred_wolf_hunt');
   assertEqual(focused, true, 'Turn-in map focus should succeed when giver location is known');
   assertEqual(App.largeMapOffset.x, 3, 'Turn-in map focus should pan to giver x offset');
   assertEqual(App.largeMapOffset.y, -1, 'Turn-in map focus should pan to giver y offset');
+  App.location = { x: 3, y: -1 };
+  App.creatures = [makeUnit('Guide', { id: 'guide', disposition: App.DISPOSITION.QUEST_GIVER })];
+  App.quests[0].turnInPolicy.giverId = 'guide';
+  App.showQuestLog();
+  assertContains(elements.get('party-content').innerHTML, 'data-command-control="turn-in-quest"', 'Quest log should expose turn-in once the original giver is available');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-intent="turnInQuest"', 'Eligible quest turn-in should expose its stable intent id');
   App.turnInQuest('deferred_wolf_hunt');
   assertEqual(App.player.gold, 7, 'Turn-in should grant deferred gold');
   assertEqual(App.player.xp, 10, 'Turn-in should grant deferred XP');
   assertEqual(App.inventory[0].name, 'Old Coin', 'Turn-in should grant deferred item');
   assertEqual(App.inventory[0].id, 'quest_item_deferred-wolf-hunt_old-coin_0', 'Deferred quest reward item id should be stable without timestamp entropy');
+  assertEqual(App.inventory[0].definitionId, 'core:old_coin', 'Deferred quest rewards should persist stable definition identity');
   assertEqual(App.quests[0].rewardClaimed, true, 'Turn-in should mark reward claimed');
   assertContains(App.log.map(entry => entry.text).join('\n'), 'Quest turned in: Deferred Wolf Hunt.', 'Turn-in success feedback should be logged');
   App.updateLanguage('es');
@@ -24177,6 +25147,299 @@ test('Quest turn-in can defer rewards until claimed from quest log', () => {
   App.quests.push({ id: 'not_ready_quest', title: 'Not Ready', status: 'active', objectives: [], rewards: {} });
   App.turnInQuest('not_ready_quest');
   assertContains(App.log[App.log.length - 1].text, 'Esa mision aun no esta lista para entregar.', 'Not-ready turn-in feedback should localize');
+});
+
+test('Quest Contract V2 migrates lifecycle states and enforces bounded turn-in policies', () => {
+  const { App, window } = loadAppForCombat();
+  App.player = makeUnit('You', { gold: 0 });
+  App.party = [App.player];
+  App.inventory = [];
+  App.location = { x: 4, y: 2 };
+  App.creatures = [];
+
+  const available = App._normalizeQuest({ id: 'available-v1', status: 'available', objectives: [], reward: {} });
+  const active = App._normalizeQuest({ id: 'active-v1', status: 'active', objectives: [{ type: 'find', required: 1 }], reward: {} });
+  const ready = App._normalizeQuest({ id: 'ready-v1', status: 'completed', turnInRequired: true, giverId: 'guide-v1', objectives: [], reward: {} });
+  const turnedIn = App._normalizeQuest({ id: 'turned-v1', status: 'completed', turnInRequired: true, rewardClaimed: true, objectives: [], reward: {} });
+  const failed = App._normalizeQuest({ id: 'failed-v1', status: 'failed', objectives: [], reward: {} });
+
+  assertEqual(available.lifecycleState, 'available', 'Legacy available quests should migrate to canonical Available');
+  assertEqual(active.lifecycleState, 'active', 'Legacy active quests should migrate to canonical Active');
+  assertEqual(ready.lifecycleState, 'ready_for_turn_in', 'Legacy deferred completed quests should migrate to Ready for Turn-In');
+  assertEqual(turnedIn.lifecycleState, 'turned_in', 'Claimed legacy quests should migrate to Turned In');
+  assertEqual(failed.lifecycleState, 'failed', 'Legacy failed quests should migrate to Failed');
+  [available, active, ready, turnedIn, failed].forEach(quest => assertEqual(quest.contractVersion, 2, 'Migrated quests should declare Quest Contract V2'));
+
+  assertEqual(App._questTurnInEligibility(ready).ok, false, 'Original-giver policy should reject remote reward collection');
+  App.creatures = [makeUnit('Guide', { id: 'guide-v1', disposition: App.DISPOSITION.QUEST_GIVER })];
+  assertEqual(App._questTurnInEligibility(ready).ok, true, 'Original-giver policy should allow the available canonical giver');
+
+  const named = App._normalizeQuest({
+    id: 'named-location-v2',
+    status: 'completed',
+    turnInPolicy: { type: 'named_location', location: { x: 4, y: 2, label: 'Archive' } },
+    objectives: [],
+    reward: {}
+  });
+  assertEqual(App._questTurnInEligibility(named).ok, true, 'Named-location policy should resolve from canonical coordinates');
+  assertEqual(App._questTurnInMarker(named).x, 4, 'Named-location guidance should point to the policy destination rather than the giver');
+  assertEqual(App._questTurnInMarker(named).label, 'Archive', 'Named-location guidance should preserve the destination label');
+  App.location = { x: 3, y: 2 };
+  assertEqual(App._questTurnInEligibility(named).reason, 'wrong-location', 'Named-location policy should reject remote turn-in');
+
+  const faction = App._normalizeQuest({
+    id: 'faction-v2',
+    status: 'completed',
+    turnInPolicy: { type: 'authorized_faction', faction: 'Wardens' },
+    objectives: [],
+    reward: {}
+  });
+  App.creatures = [makeUnit('Warden', { id: 'warden-v1', disposition: App.DISPOSITION.QUEST_GIVER, tags: ['Wardens'] })];
+  assertEqual(App._questTurnInEligibility(faction).ok, true, 'Authorized-faction policy should accept a live local faction representative');
+
+  const automatic = App._normalizeQuest({
+    id: 'automatic-v2',
+    status: 'active',
+    turnInPolicy: { type: 'automatic' },
+    objectives: [{ type: 'find', targetId: 'marker', required: 1, progress: 1, complete: true }],
+    reward: { gold: 1 }
+  });
+  window.YAW_QUEST_CONTRACT.advanceAfterObjectives(automatic);
+  assertEqual(automatic.lifecycleState, 'objectives_complete', 'Automatic policy should reach Objectives Complete before core grants its reward');
+  assertEqual(App._questTurnInEligibility(automatic).reason, 'not-ready', 'Automatic policy should never expose manual remote turn-in');
+
+  let rejected = false;
+  try {
+    window.YAW_QUEST_CONTRACT.normalizePolicy({ turnInPolicy: { type: 'telepathy' } });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'Unsupported quest turn-in policy', 'Unknown policy rejection should identify the invalid contract');
+  }
+  assertEqual(rejected, true, 'Unknown turn-in policy should reject normalization instead of becoming remote collection');
+
+  rejected = false;
+  try {
+    App._normalizeQuest({
+      id: 'function-stage-data',
+      stageGraph: {
+        stages: [{
+          id: 'start',
+          transitions: [{ event: 'accept', match: { predicate() { return true; } }, effects: [] }]
+        }]
+      }
+    });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'must be serializable data', 'Function-backed stage data should report the data-only boundary');
+  }
+  assertEqual(rejected, true, 'Quest stage graphs should reject callbacks even outside the module registration path');
+});
+
+test('Procedural Quest V2 deterministically generates every bounded archetype without materializing world tiles', () => {
+  const build = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'procedural-quest-seed', generatorVersion: 3 };
+    App.location = { x: 7, y: -4 };
+    App.player = makeUnit('You', { id: 'procedural-player', level: 3 });
+    App.party = [App.player];
+    App.worldMap = new Map([['7,-4', { x: 7, y: -4, biome: 'forest', explored: true }]]);
+    const before = App.worldMap.size;
+    const giver = makeUnit('Trail Guide', { id: 'trail-guide', disposition: App.DISPOSITION.QUEST_GIVER });
+    const quests = ['hunt', 'gather', 'deliver', 'survey', 'escort', 'recover']
+      .map((archetype, sequence) => App.generateProceduralQuest(archetype, { giver, origin: App.location, sequence }));
+    return { App, quests, before };
+  };
+  const low = build(() => 0);
+  const high = build(() => 0.99);
+  assertEqual(JSON.stringify(low.quests), JSON.stringify(high.quests), 'Procedural quests should depend on canonical world inputs rather than ambient randomness');
+  assertEqual(low.App.worldMap.size, low.before, 'Procedural quest generation should not materialize unknown destination tiles');
+  low.quests.forEach((quest, index) => {
+    assertEqual(quest.contractVersion, 2, 'Generated quests should use Quest Contract V2');
+    assertEqual(quest.lifecycleState, 'available', 'Generated quests should begin Available');
+    assertEqual(quest.procedural, true, 'Generated quests should retain procedural provenance');
+    assertEqual(quest.authoredOrigin.kind, 'procedural', 'Generated quests should record procedural origin');
+    assert(quest.objectives.length > 0, 'Every supported archetype should produce an objective');
+    assert(quest.reward.xp > 0 && quest.reward.gold > 0, 'Procedural reward should scale to a positive bounded value');
+    assert(
+      Number(quest.destination.x) !== Number(low.App.location.x) || Number(quest.destination.y) !== Number(low.App.location.y),
+      `Procedural archetype ${index} should have a reachable non-origin destination`
+    );
+  });
+  low.App.updateLanguage('es');
+  assertContains(low.App._questTitleLabel(low.quests[0]), 'Caza:', 'Procedural quest titles should localize after creation instead of persisting English-only presentation');
+  assertContains(low.App._questDescriptionLabel(low.quests[2]), 'paquete protegido', 'Procedural quest descriptions should localize from stable presentation keys');
+});
+
+test('Procedural Quest V2 chooses a cardinally reachable destination from pure base terrain', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.worldMeta = { seed: 'quest-corridor-seed', generatorVersion: 6 };
+  App.player = makeUnit('You', { id: 'corridor-player', level: 2 });
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, explored: true }]]);
+  App._worldRoll = () => 0;
+  App.getBaseTile = (x, y) => ({
+    x,
+    y,
+    traversal: { passable: y === 0 && x >= 0 && x <= 8 },
+    overlays: {}
+  });
+  const before = App.worldMap.size;
+  const quest = App.generateProceduralQuest('survey', {
+    giver: makeUnit('Guide', { id: 'corridor-guide', disposition: App.DISPOSITION.QUEST_GIVER }),
+    origin: App.location,
+    sequence: 0
+  });
+  assert(quest.destination.x >= 2, 'Procedural destination should advance along the reachable corridor');
+  assertEqual(quest.destination.y, 0, 'Procedural destination should not select adjacent impassable terrain');
+  assertEqual(App.worldMap.size, before, 'Reachability checks should inspect pure base terrain without discovering or storing tiles');
+});
+
+test('Procedural delivery grants a protected parcel and consumes it only at its named destination', () => {
+  const { App } = loadAppForCombat(() => 0.25);
+  App.worldMeta = { seed: 'delivery-seed', generatorVersion: 3 };
+  App.player = makeUnit('You', { id: 'delivery-player', level: 2, gold: 0 });
+  App.party = [App.player];
+  App.inventory = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.exploredTiles = new Set();
+  App.autoSave = () => true;
+  const giver = makeUnit('Courier', { id: 'courier', disposition: App.DISPOSITION.QUEST_GIVER });
+  const quest = App.generateProceduralQuest('deliver', { giver, origin: App.location, sequence: 2 });
+
+  App.acceptQuest(quest, giver);
+  assertEqual(App.inventory[0].definitionId, 'core:sealed_parcel', 'Accepting delivery should grant the stable protected parcel');
+  assertEqual(App._isQuestProtectedItem(App.inventory[0]), true, 'Active delivery parcel should be protected from sale/drop');
+  assertEqual(App._questTurnInEligibility(App.quests[0]).ok, false, 'Delivery should not be turn-in eligible before reaching its destination');
+
+  const destination = App.quests[0].destination;
+  App.location = { x: destination.x, y: destination.y };
+  App._updateQuestProgress('travel', { x: destination.x, y: destination.y });
+  assertEqual(App.quests[0].lifecycleState, 'ready_for_turn_in', 'Arrival with the parcel should make delivery ready for turn-in');
+  assertEqual(App._questTurnInEligibility(App.quests[0]).ok, true, 'Named destination should authorize delivery turn-in');
+  assertEqual(App.turnInQuest(App.quests[0].id), true, 'Delivery should turn in at the named destination');
+  assertEqual(App.inventory.some(item => item.definitionId === 'core:sealed_parcel'), false, 'Successful delivery should consume the protected parcel');
+  assertEqual(App.quests[0].lifecycleState, 'turned_in', 'Successful delivery should reach canonical Turned In state');
+});
+
+test('Procedural recover quests inject their protected objective only when searching the marked tile', () => {
+  const { App } = loadAppForCombat(() => 0.9);
+  App.worldMeta = { seed: 'recover-seed', generatorVersion: 3 };
+  App.player = makeUnit('You', { id: 'recover-player', level: 2 });
+  App.party = [App.player];
+  App.inventory = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.exploredTiles = new Set();
+  App.autoSave = () => true;
+  const giver = makeUnit('Archivist', { id: 'archivist', disposition: App.DISPOSITION.QUEST_GIVER });
+  const quest = App.generateProceduralQuest('recover', { giver, origin: App.location, sequence: 1 });
+  App.acceptQuest(quest, giver);
+
+  const destination = App.quests[0].destination;
+  App.location = { x: destination.x, y: destination.y };
+  App.worldMap.set(`${destination.x},${destination.y}`, {
+    x: destination.x,
+    y: destination.y,
+    biome: 'forest',
+    explored: true,
+    description: 'A marked search area.'
+  });
+  App.search();
+  assertEqual(App.inventory[0].definitionId, 'core:waystone_sigil', 'Marked-tile search should acquire the stable protected recovery object');
+  assertEqual(App.quests[0].lifecycleState, 'ready_for_turn_in', 'Recovering the objective should make the quest ready for original-giver turn-in');
+  assertEqual(App._isQuestProtectedItem(App.inventory[0]), true, 'Recovered objective should remain protected before turn-in');
+});
+
+test('Authored Quest V2 stage graphs advance through bounded declarative events and persist', () => {
+  const Binary = loadBinaryForTest();
+  const { App } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { id: 'stage-player', gold: 0 });
+  App.party = [App.player];
+  App.inventory = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.exploredTiles = new Set();
+  App.autoSave = () => true;
+  const giver = makeUnit('Scholar', { id: 'stage-scholar', disposition: App.DISPOSITION.QUEST_GIVER });
+  App.creatures = [giver];
+  const authored = {
+    id: 'bounded-stage-quest',
+    title: 'Bounded Stages',
+    status: 'available',
+    turnInRequired: true,
+    giverId: giver.id,
+    giverName: giver.name,
+    giverLocation: { x: 0, y: 0, label: giver.name },
+    objectives: [],
+    reward: { gold: 9 },
+    stageGraph: {
+      initialStage: 'offered',
+      stages: [
+        {
+          id: 'offered',
+          transitions: [{
+            event: 'accept',
+            to: 'seeking',
+            effects: [
+              { type: 'set_branch', branch: 'coin-route' },
+              { type: 'set_destination', location: { x: 2, y: 1, label: 'Old Marker' } },
+              { type: 'add_objective', objective: { type: 'find', item: { definitionId: 'core:old_coin', name: 'Old Coin' }, required: 1 } },
+              { type: 'log', text: 'The scholar marks an old trail.' }
+            ]
+          }]
+        },
+        {
+          id: 'seeking',
+          transitions: [{ event: 'find', match: { item: { definitionId: 'core:old_coin' } }, to: 'returning', effects: [] }]
+        },
+        {
+          id: 'returning',
+          transitions: [{ event: 'objective_complete', to: 'ready', effects: [] }]
+        },
+        {
+          id: 'ready',
+          transitions: [{ event: 'turn_in', to: 'done', effects: [{ type: 'log', text: 'The scholar records the recovered route.' }] }]
+        },
+        { id: 'done', transitions: [] }
+      ]
+    }
+  };
+
+  const accepted = App.acceptQuest(authored, giver);
+  assertEqual(accepted.stageGraph.currentStage, 'seeking', 'Accept event should advance the authored stage');
+  assertEqual(accepted.branch, 'coin-route', 'Stage effect should set bounded branch state');
+  assertEqual(accepted.destination.x, 2, 'Stage effect should set a finite destination');
+  assertEqual(accepted.objectives.length, 1, 'Stage effect should append one normalized objective');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'marks an old trail', 'Stage log effect should remain visible');
+
+  App._updateQuestProgress('find', { definitionId: 'core:old_coin', item: 'Old Coin' });
+  assertEqual(accepted.stageGraph.currentStage, 'ready', 'Matching event and objective completion should advance through ordered stages');
+  assertEqual(accepted.lifecycleState, 'ready_for_turn_in', 'Completed authored stage objective should use canonical ready state');
+
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  assertEqual(loaded.questState.quests[0].stageGraph.currentStage, 'ready', 'Binary save/reload should preserve the authored current stage');
+  assert(loaded.questState.quests[0].stageGraph.history.includes('seeking_find_0:find'), 'Binary save/reload should preserve bounded transition history');
+
+  App.turnInQuest(accepted.id, { giverId: giver.id });
+  assertEqual(accepted.stageGraph.currentStage, 'done', 'Turn-in event should advance the final authored stage');
+  assertEqual(accepted.lifecycleState, 'turned_in', 'Authored quest should finish in canonical Turned In state');
+  assertEqual(App.player.gold, 9, 'Authored quest should grant its reward exactly once');
+
+  let rejected = false;
+  try {
+    App._normalizeQuest({
+      id: 'invalid-stage-effect',
+      stageGraph: {
+        stages: [{ id: 'start', transitions: [{ event: 'accept', effects: [{ type: 'run_script', code: 'arbitrary()' }] }] }]
+      }
+    });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'Unsupported quest stage effect', 'Invalid stage effect should identify the rejected declarative operation');
+  }
+  assertEqual(rejected, true, 'Authored stage graphs should reject arbitrary operations');
 });
 
 test('Quest find objectives advance from search discoveries', () => {
@@ -24198,6 +25461,48 @@ test('Quest find objectives advance from search discoveries', () => {
   App.search();
   assertEqual(App.quests[0].status, 'completed', 'Finding quest item should complete quest');
   assertEqual(App.player.gold, 3, 'Find quest should grant reward');
+});
+
+test('Stable module item identities drive search eligibility and quest progress without display-name coupling', () => {
+  const { App, window } = loadAppForCombat(() => 0.5);
+  window.YAW_ITEM_REGISTRY.register(App, 'fixture-items', {
+    id: 'fixture-items:tonic',
+    name: 'Fixture Tonic',
+    type: 'valuable',
+    purpose: 'trade',
+    effect: 'sell',
+    stackable: true,
+    maxStack: 10,
+    value: 15,
+    acquisition: { search: true }
+  });
+  const entries = window.YAW_TILE_RESOURCES.searchableItemEntries(App);
+  assert(entries.some(entry => entry.id === 'fixture-items:tonic' && entry.weight === 1), 'Explicitly searchable module definitions should enter the bounded weighted search pool');
+
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.inventory = [];
+  App.quests = [{
+    id: 'stable-item-find',
+    title: 'Stable Item Find',
+    status: 'active',
+    turnInRequired: true,
+    rewardClaimed: false,
+    objectives: [{
+      id: 'stable-item-find-0',
+      type: 'find',
+      item: { definitionId: 'fixture-items:tonic', name: 'Old Compatibility Label' },
+      required: 1,
+      progress: 0,
+      complete: false
+    }],
+    reward: {}
+  }];
+  App.autoSave = () => true;
+
+  App._updateQuestProgress('find', { definitionId: 'fixture-items:tonic', item: 'Localized Tonic Label', name: 'Localized Tonic Label' });
+  assertEqual(App.quests[0].objectives[0].complete, true, 'Quest objective should match stable definition identity despite label differences');
+  assertEqual(App.quests[0].status, 'completed', 'Stable item objective should complete the quest lifecycle');
 });
 
 test('Escort quest checkpoints advance in route order', () => {
@@ -24260,7 +25565,8 @@ test('Quest log controls localize with accessible names', () => {
   const { App, elements } = loadAppForCombat();
   App.player = makeUnit('You');
   App.party = [App.player];
-  App.location = { x: 0, y: 0 };
+  App.location = { x: 1, y: 0 };
+  App.creatures = [makeUnit('Guide', { id: 'guide-turn', disposition: App.DISPOSITION.QUEST_GIVER })];
   App.quests = [
     App._normalizeQuest({
       id: 'route_quest',
@@ -24275,6 +25581,8 @@ test('Quest log controls localize with accessible names', () => {
       status: 'completed',
       turnInRequired: true,
       rewardClaimed: false,
+      giverId: 'guide-turn',
+      giverName: 'Guide',
       giverLocation: { x: 1, y: 0, label: 'Guide' },
       objectives: [],
       reward: {}
@@ -24503,6 +25811,7 @@ test('Merchant buy and sell update gold inventory and stock', () => {
   assertEqual(App.player.gold, 30, 'Buying should spend gold');
   assert(App.inventory.some(item => item.name === 'Healing Herb'), 'Buying should add item to inventory');
   assert(App.inventory.some(item => item.id === 'buy_trader-1_healing-herb_1'), 'Bought item id should be stable without timestamp entropy');
+  assertEqual(App.inventory.find(item => item.name === 'Healing Herb').definitionId, 'core:healing_herb', 'Bought items should persist stable definition identity');
   assertEqual(merchant.stock[0].qty, 0, 'Buying should reduce stock quantity');
   assertEqual(App.log[App.log.length - 1].text, 'Bought Healing Herb for 10 gold.', 'Buying should log localized purchase feedback');
   App.sellToMerchant('trader-1', 'gem-1');
@@ -24510,7 +25819,30 @@ test('Merchant buy and sell update gold inventory and stock', () => {
   assert(!App.inventory.some(item => item.id === 'gem-1'), 'Selling should remove item from inventory');
   assert(merchant.stock.some(item => item.name === 'Shiny Gem'), 'Sold item should enter merchant stock');
   assert(merchant.stock.some(item => item.id === 'sold_trader-1_shiny-gem_1'), 'Sold stock id should be stable without timestamp entropy');
+  assertEqual(merchant.stock.find(item => item.name === 'Shiny Gem').definitionId, 'core:shiny_gem', 'Sold stock should retain stable definition identity');
   assertEqual(App.log[App.log.length - 1].text, 'Sold Shiny Gem for 25 gold.', 'Selling should log localized sale feedback');
+});
+
+test('Merchant trade merges purchases into open stacks and sells one unit from a stack', () => {
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', { gold: 100 });
+  App.party = [App.player];
+  App.inventory = [{ id: 'herb-stack', definitionId: 'core:healing_herb', name: 'Healing Herb', quantity: 2 }];
+  const merchant = makeUnit('Trader', {
+    id: 'stack-trader',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [{ definitionId: 'core:healing_herb', name: 'Healing Herb', price: 10, qty: 2 }]
+  });
+  App.creatures = [merchant];
+
+  App.buyFromMerchant('stack-trader', 0);
+  assertEqual(App.inventory.length, 1, 'A purchased fungible item should merge into an existing open stack');
+  assertEqual(App.inventory[0].quantity, 3, 'Purchase should add exactly one stack unit');
+
+  App.sellToMerchant('stack-trader', 'herb-stack');
+  assertEqual(App.inventory.length, 1, 'Selling one unit should retain the remaining stack');
+  assertEqual(App.inventory[0].quantity, 2, 'Selling should decrement the carried stack by one');
+  assertEqual(merchant.stock[0].qty, 2, 'Purchase then sale should restore one merchant stock unit');
 });
 
 test('Merchant trade supports item categories and sorted stock without index drift', () => {
@@ -24732,6 +26064,7 @@ test('Structure encounters can place authored quest givers', () => {
   assert(giver, 'Shrine structure should be able to place a quest giver');
   assertEqual(giver.quest.templateId, 'shrine_relic', 'Placed quest giver should use authored quest template');
   assertEqual(giver.quest.id, 'shrine_relic_2_0', 'Authored quest id should be stable for the structure tile');
+  assertEqual(giver.quest.turnInPolicy.giverId, giver.id, 'Authored original-giver policy should bind to the actual generated service unit');
   App.renderCreatures();
   assertNotContains(elements.get('enemies-content').innerHTML, "'quest','panel-card'", 'Placed quest giver card should not duplicate composer-owned quest actions');
   App.toggleExplorationTarget('creature', App._explorationTargetUnitId('creature', giver));
@@ -25232,7 +26565,7 @@ test('Unit card headers keep long names separate from role metadata', () => {
 
   const allyCard = App.renderUnitCard(ally, 1, 'party');
   assertContains(allyCard, '<div class="unit-name">Mousefolk Expedition Cartographer With A Very Long Name</div>', 'Long unit name should own the name row');
-  assertContains(allyCard, '<div class="unit-meta"><span class="unit-meta-badge">Companion</span></div>', 'Party role should render as metadata below the name');
+  assertContains(allyCard, '<div class="unit-meta"><span class="unit-meta-badge">Scout</span></div>', 'Migrated Duty should render as metadata below the name');
   assertNotContains(allyCard, 'Mousefolk Expedition Cartographer With A Very Long Name <span', 'Role metadata should not share the name text line');
   assertContains(template, '.unit-meta-badge', 'Unit metadata badges should have dedicated styling');
   assertContains(template, '-webkit-line-clamp: 2;', 'Unit names should wrap predictably instead of truncating beside metadata');
@@ -25388,8 +26721,9 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(expandedAllyCard, 'data-action-scope="party-management" aria-label="Party management controls for Ally"', 'Expanded ally card should identify party management scope');
   assertContains(expandedAllyCard, 'data-command-surface="detail-management" data-command-mode="exploration"', 'Expanded ally management row should identify drawer/detail routing');
   assertContains(expandedAllyCard, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="make-leader"', 'Expanded ally leader action should identify its drawer control');
-  assertContains(expandedAllyCard, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-party-role"', 'Expanded ally role selector should identify its drawer control');
-  assertContains(expandedAllyCard, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-party-ai-order"', 'Expanded ally AI selector should identify its drawer control');
+  assertContains(expandedAllyCard, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-companion-duty"', 'Expanded ally Duty selector should identify its drawer control');
+  assertContains(expandedAllyCard, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-companion-stance"', 'Expanded ally Stance selector should identify its drawer control');
+  assertContains(expandedAllyCard, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-companion-control"', 'Expanded ally Control selector should identify its drawer control');
   assertContains(expandedAllyCard, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="dismiss-party-member"', 'Expanded ally dismiss action should identify its drawer control');
   assertContains(expandedMobilePlayerChip, 'data-card-state="expanded"', 'Mobile expanded chip should expose expanded focus/detail state');
   assertContains(expandedMobilePlayerChip, 'aria-label="Hide details for You"', 'Mobile expanded chip should describe collapsing details');
@@ -26085,11 +27419,51 @@ test('Perk choices apply bonuses and enforce tree prerequisites', () => {
   assertEqual(App.player.Figh, 12, 'Chosen perk should apply its stat bonus');
   assertEqual(App.player.perks[0].perkEffect, 'predatorScent', 'Chosen perk should preserve its special effect');
   assertEqual(App.player.pendingPerkChoices, 0, 'Choosing a perk should consume one pending choice');
-  assertContains(App.log[App.log.length - 1].text, 'Mejora elegida: Predator Instinct.', 'Chosen perk feedback should localize');
+  assertContains(App.log[App.log.length - 1].text, 'Mejora elegida: Instinto depredador.', 'Chosen perk feedback should localize the selected definition');
   App.player.pendingPerkChoices = 1;
   assertEqual(App._canChoosePerk(App.PERK_TREES.predator.perks[1], 'predator'), true, 'Prerequisite should pass after one predator perk');
   App.choosePerk('voracious');
   assertEqual(App.player.Feas, 13, 'Second-tier perk should apply bonus');
+});
+
+test('Every shipped perk has a bounded versioned effect with symmetric rollback', () => {
+  const effects = new Function('window', `${perkEffectsContent}\nreturn YAW_PERK_EFFECTS;`)({});
+  const { App } = loadAppForCombat();
+  const definitions = [
+    ...Object.values(App.PERK_TREES).flatMap(tree => tree.perks),
+    ...Object.values(App.SPECIES_PERK_TREES).flatMap(tree => tree.perks)
+  ];
+  assert(definitions.length > 0, 'Core should ship an auditable perk catalog');
+  for (const definition of definitions) {
+    const unit = {
+      MPun: 100, MPle: 100, Figh: 10, Feas: 10, Flir: 10, Fuck: 10,
+      Flee: 10, Feed: 10, str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10
+    };
+    const before = JSON.parse(JSON.stringify(unit));
+    const profile = effects.apply(unit, definition);
+    assertEqual(profile.version, 2, `${definition.id} should use Perk Effects V2`);
+    assert(profile.effects.length > 0, `${definition.id} should have at least one implemented effect`);
+    const selected = {
+      ...definition,
+      effectProfile: { version: profile.version, effects: profile.effects.map(effect => ({ ...effect })) }
+    };
+    effects.rollback(unit, selected);
+    for (const key of Object.keys(before)) {
+      assertEqual(unit[key], before[key], `${definition.id} should roll back ${key} exactly`);
+    }
+  }
+});
+
+test('Legacy selected perks gain reversible profiles without being applied twice', () => {
+  const { App } = loadAppForCombat();
+  const unit = makeUnit('Legacy Perk User', {
+    MPun: 110,
+    perks: [{ id: 'toughness_1', tree: 'survival', name: 'Toughness', stat: 'MPun', val: 10 }]
+  });
+  App._normalizeUnit(unit);
+  assertEqual(unit.MPun, 110, 'Normalization should not reapply a bonus already represented in legacy saved stats');
+  assertEqual(unit.perks[0].effectVersion, 2, 'Legacy selected perks should gain the current effect version');
+  assertEqual(unit.perks[0].effectProfile.effects[0].key, 'MPun', 'Legacy numeric perks should migrate to a bounded stat effect');
 });
 
 test('Non-numeric perk effects can modify exploration and combat status behavior', () => {
@@ -26148,13 +27522,15 @@ test('Character stats expose pending perk selection', () => {
   assertContains(html, 'Elige una ventaja disponible o vuelve a los atributos del personaje.', 'Perk picker purpose should localize');
   assertContains(html, 'role="dialog" aria-modal="true"', 'Perk selection should render in the focused Holdings overlay');
   assertContains(html, 'data-command-surface="perk-selection-detail"', 'Perk selection should render as a detail command surface');
-  assertContains(html, 'data-command-control="filter-perk-tree"', 'Perk filters should expose their drawer control role');
+  assertContains(html, 'data-perk-frontier="current"', 'Perk picker should expose the current visible frontier');
+  assertNotContains(html, 'data-command-control="filter-perk-tree"', 'Visible-only frontier should not expose tree filters');
   assertContains(html, 'data-command-control="choose-perk"', 'Perk choice should expose its drawer action role');
   assertContains(html, 'data-command-control="back-to-stats"', 'Perk back button should expose its drawer exit role');
   assertContains(html, 'data-command-control="back-to-stats" data-command-slot="exit"', 'Perk back button should expose the canonical exit slot');
-  assertContains(html, 'Predator', 'Perk selection should render predator tree');
-  assertContains(html, 'Seducer', 'Perk selection should render seducer tree');
-  assertContains(html, 'Survivor', 'Perk selection should render survivor tree');
+  assertContains(html, 'Depredador', 'Perk selection should localize the predator path');
+  assertContains(html, 'Seductor', 'Perk selection should localize the seducer path');
+  assertContains(html, 'Superviviente', 'Perk selection should localize the survivor path');
+  assertNotContains(html, 'Voracious', 'Locked future perks should not render in the current frontier');
 });
 
 test('Perk and stat progression controls localize with accessible names', () => {
@@ -26172,14 +27548,13 @@ test('Perk and stat progression controls localize with accessible names', () => 
   assertContains(html, 'data-command-surface="stats-detail"', 'Character stats controls should keep stats command metadata');
   assertContains(html, 'data-command-control="open-perk-selection"', 'Pending perk button should expose its drawer route role');
   assertContains(html, 'data-command-control="respec-perks"', 'Respec button should expose its drawer action role');
-  assertContains(html, 'data-command-control="debug-grant-perk"', 'Debug perk button should expose its drawer action role');
+  assertNotContains(html, 'data-command-control="debug-grant-perk"', 'Ordinary character progression should not expose debug perk grants');
   assertContains(html, 'data-command-control="close-holdings"', 'Character stats close button should expose its overlay exit role');
   assertContains(html, 'data-command-control="close-holdings" data-command-slot="exit"', 'Character stats close button should expose the canonical exit slot');
   assertContains(html, 'aria-label="Elegir mejora (1)"', 'Pending perk button should expose localized accessible label');
   assertContains(html, '>Elegir mejora (1)<', 'Pending perk visible label should localize');
   assertContains(html, 'aria-label="Reiniciar mejoras"', 'Respec button should expose localized accessible label');
   assertContains(html, '>Reiniciar mejoras<', 'Respec visible label should localize');
-  assertContains(html, 'aria-label="Debug +1 opcion de mejora"', 'Debug perk button should expose localized accessible label');
   assertContains(html, 'aria-label="Volver"', 'Character stats close button should expose localized accessible label');
   assertContains(html, '<strong>Estadisticas de combate</strong>', 'Character combat stats label should localize');
   assertContains(html, '<strong>Cuerpo</strong>', 'Character body section label should localize');
@@ -26188,39 +27563,67 @@ test('Perk and stat progression controls localize with accessible names', () => 
   App.showPerkSelection();
   html = holdingsHtml(elements);
   assertContains(html, 'data-command-surface="perk-selection-detail"', 'Perk selection should render as a detail command surface');
-  assertContains(html, 'data-command-control="filter-perk-tree"', 'Perk filter should expose its drawer control role');
+  assertContains(html, 'data-perk-frontier="current"', 'Perk selection should identify the current frontier');
+  assertNotContains(html, 'data-command-control="filter-perk-tree"', 'Perk selection should not expose obsolete tree filters');
   assertContains(html, 'data-command-control="choose-perk"', 'Perk choice should expose its drawer action role');
   assertContains(html, 'data-command-intent="choosePerk"', 'Perk choice should expose its stable intent id');
   assertContains(html, 'data-command-control="back-to-stats"', 'Perk picker back should expose its drawer exit role');
   assertContains(html, 'data-command-control="back-to-stats" data-command-slot="exit"', 'Perk picker back should expose the canonical exit slot');
   assertContains(html, '<h2 id="holdings-window-title">Elegir mejora</h2>', 'Perk picker title should localize');
   assertContains(html, 'Opciones pendientes: 1', 'Perk pending choice copy should localize');
-  assertContains(html, 'aria-label="Arboles de mejoras"', 'Perk tree tablist should expose localized accessible label');
-  assertContains(html, 'aria-label="Todas"', 'Perk all filter should localize');
-  assertContains(html, 'aria-label="Elegir Pack Instinct"', 'Perk choice should expose localized accessible label');
+  assertContains(html, 'Solo se muestran las mejoras que puedes elegir ahora.', 'Visible frontier explanation should localize');
+  assertContains(html, 'aria-label="Elegir Instinto de manada"', 'Perk choice should expose a fully localized accessible label');
+  assertContains(html, 'Acercamiento suave', 'Built-in perk names should localize without changing their stable ids');
+  assertNotContains(html, 'Soft Approach', 'Spanish perk frontier should not retain built-in English names');
   assertContains(html, 'aria-label="Volver"', 'Perk picker back button should expose localized accessible label');
 });
 
-test('Perk selection filters trees without hiding available species perks', () => {
+test('Selected built-in perks resolve current localized names instead of saved English copy', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', {
+    species: 'human',
+    perks: [{ id: 'predator_instinct', tree: 'predator', name: 'Predator Instinct', stat: 'Figh', val: 2 }]
+  });
+  App.party = [App.player];
+  App.updateLanguage('es');
+  App.showCharacterStats();
+  const html = holdingsHtml(elements);
+  assertContains(html, 'Instinto depredador', 'Selected core perk should use current locale presentation');
+  assertNotContains(html, '>Predator Instinct<', 'Saved English copy should not become presentation truth');
+});
+
+test('Human Adaptable has observable bounded action effects instead of an inert INT increment', () => {
+  const effects = new Function('window', `${perkEffectsContent}\nreturn YAW_PERK_EFFECTS;`)({});
+  const { App } = loadAppForCombat();
+  const definition = App.SPECIES_PERK_TREES.human.perks.find(perk => perk.id === 'human_adaptable');
+  const unit = makeUnit('Adaptable Human', { int: 10, Flee: 10, Feed: 10 });
+  const profile = effects.apply(unit, definition);
+  assertEqual(unit.int, 10, 'Adaptable should not spend its budget on the currently inert INT attribute');
+  assertEqual(unit.Flee, 11, 'Adaptable should improve an observable escape action');
+  assertEqual(unit.Feed, 11, 'Adaptable should improve an observable support action');
+  effects.rollback(unit, { ...definition, effectProfile: profile });
+  assertEqual(unit.Flee, 10, 'Adaptable escape bonus should roll back exactly');
+  assertEqual(unit.Feed, 10, 'Adaptable support bonus should roll back exactly');
+});
+
+test('Perk Frontier shows every current choice and hides locked future perks', () => {
   const { App, elements } = loadAppForCombat();
   App.player = makeUnit('You', { species: 'wolf', perks: [], pendingPerkChoices: 1 });
   App.party = [App.player];
   App.showPerkSelection();
   let html = holdingsHtml(elements);
-  assertContains(html, 'data-perk-filter="predator"', 'Perk picker should expose archetype tree filters');
-  assertContains(html, 'data-perk-filter="species:wolf"', 'Perk picker should expose matching species tree filter');
-  assertContains(html, 'Predator Instinct', 'All filter should show predator perks');
-  assertContains(html, 'Pack Instinct', 'All filter should show species perks');
-
-  App.setPerkTreeFilter('species:wolf');
+  assertContains(html, 'data-perk-frontier="current"', 'Perk picker should expose one flat current frontier');
+  assertContains(html, 'Predator Instinct', 'Current frontier should show the available predator root');
+  assertContains(html, 'Pack Instinct', 'Current frontier should show the available species root');
+  assertNotContains(html, 'Voracious', 'Current frontier should hide locked archetype perks');
+  assertNotContains(html, 'Relentless Hunger', 'Current frontier should hide locked species perks');
+  assertNotContains(html, 'data-perk-filter=', 'Current frontier should not require filters to reveal choices');
+  App.choosePerk('predator_instinct');
+  App.player.pendingPerkChoices = 1;
+  App.showPerkSelection();
   html = holdingsHtml(elements);
-  assertEqual(App.perkTreeFilter, 'species:wolf', 'Species filter should become active');
-  assertContains(html, 'Pack Instinct', 'Species filter should keep species perks visible');
-  assertNotContains(html, 'Predator Instinct', 'Species filter should hide other trees');
-
-  App.setPerkTreeFilter('not-real');
-  assertEqual(App.perkTreeFilter, 'all', 'Invalid perk filter should fall back to all');
-  assertContains(holdingsHtml(elements), 'Predator Instinct', 'Fallback should render all trees again');
+  assertContains(html, 'Voracious', 'Choosing a prerequisite should immediately reveal the next eligible perk');
+  assertNotContains(html, 'Apex Pressure', 'Later locked nodes should remain absent after only one path choice');
 });
 
 test('Perk respec and debug tools refund choices and rollback bonuses', () => {
@@ -26251,7 +27654,8 @@ test('Perk respec and debug tools refund choices and rollback bonuses', () => {
   App.showCharacterStats();
   let html = holdingsHtml(elements);
   assertContains(html, 'Reiniciar mejoras', 'Character stats should expose localized perk respec tool');
-  assertContains(html, 'Debug +1 opcion de mejora', 'Character stats should expose localized debug perk choice tool');
+  assertNotContains(html, 'Debug +1 opcion de mejora', 'Character stats should keep debug perk choice tools out of ordinary progression');
+  assertContains(templateContent, 'data-command-control="debug-grant-perk"', 'Cheats should retain the explicit debug grant route');
 
   App.respecPerks();
   assertEqual(confirmations.length, 0, 'Approved perk respec should not call the browser-native confirm dialog');
@@ -27054,6 +28458,7 @@ test('Quest transaction Scene Beats cover opening accepting and turning in', () 
   assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'Shrine Offering', 'Desktop Scene Feed should show accepted quest beat');
 
   App.quests[0].status = 'completed';
+  App.quests[0].lifecycleState = 'ready_for_turn_in';
   App.quests[0].rewardClaimed = false;
   App.turnInQuest('shrine_offering');
   assertContains(App.latestSceneBeat.summary, 'turn in Shrine Offering', 'Quest turn-in should emit a Scene Beat');
@@ -27740,19 +29145,78 @@ test('Tutorial steps localize through active language', () => {
   assertEqual(elements.get('tutorial-overlay').style.display, 'flex', 'Tutorial overlay should open');
   assertEqual(elements.get('tutorial-overlay').getAttribute('aria-hidden'), 'false', 'Open tutorial should enter the accessibility tree');
   assertEqual(elements.get('tutorial-title').textContent, 'Bienvenida', 'First tutorial title should localize');
-  assertContains(elements.get('tutorial-content').textContent, 'Eres salvaje', 'First tutorial content should localize');
-  App.nextTutorial();
-  assertEqual(elements.get('tutorial-title').textContent, 'Combate', 'Second tutorial title should localize');
-  assertContains(elements.get('tutorial-content').textContent, 'Selecciona actores', 'Second tutorial content should localize group planning language');
+  assertContains(elements.get('tutorial-content').textContent, 'menu de Ayuda', 'First progressive lesson content should localize');
+  App.closeTutorial();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.combatState.active = true;
+  App.showTutorial();
+  App.selectTutorialLesson('combat');
+  assertEqual(elements.get('tutorial-title').textContent, 'Turnos de combate', 'Unlocked combat lesson title should localize');
+  assertContains(elements.get('tutorial-content').textContent, 'orden visible', 'Unlocked combat lesson content should localize');
   App.closeTutorial();
   assertEqual(elements.get('tutorial-overlay').getAttribute('aria-hidden'), 'true', 'Closed tutorial should leave the accessibility tree');
 });
 
 test('Tutorial overlay exposes a named and described modal contract', () => {
-  assertContains(template, 'id="tutorial-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="tutorial-title" aria-describedby="tutorial-content"', 'Tutorial should expose the shared named modal contract');
+  assertContains(template, 'id="tutorial-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="tutorial-title" aria-describedby="tutorial-content tutorial-tip"', 'Tutorial should expose the shared named modal contract');
   assertContains(template, '<div aria-live="polite" aria-atomic="true">', 'Tutorial step changes should be announced as one polite update');
-  assertContains(appContent, 'this.tutorialBackgroundState = YAW_DIALOG_FLOW.isolateUnderlying(overlay);', 'Tutorial should isolate the underlying screen while open');
-  assertContains(appContent, 'YAW_DIALOG_FLOW.restoreUnderlying(this.tutorialBackgroundState || []);', 'Tutorial should restore the underlying screen when closed');
+  assertContains(tutorialSystemContent, 'app.tutorialBackgroundState = YAW_DIALOG_FLOW.isolateUnderlying(overlay);', 'Tutorial should isolate the underlying screen while open');
+  assertContains(tutorialSystemContent, 'YAW_DIALOG_FLOW.restoreUnderlying(app.tutorialBackgroundState || []);', 'Tutorial should restore the underlying screen when closed');
+  assertContains(template, 'id="tutorial-lesson-list"', 'Tutorial should expose a replayable lesson index');
+  assertContains(template, 'data-command-control="reset-tutorial"', 'Tutorial should expose an explicit progress reset');
+});
+
+test('Progressive tutorial helper is registered before app code', () => {
+  assertContains(buildContent, "'src/core/tutorial-system.js'", 'Progressive tutorial helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/tutorial-system.js'") < buildContent.indexOf("'src/core/app.js'"), 'Progressive tutorial helper should load before app.js');
+  assertContains(tutorialSystemContent, "version: this.VERSION", 'Tutorial persistence should carry an explicit schema version');
+  assertContains(tutorialSystemContent, "app._getStoredValue('tutorialState')", 'Tutorial should restore local progress through the shared storage adapter');
+  assertContains(tutorialSystemContent, "app._removeStoredValue('tutorialState')", 'Tutorial reset should clear only tutorial progress through the shared storage adapter');
+});
+
+test('Progressive tutorial unlocks only relevant lessons and persists completion', () => {
+  const { App, elements, storage } = loadAppForCombat();
+  App.showTutorial();
+  let html = elements.get('tutorial-lesson-list').innerHTML;
+  assertContains(html, 'Welcome', 'A fresh install should expose the welcome lesson');
+  assertNotContains(html, 'Combat Turns', 'A fresh install should not advertise combat before it is relevant');
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.combatState.active = true;
+  App.showTutorial();
+  html = elements.get('tutorial-lesson-list').innerHTML;
+  assertContains(html, 'Combat Turns', 'Entering combat should unlock the combat lesson');
+  assertContains(html, 'Rows and Reach', 'Entering combat should unlock reach explanation');
+  assertNotContains(html, 'Perk Frontier', 'Locked progression lessons should remain absent');
+  App.selectTutorialLesson('combat');
+  App.nextTutorial();
+  const saved = JSON.parse(storage.get('yaw-tutorial-v2'));
+  assert(saved.completed.includes('combat'), 'Moving forward should persist the lesson as read');
+  App.closeTutorial();
+  App.showTutorial();
+  assertContains(elements.get('tutorial-lesson-list').innerHTML, 'Read', 'Replayed help should expose persisted read state');
+});
+
+test('Progressive tutorial reset preserves only lessons currently justified by game state', () => {
+  const { App, storage } = loadAppForCombat(() => 0.5, {
+    storage: {
+      'yaw-tutorial-v2': JSON.stringify({
+        version: 2,
+        unlocked: ['welcome', 'combat', 'perks', 'recovery'],
+        completed: ['welcome', 'combat']
+      })
+    }
+  });
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.showTutorial();
+  App.resetTutorialLessons();
+  const saved = JSON.parse(storage.get('yaw-tutorial-v2'));
+  assert(saved.unlocked.includes('welcome'), 'Reset should retain currently relevant foundation lessons');
+  assert(!saved.unlocked.includes('combat'), 'Reset should remove stale combat unlock without current combat evidence');
+  assert(!saved.unlocked.includes('perks'), 'Reset should remove stale perk unlock without current progression evidence');
+  assertEqual(saved.completed.length, 0, 'Reset should clear completion state');
 });
 
 test('System overlays reference visible names and descriptions', () => {
@@ -29007,8 +30471,9 @@ test('Mobile party chips expose long-press management handlers', () => {
   assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration"', 'Mobile party long-press menu should identify the detail-management surface');
   assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats"', 'Mobile party long-press Stats should identify its drawer control');
   assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="make-leader"', 'Mobile party long-press leader action should identify its drawer control');
-  assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-party-role"', 'Mobile party long-press role selector should identify its drawer control');
-  assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-party-ai-order"', 'Mobile party long-press AI selector should identify its drawer control');
+  assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-companion-duty"', 'Mobile party long-press Duty selector should identify its drawer control');
+  assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-companion-stance"', 'Mobile party long-press Stance selector should identify its drawer control');
+  assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-companion-control"', 'Mobile party long-press Control selector should identify its drawer control');
   assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="dismiss-party-member"', 'Mobile party long-press dismiss should identify its drawer control');
   assertContains(body.innerHTML, 'data-command-control="close-detail-menu" data-command-slot="exit"', 'Mobile party long-press close should expose the canonical exit slot');
 });
@@ -30137,7 +31602,7 @@ test('Desktop panel lists default to compact tactical cards and preserve full de
   assertContains(partyHtml, "selectExplorationActor(1)", 'Compact desktop party card should expose actor selection');
   assertContains(partyHtml, "toggleExplorationTarget('party','ally-1')", 'Compact desktop party card should expose party target marking');
   assertNotContains(partyHtml, 'unit-management-actions', 'Default compact party cards should not expose full management controls');
-  assertNotContains(partyHtml, 'data-command-control="set-party-role"', 'Default compact party cards should not expose role management controls');
+  assertNotContains(partyHtml, 'data-command-control="set-companion-duty"', 'Default compact party cards should not expose behavior management controls');
   assertContains(creatureHtml, 'data-card-role="compact-tactical"', 'Default desktop creature panel should render compact tactical cards');
   assertContains(creatureHtml, "toggleExplorationTarget('creature','guide-1')", 'Compact desktop creature card should expose target marking');
   assertNotContains(creatureHtml, 'selectIntent(', 'Compact desktop creature cards should not own intent buttons');
@@ -30148,7 +31613,9 @@ test('Desktop panel lists default to compact tactical cards and preserve full de
   creatureHtml = elements.get('enemies-content').innerHTML;
   assertContains(partyHtml, 'unit-details', 'Expanded party panel should restore full card detail markup');
   assertContains(partyHtml, 'unit-management-actions', 'Expanded party panel should restore management controls');
-  assertContains(partyHtml, 'data-command-control="set-party-role"', 'Expanded party panel should retain role management controls');
+  assertContains(partyHtml, 'data-command-control="set-companion-duty"', 'Expanded party panel should retain Duty controls');
+  assertContains(partyHtml, 'data-command-control="set-companion-stance"', 'Expanded party panel should retain Stance controls');
+  assertContains(partyHtml, 'data-command-control="set-companion-control"', 'Expanded party panel should retain Control controls');
   assertContains(creatureHtml, 'unit-card expanded', 'Expanded creature panel should restore full unit cards for details');
 });
 
@@ -30169,13 +31636,14 @@ test('Mobile party long-press menu exposes management actions', () => {
   assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Party long-press menu title should be addressable');
   assertContains(body.innerHTML, 'id="mobile-context-menu-description"', 'Party long-press menu purpose should be addressable');
   assertContains(body.innerHTML, 'Party actions for Ally', 'Party menu should name both the task and selected party member');
-  assertContains(body.innerHTML, 'Manage Ally&#39;s holdings, party role, and companion actions.', 'Party menu should visibly explain its management scope');
+  assertContains(body.innerHTML, 'Manage Ally&#39;s holdings, Duty, Stance, and Control.', 'Party menu should visibly explain its management scope');
   assertContains(body.innerHTML, 'Holdings', 'Party menu should expose Holdings');
   assertNotContains(body.innerHTML, "mobilePartyContextAction('actions'", 'Party menu should not duplicate marked-target actions behind an intent-sheet entry');
   assertNotContains(body.innerHTML, 'aria-label="Fight Ally"', 'Party menu should not expose primary action spam');
   assertContains(body.innerHTML, 'Make Leader', 'Party menu should expose leader action for allies');
-  assertContains(body.innerHTML, 'Party role for Ally', 'Party menu should expose role selector');
-  assertContains(body.innerHTML, 'AI order for Ally', 'Party menu should expose AI selector');
+  assertContains(body.innerHTML, 'Duty for Ally', 'Party menu should expose Duty selector');
+  assertContains(body.innerHTML, 'Stance for Ally', 'Party menu should expose Stance selector');
+  assertContains(body.innerHTML, 'Control for Ally', 'Party menu should expose Control selector');
   assertContains(body.innerHTML, 'Dismiss', 'Party menu should expose dismiss action for allies');
   App.showMobilePartyContext(1);
   App.mobilePartyContextAction('lead', 1);
@@ -30198,25 +31666,27 @@ test('Mobile party long-press menu uses localized management labels', () => {
   App.updateLanguage('es');
   App.showMobilePartyContext(1);
   assertContains(body.innerHTML, 'Acciones del grupo para Ally', 'Party menu title should localize while retaining the selected party member');
-  assertContains(body.innerHTML, 'Administra las pertenencias, el rol de grupo y las acciones de compañero de Ally.', 'Party menu purpose should localize while retaining the selected party member');
+  assertContains(body.innerHTML, 'Administra las pertenencias, la funcion, la actitud y el control de Ally.', 'Party menu purpose should localize while retaining the selected party member');
   assertContains(body.innerHTML, 'Pertenencias', 'Holdings menu item should localize');
   assertNotContains(body.innerHTML, "mobilePartyContextAction('actions'", 'Localized party menu should not include a duplicate intent-sheet entry');
   assertContains(body.innerHTML, 'Hacer lider', 'Leader menu item should localize');
-  assertContains(body.innerHTML, '>Rol<', 'Role field label should localize');
-  assertContains(body.innerHTML, 'aria-label="Rol de grupo para Ally"', 'Role select accessible label should localize');
-  assertContains(body.innerHTML, '<option value="guard" selected>Guardia</option>', 'Mobile role option text should localize');
-  assertContains(body.innerHTML, '<option value="support" >Apoyo</option>', 'Mobile role option list should localize');
-  assertContains(body.innerHTML, 'Reduce la ventaja de emboscadas y ayuda a proteger el campamento.', 'Mobile role helper text should localize');
-  assertContains(body.innerHTML, 'Orden IA', 'AI order field label should localize');
-  assertContains(body.innerHTML, 'aria-label="Orden IA para Ally"', 'AI order select accessible label should localize');
-  assertContains(body.innerHTML, '<option value="defensive" selected>Defensivo</option>', 'Mobile AI order option text should localize');
-  assertContains(body.innerHTML, '<option value="passive" >Pasivo</option>', 'Mobile AI order option list should localize');
-  assertContains(body.innerHTML, 'Prefiere posicionarse con cuidado y proteger aliados.', 'Mobile AI order helper text should localize');
+  assertContains(body.innerHTML, '>Funcion<', 'Duty field label should localize');
+  assertContains(body.innerHTML, 'aria-label="Funcion de Ally"', 'Duty select accessible label should localize');
+  assertContains(body.innerHTML, '<option value="guard" selected>Guardia</option>', 'Mobile Duty option text should localize');
+  assertContains(body.innerHTML, '<option value="support" >Apoyo</option>', 'Mobile Duty option list should localize');
+  assertContains(body.innerHTML, 'Protege aliados vulnerables y reduce la presion de emboscadas.', 'Mobile Duty helper text should localize');
+  assertContains(body.innerHTML, '>Actitud<', 'Stance field label should localize');
+  assertContains(body.innerHTML, 'aria-label="Actitud de Ally"', 'Stance select accessible label should localize');
+  assertContains(body.innerHTML, '<option value="defensive" selected>Defensiva</option>', 'Mobile Stance option text should localize');
+  assertContains(body.innerHTML, '<option value="passive" >Pasiva</option>', 'Mobile Stance option list should localize');
+  assertContains(body.innerHTML, 'Protege al grupo y favorece acciones de menor riesgo.', 'Mobile Stance helper text should localize');
+  assertContains(body.innerHTML, '>Control<', 'Control field label should localize');
+  assertContains(body.innerHTML, 'aria-label="Control de Ally"', 'Control select accessible label should localize');
   assertContains(body.innerHTML, 'Despedir', 'Dismiss menu item should localize');
   assertContains(body.innerHTML, 'Cerrar', 'Close menu item should localize');
 });
 
-test('Mobile party long-press role selectors refresh after changes', () => {
+test('Mobile party long-press behavior selectors refresh after changes', () => {
   const { App, body } = loadAppForCombat(() => 0, { confirm: true });
   const player = makeUnit('You', { id: 'player-1' });
   const ally = makeUnit('Ally', { id: 'ally-mobile', partyRole: 'companion', aiOrder: 'aggressive' });
@@ -30225,17 +31695,19 @@ test('Mobile party long-press role selectors refresh after changes', () => {
   App.updateLanguage('es');
   App.showMobilePartyContext(1);
 
-  App.mobilePartyContextSetRole(1, 'support');
-  assertEqual(ally.partyRole, 'support', 'Mobile role selector should update party role');
-  assertContains(body.innerHTML, 'id="mobile-context-menu"', 'Mobile role selector should keep the management menu open');
-  assertContains(body.innerHTML, '<option value="support" selected>Apoyo</option>', 'Mobile role selector should refresh selected role label');
-  assertContains(body.innerHTML, 'Mejora la recuperacion al descansar en un lugar seguro.', 'Mobile role selector should refresh selected role helper text');
+  App.mobilePartyContextSetBehavior(1, 'duty', 'support');
+  assertEqual(ally.companionBehavior.duty, 'support', 'Mobile Duty selector should update Duty');
+  assertContains(body.innerHTML, 'id="mobile-context-menu"', 'Mobile Duty selector should keep the management menu open');
+  assertContains(body.innerHTML, '<option value="support" selected>Apoyo</option>', 'Mobile Duty selector should refresh selected label');
+  assertContains(body.innerHTML, 'Mejora la recuperacion y prioriza atender aliados heridos.', 'Mobile Duty selector should refresh helper text');
 
-  App.mobilePartyContextSetAIOrder(1, 'healer');
-  assertEqual(ally.aiOrder, 'healer', 'Mobile AI selector should update party AI order');
-  assertContains(body.innerHTML, 'id="mobile-context-menu"', 'Mobile AI selector should keep the management menu open');
-  assertContains(body.innerHTML, '<option value="healer" selected>Sanador</option>', 'Mobile AI selector should refresh selected AI order label');
-  assertContains(body.innerHTML, 'Alimenta primero al aliado mas herido.', 'Mobile AI selector should refresh selected AI helper text');
+  App.mobilePartyContextSetBehavior(1, 'stance', 'defensive');
+  assertEqual(ally.companionBehavior.stance, 'defensive', 'Mobile Stance selector should update Stance');
+  assertContains(body.innerHTML, '<option value="defensive" selected>Defensiva</option>', 'Mobile Stance selector should refresh selected label');
+
+  App.mobilePartyContextSetBehavior(1, 'control', 'deterministic');
+  assertEqual(ally.companionBehavior.control, 'deterministic', 'Mobile Control selector should update Control');
+  assertContains(body.innerHTML, '<option value="deterministic" selected>Autonomo</option>', 'Mobile Control selector should refresh selected label');
 });
 
 test('Mobile creature long-press marks living targets without opening action menus', () => {

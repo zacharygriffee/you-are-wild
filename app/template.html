@@ -536,6 +536,13 @@
             display: flex;
         }
 
+        .panel-map.docked {
+            left: auto;
+            right: var(--space-md);
+            width: min(440px, calc(100vw - (var(--space-md) * 2)));
+            margin: 0;
+        }
+
         .mini-map {
             display: flex;
             flex-direction: column;
@@ -1100,6 +1107,59 @@
             font-size: 11px;
         }
 
+        .large-map-tracked {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) minmax(180px, 2fr);
+            gap: 8px;
+            align-items: end;
+            padding: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .large-map-tracked label {
+            display: grid;
+            gap: 4px;
+        }
+
+        .large-map-tracked select {
+            min-width: 0;
+            width: 100%;
+        }
+
+        .large-map-filters,
+        .large-map-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+
+        .large-map-filter {
+            border: 1px solid var(--border-default);
+            border-radius: 999px;
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            padding: 4px 7px;
+            font: inherit;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .large-map-filter.active {
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        .large-map-legend {
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+
         .large-map {
             display: flex;
             flex-direction: column;
@@ -1130,6 +1190,33 @@
             align-items: center;
             justify-content: center;
             position: relative;
+            padding: 0;
+            cursor: default;
+        }
+
+        button.large-map-tile:not(:disabled) {
+            cursor: pointer;
+        }
+
+        button.large-map-tile:not(:disabled):focus-visible {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 1px;
+            z-index: 3;
+        }
+
+        .large-map-tile.selected {
+            box-shadow: 0 0 0 2px var(--accent-secondary);
+            z-index: 2;
+        }
+
+        .large-map-marker-icons {
+            position: absolute;
+            right: -3px;
+            top: -5px;
+            font-size: 8px;
+            line-height: 1;
+            text-shadow: 0 1px 2px var(--bg-primary);
+            z-index: 2;
         }
 
         .large-map-tile.known {
@@ -1174,6 +1261,46 @@
             gap: 4px;
             font-size: 12px;
             color: var(--text-secondary);
+        }
+
+        .large-map-pois button {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            border: 0;
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 2px 0;
+            text-align: left;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .large-map-pois button:hover,
+        .large-map-pois button:focus-visible {
+            color: var(--accent-primary);
+        }
+
+        .large-map-pois button span {
+            color: var(--text-muted);
+        }
+
+        .large-map-inspector {
+            display: grid;
+            gap: 4px;
+            margin-top: 8px;
+            padding: 8px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .large-map-inspector-markers {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
         }
 
         .map-tile.unexplored:hover {
@@ -2872,6 +2999,10 @@
             margin-bottom: 20px;
         }
 
+        .mobile-screen-exit-bar {
+            display: none;
+        }
+
         .release-version-badge {
             display: inline-flex;
             padding: 3px 8px;
@@ -3763,6 +3894,23 @@
             min-width: 60px;
             padding: 6px 10px;
             font-size: 11px;
+        }
+        .companion-behavior-field {
+            flex: 1 1 118px;
+            min-width: 0;
+            display: grid;
+            gap: 3px;
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+        .companion-behavior-field .nav-btn {
+            width: 100%;
+            min-width: 0;
+        }
+        .companion-behavior-preview {
+            flex: 1 1 100%;
+            color: var(--text-muted);
+            line-height: 1.35;
         }
 
         .multi-effect-preview {
@@ -6018,6 +6166,39 @@
         }
 
         @media (max-width: 1024px) {
+            .mobile-screen-exit-source {
+                display: none !important;
+            }
+
+            .mobile-screen-exit-bar {
+                position: fixed;
+                z-index: 8;
+                left: max(8px, env(safe-area-inset-left));
+                right: max(8px, env(safe-area-inset-right));
+                bottom: max(8px, env(safe-area-inset-bottom));
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+                background: rgba(18, 18, 34, 0.98);
+                box-shadow: 0 -8px 24px rgba(4, 4, 14, 0.42);
+            }
+
+            .mobile-screen-exit-bar .nav-btn {
+                flex: 1 1 0;
+                min-width: 0;
+                min-height: 48px;
+            }
+
+            .ai-provider-shell,
+            .system-screen-shell,
+            #screen-mods > div,
+            #market-content {
+                padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+            }
+
             .transaction-window-root,
             .holdings-window-root {
                 align-items: stretch;
@@ -6104,7 +6285,7 @@
 
             .transaction-body,
             .holdings-window-body {
-                padding: 10px 12px 12px;
+                padding: 10px 12px calc(88px + env(safe-area-inset-bottom));
             }
 
             .holdings-stat-grid {
@@ -6368,6 +6549,20 @@
                 width: auto;
                 margin: 0;
                 box-shadow: none;
+            }
+
+            .panel-map.docked {
+                left: 0;
+                right: 0;
+                width: auto;
+            }
+
+            .large-map-dock-toggle {
+                display: none;
+            }
+
+            .large-map-tracked {
+                grid-template-columns: 1fr;
             }
 
             .panel-party {
@@ -9493,6 +9688,21 @@
                 overflow-wrap: anywhere;
             }
 
+            .mobile-roster-detail .mobile-screen-exit-bar {
+                position: sticky;
+                left: auto;
+                right: auto;
+                bottom: 0;
+                z-index: 2;
+                margin-top: 10px;
+                padding: 8px 0 0;
+                border: 0;
+                border-top: 1px solid var(--border-default);
+                border-radius: 0;
+                background: rgba(26, 26, 46, 0.985);
+                box-shadow: none;
+            }
+
             .mobile-roster-detail-toolbar {
                 position: sticky;
                 top: 0;
@@ -9603,6 +9813,114 @@
 
         .pulse-glow {
             animation: pulse-glow 2s ease-in-out infinite;
+        }
+        .tutorial-shell {
+            width: min(920px, calc(100vw - 32px));
+            max-height: min(760px, calc(100dvh - 32px));
+            display: grid;
+            grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+            overflow: hidden;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+        }
+        .tutorial-index {
+            min-height: 0;
+            overflow-y: auto;
+            padding: 16px;
+            border-right: 1px solid var(--border-default);
+            background: var(--bg-primary);
+        }
+        .tutorial-index h2 {
+            margin: 0 0 6px;
+            color: var(--accent-primary);
+            font-size: 18px;
+        }
+        .tutorial-lesson-list {
+            display: grid;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .tutorial-lesson-button {
+            width: 100%;
+            min-width: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            text-align: left;
+            white-space: normal;
+        }
+        .tutorial-lesson-button.active {
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        .tutorial-lesson-button small {
+            flex: 0 0 auto;
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+        .tutorial-lesson-button.active small {
+            color: currentColor;
+            opacity: 0.78;
+        }
+        .tutorial-lesson {
+            min-width: 0;
+            min-height: 0;
+            overflow-y: auto;
+            padding: clamp(20px, 4vw, 40px);
+        }
+        .tutorial-lesson #tutorial-content {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            white-space: pre-line;
+        }
+        .tutorial-tip {
+            margin: 20px 0;
+            padding: 12px;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--accent-primary);
+            border-radius: var(--radius-sm);
+            line-height: 1.5;
+        }
+        .tutorial-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .tutorial-controls .tutorial-progress {
+            margin-right: auto;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        @media (max-width: 680px) {
+            .tutorial-shell {
+                width: calc(100vw - 16px);
+                max-height: calc(100dvh - 16px);
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+            .tutorial-index {
+                max-height: 190px;
+                border-right: 0;
+                border-bottom: 1px solid var(--border-default);
+            }
+            .tutorial-lesson-list {
+                display: flex;
+                overflow-x: auto;
+                padding-bottom: 4px;
+                scroll-snap-type: x proximity;
+            }
+            .tutorial-lesson-button {
+                flex: 0 0 min(78vw, 250px);
+                scroll-snap-align: start;
+            }
+            .tutorial-lesson {
+                padding: 18px;
+            }
         }
             .accordion-section {
             margin-bottom: 12px;
@@ -9934,16 +10252,27 @@
     </div>
 
     <!-- TUTORIAL OVERLAY -->
-    <div id="tutorial-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="tutorial-title" aria-describedby="tutorial-content" data-command-surface="tutorial" data-command-mode="system" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 26, 0.95); z-index: 1000; align-items: center; justify-content: center;">
-        <div style="max-width: 600px; padding: 40px; background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); text-align: center;">
-            <div aria-live="polite" aria-atomic="true">
-                <h2 id="tutorial-title" style="color: var(--accent-primary); margin-bottom: 16px;">Welcome</h2>
-                <p id="tutorial-content" style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 32px;">Tutorial content here</p>
-            </div>
-            <div style="display: flex; gap: 16px; justify-content: center;">
-                <button class="nav-btn" data-command-surface="tutorial" data-command-mode="system" data-command-control="skip-tutorial" data-i18n="ui.tutorial.skip" onclick="skipTutorial()">Skip Tutorial</button>
-                <button class="nav-btn" data-command-surface="tutorial" data-command-mode="system" data-command-control="next-tutorial" style="background: var(--accent-primary); color: var(--bg-primary);" data-i18n="ui.tutorial.next" onclick="nextTutorial()">Next →</button>
-            </div>
+    <div id="tutorial-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="tutorial-title" aria-describedby="tutorial-content tutorial-tip" data-command-surface="tutorial" data-command-mode="system" style="display: none; position: fixed; inset: 0; padding: 8px; background: rgba(15, 15, 26, 0.95); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="tutorial-shell">
+            <aside class="tutorial-index" aria-labelledby="tutorial-index-title">
+                <h2 id="tutorial-index-title" data-i18n="ui.tutorial.lessons">Help Lessons</h2>
+                <p class="holding-entry-meta" data-i18n="ui.tutorial.lessonsHelp">Lessons appear when their mechanics become relevant.</p>
+                <div id="tutorial-lesson-list" class="tutorial-lesson-list" role="list"></div>
+            </aside>
+            <section class="tutorial-lesson">
+                <div aria-live="polite" aria-atomic="true">
+                    <h2 id="tutorial-title" style="color: var(--accent-primary); margin: 0 0 16px;">Welcome</h2>
+                    <p id="tutorial-content">Tutorial content here</p>
+                    <p id="tutorial-tip" class="tutorial-tip">Strategy tip</p>
+                </div>
+                <div class="tutorial-controls">
+                    <span id="tutorial-progress" class="tutorial-progress" aria-live="polite"></span>
+                    <button class="nav-btn" type="button" data-command-surface="tutorial" data-command-mode="system" data-command-control="reset-tutorial" data-i18n="ui.tutorial.reset" onclick="App.resetTutorialLessons()">Reset</button>
+                    <button class="nav-btn" type="button" data-command-surface="tutorial" data-command-mode="system" data-command-control="skip-tutorial" data-i18n="ui.tutorial.close" onclick="skipTutorial()">Close</button>
+                    <button id="tutorial-previous" class="nav-btn" type="button" data-command-surface="tutorial" data-command-mode="system" data-command-control="previous-tutorial" data-i18n="ui.tutorial.previous" onclick="App.previousTutorial()">Previous</button>
+                    <button id="tutorial-next" class="nav-btn" type="button" data-command-surface="tutorial" data-command-mode="system" data-command-control="next-tutorial" data-i18n="ui.tutorial.next" style="background: var(--accent-primary); color: var(--bg-primary);" onclick="nextTutorial()">Next →</button>
+                </div>
+            </section>
         </div>
     </div>
 
@@ -9988,6 +10317,7 @@
 	                    <div class="panel-header">
 	                        <span>🗺️ <span data-i18n="ui.reviewMap">Review Map</span></span>
 	                        <span id="coords" style="font-family: var(--font-mono); color: var(--text-muted);">0, 0</span>
+	                        <button class="nav-btn large-map-dock-toggle" style="padding:2px 8px;font-size:11px;" title="Dock map to side" aria-label="Dock map to side" data-i18n-title="ui.largeMap.dock" data-i18n-aria-label="ui.largeMap.dock" onclick="App.toggleLargeMapDock()">⇥</button>
 	                        <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-review-map" data-command-slot="exit" style="padding:2px 8px;font-size:11px;" title="Close map" aria-label="Close map" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="togglePanel('map')">×</button>
 	                    </div>
 	                    <div class="panel-content">
@@ -10007,7 +10337,11 @@
                                 <button class="nav-btn" data-command-surface="review-map" data-command-mode="navigation" data-command-control="pan-map" data-command-direction="south" title="Pan down" aria-label="Pan large map down" data-i18n-title="ui.largeMap.panDown" data-i18n-aria-label="ui.largeMap.panDown" onclick="App.panLargeMap(0,1)">↓</button>
                             </div>
                         </div>
+                        <div class="large-map-tracked" id="large-map-tracked"></div>
+                        <div class="large-map-filters" id="large-map-filters" aria-label="Map layers"></div>
+                        <div class="large-map-legend" id="large-map-legend"></div>
                         <div class="large-map" id="large-map"><!-- Populated by App.renderLargeMap() --></div>
+                        <div class="large-map-inspector" id="large-map-inspector" aria-live="polite"></div>
                         <div class="large-map-pois" id="large-map-pois"></div>
                     </div>
                     </div>
@@ -10360,6 +10694,9 @@
                     <button id="cheat-instantWin" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="instant-win" style="width: 100%;" onclick="App.instantWin()"><span aria-hidden="true">⚡</span> <span data-i18n="combat.instantWin">Instant Win</span></button>
                 </div>
                 <div style="margin-top: 8px;">
+                    <button id="cheat-perkChoice" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="debug-grant-perk" style="width: 100%;" onclick="App.debugGrantPerkChoice(1)"><span aria-hidden="true">✨</span> <span data-i18n="perk.debugGrant">Debug +1 Perk Choice</span></button>
+                </div>
+                <div style="margin-top: 8px;">
                     <button id="cheat-playerDeath" class="nav-btn danger" data-command-surface="settings-detail" data-command-mode="system" data-command-control="test-player-death" style="width: 100%;" title="Test player death and recovery" aria-label="Test player death and recovery" data-i18n-title="cheat.playerDeathTitle" data-i18n-aria-label="cheat.playerDeathTitle" onclick="App.confirmPlayerDeathCheat()"><span aria-hidden="true">☠️</span> <span data-i18n="cheat.playerDeath">Test Player Death</span></button>
                 </div>
             </div>
@@ -10379,10 +10716,11 @@
                     <h1 id="ai-provider-title" style="color: var(--accent-primary);" data-i18n="provider.title">AI Providers</h1>
                     <p id="ai-provider-description" style="color: var(--text-muted);" data-i18n="provider.subtitle">Manage AI services and session credentials used by optional game features.</p>
                 </div>
-                <div class="provider-actions"><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="close-ai-providers" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button></div>
+                <div class="provider-actions"><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn mobile-screen-exit-source" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="close-ai-providers" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button></div>
             </div>
             <p id="ai-provider-status" class="provider-connection-status" role="status" aria-live="polite" data-kind="info"></p>
             <div id="ai-provider-list"></div>
+            <div class="mobile-screen-exit-bar" data-command-surface="ai-providers" data-command-mode="system"><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="close-ai-providers" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button></div>
         </main>
     </div>
 
@@ -10391,9 +10729,10 @@
         <main class="system-screen-shell" aria-labelledby="release-notes-title">
             <div class="system-screen-header">
                 <div><h1 id="release-notes-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="release.whatsNew">What's New</h1><span class="release-version-badge" id="release-notes-version">v0.15.0 · Development draft</span></div>
-                <button class="nav-btn" type="button" data-command-control="close-release-notes" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
+                <button class="nav-btn mobile-screen-exit-source" type="button" data-command-surface="release-notes" data-command-mode="system" data-command-control="close-release-notes" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
             </div>
             <div id="release-notes-content"></div>
+            <div class="mobile-screen-exit-bar" data-command-surface="release-notes" data-command-mode="system"><button class="nav-btn" type="button" data-command-surface="release-notes" data-command-mode="system" data-command-control="close-release-notes" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button></div>
         </main>
     </div>
 
@@ -10402,7 +10741,7 @@
         <main class="system-screen-shell" aria-labelledby="system-activity-title">
             <div class="system-screen-header">
                 <div><h1 id="system-activity-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="ui.activityLog">Activity Log</h1><p id="system-activity-description" style="color:var(--text-muted);margin:0;" data-i18n="log.systemDescription">Diagnostics are available before, during, and after a run.</p></div>
-                <button class="nav-btn" type="button" data-command-control="close-activity-log" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
+                <button class="nav-btn mobile-screen-exit-source" type="button" data-command-surface="activity-log" data-command-mode="system" data-command-control="close-activity-log" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
             </div>
             <div class="system-log-toolbar" role="toolbar" aria-label="Activity log controls" data-i18n-aria-label="ui.log.controls">
                 <button class="nav-btn system-log-filter-btn" type="button" data-log-filter="all" data-i18n="ui.log.all" onclick="App.setLogFilter('all')">All</button>
@@ -10416,6 +10755,7 @@
             </div>
             <p id="system-log-status" class="sr-only" role="status" aria-live="polite"></p>
             <div id="system-log-content" class="system-log-content" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Activity log entries" data-i18n-aria-label="ui.log.entries"></div>
+            <div class="mobile-screen-exit-bar" data-command-surface="activity-log" data-command-mode="system"><button class="nav-btn" type="button" data-command-surface="activity-log" data-command-mode="system" data-command-control="close-activity-log" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button></div>
         </main>
     </div>
 
@@ -10424,7 +10764,7 @@
         <div style="width:100%;max-width: 800px; box-sizing:border-box; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
                 <h1 id="mod-manager-title" style="color: var(--accent-primary); margin: 0;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" data-command-slot="exit" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="nav-btn" type="button" data-command-surface="module-manager" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn mobile-screen-exit-source" data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" data-command-slot="exit" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button></div>
             </div>
             <p id="mod-manager-description" style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="mod.subtitle">Install, enable, and manage game modules.</p>
 
@@ -10451,6 +10791,7 @@
             <div id="mod-list" style="min-height: 100px;">
                 <p style="color: var(--text-muted); text-align: center; padding: 32px;" data-i18n="mod.loading">Loading modules...</p>
             </div>
+            <div class="mobile-screen-exit-bar" data-command-surface="module-manager" data-command-mode="system"><button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" data-command-slot="exit" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button></div>
         </div>
     </div>
 
@@ -10459,13 +10800,13 @@
         <div id="market-content" data-command-surface="marketplace" data-command-mode="system" style="width:100%;max-width: 1200px; box-sizing:border-box; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
                 <h1 id="host-catalog-title" style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></h1>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="nav-btn" type="button" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close host catalog" aria-label="Close host catalog" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="nav-btn" type="button" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-activity-log" data-i18n="ui.activityLog" onclick="App.showActivityLogScreen()">Activity Log</button><button class="nav-btn mobile-screen-exit-source" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close host catalog" aria-label="Close host catalog" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button></div>
             </div>
             <p id="host-catalog-description" style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="market.subtitle">Modules supplied and governed by this game host.</p>
             <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap;">
                 <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-installed-modules" title="Open installed modules" aria-label="Open installed modules" data-i18n="market.myModules" data-i18n-title="market.myModulesTitle" data-i18n-aria-label="market.myModulesTitle" onclick="ModUI.showModScreen()">My Modules</button>
-                <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close host catalog" aria-label="Close host catalog" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
             </div>
+            <div class="mobile-screen-exit-bar" data-command-surface="marketplace" data-command-mode="system"><button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close host catalog" aria-label="Close host catalog" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button></div>
         </div>
     </div>
 

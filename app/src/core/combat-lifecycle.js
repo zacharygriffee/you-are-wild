@@ -110,7 +110,7 @@ const YAW_COMBAT_LIFECYCLE = {
         app.party.forEach(p => app._normalizeUnit(p, { disposition: app.DISPOSITION.PARTY }));
         enemies.forEach(e => app._normalizeUnit(e, { disposition: app.DISPOSITION.ENEMY }));
         const allCombatants = [...app.party, ...enemies];
-        app._assignCombatRows(allCombatants);
+        app._prepareCombatRows(allCombatants);
         const ambushAwareness = app._resolveAmbushAwareness?.(enemies) || {
             detected: [],
             undetected: enemies.filter(enemy => enemy?.ambushReady)

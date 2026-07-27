@@ -5788,6 +5788,7 @@ test('Companion Behavior V2 is registered before recruitment combat and app code
   assertContains(companionBehaviorContent, 'DUTIES:', 'Companion behavior should define Duty separately');
   assertContains(companionBehaviorContent, 'STANCES:', 'Companion behavior should define Stance separately');
   assertContains(companionBehaviorContent, 'CONTROLS:', 'Companion behavior should define Control separately');
+  assertContains(companionBehaviorContent, 'PREFERRED_ROWS:', 'Companion behavior should define a persistent preferred combat-row contract');
   assertContains(companionBehaviorContent, "control: 'deterministic'", 'New recruitment should seed deterministic autonomy');
   assertContains(companionBehaviorContent, "source: 'companion-autonomy'", 'Autonomous choices should use the shared interaction command route');
   assertContains(companionBehaviorContent, 'app._validateInteractionCommand', 'Autonomous candidates should pass through the shared legality validator');
@@ -5797,6 +5798,7 @@ test('Companion Behavior V2 is registered before recruitment combat and app code
   assertContains(savePersistenceContent, 'partyDuties', 'Sparse compatibility metadata should persist Duty explicitly');
   assertContains(savePersistenceContent, 'partyStances', 'Sparse compatibility metadata should persist Stance explicitly');
   assertContains(savePersistenceContent, 'partyControls', 'Sparse compatibility metadata should persist Control explicitly');
+  assertContains(savePersistenceContent, 'partyPreferredRows', 'Sparse compatibility metadata should persist preferred combat rows explicitly');
 });
 
 test('Companion Behavior V2 migrates legacy companions and seeds recruitment continuity', () => {
@@ -5814,6 +5816,7 @@ test('Companion Behavior V2 migrates legacy companions and seeds recruitment con
   assertEqual(healerBehavior.duty, 'support', 'Legacy healer order should migrate to Support Duty');
   assertEqual(healerBehavior.stance, 'balanced', 'Legacy healer order should migrate to Balanced Stance');
   assertEqual(healerBehavior.control, 'manual', 'Legacy obedient companions should preserve manual control');
+  assertEqual(healerBehavior.preferredRow, 'auto', 'Legacy companions should gain an adaptive preferred combat row');
 
   const subdued = {
     id: 'subdued',
@@ -5827,6 +5830,7 @@ test('Companion Behavior V2 migrates legacy companions and seeds recruitment con
   assertEqual(recruited.duty, 'guard', 'Combat-subdued recruitment should seed Guard Duty');
   assertEqual(recruited.stance, 'passive', 'Combat-subdued recruitment should seed Passive Stance');
   assertEqual(recruited.control, 'deterministic', 'New recruitment should seed deterministic autonomy');
+  assertEqual(recruited.preferredRow, 'auto', 'New recruitment should seed an adaptive combat-row preference');
   assertEqual(recruited.recruitmentContinuity.kind, 'submitted', 'Recruitment should preserve how the relationship began');
   assertEqual(recruited.recruitmentContinuity.source, 'combat-fight', 'Recruitment continuity should retain its source');
 });
@@ -5930,6 +5934,53 @@ test('Autonomous companions digest instead of repeatedly attempting an over-capa
   assertEqual(digested?.containedIndex, 0, 'Autonomous digestion should select its active contained target');
   assertEqual(turns, 0, 'Successful digestion owns its normal turn transition instead of double-advancing');
   assert(log.some(text => text.includes('digest')), 'Autonomous digestion should retain a readable decision log');
+});
+
+test('Autonomous companions exclude close-contact Feast actions they cannot reach', () => {
+  const behavior = new Function('window', `${companionBehaviorContent}\nreturn YAW_COMPANION_BEHAVIOR;`)({});
+  const player = { id: 'player', name: 'You', CPun: 100, MPun: 100 };
+  const ally = {
+    id: 'back-row-ally',
+    name: 'Back Row Ally',
+    CPun: 100,
+    MPun: 100,
+    hunger: 80,
+    combatRow: 'back',
+    companionBehavior: { version: 2, duty: 'gatherer', stance: 'balanced', control: 'deterministic' }
+  };
+  const enemy = { id: 'enemy', name: 'Enemy', disposition: 'enemy', CPun: 60, MPun: 100, size: 1, Figh: 8 };
+  const app = {
+    player,
+    party: [player, ally],
+    creatures: [enemy],
+    DISPOSITION: { ENEMY: 'enemy' },
+    _buildPanelInteractionCommand(context) { return { ...context }; },
+    _validateInteractionCommand() { return { ok: true }; },
+    _canScavengeCorpse() { return false; },
+    _canFitPrey() { return true; },
+    _combatReachResult(actor, target, action) {
+      if (actor === ally && target === enemy && action === 'feast') {
+        return { canAttempt: true, canSucceed: false, reason: 'contact-needs-front-row' };
+      }
+      return { canAttempt: true, canSucceed: true };
+    },
+    _combatStateRoll() { return 0.25; }
+  };
+
+  const ranked = behavior.ranked(app, ally);
+
+  assertEqual(ranked.some(candidate => candidate.action === 'feast' && candidate.subAction === 'swallow'), false, 'Autonomy should not offer a back-row Feast that shared reach rules already reject');
+  assertEqual(ranked[0].action, 'advance', 'A companion should advance before pressing a close-contact action blocked only by its own back row');
+  let advances = 0;
+  app._label = (_key, fallback, values = {}) => fallback.replace(/\{(\w+)\}/g, (_match, key) => values[key] ?? `{${key}}`);
+  app._uiLabel = key => key;
+  app._pushLog = () => {};
+  app.renderLog = () => {};
+  app.emitSceneBeat = () => {};
+  app.moveCombatRow = () => { advances++; ally.combatRow = 'front'; };
+  behavior.takeTurn(app, ally);
+  assertEqual(advances, 1, 'Autonomous advance should use the normal tactical row-movement seam');
+  assertEqual(ally.combatRow, 'front', 'Autonomous advance should resolve before the companion’s next choice');
 });
 
 test('Companion AI control falls back to deterministic autonomy without losing a choice', () => {
@@ -11211,18 +11262,22 @@ test('Feast variants respect content posture and never expose internal setting k
   content.preferences.posture = 'mature';
   content.preferences.maxTier = 1;
   resolution = App._resolveActionVariants('feast', { actors: [actor], targets: [target] });
-  assertEqual(resolution.variants.some(variant => variant.id === 'chew'), true, 'Mature Feast should expose its posture-appropriate chewing variant');
-  assertContains(resolution.variants.find(variant => variant.id === 'chew')?.hint || '', 'damage also reduces punishment', 'Chew should disclose its shared Vitality and condition damage before commitment');
-  assertContains(resolution.variants.find(variant => variant.id === 'chew')?.hint || '', 'may flee or fight', 'Chew should disclose survivor escalation before commitment');
+  assertEqual(resolution.variants.some(variant => variant.id === 'chew'), false, 'Disabled Chew should not appear merely because mature posture is available');
   assertEqual(resolution.variants.some(variant => variant.id === 'cockVore' || variant.id === 'unbirth'), false, 'Mature Feast should still hide explicit-only variants without category opt-in');
-  assertNotContains(resolution.variants.find(variant => variant.id === 'chew')?.reason || '', 'chewing', 'Mature unavailable copy should use the public setting label rather than its internal key');
 
   content.preferences.enabledCategories = ['explicit.sexual'];
   resolution = App._resolveActionVariants('feast', { actors: [actor], targets: [target] });
-  assertEqual(resolution.variants.some(variant => variant.id === 'cockVore'), true, 'Explicit category opt-in should expose Capture');
-  assertEqual(resolution.variants.some(variant => variant.id === 'unbirth'), true, 'Explicit category opt-in should expose Engulf');
-  assertNotContains(resolution.variants.map(variant => variant.reason).join(' '), 'cockVoreEnabled', 'Explicit unavailable copy should still avoid internal capture identifiers');
-  assertNotContains(resolution.variants.map(variant => variant.reason).join(' '), 'unbirthEnabled', 'Explicit unavailable copy should still avoid internal engulf identifiers');
+  assertEqual(resolution.variants.some(variant => variant.id === 'cockVore' || variant.id === 'unbirth'), false, 'Explicit category opt-in should not override disabled Capture or Engulf settings');
+
+  App.settings.chewing = true;
+  App.settings.cockVoreEnabled = true;
+  App.settings.unbirthEnabled = true;
+  resolution = App._resolveActionVariants('feast', { actors: [actor], targets: [target] });
+  assertEqual(resolution.variants.some(variant => variant.id === 'chew'), true, 'Enabled Chew should appear for mature posture');
+  assertContains(resolution.variants.find(variant => variant.id === 'chew')?.hint || '', 'damage also reduces punishment', 'Chew should disclose its shared Vitality and condition damage before commitment');
+  assertContains(resolution.variants.find(variant => variant.id === 'chew')?.hint || '', 'may flee or fight', 'Chew should disclose survivor escalation before commitment');
+  assertEqual(resolution.variants.some(variant => variant.id === 'cockVore'), true, 'Explicit category and enabled setting should expose Capture');
+  assertEqual(resolution.variants.some(variant => variant.id === 'unbirth'), true, 'Explicit category and enabled setting should expose Engulf');
 });
 
 test('Feast attempts stay selectable while labels preview resistance clues and outcomes resolve after commitment', () => {
@@ -16902,7 +16957,7 @@ test('Group action role summary identifies consumer prey and helpers', () => {
   const smallHelper = makeUnit('Small Helper', { id: 'small-helper', size: 1, appetite: 0, Feas: 50 });
   const primary = makeUnit('Primary', { id: 'primary-1', size: 6, appetite: 6, Feas: 30 });
   const feastTarget = makeUnit('Feast Target', { id: 'feast-target', size: 4, Flee: 1 });
-  const feastSummary = App._groupActionRoleSummary('feast', feastTarget, [smallHelper, primary], { subAction: 'swallow' });
+  const feastSummary = App._groupActionRoleSummary('feast', feastTarget, [primary, smallHelper], { subAction: 'swallow' });
   assertEqual(feastSummary.consumer.name, 'Primary', 'Group feast summary should identify the selected primary consumer that can fit the target');
   assertEqual(feastSummary.helperNames.join(','), 'Small Helper', 'Group feast summary should identify assisting actors');
 });
@@ -16985,12 +17040,12 @@ test('Group feast respects explicit swallow sub-action when chewing is enabled',
   const primary = makeUnit('Primary', { id: 'primary-1', size: 6, appetite: 6, Feas: 30 });
   const prey = makeUnit('Prey', { id: 'prey-1', size: 4, Flee: 1 });
   App.player = player;
-  App.party = [player, helper, primary, prey];
+  App.party = [player, primary, helper, prey];
   App.settings.chewing = true;
   App.selectExplorationActor(1);
   App.selectExplorationActor(2);
   App.outsideActionForParty('feast', 3, null, { subAction: 'swallow' });
-  assertEqual(primary.stomach.length, 1, 'Explicit swallow should choose a primary consumer instead of splitting portions');
+  assertEqual(primary.stomach.length, 1, 'Explicit swallow should use the first selected actor as primary consumer instead of splitting portions');
   assertEqual(helper.stomach.length, 0, 'Explicit swallow should keep helper out of stomach portion handling');
   assertEqual(App.party.includes(prey), false, 'Swallowed party target should leave active party list');
   assertContains(App.log[App.log.length - 1].text, 'help Primary eat Prey', 'Explicit swallow should log helper-assisted primary consumption');
@@ -17003,9 +17058,9 @@ test('Marked target sub-action sheet can resolve explicit group swallow intent',
   const primary = makeUnit('Primary', { id: 'primary-1', size: 6, appetite: 6, Feas: 30 });
   const prey = makeUnit('Prey', { id: 'prey-1', size: 4, Flee: 1 });
   App.player = player;
-  App.party = [player, helper, primary, prey];
+  App.party = [player, primary, helper, prey];
   App.settings.chewing = true;
-  App.explorationActorIds = ['helper-1', 'primary-1'];
+  App.explorationActorIds = ['primary-1', 'helper-1'];
   App.toggleExplorationTarget('party', 'prey-1');
   App.openExplorationTargetSubActionSheet('feast', 'target-bar');
   assertContains(body.innerHTML, 'data-command-surface="action-variant-options" data-command-mode="exploration"', 'Marked target variant sheet should identify the shared exploration surface');
@@ -17018,12 +17073,12 @@ test('Marked target sub-action sheet can resolve explicit group swallow intent',
   App.resolveExplorationTargetAction('feast', 'swallow', 'target-bar');
   assertEqual(App.lastIntentCommand.source, 'target-bar', 'Marked target command should record its source');
   assertEqual(App.lastIntentCommand.subAction, 'swallow', 'Marked target command should record selected sub-action');
-  assertEqual(primary.stomach.length, 1, 'Marked explicit swallow should choose a primary consumer instead of splitting portions');
+  assertEqual(primary.stomach.length, 1, 'Marked explicit swallow should use the first selected actor as primary consumer instead of splitting portions');
   assertEqual(helper.stomach.length, 0, 'Marked explicit swallow should keep helper out of stomach portion handling');
   assertEqual(App.party.includes(prey), false, 'Marked swallowed party target should leave active party list');
 });
 
-test('Group feast chooses a selected primary consumer that can fit the target', () => {
+test('Group feast keeps the first selected actor as primary when they cannot fit the target', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const smallHelper = makeUnit('Small Helper', { id: 'small-helper', size: 1, appetite: 1, Feas: 50 });
@@ -17034,11 +17089,10 @@ test('Group feast chooses a selected primary consumer that can fit the target', 
   App.settings.chewing = false;
   App.explorationActorIds = ['small-helper', 'primary-1'];
   App.outsideActionForParty('feast', 3);
-  assertEqual(smallHelper.stomach.length, 0, 'Too-small first selected actor should not be forced as primary');
-  assertEqual(primary.stomach.length, 1, 'Later selected actor that can fit the target should become primary');
-  assertEqual(primary.stomach[0].name, 'Prey', 'Primary consumer should receive the target');
-  assertEqual(App.party.includes(prey), false, 'Consumed party target should leave active party list');
-  assertContains(App.log[App.log.length - 1].text, 'Small Helper help Primary eat Prey', 'Group feast summary should name helper and selected primary');
+  assertEqual(smallHelper.stomach.length, 0, 'Too-small first selected actor should not contain the target');
+  assertEqual(primary.stomach.length, 0, 'Later selected helpers must not silently become the swallower');
+  assertEqual(App.party.includes(prey), true, 'A failed primary swallow should leave the target active');
+  assertContains(App.log[App.log.length - 1].text, 'Small Helper tries, but Small Helper\'s Belly is too full for Prey.', 'Failed first-primary swallow should resolve as an in-world capacity attempt');
 });
 
 test('Group feast removes consumed area creature from active tile', () => {
@@ -17048,12 +17102,12 @@ test('Group feast removes consumed area creature from active tile', () => {
   const primary = makeUnit('Primary', { id: 'primary-1', size: 6, appetite: 6, Feas: 30 });
   const prey = makeUnit('Prey', { id: 'prey-1', disposition: App.DISPOSITION.FRIENDLY, size: 4, Flee: 1 });
   App.player = player;
-  App.party = [player, helper, primary];
+  App.party = [player, primary, helper];
   App.creatures = [prey];
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [prey] }]]);
   App.settings.chewing = false;
-  App.explorationActorIds = ['helper-1', 'primary-1'];
+  App.explorationActorIds = ['primary-1', 'helper-1'];
   App.toggleExplorationTarget('creature', 'prey-1');
   App.outsideActionForCreature('feast', 'prey-1');
   assertEqual(primary.stomach.length, 1, 'Group feast should place area creature in selected primary stomach');
@@ -23406,13 +23460,21 @@ test('Queued group actions show the slowest participant order and preserve inter
 test('Combat auto-position assigns flying and ranged units to back row', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-row', species: 'human' });
+  const ally = makeUnit('Ally', {
+    id: 'ally-row',
+    species: 'human',
+    ranged: false,
+    combatRow: 'front',
+    companionBehavior: { version: 2, duty: 'guard', stance: 'balanced', control: 'manual', preferredRow: 'back' }
+  });
   const harpy = makeUnit('Harpy', { id: 'harpy-row', species: 'harpy', disposition: App.DISPOSITION.ENEMY });
   App.player = player;
-  App.party = [player];
+  App.party = [player, ally];
   App.creatures = [harpy];
   App.processTurn = function() {};
   App.startCombat([harpy]);
   assertEqual(player.combatRow, 'front', 'Melee player should default to front row');
+  assertEqual(ally.combatRow, 'back', 'A companion preferred row should set each fresh combat opening even after a prior tactical row');
   assertEqual(harpy.combatRow, 'back', 'Flying/ranged enemy should default to back row');
 });
 
@@ -24671,13 +24733,13 @@ test('Party drag reorder keeps player anchored', () => {
   assertEqual(App.party[0], player, 'Player should stay anchored at the first slot');
 });
 
-test('Companion Duty Stance and Control persist through binary saves', () => {
+test('Companion Duty Stance Control and preferred row persist through binary saves', () => {
   const Binary = loadBinaryForTest();
   const { App } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });
   const ally = makeUnit('Ally', {
     id: 'ally-1',
-    companionBehavior: { version: 2, duty: 'scout', stance: 'defensive', control: 'deterministic' }
+    companionBehavior: { version: 2, duty: 'scout', stance: 'defensive', control: 'deterministic', preferredRow: 'back' }
   });
   App.player = player;
   App.party = [player, ally];
@@ -24688,6 +24750,7 @@ test('Companion Duty Stance and Control persist through binary saves', () => {
   assertEqual(loaded.questState.partyDuties['ally-1'], 'scout', 'Duty should persist by id');
   assertEqual(loaded.questState.partyStances['ally-1'], 'defensive', 'Stance should persist by id');
   assertEqual(loaded.questState.partyControls['ally-1'], 'deterministic', 'Control should persist by id');
+  assertEqual(loaded.questState.partyPreferredRows['ally-1'], 'back', 'Preferred combat row should persist by id');
 });
 
 test('Enemy target priority prefers party leader when no prey override applies', () => {
@@ -27960,6 +28023,35 @@ test('Holdings owner selector switches stats equipment and containers while pack
   html = holdingsHtml(elements);
   assertContains(html, 'Held Mousefolk', 'Containers tab should show selected companion containment');
   assertContains(html, "App.releaseContained('party',1,'stomach',0)", 'Container Release should target the selected companion holder index');
+});
+
+test('Holdings owns companion behavior while cards retain only a behavior shortcut', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'behavior-player' });
+  const ally = makeUnit('Ally', {
+    id: 'behavior-ally',
+    expanded: true,
+    companionBehavior: { version: 2, duty: 'guard', stance: 'balanced', control: 'manual', preferredRow: 'auto' }
+  });
+  App.player = player;
+  App.party = [player, ally];
+
+  const card = App.renderUnitCard(ally, 1, 'party');
+  assertContains(card, 'open-companion-behavior', 'Companion cards should retain one concise Behavior shortcut');
+  assertNotContains(card, 'set-companion-duty', 'Companion cards should not duplicate persistent behavior selectors');
+  assertNotContains(card, 'set-companion-stance', 'Companion cards should not duplicate persistent stance selectors');
+  assertNotContains(card, 'set-companion-control', 'Companion cards should not duplicate persistent control selectors');
+
+  App.showCompanionBehavior(1);
+  let html = holdingsHtml(elements);
+  assertContains(html, 'holdings-tab', 'Behavior shortcut should open the Holdings overlay rather than a panel detail');
+  assertContains(html, 'Preferred Combat Row', 'Holdings Behavior should expose the preferred opening row');
+  assertContains(html, 'set-companion-preferredRow', 'Holdings Behavior should expose a stable preferred-row control');
+  App.setCompanionPreferredRow(1, 'back');
+  assertEqual(App._getCompanionBehavior(ally).preferredRow, 'back', 'Preferred row changes should persist in companion behavior state');
+  App.refreshHoldingsWindow();
+  html = holdingsHtml(elements);
+  assertContains(html, 'value="back" selected', 'Holdings should reflect the persisted preferred row after refresh');
 });
 
 test('Legacy Holdings equip seam can still target a companion owner directly', () => {
@@ -32168,17 +32260,29 @@ test('Chew uses its canonical label in Mature posture and its safe label in SFW'
 
 test('Group chew applies vital damage without synthetic portion records', () => {
   const { App } = loadAppForCombat(() => 0);
-  const actor = makeUnit('You', { id: 'group-vital-1', Feas: 30, hunger: 50, stomach: [] });
-  const helper = makeUnit('Helper', { id: 'group-vital-2', Feas: 30, hunger: 50, stomach: [] });
+  const actor = makeUnit('You', { id: 'group-vital-1', Feas: 30, size: 7, hunger: 50, stomach: [] });
+  const helper = makeUnit('Helper', { id: 'group-vital-2', Feas: 30, size: 1, hunger: 50, stomach: [] });
   const target = makeUnit('Target', { id: 'group-vital-target', CPun: 100, MPun: 100, size: 4 });
   App.player = actor;
   App.party = [actor, helper];
   App.creatures = [target];
+  App._explorationActionRating = value => value;
+  App._explorationDamageVariance = () => 0;
+  App._physicalDamageMultiplier = () => 1;
+  const actorSoloDamage = App._chewDamageValue(actor, target, { mode: 'adventure' });
+  const helperSoloDamage = App._chewDamageValue(helper, target, { mode: 'adventure' });
+  const breakdown = App._chewDamageBreakdown(actor, target, { mode: 'adventure', actors: [actor, helper] });
 
   const result = App._groupChewFeast([actor, helper], target);
 
   assertContains(result, 'vital', 'Group chew should describe vital reduction');
+  assertEqual(breakdown.contributions.length, 2, 'Every selected Chew participant should retain an individual contribution');
+  assertEqual(breakdown.contributions.find(entry => entry.actor === actor)?.damage, actorSoloDamage, 'The lead Chew contribution should preserve the actor’s own size-aware damage');
+  assertEqual(breakdown.contributions.find(entry => entry.actor === helper)?.damage, helperSoloDamage, 'A helper should contribute their own size-aware damage instead of a flat half-weight');
+  assertEqual(breakdown.damage, actorSoloDamage + helperSoloDamage, 'Group Chew should combine all participant contributions into one target outcome');
+  assert(actorSoloDamage > helperSoloDamage, 'A larger Chew participant should contribute more against the same target');
   assert(target.vitalRemaining < target.vitalMax, 'Group chew should reduce target vital integrity');
+  assertEqual(target.vitalMax - target.vitalRemaining, breakdown.damage, 'The resolved group Chew should apply the combined participant damage');
   assertEqual(target.vitalMax - target.vitalRemaining, target.MPun - target.CPun, 'Group chew should reduce Vitality and punishment by the same amount');
   assertEqual(actor.hunger, 50, 'Group chew should not grant automatic nourishment before action costs');
   assertEqual(helper.hunger, 50, 'Chew helpers should not receive automatic nourishment');
@@ -32653,9 +32757,10 @@ test('Desktop panel lists default to compact tactical cards and preserve full de
   creatureHtml = elements.get('enemies-content').innerHTML;
   assertContains(partyHtml, 'unit-details', 'Expanded party panel should restore full card detail markup');
   assertContains(partyHtml, 'unit-management-actions', 'Expanded party panel should restore management controls');
-  assertContains(partyHtml, 'data-command-control="set-companion-duty"', 'Expanded party panel should retain Duty controls');
-  assertContains(partyHtml, 'data-command-control="set-companion-stance"', 'Expanded party panel should retain Stance controls');
-  assertContains(partyHtml, 'data-command-control="set-companion-control"', 'Expanded party panel should retain Control controls');
+  assertContains(partyHtml, 'data-command-control="open-companion-behavior"', 'Expanded party cards should retain one Behavior shortcut');
+  assertNotContains(partyHtml, 'data-command-control="set-companion-duty"', 'Expanded party cards should not duplicate Duty controls outside Holdings');
+  assertNotContains(partyHtml, 'data-command-control="set-companion-stance"', 'Expanded party cards should not duplicate Stance controls outside Holdings');
+  assertNotContains(partyHtml, 'data-command-control="set-companion-control"', 'Expanded party cards should not duplicate Control controls outside Holdings');
   assertContains(creatureHtml, 'unit-card expanded', 'Expanded creature panel should restore full unit cards for details');
 });
 
@@ -32676,14 +32781,15 @@ test('Mobile party long-press menu exposes management actions', () => {
   assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Party long-press menu title should be addressable');
   assertContains(body.innerHTML, 'id="mobile-context-menu-description"', 'Party long-press menu purpose should be addressable');
   assertContains(body.innerHTML, 'Party actions for Ally', 'Party menu should name both the task and selected party member');
-  assertContains(body.innerHTML, 'Manage Ally&#39;s holdings, Duty, Stance, and Control.', 'Party menu should visibly explain its management scope');
+  assertContains(body.innerHTML, 'Manage Ally&#39;s holdings, behavior, and companion actions.', 'Party menu should visibly explain its management scope');
   assertContains(body.innerHTML, 'Holdings', 'Party menu should expose Holdings');
   assertNotContains(body.innerHTML, "mobilePartyContextAction('actions'", 'Party menu should not duplicate marked-target actions behind an intent-sheet entry');
   assertNotContains(body.innerHTML, 'aria-label="Fight Ally"', 'Party menu should not expose primary action spam');
   assertContains(body.innerHTML, 'Make Leader', 'Party menu should expose leader action for allies');
-  assertContains(body.innerHTML, 'Duty for Ally', 'Party menu should expose Duty selector');
-  assertContains(body.innerHTML, 'Stance for Ally', 'Party menu should expose Stance selector');
-  assertContains(body.innerHTML, 'Control for Ally', 'Party menu should expose Control selector');
+  assertContains(body.innerHTML, 'Behavior', 'Party menu should expose the concise Behavior route');
+  assertNotContains(body.innerHTML, 'Duty for Ally', 'Party menu should keep persistent behavior selectors in Holdings');
+  assertNotContains(body.innerHTML, 'Stance for Ally', 'Party menu should keep persistent stance selectors in Holdings');
+  assertNotContains(body.innerHTML, 'Control for Ally', 'Party menu should keep persistent control selectors in Holdings');
   assertContains(body.innerHTML, 'Dismiss', 'Party menu should expose dismiss action for allies');
   App.showMobilePartyContext(1);
   App.mobilePartyContextAction('lead', 1);
@@ -32706,28 +32812,18 @@ test('Mobile party long-press menu uses localized management labels', () => {
   App.updateLanguage('es');
   App.showMobilePartyContext(1);
   assertContains(body.innerHTML, 'Acciones del grupo para Ally', 'Party menu title should localize while retaining the selected party member');
-  assertContains(body.innerHTML, 'Administra las pertenencias, la funcion, la actitud y el control de Ally.', 'Party menu purpose should localize while retaining the selected party member');
+  assertContains(body.innerHTML, 'Administra las pertenencias, el comportamiento y las acciones de companero de Ally.', 'Party menu purpose should localize while retaining the selected party member');
   assertContains(body.innerHTML, 'Pertenencias', 'Holdings menu item should localize');
   assertNotContains(body.innerHTML, "mobilePartyContextAction('actions'", 'Localized party menu should not include a duplicate intent-sheet entry');
   assertContains(body.innerHTML, 'Hacer lider', 'Leader menu item should localize');
-  assertContains(body.innerHTML, '>Funcion<', 'Duty field label should localize');
-  assertContains(body.innerHTML, 'aria-label="Funcion de Ally"', 'Duty select accessible label should localize');
-  assertContains(body.innerHTML, '<option value="guard" selected>Guardia</option>', 'Mobile Duty option text should localize');
-  assertContains(body.innerHTML, '<option value="support" >Apoyo</option>', 'Mobile Duty option list should localize');
-  assertContains(body.innerHTML, 'Protege aliados vulnerables y reduce la presion de emboscadas.', 'Mobile Duty helper text should localize');
-  assertContains(body.innerHTML, '>Actitud<', 'Stance field label should localize');
-  assertContains(body.innerHTML, 'aria-label="Actitud de Ally"', 'Stance select accessible label should localize');
-  assertContains(body.innerHTML, '<option value="defensive" selected>Defensiva</option>', 'Mobile Stance option text should localize');
-  assertContains(body.innerHTML, '<option value="passive" >Pasiva</option>', 'Mobile Stance option list should localize');
-  assertContains(body.innerHTML, 'Protege al grupo y favorece acciones de menor riesgo.', 'Mobile Stance helper text should localize');
-  assertContains(body.innerHTML, '>Control<', 'Control field label should localize');
-  assertContains(body.innerHTML, 'aria-label="Control de Ally"', 'Control select accessible label should localize');
+  assertContains(body.innerHTML, 'Comportamiento', 'Behavior route should localize');
+  assertNotContains(body.innerHTML, 'aria-label="Funcion de Ally"', 'Mobile menu should keep detailed selectors in Holdings');
   assertContains(body.innerHTML, 'Despedir', 'Dismiss menu item should localize');
   assertContains(body.innerHTML, 'Cerrar', 'Close menu item should localize');
 });
 
-test('Mobile party long-press behavior selectors refresh after changes', () => {
-  const { App, body } = loadAppForCombat(() => 0, { confirm: true });
+test('Mobile party long-press routes behavior management into Holdings', () => {
+  const { App, body, document } = loadAppForCombat(() => 0, { confirm: true });
   const player = makeUnit('You', { id: 'player-1' });
   const ally = makeUnit('Ally', { id: 'ally-mobile', partyRole: 'companion', aiOrder: 'aggressive' });
   App.player = player;
@@ -32735,19 +32831,12 @@ test('Mobile party long-press behavior selectors refresh after changes', () => {
   App.updateLanguage('es');
   App.showMobilePartyContext(1);
 
-  App.mobilePartyContextSetBehavior(1, 'duty', 'support');
-  assertEqual(ally.companionBehavior.duty, 'support', 'Mobile Duty selector should update Duty');
-  assertContains(body.innerHTML, 'id="mobile-context-menu"', 'Mobile Duty selector should keep the management menu open');
-  assertContains(body.innerHTML, '<option value="support" selected>Apoyo</option>', 'Mobile Duty selector should refresh selected label');
-  assertContains(body.innerHTML, 'Mejora la recuperacion y prioriza atender aliados heridos.', 'Mobile Duty selector should refresh helper text');
-
-  App.mobilePartyContextSetBehavior(1, 'stance', 'defensive');
-  assertEqual(ally.companionBehavior.stance, 'defensive', 'Mobile Stance selector should update Stance');
-  assertContains(body.innerHTML, '<option value="defensive" selected>Defensiva</option>', 'Mobile Stance selector should refresh selected label');
-
-  App.mobilePartyContextSetBehavior(1, 'control', 'deterministic');
-  assertEqual(ally.companionBehavior.control, 'deterministic', 'Mobile Control selector should update Control');
-  assertContains(body.innerHTML, '<option value="deterministic" selected>Autonomo</option>', 'Mobile Control selector should refresh selected label');
+  assertContains(body.innerHTML, 'Comportamiento', 'Mobile context menu should expose a localized Behavior route');
+  assertNotContains(body.innerHTML, 'set-companion-duty', 'Mobile context menu should not duplicate Duty selectors');
+  App.mobilePartyContextAction('behavior', 1);
+  const holdings = document.getElementById('holdings-window-root').innerHTML;
+  assertContains(holdings, 'Comportamiento: Ally', 'Mobile Behavior route should open the selected companion in Holdings');
+  assertContains(holdings, 'Fila de combate preferida', 'Mobile Behavior route should expose the preferred combat row');
 });
 
 test('Mobile creature long-press marks living targets without opening action menus', () => {

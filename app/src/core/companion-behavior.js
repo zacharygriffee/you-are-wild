@@ -64,6 +64,21 @@ const YAW_COMPANION_BEHAVIOR = {
         }
     },
 
+    PREFERRED_ROWS: {
+        auto: {
+            label: 'Auto',
+            description: 'Starts in the row that best fits the companion’s natural reach.'
+        },
+        front: {
+            label: 'Front',
+            description: 'Starts each new combat in the front row.'
+        },
+        back: {
+            label: 'Back',
+            description: 'Starts each new combat in the back row.'
+        }
+    },
+
     legacyDuty(role) {
         const key = String(role || '').toLowerCase();
         if (this.DUTIES[key]) return key;
@@ -95,6 +110,11 @@ const YAW_COMPANION_BEHAVIOR = {
         const stance = this.STANCES[existing.stance]
             ? existing.stance
             : this.legacyStance(options.stance || unit.aiOrder);
+        const preferredRow = this.PREFERRED_ROWS[existing.preferredRow]
+            ? existing.preferredRow
+            : (this.PREFERRED_ROWS[options.preferredRow]
+                ? options.preferredRow
+                : (this.PREFERRED_ROWS[unit.preferredCombatRow] ? unit.preferredCombatRow : 'auto'));
         let control = this.CONTROLS[existing.control] ? existing.control : options.control;
         if (!this.CONTROLS[control]) {
             control = unit === app?.player || unit.mc
@@ -110,12 +130,14 @@ const YAW_COMPANION_BEHAVIOR = {
             duty,
             stance,
             control,
+            preferredRow,
             recruitmentContinuity: continuity ? { ...continuity } : null
         };
         unit.recruitmentContinuity = unit.companionBehavior.recruitmentContinuity;
         // Compatibility mirrors are intentionally retained for old saves and mods.
         unit.partyRole = duty;
         unit.aiOrder = stance;
+        unit.preferredCombatRow = preferredRow;
         return unit.companionBehavior;
     },
 
@@ -125,6 +147,7 @@ const YAW_COMPANION_BEHAVIOR = {
             duty: 'support',
             stance: 'balanced',
             control: 'manual',
+            preferredRow: 'auto',
             recruitmentContinuity: null
         };
     },
@@ -133,13 +156,16 @@ const YAW_COMPANION_BEHAVIOR = {
         if (!unit || unit === app?.player || unit.mc) return false;
         const definitions = field === 'duty'
             ? this.DUTIES
-            : (field === 'stance' ? this.STANCES : (field === 'control' ? this.CONTROLS : null));
+            : (field === 'stance'
+                ? this.STANCES
+                : (field === 'control' ? this.CONTROLS : (field === 'preferredRow' ? this.PREFERRED_ROWS : null)));
         if (!definitions || !definitions[value]) return false;
         const behavior = this.get(app, unit);
         behavior[field] = value;
         behavior.version = this.VERSION;
         if (field === 'duty') unit.partyRole = value;
         if (field === 'stance') unit.aiOrder = value;
+        if (field === 'preferredRow') unit.preferredCombatRow = value;
         return true;
     },
 
@@ -175,6 +201,7 @@ const YAW_COMPANION_BEHAVIOR = {
             duty,
             stance,
             control: 'deterministic',
+            preferredRow: 'auto',
             recruitmentContinuity: continuity
         };
         target.recruitmentContinuity = { ...continuity };
@@ -182,8 +209,10 @@ const YAW_COMPANION_BEHAVIOR = {
     },
 
     definition(kind, key) {
-        const table = kind === 'duty' ? this.DUTIES : (kind === 'stance' ? this.STANCES : this.CONTROLS);
-        const fallback = kind === 'duty' ? 'support' : (kind === 'stance' ? 'balanced' : 'manual');
+        const table = kind === 'duty'
+            ? this.DUTIES
+            : (kind === 'stance' ? this.STANCES : (kind === 'preferredRow' ? this.PREFERRED_ROWS : this.CONTROLS));
+        const fallback = kind === 'duty' ? 'support' : (kind === 'stance' ? 'balanced' : (kind === 'preferredRow' ? 'auto' : 'manual'));
         return table[key] || table[fallback];
     },
 
@@ -246,11 +275,39 @@ const YAW_COMPANION_BEHAVIOR = {
             ? app._activeContainedPrey(ally, 'stomach')
             : (ally.stomach || []).filter(prey => prey && prey.inStomach !== false && !['softened', 'terminal', 'digested', 'released', 'passed', 'depleted'].includes(prey.state || prey.digestionState || 'contained'))
         ).find(Boolean) || null;
+        const reachForAutonomy = (action, target, subAction = null) => {
+            // Players may commit a difficult attempt and receive its narrated
+            // outcome. An autonomous companion should instead avoid spending a
+            // turn on an action that the shared combat rules already know cannot
+            // succeed from its current row/reach profile.
+            if (!target || !['fight', 'feast', 'fuck'].includes(action)) return null;
+            return typeof app._combatReachResult === 'function'
+                ? app._combatReachResult(ally, target, action, { subAction })
+                : (typeof YAW_COMBAT_RULES !== 'undefined'
+                    ? YAW_COMBAT_RULES.reachResult(app, ally, target, action, { subAction })
+                    : null);
+        };
+        const canAutonomouslyReach = (action, target, subAction = null) => {
+            const reach = reachForAutonomy(action, target, subAction);
+            return !reach || reach.canSucceed !== false;
+        };
         const add = (action, target, subAction = null) => {
             const command = this.command(app, ally, action, target, subAction);
             const valid = app._validateInteractionCommand?.(command) || { ok: true };
-            if (valid.ok) candidates.push({ action, target, subAction, command });
+            if (valid.ok && canAutonomouslyReach(action, target, subAction)) {
+                candidates.push({ action, target, subAction, command });
+            }
         };
+        const blockedByOwnRow = (action, target, subAction = null) => {
+            const reach = reachForAutonomy(action, target, subAction);
+            return reach?.canAttempt && reach.canSucceed === false
+                && ['contact-needs-front-row', 'melee-needs-front-row'].includes(reach.reason);
+        };
+        const shouldAdvance = ally.combatRow === 'back' && enemies.some(target => (
+            blockedByOwnRow('fight', target)
+            || ((ally.hunger || 0) >= 45 && canSwallow(target) && blockedByOwnRow('feast', target, 'swallow'))
+        ));
+        if (shouldAdvance) candidates.push({ action: 'advance', target: null, subAction: null, command: null });
         for (const target of enemies) {
             add('fight', target);
             add('flirt', target);
@@ -291,6 +348,7 @@ const YAW_COMPANION_BEHAVIOR = {
             digest: 64,
             feed: 28,
             scavenge: 15,
+            advance: 48,
             hold: 8
         };
         score += base[candidate.action] || 0;
@@ -411,6 +469,8 @@ const YAW_COMPANION_BEHAVIOR = {
         const stance = app._companionStanceLabel?.(behavior.stance) || this.STANCES[behavior.stance]?.label || behavior.stance;
         const action = choice?.action === 'hold'
             ? app._label('party.behavior.hold', 'hold position')
+            : choice?.action === 'advance'
+                ? app._label('action.advance', 'advance')
             : choice?.action === 'digest'
                 ? app._label('containment.digest', 'digest').toLowerCase()
                 : app._uiLabel?.(choice?.action || 'action').toLowerCase();
@@ -553,6 +613,15 @@ const YAW_COMPANION_BEHAVIOR = {
         const choice = result.choice || { action: 'hold', target: null, command: null };
         this.evidence(app, ally, choice, result.behavior, result.fallbackReason);
         app.renderLog?.();
+        if (choice.action === 'advance') {
+            if (typeof app.moveCombatRow === 'function') {
+                app.moveCombatRow();
+                return true;
+            }
+            ally.combatRow = 'front';
+            app.nextTurn?.();
+            return true;
+        }
         if (choice.action === 'hold' || !choice.command) {
             if (choice.action === 'digest') {
                 const partyIndex = (app.party || []).indexOf(ally);

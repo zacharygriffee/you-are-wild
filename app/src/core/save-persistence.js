@@ -411,6 +411,7 @@ const YAW_SAVE_PERSISTENCE = {
         const partyDuties = {};
         const partyStances = {};
         const partyControls = {};
+        const partyPreferredRows = {};
         const partyRecruitmentContinuity = {};
         for (const unit of app.party || []) {
             const behavior = typeof YAW_COMPANION_BEHAVIOR !== 'undefined'
@@ -423,6 +424,7 @@ const YAW_SAVE_PERSISTENCE = {
                 if (behavior?.duty) partyDuties[key] = behavior.duty;
                 if (behavior?.stance) partyStances[key] = behavior.stance;
                 if (behavior?.control) partyControls[key] = behavior.control;
+                if (behavior?.preferredRow) partyPreferredRows[key] = behavior.preferredRow;
                 if (behavior?.recruitmentContinuity) {
                     partyRecruitmentContinuity[key] = this.serializableClone(behavior.recruitmentContinuity, null);
                 }
@@ -448,6 +450,7 @@ const YAW_SAVE_PERSISTENCE = {
             partyDuties,
             partyStances,
             partyControls,
+            partyPreferredRows,
             partyRecruitmentContinuity,
             logEntries: this.serializableClone(app.log || [], []),
             explorationActorIds: this.serializableClone(app.explorationActorIds || [], []),

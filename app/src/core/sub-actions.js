@@ -290,6 +290,10 @@ const YAW_SUB_ACTIONS = {
         const variants = Object.entries(subDefs)
             .filter(([, def]) => context.includeLegacy === true || def.legacy !== true)
             .filter(([, def]) => this.isVisibleForContent(def))
+            // A disabled setting is not an actionable option. Keep genuine
+            // actor/target limits visible as clues, but do not advertise
+            // optional mechanics that the player has turned off.
+            .filter(([, def]) => !def.setting || app.settings?.[def.setting] === true)
             .filter(([, def]) => this.supportsScope(def, scope))
             .map(([id, def]) => {
                 const helperBonus = actors

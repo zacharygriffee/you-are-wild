@@ -40,12 +40,13 @@ const YAW_HOLDINGS = {
     },
 
     tabs() {
-        return ['stats', 'equipment', 'pack', 'containers', 'ground'];
+        return ['stats', 'behavior', 'equipment', 'pack', 'containers', 'ground'];
     },
 
     tabLabel(app, tab) {
         const labels = {
             stats: app._label('ui.stats', 'Stats'),
+            behavior: app._label('party.manageBehavior', 'Behavior'),
             equipment: app._label('inventory.equippedSection', 'Equipped'),
             pack: app._label('holdings.pack', 'Pack / Inventory'),
             containers: app._label('holdings.containers', 'Containers'),
@@ -507,6 +508,11 @@ const YAW_HOLDINGS = {
     renderTabBody(app, owner = app.player, tab = 'stats') {
         const sections = this.sections(app, owner);
         if (tab === 'stats') return this.renderStatsSection(app, owner);
+        if (tab === 'behavior') {
+            return typeof YAW_PARTY_MANAGEMENT !== 'undefined' && typeof YAW_PARTY_MANAGEMENT.renderBehaviorSection === 'function'
+                ? YAW_PARTY_MANAGEMENT.renderBehaviorSection(app, owner)
+                : '<section class="holdings-section"><p class="holding-entry-meta">Behavior controls are unavailable.</p></section>';
+        }
         if (tab === 'equipment') return this.renderEquipmentSection(app, sections.find(section => section.id === 'equipped'), owner);
         if (tab === 'containers') return this.renderContainersSection(app, sections.find(section => section.id === 'containers'), owner);
         if (tab === 'ground') return this.renderGroundSection(app, sections.find(section => section.id === 'ground'));

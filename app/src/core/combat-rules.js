@@ -44,6 +44,27 @@ const YAW_COMBAT_RULES = {
         return unit?.flying || unit?.ranged ? 'back' : 'front';
     },
 
+    preferredCombatRow(app, unit) {
+        const preference = app?.party?.includes?.(unit)
+            ? (app?._getCompanionBehavior?.(unit)?.preferredRow || unit?.preferredCombatRow || 'auto')
+            : 'auto';
+        if (preference === 'front' || preference === 'back') return preference;
+        return this.defaultCombatRow(unit);
+    },
+
+    prepareCombatRows(app, units) {
+        for (const unit of units || []) {
+            if (!unit) continue;
+            // A saved preference controls the opening position for every fresh
+            // encounter. Mid-combat Advance/Retreat remains tactical state and
+            // is never written back as the preference.
+            if (app?.party?.includes?.(unit)) {
+                unit.combatRow = this.preferredCombatRow(app, unit);
+            }
+        }
+        return this.assignCombatRows(app, units);
+    },
+
     assignCombatRows(app, units) {
         for (const unit of units) {
             if (!unit || unit.CPun <= 0) continue;

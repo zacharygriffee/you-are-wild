@@ -90,6 +90,16 @@ const YAW_PARTY_MANAGEMENT = {
         return app._label(`party.controlDescription.${key}`, app.PARTY_CONTROLS[key].description);
     },
 
+    preferredRowLabel(app, preferredRow) {
+        const key = app.PARTY_PREFERRED_ROWS?.[preferredRow] ? preferredRow : 'auto';
+        return app._label(`party.preferredRow.${key}`, app.PARTY_PREFERRED_ROWS?.[key]?.label || key);
+    },
+
+    preferredRowDescription(app, preferredRow) {
+        const key = app.PARTY_PREFERRED_ROWS?.[preferredRow] ? preferredRow : 'auto';
+        return app._label(`party.preferredRowDescription.${key}`, app.PARTY_PREFERRED_ROWS?.[key]?.description || '');
+    },
+
     saveBehaviorChange(app, unit, field, value, label) {
         if (!YAW_COMPANION_BEHAVIOR.set(app, unit, field, value)) return false;
         app.log.push({
@@ -122,31 +132,53 @@ const YAW_PARTY_MANAGEMENT = {
         return this.saveBehaviorChange(app, unit, 'control', control, this.controlLabel(app, control));
     },
 
-    showBehavior(app, index) {
-        const unit = app.party?.[index];
-        if (!unit || unit === app.player || unit.mc || app.combatState?.active) return false;
+    setPreferredRow(app, index, preferredRow) {
+        const unit = app.party[index];
+        return this.saveBehaviorChange(app, unit, 'preferredRow', preferredRow, this.preferredRowLabel(app, preferredRow));
+    },
+
+    renderBehaviorSection(app, unit) {
+        const index = (app.party || []).indexOf(unit);
+        if (!unit || index < 0 || unit === app.player || unit.mc) {
+            return `<section class="holdings-section holdings-behavior-section"><h3>${app._escapeHtml(app._label('party.manageBehavior', 'Behavior'))}</h3><p class="holding-entry-meta">${app._escapeHtml(app._label('party.playerBehaviorHelp', 'Your combat row is a tactical choice. Use Advance or Retreat during combat.'))}</p></section>`;
+        }
         const behavior = YAW_COMPANION_BEHAVIOR.get(app, unit);
         const unitName = unit.name || app._label('unit.partyMember', 'party member');
-        const title = app._label('party.manageBehaviorFor', 'Behavior: {name}', { name: unitName });
-        const detailAttrs = 'data-command-surface="detail-management" data-command-mode="exploration"';
         const select = (field, options, description) => {
-            const setter = field === 'duty' ? 'setCompanionDuty' : field === 'stance' ? 'setCompanionStance' : 'setCompanionControl';
+            const setter = field === 'duty'
+                ? 'setCompanionDuty'
+                : (field === 'stance'
+                    ? 'setCompanionStance'
+                    : (field === 'control' ? 'setCompanionControl' : 'setCompanionPreferredRow'));
             const label = app._label(`party.${field}`, field);
             const controlKey = `set-companion-${field}`;
             const value = behavior[field];
-            const choices = Object.keys(options).map(key => `<option value="${key}" ${value === key ? 'selected' : ''}>${app._escapeHtml(field === 'duty' ? this.dutyLabel(app, key) : field === 'stance' ? this.stanceLabel(app, key) : this.controlLabel(app, key))}</option>`).join('');
+            const choices = Object.keys(options).map(key => {
+                const title = field === 'duty'
+                    ? this.dutyLabel(app, key)
+                    : (field === 'stance'
+                        ? this.stanceLabel(app, key)
+                        : (field === 'control' ? this.controlLabel(app, key) : this.preferredRowLabel(app, key)));
+                return `<option value="${key}" ${value === key ? 'selected' : ''}>${app._escapeHtml(title)}</option>`;
+            }).join('');
             const aria = app._label(`party.${field}For`, `${label} for {name}`, { name: unitName });
-            return `<label class="companion-behavior-field"><span>${app._escapeHtml(label)}</span><select class="nav-btn" ${detailAttrs} data-command-control="${controlKey}" title="${app._escapeHtml(description)}" aria-label="${app._escapeHtml(aria)}" onchange="App.${setter}(${index},this.value);App.showCompanionBehavior(${index})">${choices}</select><small class="companion-behavior-preview">${app._escapeHtml(description)}</small></label>`;
+            return `<label class="companion-behavior-field"><span>${app._escapeHtml(label)}</span><select class="nav-btn" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="${controlKey}" title="${app._escapeHtml(description)}" aria-label="${app._escapeHtml(aria)}" onchange="App.${setter}(${index},this.value);App.refreshHoldingsWindow()">${choices}</select><small class="companion-behavior-preview">${app._escapeHtml(description)}</small></label>`;
         };
         const dutyDescription = `${this.dutyDescription(app, behavior.duty)} ${app._label('party.tradeoff', 'Tradeoff')}: ${this.dutyTradeoff(app, behavior.duty)}`;
-        const backLabel = app._label('ui.back', 'Back');
-        const html = `<div class="party-behavior-view" data-command-surface="detail-management" data-command-mode="exploration" role="region" aria-label="${app._escapeHtml(title)}">
-            <div class="party-stats-header"><div><h3>${app._escapeHtml(title)}</h3><p style="color:var(--text-muted);margin-top:4px">${app._escapeHtml(app._label('party.manageBehaviorHelp', 'Choose how this companion approaches exploration and autonomous turns.'))}</p></div><button class="nav-btn" ${detailAttrs} data-command-control="close-companion-behavior" data-command-slot="exit" title="${app._escapeHtml(backLabel)}" aria-label="${app._escapeHtml(backLabel)}" onclick="App.closePanelDetails('party')">${app._escapeHtml(backLabel)}</button></div>
-            <div class="unit-actions unit-management-actions" style="display:grid;gap:10px;">${select('duty', app.PARTY_DUTIES, dutyDescription)}${select('stance', app.PARTY_STANCES, this.stanceDescription(app, behavior.stance))}${select('control', app.PARTY_CONTROLS, this.controlDescription(app, behavior.control))}</div>
-            <div class="party-stats-footer"><button class="nav-btn" ${detailAttrs} data-command-control="close-companion-behavior" data-command-slot="exit" title="${app._escapeHtml(backLabel)}" aria-label="${app._escapeHtml(backLabel)}" onclick="App.closePanelDetails('party')">${app._escapeHtml(backLabel)}</button></div>
-        </div>`;
-        app.showPartyPanelDetail(title, html);
-        return true;
+        const title = app._label('party.manageBehaviorFor', 'Behavior: {name}', { name: unitName });
+        return `<section class="holdings-section holdings-behavior-section" data-command-surface="holdings-window" data-command-mode="exploration" aria-label="${app._escapeHtml(title)}">
+            <h3>${app._escapeHtml(title)}</h3>
+            <p class="holding-entry-meta">${app._escapeHtml(app._label('party.manageBehaviorHelp', 'Choose how this companion approaches exploration and autonomous turns.'))}</p>
+            <div class="unit-actions unit-management-actions" style="display:grid;gap:10px;">${select('duty', app.PARTY_DUTIES, dutyDescription)}${select('stance', app.PARTY_STANCES, this.stanceDescription(app, behavior.stance))}${select('control', app.PARTY_CONTROLS, this.controlDescription(app, behavior.control))}${select('preferredRow', app.PARTY_PREFERRED_ROWS, this.preferredRowDescription(app, behavior.preferredRow))}</div>
+        </section>`;
+    },
+
+    showBehavior(app, index) {
+        const unit = app.party?.[index];
+        if (!unit || unit === app.player || unit.mc || app.combatState?.active) return false;
+        return typeof YAW_HOLDINGS !== 'undefined' && typeof YAW_HOLDINGS.showForUnit === 'function'
+            ? YAW_HOLDINGS.showForUnit(app, unit, { tab: 'behavior' })
+            : false;
     },
 
     setAIOrder(app, index, order) {

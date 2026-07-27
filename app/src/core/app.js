@@ -146,6 +146,7 @@
             PARTY_DUTIES: YAW_COMPANION_BEHAVIOR.DUTIES,
             PARTY_STANCES: YAW_COMPANION_BEHAVIOR.STANCES,
             PARTY_CONTROLS: YAW_COMPANION_BEHAVIOR.CONTROLS,
+            PARTY_PREFERRED_ROWS: YAW_COMPANION_BEHAVIOR.PREFERRED_ROWS,
             MULTI_TARGET_TECHNIQUES: {
                 sweep: { id: 'sweep', actions: ['fight'], recovery: 0.25, maxTargets: 3 },
                 multiStrike: { id: 'multiStrike', actions: ['fight'], recovery: 0.4, maxTargets: 4 },
@@ -1595,32 +1596,41 @@
             _applyVitalDamage(recordOrUnit, amount = 0, context = {}) {
                 return YAW_UNIT_CONTAINMENT.applyVitalDamage(recordOrUnit, amount, context);
             },
-            _chewDamageValue(actor, target, options = {}) {
+            _chewDamageContribution(actor, target, options = {}) {
                 if (!actor || !target) return 0;
                 const mode = options.mode === 'combat' ? 'combat' : 'adventure';
-                const actors = [...new Set((options.actors || [actor]).filter(unit => unit && this._isLivingCreature(unit)))];
-                const primary = actors[0] || actor;
-                const contribution = actors.reduce((sum, unit, index) => {
-                    const weight = index === 0 ? 1 : 0.5;
-                    return sum + Math.max(1, Number(unit.Feas) || 10) * weight;
-                }, 0);
-                const purpose = `chew:${actors.map(unit => this._unitSelectionId(unit)).join('|')}`;
+                const contribution = Math.max(1, Number(actor.Feas) || 10);
+                const purpose = `chew:${this._unitSelectionId(actor)}`;
                 const rating = mode === 'combat'
-                    ? this._combatActionRating(contribution, primary, target, purpose)
-                    : this._explorationActionRating(contribution, primary, target, purpose);
+                    ? this._combatActionRating(contribution, actor, target, purpose)
+                    : this._explorationActionRating(contribution, actor, target, purpose);
                 const variance = mode === 'combat'
-                    ? this._combatDamageVariance(primary, target, purpose)
-                    : this._explorationDamageVariance(primary, target, purpose);
+                    ? this._combatDamageVariance(actor, target, purpose)
+                    : this._explorationDamageVariance(actor, target, purpose);
                 const defense = Number(this._effectiveCon?.(target) ?? target.con ?? 10);
-                const sizeGap = (Number(primary.size) || 0) - (Number(target.size) || 0);
+                const sizeGap = (Number(actor.size) || 0) - (Number(target.size) || 0);
                 const sizeModifier = Math.max(-6, Math.min(6, sizeGap * 1.5));
-                const baseDamage = Math.max(1, Math.floor(
+                return Math.max(1, Math.floor(
                     (rating - defense * 0.3 + variance + sizeModifier)
-                    * (Number(this._physicalDamageMultiplier?.(primary, target)) || 1)
+                    * (Number(this._physicalDamageMultiplier?.(actor, target)) || 1)
                 ));
-                return options.multiEffect
+            },
+            _chewDamageBreakdown(actor, target, options = {}) {
+                if (!actor || !target) return { damage: 0, baseDamage: 0, contributions: [] };
+                const actors = [...new Set((options.actors || [actor]).filter(unit => unit && this._isLivingCreature(unit)))];
+                const contributions = actors.map(unit => ({
+                    actor: unit,
+                    damage: this._chewDamageContribution(unit, target, options)
+                }));
+                const baseDamage = contributions.reduce((sum, entry) => sum + entry.damage, 0);
+                const damage = options.multiEffect
                     ? this._multiInteractionScaleValue(baseDamage, options.multiEffect)
                     : baseDamage;
+                return { damage, baseDamage, contributions };
+            },
+            _chewDamageValue(actor, target, options = {}) {
+                const breakdown = this._chewDamageBreakdown(actor, target, options);
+                return breakdown.damage;
             },
             _resolveChewAttack(actor, target, options = {}) {
                 if (!actor || !target || actor === target || !this._isLivingCreature(target)) {
@@ -1629,7 +1639,8 @@
                 const targetWasParty = this.party.includes(target);
                 const targetWasHostile = target.disposition === this.DISPOSITION.ENEMY;
                 const actors = [...new Set((options.actors || [actor]).filter(unit => unit && this._isLivingCreature(unit)))];
-                const damage = this._chewDamageValue(actor, target, { ...options, actors });
+                const breakdown = this._chewDamageBreakdown(actor, target, { ...options, actors });
+                const damage = breakdown.damage;
                 this._applyVitalDamage(target, damage, {
                     source: actors.length > 1 ? 'group-chew' : 'chew',
                     terminal: false
@@ -1647,6 +1658,7 @@
                     depleted,
                     target,
                     actors,
+                    contributions: breakdown.contributions,
                     vitalRemaining: Math.max(0, Number(target.vitalRemaining) || 0),
                     conditionRemaining: Math.max(0, Number(target.CPun) || 0)
                 };
@@ -2795,6 +2807,10 @@
                 return YAW_COMBAT_RULES.assignCombatRows(this, units);
             },
 
+            _prepareCombatRows(units) {
+                return YAW_COMBAT_RULES.prepareCombatRows(this, units);
+            },
+
             _isPhysicalCombatAction(action) {
                 return YAW_COMBAT_RULES.isPhysicalCombatAction(action);
             },
@@ -3492,6 +3508,12 @@
             _companionControlDescription(control) {
                 return YAW_PARTY_MANAGEMENT.controlDescription(this, control);
             },
+            _companionPreferredRowLabel(preferredRow) {
+                return YAW_PARTY_MANAGEMENT.preferredRowLabel(this, preferredRow);
+            },
+            _companionPreferredRowDescription(preferredRow) {
+                return YAW_PARTY_MANAGEMENT.preferredRowDescription(this, preferredRow);
+            },
             setPartyAIOrder(index, order) {
                 return YAW_PARTY_MANAGEMENT.setAIOrder(this, index, order);
             },
@@ -3506,6 +3528,9 @@
             },
             setCompanionControl(index, control) {
                 return YAW_PARTY_MANAGEMENT.setControl(this, index, control);
+            },
+            setCompanionPreferredRow(index, preferredRow) {
+                return YAW_PARTY_MANAGEMENT.setPreferredRow(this, index, preferredRow);
             },
             showCompanionBehavior(index) {
                 return YAW_PARTY_MANAGEMENT.showBehavior(this, index);
@@ -3847,25 +3872,20 @@
             },
             _selectGroupFeastPrimary(actors, target) {
                 const candidates = (actors || []).filter(actor => actor && actor !== target);
-                const assessed = candidates.map(actor => {
-                    const helperBonus = candidates
-                        .filter(helper => helper !== actor)
-                        .reduce((sum, helper) => sum + Math.floor((helper.Feas || 10) * 0.5), 0);
-                    const assessment = this._assessFeastAttempt(actor, target, { helperBonus });
-                    return {
-                        actor,
-                        assessment,
-                        canOverpower: assessment.succeeds,
-                        canFit: assessment.canAttempt
-                    };
-                }).sort((left, right) => Number(right.canOverpower) - Number(left.canOverpower)
-                    || (right.assessment.actorScore || 0) - (left.assessment.actorScore || 0));
-                const primaryEntry = assessed.find(entry => entry.canFit) || null;
+                // A group can help a swallow succeed, but it cannot quietly change
+                // who is doing the swallowing. Selection order is the player-facing
+                // contract: the first selected actor is the sole container owner.
+                const primary = candidates[0] || null;
+                const helpers = candidates.slice(1);
+                const helperBonus = helpers.reduce((sum, helper) => sum + Math.floor((helper.Feas || 10) * 0.5), 0);
+                const assessment = primary
+                    ? this._assessFeastAttempt(primary, target, { helperBonus })
+                    : null;
                 return {
-                    primary: primaryEntry?.actor || null,
-                    canOverpower: Boolean(primaryEntry?.canOverpower),
-                    assessment: primaryEntry?.assessment || null,
-                    capacityActor: primaryEntry?.actor || candidates[0] || null
+                    primary,
+                    canOverpower: Boolean(assessment?.succeeds),
+                    assessment,
+                    capacityActor: primary
                 };
             },
 

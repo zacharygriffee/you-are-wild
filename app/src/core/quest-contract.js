@@ -853,16 +853,16 @@ const YAW_QUEST_CONTRACT = {
             };
             return {
                 ...common,
-                title: 'Guide the Route',
+                title: 'Patrol the Route',
                 titleKey: 'quest.procedural.escort.title',
-                description: 'Guide the traveler through each marked checkpoint.',
+                description: 'Patrol each marked checkpoint, then report back to the original giver.',
                 descriptionKey: 'quest.procedural.escort.description',
-                turnInPolicy: { type: this.POLICIES.NAMED_LOCATION, location: { ...destination, label: 'Safe destination' } },
+                turnInPolicy: { type: this.POLICIES.ORIGINAL_GIVER, giverId: common.giverId },
                 objectives: [{
                     type: 'escort',
                     checkpoints: [
                         { ...midpoint, label: 'Route checkpoint' },
-                        { ...destination, label: 'Safe destination' }
+                        { ...destination, label: 'Patrol boundary' }
                     ]
                 }],
                 turnInRequired: true

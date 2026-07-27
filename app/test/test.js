@@ -9771,7 +9771,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'quest.objective.consume': 'Consume',
           'quest.objective.seduce': 'Seduce',
           'quest.objective.travel': 'Travel to',
-          'quest.objective.escort': 'Escort to',
+          'quest.objective.escort': 'Patrol',
           'quest.objective.deliver': 'Deliver',
           'quest.objective.recover': 'Recover',
           'quest.procedural.hunt.title': 'Hunt: {species}',
@@ -9782,8 +9782,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'quest.procedural.deliver.description': 'Carry the protected parcel to the marked destination.',
           'quest.procedural.survey.title': 'Survey the Wilds',
           'quest.procedural.survey.description': 'Reach the marked area and record a safe route.',
-          'quest.procedural.escort.title': 'Guide the Route',
-          'quest.procedural.escort.description': 'Guide the traveler through each marked checkpoint.',
+          'quest.procedural.escort.title': 'Patrol the Route',
+          'quest.procedural.escort.description': 'Patrol each marked checkpoint, then report back to the original giver.',
           'quest.procedural.recover.title': 'Recover the Waystone Sigil',
           'quest.procedural.recover.description': 'Search the marked area for a protected waystone sigil.',
           'quest.untitled': 'Untitled Quest',
@@ -9970,7 +9970,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'quest.objective.consume': 'Consumir',
           'quest.objective.seduce': 'Seducir',
           'quest.objective.travel': 'Viajar a',
-          'quest.objective.escort': 'Escoltar a',
+          'quest.objective.escort': 'Patrullar',
           'quest.objective.deliver': 'Entregar',
           'quest.objective.recover': 'Recuperar',
           'quest.procedural.hunt.title': 'Caza: {species}',
@@ -9981,8 +9981,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'quest.procedural.deliver.description': 'Lleva el paquete protegido al destino marcado.',
           'quest.procedural.survey.title': 'Explorar las tierras salvajes',
           'quest.procedural.survey.description': 'Llega a la zona marcada y registra una ruta segura.',
-          'quest.procedural.escort.title': 'Guiar la ruta',
-          'quest.procedural.escort.description': 'Guía a la persona viajera por cada punto de ruta marcado.',
+          'quest.procedural.escort.title': 'Patrullar la ruta',
+          'quest.procedural.escort.description': 'Patrulla cada punto de ruta marcado y luego informa a quien dio la misión.',
           'quest.procedural.recover.title': 'Recuperar el sigilo de piedra guía',
           'quest.procedural.recover.description': 'Busca en la zona marcada un sigilo de piedra guía protegido.',
           'quest.untitled': 'Mision sin titulo',
@@ -25663,6 +25663,41 @@ test('Procedural delivery grants a protected parcel and consumes it only at its 
   assertEqual(App.turnInQuest(App.quests[0].id), true, 'Delivery should turn in at the named destination');
   assertEqual(App.inventory.some(item => item.definitionId === 'core:sealed_parcel'), false, 'Successful delivery should consume the protected parcel');
   assertEqual(App.quests[0].lifecycleState, 'turned_in', 'Successful delivery should reach canonical Turned In state');
+});
+
+test('Procedural route patrol grants its promised reward when reported to the original giver', () => {
+  const { App } = loadAppForCombat(() => 0.25);
+  App.worldMeta = { seed: 'route-escort-reward-seed', generatorVersion: 6 };
+  App.player = makeUnit('You', { id: 'route-escort-player', level: 2, xp: 0, xpToNext: 100, gold: 0 });
+  App.party = [App.player];
+  App.inventory = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.exploredTiles = new Set();
+  App.autoSave = () => true;
+  const giver = makeUnit('Trail Guide', { id: 'route-escort-giver', disposition: App.DISPOSITION.QUEST_GIVER });
+  const quest = App.generateProceduralQuest('escort', { giver, origin: App.location, sequence: 1 });
+  const promised = { ...quest.reward };
+
+  App.acceptQuest(quest, giver);
+  const objective = App.quests[0].objectives[0];
+  assertEqual(objective.type, 'escort', 'Patrol the Route should retain its ordered checkpoint objective');
+  assertEqual(App.quests[0].turnInPolicy.type, 'original_giver', 'Patrol the Route should require a report to its original giver');
+  for (const checkpoint of objective.checkpoints) {
+    App.location = { x: checkpoint.x, y: checkpoint.y };
+    App._updateQuestProgress('escort', { x: checkpoint.x, y: checkpoint.y });
+  }
+  assertEqual(App.quests[0].lifecycleState, 'ready_for_turn_in', 'Completing every route checkpoint should make the patrol ready to report');
+  assertEqual(App._questTurnInEligibility(App.quests[0]).ok, false, 'The patrol boundary should not remotely award the reward');
+  App.location = { x: 0, y: 0 };
+  App.creatures = [giver];
+  assertEqual(App._questTurnInEligibility(App.quests[0]).ok, true, 'The original giver should authorize the completed patrol turn-in');
+  assertEqual(App.turnInQuest(App.quests[0].id, { giverId: giver.id }), true, 'Patrol the Route should turn in successfully with its original giver');
+  assertEqual(App.player.xp, promised.xp, 'Patrol the Route turn-in should grant its promised XP');
+  assertEqual(App.player.gold, promised.gold, 'Patrol the Route turn-in should grant its promised gold');
+  assertEqual(App.quests[0].rewardClaimed, true, 'Patrol the Route reward should be recorded as claimed');
+  App.turnInQuest(App.quests[0].id);
+  assertEqual(App.player.gold, promised.gold, 'Patrol the Route should not grant its reward a second time');
 });
 
 test('Procedural recover quests inject their protected objective only when searching the marked tile', () => {

@@ -62,7 +62,7 @@ const YAW_COMBAT_SCENE = {
         const selectionActorId = app.targetSelection.actorId;
         if (selectionActorId && actorId && selectionActorId !== actorId && selectionActorId !== currentActor?.id && selectionActorId !== currentActor?.name) return null;
         const action = app.targetSelection.action || 'action';
-        const actionLabel = app._uiLabel(action);
+        const actionLabel = app._combatActionLabel?.(action) || app._uiLabel(action);
         const actorName = currentActor?.name || app._label('ui.combat', 'Combat');
         return {
             action,

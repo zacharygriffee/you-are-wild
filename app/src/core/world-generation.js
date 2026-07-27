@@ -120,6 +120,53 @@ const WorldGen = (() => {
                 encounterMultiplier: 1
             };
         }
+        // v7 deliberately gives a new standard-adventure world a longer
+        // onboarding runway.  Existing v4-v6 saves retain their exact world
+        // contract: this is a generation-version change, not a retroactive
+        // difficulty rewrite.
+        if (version >= 7) {
+            if (distance <= 2) {
+                return {
+                    version,
+                    band: 'protected',
+                    distance,
+                    hostileAllowed: false,
+                    maxHostiles: 0,
+                    maxDifficulty: 0,
+                    allowAmbush: false,
+                    allowReinforcement: false,
+                    allowHostileStructures: false,
+                    encounterMultiplier: 0
+                };
+            }
+            if (distance <= 10) {
+                const multipliers = { 3: 0.12, 4: 0.18, 5: 0.28, 6: 0.4, 7: 0.52, 8: 0.64, 9: 0.76, 10: 0.88 };
+                return {
+                    version,
+                    band: 'opening',
+                    distance,
+                    hostileAllowed: true,
+                    maxHostiles: 1,
+                    maxDifficulty: 1,
+                    allowAmbush: false,
+                    allowReinforcement: false,
+                    allowHostileStructures: false,
+                    encounterMultiplier: multipliers[distance] || 0.88
+                };
+            }
+            return {
+                version,
+                band: 'wilderness',
+                distance,
+                hostileAllowed: true,
+                maxHostiles: null,
+                maxDifficulty: null,
+                allowAmbush: true,
+                allowReinforcement: true,
+                allowHostileStructures: true,
+                encounterMultiplier: 1
+            };
+        }
         if (distance <= 1) {
             return {
                 version,

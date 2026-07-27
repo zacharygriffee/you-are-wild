@@ -2141,6 +2141,11 @@ async function checkViewport(browser, name, width, height) {
     const controlShelf = root?.querySelector('.holdings-control-shelf');
     const tabRow = root?.querySelector('.holdings-tabs');
     const ownerRow = root?.querySelector('.holdings-owner-row');
+    const mobileExit = Array.from(root?.querySelectorAll('.mobile-screen-exit-bar') || []).find(control => {
+      const rect = control.getBoundingClientRect?.();
+      const style = getComputedStyle(control);
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect && rect.width > 0 && rect.height > 0;
+    });
     const statsSummary = root?.querySelector('.holdings-character-summary');
     const app = document.getElementById('app');
     const stage = document.querySelector('#app > .stage');
@@ -2150,6 +2155,7 @@ async function checkViewport(browser, name, width, height) {
     const controlShelfRect = controlShelf?.getBoundingClientRect();
     const tabRowRect = tabRow?.getBoundingClientRect();
     const ownerRect = ownerRow?.getBoundingClientRect();
+    const mobileExitRect = mobileExit?.getBoundingClientRect();
     const statsSummaryRect = statsSummary?.getBoundingClientRect();
     const ownerChips = Array.from(root?.querySelectorAll('[data-command-control="select-holdings-owner"]') || []);
     return {
@@ -2174,6 +2180,7 @@ async function checkViewport(browser, name, width, height) {
       ownerAboveStatsSummary: Boolean(ownerRect && statsSummaryRect && ownerRect.bottom <= statsSummaryRect.top + 1),
       controlsBelowBody: Boolean(controlShelfRect && bodyRect && bodyRect.bottom <= controlShelfRect.top + 1),
       tabsNearDialogBottom: Boolean(tabRowRect && rect && rect.bottom - tabRowRect.bottom <= 2 + parseFloat(getComputedStyle(controlShelf).paddingBottom || '0')),
+      tabsClearOfMobileExit: Boolean(tabRowRect && mobileExitRect && (tabRowRect.bottom <= mobileExitRect.top + 1 || tabRowRect.top >= mobileExitRect.bottom - 1)),
       appClass: app?.classList.contains('holdings-window-open') || false,
       stageInert: stage?.hasAttribute('inert') || false,
       focusTrapIsDialog: App._focusTrap?.container === dialog,
@@ -2200,6 +2207,7 @@ async function checkViewport(browser, name, width, height) {
   if (width <= 1024) {
     assert.strictEqual(holdingsWindow.controlsBelowBody, true, `${name}: mobile Holdings controls should sit below the scrollable body`);
     assert.strictEqual(holdingsWindow.tabsNearDialogBottom, true, `${name}: mobile Holdings tabs should stay near the dialog bottom safe area`);
+    assert.strictEqual(holdingsWindow.tabsClearOfMobileExit, true, `${name}: mobile Holdings section tabs should stay clear of the fixed Back bar`);
   } else {
     assert.strictEqual(holdingsWindow.ownerAboveBody, true, `${name}: desktop Holdings owner selector should stay above the body`);
     assert.strictEqual(holdingsWindow.ownerAboveStatsSummary, true, `${name}: desktop Holdings owner selector should stay above the stats summary`);
@@ -3731,7 +3739,7 @@ async function checkViewport(browser, name, width, height) {
           beltOverflowY: getComputedStyle(belt).overflowY
         };
       });
-      const intentLabels = ['Fight', 'Talk', 'Eat', 'Play', 'Feed', 'Flee'];
+      const intentLabels = ['Fight', 'Talk', 'Feast', 'Play', 'Feed', 'Flee'];
       for (const label of intentLabels) {
         const match = groupIntentPhase.buttonRects.find(button => button.text.includes(label));
         assert(match, `${name}: group intent phase should expose ${label}`);
@@ -3772,7 +3780,7 @@ async function checkViewport(browser, name, width, height) {
       const cancel = groupConfirmPhase.buttonRects.find(button => button.text === 'Cancel Group');
       assert(confirm && cancel, `${name}: group confirm phase should expose intent-owned commit and Cancel Group controls`);
       assert(confirm.bottom <= groupConfirmPhase.dockTop + 1 && cancel.bottom <= groupConfirmPhase.dockTop + 1, `${name}: group confirm controls should stay above the fixed dock`);
-      assert(!groupConfirmPhase.buttonRects.some(button => button.text.includes('Talk') || button.text.includes('Eat') || button.text.includes('Play')), `${name}: group confirm phase should not keep the full intent grid visible`);
+      assert(!groupConfirmPhase.buttonRects.some(button => button.text.includes('Talk') || button.text.includes('Feast') || button.text.includes('Play')), `${name}: group confirm phase should not keep the full intent grid visible`);
       assert(groupConfirmPhase.beltScrollHeight <= groupConfirmPhase.beltClientHeight + 1, `${name}: group confirm phase should not require internal belt scrolling at 412x915`);
     }
     await page.evaluate(() => {

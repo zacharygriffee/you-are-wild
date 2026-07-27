@@ -17,7 +17,7 @@ implementation.
 | Responsive UI, accessibility, localization | 313–1365px viewport matrix; 12–20px text; English/Spanish key parity and source guards; touch targets; high contrast; reduced motion; dialog relationships, isolation, focus trap/restoration, file-origin browser flows, unified mobile Roster, persistent composer, and five bounded UI Contribution V1 slots | Automated acceptance is complete for the current contract. Continue only for demonstrated defects, physical-device findings, or release-candidate smoke evidence. |
 | Map, tileset, interior, and terrain | Deterministic start/recovery anchors; traversal and interior graph tests; Textured/Lightweight/partial-pack semantic equivalence; degraded fallback; artifact audit; cold/cache/zero-atlas browser fixtures; live route/POI desktop/mobile review | Automated acceptance complete. Continue coast/cave/building/art-pack visual review when representative states surface in operator play. |
 | Optional/deferred contracts | Feature-placement doctrine plus implemented Media Repository, Asset Bundle V1, Tileset Pack V1, Sprite Pack V1, Locale Pack V1, Resource Ledger V1, Combat Technique V1, Recovery Mode V1, narration ownership, and provider seams | Current V1 foundations are complete. New row/reach rules, Offer Piece mass-ledger replacement, richer recovery profiles, and concrete new media providers remain deferred pending their named decision and evidence. |
-| Delivery | Full build, viewport, interaction, branding, artifact, and diff gates | Local gates must be rerun for the exact 0.15.0 candidate. CI observation, rollback selection, release date, push, and Sites publication remain operator-gated. |
+| Delivery | Full build, viewport, interaction, branding, artifact, and diff gates | Local gates must be rerun for the exact 0.16.0 candidate. CI observation, rollback selection, push, and Sites publication remain operator-gated. |
 
 ## Cross-cutting invariant ledger
 
@@ -47,6 +47,7 @@ operator-mediated decision:
 | Mobile Interaction Flow V2 extension | Accepted unified Roster sheet, persistent context composer, and five permissioned declarative UI Contribution V1 slots with rendered responsive/focus acceptance | Any additional public slot or separate phone navigation model requires a new product decision; no current implementation gap exists |
 | Concrete new media providers | Provider-neutral Media Repository and owned `media:provide` adapter seam | Reviewed AI-source workflow, packaged-runtime bridge policy, or OPFS value |
 | New row/reach rules beyond Combat Technique V1 | Row-Blocking V2, committed-failure contract, and technique-scoped equipment/reach/area/status profiles | Grab/pull/snare, new blockers, and defensive-value design |
+| Combat Event Pacing V1 | Deterministic turn queue, shared combat composer, autonomous companion controller, and bounded Scene Feed | Player-configurable presentation pacing between automatic combat events; preserve deterministic simulation/save semantics and design a separate priority contract before adding instant or reaction abilities |
 
 ## Dormant definitions are not capabilities
 
@@ -62,6 +63,12 @@ desktop/mobile acceptance.
 Talk/Flee expansion and bespoke Fight callbacks remain design slices, not
 missing router flags. Ordinary Fight continues to provide Basic Attack through
 the deterministic resolver when no authored technique is selected.
+
+Natural sleep and the legacy combat-sleep effect are likewise dormant rather
+than a current gameplay capability. The persisted fields and vocabulary remain
+compatible with older saves and future authored content, but the runtime does
+not assign, display, or apply sleep until Sleep/Rest V2 defines its full wake,
+risk, reward, and player-choice loop.
 
 ## Evidence commands
 

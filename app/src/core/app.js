@@ -183,6 +183,11 @@
             _uiLabel(key) {
                 return YAW_UI_TEXT.uiLabel(this, key);
             },
+            _combatActionLabel(action) {
+                return action === 'feast'
+                    ? this._label('action.feast.menu', 'Feast')
+                    : this._uiLabel(action);
+            },
             _escapeJsString(value) {
                 return String(value ?? '').replace(/\\/g, "\\\\").replace(/'/g, "\\'");
             },
@@ -267,6 +272,9 @@
             },
             _applyTimeOfDayToCreature(creature) {
                 return YAW_TIME_SYSTEM.applyTimeOfDayToCreature(this, creature);
+            },
+            _sleepSystemEnabled() {
+                return YAW_TIME_SYSTEM.sleepEnabled();
             },
             _contextActionKeys() {
                 return YAW_CENTER_CONTEXT.actionKeys(this);
@@ -693,6 +701,7 @@
                     title: 'Camp Safety',
                     description: 'A traveler wants the local predators thinned out.',
                     objectives: [{ id: 'camp_safety_wolf', type: 'defeat', species: 'wolf', required: 1, label: 'Defeat a Wolfkin' }],
+                    turnInPolicy: { type: 'original_giver' },
                     worldDirectives: [{
                         id: 'nearby_wolf',
                         type: 'place',
@@ -903,7 +912,7 @@
             tileDeltas: new Map(),
             exploredTiles: new Set(),
             superPatchMap: new Map(),
-            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 6, mapModsHash: 'core' },
+            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 7, mapModsHash: 'core' },
             PATCH_SIZE: 10,
             SUPER_PATCH_SIZE: 3, // 3x3 patches = 30x30 tiles per biome region
             currentBiome: 'forest',
@@ -3497,6 +3506,9 @@
             },
             setCompanionControl(index, control) {
                 return YAW_PARTY_MANAGEMENT.setControl(this, index, control);
+            },
+            showCompanionBehavior(index) {
+                return YAW_PARTY_MANAGEMENT.showBehavior(this, index);
             },
             _allyHealWounded(ally) {
                 return YAW_COMBAT_ALLIES.healWounded(this, ally);

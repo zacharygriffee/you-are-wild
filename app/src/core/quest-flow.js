@@ -657,18 +657,42 @@ const YAW_QUEST_FLOW = {
     grantReward(app, quest) {
         if (!quest || quest.rewardClaimed) return false;
         const reward = quest.reward || {};
+        const overflowItems = [];
+        let rewardTile = null;
         if (reward.xp) app.gainXP(reward.xp);
         if (reward.gold) app.player.gold = (app.player.gold || 0) + reward.gold;
-        for (const itemName of reward.items || []) {
+        for (const [index, itemName] of (reward.items || []).entries()) {
             const itemRef = itemName && typeof itemName === 'object'
                 ? itemName.definitionId || itemName.id || itemName.name
                 : itemName;
+            const quantity = itemName?.quantity || 1;
+            const item = {
+                id: `quest_item_${app._stableIdPart(quest.id, 'quest')}_${app._stableIdPart(itemName?.name || itemName)}_${index}`,
+                ...(itemName && typeof itemName === 'object' ? itemName : {})
+            };
             if (app._canAddInventoryItem(itemRef, itemName?.quantity || 1)) {
-                app._addInventoryItem(itemRef, {
-                    id: `quest_item_${app._stableIdPart(quest.id, 'quest')}_${app._stableIdPart(itemName?.name || itemName)}_${app.inventory.length}`,
-                    ...(itemName && typeof itemName === 'object' ? itemName : {})
-                });
+                app._addInventoryItem(itemRef, item);
+                continue;
             }
+            rewardTile ||= app._currentExplorationTile?.();
+            if (!rewardTile) return false;
+            if (!Array.isArray(rewardTile.items)) rewardTile.items = [];
+            const cached = app._createItemInstance(itemRef, {
+                ...item,
+                quantity,
+                questReward: true,
+                questRewardId: String(quest.id)
+            });
+            rewardTile.items.push(cached);
+            overflowItems.push(cached);
+        }
+        if (overflowItems.length > 0) {
+            app._persistCurrentExplorationTile?.(rewardTile);
+            const items = overflowItems.map(item => app._tileItemLabel?.(item) || item.name || app._label('ui.item', 'item')).join(', ');
+            const text = app._label('quest.rewardOverflow', 'Pack full: {items} placed here as a quest reward.', { items });
+            app.log.push({ text, type: 'loot' });
+            app._addTileEvent?.(text, 'loot');
+            app.showToast?.({ text, type: 'loot', importance: 'notable', dedupeKey: `quest-reward-overflow:${quest.id}` });
         }
         if (reward.recruit && app.party.length < app.MAX_PARTY_SIZE) {
             const recruit = app._normalizeUnit({ ...reward.recruit }, { disposition: app.DISPOSITION.PARTY, ally: true, obedient: true, willing: true });

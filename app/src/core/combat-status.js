@@ -47,6 +47,7 @@ const YAW_COMBAT_STATUS = {
     },
 
     wakeOnDamage(app, unit) {
+        if (!app?._sleepSystemEnabled?.()) return;
         if (unit?.status?.sleep) {
             delete unit.status.sleep;
             app.log.push({ text: app._label('combat.status.wakesOnHit', '{name} wakes from the hit!', { name: unit.name }), type: 'combat' });
@@ -65,7 +66,7 @@ const YAW_COMBAT_STATUS = {
             status.freeze.slowTurns = Math.max(status.freeze.slowTurns || 0, 2);
             return app._label('combat.status.frozen', '{name} is frozen in place and loses their turn!', { name: unit.name });
         }
-        if (status.sleep?.turns > 0) {
+        if (app._sleepSystemEnabled?.() && status.sleep?.turns > 0) {
             return app._label('combat.status.asleep', '{name} is asleep and cannot act!', { name: unit.name });
         }
         if (status.fear?.turns > 0) {
@@ -116,7 +117,7 @@ const YAW_COMBAT_STATUS = {
         if (actor?.burnAttack) target.status.burn = { dmg: 3, turns: 2 };
         if (actor?.freezeAttack) target.status.freeze = { skip: true, slowTurns: 2, source: 'combat' };
         if (actor?.stunAttack) target.status.stun = { turns: 1, source: 'combat' };
-        if (actor?.sleepAttack) target.status.sleep = { turns: 3, source: 'combat' };
+        if (_app?._sleepSystemEnabled?.() && actor?.sleepAttack) target.status.sleep = { turns: 3, source: 'combat' };
         if (actor?.charmAttack) target.status.charm = { turns: 2, by: actor.name, source: 'combat' };
         if (actor?.fearAttack || actor?.menacing) target.status.fear = { turns: 2, by: actor.name, source: 'combat' };
     },
@@ -124,6 +125,7 @@ const YAW_COMBAT_STATUS = {
     applyTechniqueStatus(app, actor, target, profile, dmg = 0) {
         const status = profile?.status;
         if (!status || !target || target.CPun <= 0 || Number(dmg) <= 0) return false;
+        if (status.effect === 'sleep' && !app?._sleepSystemEnabled?.()) return false;
         const roll = app?._combatStateRoll?.('combat-technique-status', actor, `${profile.key}:${app?._unitSelectionId?.(target) || target.id || target.name}`) ?? 1;
         if (roll >= status.chance) return false;
         target.status = target.status || {};
@@ -218,7 +220,7 @@ const YAW_COMBAT_STATUS = {
                 unit.status.freeze.slowTurns--;
                 if (unit.status.freeze.slowTurns <= 0 && !unit.status.freeze.skip) delete unit.status.freeze;
             }
-            if (unit.status.sleep) {
+            if (app._sleepSystemEnabled?.() && unit.status.sleep) {
                 unit.status.sleep.turns--;
                 if (unit.status.sleep.turns <= 0) delete unit.status.sleep;
             }

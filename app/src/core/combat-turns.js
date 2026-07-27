@@ -62,7 +62,9 @@ const YAW_COMBAT_TURNS = {
             !s.resolved &&
             s.round === app.combatState.round &&
             s.resolveAtIndex === app.combatState.currentTurn &&
-            s.participants.includes(currentUnit)
+            (typeof YAW_COMBAT_SYNC !== 'undefined'
+                ? YAW_COMBAT_SYNC.isParticipant(app, s, currentUnit)
+                : s.participants.includes(currentUnit))
         );
         if (activeSync) {
             app._resolveSyncAction(activeSync);
@@ -72,6 +74,19 @@ const YAW_COMBAT_TURNS = {
         const livingParty = app.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
         if (livingEnemies.length === 0) { app.endCombat(true); return; }
         if (livingParty.length === 0) { app.endCombat(false); return; }
+        const companionControl = app.party.includes(currentUnit) && currentUnit !== app.player
+            ? app._getCompanionControl?.(currentUnit)
+            : 'manual';
+        const committedGroup = companionControl !== 'manual' && typeof YAW_COMBAT_SYNC !== 'undefined'
+            ? YAW_COMBAT_SYNC.pendingParticipantAction(app, currentUnit)
+            : null;
+        if (committedGroup && app.combatState.currentTurn < committedGroup.resolveAtIndex) {
+            // A committed group participant waits for the collective resolution.
+            // This remains authoritative even if a restored queue lost actedThisRound.
+            entry.actedThisRound = true;
+            app.nextTurn();
+            return;
+        }
         if (entry.actedThisRound) { app.nextTurn(); return; }
         const statusSkip = app._skipTurnFromStatus(currentUnit);
         if (statusSkip) {
@@ -121,9 +136,6 @@ const YAW_COMBAT_TURNS = {
         app.renderMobileCombatToolbelt();
         app._writeCombatRefreshSnapshot();
         const isParty = app.party.includes(currentUnit);
-        const companionControl = isParty && currentUnit !== app.player
-            ? app._getCompanionControl?.(currentUnit)
-            : 'manual';
         if (isParty && (currentUnit.name === app.player.name || companionControl === 'manual')) {
             app.showActorActions(currentUnit);
         } else if (isParty) {
@@ -142,6 +154,21 @@ const YAW_COMBAT_TURNS = {
         app.combatState.turnQueue = living.map(c => ({ unit: c, initiative: app._calcInitiative(c), actedThisRound: false })).sort((a, b) => b.initiative - a.initiative);
         app.combatState.currentTurn = 0;
         app.combatState.round++;
+        // A group reserved from the previous round owns every participant's
+        // individual turn until its scheduled collective resolution point.
+        // This prevents autonomous behavior from breaking the commitment.
+        app.combatState.syncActions = (app.combatState.syncActions || []).filter(sync =>
+            !sync.resolved && Number(sync.round || 0) >= app.combatState.round
+        );
+        for (const sync of app.combatState.syncActions) {
+            if (sync.round !== app.combatState.round) continue;
+            for (const entry of app.combatState.turnQueue) {
+                const participant = typeof YAW_COMBAT_SYNC !== 'undefined'
+                    ? YAW_COMBAT_SYNC.isParticipant(app, sync, entry.unit)
+                    : sync.participants.includes(entry.unit);
+                if (participant) entry.actedThisRound = true;
+            }
+        }
         app._pushLog(app._label('combat.roundDivider', '--- Round {round} ---', { round: app.combatState.round }), 'combat', { phase: 'round' });
         app.renderMobileCombatToolbelt();
         for (const c of living) {

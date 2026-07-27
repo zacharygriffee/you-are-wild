@@ -44,6 +44,11 @@ const YAW_UNIT_CARD = {
             const statsLabel = app._escapeHtml(app._label('ui.holdings', 'Holdings'));
             const statsTitle = app._escapeHtml(app._label('party.statsFor', 'Show stats for {name}', { name: unitName }));
             detailControls.push(`<button class="action-btn" data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats" title="${statsTitle}" aria-label="${statsTitle}" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">${statsLabel}</button>`);
+            if (isAlly) {
+                const behaviorLabel = app._escapeHtml(app._label('party.manageBehavior', 'Behavior'));
+                const behaviorTitle = app._escapeHtml(app._label('party.manageBehaviorFor', 'Behavior: {name}', { name: unitName }));
+                detailControls.push(`<button class="action-btn" data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-companion-behavior" title="${behaviorTitle}" aria-label="${behaviorTitle}" onclick="event.stopPropagation();App.showCompanionBehavior(${index})">${behaviorLabel}</button>`);
+            }
             if (isPlayer) {
                 const inventoryLabel = app._escapeHtml(app._uiLabel('inventory'));
                 const inventoryTitle = app._escapeHtml(app._label('action.inventory', 'Items'));

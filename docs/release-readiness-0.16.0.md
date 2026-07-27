@@ -1,20 +1,22 @@
 # Release Readiness — 0.16.0
 
-Status: **approved select-group alpha — awaiting Sites deployment**
+Status: **published select-group alpha**
 
 This checklist records evidence for the exact 0.16.0 Core Game Maturity alpha.
-A checked local gate is not evidence of a green remote workflow, rollback
-readiness, or completed Sites deployment.
+The operator confirmed its Sites publication. A checked local gate is still
+not evidence of a green remote workflow or a retained rollback artifact.
 
-Local evidence last refreshed: **2026-07-26**.
+Local evidence last refreshed: **2026-07-27**.
 
 ## Documentation and identity
 
-- [x] `app/release.json` identifies 0.16.0 as a dated select-group alpha.
+- [x] `app/release.json` identified 0.16.0 as a dated select-group alpha at
+  publication; the active working manifest now identifies 0.17.0 development.
 - [x] English and Spanish Added, Changed, Fixed, Known Issues, and
   compatibility copy describe the Core Game Maturity candidate.
 - [x] `docs/releases/0.16.0.md` records the candidate boundary.
-- [x] Package, first-party module, and Sites release mirrors identify 0.16.0.
+- [x] Package, first-party module, and Sites release mirrors identified 0.16.0
+  at publication; active development mirrors now advance to 0.17.0.
 - [x] The Sites changelog retains 0.15.0 as history and presents 0.16.0 first.
 - [x] The generated 9:16 0.16 poster is inspected and installed.
 - [x] Alpha release date and select-group channel are assigned by the operator.
@@ -52,23 +54,35 @@ Local evidence last refreshed: **2026-07-26**.
 
 ## Exact-candidate local gates
 
-- [x] `npm run full-build`
+- [x] 2026-07-27 exact root `npm run full-build` (application full build,
+  complete test suite, viewport and interaction checks, hosted build, and
+  map/tileset artifact acceptance).
+- [x] `npm --prefix app run test` across the complete test suite, including
+  the integrated Camp Safety accept → reserved target → defeat → original-giver
+  reward regression.
 - [x] `npm run audit:branding`
 - [x] `git diff --check`
+- [x] 2026-07-27 focused regression run: core suite, interaction checks,
+  viewport matrix, hosted artifact audit, and map/tileset acceptance.
 - [x] Independent Sites build and server-render suite (5/5)
 - [x] Generated offline and hosted artifacts identify 0.16.0
 - [x] Desktop and 390x844 mobile Sites entry, changelog, What's New, tutorial,
   Review Map, Holdings/Perks, and Roster smoke without horizontal overflow.
-- [ ] Live quest acceptance/defeat/turn-in in the exact candidate. Acceptance
-  is verified; Camp Safety now reserves a deterministic nearby Wolfkin, but
-  the resulting full defeat and original-giver turn-in sequence still needs
-  one exact-candidate browser smoke.
+- [x] Exact-candidate Chromium smoke: Camp Safety acceptance reserves one
+  Wolfkin three tiles away, Defeat reaches Ready for Turn-In without a reward,
+  the original camp guide authorizes the return, and the reward pays once.
+  The smoke completed with no browser page errors. The automated contract also
+  covers acceptance, exact one-time defeat credit, eligibility, reward grant,
+  and duplicate-turn-in prevention.
 - [x] Live companion Duty/Stance/Control changes in the exact candidate.
 - [x] Live Perk Frontier selection and respec in the exact candidate.
 - [x] Live progressive Chew smoke covers exploration damage plus survivor
   flight, combat reach-failure narration, and grouped Feast planning; grounded
   single/group/multi-target damage remains covered by the exact-candidate
   automated suite.
+- [x] Committed group plans reserve autonomous participants in both same-round
+  and next-round scheduling, so companion autonomy cannot replace the selected
+  group action before it resolves.
 
 ## External/operator gates
 
@@ -77,7 +91,8 @@ Local evidence last refreshed: **2026-07-26**.
 - [ ] Rollback-ready Sites version selected
 - [x] English and Spanish release copy reconciled with the exact artifact
 - [x] Operator approves 0.16.0 as a select-group alpha
-- [ ] Operator explicitly approves the final Sites deployment
+- [x] Operator confirms the final Sites deployment
 
-Sites publication remains operator-mediated and is never performed
-automatically.
+The remaining unchecked external gates are historical release-process evidence,
+not blockers to the already published select-group alpha. Sites publication
+remains operator-mediated and is never performed automatically.

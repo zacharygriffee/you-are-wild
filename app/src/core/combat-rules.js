@@ -74,8 +74,8 @@ const YAW_COMBAT_RULES = {
         if (unit.disposition === app?.DISPOSITION?.CORPSE || unit.corpse || unit.isRemains) return false;
         if (unit.combatRow !== 'front') return false;
         const status = unit.status || {};
-        if (status.stunned || status.frozen || status.asleep || status.recovering || status.restrainedSkip) return false;
-        if (status.freeze?.turns > 0 || status.sleep?.turns > 0 || status.stun?.turns > 0) return false;
+        if (status.stunned || status.frozen || (app?._sleepSystemEnabled?.() && status.asleep) || status.recovering || status.restrainedSkip) return false;
+        if (status.freeze?.turns > 0 || (app?._sleepSystemEnabled?.() && status.sleep?.turns > 0) || status.stun?.turns > 0) return false;
         return true;
     },
 
@@ -232,7 +232,13 @@ const YAW_COMBAT_RULES = {
         const actorText = actorList.map(unit => unit?.name).filter(Boolean).join(', ') || app._label('target.actorRole', 'Actor');
         const targetName = target?.name || app._label('target.targetRole', 'Target');
         const actionLabel = app._uiLabel ? app._uiLabel(String(action || '').replace(/^sync_/, '')) : String(action || 'action');
-        const attemptVerb = app.settings?.language === 'es'
+        // Interface language is content policy state, not a combat setting. Reading
+        // it here keeps dynamically switched locales grammatically correct without
+        // requiring a combat-state rebuild.
+        const language = typeof CONTENT !== 'undefined'
+            ? CONTENT?.preferences?.language
+            : app.settings?.language;
+        const attemptVerb = language === 'es'
             ? (actorList.length === 1 ? 'intenta' : 'intentan')
             : (actorList.length === 1 ? 'tries' : 'try');
         const reason = reach?.reason || 'cannot-reach';

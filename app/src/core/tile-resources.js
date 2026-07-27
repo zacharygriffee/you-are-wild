@@ -99,6 +99,10 @@ const YAW_TILE_RESOURCES = {
 
     canSearchHere(app, tile = app._currentExplorationTile()) {
         if (!tile) return false;
+        // Recovery objectives deliberately yield their protected item through
+        // Search at the marked tile. Keep that action visible even when the
+        // tile is not otherwise a resource site or loot-bearing structure.
+        if (app._questSearchItemForLocation?.(tile)) return true;
         if (tile.overlays?.poi?.category === 'resourceSite' && !tile.resourceSearched) return true;
         const struct = tile.structure ? app.STRUCTURES[tile.structure] : null;
         return Boolean(struct?.lootTable && !tile.structureLooted);
@@ -109,7 +113,10 @@ const YAW_TILE_RESOURCES = {
     },
 
     tileItemLabel(app, item) {
-        return item?.name || String(item || app._label('ui.item', 'item'));
+        const name = item?.name || String(item || app._label('ui.item', 'item'));
+        return item?.questReward
+            ? app._label('quest.rewardCache.item', 'Quest reward: {item}', { item: name })
+            : name;
     },
 
     tileItemSummary(app, tile = app._currentExplorationTile()) {

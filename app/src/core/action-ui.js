@@ -4,8 +4,8 @@
  */
 
 const YAW_ACTION_UI = {
-    iconButton(app, key, icon, onclick, extraClass = '', attrs = '') {
-        const label = app._uiLabel(key);
+    iconButton(app, key, icon, onclick, extraClass = '', attrs = '', labelOverride = '') {
+        const label = labelOverride || app._uiLabel(key);
         const preview = app._multiInteractionCurrentPreview?.(key) || null;
         const baseTitle = app._actionCostTitle ? app._actionCostTitle(key, label) : label;
         const titleLabel = preview ? `${baseTitle} · ${preview.text}` : baseTitle;
@@ -26,7 +26,8 @@ const YAW_ACTION_UI = {
         const isPlanned = app._combatPendingIntent?.() === key;
         const classes = [extraClass, (isSelected || isPlanned) ? 'selected' : ''].filter(Boolean).join(' ');
         const intent = app._escapeHtml(key);
-        return app._iconActionButton(key, app._actionIcon(key), `event.stopPropagation();App.executeCombatIntent('${key}')`, classes, `data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"`);
+        const label = app._combatActionLabel?.(key) || app._uiLabel(key);
+        return this.iconButton(app, key, app._actionIcon(key), `event.stopPropagation();App.executeCombatIntent('${key}')`, classes, `data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"`, label);
     },
 
     legend(app, keys) {

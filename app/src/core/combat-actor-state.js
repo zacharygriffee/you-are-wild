@@ -15,7 +15,6 @@ const YAW_COMBAT_ACTOR_STATE = {
         const status = unit.status || {};
         if (status.stun?.turns > 0) return 'stun';
         if (status.freeze?.skip) return 'freeze';
-        if (status.sleep?.turns > 0) return 'sleep';
         if (status.restrained?.turns > 0) return 'restrained';
         if (status.stuck?.turns > 0) return 'stuck';
         if (status.enveloped?.turns > 0) return 'enveloped';
@@ -202,7 +201,9 @@ const YAW_COMBAT_ACTOR_STATE = {
         return (app.combatState.syncActions || []).find(sync =>
             !sync.resolved &&
             sync.round === app.combatState.round &&
-            (sync.participants.includes(unit) || (sync.targets?.length ? sync.targets : [sync.target]).includes(unit))
+            ((typeof YAW_COMBAT_SYNC !== 'undefined' && YAW_COMBAT_SYNC.isParticipant(app, sync, unit))
+                || (sync.targets?.length ? sync.targets : [sync.target]).some(target =>
+                    target === unit || app._unitSelectionId(target) === app._unitSelectionId(unit)))
         ) || null;
     },
 

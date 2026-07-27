@@ -282,7 +282,7 @@ const YAW_CREATE_FLOW = {
         app.worldMeta = {
             worldId: `world_${Date.now()}`,
             seed: `${name}:${app.selectedSpecies}:default`,
-            generatorVersion: 6,
+            generatorVersion: 7,
             mapModsHash: 'core',
             createdAt: Date.now()
         };

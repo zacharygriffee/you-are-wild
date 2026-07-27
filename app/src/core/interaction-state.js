@@ -183,7 +183,9 @@ const YAW_INTERACTION_STATE = {
             const base = String(action).replace(/^sync_/, '');
             return app._label(`combat.sync.action.${base}`, fallback);
         }
-        return app._uiLabel ? app._uiLabel(action) : action;
+        return app.combatState?.active && app._combatActionLabel
+            ? app._combatActionLabel(action)
+            : (app._uiLabel ? app._uiLabel(action) : action);
     },
 
     actorLabel(app, count = 1) {
@@ -254,9 +256,7 @@ const YAW_INTERACTION_STATE = {
             if (markedTargets.length) {
                 targetText = this.unitNames(app, markedTargets, app._label('target.none', 'None'));
                 targetCount = markedTargets.length;
-            } else {
-                targetText = app._label('target.pickTarget', 'Pick target');
-            }
+            } else targetText = app._label('target.pickTarget', 'Pick target');
             intentId = app._combatPendingIntent?.() || 'choose';
             intentText = this.actionLabel(app, intentId, app._label('ui.chooseAction', 'Choose'));
         } else if (app.syncSelection?.active) {
@@ -295,7 +295,10 @@ const YAW_INTERACTION_STATE = {
                 targetText = this.unitNames(app, markedTargets, app._label('target.none', 'None'));
                 targetCount = markedTargets.length;
             } else {
-                targetText = app._label('target.pickTarget', 'Pick target');
+                const action = app.targetSelection.action || 'action';
+                targetText = ['feed', 'feast'].includes(action)
+                    ? app._label('variant.pickTarget', 'Pick a target to choose {action} options.', { action: this.actionLabel(app, action, action) })
+                    : app._label('target.pickTarget', 'Pick target');
             }
         } else {
             const markedTargets = app._combatMarkedTargets?.() || [];

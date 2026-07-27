@@ -23,7 +23,10 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
             return app._label('mobile.combat.markTargets', 'Mark target(s) for {action}.', { action: app._combatPendingIntent?.() ? app._uiLabel(app._combatPendingIntent()) : app._label('ui.chooseAction', 'Choose') });
         }
         if (app.targetSelection?.source === 'combat') {
-            const action = app._uiLabel(app.targetSelection.action || 'action');
+            const action = app._combatActionLabel?.(app.targetSelection.action || 'action') || app._uiLabel(app.targetSelection.action || 'action');
+            if (['feed', 'feast'].includes(app.targetSelection.action)) {
+                return app._label('variant.pickTarget', 'Pick a target to choose {action} options.', { action });
+            }
             return app._label('mobile.combat.markTargets', 'Mark target(s) for {action}.', { action });
         }
         if (actor && (actor === app.player || app.party.includes(actor))) {
@@ -95,10 +98,12 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
             return '';
         }
         if (app.targetSelection?.source === 'combat') {
-            const actionLabel = app._uiLabel(app.targetSelection.action || 'action');
+            const actionLabel = app._combatActionLabel?.(app.targetSelection.action || 'action') || app._uiLabel(app.targetSelection.action || 'action');
             const cancelAction = app._label('target.cancelAction', 'Cancel {action}', { action: actionLabel }) || cancelLabel;
             const markedTargets = app._combatMarkedTargets?.() || [];
-            const confirmAction = markedTargets.length > 1
+            const confirmAction = ['feed', 'feast'].includes(app.targetSelection.action)
+                ? app._label('variant.chooseForTarget', 'Choose {action} option for selected target', { action: actionLabel })
+                : markedTargets.length > 1
                 ? app._label('target.confirmAction.count', 'Use {action} on {count} selected targets', { action: actionLabel, count: markedTargets.length })
                 : app._label('target.confirmAction', 'Use {action} on selected target', { action: actionLabel });
             const confirm = markedTargets.length

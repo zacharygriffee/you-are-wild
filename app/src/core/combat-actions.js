@@ -129,11 +129,13 @@ const YAW_COMBAT_ACTIONS = {
             return app._renderCombatPanelTray?.() || '';
         }
         if (app.targetSelection?.source === 'combat') {
-            const actionText = app._uiLabel(app.targetSelection.action || 'action');
+            const actionText = app._combatActionLabel?.(app.targetSelection.action || 'action') || app._uiLabel(app.targetSelection.action || 'action');
             const cancelLabel = app._escapeHtml(app._label('target.cancelAction', 'Cancel {action}', { action: actionText }));
             const label = app._escapeHtml(app._label('target.controls', 'Target controls'));
             const markedTargets = app._combatMarkedTargets?.() || [];
-            const confirmLabel = app._escapeHtml(markedTargets.length > 1
+            const confirmLabel = app._escapeHtml(['feed', 'feast'].includes(app.targetSelection.action)
+                ? app._label('variant.chooseForTarget', 'Choose {action} option for selected target', { action: actionText })
+                : markedTargets.length > 1
                 ? app._label('target.confirmAction.count', 'Use {action} on {count} selected targets', { action: actionText, count: markedTargets.length })
                 : app._label('target.confirmAction', 'Use {action} on selected target', { action: actionText }));
             const confirm = markedTargets.length

@@ -322,8 +322,8 @@ const YAW_BALANCE_SYSTEM = {
                 changesMaximumCondition: false
             },
             standardAdventure: {
-                protectedRadius: 1,
-                openingRadius: 5,
+                protectedRadius: 2,
+                openingRadius: 10,
                 openingMaxHostiles: 1,
                 openingMaxDifficulty: 1,
                 openingAllowsAmbush: false,

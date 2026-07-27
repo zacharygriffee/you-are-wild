@@ -4,6 +4,11 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Camp Safety now follows the same physical quest-return contract as other
+  original-giver work: accepting it reserves one nearby Wolfkin, its Defeat
+  objective becomes ready to report without awarding gold or XP, and only the
+  original camp guide can grant the reward once. An exact built-artifact
+  Chromium smoke and an integrated regression cover the complete loop.
 - Quest World Directives V1 lets core and module-authored quests declaratively
   reserve required creatures/items or boost matching encounter/search weights
   inside a bounded area. Core owns deterministic reachable placement, stable

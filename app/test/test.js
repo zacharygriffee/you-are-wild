@@ -697,10 +697,10 @@ test('App object is defined', () => {
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.16.0', 'Release manifest should identify the current release version');
-  assertEqual(releaseInfo.status, 'released', 'The approved alpha should be marked as released');
-  assertEqual(releaseInfo.channel, 'alpha', 'The select-group alpha must not impersonate the general public-preview channel');
-  assertEqual(releaseInfo.releasedAt, '2026-07-26', 'The approved alpha should carry its operator-assigned release date');
+  assertEqual(releaseInfo.version, '0.17.0', 'Release manifest should identify the active development version');
+  assertEqual(releaseInfo.status, 'draft', 'The next version should remain a development draft until it is approved for release');
+  assertEqual(releaseInfo.channel, 'development', 'The next version should not impersonate the published select-group alpha channel');
+  assertEqual(releaseInfo.releasedAt, null, 'A development draft should not claim a release date');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Quest Contract V2')), 'Release notes should describe the complete quest lifecycle');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Companion Behavior V2')), 'Release notes should describe the companion behavior contract');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('select playtest group')), 'Release notes should disclose the alpha distribution boundary');
@@ -714,7 +714,7 @@ test('Release manifest is the authoritative public version and compatibility sou
 test('Elemental Species package stays within the supported species contribution boundary', () => {
   const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
   const manifest = packageData.module.manifest;
-  assertEqual(packageData.gameVersion, '0.16.0', 'Elemental package production metadata should target the current game build');
+  assertEqual(packageData.gameVersion, '0.17.0', 'Elemental package production metadata should target the current game build');
   assertEqual(manifest.minGameVersion, '0.14.0', 'Elemental package should require the doctrine-tested module surface');
   assertEqual(manifest.contentRating, 'safe', 'Elemental species identity content should remain safe-rated');
   assertEqual(manifest.permissions.length, 1, 'Elemental package should request only one capability');
@@ -5878,6 +5878,60 @@ test('Companion Behavior V2 ranks every Duty and Stance combination through lega
   }
 });
 
+test('Autonomous companions digest instead of repeatedly attempting an over-capacity Feast', () => {
+  const behavior = new Function('window', `${companionBehaviorContent}\nreturn YAW_COMPANION_BEHAVIOR;`)({});
+  const player = { id: 'player', name: 'You', CPun: 100, MPun: 100 };
+  const prey = { id: 'held-prey', name: 'Held Prey', size: 3, inStomach: true, state: 'contained' };
+  const ally = {
+    id: 'full-ally',
+    name: 'Full Ally',
+    CPun: 100,
+    MPun: 100,
+    hunger: 80,
+    stomach: [prey],
+    companionBehavior: { version: 2, duty: 'guard', stance: 'passive', control: 'deterministic' }
+  };
+  const enemy = { id: 'enemy', name: 'Enemy', disposition: 'enemy', CPun: 60, MPun: 100, size: 1, Figh: 8 };
+  const log = [];
+  let digested = null;
+  let turns = 0;
+  const app = {
+    player,
+    party: [player, ally],
+    creatures: [enemy],
+    DISPOSITION: { ENEMY: 'enemy' },
+    _buildPanelInteractionCommand(context) { return { ...context }; },
+    _validateInteractionCommand() { return { ok: true }; },
+    _canScavengeCorpse() { return false; },
+    _canFitPrey() { return false; },
+    _activeContainedPrey() { return [prey]; },
+    _containerUsed() { return 3; },
+    _containerCapacity() { return 3; },
+    _combatStateRoll() { return 0.25; },
+    _label(_key, fallback, values = {}) { return fallback.replace(/\{(\w+)\}/g, (_match, key) => values[key] ?? `{${key}}`); },
+    _uiLabel(key) { return key; },
+    _pushLog(text) { log.push(text); },
+    renderLog() {},
+    emitSceneBeat() {},
+    digestContained(holderType, holderIndex, container, containedIndex) {
+      digested = { holderType, holderIndex, container, containedIndex };
+      return true;
+    },
+    nextTurn() { turns++; }
+  };
+
+  const ranked = behavior.ranked(app, ally);
+  assertEqual(ranked[0].action, 'digest', 'A hungry full companion should prioritize digestion');
+  assertEqual(ranked.some(candidate => candidate.action === 'feast'), false, 'Over-capacity Feast candidates should not be offered to autonomy');
+  behavior.takeTurn(app, ally);
+  assertEqual(digested?.holderType, 'party', 'Autonomous digestion should use the canonical party-container route');
+  assertEqual(digested?.holderIndex, 1, 'Autonomous digestion should act on the current companion');
+  assertEqual(digested?.container, 'stomach', 'Autonomous digestion should target the stomach that blocked Feast');
+  assertEqual(digested?.containedIndex, 0, 'Autonomous digestion should select its active contained target');
+  assertEqual(turns, 0, 'Successful digestion owns its normal turn transition instead of double-advancing');
+  assert(log.some(text => text.includes('digest')), 'Autonomous digestion should retain a readable decision log');
+});
+
 test('Companion AI control falls back to deterministic autonomy without losing a choice', () => {
   const behavior = new Function('window', `${companionBehaviorContent}\nreturn YAW_COMPANION_BEHAVIOR;`)({});
   const player = { id: 'player', name: 'You', CPun: 100, MPun: 100 };
@@ -5990,7 +6044,7 @@ test('Action UI helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/action-ui.js'") < buildContent.indexOf("'src/core/app.js'"), 'Action UI helper should load before app.js');
   assert(buildContent.indexOf("'src/core/action-ui.js'") < buildContent.indexOf("'src/core/combat-actions.js'"), 'Action UI helper should load before combat actions that reuse action wrappers');
   assertContains(actionUiContent, 'const YAW_ACTION_UI = {', 'Action UI helper should expose the action UI service');
-  assertContains(actionUiContent, "iconButton(app, key, icon, onclick, extraClass = '', attrs = '')", 'Action UI helper should own icon action buttons');
+  assertContains(actionUiContent, "iconButton(app, key, icon, onclick, extraClass = '', attrs = '', labelOverride = '')", 'Action UI helper should own icon action buttons');
   assertContains(actionUiContent, 'combatIntentButton(app, key, actor, extraClass = \'\')', 'Action UI helper should own combat intent button selected-state rendering');
   assertContains(actionUiContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="${intent}"', 'Shared combat intent buttons should identify the combat composer surface');
   assertContains(combatIntentsContent, "app.selectTarget(action)", 'Combat intent dispatcher should route target-bearing utilities through target selection');
@@ -6556,6 +6610,7 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(inventoryPanelContent, 'role="dialog" aria-modal="true"', 'Holdings should render as a focused pseudo-window');
   assertContains(inventoryPanelContent, 'class="holdings-control-shelf" data-surface-role="holdings-controls"', 'Holdings tabs and owner selector should share a responsive control shelf');
   assertContains(templateContent, '.holdings-control-shelf {', 'Holdings control shelf should have bounded layout styling');
+  assertContains(templateContent, 'padding-bottom: calc(72px + env(safe-area-inset-bottom));', 'Mobile Holdings controls should reserve space above the fixed Back bar');
   assertContains(templateContent, 'grid-template-rows: auto minmax(0, 1fr) auto;', 'Mobile Holdings should reserve its bottom row for controls');
   assertContains(templateContent, '.holdings-window-body {\n                grid-row: 2;', 'Mobile Holdings content should remain in the scrollable middle row');
   assertContains(templateContent, '.holdings-control-shelf {\n                grid-row: 3;', 'Mobile Holdings controls should occupy the bottom row');
@@ -9925,7 +9980,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'perk.name.bunny_soft_charm': 'Soft Charm', 'perk.desc.bunny_soft_charm': 'Flir +2.',
           'perk.name.dragon_ancient_bulk': 'Ancient Bulk', 'perk.desc.dragon_ancient_bulk': 'CON +3.',
           'perk.name.dragon_dominant_appetite': 'Dominant Appetite', 'perk.desc.dragon_dominant_appetite': 'Feas +3.',
-          'action.fight': 'Fight', 'action.flirt': 'Talk', 'action.fuck': 'Play', 'action.feast': 'Eat', 'action.feed': 'Feed', 'action.flee': 'Flee', 'action.moveRow': 'Move Row', 'action.advance': 'Advance', 'action.retreat': 'Retreat', 'action.sync': 'Sync', 'action.skip': 'Skip', 'action.search': 'Search', 'action.rest': 'Rest', 'action.inventory': 'Items', 'action.interact': 'Interact', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge', 'action.scavenged': 'Scavenged',
+          'action.fight': 'Fight', 'action.flirt': 'Talk', 'action.fuck': 'Play', 'action.feast': 'Eat', 'action.feast.menu': 'Feast', 'action.feed': 'Feed', 'action.flee': 'Flee', 'action.moveRow': 'Move Row', 'action.advance': 'Advance', 'action.retreat': 'Retreat', 'action.sync': 'Sync', 'action.skip': 'Skip', 'action.search': 'Search', 'action.rest': 'Rest', 'action.inventory': 'Items', 'action.interact': 'Interact', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge', 'action.scavenged': 'Scavenged', 'variant.pickTarget': 'Pick a target to choose {action} options.', 'variant.chooseForTarget': 'Choose {action} option for selected target',
           'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}', 'inventory.full': 'Inventory is full.', 'inventory.empty': 'Empty.', 'inventory.noItemsMatch': 'No items match the current filter.', 'inventory.titleWithCount': 'Inventory ({count}/{max})', 'inventory.equippedSection': 'Equipped', 'holdings.titleWithInventory': 'Holdings / Inventory ({count}/{max})', 'holdings.umbrella': 'Character / Holdings', 'holdings.tabs': 'Holdings sections', 'holdings.pack': 'Pack / Inventory', 'holdings.containers': 'Containers', 'holdings.ground': 'Here / Ground', 'inventory.equipped': 'Equipped {name}.', 'inventory.unequipped': 'Unequipped {name}.', 'inventory.noEquipment': 'No equipment', 'inventory.noBonus': 'No bonus', 'inventory.effect': 'Effect',
           'item.category': 'Category', 'item.category.all': 'All', 'item.category.consumable': 'Consumable', 'item.category.equipment': 'Equipment', 'item.category.valuable': 'Valuable', 'item.category.material': 'Trade Good', 'item.category.misc': 'Misc', 'item.sort': 'Sort', 'item.sort.name': 'Name', 'item.sort.type': 'Type', 'item.sort.valueDesc': 'Value ↓', 'item.sort.valueAsc': 'Value ↑', 'item.unknown': 'Unknown',
           'trade.title': '{name} Trade', 'trade.gold': 'Gold: {gold}', 'trade.quantity': 'Qty {count}', 'trade.goldCompact': '{amount}g', 'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}', 'trade.needGold': 'You need {price} gold to buy {name}.', 'trade.confirmBuy': 'Buy {name} for {price} gold?', 'trade.purchaseCancelled': 'Purchase cancelled: {name}.', 'trade.bought': 'Bought {name} for {price} gold.', 'trade.sold': 'Sold {name} for {price} gold.', 'trade.noStockMatches': 'No stock matches the current filter.', 'trade.noItemsToSell': 'No items to sell.', 'trade.noInventoryMatches': 'No inventory items match the current filter.',
@@ -10124,7 +10179,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'perk.name.bunny_soft_charm': 'Encanto suave', 'perk.desc.bunny_soft_charm': 'Coqueteo +2.',
           'perk.name.dragon_ancient_bulk': 'Corpulencia ancestral', 'perk.desc.dragon_ancient_bulk': 'CON +3.',
           'perk.name.dragon_dominant_appetite': 'Apetito dominante', 'perk.desc.dragon_dominant_appetite': 'Festin +3.',
-          'action.fight': 'Luchar', 'action.flirt': 'Hablar', 'action.fuck': 'Jugar', 'action.feast': 'Comer', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.advance': 'Avanzar', 'action.retreat': 'Retirarse', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.search': 'Buscar', 'action.rest': 'Descansar', 'action.inventory': 'Objetos', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar', 'action.scavenged': 'Rebuscado',
+          'action.fight': 'Luchar', 'action.flirt': 'Hablar', 'action.fuck': 'Jugar', 'action.feast': 'Comer', 'action.feast.menu': 'Festin', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.advance': 'Avanzar', 'action.retreat': 'Retirarse', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.search': 'Buscar', 'action.rest': 'Descansar', 'action.inventory': 'Objetos', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar', 'action.scavenged': 'Rebuscado', 'variant.pickTarget': 'Elige un objetivo para escoger opciones de {action}.', 'variant.chooseForTarget': 'Escoge una opcion de {action} para el objetivo seleccionado',
           'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}', 'inventory.full': 'El inventario esta lleno.', 'inventory.empty': 'Vacio.', 'inventory.noItemsMatch': 'No hay articulos que coincidan con el filtro actual.', 'inventory.titleWithCount': 'Inventario ({count}/{max})', 'inventory.equippedSection': 'Equipado', 'holdings.titleWithInventory': 'Inventario / Pertenencias ({count}/{max})', 'holdings.umbrella': 'Personaje / Pertenencias', 'holdings.tabs': 'Secciones de pertenencias', 'holdings.pack': 'Mochila / Inventario', 'holdings.containers': 'Contenedores', 'holdings.ground': 'Aqui / Suelo', 'inventory.equipped': 'Equipaste {name}.', 'inventory.unequipped': 'Desequipaste {name}.', 'inventory.noEquipment': 'Sin equipo', 'inventory.noBonus': 'Sin bonificacion', 'inventory.effect': 'Efecto',
           'item.category': 'Categoria', 'item.category.all': 'Todos', 'item.category.consumable': 'Consumible', 'item.category.equipment': 'Equipo', 'item.category.valuable': 'Valioso', 'item.category.material': 'Mercancía', 'item.category.misc': 'Varios', 'item.sort': 'Ordenar', 'item.sort.name': 'Nombre', 'item.sort.type': 'Tipo', 'item.sort.valueDesc': 'Valor ↓', 'item.sort.valueAsc': 'Valor ↑', 'item.unknown': 'Desconocido',
           'trade.title': 'Comercio con {name}', 'trade.gold': 'Oro: {gold}', 'trade.quantity': 'Cant. {count}', 'trade.goldCompact': '{amount} oro', 'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}', 'trade.needGold': 'Necesitas {price} de oro para comprar {name}.', 'trade.confirmBuy': 'Comprar {name} por {price} de oro?', 'trade.purchaseCancelled': 'Compra cancelada: {name}.', 'trade.bought': 'Compraste {name} por {price} de oro.', 'trade.sold': 'Vendiste {name} por {price} de oro.', 'trade.noStockMatches': 'No hay existencias que coincidan con el filtro actual.', 'trade.noItemsToSell': 'No hay articulos para vender.', 'trade.noInventoryMatches': 'No hay articulos de inventario que coincidan con el filtro actual.',
@@ -10183,6 +10238,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   );
   appWindow.__testContent.locales.en['explore.flirt.successPlayer'] = '{actor} talk with {target}. Their guard lowers. Spirit rises to {current}/{max}.';
   appWindow.__testContent.locales.es['explore.flirt.successPlayer'] = '{actor} hablas con {target}. Baja la guardia. El animo sube a {current}/{max}.';
+  appWindow.__testContent.locales.en['explore.fuck.successPlayer'] = '{actor} play with {target}. Spirit rises to {current}/{max}.';
+  appWindow.__testContent.locales.es['explore.fuck.successPlayer'] = '{actor} juegas con {target}. El animo sube a {current}/{max}.';
   const originalUpdateLanguage = App.updateLanguage.bind(App);
   App.__testLanguage = 'en';
   App.updateLanguage = function(language) {
@@ -10210,7 +10267,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
         'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Hablar, Comer, Jugar, Alimentar o Huir. Selecciona actores, marca objetivos, elige una intencion y confirma planes grupales. Cada intencion tiene su propio alcance: las acciones sociales pueden cruzar filas, mientras que los intentos fisicos pueden fallar y explicarse en la Scene Feed.',
         'structure.notEnterable': 'No hay un interior para entrar aqui.',
         'capacity.tooFull': '{actor} lo intenta, pero no hay espacio para {target} en {owner} {container}.',
-        'target.manyToManyActionDone': '{actors} actuan juntos con {targets}: {results}'
+        'target.manyToManyActionDone': '{actors} actuan juntos con {targets}: {results}',
+        'combat.reachFail.flyingContact': '{actors} {attemptVerb} {action} contra {target}, pero el contacto cercano no alcanza a {target} en el aire. Usa alcance volador, antiaereo, o contacto explicito.'
       }
     };
     const value = currentOverrides[this.__testLanguage]?.[key];
@@ -11186,14 +11244,14 @@ test('Feast attempts stay selectable while labels preview resistance clues and o
   assertEqual(resistant.App.creatures.includes(bunny), true, 'A resisted target should remain present');
 
   bunny.asleep = true;
-  bunny.Flee = 20;
+  bunny.Flee = 1;
   resolution = resistant.App._resolveActionVariants('feast', { actors: [plant], targets: [bunny] });
   const sleeping = resolution.variants.find(variant => variant.id === 'swallow');
-  assertEqual(sleeping.available, true, 'An asleep target should remain selectable');
-  assertEqual(sleeping.outlook, 'favorable', 'Sleep should improve the attempt outlook');
-  assertContains(sleeping.hint, 'asleep', 'The attempt label should surface sleep as a favorable clue');
+  assertEqual(sleeping.available, true, 'Dormant legacy sleep data should not block a physically possible attempt');
+  assertEqual(resistant.App._assessFeastAttempt(plant, bunny).asleep, false, 'Disabled sleep should not affect attempt assessment');
+  assertNotContains(sleeping.hint, 'asleep', 'Disabled sleep should not appear as a favorable clue');
   const successText = resistant.App._doSubAction('feast', 'swallow', plant, bunny, plant.name, 's');
-  assertContains(successText, 'eat', 'The favorable committed Feast should resolve normally');
+  assertContains(successText, 'eat', 'A low-resistance Feast should resolve normally without a sleep bonus');
   assertEqual(plant.stomach.some(prey => prey === bunny || prey.id === bunny.id), true, 'A successful Feast should contain the selected target');
 
   const blocked = loadAppForCombat(() => 0);
@@ -11300,7 +11358,7 @@ test('Actor-scoped variants live beneath contextual interaction buttons without 
 });
 
 test('Combat Feast variant Back restores the selected target and chosen variant reaches InteractionPlan', () => {
-  const { App, elements } = loadAppForCombat(() => 0);
+  const { App, elements, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'variant-feast-player', Feas: 80, size: 8, appetite: 8 });
   const enemy = makeUnit('Enemy', { id: 'variant-feast-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 10, MPun: 100, Flee: 1, size: 2, combatRow: 'front' });
   App.player = player;
@@ -11312,11 +11370,15 @@ test('Combat Feast variant Back restores the selected target and chosen variant 
   App.nextTurn = function() { this._variantTurnAdvanced = true; };
 
   App.selectTarget('feast');
+  assertContains(elements.get('selection-sentence').innerHTML, 'Feast', 'Combat should name Feast as the parent intent instead of implying an immediate Eat action');
+  assertContains(elements.get('selection-sentence').innerHTML, 'Pick a target to choose Feast options.', 'Combat Feast targeting should explain that a variant choice follows target selection');
   App.toggleCombatTarget(enemy.id);
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'Choose Feast option for selected target', 'Combat Feast confirmation should lead to the submenu rather than imply an immediate Eat resolution');
   assertEqual(App.confirmCombatTargets(), true, 'Feast should enter variant selection after target confirmation');
   assertEqual(App.feedSelection?.action, 'feast', 'Compatibility selection state should preserve the canonical action');
   assertEqual(App.feedSelection?.variants.some(variant => variant.id === 'swallow' && variant.available), true, 'Feast picker should expose Swallow');
   assertEqual(App.feedSelection?.variants.some(variant => variant.id === 'chew' && variant.available), true, 'Feast picker should expose enabled Chew');
+  assertContains(body.innerHTML, 'data-command-intent="feast:chew"', 'Combat Feast submenu should expose the stable Chew option after target confirmation');
   assertEqual(App.cancelActionVariantSelection(), true, 'Back should leave contextual variant selection');
   assertEqual(App.targetSelection?.action, 'feast', 'Back should restore the pending Feast intent');
   assertEqual(App._combatMarkedTargets()[0], enemy, 'Back should restore the exact marked target');
@@ -11994,7 +12056,150 @@ test('Sync action resolves only at stored round and queue index', () => {
 	  assertEqual(enemy.CPun, 100, 'Sync should not affect the target before the stored queue index');
 	  App.combatState.currentTurn = 1;
 	  App.processTurn();
-	  assert(enemy.CPun < 100 || enemy.disposition === App.DISPOSITION.CORPSE, 'Sync did not resolve at slowest participant index');
+  assert(enemy.CPun < 100 || enemy.disposition === App.DISPOSITION.CORPSE, 'Sync did not resolve at slowest participant index');
+});
+
+test('Committed group participants hold before group resolution instead of running autonomy', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'group-hold-player' });
+  const autonomous = makeUnit('Autonomous Ally', { id: 'group-hold-autonomous' });
+  const anchor = makeUnit('Group Anchor', { id: 'group-hold-anchor' });
+  const enemy = makeUnit('Enemy', { id: 'group-hold-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, autonomous, anchor];
+  App.creatures = [enemy];
+  App._getCompanionControl = unit => unit === autonomous ? 'deterministic' : 'manual';
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 1,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [
+      { unit: player, initiative: 30, actedThisRound: true },
+      { unit: autonomous, initiative: 20, actedThisRound: false },
+      { unit: anchor, initiative: 10, actedThisRound: false },
+      { unit: enemy, initiative: 5, actedThisRound: false }
+    ],
+    syncActions: [{
+      type: 'sync_fight',
+      participants: [player, autonomous, anchor],
+      target: enemy,
+      targets: [enemy],
+      resolveAtIndex: 2,
+      resolved: false,
+      round: 1
+    }]
+  };
+  let autonomousTurns = 0;
+  let advances = 0;
+  let resolutions = 0;
+  App.allyTurn = function() { autonomousTurns++; };
+  App.nextTurn = function() { advances++; };
+  App._resolveSyncAction = function(sync) { resolutions++; sync.resolved = true; };
+
+  App.processTurn();
+  assertEqual(autonomousTurns, 0, 'A queued group participant must not take an autonomous individual action before the group resolves');
+  assertEqual(advances, 1, 'The pending participant should hold and pass to the group resolution point');
+  assertEqual(App.combatState.turnQueue[1].actedThisRound, true, 'The group commitment should repair a missing acted flag on a restored turn queue');
+
+  App.combatState.currentTurn = 2;
+  App.processTurn();
+  assertEqual(resolutions, 1, 'The group action should resolve once its designated participant turn is reached');
+  assertEqual(autonomousTurns, 0, 'Autonomy must not replace the collective action at its resolution point');
+});
+
+test('Queueing a group strategy reserves every autonomous participant before its resolution turn', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'group-reserve-player' });
+  const autonomous = makeUnit('Autonomous Ally', { id: 'group-reserve-autonomous' });
+  const anchor = makeUnit('Group Anchor', { id: 'group-reserve-anchor' });
+  const enemy = makeUnit('Enemy', { id: 'group-reserve-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, autonomous, anchor];
+  App.creatures = [enemy];
+  App._getCompanionControl = unit => unit === autonomous ? 'deterministic' : 'manual';
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [
+      { unit: player, initiative: 30, actedThisRound: false },
+      { unit: autonomous, initiative: 20, actedThisRound: false },
+      { unit: anchor, initiative: 10, actedThisRound: false },
+      { unit: enemy, initiative: 5, actedThisRound: false }
+    ],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App._syncParticipants = [player, autonomous, anchor];
+  App.nextTurn = function() {};
+
+  assertEqual(App.queueSyncAction('sync_flirt', enemy), true, 'Group Talk should queue successfully');
+  const sync = App.combatState.syncActions[0];
+  assertEqual(sync.resolveAtIndex, 2, 'Group Talk should resolve on the slowest participant turn');
+  assertEqual(App.combatState.turnQueue[0].actedThisRound, true, 'The group lead should be reserved by the queued strategy');
+  assertEqual(App.combatState.turnQueue[1].actedThisRound, true, 'An autonomous group participant should be reserved by the queued strategy');
+  assertEqual(App.combatState.turnQueue[2].actedThisRound, true, 'The resolving group participant should be reserved by the queued strategy');
+
+  let autonomousTurns = 0;
+  let advances = 0;
+  App.allyTurn = function() { autonomousTurns++; };
+  App.nextTurn = function() { advances++; };
+  App.combatState.currentTurn = 1;
+  App.processTurn();
+  assertEqual(autonomousTurns, 0, 'A reserved Group Talk participant must not make an autonomous individual choice');
+  assertEqual(advances, 1, 'The reserved participant should pass the turn toward the group resolution');
+});
+
+test('A group strategy with an already-acted helper is reserved into the next round', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const earlier = makeUnit('Earlier Ally', { id: 'group-next-earlier' });
+  const player = makeUnit('You', { id: 'group-next-player' });
+  const autonomous = makeUnit('Autonomous Ally', { id: 'group-next-autonomous' });
+  const enemy = makeUnit('Enemy', { id: 'group-next-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, earlier, autonomous];
+  App.creatures = [enemy];
+  App._getCompanionControl = unit => unit === autonomous ? 'deterministic' : 'manual';
+  App._calcInitiative = unit => ({
+    [earlier.id]: 30,
+    [player.id]: 20,
+    [autonomous.id]: 10,
+    [enemy.id]: 5
+  })[unit.id] || 1;
+  App.combatState = {
+    active: true,
+    round: 4,
+    currentTurn: 1,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [
+      { unit: earlier, initiative: 30, actedThisRound: true },
+      { unit: player, initiative: 20, actedThisRound: false },
+      { unit: autonomous, initiative: 10, actedThisRound: false },
+      { unit: enemy, initiative: 5, actedThisRound: false }
+    ],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App._syncParticipants = [player, earlier, autonomous];
+  App.nextTurn = function() {};
+
+  assertEqual(App.queueSyncAction('sync_flirt', enemy), true, 'A group strategy can be committed even when a selected helper acted earlier in the round');
+  const sync = App.combatState.syncActions[0];
+  assertEqual(sync.round, 5, 'A group with an elapsed helper turn should be scheduled for the next round');
+  assertContains(App.log[App.log.length - 1].text, 'reserved for next round', 'The queue result should clearly disclose next-round timing');
+
+  App.processTurn = function() {};
+  App._newRound();
+  assertEqual(App.combatState.round, 5, 'The combat clock should advance to the reserved group round');
+  assertEqual(App.combatState.turnQueue[0].actedThisRound, true, 'An earlier helper should remain reserved in the new round');
+  assertEqual(App.combatState.turnQueue[1].actedThisRound, true, 'The lead should remain reserved in the new round');
+  assertEqual(App.combatState.turnQueue[2].actedThisRound, true, 'The autonomous helper should remain reserved in the new round');
+  assertEqual(App.combatState.turnQueue[3].actedThisRound, false, 'Non-participants should retain their ordinary turns');
 });
 
 test('Sync failure and submissive recruit prompts localize', () => {
@@ -12509,7 +12714,7 @@ test('Stun skips one turn and then clears', () => {
   assertEqual(Boolean(unit.status.stun), false, 'Stun should clear after skip');
 });
 
-test('Sleep skips turns but wakes on damage', () => {
+test('Legacy sleep data is inert while the sleep system is disabled', () => {
   const { App } = loadAppForCombat(() => 0);
   const sleeper = makeUnit('Sleeper', { status: { sleep: { turns: 3 } } });
   const attacker = makeUnit('Attacker', { Figh: 30 });
@@ -12519,9 +12724,9 @@ test('Sleep skips turns but wakes on damage', () => {
   App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: sleeper, initiative: 10 }], syncActions: [] };
   App.nextTurn = function() { this._sleepSkipped = true; };
   App.processTurn();
-  assertEqual(App._sleepSkipped, true, 'Sleep should skip turn');
+  assertEqual(Boolean(App._sleepSkipped), false, 'Disabled sleep should not skip a turn');
   App.executeActionAgainstTarget('fight', attacker, sleeper);
-  assertEqual(Boolean(sleeper.status.sleep), false, 'Damage should wake sleeping unit');
+  assert(Boolean(sleeper.status.sleep), 'Disabled sleep should remain dormant rather than creating wake-on-hit behavior');
 });
 
 test('Charm reverses enemy target selection', () => {
@@ -16356,7 +16561,7 @@ test('Intent feast sub-action affects outside-combat resolution and cleanup', ()
   assertEqual(App.creatures.includes(prey), true, 'Outside-combat chew should preserve recoverable remains on the tile');
   assertEqual(App._isCorpse(prey), true, 'Outside-combat chew should convert the depleted target into remains');
   assertEqual(prey.source, 'chew', 'Outside-combat chew remains should retain their terminal cause');
-  assertContains(App.log.map(entry => entry.text).join('\n'), 'chews into', 'Sub-action result should be logged');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'chew into', 'Sub-action result should be logged in player voice');
 });
 
 test('Legacy forceFeed remains callable for compatibility but is hidden from the canonical picker', () => {
@@ -16948,7 +17153,7 @@ test('Single exploration action result logs localize', () => {
   seduce.App.settings.refractoryPeriod = true;
   seduce.App.updateLanguage('es');
   seduce.App.outsideActionForCreature('fuck', 'target-1');
-  assertContains(seduce.App.log[seduce.App.log.length - 1].text, 'Tu juega con Target', 'Single seduce result should localize');
+  assertContains(seduce.App.log[seduce.App.log.length - 1].text, 'Tu juegas con Target', 'Single seduce result should localize in second-person grammar');
   assertContains(seduce.App.log[seduce.App.log.length - 1].text, 'Target se relaja', 'Single seduce devoted suffix should localize');
   assertContains(seduce.App.log[seduce.App.log.length - 1].text, 'Target necesita un momento para respirar', 'Single seduce recovery suffix should localize');
 
@@ -17558,7 +17763,7 @@ test('Combat group planner maps Eat into progressive Feast resolution', () => {
   };
   [player, ally, enemy].forEach(unit => App._normalizeUnit(unit));
   App.activeActor = player;
-  App._combatActionRating = unit => unit.Feas;
+  App._combatActionRating = rating => rating;
   App._combatDamageVariance = () => 0;
   App._physicalDamageMultiplier = () => 1;
   App._effectiveCon = target => target.con;
@@ -20627,8 +20832,8 @@ test('Generator v5 route hierarchy removes short macro cycles while preserving b
   assertEqual(legacy.connections.join(','), 'east,south,west', 'Recorded Generator v4 worlds should retain their prior road topology');
 
   const { App } = loadAppForCombat();
-  assertEqual(App._defaultWorldMeta().generatorVersion, 6, 'New runs should use the clean-raster route hierarchy');
-  assertContains(createFlowContent, 'generatorVersion: 6', 'Character creation should record Generator v6 for new runs');
+  assertEqual(App._defaultWorldMeta().generatorVersion, 7, 'New runs should use the clean-raster route hierarchy with the extended onboarding safety contract');
+  assertContains(createFlowContent, 'generatorVersion: 7', 'Character creation should record Generator v7 for new runs');
 });
 
 test('Generator v6 rasterizes one-tile orthogonal routes without rewriting Generator v5', () => {
@@ -20864,7 +21069,7 @@ test('Versioned start area validation guarantees early route and rest access', (
   const WorldGen = loadWorldGenForTest();
   const { App, elements } = loadAppForCombat();
   const seeds = ['default', 'layout-a', 'layout-b', 'route-seed', 'coastal-seed', 'wet-start', 'mountain-start'];
-  for (const generatorVersion of [2, 3, 4, 5, 6]) {
+  for (const generatorVersion of [2, 3, 4, 5, 6, 7]) {
     for (const seed of seeds) {
     App.worldMeta = { worldId: `world-start-safe-v${generatorVersion}-${seed}`, seed, generatorVersion, mapModsHash: 'core' };
     App.worldMap = new Map();
@@ -20976,6 +21181,22 @@ test('Generator v4 exposes a protected Grove start and distance-scaled opening p
   assertEqual(wilderness.band, 'wilderness', 'Radius beyond five should restore the ordinary wilderness contract');
   assertEqual(wilderness.allowAmbush, true, 'Wilderness should restore authored ambush behavior');
   assertEqual(wilderness.allowReinforcement, true, 'Wilderness should restore authored reinforcement behavior');
+});
+
+test('Generator v7 extends the standard-adventure opening without rewriting earlier worlds', () => {
+  const WorldGen = loadWorldGenForTest();
+  const protectedTile = WorldGen.getStartSafetyPolicy({ generatorVersion: 7 }, 2, 0);
+  assertEqual(protectedTile.band, 'protected', 'Generator v7 should prevent hostile encounters through the immediate two-tile start radius');
+  assertEqual(protectedTile.hostileAllowed, false, 'Generator v7 protected tiles should reject hostiles');
+  const openingPolicies = [3, 4, 5, 6, 7, 8, 9, 10].map(distance => WorldGen.getStartSafetyPolicy({ generatorVersion: 7 }, distance, 0));
+  assert(openingPolicies.every(policy => policy.band === 'opening'), 'Generator v7 should maintain a single-hostile onboarding band through distance ten');
+  assert(openingPolicies.every(policy => policy.maxHostiles === 1 && policy.maxDifficulty === 1), 'Generator v7 onboarding encounters should remain tier-one and solo');
+  assert(openingPolicies.every(policy => !policy.allowAmbush && !policy.allowReinforcement), 'Generator v7 onboarding encounters should not ambush or reinforce');
+  for (let index = 1; index < openingPolicies.length; index++) {
+    assert(openingPolicies[index].encounterMultiplier > openingPolicies[index - 1].encounterMultiplier, 'Generator v7 encounter pressure should rise gradually across the onboarding band');
+  }
+  assertEqual(WorldGen.getStartSafetyPolicy({ generatorVersion: 7 }, 11, 0).band, 'wilderness', 'Generator v7 should restore full wilderness behavior beyond the onboarding band');
+  assertEqual(WorldGen.getStartSafetyPolicy({ generatorVersion: 6 }, 6, 0).band, 'wilderness', 'Generator v7 must not rewrite recorded v6 world behavior');
 });
 
 test('Generator v4 safety admission is preserved by the current generator for every core starter', () => {
@@ -21964,13 +22185,13 @@ test('Scout party role improves night review-map visibility while mobile play re
   assertNotContains(elements.get('mobile-mini-map').innerHTML, App.biomes.cave.icon, 'Mobile routine play should stay scoped to adjacent traversal even when review visibility improves');
 });
 
-test('Diurnal creatures spawned at night start asleep', () => {
+test('Diurnal creatures no longer receive incomplete sleep state at night', () => {
   const { App } = loadAppForCombat(() => 0);
   App.timeHour = 21;
   const bunny = { species: 'bunny', status: {} };
   App._applyTimeOfDayToCreature(bunny);
-  assert(bunny.status.sleep, 'Diurnal creature should receive sleep status at night');
-  assertEqual(bunny.asleep, true, 'Diurnal creature should be marked asleep at night');
+  assertEqual(Boolean(bunny.status.sleep), false, 'Disabled sleep should not be applied at night');
+  assertEqual(Boolean(bunny.asleep), false, 'Disabled sleep should not mark a creature asleep');
 });
 
 test('Combat target selection is rendered on creature panel cards', () => {
@@ -23740,7 +23961,7 @@ test('Player combat action controls localize in desktop composer', () => {
   const html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'aria-label="Luchar', 'Fight action should localize accessible label');
   assertContains(html, '<span class="action-caption">Hablar</span>', 'Flirt action should localize visible label');
-  assertContains(html, 'aria-label="Comer', 'Feast action should localize accessible label');
+  assertContains(html, 'aria-label="Festin', 'Combat Feast action should localize its menu label');
   assertContains(html, '<span class="action-caption">Jugar</span>', 'Play action label should localize visible label');
   assertContains(html, 'aria-label="Alimentar', 'Feed action should localize accessible label');
   assertNotContains(html, 'showInteractMenu', 'Combat action bar should keep creature interactions in party/creature panels');
@@ -23853,7 +24074,6 @@ test('Every core incapacitating combat state advances without requiring player c
     ['refractory', unit => { unit.refractory = true; }],
     ['stun', unit => { unit.status.stun = { turns: 1 }; }],
     ['freeze', unit => { unit.status.freeze = { skip: true, slowTurns: 2 }; }],
-    ['sleep', unit => { unit.status.sleep = { turns: 2 }; }],
     ['restrained', unit => { unit.status.restrained = { turns: 2, by: 'Enemy' }; }],
     ['stuck', unit => { unit.status.stuck = { turns: 1 }; }],
     ['enveloped', unit => { unit.status.enveloped = { turns: 2, by: 'Enemy' }; }]
@@ -23998,12 +24218,33 @@ test('Party panel exposes management controls and leader badge', () => {
   html = elements.get('party-content').innerHTML;
   assertContains(html, 'showPartyMemberStats(1)', 'Expanded party card should expose the Holdings route for detailed stats');
   assertContains(html, '>Holdings<', 'Expanded party card should label deep management as Holdings');
+  assertContains(html, 'showCompanionBehavior(1)', 'Expanded ally card should expose a direct Behavior route during exploration');
+  assertContains(html, '>Behavior<', 'Expanded ally card should label the direct Behavior route');
   assertContains(html, 'setPartyLeader(1)', 'Expanded party card should expose set leader action');
   assertContains(html, 'dismissPartyMember(1)', 'Expanded ally card should expose dismiss action');
   assertContains(html, 'setCompanionDuty(1,this.value)', 'Ally card should expose the Duty selector');
   assertContains(html, 'setCompanionStance(1,this.value)', 'Ally card should expose the Stance selector');
   assertContains(html, 'setCompanionControl(1,this.value)', 'Ally card should expose the Control selector');
   assertContains(html, 'Duty for Ally', 'Duty selector should be labeled');
+});
+
+test('Companion Behavior has a direct exploration detail route and remains unavailable during combat', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'behavior-player' });
+  const ally = makeUnit('Ally', { id: 'behavior-ally' });
+  App.player = player;
+  App.party = [player, ally];
+  App.combatState.active = false;
+  assertEqual(App.showCompanionBehavior(1), true, 'Exploration should expose an explicit companion Behavior detail route');
+  let html = elements.get('party-content').innerHTML;
+  assertContains(html, 'Behavior: Ally', 'Behavior detail should identify the selected companion');
+  assertContains(html, 'set-companion-duty', 'Behavior detail should expose Duty control');
+  assertContains(html, 'set-companion-stance', 'Behavior detail should expose Stance control');
+  assertContains(html, 'set-companion-control', 'Behavior detail should expose Control control');
+  App.combatState.active = true;
+  assertEqual(App.showCompanionBehavior(1), false, 'Combat should not open management controls that do not change the active turn');
+  html = elements.get('party-content').innerHTML;
+  assertContains(html, 'Behavior: Ally', 'A rejected combat open should leave the existing exploration detail intact');
 });
 
 test('Desktop party card management labels localize', () => {
@@ -25487,6 +25728,49 @@ test('Quest turn-in can defer rewards until claimed from quest log', () => {
   assertContains(App.log[App.log.length - 1].text, 'Esa mision aun no esta lista para entregar.', 'Not-ready turn-in feedback should localize');
 });
 
+test('Full packs cache quest item rewards on the current tile without losing the claim', () => {
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', { xp: 0, xpToNext: 100, gold: 0 });
+  App.party = [App.player];
+  App.MAX_INVENTORY = 1;
+  App.inventory = [App._createItemInstance('Leather Cap', { id: 'full-pack-cap' })];
+  App.location = { x: 3, y: -1 };
+  const tile = { x: 3, y: -1, biome: 'forest', explored: true, items: [], creatures: [] };
+  App.worldMap = new Map([['3,-1', tile]]);
+  const giver = makeUnit('Guide', { id: 'full-pack-guide', disposition: App.DISPOSITION.QUEST_GIVER });
+  App.creatures = [giver];
+  App.quests = [App._normalizeQuest({
+    id: 'full_pack_reward',
+    title: 'Full Pack Reward',
+    status: 'completed',
+    turnInRequired: true,
+    giverId: giver.id,
+    giverName: giver.name,
+    giverLocation: { x: 3, y: -1, label: giver.name },
+    objectives: [],
+    reward: { xp: 10, gold: 7, items: ['Old Coin'] }
+  })];
+
+  assertEqual(App.turnInQuest('full_pack_reward', { giverId: giver.id }), true, 'Turn-in should succeed even when the pack cannot hold the item reward');
+  assertEqual(App.player.xp, 10, 'Quest reward XP should still be granted');
+  assertEqual(App.player.gold, 7, 'Quest reward gold should still be granted');
+  assertEqual(App.inventory.length, 1, 'A full pack should keep its existing item');
+  assertEqual(tile.items.length, 1, 'Overflow quest item should be placed on the current tile');
+  assertEqual(tile.items[0].definitionId, 'core:old_coin', 'Overflow reward should retain stable item identity');
+  assertEqual(tile.items[0].questReward, true, 'Overflow reward should retain quest-reward provenance');
+  assertEqual(App._tileItemLabel(tile.items[0]), 'Quest reward: Old Coin', 'Ground reward should be visibly labeled as a quest reward');
+  assertEqual(App.getTileDelta(3, -1).items[0].questRewardId, 'full_pack_reward', 'Overflow reward should persist through the tile delta');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'Pack full: Quest reward: Old Coin placed here as a quest reward.', 'Overflow should explain exactly where the reward went');
+  assertEqual(App.quests[0].rewardClaimed, true, 'Quest should be claimed after its cache is safely placed');
+
+  App.inventory = [];
+  assertEqual(App.takeTileItems(), true, 'Cached quest reward should be recoverable through ordinary ground pickup');
+  assertEqual(App.inventory[0].definitionId, 'core:old_coin', 'Recovering the cache should restore the original reward item');
+  assertEqual(tile.items.length, 0, 'Recovering the cache should clear it from the tile');
+  App.turnInQuest('full_pack_reward', { giverId: giver.id });
+  assertEqual(App.player.gold, 7, 'A cached reward should not make a quest collectible twice');
+});
+
 test('Quest Contract V2 migrates lifecycle states and enforces bounded turn-in policies', () => {
   const { App, window } = loadAppForCombat();
   App.player = makeUnit('You', { gold: 0 });
@@ -25700,6 +25984,47 @@ test('Procedural route patrol grants its promised reward when reported to the or
   assertEqual(App.player.gold, promised.gold, 'Patrol the Route should not grant its reward a second time');
 });
 
+test('Camp Safety reserves its Wolfkin and pays only after the original giver receives the report', () => {
+  const { App } = loadAppForCombat(() => 0.35);
+  App.worldMeta = { worldId: 'camp-safety-world', seed: 'camp-safety-seed', generatorVersion: 6, mapModsHash: 'core' };
+  App.player = makeUnit('You', { id: 'camp-safety-player', level: 2, xp: 0, xpToNext: 100, gold: 0 });
+  App.party = [App.player];
+  App.inventory = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App.autoSave = () => true;
+  const giver = makeUnit('Camp Guide', { id: 'camp-safety-giver', disposition: App.DISPOSITION.QUEST_GIVER });
+  App.creatures = [giver];
+  const promised = { ...App.QUEST_TEMPLATES.camp_safety.reward };
+
+  const accepted = App.acceptQuest({ ...App.QUEST_TEMPLATES.camp_safety, id: 'camp_safety_test' }, giver);
+  assertEqual(accepted.turnInPolicy.type, 'original_giver', 'Camp Safety should require a report to its original giver');
+  assertEqual(accepted.turnInPolicy.giverId, giver.id, 'Camp Safety should bind its original giver by stable identity');
+  const objective = accepted.objectives.find(entry => entry.id === 'camp_safety_wolf');
+  assert(objective?.location, 'Camp Safety acceptance should mark the reserved Wolfkin location');
+  const targetTile = App.getTile(objective.location.x, objective.location.y);
+  const wolf = targetTile.creatures.find(unit => unit.questWorldDirective?.questId === accepted.id);
+  assert(wolf, 'Camp Safety should materialize one quest-bound Wolfkin instead of relying on ambient encounter luck');
+  assertEqual(wolf.species, 'wolf', 'The reserved Camp Safety target should retain the exact Wolfkin species identity');
+
+  App._makeCorpse(wolf, 'fight', { actor: App.player, source: 'camp-safety-regression' });
+  assertEqual(accepted.lifecycleState, 'ready_for_turn_in', 'Defeating the reserved Wolfkin should make Camp Safety ready to report');
+  assertEqual(App.player.gold, 0, 'Camp Safety must not award gold before the report');
+  assertEqual(App.player.xp, 0, 'Camp Safety must not award XP before the report');
+
+  App.location = { x: 0, y: 0 };
+  App.creatures = [giver];
+  assertEqual(App._questTurnInEligibility(accepted).ok, true, 'The original Camp Safety giver should authorize the report');
+  assertEqual(App.turnInQuest(accepted.id, { giverId: giver.id }), true, 'Camp Safety should turn in with its original giver');
+  assertEqual(App.player.gold, promised.gold, 'Camp Safety turn-in should grant its promised gold');
+  assertEqual(App.player.xp, promised.xp, 'Camp Safety turn-in should grant its promised XP');
+  assertEqual(accepted.rewardClaimed, true, 'Camp Safety should record the reward as claimed');
+  App.turnInQuest(accepted.id, { giverId: giver.id });
+  assertEqual(App.player.gold, promised.gold, 'Camp Safety must not grant its gold reward twice');
+});
+
 test('Procedural recover quests inject their protected objective only when searching the marked tile', () => {
   const { App } = loadAppForCombat(() => 0.9);
   App.worldMeta = { seed: 'recover-seed', generatorVersion: 3 };
@@ -25723,6 +26048,7 @@ test('Procedural recover quests inject their protected objective only when searc
     explored: true,
     description: 'A marked search area.'
   });
+  assertEqual(App._canSearchHere(), true, 'The marked recovery tile should expose Search instead of hiding its protected objective behind an unavailable action');
   App.search();
   assertEqual(App.inventory[0].definitionId, 'core:waystone_sigil', 'Marked-tile search should acquire the stable protected recovery object');
   assertEqual(App.quests[0].lifecycleState, 'ready_for_turn_in', 'Recovering the objective should make the quest ready for original-giver turn-in');
@@ -25730,6 +26056,7 @@ test('Procedural recover quests inject their protected objective only when searc
 });
 
 test('Quest World Directives V1 place deterministic required content exactly once and clean up on failure', () => {
+  const Binary = loadBinaryForTest();
   const { App, window } = loadAppForCombat(() => 0.35);
   App.worldMeta = { worldId: 'quest-directive-world', seed: 'quest-directive-seed', generatorVersion: 6, mapModsHash: 'core' };
   App.player = makeUnit('You', { id: 'directive-player', level: 2 });
@@ -25772,6 +26099,13 @@ test('Quest World Directives V1 place deterministic required content exactly onc
 
   window.YAW_QUEST_CONTRACT.activateWorldDirectives(App, accepted);
   assertEqual(targetTile.creatures.filter(unit => unit.questWorldDirective?.questId === accepted.id).length, 1, 'Repeated activation should not duplicate reserved quest content');
+
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  const loadedQuest = loaded.questState.quests.find(entry => entry.id === accepted.id);
+  const loadedTile = loaded.worldMap[`${objective.location.x},${objective.location.y}`];
+  assertEqual(loadedQuest.worldDirectives[0].active, true, 'A save/load round trip should preserve an active placed-content directive');
+  assertEqual(loadedTile.creatures.filter(unit => unit.questWorldDirective?.questId === accepted.id).length, 1, 'A save/load round trip should preserve exactly one reserved quest target');
+  assertEqual(loadedTile.creatures.find(unit => unit.questWorldDirective?.questId === accepted.id).questResolutionId, reserved[0].questResolutionId, 'A saved directive target should retain its stable resolution identity');
 
   App.failQuest(accepted.id, 'test cleanup');
   assertEqual(targetTile.creatures.some(unit => unit.questWorldDirective?.questId === accepted.id), false, 'Failing a quest should remove its untouched reserved creature');
@@ -26561,6 +26895,7 @@ test('Structure encounters can place authored quest givers', () => {
   App.player = makeUnit('You', { level: 2, gold: 0, xp: 0, xpToNext: 100 });
   App.party = [App.player];
   App.currentBiome = 'road';
+  App.worldMeta = { worldId: 'structure-quest-fixture', seed: 'default', generatorVersion: 6, mapModsHash: 'core' };
   App.creatures = [];
   App.quests = [];
   App.STRUCTURES.shrine.quest.chance = 1;
@@ -27391,14 +27726,14 @@ test('Unit cards and mobile chips render capped localized trait chips', () => {
 
   const allyTraits = App._unitVisibleTraits(ally, 'party');
   assertEqual(allyTraits.length, 3, 'Default visible traits should cap at three chips');
-  assertEqual(allyTraits.map(chip => chip.key).join(','), 'asleep,poisoned,burning', 'Trait cap should preserve high-priority status order');
+  assertEqual(allyTraits.map(chip => chip.key).join(','), 'poisoned,burning,wounded', 'Disabled sleep should not consume a visible status-trait slot');
 
   const allyCard = App.renderUnitCard(ally, 1, 'party');
   const creatureCard = App.renderUnitCard(creature, 0, 'creature');
   const mobileCreatureChip = App.renderMobileUnitChip(creature, 0, 'creature');
   assertContains(allyCard, 'class="unit-traits"', 'Party card should render trait chip container');
   assertContains(allyCard, 'aria-label="Unit traits"', 'Trait chips should have an accessible label');
-  assertContains(allyCard, 'Asleep', 'Party card should render localized status trait chips');
+  assertNotContains(allyCard, 'Asleep', 'Party card should hide disabled sleep state');
   assertContains(allyCard, 'Poison', 'Party card should render localized danger trait chips');
   assertContains(allyCard, 'Burning', 'Party card should render capped third trait');
   assertNotContains(allyCard, 'class="unit-trait-chip role" title="Guard">Guard</span>', 'Lower-priority role chip should be hidden once cap is reached');
@@ -27411,7 +27746,7 @@ test('Unit cards and mobile chips render capped localized trait chips', () => {
   App.updateLanguage('es');
   const localizedAllyCard = App.renderUnitCard(ally, 1, 'party');
   assertContains(localizedAllyCard, 'aria-label="Rasgos de unidad"', 'Trait chip label should localize');
-  assertContains(localizedAllyCard, 'Dormido', 'Trait chip text should localize');
+  assertNotContains(localizedAllyCard, 'Dormido', 'Disabled sleep should remain hidden after localization');
   assertContains(localizedAllyCard, 'Veneno', 'Danger trait chip text should localize');
   assertContains(contentContent, "'unit.trait.starvingCompact': 'Famélico -25%'", 'Maintained Spanish content should localize starving combat pressure');
 });

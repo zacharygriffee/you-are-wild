@@ -157,7 +157,7 @@ const YAW_SUB_ACTIONS = {
         }
 
         const targetStatus = target.status || {};
-        const asleep = Boolean(target.asleep || targetStatus.asleep || targetStatus.sleep?.turns > 0);
+        const asleep = Boolean(app?._sleepSystemEnabled?.() && (target.asleep || targetStatus.asleep || targetStatus.sleep?.turns > 0));
         const restrained = Boolean(target.restrained || target.isRestrained || targetStatus.restrained?.turns > 0 || targetStatus.snared || targetStatus.grabbed || targetStatus.stuck);
         const willing = Boolean(target.willingPrey || target.livestock || target.willing === true);
         const submissive = Boolean(target.recruitReady || target.submission || target.subdued);

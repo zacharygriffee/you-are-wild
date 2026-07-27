@@ -1,19 +1,19 @@
 {
   "schema": 1,
-  "version": "0.16.0",
-  "status": "released",
-  "releasedAt": "2026-07-26",
-  "channel": "alpha",
+  "version": "0.17.0",
+  "status": "draft",
+  "releasedAt": null,
+  "channel": "development",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Candidate expectation: existing 0.10.x through 0.15.0 saves load through maintained additive migrations. Recorded generator versions remain unchanged.",
+      "saves": "Development expectation: existing 0.10.x through 0.16.0 saves load through maintained additive migrations. Recorded generator versions remain unchanged.",
       "mods": "Module API remains version 1. Existing minimum-version declarations remain valid; modules using Item Definition V2 or Perk Profile V1 should require game version 0.16.0 or newer."
     },
     "es": {
-      "saves": "Expectativa de la candidata: las partidas 0.10.x a 0.15.0 cargan mediante migraciones aditivas mantenidas. Las versiones de generador registradas no cambian.",
+      "saves": "Expectativa de desarrollo: las partidas 0.10.x a 0.16.0 cargan mediante migraciones aditivas mantenidas. Las versiones de generador registradas no cambian.",
       "mods": "La API de modulos sigue en la version 1. Los requisitos minimos existentes siguen validos; los modulos que usan Item Definition V2 o Perk Profile V1 deben requerir la version 0.16.0 o posterior."
     }
   },
@@ -40,6 +40,7 @@
         "Legacy item names, saved perks, quests, tracked objectives, and companion behavior normalize without losing supported state.",
         "Disabled or missing module providers remain inert and recover their owned item or perk definitions when safely re-enabled.",
         "Containment, release, recruitment, drop-off, defeat, and save or reload no longer duplicate quest services, rewards, or companion behavior seeds.",
+        "Camp Safety now reserves a nearby Wolfkin but keeps its reward until the player returns to the original camp guide; repeated reports cannot pay twice.",
         "Defeat objectives now credit each hostile once when the player or an autonomous companion slays, subdues, or contains it; fleeing, unrelated actors, and release or re-containment do not create false progress.",
         "Unknown map tiles remain unmaterialized while known cells stay operable with mouse, keyboard, touch, zoom, and long localized labels.",
         "Tutorial navigation, focus, active-lesson contrast, enlarged text, high contrast, reduced motion, and bounded mobile layout pass the maintained viewport matrix."
@@ -74,6 +75,7 @@
         "Los nombres antiguos de objetos, ventajas, misiones, objetivos seguidos y comportamiento de companeros se normalizan sin perder estado compatible.",
         "Los proveedores de modulos desactivados o ausentes permanecen inertes y recuperan sus objetos o ventajas al reactivarse de forma segura.",
         "Contencion, liberacion, reclutamiento, abandono, derrota y guardado o carga ya no duplican servicios, recompensas ni semillas de comportamiento.",
+        "Seguridad del campamento ahora reserva un Wolfkin cercano, pero conserva su recompensa hasta que el jugador vuelve al guia original del campamento; los informes repetidos no pagan dos veces.",
         "Los objetivos de derrota ahora cuentan una sola vez a cada hostil que el jugador o un companero autonomo elimina, somete o contiene; huir, los actores ajenos y liberar o volver a contener no crean progreso falso.",
         "Las casillas desconocidas no se materializan y las conocidas funcionan con raton, teclado, tacto, zoom y etiquetas localizadas largas.",
         "La navegacion del tutorial, foco, contraste activo, texto ampliado, alto contraste, movimiento reducido y diseno movil limitado pasan la matriz."

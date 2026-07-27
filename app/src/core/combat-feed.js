@@ -79,7 +79,7 @@ const YAW_COMBAT_FEED = {
             || (!presentation && typeof window !== 'undefined' && Number(window.innerWidth || 0) > 1024);
         const source = desktop ? 'desktop-combat' : 'combat-sheet';
         const action = selection.action || 'feed';
-        const title = app._label('variant.optionsTitle', '{action} Options', { action: app._uiLabel(action) });
+        const title = app._label('variant.optionsTitle', '{action} Options', { action: app._combatActionLabel?.(action) || app._uiLabel(action) });
         return YAW_INTENT_MENU.openVariantSheet(app, {
             action,
             actors: actors.length ? actors : [actor],

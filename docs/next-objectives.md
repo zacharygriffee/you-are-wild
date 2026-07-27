@@ -4,9 +4,9 @@ This file contains unfinished, approved, actionable work only. Completed work
 belongs in `changelog.md`; requirement evidence belongs in
 `backlog-completion-audit.md`; subsystem behavior belongs in focused doctrine.
 
-## Scope freeze for 0.16.0
+## Scope freeze for 0.17.0
 
-Until the 0.16.0 readiness goal is closed, do not introduce new module
+Until the 0.17.0 readiness goal is closed, do not introduce new module
 permissions, public UI slots, media providers, asset/sprite contract versions,
 recovery profiles, resource profile types, combat-technique capabilities,
 row/reach rules, narration providers, containers, Feast variants,
@@ -20,7 +20,7 @@ hardening.
 Core gameplay remains deterministic and does not depend on an LLM or remote
 service.
 
-## Immediate — 0.16.0 select-group alpha
+## Immediate — 0.17.0 development
 
 1. Keep authoritative documentation coherent:
    - current architecture describes the shipped runtime;
@@ -29,7 +29,8 @@ service.
    - release evidence and deferred decisions remain distinct.
 2. Preserve the accepted Core Game Maturity contracts without expanding their
    bounded vocabularies during release preparation.
-3. Create and complete the 0.16 release-readiness record:
+3. Start the 0.17 release-readiness record only after its first user-facing
+   regression slice is accepted:
    - current save, quest, item, perk, companion, and mod compatibility;
    - local full-build, branding, and diff evidence;
    - mobile `412x915` and desktop `1365x768` smoke;
@@ -38,12 +39,27 @@ service.
    - observed green CI;
    - rollback artifact.
 4. Keep the accepted conservative Ghost baseline explicit in
-   `ghost-recovery-prepublish-decision.md` and the 0.16.0 notes. Do not add a
+   `ghost-recovery-prepublish-decision.md` and the 0.16.0 historical notes. Do not add a
    shrine economy, entry prompt, spectral actions, or altered companion
    outcomes.
-5. Preserve the approved 0.16.0 alpha identity and select-group distribution
+5. Preserve the published 0.16.0 alpha identity and select-group distribution
    boundary. Beta and general-public promotion require separate operator
-   decisions.
+   decisions; 0.17.0 remains a development draft.
+
+## Demonstrated regression and release backlog
+
+These are the concrete items to clear or classify before the 0.16 handoff.
+
+1. Group strategy scheduling is implemented for same-round and next-round
+   participant reservation. Existing queue invalidation and save/load coverage
+   still need release-smoke observation for cancellation, defeat, flee, and a
+   restored queued action.
+2. The former core-suite contradictions are resolved: exploration Feast uses
+   player voice, Spanish single-action output uses second-person grammar,
+   group Chew tests the numeric combat-rating contract, and reach failures use
+   the live interface locale for singular/plural grammar.
+3. Run the exact release smoke from this document and retain seed, save,
+   viewport, device, artifact, and observed-result evidence for any defect.
 
 ## Completed locally — Core Game Maturity
 
@@ -106,17 +122,46 @@ These are observational unless a concrete contradiction is demonstrated:
 
 - An opt-in adventure-pressure/difficulty profile for players who prefer
   lethal uncertainty.
+- Early-adventure danger and information V2: starting-area encounter pressure,
+  scouting/perception checks, guard/scout warnings, and explicit player-facing
+  difficulty cues. The baseline should remain conservative until players can
+  anticipate or mitigate sudden defeat.
+- Quest and Review Map expansion beyond V2: additional procedural objective
+  types, authored scripted events, richer return guidance, and future map
+  interactions/docking only after concrete player evidence identifies a gap in
+  the current bounded contract.
+- Route hierarchy V3: reduce visually and mechanically noisy road loops while
+  preserving deterministic traversal, route branches, and legacy-world
+  compatibility.
 - Authored shrine networks, resurrection costs, spectral abilities, companion
   extraction, healer/faction debt, and other Recovery Mode V2 profiles.
 - New row/reach mechanics such as grab, pull, snare, or defensive formations.
 - A mass ledger replacing Offer Piece's condition proxy.
+- A complete Sleep/Rest V2 loop. Natural and combat sleep are currently
+  suppressed from ordinary play while the game lacks clear waking, risk,
+  reward, and player-choice rules; compatibility-era sleep data is retained
+  for a later authored migration.
+- Combat Event Pacing V1. Add a player-configurable presentation delay between
+  automatic combat events so rapid exchanges remain readable, character
+  autonomy has observable space, and narration/dialogue can be appreciated.
+  The default should remain brisk (roughly half a second or less), with an
+  accessibility-friendly faster/slower setting. This must pace rendering and
+  automatic decision dispatch only: deterministic combat order, simulation
+  time, saves, and ordinary player commands must not depend on wall-clock
+  delays. Future instant/reaction abilities need an explicit interruption and
+  priority contract rather than silently bypassing this pacing layer.
 - Additional media providers: reviewed AI generation, packaged-runtime
   bridges, then optional OPFS optimization.
 - Archive transport until a real pack demonstrates request-latency, portable
   handoff, CORS, or repair pressure.
 - Gameplay-bearing body-build taxonomy and preference design.
-- Companion loadouts, richer structure skins, audio, generated media, and 3D
-  presentation beyond the approved Core Game Maturity program.
+- Companion loadouts, companion equipment management, richer structure skins,
+  audio, generated media, and 3D presentation beyond the approved Core Game
+  Maturity program.
+- Crafting V1 and new item sinks. The current core item catalog may expose
+  trade, quest, equip, healing, loot, and utility purposes honestly, but must
+  not imply a crafting loop before recipes, stations, costs, output ownership,
+  and save/mod contracts are designed.
 - New content-placement APIs until a canonical new-world recipe,
   `mapModsHash`, arbitration, materialization, missing-owner behavior, and
   offline reconstruction are designed.

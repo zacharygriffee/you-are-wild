@@ -4,6 +4,24 @@
  */
 
 const YAW_COMBAT_SYNC = {
+    isParticipant(app, sync, unit) {
+        if (!sync || !unit) return false;
+        const unitId = app._unitSelectionId?.(unit) || String(unit.id || unit.name || '');
+        return (sync.participants || []).some(participant => {
+            const participantId = app._unitSelectionId?.(participant) || String(participant?.id || participant?.name || '');
+            return participant === unit || (unitId && participantId === unitId);
+        });
+    },
+
+    pendingParticipantAction(app, unit) {
+        if (!app?.combatState?.active || !unit) return null;
+        return (app.combatState.syncActions || []).find(sync =>
+            !sync.resolved
+            && sync.round === app.combatState.round
+            && this.isParticipant(app, sync, unit)
+        ) || null;
+    },
+
     showMenu(app) {
         const allies = app.party.filter(p => p.CPun > 0 && p.name !== app.player.name);
         if (allies.length === 0) {
@@ -218,7 +236,7 @@ const YAW_COMBAT_SYNC = {
             return false;
         }
         const queueEntries = participants.map(p => {
-            const index = app.combatState.turnQueue.findIndex(q => q.unit === p);
+            const index = app.combatState.turnQueue.findIndex(q => this.isParticipant(app, { participants: [p] }, q.unit));
             return index >= 0 ? { index, entry: app.combatState.turnQueue[index] } : null;
         });
         if (queueEntries.some(entry => !entry)) {
@@ -235,6 +253,14 @@ const YAW_COMBAT_SYNC = {
                 slowestIdx = index;
             }
         }
+        const currentTurn = Number(app.combatState.currentTurn || 0);
+        // The acting lead has just committed its current turn. A group can still
+        // resolve this round when every other participant is ahead in the queue.
+        // If any helper has already acted, or the planned resolution point has
+        // passed, reserve the entire group for the following round instead.
+        const hasElapsedParticipantTurn = queueEntries.some(({ index }) => index < currentTurn);
+        const resolveNextRound = hasElapsedParticipantTurn || slowestIdx <= currentTurn;
+        const resolveRound = app.combatState.round + (resolveNextRound ? 1 : 0);
         const plan = app._buildInteractionPlan({
             mode: 'combat',
             actors: participants,
@@ -258,24 +284,29 @@ const YAW_COMBAT_SYNC = {
             },
             metadata: {
                 baseAction: app._syncBaseAction(syncType),
-                round: app.combatState.round
+                round: resolveRound,
+                queuedFromRound: app.combatState.round
             }
         });
         app._syncCurrentTileCreatures();
         app.combatState.syncActions.push({
             type: syncType, participants: participants, target: targets[0], targets,
             techniqueKey: command?.subAction || null,
-            resolveAtIndex: slowestIdx, resolved: false, round: app.combatState.round,
+            resolveAtIndex: slowestIdx, resolved: false, round: resolveRound,
             plan
         });
-        app.log.push({ text: app._label('combat.sync.prepared', '{participants} prepare {action} against {targets}! It resolves when the slowest participant acts.', {
+        const preparedKey = resolveNextRound ? 'combat.sync.preparedNextRound' : 'combat.sync.prepared';
+        const preparedFallback = resolveNextRound
+            ? '{participants} prepare {action} against {targets}! It is reserved for next round and resolves when the slowest participant acts.'
+            : '{participants} prepare {action} against {targets}! It resolves when the slowest participant acts.';
+        app.log.push({ text: app._label(preparedKey, preparedFallback, {
             participants: participants.map(p => p.name).join(', '),
             action: app._label(`combat.sync.action.${app._syncBaseAction(syncType)}`, app._syncBaseAction(syncType)),
             targets: targets.map(unit => unit.name).join(', ')
         }), type: 'combat' });
         const consumeCurrentTurn = command?.metadata?.consumeCurrentTurn !== false;
         for (const p of participants) {
-            const qEntry = app.combatState.turnQueue.find(q => q.unit === p);
+            const qEntry = app.combatState.turnQueue.find(q => this.isParticipant(app, { participants: [p] }, q.unit));
             if (qEntry) qEntry.actedThisRound = true;
         }
         app._clearTransientInteractionState();

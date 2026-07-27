@@ -4,6 +4,14 @@
  */
 
 const YAW_TIME_SYSTEM = {
+    // Paused until sleep has a complete wake, risk, and reward loop. Legacy
+    // state may remain in saves, but it must not drive live gameplay or UI.
+    SLEEP_ENABLED: false,
+
+    sleepEnabled() {
+        return this.SLEEP_ENABLED === true;
+    },
+
     normalizeHour(hour = 0) {
         return ((hour % 24) + 24) % 24;
     },
@@ -87,7 +95,7 @@ const YAW_TIME_SYSTEM = {
     },
 
     applyTimeOfDayToCreature(app, creature) {
-        if (!creature || !this.isNight(app) || !this.isDiurnalSpecies(app, creature.species)) return creature;
+        if (!this.sleepEnabled() || !creature || !this.isNight(app) || !this.isDiurnalSpecies(app, creature.species)) return creature;
         creature.status = creature.status || {};
         creature.status.sleep = creature.status.sleep || { turns: 2 };
         creature.asleep = true;

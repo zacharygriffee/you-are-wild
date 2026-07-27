@@ -6227,7 +6227,9 @@
 
             .holdings-control-shelf {
                 grid-row: 3;
-                padding-bottom: env(safe-area-inset-bottom);
+                /* The mobile Back bar is fixed over the modal. Reserve its
+                   footprint so the section tabs remain reachable above it. */
+                padding-bottom: calc(72px + env(safe-area-inset-bottom));
                 border-top: 1px solid var(--border-default);
                 background: rgba(18, 18, 34, 0.98);
                 box-shadow: 0 -8px 18px rgba(4, 4, 14, 0.22);

@@ -74,7 +74,7 @@ const YAW_UNIT_CARD_STATUS = {
         if (inCombat && unit.ranged) add('ranged', app._label('unit.trait.ranged', 'Ranged'), 'ability');
         if (inCombat && unit.flying) add('flying', app._label('unit.trait.flying', 'Flying'), 'ability');
         if (inCombat && unit.antiflying) add('antiflying', app._label('unit.trait.antiflying', 'Anti-flying'), 'ability');
-        if (status.sleep || unit.asleep) add('asleep', app._label('unit.trait.asleep', 'Asleep'), 'status');
+        if (app._sleepSystemEnabled?.() && (status.sleep || unit.asleep)) add('asleep', app._label('unit.trait.asleep', 'Asleep'), 'status');
         if (status.poisoned) add('poisoned', app._label('unit.trait.poisoned', 'Poison'), 'danger');
         if (status.burn) add('burning', app._label('unit.trait.burning', 'Burning'), 'danger');
         if (status.bleed) add('bleeding', app._label('unit.trait.bleeding', 'Bleeding'), 'danger');

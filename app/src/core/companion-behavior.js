@@ -239,6 +239,13 @@ const YAW_COMPANION_BEHAVIOR = {
         const allies = (app.party || []).filter(unit => unit && unit.CPun > 0 && !unit.knockedOut);
         const corpses = (app.creatures || []).filter(unit => app._canScavengeCorpse?.(unit));
         const candidates = [{ action: 'hold', target: null, subAction: null, command: null }];
+        const canSwallow = target => typeof app._canFitPrey === 'function'
+            ? app._canFitPrey(ally, target, 'stomach')
+            : true;
+        const digestible = (typeof app._activeContainedPrey === 'function'
+            ? app._activeContainedPrey(ally, 'stomach')
+            : (ally.stomach || []).filter(prey => prey && prey.inStomach !== false && !['softened', 'terminal', 'digested', 'released', 'passed', 'depleted'].includes(prey.state || prey.digestionState || 'contained'))
+        ).find(Boolean) || null;
         const add = (action, target, subAction = null) => {
             const command = this.command(app, ally, action, target, subAction);
             const valid = app._validateInteractionCommand?.(command) || { ok: true };
@@ -248,7 +255,20 @@ const YAW_COMPANION_BEHAVIOR = {
             add('fight', target);
             add('flirt', target);
             add('fuck', target);
-            if ((ally.hunger || 0) >= 45) add('feast', target, 'swallow');
+            if ((ally.hunger || 0) >= 45 && canSwallow(target)) add('feast', target, 'swallow');
+        }
+        // Hunger and stomach capacity are deliberately separate. A hungry
+        // companion with no room should work through an eligible stomach entry
+        // instead of wasting every turn on a swallow that cannot fit.
+        if ((ally.hunger || 0) >= 45 && digestible && enemies.length && !enemies.some(canSwallow)) {
+            candidates.push({
+                action: 'digest',
+                target: digestible,
+                subAction: 'digest',
+                container: 'stomach',
+                containedIndex: Math.max(0, (ally.stomach || []).indexOf(digestible)),
+                command: null
+            });
         }
         for (const target of allies) {
             if (target.CPun < target.MPun) add('feed', target, 'heal');
@@ -268,6 +288,7 @@ const YAW_COMPANION_BEHAVIOR = {
             flirt: 22,
             fuck: 20,
             feast: 18,
+            digest: 64,
             feed: 28,
             scavenge: 15,
             hold: 8
@@ -319,6 +340,10 @@ const YAW_COMPANION_BEHAVIOR = {
             score += hunger * 0.75;
             const preyRatio = Number(target?.CPun || 0) / Math.max(1, Number(target?.MPun || 1));
             score += (1 - preyRatio) * 24;
+        }
+        if (candidate.action === 'digest') {
+            score += hunger * 0.75;
+            if (Number(app._containerUsed?.(ally, 'stomach') || 0) >= Number(app._containerCapacity?.(ally, 'stomach') || Infinity)) score += 24;
         }
         if (candidate.action === 'scavenge') {
             score += hunger * 0.55;
@@ -386,7 +411,9 @@ const YAW_COMPANION_BEHAVIOR = {
         const stance = app._companionStanceLabel?.(behavior.stance) || this.STANCES[behavior.stance]?.label || behavior.stance;
         const action = choice?.action === 'hold'
             ? app._label('party.behavior.hold', 'hold position')
-            : app._uiLabel?.(choice?.action || 'action').toLowerCase();
+            : choice?.action === 'digest'
+                ? app._label('containment.digest', 'digest').toLowerCase()
+                : app._uiLabel?.(choice?.action || 'action').toLowerCase();
         const target = choice?.target?.name
             ? app._label('party.behavior.targetSuffix', ' on {target}', { target: choice.target.name })
             : '';
@@ -509,11 +536,35 @@ const YAW_COMPANION_BEHAVIOR = {
     },
 
     takeTurn(app, ally) {
+        const committedGroup = typeof YAW_COMBAT_SYNC !== 'undefined'
+            ? YAW_COMBAT_SYNC.pendingParticipantAction(app, ally)
+            : null;
+        if (committedGroup) {
+            if (app.combatState?.currentTurn === committedGroup.resolveAtIndex) {
+                app._resolveSyncAction?.(committedGroup);
+            } else {
+                // Do not let an autonomous controller spend a participant before
+                // the group strategy reaches its planned resolution point.
+                app.nextTurn?.();
+            }
+            return true;
+        }
         const result = this.choose(app, ally);
         const choice = result.choice || { action: 'hold', target: null, command: null };
         this.evidence(app, ally, choice, result.behavior, result.fallbackReason);
         app.renderLog?.();
         if (choice.action === 'hold' || !choice.command) {
+            if (choice.action === 'digest') {
+                const partyIndex = (app.party || []).indexOf(ally);
+                const digested = partyIndex >= 0
+                    && app.digestContained?.('party', partyIndex, choice.container || 'stomach', Number(choice.containedIndex || 0));
+                if (digested) return true;
+                const text = app._label('party.behavior.legalFallback', '{name} cannot complete that choice and holds position instead.', { name: ally.name });
+                app._pushLog?.(text, 'combat', { actor: ally, action: 'digest', phase: 'companion-fallback' });
+                app.renderLog?.();
+                app.nextTurn?.();
+                return true;
+            }
             app._pushLog?.(
                 app._label('combat.allyHolds', '{name} holds position.', { name: ally.name }),
                 'combat',

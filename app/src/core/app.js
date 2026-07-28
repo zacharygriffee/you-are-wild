@@ -3875,17 +3875,18 @@
                 // A group can help a swallow succeed, but it cannot quietly change
                 // who is doing the swallowing. Selection order is the player-facing
                 // contract: the first selected actor is the sole container owner.
-                const primary = candidates[0] || null;
+                const selectedPrimary = candidates[0] || null;
                 const helpers = candidates.slice(1);
                 const helperBonus = helpers.reduce((sum, helper) => sum + Math.floor((helper.Feas || 10) * 0.5), 0);
-                const assessment = primary
-                    ? this._assessFeastAttempt(primary, target, { helperBonus })
+                const assessment = selectedPrimary
+                    ? this._assessFeastAttempt(selectedPrimary, target, { helperBonus })
                     : null;
+                const primary = assessment?.canAttempt && assessment?.canFit ? selectedPrimary : null;
                 return {
                     primary,
-                    canOverpower: Boolean(assessment?.succeeds),
+                    canOverpower: Boolean(primary && assessment?.succeeds),
                     assessment,
-                    capacityActor: primary
+                    capacityActor: selectedPrimary
                 };
             },
 

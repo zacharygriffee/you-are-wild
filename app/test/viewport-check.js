@@ -1830,9 +1830,8 @@ async function checkViewport(browser, name, width, height) {
     App.showMobilePartyContext(1);
     const dialog = document.getElementById('mobile-context-menu');
     const dialogTitle = dialog?.querySelector('#mobile-context-menu-title')?.textContent || '';
-    const dutyLabel = dialog?.querySelector('[data-command-control="set-companion-duty"]')?.getAttribute('aria-label') || '';
-    const stanceLabel = dialog?.querySelector('[data-command-control="set-companion-stance"]')?.getAttribute('aria-label') || '';
-    const controlLabel = dialog?.querySelector('[data-command-control="set-companion-control"]')?.getAttribute('aria-label') || '';
+    const behaviorLabel = dialog?.querySelector('[data-command-control="open-companion-behavior"]')?.getAttribute('aria-label') || '';
+    const hasLegacyBehaviorSelectors = Boolean(dialog?.querySelector('[data-command-control="set-companion-duty"], [data-command-control="set-companion-stance"], [data-command-control="set-companion-control"]'));
     const dialogRole = dialog?.getAttribute('role') || '';
     App.closeMobileContextMenu();
     return {
@@ -1841,9 +1840,8 @@ async function checkViewport(browser, name, width, height) {
       dialogTitle,
       dialogDescription: dialog?.querySelector('#mobile-context-menu-description')?.textContent || '',
       describedBy: dialog?.getAttribute('aria-describedby') || '',
-      dutyLabel,
-      stanceLabel,
-      controlLabel,
+      behaviorLabel,
+      hasLegacyBehaviorSelectors,
       dialogRole,
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     };
@@ -1857,9 +1855,8 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(localizedFallbackUnits.describedBy, 'mobile-context-menu-description', `${name}: unnamed-party context dialog should reference its visible purpose`);
   assert(localizedFallbackUnits.dialogDescription.includes('miembro del grupo'), `${name}: unnamed-party context purpose should use the localized visible name`);
   assert(localizedFallbackUnits.dialogTitle.includes('miembro del grupo'), `${name}: unnamed-party context dialog should use the localized visible name`);
-  assert(localizedFallbackUnits.dutyLabel.includes('miembro del grupo'), `${name}: unnamed-party Duty selector should use the localized accessible name`);
-  assert(localizedFallbackUnits.stanceLabel.includes('miembro del grupo'), `${name}: unnamed-party Stance selector should use the localized accessible name`);
-  assert(localizedFallbackUnits.controlLabel.includes('miembro del grupo'), `${name}: unnamed-party Control selector should use the localized accessible name`);
+  assert.strictEqual(localizedFallbackUnits.behaviorLabel, 'Comportamiento', `${name}: unnamed-party Behavior route should use the localized accessible name`);
+  assert.strictEqual(localizedFallbackUnits.hasLegacyBehaviorSelectors, false, `${name}: unnamed-party context menu should keep persistent behavior selectors in Holdings`);
   assert.strictEqual(localizedFallbackUnits.pageOverflow, false, `${name}: longer fallback names should not create horizontal overflow`);
   await page.evaluate(() => App.updateLanguage('en'));
   await page.evaluate(makeUnitScript());

@@ -141,6 +141,7 @@ const SCRIPT_ORDER = [
   'src/core/log-view.js',
   'src/core/story-events.js',
   'src/core/narration-system.js',
+  'src/core/host-capabilities.js',
   'src/core/puter-provider.js',
   'src/core/openai-compatible-provider.js',
   'src/core/balance-system.js',

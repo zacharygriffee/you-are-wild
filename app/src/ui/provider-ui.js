@@ -82,7 +82,8 @@ const AIProviderUI = {
             origin_mismatch: this.label('provider.error.originMismatch', 'The derived request URL did not match the approved endpoint origin.'),
             profile_unavailable: this.label('provider.error.profileUnavailable', 'The saved provider profile is unavailable.'),
             popup_blocked: this.label('provider.puter.popupBlocked', 'The sign-in popup was blocked. Allow popups and try again.'),
-            auth_window_closed: this.label('provider.puter.authCancelled', 'Puter sign-in was cancelled.')
+            auth_window_closed: this.label('provider.puter.authCancelled', 'Puter sign-in was cancelled.'),
+            insecure_storage: this.label('provider.error.insecureStorage', 'Secure credential storage is unavailable. Use this credential for the session only, configure a compatible Linux keyring, or use a credential-free local endpoint.')
         };
         const message = messages[code] || this.label('provider.error.generic', 'The provider operation failed. Check the connection details and try again.');
         const diagnostic = this.label(
@@ -173,6 +174,31 @@ const AIProviderUI = {
             </article>`;
     },
 
+    renderNativeProfile(profile) {
+        const metadata = profile.metadata || {};
+        const id = this.escape(this.js(profile.id));
+        const state = metadata.credentialPresent
+            ? (metadata.secureStorage
+                ? this.label('provider.state.securelyRemembered', 'Credential remembered securely')
+                : this.label('provider.state.connected', 'Connected for this session'))
+            : this.label('provider.state.reenter', 'Credential required');
+        return `
+            <article class="provider-connection-card">
+                <div class="provider-connection-summary">
+                    <div><strong>${this.escape(profile.name)}</strong><small>${this.escape(metadata.model || '')}</small></div>
+                    <span class="provider-state" data-connected="${profile.connected ? 'true' : 'false'}">${this.escape(state)}</span>
+                </div>
+                <dl class="provider-metadata">
+                    <div><dt>${this.escape(this.label('provider.endpoint', 'Endpoint'))}</dt><dd>${this.escape(metadata.endpoint || '')}</dd></div>
+                    <div><dt>${this.escape(this.label('provider.protocol', 'Protocol'))}</dt><dd>${this.escape(metadata.protocol || 'auto')}</dd></div>
+                </dl>
+                <div class="provider-actions" role="group" aria-label="${this.escape(this.label('provider.connectionActions', 'Connection actions'))}">
+                    <button class="nav-btn" type="button" onclick="AIProviderUI.runOpenAI('test','${id}')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.test', 'Test'))}</button>
+                    <button class="nav-btn" type="button" onclick="AIProviderUI.runOpenAI('disconnect','${id}')" ${!metadata.credentialPresent || this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.clearCredential', 'Clear Credential'))}</button>
+                </div>
+            </article>`;
+    },
+
     renderHeaderRows(profile) {
         const names = profile?.metadata?.additionalHeaderNames || [];
         const rows = names.length ? names : [''];
@@ -185,6 +211,7 @@ const AIProviderUI = {
 
     renderOpenAIEditor(profile = null) {
         const metadata = profile?.metadata || {};
+        const nativeHost = typeof YAW_HOST !== 'undefined' && YAW_HOST.capabilities().native === true;
         const localOnly = typeof App !== 'undefined' && App.isFileOrigin() && !YAW_OPENAI_COMPATIBLE_PROVIDER.fileOriginRemoteOverrideEnabled();
         const select = value => metadata.protocol === value ? 'selected' : '';
         const reasoningSelected = value => (metadata.reasoningEffort || 'provider') === value ? 'selected' : '';
@@ -199,7 +226,7 @@ const AIProviderUI = {
                 <div class="provider-form-grid">
                     <label class="provider-field"><span>${this.escape(this.label('provider.connectionName', 'Connection name'))}</span><input id="openai-provider-name" type="text" maxlength="120" value="${this.escape(profile?.name || this.label('provider.openai.defaultName', 'OpenAI-Compatible API'))}" required></label>
                     <label class="provider-field"><span>${this.escape(this.label('provider.endpoint', 'API endpoint'))}</span><input id="openai-provider-endpoint" type="url" maxlength="500" value="${this.escape(endpoint)}" required><small>${this.escape(localOnly ? this.label('provider.fileOriginEndpointHelp', 'Use an unauthenticated loopback OpenAI-compatible endpoint, such as http://localhost:11434/v1 for Ollama.') : this.label('provider.endpointHelp', 'Base URL. Authenticated endpoints require HTTPS; loopback HTTP is strictly no-auth.'))}</small></label>
-                    <label class="provider-field"><span>${this.escape(this.label('provider.apiKey', 'API key'))}</span><input id="openai-provider-key" type="password" maxlength="500" value="" autocomplete="new-password" placeholder="${this.escape(localOnly ? this.label('provider.fileOriginNoCredential', 'Unavailable in file mode') : (profile?.connected ? this.label('provider.keepCredential', 'Current credential remains active') : this.label('provider.noAuthAllowed', 'Optional for no-auth local endpoints')))}" ${localOnly || !replacingCredential ? 'disabled' : ''}><small>${this.escape(localOnly ? this.label('provider.fileOriginNoCredentialHelp', 'Credentials are disabled for file-origin connections.') : this.label('provider.apiKeyHelp', 'Held only in memory for this browser session.'))}</small></label>
+                    <label class="provider-field"><span>${this.escape(this.label('provider.apiKey', 'API key'))}</span><input id="openai-provider-key" type="password" maxlength="500" value="" autocomplete="new-password" placeholder="${this.escape(localOnly ? this.label('provider.fileOriginNoCredential', 'Unavailable in file mode') : (profile?.connected ? this.label('provider.keepCredential', 'Current credential remains active') : this.label('provider.noAuthAllowed', 'Optional for no-auth local endpoints')))}" ${localOnly || !replacingCredential ? 'disabled' : ''}><small>${this.escape(localOnly ? this.label('provider.fileOriginNoCredentialHelp', 'Credentials are disabled for file-origin connections.') : (nativeHost ? this.label('provider.nativeCredentialHelp', 'Sent directly to the native host and never returned to the game renderer.') : this.label('provider.apiKeyHelp', 'Held only in memory for this browser session.')))}</small></label>
                     <label class="provider-field"><span>${this.escape(this.label('provider.model', 'Model'))}</span><input id="openai-provider-model" type="text" maxlength="200" value="${this.escape(metadata.model || '')}" placeholder="gpt-5-mini or openai/gpt-*" required></label>
                     <label class="provider-field"><span>${this.escape(this.label('provider.protocol', 'API protocol'))}</span><select id="openai-provider-protocol"><option value="auto" ${select('auto')}>${this.escape(this.label('provider.protocol.auto', 'Auto-detect'))}</option><option value="responses" ${select('responses')}>${this.escape(this.label('provider.protocol.responses', 'OpenAI Responses API'))}</option><option value="chat" ${select('chat')}>${this.escape(this.label('provider.protocol.chat', 'OpenAI Chat Completions'))}</option></select></label>
                     <label class="provider-field"><span>${this.escape(this.label('provider.timeout', 'Request timeout'))}</span><input id="openai-provider-timeout" type="number" min="${YAW_OPENAI_COMPATIBLE_PROVIDER.MIN_TIMEOUT_MS}" max="${YAW_OPENAI_COMPATIBLE_PROVIDER.MAX_TIMEOUT_MS}" step="1000" value="${this.escape(metadata.timeoutMs || YAW_OPENAI_COMPATIBLE_PROVIDER.DEFAULT_TIMEOUT_MS)}"><small>${this.escape(this.label('provider.timeoutHelp', 'Maximum wait per request in milliseconds. The 30-second default gives reasoning-heavy models time to finish.'))}</small></label>
@@ -210,6 +237,7 @@ const AIProviderUI = {
                     <label class="provider-field"><span>${this.escape(this.label('provider.temperature', 'Temperature'))}</span><input id="openai-provider-temperature" type="number" min="0" max="2" step="0.1" value="${metadata.temperature ?? ''}" placeholder="${this.escape(this.label('provider.unspecified', 'Unspecified'))}"><small>${this.escape(this.label('provider.temperatureHelp', 'Sent only when specified.'))}</small></label>
                 </div>
                 ${profile?.connected && !localOnly ? `<label class="provider-replace-credential"><input id="openai-provider-replace-credential" type="checkbox" onchange="AIProviderUI.toggleCredentialReplacement(this.checked)"><span><strong>${this.escape(this.label('provider.replaceCredential', 'Replace session credential and headers'))}</strong><small>${this.escape(this.label('provider.replaceCredentialHelp', 'Re-enter every secret value. Saving without this option keeps the current session credential unchanged.'))}</small></span></label>` : ''}
+                ${nativeHost && !localOnly ? `<label class="provider-replace-credential"><input id="openai-provider-remember-credential" type="checkbox" checked><span><strong>${this.escape(this.label('provider.rememberSecurely', 'Remember securely'))}</strong><small>${this.escape(this.label('provider.rememberSecurelyHelp', 'Requires an operating-system credential backend. Uncheck to use the credential for this session only.'))}</small></span></label>` : ''}
                 <fieldset id="openai-provider-credential-fields" class="provider-headers" ${localOnly || !replacingCredential ? 'disabled' : ''}><legend>${this.escape(this.label('provider.additionalHeaders', 'Additional session headers'))}</legend><small>${this.escape(this.label('provider.additionalHeadersHelp', 'Values are session-only. Authorization and transport-controlled headers cannot be overridden.'))}</small><div id="openai-provider-header-rows">${this.renderHeaderRows(profile)}</div><button class="nav-btn" type="button" onclick="AIProviderUI.addHeaderRow()">${this.escape(this.label('provider.addHeader', 'Add Header'))}</button></fieldset>
                 <p class="provider-disclosure">${this.escape(localOnly ? this.label('provider.fileOriginDisclosure', 'File mode permits only unauthenticated loopback endpoints. Ollama supports OpenAI-compatible requests at http://localhost:11434/v1.') : this.label('provider.browserDirectDisclosure', 'Browser-direct requests send the credential only to the exact endpoint origin you approved and require compatible CORS behavior. Redirects are blocked.'))}</p>
                 <div class="provider-actions"><button class="nav-btn primary" type="submit" ${this.busy ? 'disabled' : ''}>${this.escape(profile?.connected ? this.label('provider.save', 'Save') : this.label('provider.connect', 'Connect'))}</button><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="cancel-provider-editor" data-command-slot="exit" onclick="AIProviderUI.closeEditor()" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('ui.cancel', 'Cancel'))}</button></div>
@@ -259,6 +287,9 @@ const AIProviderUI = {
                 .filter(profile => !localOnly || YAW_OPENAI_COMPATIBLE_PROVIDER.isLoopbackEndpoint(profile.metadata?.endpoint));
             if (provider.id === YAW_PUTER_PROVIDER.PROVIDER_ID) return this.renderPuter(provider, ownedProfiles);
             if (provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID) return this.renderOpenAI(provider, ownedProfiles);
+            if (typeof YAW_HOST !== 'undefined' && provider.id === YAW_HOST.NATIVE_PROVIDER_ID) {
+                return `<section class="provider-service"><div class="provider-service-heading"><div><h2>${this.escape(provider.name)}</h2><p>${this.escape(provider.description)}</p></div><div class="provider-capabilities">${this.capabilityBadges(provider.capabilities)}</div></div>${ownedProfiles.map(profile => this.renderNativeProfile(profile)).join('')}</section>`;
+            }
             return `<section class="provider-service"><div class="provider-service-heading"><div><h2>${this.escape(provider.name)}</h2><p>${this.escape(provider.description)}</p></div><div class="provider-capabilities">${this.capabilityBadges(provider.capabilities)}</div></div></section>`;
         }).join('');
         const status = document.getElementById('ai-provider-status');
@@ -371,7 +402,8 @@ const AIProviderUI = {
             reasoningEffort: document.getElementById('openai-provider-reasoning-effort')?.value || 'provider',
             temperature: document.getElementById('openai-provider-temperature')?.value || '',
             replaceCredential: localOnly || replaceControl?.checked === true,
-            additionalHeaders: localOnly ? [] : (replacingCredential ? this.readHeaders() : [])
+            additionalHeaders: localOnly ? [] : (replacingCredential ? this.readHeaders() : []),
+            rememberCredential: document.getElementById('openai-provider-remember-credential')?.checked === true
         };
     },
 
@@ -414,19 +446,63 @@ const AIProviderUI = {
         this.refresh();
         if (action === 'save') this.focusEditor();
         try {
+            const nativeHost = typeof YAW_HOST !== 'undefined' && YAW_HOST.capabilities().native === true;
+            const profile = profileId ? YAW_AI_PROVIDER_MANAGER.profiles.get(String(profileId)) : null;
+            const nativeProfile = Boolean(nativeHost && profile?.providerId === YAW_HOST.NATIVE_PROVIDER_ID);
             if (action === 'save') {
-                const profile = YAW_OPENAI_COMPATIBLE_PROVIDER.connect(formInput);
+                if (nativeHost) {
+                    const created = await YAW_HOST.providers.createProfile({
+                        name: formInput.name,
+                        endpoint: formInput.endpoint,
+                        model: formInput.model,
+                        protocol: formInput.protocol,
+                        timeoutMs: formInput.timeoutMs,
+                        maxCompletionTokens: formInput.maxCompletionTokens,
+                        reasoningEffort: formInput.reasoningEffort,
+                        temperature: formInput.temperature,
+                        organization: formInput.organization,
+                        project: formInput.project
+                    });
+                    if (!created?.ok) {
+                        throw Object.assign(new Error(created?.error?.message || 'Native profile creation failed'), created?.error || {});
+                    }
+                    profileId = created.profile.id;
+                    if (formInput.apiKey) {
+                        const replaced = await YAW_HOST.providers.replaceCredential(profileId, formInput.apiKey, {
+                            persist: formInput.rememberCredential
+                        });
+                        if (!replaced?.ok) {
+                            throw Object.assign(new Error(replaced?.error?.message || 'Native credential storage failed'), replaced?.error || {});
+                        }
+                    }
+                    await YAW_HOST.syncNativeProviderConnections();
+                } else {
+                    const connected = YAW_OPENAI_COMPATIBLE_PROVIDER.connect(formInput);
+                    profileId = connected.id;
+                }
                 this.editingProfileId = '';
                 this.setMessage(this.label('provider.savedSession', 'Connection metadata was saved and the session credential is active.'), 'success');
-                profileId = profile.id;
             } else if (action === 'test') {
-                const result = await YAW_OPENAI_COMPATIBLE_PROVIDER.test(profileId);
+                const result = nativeProfile
+                    ? await YAW_HOST.providers.test(profileId)
+                    : await YAW_OPENAI_COMPATIBLE_PROVIDER.test(profileId);
+                if (nativeProfile && !result?.ok) {
+                    throw Object.assign(new Error(result?.error?.message || 'Native provider test failed'), result?.error || {});
+                }
                 this.setMessage(this.label('provider.testDetail', 'Connected using {protocol}. Endpoint, authentication, and model were accepted. Request URL: {url}', {
-                    protocol: result.test.protocol,
-                    url: result.test.endpoint
+                    protocol: result.test?.protocol || profile?.metadata?.protocol || 'auto',
+                    url: result.test?.endpoint || profile?.metadata?.endpoint || ''
                 }), 'success');
             } else if (action === 'disconnect') {
-                YAW_OPENAI_COMPATIBLE_PROVIDER.clearCredential(profileId);
+                if (nativeProfile) {
+                    const result = await YAW_HOST.providers.forgetCredential(profileId);
+                    if (!result?.ok) {
+                        throw Object.assign(new Error(result?.error?.message || 'Native credential removal failed'), result?.error || {});
+                    }
+                    await YAW_HOST.syncNativeProviderConnections();
+                } else {
+                    YAW_OPENAI_COMPATIBLE_PROVIDER.clearCredential(profileId);
+                }
                 this.setMessage(this.label('provider.credentialCleared', 'Session credential cleared. Saved non-secret metadata remains.'), 'success');
             } else if (action === 'remove') {
                 YAW_OPENAI_COMPATIBLE_PROVIDER.remove(profileId);

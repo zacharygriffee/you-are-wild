@@ -20,7 +20,10 @@ const YAW_SAVE_MANAGER = {
             html += '<div class="save-manager-status' + statusClass + '" role="status" aria-live="polite">' + app._escapeHtml(app.saveManagerStatus.message) + '</div>';
         }
         if (!isNewMode && !isSaveMode) {
-            html += '<div class="save-manager-toolbar" data-command-surface="save-manager" data-command-mode="system">' + saveButton('nav-btn primary', '🆕 ' + app._label('save.toolbarNew', 'New Game'), app._label('save.action.newGame', 'Choose a slot for a new game'), 'App.showNewGameManager()', '', '', 'new-game-manager') + '<span>' + app._escapeHtml(app._label('save.toolbarHint', 'Choose a slot next; occupied slots warn before overwrite.')) + '</span></div>';
+            html += '<div class="save-manager-toolbar" data-command-surface="save-manager" data-command-mode="system">'
+                + saveButton('nav-btn primary', '🆕 ' + app._label('save.toolbarNew', 'New Game'), app._label('save.action.newGame', 'Choose a slot for a new game'), 'App.showNewGameManager()', '', '', 'new-game-manager')
+                + saveButton('nav-btn', '📥 ' + app._label('save.import', 'Import'), app._label('save.action.import', 'Import a validated You Are Wild save'), 'App.importSaveFile()', '', '', 'import-save')
+                + '<span>' + app._escapeHtml(app._label('save.toolbarHint', 'Choose a slot next; occupied slots warn before overwrite.')) + '</span></div>';
         }
         for (let i = 1; i <= 5; i++) {
             html += this.slotCard(app, {
@@ -75,6 +78,7 @@ const YAW_SAVE_MANAGER = {
         if (!isNewMode && !isSaveMode && !hasData) html += saveButton('nav-btn primary', '🆕 ' + app._label('save.toolbarNew', 'New Game'), app._label('save.action.useEmpty', 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')', '', '', 'new-run-slot');
         if (!isNewMode && !isSaveMode && hasData) html += saveButton('nav-btn', '🆕 ' + app._label('save.newRun', 'New Run'), app._label('save.action.newRun', 'Start a new run in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')', '', '', 'new-run-slot');
         if (!isNewMode && !isSaveMode && hasData) html += saveButton('nav-btn', '📂 ' + app._label('save.load', 'Load'), app._label('save.action.load', 'Load {slot}', { slot: slotLabel }), 'App.loadFromSlot(\'' + slotName + '\').then(ok => { if (ok) App.showScreen(\'game\'); })', '', '', 'load-slot');
+        if (hasData) html += saveButton('nav-btn', '📤 ' + app._label('save.export', 'Export'), app._label('save.action.export', 'Export {slot}', { slot: slotLabel }), 'App.exportSaveSlot(\'' + slotName + '\')', '', '', 'export-save');
         if (isSaveMode) html += saveButton('nav-btn primary', '💾 ' + app._label('save.save', 'Save'), app._label('save.action.save', 'Save and continue in {slot}', { slot: slotLabel }), 'App.saveToSlot(\'' + slotName + '\')', '', '', 'save-slot');
         if (hasData && isCurrentAutoSaveSlot) {
             html += saveButton('nav-btn', '🗑️ ' + app._label('save.delete', 'Delete'), app._label('save.action.deleteActiveBlocked', 'Cannot delete {slot} while this run is using it for auto-save. Quit to the main menu before deleting it.', { slot: slotLabel }), '', 'color:var(--text-muted);', 'disabled aria-disabled="true"', 'delete-slot-locked');

@@ -6499,6 +6499,12 @@
                 if (!this.player && !this.startupActionReady('play')) return false;
                 return YAW_SAVE_SLOT_FLOW.showManager(this, mode);
             },
+            exportSaveSlot(slotName) {
+                return YAW_HOST_SAVE_TRANSFER.exportSlot(this, slotName);
+            },
+            importSaveFile() {
+                return YAW_HOST_SAVE_TRANSFER.importFile(this);
+            },
             _slotDisplayLabel(slotName) {
                 return YAW_SAVE_SLOT_FLOW.slotDisplayLabel(this, slotName);
             },

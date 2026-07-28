@@ -168,8 +168,12 @@ const MODULE_SYSTEM = {
                 throw new Error(`Module manifest runtimeRequirements.origins contains unsupported origin ${origin}`);
             }
         }
+        const hosts = this._normalizeStringList(value.hosts, 'runtimeRequirements.hosts').map(host => host.toLowerCase());
+        const capabilities = this._normalizeStringList(value.capabilities, 'runtimeRequirements.capabilities').map(capability => capability.toLowerCase());
         return {
             origins: [...new Set(requestedOrigins)],
+            hosts: [...new Set(hosts)],
+            capabilities: [...new Set(capabilities)],
             network: value.network === true,
             secureContext: value.secureContext === true,
             hotToggleSafe: value.hotToggleSafe === true || legacyHotToggleSafe === true
@@ -218,6 +222,26 @@ const MODULE_SYSTEM = {
                 key: 'mod.compatibility.network',
                 vars: {},
                 message: 'Module requires a server-hosted network origin'
+            };
+        }
+        const hostSnapshot = typeof YAW_HOST !== 'undefined'
+            ? YAW_HOST.capabilities()
+            : { hostId: 'browser', capabilities: {} };
+        if (requirements.hosts.length && !requirements.hosts.includes(String(hostSnapshot.hostId || 'browser'))) {
+            const hosts = requirements.hosts.join(', ');
+            return {
+                key: 'mod.compatibility.hosts',
+                vars: { hosts },
+                message: `Module requires one of these application hosts: ${hosts}`
+            };
+        }
+        const missingCapabilities = requirements.capabilities.filter(capability => hostSnapshot.capabilities?.[capability] !== true);
+        if (missingCapabilities.length) {
+            const capabilities = missingCapabilities.join(', ');
+            return {
+                key: 'mod.compatibility.hostCapabilities',
+                vars: { capabilities },
+                message: `Application host is missing required capabilities: ${capabilities}`
             };
         }
         return null;

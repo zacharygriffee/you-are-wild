@@ -267,6 +267,7 @@ const tilesetRuntimeContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tilese
 const spritePackV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'sprite-pack-v1.js'), 'utf8');
 const spriteRuntimeContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sprite-runtime.js'), 'utf8');
 const narrationSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'narration-system.js'), 'utf8');
+const hostCapabilitiesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'host-capabilities.js'), 'utf8');
 const puterProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'puter-provider.js'), 'utf8');
 const openAICompatibleProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'openai-compatible-provider.js'), 'utf8');
 const marketplaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marketplace.js'), 'utf8');
@@ -296,6 +297,32 @@ function loadNarrationSystemForTest(windowOverrides = {}) {
     async executePublicHook() {}
   };
   return new Function('window', 'CONTENT', 'MODULE_SYSTEM', `${narrationSystemContent}\nreturn { YAW_NARRATION_SYSTEM, YAW_AI_PROVIDER_MANAGER };`)(window, CONTENT, MODULE_SYSTEM);
+}
+
+function loadHostCapabilitiesForTest(windowOverrides = {}) {
+  const window = {
+    location: { protocol: 'file:' },
+    YAW_RELEASE: releaseInfo,
+    ...windowOverrides
+  };
+  const document = window.document || {
+    body: { appendChild() {} },
+    createElement() { return {}; }
+  };
+  const runtime = loadNarrationSystemForTest({ localStorage: createMemoryStorage() });
+  return new Function(
+    'window', 'document', 'navigator', 'Blob', 'URL', 'btoa', 'atob', 'YAW_AI_PROVIDER_MANAGER',
+    `${hostCapabilitiesContent}\nreturn { YAW_HOST, YAW_HOST_SAVE_TRANSFER };`
+  )(
+    window,
+    document,
+    window.navigator || {},
+    Blob,
+    URL,
+    globalThis.btoa,
+    globalThis.atob,
+    runtime.YAW_AI_PROVIDER_MANAGER
+  );
 }
 
 function createMemoryStorage() {
@@ -651,7 +678,7 @@ function loadModuleSystemForTest(options = {}) {
   App._getItemDef = item => itemRegistry.definition(App, item);
   App._itemDefinitionId = item => itemRegistry.definitionId(App, item);
   App._normalizeItemInstance = item => itemRegistry.normalizeInstance(App, item);
-  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SPRITE_PACK_V1', 'YAW_SPRITE_RUNTIME', 'YAW_SUB_ACTIONS', 'YAW_STORY_EVENTS', 'YAW_RESOURCE_LEDGER', 'YAW_COMBAT_TECHNIQUES', 'YAW_RECOVERY_MODES', 'YAW_ITEM_REGISTRY', 'YAW_ITEM_EFFECTS', 'YAW_PERK_REGISTRY', 'YAW_QUEST_FLOW', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, spritePackV1, spriteRuntime, options.subActions, options.storyEvents, resourceLedger, combatTechniques, recoveryModes, itemRegistry, itemEffects, perkRuntime.YAW_PERK_REGISTRY, questRuntime.YAW_QUEST_FLOW);
+  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SPRITE_PACK_V1', 'YAW_SPRITE_RUNTIME', 'YAW_SUB_ACTIONS', 'YAW_STORY_EVENTS', 'YAW_RESOURCE_LEDGER', 'YAW_COMBAT_TECHNIQUES', 'YAW_RECOVERY_MODES', 'YAW_ITEM_REGISTRY', 'YAW_ITEM_EFFECTS', 'YAW_PERK_REGISTRY', 'YAW_QUEST_FLOW', 'YAW_HOST', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, spritePackV1, spriteRuntime, options.subActions, options.storyEvents, resourceLedger, combatTechniques, recoveryModes, itemRegistry, itemEffects, perkRuntime.YAW_PERK_REGISTRY, questRuntime.YAW_QUEST_FLOW, options.YAW_HOST);
   MODULE_SYSTEM._testApp = App;
   MODULE_SYSTEM._testItemRegistry = itemRegistry;
   MODULE_SYSTEM._testItemEffects = itemEffects;
@@ -694,6 +721,42 @@ function loadMediaSystemForTest(options = {}) {
 
 test('App object is defined', () => {
   assertContains(appContent, 'const App = {', 'App object declaration missing');
+});
+
+test('Browser startup exposes a host-neutral fallback without a native bridge', () => {
+  const { YAW_HOST } = loadHostCapabilitiesForTest();
+  const snapshot = YAW_HOST.capabilities();
+  assertEqual(snapshot.hostId, 'browser', 'Missing native bridge should select the browser host');
+  assertEqual(snapshot.capabilities['files.export_save'], true, 'Browser fallback should retain save export');
+  assertEqual(snapshot.capabilities['files.import_save'], true, 'Browser fallback should retain save import');
+  assertEqual(snapshot.capabilities['providers.persistent_credentials'], false, 'Browser fallback must not claim secure credential persistence');
+  assertEqual(snapshot.capabilities['distribution.read_status'], false, 'Browser fallback must not claim Pear distribution access');
+});
+
+asyncTest('Host public surface rejects bridge escape hatches and returns serializable unsupported results', async () => {
+  const dangerous = {
+    app: { platform: async () => ({ ok: true }) },
+    capabilities: async () => ({ hostId: 'pear-electron', capabilities: {} }),
+    distribution: { status: async () => ({ ok: true }) },
+    files: { exportSave: async () => ({ ok: true }), importSave: async () => ({ ok: true }), readFile: async () => 'secret' },
+    providers: {
+      createProfile: async () => ({ ok: true }),
+      forgetCredential: async () => ({ ok: true }),
+      generate: async () => ({ ok: true }),
+      listProfiles: async () => ({ ok: true, profiles: [] }),
+      replaceCredential: async () => ({ ok: true }),
+      test: async () => ({ ok: true })
+    }
+  };
+  const { YAW_HOST } = loadHostCapabilitiesForTest({ yawHost: dangerous });
+  assertEqual(YAW_HOST.capabilities().hostId, 'browser', 'A bridge with an arbitrary filesystem method must be rejected');
+  const result = await YAW_HOST.providers.listProfiles();
+  assertEqual(result.unsupported, true, 'Unavailable native provider custody should return an explicit unsupported result');
+  assertEqual(JSON.parse(JSON.stringify(result)).error.code, 'unsupported_capability', 'Unsupported results should remain serializable and normalized');
+  const publicKeys = JSON.stringify(Object.keys(YAW_HOST));
+  for (const forbidden of ['getCredential', 'readSecret', 'rawIpc', 'invokeArbitrary', 'readArbitraryFile', 'writeArbitraryFile']) {
+    assertNotContains(publicKeys, forbidden, `Host surface must not expose ${forbidden}`);
+  }
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
@@ -2892,7 +2955,19 @@ asyncTest('Host manifest preloads curated modules and enforces provenance policy
 });
 
 asyncTest('Module runtime requirements preserve file play and gate secure server modules', async () => {
+  const browserHost = {
+    capabilities() {
+      return {
+        hostId: 'browser',
+        capabilities: {
+          'files.export_save': true,
+          'providers.secure_transport': false
+        }
+      };
+    }
+  };
   const MODULE_SYSTEM = loadModuleSystemForTest({
+    YAW_HOST: browserHost,
     window: {
       location: { protocol: 'file:', hostname: '', href: 'file:///tmp/you-are-wild.html', origin: 'null' }
     }
@@ -2914,6 +2989,34 @@ asyncTest('Module runtime requirements preserve file play and gate secure server
   const compatibility = MODULE_SYSTEM._runtimeCompatibilityBlock(hosted);
   assertEqual(compatibility.key, 'mod.compatibility.origins', 'Runtime incompatibility should expose a stable localization key');
   assertEqual(compatibility.vars.origins, 'https, localhost', 'Runtime incompatibility should expose bounded origin variables');
+  const nativeOnly = MODULE_SYSTEM._normalizeManifest({
+    id: 'native-only',
+    name: 'Native Only',
+    version: '1.0.0',
+    runtimeRequirements: {
+      hosts: ['pear-electron'],
+      capabilities: ['files.export_save', 'providers.secure_transport']
+    }
+  });
+  const hostBlock = MODULE_SYSTEM._runtimeCompatibilityBlock(nativeOnly);
+  assertEqual(hostBlock.key, 'mod.compatibility.hosts', 'Native-only modules should expose a stable host incompatibility key');
+  assertContains(hostBlock.message, 'pear-electron', 'Native-only module compatibility should name the required host');
+  assertEqual(nativeOnly.runtimeRequirements.hosts[0], 'pear-electron', 'Host requirements should survive manifest normalization');
+  assertEqual(nativeOnly.runtimeRequirements.capabilities.length, 2, 'Capability requirements should remain declarative and bounded');
+
+  const nativeHost = {
+    capabilities() {
+      return {
+        hostId: 'pear-electron',
+        capabilities: {
+          'files.export_save': true,
+          'providers.secure_transport': true
+        }
+      };
+    }
+  };
+  const nativeModuleSystem = loadModuleSystemForTest({ YAW_HOST: nativeHost });
+  assertEqual(nativeModuleSystem._runtimeCompatibilityBlockReason(nativeOnly), null, 'A matching native host should satisfy declared host capabilities');
 });
 
 asyncTest('Host package integrity and same-origin catalog boundaries are enforced', async () => {

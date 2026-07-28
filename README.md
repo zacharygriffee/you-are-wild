@@ -58,3 +58,7 @@ dist/you-are-wild.html
 If source changes, regenerate that file with `npm run build` and verify it with `npm run check`.
 
 `dist/` is ignored and `dist/you-are-wild.html` should not be committed to `main`. CI generates the playable HTML and uploads it as an artifact; release builds can publish the generated file separately.
+
+## Host integration
+
+The browser fallback, bounded native host contract, credential-custody rules, and native module compatibility declarations are documented in [docs/host-architecture.md](docs/host-architecture.md).

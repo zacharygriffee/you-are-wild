@@ -52,7 +52,12 @@ The core rejects a bridge with additional methods. Native save dialogs return co
 
 ## Provider credential custody
 
-The renderer may transiently collect a credential only during an explicit core-owned setup or replacement action. The native host encrypts or keeps it for the session immediately. It never returns plaintext, encrypted blobs, authorization headers, storage paths, or decryption handles.
+The browser renderer may collect a session credential for the existing
+browser-only provider flow. In the native host, credential entry occurs only
+inside a dedicated trusted window that does not load the game or executable
+modules. Electron main encrypts or retains it for the session immediately. The
+game renderer never receives plaintext, encrypted blobs, authorization
+headers, storage paths, or decryption handles.
 
 Native profiles are mirrored into `YAW_AI_PROVIDER_MANAGER` as display-safe metadata and opaque connection IDs. The native host adapter sends bounded generation requests to Electron main. Existing modules continue to call:
 

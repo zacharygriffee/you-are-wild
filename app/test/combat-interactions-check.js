@@ -4105,9 +4105,13 @@ async function runContentSettingsBrowserFlow(page) {
   assert.strictEqual(state.providerEnabled, false, 'Installed provider should remain disabled before policy opt-in');
 
   await page.locator('#tier-mature').click();
+  await assert.doesNotReject(() => page.locator('#app-confirm-dialog').waitFor({ state: 'visible', timeout: 1000 }), 'Mature posture should require the local 18+ acknowledgement');
+  await page.locator('#app-confirm-dialog button.primary').click();
   await page.waitForSelector('[data-gameplay-variant="core.digestion.fatal"]');
   await page.locator('[data-gameplay-variant="core.feeding.forced"]').click();
   await page.locator('[data-content-category="explicit.sexual"]').click();
+  await assert.doesNotReject(() => page.locator('#app-confirm-dialog').waitFor({ state: 'visible', timeout: 1000 }), 'Explicit content should require a separate local acknowledgement');
+  await page.locator('#app-confirm-dialog button.primary').click();
   await page.evaluate(async providerId => MODULE_SYSTEM.setModuleEnabled(providerId, true), explicitProviderPackage.module.manifest.id);
   await page.evaluate(() => App.renderContentPolicySettings());
 

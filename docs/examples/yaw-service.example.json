@@ -1,0 +1,10 @@
+{
+  "schema": "yaw-managed-service-config-v1",
+  "enabled": true,
+  "apiBase": "/api/yaw",
+  "accountUrl": "/account",
+  "subscribeUrl": "/subscribe",
+  "approvedModuleIds": [
+    "yaw_narration_first_party"
+  ]
+}

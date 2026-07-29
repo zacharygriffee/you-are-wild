@@ -750,7 +750,8 @@ async function checkPublicUiContributions(browser) {
 }
 
 async function checkViewport(browser, name, width, height) {
-  const page = await browser.newPage({ viewport: { width, height }, isMobile: width <= 1024 });
+  const context = await browser.newContext({ viewport: { width, height }, isMobile: width <= 1024 });
+  const page = await context.newPage();
   await page.goto(distUrl, { waitUntil: 'load' });
   await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
   await clearBrowserStorage(page);
@@ -4690,7 +4691,7 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(terminalRemainsPresentation.badgeHidden, false, `${name}: mobile remains badge should stay discoverable`);
   assert.strictEqual(terminalRemainsPresentation.pageOverflow, false, `${name}: responsive remains presentation should not introduce horizontal overflow`);
 
-  await page.close();
+  await context.close();
 }
 
 async function checkShortMenuScrollFallback(browser) {

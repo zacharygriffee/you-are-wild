@@ -45,6 +45,7 @@ const YAW_SETTINGS_DATA_FLOW = {
             app._removeStoredValue('tutorialState');
             app._removeStoredValue('settings');
             app._removeStoredValue('contentPrefs');
+            YAW_CONTENT_ACCESS.clear(app);
             app._removeStoredValue('logView');
 
             app._closeModuleDatabase();

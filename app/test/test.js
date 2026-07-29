@@ -232,6 +232,7 @@ const partyManagementContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'party
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
 const dialogFlowContent = `${fs.readFileSync(path.join(SRC_DIR, 'core', 'dialog-flow.js'), 'utf8')}\n${tutorialSystemContent}`;
+const contentAccessContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'content-access.js'), 'utf8');
 const settingsFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'settings-flow.js'), 'utf8');
 const settingsDataFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'settings-data-flow.js'), 'utf8');
 const mobileGesturesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-gestures.js'), 'utf8');
@@ -270,6 +271,7 @@ const narrationSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'narra
 const hostCapabilitiesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'host-capabilities.js'), 'utf8');
 const puterProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'puter-provider.js'), 'utf8');
 const openAICompatibleProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'openai-compatible-provider.js'), 'utf8');
+const managedServiceProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'managed-service-provider.js'), 'utf8');
 const marketplaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marketplace.js'), 'utf8');
 const explicitProviderPath = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-explicit.yawmod.json');
 const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
@@ -678,7 +680,7 @@ function loadModuleSystemForTest(options = {}) {
   App._getItemDef = item => itemRegistry.definition(App, item);
   App._itemDefinitionId = item => itemRegistry.definitionId(App, item);
   App._normalizeItemInstance = item => itemRegistry.normalizeInstance(App, item);
-  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SPRITE_PACK_V1', 'YAW_SPRITE_RUNTIME', 'YAW_SUB_ACTIONS', 'YAW_STORY_EVENTS', 'YAW_RESOURCE_LEDGER', 'YAW_COMBAT_TECHNIQUES', 'YAW_RECOVERY_MODES', 'YAW_ITEM_REGISTRY', 'YAW_ITEM_EFFECTS', 'YAW_PERK_REGISTRY', 'YAW_QUEST_FLOW', 'YAW_HOST', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, spritePackV1, spriteRuntime, options.subActions, options.storyEvents, resourceLedger, combatTechniques, recoveryModes, itemRegistry, itemEffects, perkRuntime.YAW_PERK_REGISTRY, questRuntime.YAW_QUEST_FLOW, options.YAW_HOST);
+  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SPRITE_PACK_V1', 'YAW_SPRITE_RUNTIME', 'YAW_SUB_ACTIONS', 'YAW_STORY_EVENTS', 'YAW_RESOURCE_LEDGER', 'YAW_COMBAT_TECHNIQUES', 'YAW_RECOVERY_MODES', 'YAW_ITEM_REGISTRY', 'YAW_ITEM_EFFECTS', 'YAW_PERK_REGISTRY', 'YAW_QUEST_FLOW', 'YAW_HOST', 'YAW_CONTENT_ACCESS', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, spritePackV1, spriteRuntime, options.subActions, options.storyEvents, resourceLedger, combatTechniques, recoveryModes, itemRegistry, itemEffects, perkRuntime.YAW_PERK_REGISTRY, questRuntime.YAW_QUEST_FLOW, options.YAW_HOST, options.YAW_CONTENT_ACCESS);
   MODULE_SYSTEM._testApp = App;
   MODULE_SYSTEM._testItemRegistry = itemRegistry;
   MODULE_SYSTEM._testItemEffects = itemEffects;
@@ -3366,6 +3368,62 @@ asyncTest('Module enablement respects content rating policy', async () => {
   CONTENT.preferences.enabledCategories = ['explicit.sexual'];
   await MODULE_SYSTEM.setModuleEnabled('adult-module', true);
   assertEqual(MODULE_SYSTEM.activeModules.has('adult-module'), true, 'Legacy Adult module should enable only after mature posture and category opt-in are active');
+});
+
+asyncTest('Module enablement requires local acknowledgement beneath the UI', async () => {
+  const CONTENT = {
+    preferences: {
+      posture: 'mature',
+      maxTier: 2,
+      explicitDescriptions: true,
+      enabledCategories: ['explicit.sexual']
+    }
+  };
+  let granted = false;
+  const access = {
+    requirementsForManifest(manifest) {
+      return {
+        rating: manifest.contentRating === 'safe' ? 'safe' : 'mature',
+        categories: manifest.contentRating === 'adult' ? ['explicit.sexual'] : []
+      };
+    },
+    requirementsForManifests(manifests) {
+      return this.requirementsForManifest(manifests[0] || {});
+    },
+    hasLocalGrant(_app, requirements) {
+      return requirements.rating === 'safe' || granted;
+    }
+  };
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT, YAW_CONTENT_ACCESS: access });
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'ack-module', name: 'Acknowledged Module', version: '1.0.0', contentRating: 'mature' },
+    code: "MODS.registerHook('onTick', () => {});"
+  });
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('ack-module', true);
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'requires player content acknowledgement', 'Direct enablement should identify the missing acknowledgement');
+  }
+  assertEqual(rejected, true, 'A direct runtime call must not bypass local acknowledgement');
+  assertEqual(MODULE_SYSTEM.activeModules.has('ack-module'), false, 'Rejected module code must remain inactive');
+
+  const requirements = await MODULE_SYSTEM.contentAccessRequirementsForProfile({
+    schema: MODULE_SYSTEM.CONTENT_PROFILE_SCHEMA,
+    hostId: '',
+    strict: false,
+    modules: [{ id: 'ack-module', version: '1.0.0', integrity: '', provenance: 'user' }]
+  });
+  assertEqual(requirements.rating, 'mature', 'Save content profile inspection should expose the required Mature gate before activation');
+
+  granted = true;
+  await MODULE_SYSTEM.setModuleEnabled('ack-module', true);
+  assertEqual(MODULE_SYSTEM.activeModules.has('ack-module'), true, 'Acknowledged Mature module should enable normally');
 });
 
 asyncTest('Enabled modules are disabled when content policy is lowered', async () => {
@@ -7256,6 +7314,317 @@ test('Dialog flow helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_DIALOG_FLOW.resolveSaveRecovery(this, action, fallbackSlotName, fallbackSaveData)', 'App save-recovery resolver should delegate to the helper');
 });
 
+test('Content access helper is offline-compatible, versioned, and loaded before settings and app code', () => {
+  assertContains(buildContent, "'src/core/content-access.js'", 'Content access helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/content-access.js'") < buildContent.indexOf("'src/core/settings-flow.js'"), 'Content access helper should load before settings flow');
+  assert(buildContent.indexOf("'src/core/content-access.js'") < buildContent.indexOf("'src/core/app.js'"), 'Content access helper should load before app.js');
+  assertContains(contentAccessContent, "SCHEMA: 'yaw-content-access-v1'", 'Content access should use a versioned local record');
+  assertContains(contentAccessContent, "MINIMUM_AGE: 18", 'Content access should declare the adult threshold explicitly');
+  assertContains(contentAccessContent, "SENSITIVE_CATEGORIES: new Set(['explicit.sexual'])", 'Explicit sexual content should require its own acknowledgement');
+  assertContains(contentAccessContent, 'mode: this._storedRecord(app)', 'Snapshot should distinguish persisted and session-only acknowledgement');
+  assertNotContains(contentAccessContent, 'dateOfBirth', 'Local acknowledgement must not collect a birth date');
+  assertNotContains(contentAccessContent, 'identityDocument', 'Local acknowledgement must not collect identity documents');
+  assertContains(appContent, "contentAccess: 'yaw-content-access'", 'App should store acknowledgement separately from preferences and saves');
+  assertContains(settingsDataFlowContent, 'YAW_CONTENT_ACCESS.clear(app)', 'Clear-all data should remove local content acknowledgement');
+  assertContains(modUiContent, 'YAW_CONTENT_ACCESS.requirementsForManifest(mod.manifest)', 'Module activation UI should derive its gate from manifest declarations');
+  assertContains(moduleSystemContent, 'this._assertLocalContentAccess(module.manifest)', 'Module runtime should enforce acknowledgement below the UI');
+  assertContains(saveLoadFlowContent, 'MODULE_SYSTEM.contentAccessRequirementsForProfile(contentProfile)', 'Save load should inspect the locked module profile before activation');
+  assertContains(saveLoadFlowContent, 'await YAW_CONTENT_ACCESS.ensure(app, requirements', 'Save load should pause for missing acknowledgement');
+});
+
+test('Managed service provider is optional, same-origin, credential-free, and loaded after the provider manager', () => {
+  assertContains(buildContent, "'src/core/managed-service-provider.js'", 'Managed service provider should be part of generated builds');
+  assert(buildContent.indexOf("'src/core/narration-system.js'") < buildContent.indexOf("'src/core/managed-service-provider.js'"), 'Managed provider should load after the provider manager');
+  assertContains(managedServiceProviderContent, "const CONFIG_PATH = '/yaw-service.json'", 'Hosted service discovery should use a same-origin declaration');
+  assertContains(managedServiceProviderContent, "credentials: 'include'", 'Managed account requests should use the bounded browser session');
+  assertContains(managedServiceProviderContent, "'X-YAW-CSRF': state.account.csrfToken", 'State-changing managed requests should use session-bound CSRF');
+  assertContains(managedServiceProviderContent, "connectionId: String(metadata.serviceConnectionId", 'Managed generation should use an opaque service connection id');
+  assertNotContains(managedServiceProviderContent, 'apiKey', 'Managed provider adapter must not accept or retain an API key');
+  assertNotContains(managedServiceProviderContent, 'Authorization', 'Managed provider adapter must not construct provider authorization');
+  assertNotContains(managedServiceProviderContent, 'context.instructions', 'Mod instructions must not become a managed service system prompt');
+  assertContains(moduleSystemContent, "listConnections(capability, moduleId)", 'Module AI connection discovery should carry the requesting module identity');
+  assertContains(modUiContent, "listProfiles('', moduleId)", 'Module settings should hide provider profiles that are not product-authorized');
+});
+
+asyncTest('Provider authorization hides and rejects restricted connections per requesting module', async () => {
+  const runtime = loadNarrationSystemForTest({ localStorage: createMemoryStorage() });
+  const manager = runtime.YAW_AI_PROVIDER_MANAGER;
+  let calls = 0;
+  manager.registerAdapter('restricted-provider', {
+    capabilities: ['text.generate'],
+    authorize: ({ ownerModuleId }) => ownerModuleId === 'approved-narrator',
+    async invoke() {
+      calls++;
+      return { text: 'Approved result.' };
+    }
+  });
+  manager.upsertProfile({
+    id: 'restricted-connection',
+    providerId: 'restricted-provider',
+    persisted: false,
+    metadata: { modelAlias: 'story-balanced' }
+  });
+  manager.connectProfile('restricted-connection');
+  assertEqual(manager.listProfiles('', 'unapproved-mod').length, 0, 'Unapproved modules should not see restricted profiles in settings');
+  assertEqual(manager.listConnections('text.generate', 'unapproved-mod').length, 0, 'Unapproved modules should not discover restricted runtime connections');
+  assertEqual(manager.listConnections('text.generate', 'approved-narrator').length, 1, 'Approved modules should discover the restricted connection');
+  let rejected = false;
+  try {
+    await manager.generate('unapproved-mod', {
+      providerConnectionId: 'restricted-connection',
+      input: { context: {} },
+      maxCharacters: 200
+    });
+  } catch (error) {
+    rejected = true;
+    assertContains(error.message, 'not authorized', 'Unauthorized connection call should fail before invocation');
+  }
+  assertEqual(rejected, true, 'Unapproved module generation should reject');
+  assertEqual(calls, 0, 'Rejected module requests must not reach the provider adapter');
+  const result = await manager.generate('approved-narrator', {
+    providerConnectionId: 'restricted-connection',
+    input: { context: {} },
+    maxCharacters: 200
+  });
+  assertEqual(result.text, 'Approved result.', 'Approved module should use the restricted connection');
+  assertEqual(calls, 1, 'Only the approved request should reach the provider adapter');
+});
+
+asyncTest('Managed service discovery registers curated aliases without exposing upstream custody', async () => {
+  const requests = [];
+  const manager = {
+    adapters: new Map(),
+    profiles: new Map(),
+    connections: new Map(),
+    registerAdapter(id, adapter) {
+      this.adapters.set(id, adapter);
+      return id;
+    },
+    upsertProfile(profile) {
+      this.profiles.set(profile.id, { ...profile });
+      return profile.id;
+    },
+    connectProfile(id) {
+      this.connections.set(id, this.profiles.get(id));
+      return id;
+    },
+    removeProfile(id) {
+      this.connections.delete(id);
+      return this.profiles.delete(id);
+    },
+    listProfiles(providerId) {
+      return [...this.profiles.values()]
+        .filter(profile => profile.providerId === providerId)
+        .map(profile => ({ ...profile, connected: this.connections.has(profile.id) }));
+    }
+  };
+  const response = (status, body) => ({
+    status,
+    ok: status >= 200 && status < 300,
+    async json() { return body; }
+  });
+  const window = {
+    location: {
+      protocol: 'https:',
+      origin: 'https://play.example',
+      pathname: '/play',
+      search: '',
+      hash: ''
+    },
+    history: { replaceState() {} },
+    async fetch(url, options = {}) {
+      requests.push({ url: String(url), options: structuredClone({ ...options, signal: undefined }) });
+      if (url === '/yaw-service.json') {
+        return response(200, {
+          schema: 'yaw-managed-service-config-v1',
+          enabled: true,
+          apiBase: '/',
+          accountUrl: '/account',
+          subscribeUrl: '/subscribe',
+          approvedModuleIds: ['yaw_simple_narrator']
+        });
+      }
+      if (url === '/v1/account/session') {
+        return response(200, {
+          authenticated: true,
+          account: {
+            displayName: 'Player',
+            contentAccess: { policyVersion: 1, ratings: ['mature'], categories: [] }
+          },
+          entitlement: { tier: 'premium', status: 'active', validUntil: '2026-08-29T00:00:00.000Z' },
+          allowance: { period: '2026-07', limit: 1000, used: 2, remaining: 998 },
+          csrfToken: 'browser-csrf-value'
+        });
+      }
+      if (url === '/v1/managed/connections') {
+        return response(200, {
+          connections: [{
+            id: 'managed:narration',
+            displayName: 'Premium Narration',
+            capabilities: ['text.generate'],
+            models: [{ id: 'story-balanced', displayName: 'Balanced Story' }]
+          }]
+        });
+      }
+      if (url === '/v1/managed/narration') {
+        return response(200, {
+          schema: 'yaw-managed-narration-result-v1',
+          text: 'A safe managed result.',
+          model: { id: 'story-balanced', displayName: 'Balanced Story' },
+          usage: { period: '2026-07', limit: 1000, used: 3, remaining: 997 }
+        });
+      }
+      return response(404, { error: { code: 'request_invalid', message: 'Not found' } });
+    }
+  };
+  const managed = new Function(
+    'window', 'YAW_AI_PROVIDER_MANAGER', 'CONTENT', 'App', 'AIProviderUI', 'ModUI', 'crypto', 'URL', 'console',
+    `${managedServiceProviderContent}\nreturn YAW_MANAGED_SERVICE;`
+  )(
+    window,
+    manager,
+    { preferences: { enabledCategories: [] } },
+    {},
+    { refresh() {} },
+    { refreshModList() {} },
+    { randomUUID: () => 'request-uuid-0001' },
+    URL,
+    { warn() {} }
+  );
+  await managed.init();
+  const profiles = manager.listProfiles(managed.PROVIDER_ID);
+  assertEqual(profiles.length, 1, 'Active entitlement should expose one profile per curated model alias');
+  assertEqual(profiles[0].id, 'managed:narration:story-balanced', 'Profile id should remain opaque and stable');
+  assertEqual(profiles[0].metadata.modelAlias, 'story-balanced', 'Renderer should retain only the curated alias');
+  assertNotContains(JSON.stringify(profiles), 'upstream', 'Renderer profiles must not identify upstream providers or models');
+  assertNotContains(JSON.stringify(managed.snapshot()), 'browser-csrf-value', 'Public managed-service snapshots must redact the request CSRF token');
+
+  const adapter = manager.adapters.get(managed.PROVIDER_ID);
+  assertEqual(adapter.authorize({ ownerModuleId: 'core-impersonator' }), false, 'A core-like module id must not bypass the approved package list');
+  assertEqual(adapter.authorize({ ownerModuleId: 'yaw_simple_narrator' }), true, 'The host-approved narration module should be authorized');
+  const result = await adapter.invoke({
+    ownerModuleId: 'yaw_simple_narrator',
+    profileId: 'characters',
+    maxCharacters: 500,
+    signal: null,
+    connection: { metadata: profiles[0].metadata },
+    instructions: 'This mod text must not become a server system prompt.',
+    input: {
+      context: {
+        policy: { posture: 'mature', enabledCategories: [] },
+        viewpoint: { mode: 'player' },
+        beats: [{ summary: 'A deterministic beat.' }],
+        characters: [],
+        recentBeats: []
+      }
+    }
+  });
+  assertEqual(result.text, 'A safe managed result.', 'Adapter should return only bounded managed narration');
+  const generation = JSON.parse(requests.find(entry => entry.url === '/v1/managed/narration').options.body);
+  assertEqual(generation.modelAlias, 'story-balanced', 'Server request should use the curated alias');
+  assertEqual(generation.profileId, 'characters', 'Server request should preserve a supported first-party narration profile');
+  assertEqual(generation.content.posture, 'mature', 'Core content posture should cross the service boundary explicitly');
+  assertNotContains(JSON.stringify(generation), 'This mod text', 'Module instructions should not cross as a raw managed prompt');
+  assertNotContains(JSON.stringify(generation), 'apiKey', 'Managed request should contain no credential fields');
+  assertEqual(requests.find(entry => entry.url === '/v1/managed/narration').options.headers['X-YAW-CSRF'], 'browser-csrf-value', 'Generation should carry the account CSRF token');
+  assertContains(managedServiceProviderContent, "history?.replaceState?.(null, '', `${window.location.pathname}${window.location.search}`)", 'Magic-link fragments should be cleared before token consumption');
+});
+
+asyncTest('Local-file startup does not discover or require the managed service', async () => {
+  let fetchCalls = 0;
+  const managed = new Function(
+    'window', 'YAW_AI_PROVIDER_MANAGER', 'CONTENT', 'App', 'crypto', 'URL', 'console',
+    `${managedServiceProviderContent}\nreturn YAW_MANAGED_SERVICE;`
+  )(
+    {
+      location: { protocol: 'file:', origin: 'null' },
+      async fetch() { fetchCalls++; }
+    },
+    { registerAdapter() { throw new Error('Managed adapter must not register for file origin'); } },
+    { preferences: {} },
+    {},
+    {},
+    URL,
+    { warn() {} }
+  );
+  const snapshot = await managed.init();
+  assertEqual(snapshot.configured, false, 'File origin should remain service-independent');
+  assertEqual(fetchCalls, 0, 'File origin should not attempt service discovery');
+});
+
+test('Local content access acknowledgement grants Mature and explicit categories without identity data', () => {
+  const access = new Function(`${contentAccessContent}\nreturn YAW_CONTENT_ACCESS;`)();
+  const storage = new Map();
+  let pending = null;
+  const app = {
+    _getStoredValue: key => storage.get(key) || null,
+    _setStoredValue: (key, value) => storage.set(key, String(value)),
+    _removeStoredValue: key => storage.delete(key),
+    _label: (key, fallback, vars = {}) => fallback.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? ''),
+    showConfirmDialog(options) {
+      pending = options;
+      return false;
+    }
+  };
+
+  assertEqual(access.hasLocalGrant(app, { rating: 'mature' }), false, 'Mature should require a first local acknowledgement');
+  assertEqual(access.request(app, { rating: 'mature' }), false, 'First Mature request should open the bounded confirmation');
+  assertContains(pending.message, '18 or older', 'Mature confirmation should state the minimum age');
+  pending.onConfirm();
+  assertEqual(access.hasLocalGrant(app, { rating: 'mature' }), true, 'Confirming should grant Mature locally');
+  assertEqual(access.hasLocalGrant(app, { rating: 'mature', categories: ['explicit.sexual'] }), false, 'Mature acknowledgement should not silently grant explicit content');
+
+  access.request(app, { rating: 'mature', categories: ['explicit.sexual'] });
+  assertContains(pending.message, 'sexually explicit fictional material', 'Explicit acknowledgement should identify the elevated content');
+  pending.onConfirm();
+  const snapshot = access.snapshot(app);
+  assertEqual(snapshot.mode, 'local-acknowledgement', 'Working browser storage should produce a local acknowledgement');
+  assertEqual(snapshot.ratings[0], 'mature', 'Snapshot should expose only the acknowledged rating');
+  assertEqual(snapshot.categories[0], 'explicit.sexual', 'Snapshot should expose only acknowledged category ids');
+  const raw = storage.get('contentAccess');
+  assertNotContains(raw, 'birth', 'Persisted acknowledgement should not contain birth data');
+  assertNotContains(raw, 'account', 'Persisted acknowledgement should not contain account data');
+  assertNotContains(raw, 'billing', 'Persisted acknowledgement should not contain billing data');
+});
+
+test('Content access falls back to the current session and invalidates stale policy records', () => {
+  const access = new Function(`${contentAccessContent}\nreturn YAW_CONTENT_ACCESS;`)();
+  const stale = JSON.stringify({
+    schema: 'yaw-content-access-v1',
+    policyVersion: 0,
+    minimumAge: 18,
+    grants: { mature: { confirmedAt: new Date().toISOString() }, categories: {} }
+  });
+  let stored = stale;
+  const app = {
+    _getStoredValue: () => stored,
+    _setStoredValue() { throw new Error('file origin storage unavailable'); },
+    _removeStoredValue() { stored = null; }
+  };
+  assertEqual(access.hasLocalGrant(app, { rating: 'mature' }), false, 'A stale policy acknowledgement should not survive a policy change');
+  const result = access.grantLocal(app, { rating: 'mature' });
+  assertEqual(result.mode, 'session-acknowledgement', 'Unavailable file-origin storage should allow a session-only acknowledgement');
+  assertEqual(access.hasLocalGrant(app, { rating: 'mature' }), true, 'Session acknowledgement should keep the current offline play session usable');
+  assertEqual(access.snapshot(app).mode, 'session-acknowledgement', 'Snapshot should disclose session-only persistence');
+});
+
+test('Manifest content access requirements preserve the SFW, Mature, and explicit boundaries', () => {
+  const access = new Function(`${contentAccessContent}\nreturn YAW_CONTENT_ACCESS;`)();
+  assertEqual(access.requirementsForManifest({ contentRating: 'safe' }).rating, 'safe', 'Safe modules should not require Mature acknowledgement');
+  assertEqual(access.requirementsForManifest({ contentRating: 'mature' }).rating, 'mature', 'Mature modules should require Mature acknowledgement');
+  const explicit = access.requirementsForManifest({
+    contentRating: 'mature',
+    contentCategories: [{ id: 'explicit.sexual', required: true }]
+  });
+  assertEqual(explicit.rating, 'mature', 'Explicit modules should retain the Mature floor');
+  assertEqual(explicit.categories[0], 'explicit.sexual', 'Required explicit category should receive the separate gate');
+  const optional = access.requirementsForManifest({
+    contentRating: 'safe',
+    contentCategories: [{ id: 'explicit.sexual', required: false }]
+  });
+  assertEqual(optional.categories.length, 0, 'Optional categories should not block whole-module activation');
+});
+
 test('Settings flow helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/settings-flow.js'", 'Settings flow helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/settings-flow.js'") < buildContent.indexOf("'src/core/settings-data-flow.js'"), 'Settings flow helper should load before destructive settings data flow');
@@ -7675,6 +8044,30 @@ test('Binary codec has unit codec', () => {
   assertContains(serContent, 'stomach:', 'unit stomach field missing');
   assertContains(serContent, 'womb:', 'unit womb field missing');
   assertContains(serContent, 'balls:', 'unit balls field missing');
+});
+
+test('Binary save export excludes local content acknowledgement and provider credentials', () => {
+  const Binary = loadBinaryForTest();
+  const player = makeSerializableUnit('You');
+  const sensitiveValues = {
+    contentAccess: {
+      schema: 'yaw-content-access-v1',
+      grants: { mature: { confirmedAt: '2026-07-29T00:00:00.000Z' } }
+    },
+    providerCredential: 'sk-must-not-enter-save-export'
+  };
+  const encoded = Binary.saveGame({
+    player,
+    party: [player],
+    location: { x: 0, y: 0 },
+    currentBiome: 'forest',
+    ...sensitiveValues
+  });
+  const loaded = Binary.loadGame(encoded);
+  assertEqual(Object.hasOwn(loaded, 'contentAccess'), false, 'Local acknowledgement should not enter exported save state');
+  assertEqual(Object.hasOwn(loaded, 'providerCredential'), false, 'Provider credentials should not enter exported save state');
+  assertNotContains(JSON.stringify(loaded), sensitiveValues.providerCredential, 'Decoded save should contain no provider credential');
+  assertNotContains(JSON.stringify(loaded), sensitiveValues.contentAccess.schema, 'Decoded save should contain no content-access record');
 });
 
 test('Binary save uses live top-level stats when nested stats are stale', () => {
@@ -9935,7 +10328,21 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   ].forEach(id => {
     if (!elements.has(id)) elements.set(id, makeElement());
   });
-  const storage = new Map(Object.entries(options.storage || {}).map(([key, value]) => [key, String(value)]));
+  const defaultContentAccess = {
+    schema: 'yaw-content-access-v1',
+    policyVersion: 1,
+    minimumAge: 18,
+    grants: {
+      mature: { confirmedAt: '2026-07-29T00:00:00.000Z' },
+      categories: {
+        'explicit.sexual': { confirmedAt: '2026-07-29T00:00:00.000Z' }
+      }
+    }
+  };
+  const storage = new Map([
+    ...(options.contentAccess === false ? [] : [['yaw-content-access', JSON.stringify(defaultContentAccess)]]),
+    ...Object.entries(options.storage || {}).map(([key, value]) => [key, String(value)])
+  ]);
   const localStorage = {
     getItem: key => storage.has(key) ? storage.get(key) : null,
     setItem: (key, value) => storage.set(key, String(value)),
@@ -9961,7 +10368,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${spritePackV1Content}\n${spriteRuntimeContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${recoveryModesContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${balanceSystemContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${resourceLedgerContent}\n${combatTechniqueContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${companionBehaviorContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${itemRegistryContent}\n${itemEffectsContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questContractContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${spritePackV1Content}\n${spriteRuntimeContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${recoveryModesContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${balanceSystemContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${resourceLedgerContent}\n${combatTechniqueContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${companionBehaviorContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${itemRegistryContent}\n${itemEffectsContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questContractContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${contentAccessContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -31308,6 +31715,12 @@ test('Settings destructive confirmations localize', async () => {
   confirmedDeleteAll.document.getElementById('menu-continue').style.display = 'block';
   confirmedDeleteAll.App._dbDelete = async (_store, key) => { deleted.push(key); };
   confirmedDeleteAll.App._dbGet = async () => undefined;
+  confirmedDeleteAll.App._pruneUnreferencedWorldStore = async () => 0;
+  confirmedDeleteAll.App.refreshContinueButton = async () => {
+    confirmedDeleteAll.document.getElementById('menu-continue').style.display = 'none';
+    return false;
+  };
+  confirmedDeleteAll.App._reloadPage = () => {};
   confirmedDeleteAll.App.deleteAllSaves();
   await confirmedDeleteAll.App.resolveConfirmDialog(true);
   assertEqual(deleted.join(','), 'slot1,slot2,slot3,slot4,slot5', 'Confirmed delete-all should remove every save slot');
@@ -31378,6 +31791,7 @@ test('Delete save slot is scoped to one selected slot', async () => {
   const deleted = [];
   App._dbDelete = async (_store, key) => { deleted.push(key); };
   App._dbGet = async () => undefined;
+  App.refreshContinueButton = async () => false;
   storage.set('yaw-save-time-slot2', '1710000000000');
   storage.set('yaw-save-time-slot3', '1720000000000');
   App.activeSlot = 'slot2';
@@ -31424,6 +31838,14 @@ test('Save slot metadata normalizes stored and requested slot names', async () =
   syncCase.App._dbGet = async (_store, key) => {
     dbGets.push(key);
     return key === 'slot2' ? new Uint8Array([1]) : undefined;
+  };
+  syncCase.App._readSaveSlotPresence = async slotNames => {
+    const presence = new Map();
+    for (const slotName of slotNames) {
+      const saveData = await syncCase.App._dbGet('saves', slotName);
+      presence.set(slotName, { saveData, sparseManifest: null, exists: Boolean(saveData) });
+    }
+    return presence;
   };
   syncCase.storage.set('yaw-last-slot', '../bad');
   syncCase.storage.set('yaw-last-save-time', '999');
@@ -31489,6 +31911,7 @@ test('Deleting from new-game slot mode keeps the new-run flow active', async () 
   const deleted = [];
   App._dbDelete = async (_store, key) => { deleted.push(key); };
   App._dbGet = async () => undefined;
+  App.refreshContinueButton = async () => false;
   storage.set('yaw-save-time-slot2', '1710000000000');
   App.showNewGameManager();
   await App.deleteSlot('slot2');

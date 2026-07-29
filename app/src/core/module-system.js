@@ -693,6 +693,17 @@ const MODULE_SYSTEM = {
         if (reason) throw new Error(reason);
     },
 
+    _assertLocalContentAccess(manifest) {
+        if (typeof YAW_CONTENT_ACCESS === 'undefined'
+            || typeof YAW_CONTENT_ACCESS.requirementsForManifest !== 'function'
+            || typeof YAW_CONTENT_ACCESS.hasLocalGrant !== 'function'
+            || typeof App === 'undefined') return;
+        const requirements = YAW_CONTENT_ACCESS.requirementsForManifest(manifest);
+        if (!YAW_CONTENT_ACCESS.hasLocalGrant(App, requirements)) {
+            throw new Error(`Module ${manifest?.name || manifest?.id || 'content'} requires player content acknowledgement`);
+        }
+    },
+
     _normalizeHostPolicy(value = {}) {
         if (!value || typeof value !== 'object' || Array.isArray(value)) {
             throw new Error('Host module policy must be an object');
@@ -1432,7 +1443,7 @@ const MODULE_SYSTEM = {
         };
     },
 
-    async assertContentProfile(profile) {
+    async _resolveContentProfile(profile) {
         if (!profile) return true;
         if (!profile || typeof profile !== 'object' || profile.schema !== this.CONTENT_PROFILE_SCHEMA || !Array.isArray(profile.modules)) {
             throw new Error('Save has an invalid module content profile');
@@ -1461,6 +1472,33 @@ const MODULE_SYSTEM = {
             const extras = [...this.moduleRecords.values()].filter(module => module.enabled && !requiredIds.has(module.id));
             if (extras.length) throw new Error(`Save does not allow additional enabled modules: ${extras.map(module => module.id).join(', ')}`);
         }
+        return resolved;
+    },
+
+    async contentAccessRequirementsForProfile(profile) {
+        if (!profile) return { rating: 'safe', categories: [] };
+        const resolved = await this._resolveContentProfile(profile);
+        if (typeof YAW_CONTENT_ACCESS !== 'undefined' && typeof YAW_CONTENT_ACCESS.requirementsForManifests === 'function') {
+            return YAW_CONTENT_ACCESS.requirementsForManifests(
+                [...resolved.values()].map(module => module.manifest)
+            );
+        }
+        const categories = new Set();
+        let rating = 'safe';
+        for (const module of resolved.values()) {
+            const manifestRating = String(module.manifest?.contentRating || 'safe').trim().toLowerCase();
+            if (manifestRating === 'mature' || manifestRating === 'adult') rating = 'mature';
+            if (manifestRating === 'adult') categories.add('explicit.sexual');
+            for (const category of module.manifest?.contentCategories || []) {
+                if (category.required !== false) categories.add(category.id);
+            }
+        }
+        return { rating, categories: [...categories].sort() };
+    },
+
+    async assertContentProfile(profile) {
+        if (!profile) return true;
+        const resolved = await this._resolveContentProfile(profile);
         const pendingEnable = new Set([...resolved.values()].filter(module => !module.enabled).map(module => module.id));
         while (pendingEnable.size) {
             const ready = [...pendingEnable].find(id => (resolved.get(id)?.manifest?.dependencies || [])
@@ -1575,6 +1613,7 @@ const MODULE_SYSTEM = {
                 try {
                     const control = this.moduleControlState({ ...module, manifest });
                     if (!control.canEnable) throw new Error(control.reason || 'Module is unavailable in this runtime');
+                    this._assertLocalContentAccess(manifest);
                     this._assertContentRatingEnabled(manifest);
                     await this.loadModule({ ...module, manifest });
                     this._syncContentPolicyProvider({ ...module, manifest });
@@ -1725,6 +1764,7 @@ const MODULE_SYSTEM = {
             module.code = validated.code;
             module.assets = validated.assets;
             this._assertGameVersionCompatible(module.manifest);
+            this._assertLocalContentAccess(module.manifest);
             this._assertContentRatingEnabled(module.manifest);
             await this._assertNoDependencyCycle(moduleId, module.manifest.dependencies, store);
             await this._assertDependenciesEnabled(moduleId, module.manifest, store);
@@ -3357,7 +3397,7 @@ const MODULE_SYSTEM = {
                         YAW_NARRATION_SYSTEM.logOperationalError(App, moduleId, 'provider_connection_not_selected');
                         return false;
                     }
-                    const available = YAW_AI_PROVIDER_MANAGER.listConnections(providerSetting.capability || 'text.generate')
+                    const available = YAW_AI_PROVIDER_MANAGER.listConnections(providerSetting.capability || 'text.generate', moduleId)
                         .some(connection => connection.id === connectionId);
                     if (!available) {
                         YAW_NARRATION_SYSTEM.logOperationalError(App, moduleId, 'provider_connection_unavailable');
@@ -3396,7 +3436,7 @@ const MODULE_SYSTEM = {
                 },
                 listConnections(capability = 'text.generate') {
                     self._requirePermission(moduleId, manifest, 'ai:request');
-                    return YAW_AI_PROVIDER_MANAGER.listConnections(capability);
+                    return YAW_AI_PROVIDER_MANAGER.listConnections(capability, moduleId);
                 },
                 cancelPending() {
                     self._requirePermission(moduleId, manifest, 'ai:request');

@@ -409,6 +409,21 @@ const ModUI = {
         
         const newState = !mod.enabled;
         const name = mod.manifest?.name || mod.id || 'Module';
+        if (newState
+            && typeof YAW_CONTENT_ACCESS !== 'undefined'
+            && typeof YAW_CONTENT_ACCESS.requirementsForManifest === 'function'
+            && typeof YAW_CONTENT_ACCESS.hasLocalGrant === 'function'
+            && typeof YAW_CONTENT_ACCESS.request === 'function') {
+            const requirements = YAW_CONTENT_ACCESS.requirementsForManifest(mod.manifest);
+            if (!YAW_CONTENT_ACCESS.hasLocalGrant(App, requirements)) {
+                YAW_CONTENT_ACCESS.request(App, requirements, {
+                    subject: name,
+                    onGranted: () => this.toggleModule(moduleId),
+                    onCancel: () => this.refreshModList()
+                });
+                return;
+            }
+        }
         try {
             await MODULE_SYSTEM.setModuleEnabled(moduleId, newState);
             await this.refreshModList();
@@ -462,7 +477,7 @@ const ModUI = {
                 : `<input type="text" maxlength="${declaration.maxLength}" value="${this.escapeHtml(value)}" onchange="ModUI.updateSetting('${id}','${key}',this.value)">`;
         } else if (declaration.type === 'provider_connection') {
             const capability = declaration.capability || 'text.generate';
-            const profiles = YAW_AI_PROVIDER_MANAGER.listProfiles()
+            const profiles = YAW_AI_PROVIDER_MANAGER.listProfiles('', moduleId)
                 .filter(profile => profile.capabilities.includes(capability))
                 .sort((left, right) => {
                     const rank = profile => profile.providerId === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID

@@ -82,7 +82,15 @@ const AIProviderUI = {
             profile_unavailable: this.label('provider.error.profileUnavailable', 'The saved provider profile is unavailable.'),
             popup_blocked: this.label('provider.puter.popupBlocked', 'The sign-in popup was blocked. Allow popups and try again.'),
             auth_window_closed: this.label('provider.puter.authCancelled', 'Puter sign-in was cancelled.'),
-            insecure_storage: this.label('provider.error.insecureStorage', 'Secure credential storage is unavailable. Use this credential for the session only, configure a compatible Linux keyring, or use a credential-free local endpoint.')
+            insecure_storage: this.label('provider.error.insecureStorage', 'Secure credential storage is unavailable. Use this credential for the session only, configure a compatible Linux keyring, or use a credential-free local endpoint.'),
+            authentication_required: this.label('managed.error.authentication', 'Sign in to use managed narration.'),
+            content_access_required: this.label('managed.error.contentAccess', 'Confirm account content access before using managed Mature narration.'),
+            entitlement_required: this.label('managed.error.entitlement', 'An active premium entitlement is required.'),
+            allowance_exhausted: this.label('managed.error.allowance', 'The managed narration allowance is exhausted for this period.'),
+            model_unavailable: this.label('managed.error.model', 'The selected managed narration model is unavailable.'),
+            provider_timeout: this.label('managed.error.timeout', 'The managed narration provider timed out.'),
+            provider_rejected: this.label('managed.error.provider', 'The managed narration provider rejected this request.'),
+            service_unavailable: this.label('managed.error.service', 'The managed narration service is temporarily unavailable.')
         };
         const message = messages[code] || this.label('provider.error.generic', 'The provider operation failed. Check the connection details and try again.');
         const diagnostic = this.label(
@@ -91,6 +99,53 @@ const AIProviderUI = {
             { code: code.slice(0, 80), status: status ? `; HTTP ${status}` : '' }
         );
         return `${message} ${diagnostic}`;
+    },
+
+    renderManaged(provider) {
+        const snapshot = YAW_MANAGED_SERVICE.snapshot();
+        const account = snapshot.account || { authenticated: false };
+        if (!account.authenticated) {
+            return `
+                <section class="provider-service" aria-labelledby="provider-managed-title">
+                    <div class="provider-service-heading">
+                        <div><div class="provider-service-title"><h2 id="provider-managed-title">${this.escape(provider.name)}</h2><span class="provider-tier-badge" data-tier="recommended">${this.escape(this.label('managed.premium', 'Premium'))}</span></div><p>${this.escape(provider.description)}</p></div>
+                        <div class="provider-capabilities">${this.capabilityBadges(provider.capabilities)}</div>
+                    </div>
+                    <div class="provider-connection-card">
+                        <strong>${this.escape(this.label('managed.signInTitle', 'Sign in with a one-time email link'))}</strong>
+                        <p>${this.escape(this.label('managed.signInHelp', 'Your account controls entitlement and allowance. Provider credentials remain on the server.'))}</p>
+                        <label class="provider-field"><span>${this.escape(this.label('managed.email', 'Email'))}</span><input id="managed-service-email" type="email" maxlength="254" autocomplete="email"></label>
+                        <div class="provider-actions"><button class="nav-btn primary" type="button" onclick="AIProviderUI.runManaged('sign-in')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('managed.sendLink', 'Send sign-in link'))}</button></div>
+                    </div>
+                </section>`;
+        }
+        const entitlement = account.entitlement || {};
+        const allowance = account.allowance || {};
+        const access = account.account?.contentAccess || {};
+        const active = ['active', 'canceled'].includes(entitlement.status);
+        const mature = access.ratings?.includes('mature');
+        return `
+            <section class="provider-service" aria-labelledby="provider-managed-title">
+                <div class="provider-service-heading">
+                    <div><div class="provider-service-title"><h2 id="provider-managed-title">${this.escape(provider.name)}</h2><span class="provider-tier-badge" data-tier="${active ? 'recommended' : 'unverified'}">${this.escape(active ? this.label('managed.active', 'Active') : this.label('managed.inactive', 'Inactive'))}</span></div><p>${this.escape(provider.description)}</p></div>
+                    <div class="provider-capabilities">${this.capabilityBadges(provider.capabilities)}</div>
+                </div>
+                <div class="provider-connection-card">
+                    <div class="provider-connection-summary"><strong>${this.escape(account.account?.displayName || this.label('managed.account', 'Account'))}</strong><span class="provider-state" data-connected="${active ? 'true' : 'false'}">${this.escape(entitlement.status || 'inactive')}</span></div>
+                    <dl class="provider-metadata">
+                        <div><dt>${this.escape(this.label('managed.allowance', 'Monthly allowance'))}</dt><dd>${this.escape(`${allowance.remaining ?? 0} / ${allowance.limit ?? 0} remaining`)}</dd></div>
+                        <div><dt>${this.escape(this.label('managed.contentAccess', 'Managed Mature access'))}</dt><dd>${this.escape(mature ? this.label('managed.confirmed', 'Confirmed') : this.label('managed.notConfirmed', 'Not confirmed'))}</dd></div>
+                    </dl>
+                    <p class="provider-disclosure">${this.escape(this.label('managed.custody', 'The game and mods receive only this opaque connection, narration text, and sanitized usage. They never receive the service provider key.'))}</p>
+                    <div class="provider-actions">
+                        ${mature ? '' : `<button class="nav-btn" type="button" onclick="AIProviderUI.runManaged('confirm-content')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('managed.confirmContent', 'Confirm Mature account access'))}</button>`}
+                        ${active ? '' : `<button class="nav-btn primary" type="button" onclick="AIProviderUI.runManaged('subscribe')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('managed.subscribe', 'View subscription options'))}</button>`}
+                        <button class="nav-btn" type="button" onclick="AIProviderUI.runManaged('refresh')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('managed.refresh', 'Refresh account'))}</button>
+                        <button class="nav-btn" type="button" onclick="AIProviderUI.runManaged('account')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('managed.manageAccount', 'Manage account'))}</button>
+                        <button class="nav-btn" type="button" onclick="AIProviderUI.runManaged('logout')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('managed.signOut', 'Sign out'))}</button>
+                    </div>
+                </div>
+            </section>`;
     },
 
     logError(error, action = 'operation', providerName = 'AI provider') {
@@ -286,13 +341,16 @@ const AIProviderUI = {
         const profiles = YAW_AI_PROVIDER_MANAGER.listProfiles();
         const visibleProviders = providers;
         visibleProviders.sort((left, right) => {
-            const rank = provider => provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID
+            const rank = provider => typeof YAW_MANAGED_SERVICE !== 'undefined' && provider.id === YAW_MANAGED_SERVICE.PROVIDER_ID
                 ? 0
-                : (provider.id === YAW_PUTER_PROVIDER.PROVIDER_ID ? 2 : 1);
+                : (provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID
+                    ? 1
+                    : (provider.id === YAW_PUTER_PROVIDER.PROVIDER_ID ? 3 : 2));
             return rank(left) - rank(right) || left.name.localeCompare(right.name);
         });
         container.innerHTML = visibleProviders.map(provider => {
             const ownedProfiles = profiles.filter(profile => profile.providerId === provider.id);
+            if (typeof YAW_MANAGED_SERVICE !== 'undefined' && provider.id === YAW_MANAGED_SERVICE.PROVIDER_ID) return this.renderManaged(provider);
             if (provider.id === YAW_PUTER_PROVIDER.PROVIDER_ID) return this.renderPuter(provider, ownedProfiles);
             if (provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID) return this.renderOpenAI(provider, ownedProfiles);
             if (typeof YAW_HOST !== 'undefined' && provider.id === YAW_HOST.NATIVE_PROVIDER_ID) {
@@ -422,6 +480,36 @@ const AIProviderUI = {
         } catch (error) {
             this.busy = false;
             this.logError(error, action, 'Puter');
+            this.setMessage(this.errorMessage(error), 'error');
+            this.refresh();
+            return false;
+        }
+    },
+
+    async runManaged(action) {
+        if (this.busy || typeof YAW_MANAGED_SERVICE === 'undefined') return false;
+        if (action === 'account') return YAW_MANAGED_SERVICE.openAccount();
+        if (action === 'subscribe') return YAW_MANAGED_SERVICE.openSubscribe();
+        this.busy = true;
+        this.setMessage(this.label('provider.working', 'Working...'));
+        this.refresh();
+        try {
+            if (action === 'sign-in') {
+                await YAW_MANAGED_SERVICE.requestSignIn(document.getElementById('managed-service-email')?.value || '');
+            } else if (action === 'confirm-content') {
+                await YAW_MANAGED_SERVICE.confirmContentAccess();
+            } else if (action === 'refresh') {
+                await YAW_MANAGED_SERVICE.refreshSession();
+            } else if (action === 'logout') {
+                await YAW_MANAGED_SERVICE.logout();
+            }
+            this.busy = false;
+            this.setMessage(YAW_MANAGED_SERVICE.snapshot().message || this.label('provider.updated', 'Provider connection updated.'), 'success');
+            this.refresh();
+            return true;
+        } catch (error) {
+            this.busy = false;
+            this.logError(error, action, 'You Are Wild Premium Narration');
             this.setMessage(this.errorMessage(error), 'error');
             this.refresh();
             return false;

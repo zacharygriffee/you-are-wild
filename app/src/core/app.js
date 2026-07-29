@@ -1192,6 +1192,7 @@
                 tutorialState: 'yaw-tutorial-v2',
                 settings: 'yaw-settings',
                 contentPrefs: 'yaw-content-prefs',
+                contentAccess: 'yaw-content-access',
                 logView: 'yaw-log-view',
                 releaseSeen: 'yaw-release-seen',
                 lastSlot: 'yaw-last-slot',
@@ -1204,6 +1205,7 @@
                 tutorialComplete: 'tactical-tutorial-complete',
                 settings: 'fff-settings',
                 contentPrefs: 'fff-content-prefs',
+                contentAccess: null,
                 logView: 'fff-log-view',
                 lastSlot: 'fff-last-slot',
                 lastSaveTime: 'fff-last-save-time',
@@ -1422,12 +1424,16 @@
                         for (const k of Object.keys(savedPrefs)) { CONTENT.preferences[k] = savedPrefs[k]; }
                         CONTENT.preferences.maxTier = this._tierValue(CONTENT.preferences.maxTier);
                     }
+                    YAW_CONTENT_ACCESS.reconcilePreferences(this);
                     this.enforceContentTierSettings();
                 } catch(e) { console.warn('Content preferences load failed', e); }
                 this.loadLogViewPreferences();
                 this.applyAccessibilitySettings();
                 this.applyStaticLocalization();
                 this.applyRuntimeOriginGates();
+                if (typeof YAW_MANAGED_SERVICE !== 'undefined') {
+                    Promise.resolve(YAW_MANAGED_SERVICE.init()).catch(() => {});
+                }
                 this.initializeStartupReadiness();
                 this.initAppMenu();
                 this.initMobileUnitStripGestures();
@@ -6433,6 +6439,12 @@
             },
             setContentTier(tier) {
                 return YAW_SETTINGS_FLOW.setContentTier(this, tier);
+            },
+            contentAccessSnapshot() {
+                return YAW_CONTENT_ACCESS.snapshot(this);
+            },
+            requestContentAccess(requirements, options = {}) {
+                return YAW_CONTENT_ACCESS.request(this, requirements, options);
             },
             setContentCategory(categoryId, enabled) {
                 return YAW_SETTINGS_FLOW.setContentCategory(this, categoryId, enabled);

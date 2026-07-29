@@ -91,18 +91,30 @@ const YAW_SETTINGS_FLOW = {
 
     setContentTier(app, tier) {
         const normalized = String(tier || '').toLowerCase();
-        if ((normalized === 'safe' || normalized === 'sfw' || normalized === 'mature') && CONTENT?.setPosture) {
-            CONTENT.setPosture(normalized === 'mature' ? 'mature' : 'sfw');
-        } else {
-            CONTENT.setMaxTier(app._tierValue(tier));
+        const apply = () => {
+            if ((normalized === 'safe' || normalized === 'sfw' || normalized === 'mature') && CONTENT?.setPosture) {
+                CONTENT.setPosture(normalized === 'mature' ? 'mature' : 'sfw');
+            } else {
+                CONTENT.setMaxTier(app._tierValue(tier));
+            }
+            app.enforceContentTierSettings();
+            app.enforceModuleContentPolicy();
+            app.syncSettingVisibility();
+            app.syncCreateContentLevel();
+            app.saveSettings();
+            if (typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.notifyPolicyChanged(app, 'posture');
+            return app.renderContentPolicySettings();
+        };
+        if (normalized === 'mature' && !YAW_CONTENT_ACCESS.hasLocalGrant(app, { rating: 'mature' })) {
+            return YAW_CONTENT_ACCESS.request(app, { rating: 'mature' }, {
+                onGranted: apply,
+                onCancel: () => {
+                    app.updateTierButtons();
+                    return app.renderContentPolicySettings();
+                }
+            });
         }
-        app.enforceContentTierSettings();
-        app.enforceModuleContentPolicy();
-        app.syncSettingVisibility();
-        app.syncCreateContentLevel();
-        app.saveSettings();
-        if (typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.notifyPolicyChanged(app, 'posture');
-        return app.renderContentPolicySettings();
+        return apply();
     },
 
     enforceContentTierSettings(app) {
@@ -220,12 +232,22 @@ const YAW_SETTINGS_FLOW = {
     },
 
     setContentCategory(app, categoryId, enabled) {
-        CONTENT.setCategoryEnabled(categoryId, enabled);
-        app.enforceContentTierSettings();
-        app.enforceModuleContentPolicy();
-        app.saveSettings();
-        if (typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.notifyPolicyChanged(app, 'content-category');
-        return this.renderContentPolicySettings(app);
+        const apply = () => {
+            CONTENT.setCategoryEnabled(categoryId, enabled);
+            app.enforceContentTierSettings();
+            app.enforceModuleContentPolicy();
+            app.saveSettings();
+            if (typeof YAW_NARRATION_SYSTEM !== 'undefined') YAW_NARRATION_SYSTEM.notifyPolicyChanged(app, 'content-category');
+            return this.renderContentPolicySettings(app);
+        };
+        if (enabled === true && YAW_CONTENT_ACCESS.SENSITIVE_CATEGORIES.has(String(categoryId || ''))
+            && !YAW_CONTENT_ACCESS.hasLocalGrant(app, { rating: 'mature', categories: [categoryId] })) {
+            return YAW_CONTENT_ACCESS.request(app, { rating: 'mature', categories: [categoryId] }, {
+                onGranted: apply,
+                onCancel: () => this.renderContentPolicySettings(app)
+            });
+        }
+        return apply();
     },
 
     setGameplayVariant(app, variantId, enabled) {

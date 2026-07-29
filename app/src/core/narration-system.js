@@ -1021,7 +1021,8 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
                 name: String(adapter.name || id).slice(0, 120),
                 description: String(adapter.description || '').slice(0, 300),
                 capabilities,
-                invoke
+                invoke,
+                authorize: typeof adapter.authorize === 'function' ? adapter.authorize : null
             });
             return id;
         },
@@ -1161,17 +1162,43 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
             };
         },
 
-        listProfiles(providerId = '') {
+        listProfiles(providerId = '', requesterModuleId = '') {
             this.restoreProfiles();
             return [...this.profiles.values()]
                 .filter(profile => !providerId || profile.providerId === providerId)
+                .filter(profile => {
+                    if (!requesterModuleId) return true;
+                    const adapter = this.adapters.get(profile.providerId);
+                    return !adapter?.authorize || adapter.authorize({
+                        ownerModuleId: requesterModuleId,
+                        capability: profile.capabilities[0] || 'text.generate',
+                        connection: {
+                            id: profile.id,
+                            providerId: profile.providerId,
+                            metadata: YAW_NARRATION_SYSTEM.copy(profile.metadata, {})
+                        }
+                    }) === true;
+                })
                 .map(profile => this.profileSnapshot(profile));
         },
 
-        listConnections(capability = '') {
+        listConnections(capability = '', requesterModuleId = '') {
             const required = capability ? this.normalizeCapability(capability) : '';
             return [...this.connections.values()]
                 .filter(connection => !required || connection.capabilities.includes(required))
+                .filter(connection => {
+                    if (!requesterModuleId) return true;
+                    const adapter = this.adapters.get(connection.providerId);
+                    return !adapter?.authorize || adapter.authorize({
+                        ownerModuleId: requesterModuleId,
+                        capability: required || connection.capabilities[0] || 'text.generate',
+                        connection: {
+                            id: connection.id,
+                            providerId: connection.providerId,
+                            metadata: YAW_NARRATION_SYSTEM.copy(connection.metadata, {})
+                        }
+                    }) === true;
+                })
                 .map(connection => ({
                     id: connection.id,
                     providerId: connection.providerId,
@@ -1187,6 +1214,17 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
             if (!connection) throw new Error('AI provider connection is unavailable');
             const adapter = this.adapters.get(connection.providerId);
             if (!adapter || !connection.capabilities.includes(capability)) throw new Error('AI provider capability is unavailable');
+            if (adapter.authorize && adapter.authorize({
+                ownerModuleId,
+                capability,
+                connection: {
+                    id: connection.id,
+                    providerId: connection.providerId,
+                    metadata: YAW_NARRATION_SYSTEM.copy(connection.metadata, {})
+                }
+            }) !== true) {
+                throw new Error('AI provider connection is not authorized for this module');
+            }
             const input = YAW_NARRATION_SYSTEM.copy(request.input, null);
             if (!input) throw new Error('AI request input must be serializable');
             const instructions = this.normalizeInstructions(request.instructions);
@@ -1210,6 +1248,7 @@ const YAW_AI_PROVIDER_MANAGER = (() => {
             try {
                 if (lifecycle.narration) YAW_NARRATION_SYSTEM.logLifecycle(window.App, ownerModuleId, 'request_sent', { targetId: narrationTarget });
                 const result = await adapter.invoke({
+                    ownerModuleId,
                     capability,
                     profileId: String(request.profileId || ''),
                     instructions,

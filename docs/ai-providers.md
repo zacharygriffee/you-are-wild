@@ -54,6 +54,27 @@ malicious same-page code.
 
 ## Built-In Text Providers
 
+### You Are Wild Premium Narration
+
+A hosted deployment may discover an optional same-origin managed service. The
+game receives curated connection/model aliases, account entitlement and
+allowance status. A session-bound CSRF value remains private inside the
+core-owned adapter and is not included in its public status snapshot. The
+upstream endpoint, model name, system prompt, API credential, authorization
+header, and raw response remain server-owned.
+
+Managed connections are ephemeral and are created only for an authenticated
+account with an active entitlement. A host declaration limits ordinary
+discovery and calls to approved narration module IDs. The renderer is not an
+attested hostile-code sandbox, so the service independently enforces its narrow
+narration schema, account content assertion, entitlement, idempotency, rate,
+concurrency, and monthly allowance on every request.
+
+The managed adapter is never discovered for `file://` play and does not forward
+a module's free-form instruction text as a server prompt. Missing or failed
+service discovery does not affect local play or the providers below. See
+`server-backed-ai.md`.
+
 ### Puter
 
 Puter owns its browser sign-in and user-pays session. The game stores no Puter

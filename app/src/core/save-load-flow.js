@@ -36,8 +36,19 @@ const YAW_SAVE_LOAD_FLOW = {
                     return false;
                 }
             }
+            const contentProfile = loaded.questState?.contentProfile || null;
             if (typeof MODULE_SYSTEM !== 'undefined' && typeof MODULE_SYSTEM.assertContentProfile === 'function') {
-                await MODULE_SYSTEM.assertContentProfile(loaded.questState?.contentProfile || null);
+                if (contentProfile
+                    && typeof MODULE_SYSTEM.contentAccessRequirementsForProfile === 'function'
+                    && typeof YAW_CONTENT_ACCESS !== 'undefined'
+                    && typeof YAW_CONTENT_ACCESS.ensure === 'function') {
+                    const requirements = await MODULE_SYSTEM.contentAccessRequirementsForProfile(contentProfile);
+                    const permitted = await YAW_CONTENT_ACCESS.ensure(app, requirements, {
+                        subject: app._label('contentAccess.saveSubject', 'Save {slot}', { slot: slotLabel })
+                    });
+                    if (!permitted) return false;
+                }
+                await MODULE_SYSTEM.assertContentProfile(contentProfile);
             }
             if (typeof YAW_NARRATION_SYSTEM !== 'undefined') {
                 YAW_NARRATION_SYSTEM.resetRuntime(app, { clearRecords: true, reason: 'game-load' });

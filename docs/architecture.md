@@ -44,6 +44,12 @@ published build.
 Core gameplay is deterministic and service-independent. Narration providers
 may restyle recorded Scene Beats but cannot decide game facts.
 
+An optional hosted account service is discovered only through a same-origin
+`/yaw-service.json` declaration. It owns sessions, entitlements, allowance, and
+managed provider credentials; missing discovery is a normal offline/browser
+state. See `server-backed-ai.md`. Electron/Pear remains an independent optional
+host and is not required by this service path.
+
 ## World and persistence
 
 The overworld is a deterministic sparse generated baseline keyed by seed,

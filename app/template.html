@@ -10670,6 +10670,13 @@
             <!-- AI and integrations -->
             <div style="margin-bottom: 24px;">
                 <h3 class="settings-section-title" data-i18n="settings.aiIntegrations">AI &amp; Integrations</h3>
+                <div data-native-host-entry hidden>
+                    <button class="settings-link-row" type="button" data-command-surface="settings-detail" data-command-mode="system" data-command-control="open-native-host-settings" title="Open Pear Desktop settings" aria-label="Open Pear Desktop settings" data-i18n-title="settings.desktopHostOpen" data-i18n-aria-label="settings.desktopHostOpen" onclick="App.showHostSettings()">
+                        <span class="settings-link-icon" aria-hidden="true">🍐</span>
+                        <span class="settings-link-copy"><strong data-i18n="settings.desktopHost">Pear Desktop</strong><small data-i18n="settings.desktopHostDescription">Manage desktop updates, release availability, peer participation, and native host diagnostics.</small></span>
+                        <span class="settings-link-arrow" aria-hidden="true">›</span>
+                    </button>
+                </div>
                 <button class="settings-link-row" type="button" data-ai-integration-entry data-command-surface="settings-detail" data-command-mode="system" data-command-control="open-ai-providers" title="Open AI providers" aria-label="Open AI providers" data-i18n-title="provider.openTitle" data-i18n-aria-label="provider.openTitle" onclick="App.showAIProviderScreen()">
                     <span class="settings-link-icon" aria-hidden="true">✦</span>
                     <span class="settings-link-copy"><strong data-i18n="provider.title">AI Providers</strong><small data-i18n="settings.aiProvidersDescription">Manage optional AI services and session credentials.</small></span>

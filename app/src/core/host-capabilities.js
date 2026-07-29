@@ -8,6 +8,7 @@ const YAW_HOST = (() => {
     const NATIVE_HOST_ID = 'pear-electron';
     const NATIVE_PROVIDER_ID = 'native-openai-compatible';
     const CAPABILITIES = Object.freeze([
+        'app.host_settings',
         'files.export_save',
         'files.import_save',
         'providers.session_transport',
@@ -17,7 +18,7 @@ const YAW_HOST = (() => {
     ]);
     const APPROVED_BRIDGE_KEYS = Object.freeze(['app', 'capabilities', 'distribution', 'files', 'providers']);
     const APPROVED_METHODS = Object.freeze({
-        app: ['platform'],
+        app: ['openSettings', 'platform'],
         distribution: ['status'],
         files: ['exportSave', 'importSave'],
         providers: ['configureCredential', 'createProfile', 'forgetCredential', 'generate', 'listProfiles', 'removeProfile', 'test', 'updateProfile']
@@ -89,6 +90,7 @@ const YAW_HOST = (() => {
             native: false,
             origin: protocol === 'file:' ? 'file' : 'web',
             capabilities: {
+                'app.host_settings': false,
                 'files.export_save': true,
                 'files.import_save': true,
                 'providers.session_transport': true,
@@ -308,6 +310,10 @@ const YAW_HOST = (() => {
         },
 
         app: {
+            openSettings() {
+                if (!nativeBridge()) return Promise.resolve(unsupported('app.host_settings'));
+                return call('app', 'openSettings', [], 'app.host_settings');
+            },
             platform() {
                 if (!nativeBridge()) {
                     return Promise.resolve({

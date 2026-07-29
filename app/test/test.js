@@ -729,13 +729,14 @@ test('Browser startup exposes a host-neutral fallback without a native bridge', 
   assertEqual(snapshot.hostId, 'browser', 'Missing native bridge should select the browser host');
   assertEqual(snapshot.capabilities['files.export_save'], true, 'Browser fallback should retain save export');
   assertEqual(snapshot.capabilities['files.import_save'], true, 'Browser fallback should retain save import');
+  assertEqual(snapshot.capabilities['app.host_settings'], false, 'Browser fallback must not claim native host settings');
   assertEqual(snapshot.capabilities['providers.persistent_credentials'], false, 'Browser fallback must not claim secure credential persistence');
   assertEqual(snapshot.capabilities['distribution.read_status'], false, 'Browser fallback must not claim Pear distribution access');
 });
 
 asyncTest('Host public surface rejects bridge escape hatches and returns serializable unsupported results', async () => {
   const dangerous = {
-    app: { platform: async () => ({ ok: true }) },
+    app: { openSettings: async () => ({ ok: true }), platform: async () => ({ ok: true }) },
     capabilities: async () => ({ hostId: 'pear-electron', capabilities: {} }),
     distribution: { status: async () => ({ ok: true }) },
     files: { exportSave: async () => ({ ok: true }), importSave: async () => ({ ok: true }), readFile: async () => 'secret' },
@@ -767,6 +768,15 @@ test('Native credential entry is delegated to a trusted host window without a re
   assertContains(providerUiContent, "YAW_HOST.providers.configureCredential(profileId)", 'Core provider UI should request trusted native credential entry');
   assertNotContains(providerUiContent, "YAW_HOST.providers.replaceCredential", 'Core provider UI must not send native credentials from the game renderer');
   assertContains(providerUiContent, 'The API key never enters this renderer.', 'Native provider UI should explain the trusted-window boundary');
+});
+
+test('Native host settings remain host-owned and browser-optional', () => {
+  assertContains(hostCapabilitiesContent, "openSettings()", 'Host contract should expose only a bounded native settings opener');
+  assertContains(hostCapabilitiesContent, "call('app', 'openSettings', [], 'app.host_settings')", 'Native settings should cross the approved semantic host method');
+  assertContains(templateContent, 'data-native-host-entry hidden', 'Settings should keep the Pear Desktop entry hidden without a native host');
+  assertContains(templateContent, 'data-command-control="open-native-host-settings"', 'Native builds should expose a stable Pear Desktop settings command');
+  assertContains(appContent, 'element.hidden = !nativeHost', 'Runtime detection should reveal native-host-only settings');
+  assertNotContains(hostCapabilitiesContent, 'setSeedingEnabled', 'The game renderer must not receive peer-availability mutation authority');
 });
 
 test('Native provider profiles expose bounded edit and destructive removal flows', () => {

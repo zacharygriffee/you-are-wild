@@ -6537,7 +6537,13 @@
                 document.querySelectorAll?.('[data-ai-file-origin-notice]').forEach(element => {
                     element.hidden = !fileOriginWarning;
                 });
+                document.querySelectorAll?.('[data-native-host-entry]').forEach(element => {
+                    element.hidden = !nativeHost;
+                });
                 return fileOriginWarning;
+            },
+            showHostSettings() {
+                return YAW_HOST.app.openSettings();
             },
             showAIProviderScreen() {
                 return this.openOverlayScreen('providers');

@@ -20,6 +20,7 @@
   "notes": {
     "en": {
       "added": [
+        "Native hosts can expose a host-owned desktop settings window for updates and peer availability without granting those controls to game modules.",
         "Item Registry V2 gives core and module items stable identities, bounded stacks and capacity, honest acquisition routes, healing effects, and quest-item protection.",
         "Quest Contract V2 provides a six-state lifecycle, physical turn-in policies, deterministic procedural archetypes, bounded authored stages, and duplicate-reward protection.",
         "Quest World Directives V1 lets core and module quests deterministically reserve required creatures or items and apply bounded encounter or search-weight boosts without executable world callbacks.",
@@ -56,6 +57,7 @@
     },
     "es": {
       "added": [
+        "Los hosts nativos pueden mostrar una ventana propia de ajustes de escritorio para actualizaciones y disponibilidad entre pares sin entregar esos controles a los modulos del juego.",
         "Item Registry V2 ofrece identidades estables, pilas y capacidad limitadas, rutas de adquisicion claras, efectos curativos y proteccion de objetos de mision.",
         "Quest Contract V2 ofrece seis estados, entrega fisica, arquetipos procedurales deterministas, etapas limitadas y proteccion contra recompensas duplicadas.",
         "Quest World Directives V1 permite que las misiones centrales y de modulos reserven criaturas u objetos necesarios y aumenten pesos de encuentro o busqueda de forma determinista y limitada, sin callbacks ejecutables.",

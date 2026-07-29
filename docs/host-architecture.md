@@ -19,6 +19,7 @@ The current semantic capability identifiers are:
 - `providers.secure_transport`
 - `providers.persistent_credentials`
 - `distribution.read_status`
+- `app.host_settings`
 
 Missing capabilities produce a serializable `unsupported_capability` result. There is no generic invocation, IPC, shell, filesystem, or Electron method.
 
@@ -35,7 +36,9 @@ The native preload may expose only these bounded sections:
 ```text
 window.yawHost
 ├── capabilities()
-├── app.platform()
+├── app
+│   ├── platform()
+│   └── openSettings()
 ├── distribution.status()
 ├── files.exportSave()
 ├── files.importSave()
@@ -114,3 +117,10 @@ Existing manifests remain compatible. A declaration only blocks activation on an
 ## Future hosts
 
 A future native host should implement the same semantic contract and keep authority outside the renderer. New host operations should be narrowly named, serializable, core-owned where credentials or saves are involved, and accompanied by negative tests. Pear seeding, mesh bridges, sidecars such as Omega, payments, entitlements, and generalized native plugins are intentionally outside this phase.
+
+The Pear host may expose a visible **Pear Desktop** entry in core Settings.
+The game bridge can only open the host-owned settings window and read redacted
+distribution status. Update application and peer-availability mutations remain
+inside a separate trusted native window that does not load the game or modules.
+This preserves the rule that naming or inspecting a host capability does not
+grant modules control over native distribution behavior.

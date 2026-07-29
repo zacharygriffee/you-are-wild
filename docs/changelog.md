@@ -4,6 +4,9 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Native builds expose a Pear Desktop settings entry that opens a host-owned
+  trusted window. Browser builds remain unchanged, and game modules receive no
+  update or peer-availability mutation methods.
 - Downloaded `file://` play no longer hides or blocks remote LLM profiles behind
   an opaque-origin override. The provider panel and narration settings expose
   every compatible text-generation profile, warn that REST endpoint CORS

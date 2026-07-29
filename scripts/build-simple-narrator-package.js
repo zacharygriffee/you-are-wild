@@ -8,8 +8,10 @@ const packagePath = path.join(root, 'optional-mods', 'you-are-wild-narration.yaw
 const sourcePath = path.join(root, 'optional-mods', 'sources', 'you-are-wild-narration.js');
 const packageData = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 
-packageData.module.manifest.version = '0.7.0';
+packageData.module.manifest.version = '0.7.1';
 packageData.module.manifest.description = 'Adds concise provider-generated narration with selectable player-safe perspectives after deterministic scene exchanges.';
+packageData.module.manifest.settings.find(setting => setting.key === 'providerConnection').description =
+  'Choose any available text-generation connection managed in AI Providers. Credentials remain outside mods.';
 
 const settings = packageData.module.manifest.settings;
 const profileIndex = settings.findIndex(setting => setting.key === 'profile');

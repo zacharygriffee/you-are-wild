@@ -1041,7 +1041,7 @@ test('Narration package is optional and declares bounded provider-neutral settin
   const prompt = manifest.settings.find(setting => setting.key === 'systemPrompt');
   assert(prompt?.type === 'string' && prompt.multiline === true, 'Narration package should expose bounded multiline mod instructions');
   assert(prompt.maxLength <= 2000, 'Narration instructions should stay within the manager hard limit');
-  assertEqual(manifest.version, '0.7.0', 'Perspective-aware narration should use the versioned package contract');
+  assertEqual(manifest.version, '0.7.1', 'Provider-neutral narration discovery should use the versioned package contract');
   assertEqual(packageData.module.code, fs.readFileSync(NARRATION_MOD_SOURCE, 'utf8').trimEnd(), 'Built Simple Narrator code should match its maintainable source');
   const profiles = manifest.settings.find(setting => setting.key === 'profile');
   assertEqual(profiles?.options?.length, 3, 'Simple Narrator should expose three narration profiles');
@@ -1400,7 +1400,7 @@ asyncTest('OpenAI-compatible plaintext loopback is strictly no-auth at profile a
   assertEqual(calls[calls.length - 1].options.headers.Authorization, 'Bearer https-still-allowed', 'HTTPS profiles should continue to send their session credential');
 });
 
-asyncTest('File origin permits no-auth loopback Ollama-style providers and rejects remote providers', async () => {
+asyncTest('File origin permits loopback and remote HTTPS providers without an override gate', async () => {
   const calls = [];
   const storage = createMemoryStorage();
   const { provider, YAW_AI_PROVIDER_MANAGER } = loadOpenAIProviderForTest(async (url, options) => {
@@ -1419,23 +1419,20 @@ asyncTest('File origin permits no-auth loopback Ollama-style providers and rejec
   assertEqual(calls[0].url, 'http://localhost:11434/v1/chat/completions', 'File mode should call the local OpenAI-compatible route');
   assert(!Object.prototype.hasOwnProperty.call(calls[0].options.headers, 'Authorization'), 'File-origin local requests must not carry credentials');
 
-  const beforeRejected = calls.length;
-  let remoteError;
-  try {
-    provider.connect({ endpoint: 'https://api.example.test/v1', model: 'remote', protocol: 'chat', apiKey: 'secret' });
-  } catch (error) { remoteError = error; }
-  assertEqual(remoteError?.code, 'file_origin_local_only', 'File mode should reject remote credentialed providers with actionable guidance');
-  assertEqual(calls.length, beforeRejected, 'Rejected file-origin remote providers must not reach fetch');
-
-  assertEqual(provider.setFileOriginRemoteOverride(true), true, 'File mode should allow an explicit session-only remote override');
-  const remote = provider.connect({ endpoint: 'https://api.example.test/v1', model: 'remote', protocol: 'chat', apiKey: 'session-only-secret' });
-  await YAW_AI_PROVIDER_MANAGER.generate('file-remote-override', {
-    providerConnectionId: remote.id, input: { exchangeId: 'file-remote-override' }
+  const remote = provider.connect({
+    name: 'Remote REST provider',
+    endpoint: 'https://api.example.test/v1',
+    model: 'remote',
+    protocol: 'chat',
+    apiKey: 'session-only-secret'
   });
-  assertEqual(calls[calls.length - 1].url, 'https://api.example.test/v1/chat/completions', 'Session override should permit a browser attempt to the approved remote endpoint');
-  assertEqual(calls[calls.length - 1].options.headers.Authorization, 'Bearer session-only-secret', 'Remote override should retain session credential transport');
-  assertNotContains(storage.serialized(), 'session-only-secret', 'Remote override credentials must remain session-only');
-  assertEqual(provider.setFileOriginRemoteOverride(false), false, 'Remote override should be revocable without persistence');
+  await YAW_AI_PROVIDER_MANAGER.generate('file-remote', {
+    providerConnectionId: remote.id, input: { exchangeId: 'file-remote' }
+  });
+  assertEqual(calls[calls.length - 1].url, 'https://api.example.test/v1/chat/completions', 'File mode should attempt the approved remote REST endpoint directly');
+  assertEqual(calls[calls.length - 1].options.headers.Authorization, 'Bearer session-only-secret', 'File-origin HTTPS transport should retain the session credential');
+  assertNotContains(storage.serialized(), 'session-only-secret', 'File-origin remote credentials must remain session-only');
+  assertEqual(typeof provider.setFileOriginRemoteOverride, 'undefined', 'File mode should not expose a separate remote endpoint gate');
 });
 
 asyncTest('OpenAI Responses requests use the exact approved origin and return bounded text', async () => {
@@ -1804,8 +1801,8 @@ test('AI Providers has a dedicated credential-safe UI and provider-backed settin
   assertContains(templateContent, 'App.showAIProviderScreen()', 'Global navigation should expose AI Providers');
   assertContains(providerUiContent, 'type="password"', 'Provider credentials should use password controls');
   assertContains(providerUiContent, 'plaintext_credentials_forbidden', 'Provider UI should map plaintext credential rejection to actionable localized guidance');
-  assertContains(providerUiContent, 'file_origin_local_only', 'Provider UI should distinguish file-origin local-only mode');
-  assertContains(providerUiContent, 'http://localhost:11434/v1', 'File-origin provider UI should offer the Ollama-compatible local endpoint');
+  assertNotContains(providerUiContent, 'fileOriginRemoteOverride', 'Provider UI should not gate file-origin REST endpoints behind an override');
+  assertContains(providerUiContent, "'https://api.openai.com/v1'", 'File-origin provider UI should offer the normal remote REST endpoint default');
   assertContains(providerUiContent, 'id="openai-provider-max-completion-tokens"', 'Provider editor should expose a per-profile completion-token ceiling');
   assertContains(providerUiContent, 'id="openai-provider-form" class="provider-editor" aria-labelledby="openai-provider-editor-title"', 'Provider editor should reference a visible localized heading');
   assertContains(providerUiContent, 'data-command-control="add-provider-connection"', 'Provider editor should expose a stable Add Connection command');
@@ -1834,16 +1831,18 @@ test('AI Providers has a dedicated credential-safe UI and provider-backed settin
   assertContains(contentSystemContent, "'provider.timeoutHelp'", 'Provider timeout guidance should be localized');
   assertContains(contentSystemContent, "'provider.editor.addTitle'", 'Provider editor add heading should be localized');
   assertContains(contentSystemContent, "'provider.editor.editTitle'", 'Provider editor edit heading should be localized');
-  assertContains(contentSystemContent, "'provider.fileOriginLocalOnly'", 'File-origin local-only guidance should be localized');
+  assertContains(contentSystemContent, "'provider.fileOriginWarning'", 'File-origin REST compatibility guidance should be localized');
   assertContains(providerUiContent, "'image.generate'", 'Provider UI should be ready to label future image capabilities');
   assertNotContains(modUiContent, 'puter-provider-title', 'Mod Manager should no longer own provider connection controls');
   assertContains(modUiContent, 'Manage Providers', 'Provider-backed module settings should route users to provider management');
-  assertContains(modUiContent, 'YAW_OPENAI_COMPATIBLE_PROVIDER.isLoopbackEndpoint', 'File-origin module settings should expose only loopback OpenAI-compatible profiles');
+  assertContains(modUiContent, 'profile.capabilities.includes(capability)', 'Provider-backed module settings should discover profiles by capability');
+  assertNotContains(modUiContent, 'YAW_OPENAI_COMPATIBLE_PROVIDER.isLoopbackEndpoint', 'File-origin module settings should not hide remote or native LLM profiles');
   assertContains(appContent, "runtimeLocation?.protocol === 'file:'", 'App should detect direct file origins before presenting AI integration choices');
-  assertContains(templateContent, 'data-ai-file-origin-notice', 'Settings should explain file-origin local-only provider support');
+  assertContains(templateContent, 'data-ai-file-origin-notice', 'Settings should warn about file-origin REST endpoint compatibility');
   const narrationPackage = JSON.parse(fs.readFileSync(NARRATION_MOD_PACKAGE, 'utf8'));
   const providerSetting = narrationPackage.module.manifest.settings.find(setting => setting.type === 'provider_connection');
   assertEqual(providerSetting.capability, 'text.generate', 'Narration package should request the text generation capability explicitly');
+  assertContains(narrationPackage.module.code, "MODS.ai.listConnections('text.generate')", 'Simple Narrator should detect every active text-generation connection through the provider-neutral module API');
 });
 
 asyncTest('Multiline module settings are bounded, credential-safe, and render as textareas', async () => {

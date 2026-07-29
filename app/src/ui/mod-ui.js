@@ -461,12 +461,9 @@ const ModUI = {
                 ? `<textarea rows="${declaration.rows}" maxlength="${declaration.maxLength}" onchange="ModUI.updateSetting('${id}','${key}',this.value)">${this.escapeHtml(value)}</textarea>`
                 : `<input type="text" maxlength="${declaration.maxLength}" value="${this.escapeHtml(value)}" onchange="ModUI.updateSetting('${id}','${key}',this.value)">`;
         } else if (declaration.type === 'provider_connection') {
-            const localOnly = typeof App !== 'undefined' && App.isFileOrigin();
             const capability = declaration.capability || 'text.generate';
             const profiles = YAW_AI_PROVIDER_MANAGER.listProfiles()
                 .filter(profile => profile.capabilities.includes(capability))
-                .filter(profile => !localOnly || (profile.providerId === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID
-                    && YAW_OPENAI_COMPATIBLE_PROVIDER.isLoopbackEndpoint(profile.metadata?.endpoint)))
                 .sort((left, right) => {
                     const rank = profile => profile.providerId === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID
                         ? 0
@@ -482,10 +479,11 @@ const ModUI = {
                     : '';
                 return `<option value="${this.escapeHtml(profile.id)}" ${profile.id === value ? 'selected' : ''}>${this.escapeHtml(profile.name)}${this.escapeHtml(tier)} - ${this.escapeHtml(state)}</option>`;
             }).join('');
-            const localNotice = localOnly
-                ? `<small class="mod-provider-unavailable">${this.escapeHtml(this.label('provider.fileOriginLocalOnly', 'File mode supports local loopback providers such as Ollama; remote and credentialed providers are unavailable.'))}</small>`
+            const nativeHost = typeof YAW_HOST !== 'undefined' && YAW_HOST.capabilities().native === true;
+            const fileOriginNotice = typeof App !== 'undefined' && App.isFileOrigin() && !nativeHost
+                ? `<small class="mod-provider-unavailable">${this.escapeHtml(this.label('provider.fileOriginWarning', 'File mode uses an opaque browser origin. Remote REST endpoints remain selectable, but each provider may accept or reject requests through CORS.'))}</small>`
                 : '';
-            control = `<span class="mod-provider-setting">${localNotice}<select onchange="ModUI.updateSetting('${id}','${key}',this.value)"><option value="">${this.escapeHtml(this.label('provider.none', 'No connection'))}</option>${options}</select><button class="nav-btn" type="button" onclick="App.showAIProviderScreen()">${this.escapeHtml(this.label('provider.manage', 'Manage Providers'))}</button></span>`;
+            control = `<span class="mod-provider-setting">${fileOriginNotice}<select onchange="ModUI.updateSetting('${id}','${key}',this.value)"><option value="">${this.escapeHtml(this.label('provider.none', 'No connection'))}</option>${options}</select><button class="nav-btn" type="button" onclick="App.showAIProviderScreen()">${this.escapeHtml(this.label('provider.manage', 'Manage Providers'))}</button></span>`;
         } else if (declaration.type === 'action') {
             const available = MODULE_SYSTEM.settingActions.has(`${moduleId}:${declaration.key}`);
             control = `<button class="nav-btn" type="button" ${available ? '' : 'disabled'} onclick="ModUI.runSettingAction('${id}','${key}')">${label}</button>`;

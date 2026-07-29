@@ -6528,15 +6528,16 @@
                 return runtimeLocation?.protocol === 'file:' || runtimeLocation?.origin === 'null';
             },
             applyRuntimeOriginGates() {
-                const localOnly = this.isFileOrigin();
+                const nativeHost = typeof YAW_HOST !== 'undefined' && YAW_HOST.capabilities().native === true;
+                const fileOriginWarning = this.isFileOrigin() && !nativeHost;
                 document.querySelectorAll?.('[data-ai-integration-entry]').forEach(element => {
                     element.hidden = false;
-                    element.setAttribute?.('data-ai-origin-mode', localOnly ? 'local-only' : 'full');
+                    element.setAttribute?.('data-ai-origin-mode', fileOriginWarning ? 'file-warning' : 'full');
                 });
                 document.querySelectorAll?.('[data-ai-file-origin-notice]').forEach(element => {
-                    element.hidden = !localOnly;
+                    element.hidden = !fileOriginWarning;
                 });
-                return localOnly;
+                return fileOriginWarning;
             },
             showAIProviderScreen() {
                 return this.openOverlayScreen('providers');

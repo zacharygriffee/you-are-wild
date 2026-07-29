@@ -62,7 +62,6 @@ const AIProviderUI = {
             invalid_model: this.label('provider.error.modelRejected', 'The endpoint rejected the configured model.'),
             redirect_blocked: this.label('provider.error.redirect', 'The endpoint redirected the request. Redirects are blocked to protect credentials.'),
             cors_or_network: this.label('provider.error.cors', 'The browser could not reach the endpoint. Check the URL, network, TLS, and CORS configuration.'),
-            file_origin_local_only: this.label('provider.error.fileOriginLocalOnly', 'File mode only supports unauthenticated loopback providers such as Ollama.'),
             invalid_reasoning_effort: this.label('provider.error.reasoningEffort', 'Choose Provider managed, None, Minimal, Low, Medium, or High reasoning effort.'),
             unsupported_reasoning_effort: this.label('provider.error.reasoningUnsupported', 'This endpoint or model does not support the selected reasoning effort. Use Provider managed or choose a supported level.'),
             timeout: this.label('provider.error.timeout', 'The provider request timed out.'),
@@ -216,22 +215,22 @@ const AIProviderUI = {
     renderOpenAIEditor(profile = null) {
         const metadata = profile?.metadata || {};
         const nativeHost = typeof YAW_HOST !== 'undefined' && YAW_HOST.capabilities().native === true;
-        const localOnly = typeof App !== 'undefined' && App.isFileOrigin() && !YAW_OPENAI_COMPATIBLE_PROVIDER.fileOriginRemoteOverrideEnabled();
+        const fileOrigin = typeof App !== 'undefined' && App.isFileOrigin() && !nativeHost;
         const select = value => metadata.protocol === value ? 'selected' : '';
         const reasoningSelected = value => (metadata.reasoningEffort || 'provider') === value ? 'selected' : '';
         const replacingCredential = !profile?.connected;
-        const endpoint = metadata.endpoint || (localOnly ? 'http://localhost:11434/v1' : 'https://api.openai.com/v1');
+        const endpoint = metadata.endpoint || 'https://api.openai.com/v1';
         const credentialEditor = nativeHost
             ? `<div class="provider-disclosure"><strong>${this.escape(this.label('provider.trustedCredentialTitle', 'Credential entry is isolated'))}</strong><br>${this.escape(this.label('provider.trustedCredentialHelp', 'Credential entry and replacement use a separate trusted desktop window that does not load the game or executable modules. The API key never enters this renderer.'))}</div>`
-            : `<label class="provider-field"><span>${this.escape(this.label('provider.apiKey', 'API key'))}</span><input id="openai-provider-key" type="password" maxlength="500" value="" autocomplete="new-password" placeholder="${this.escape(localOnly ? this.label('provider.fileOriginNoCredential', 'Unavailable in file mode') : (profile?.connected ? this.label('provider.keepCredential', 'Current credential remains active') : this.label('provider.noAuthAllowed', 'Optional for no-auth local endpoints')))}" ${localOnly || !replacingCredential ? 'disabled' : ''}><small>${this.escape(localOnly ? this.label('provider.fileOriginNoCredentialHelp', 'Credentials are disabled for file-origin connections.') : this.label('provider.apiKeyHelp', 'Held only in memory for this browser session.'))}</small></label>`;
+            : `<label class="provider-field"><span>${this.escape(this.label('provider.apiKey', 'API key'))}</span><input id="openai-provider-key" type="password" maxlength="500" value="" autocomplete="new-password" placeholder="${this.escape(profile?.connected ? this.label('provider.keepCredential', 'Current credential remains active') : this.label('provider.noAuthAllowed', 'Optional for no-auth local endpoints'))}" ${!replacingCredential ? 'disabled' : ''}><small>${this.escape(this.label('provider.apiKeyHelp', 'Held only in memory for this browser session.'))}</small></label>`;
         const credentialControls = nativeHost
             ? ''
-            : `${profile?.connected && !localOnly ? `<label class="provider-replace-credential"><input id="openai-provider-replace-credential" type="checkbox" onchange="AIProviderUI.toggleCredentialReplacement(this.checked)"><span><strong>${this.escape(this.label('provider.replaceCredential', 'Replace session credential and headers'))}</strong><small>${this.escape(this.label('provider.replaceCredentialHelp', 'Re-enter every secret value. Saving without this option keeps the current session credential unchanged.'))}</small></span></label>` : ''}
-                <fieldset id="openai-provider-credential-fields" class="provider-headers" ${localOnly || !replacingCredential ? 'disabled' : ''}><legend>${this.escape(this.label('provider.additionalHeaders', 'Additional session headers'))}</legend><small>${this.escape(this.label('provider.additionalHeadersHelp', 'Values are session-only. Authorization and transport-controlled headers cannot be overridden.'))}</small><div id="openai-provider-header-rows">${this.renderHeaderRows(profile)}</div><button class="nav-btn" type="button" onclick="AIProviderUI.addHeaderRow()">${this.escape(this.label('provider.addHeader', 'Add Header'))}</button></fieldset>`;
+            : `${profile?.connected ? `<label class="provider-replace-credential"><input id="openai-provider-replace-credential" type="checkbox" onchange="AIProviderUI.toggleCredentialReplacement(this.checked)"><span><strong>${this.escape(this.label('provider.replaceCredential', 'Replace session credential and headers'))}</strong><small>${this.escape(this.label('provider.replaceCredentialHelp', 'Re-enter every secret value. Saving without this option keeps the current session credential unchanged.'))}</small></span></label>` : ''}
+                <fieldset id="openai-provider-credential-fields" class="provider-headers" ${!replacingCredential ? 'disabled' : ''}><legend>${this.escape(this.label('provider.additionalHeaders', 'Additional session headers'))}</legend><small>${this.escape(this.label('provider.additionalHeadersHelp', 'Values are session-only. Authorization and transport-controlled headers cannot be overridden.'))}</small><div id="openai-provider-header-rows">${this.renderHeaderRows(profile)}</div><button class="nav-btn" type="button" onclick="AIProviderUI.addHeaderRow()">${this.escape(this.label('provider.addHeader', 'Add Header'))}</button></fieldset>`;
         const disclosure = nativeHost
             ? this.label('provider.nativeTrustedDisclosure', 'Only non-secret profile metadata is handled here. Credential persistence and provider authentication remain inside the trusted desktop host.')
-            : (localOnly
-                ? this.label('provider.fileOriginDisclosure', 'File mode permits only unauthenticated loopback endpoints. Ollama supports OpenAI-compatible requests at http://localhost:11434/v1.')
+            : (fileOrigin
+                ? this.label('provider.fileOriginWarning', 'File mode uses an opaque browser origin. Remote REST endpoints remain available, but each provider may accept or reject requests through CORS. Credentials remain session-only.')
                 : this.label('provider.browserDirectDisclosure', 'Browser-direct requests send the credential only to the exact endpoint origin you approved and require compatible CORS behavior. Redirects are blocked.'));
         const title = profile
             ? this.label('provider.editor.editTitle', 'Edit provider connection')
@@ -241,7 +240,7 @@ const AIProviderUI = {
                 <h3 id="openai-provider-editor-title">${this.escape(title)}</h3>
                 <div class="provider-form-grid">
                     <label class="provider-field"><span>${this.escape(this.label('provider.connectionName', 'Connection name'))}</span><input id="openai-provider-name" type="text" maxlength="120" value="${this.escape(profile?.name || this.label('provider.openai.defaultName', 'OpenAI-Compatible API'))}" required></label>
-                    <label class="provider-field"><span>${this.escape(this.label('provider.endpoint', 'API endpoint'))}</span><input id="openai-provider-endpoint" type="url" maxlength="500" value="${this.escape(endpoint)}" required><small>${this.escape(localOnly ? this.label('provider.fileOriginEndpointHelp', 'Use an unauthenticated loopback OpenAI-compatible endpoint, such as http://localhost:11434/v1 for Ollama.') : this.label('provider.endpointHelp', 'Base URL. Authenticated endpoints require HTTPS; loopback HTTP is strictly no-auth.'))}</small></label>
+                    <label class="provider-field"><span>${this.escape(this.label('provider.endpoint', 'API endpoint'))}</span><input id="openai-provider-endpoint" type="url" maxlength="500" value="${this.escape(endpoint)}" required><small>${this.escape(this.label('provider.endpointHelp', 'Base URL. Authenticated endpoints require HTTPS; loopback HTTP is strictly no-auth.'))}</small></label>
                     ${credentialEditor}
                     <label class="provider-field"><span>${this.escape(this.label('provider.model', 'Model'))}</span><input id="openai-provider-model" type="text" maxlength="200" value="${this.escape(metadata.model || '')}" placeholder="gpt-5-mini or openai/gpt-*" required></label>
                     <label class="provider-field"><span>${this.escape(this.label('provider.protocol', 'API protocol'))}</span><select id="openai-provider-protocol"><option value="auto" ${select('auto')}>${this.escape(this.label('provider.protocol.auto', 'Auto-detect'))}</option><option value="responses" ${select('responses')}>${this.escape(this.label('provider.protocol.responses', 'OpenAI Responses API'))}</option><option value="chat" ${select('chat')}>${this.escape(this.label('provider.protocol.chat', 'OpenAI Chat Completions'))}</option></select></label>
@@ -264,20 +263,19 @@ const AIProviderUI = {
             : profiles.find(profile => profile.id === this.editingProfileId) || null;
         const editorOpen = this.editingProfileId === 'new' || Boolean(editing);
         const editor = editorOpen ? this.renderOpenAIEditor(editing) : '';
-        const fileOrigin = typeof App !== 'undefined' && App.isFileOrigin();
-        const override = YAW_OPENAI_COMPATIBLE_PROVIDER.fileOriginRemoteOverrideEnabled();
-        const localOnly = fileOrigin && !override;
+        const nativeHost = typeof YAW_HOST !== 'undefined' && YAW_HOST.capabilities().native === true;
+        const fileOrigin = typeof App !== 'undefined' && App.isFileOrigin() && !nativeHost;
         return `
             <section class="provider-service" aria-labelledby="provider-openai-title">
                 <div class="provider-service-heading">
                     <div><div class="provider-service-title"><h2 id="provider-openai-title">${this.escape(provider.name)}</h2><span class="provider-tier-badge" data-tier="recommended">${this.escape(this.label('provider.recommended', 'Recommended'))}</span></div><p>${this.escape(this.label('provider.openai.description', 'Connect OpenAI or another compatible service through the recommended provider path.'))}</p></div>
                     <div class="provider-capabilities">${this.capabilityBadges(provider.capabilities)}</div>
                 </div>
-                ${fileOrigin ? `<label class="provider-replace-credential"><input id="openai-provider-file-origin-override" type="checkbox" ${override ? 'checked' : ''} onchange="AIProviderUI.toggleFileOriginRemoteOverride(this.checked)"><span><strong>${this.escape(this.label('provider.fileOriginOverride', 'Allow remote endpoint attempts for this session'))}</strong><small>${this.escape(this.label('provider.fileOriginOverrideHelp', 'Advanced: the page has an opaque null origin. Credentials and this override are never persisted; browser TLS and CORS rules still apply.'))}</small></span></label>` : ''}
+                ${fileOrigin ? `<p class="provider-disclosure">${this.escape(this.label('provider.fileOriginWarning', 'File mode uses an opaque browser origin. Remote REST endpoints remain available, but each provider may accept or reject requests through CORS. Credentials remain session-only.'))}</p>` : ''}
                 ${profiles.map(profile => this.renderOpenAIProfile(profile)).join('')}
                 ${profiles.length || editor ? '' : `<p class="provider-empty">${this.escape(this.label('provider.openai.empty', 'No OpenAI-compatible connections saved.'))}</p>`}
                 ${editor}
-                ${editorOpen ? '' : `<button class="nav-btn primary" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="add-provider-connection" onclick="AIProviderUI.openEditor('new')">${this.escape(localOnly ? this.label('provider.addLocalConnection', 'Add Local Connection') : this.label('provider.addConnection', 'Add Connection'))}</button>`}
+                ${editorOpen ? '' : `<button class="nav-btn primary" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="add-provider-connection" onclick="AIProviderUI.openEditor('new')">${this.escape(this.label('provider.addConnection', 'Add Connection'))}</button>`}
             </section>`;
     },
 
@@ -286,10 +284,7 @@ const AIProviderUI = {
         if (!container) return false;
         const providers = YAW_AI_PROVIDER_MANAGER.listProviders();
         const profiles = YAW_AI_PROVIDER_MANAGER.listProfiles();
-        const localOnly = typeof App !== 'undefined' && App.isFileOrigin() && !YAW_OPENAI_COMPATIBLE_PROVIDER.fileOriginRemoteOverrideEnabled();
-        const visibleProviders = localOnly
-            ? providers.filter(provider => provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID)
-            : providers;
+        const visibleProviders = providers;
         visibleProviders.sort((left, right) => {
             const rank = provider => provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID
                 ? 0
@@ -297,9 +292,7 @@ const AIProviderUI = {
             return rank(left) - rank(right) || left.name.localeCompare(right.name);
         });
         container.innerHTML = visibleProviders.map(provider => {
-            const ownedProfiles = profiles
-                .filter(profile => profile.providerId === provider.id)
-                .filter(profile => !localOnly || YAW_OPENAI_COMPATIBLE_PROVIDER.isLoopbackEndpoint(profile.metadata?.endpoint));
+            const ownedProfiles = profiles.filter(profile => profile.providerId === provider.id);
             if (provider.id === YAW_PUTER_PROVIDER.PROVIDER_ID) return this.renderPuter(provider, ownedProfiles);
             if (provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID) return this.renderOpenAI(provider, ownedProfiles);
             if (typeof YAW_HOST !== 'undefined' && provider.id === YAW_HOST.NATIVE_PROVIDER_ID) {
@@ -310,9 +303,7 @@ const AIProviderUI = {
         }).join('');
         const status = document.getElementById('ai-provider-status');
         if (status) {
-            status.textContent = this.message || (localOnly
-                ? this.label('provider.fileOriginLocalOnly', 'File mode supports local loopback providers such as Ollama; remote and credentialed providers are unavailable.')
-                : '');
+            status.textContent = this.message || '';
             status.dataset.kind = this.message ? this.messageKind : 'info';
         }
         return true;
@@ -381,16 +372,6 @@ const AIProviderUI = {
         if (enabled) key?.focus();
     },
 
-    toggleFileOriginRemoteOverride(enabled) {
-        YAW_OPENAI_COMPATIBLE_PROVIDER.setFileOriginRemoteOverride(enabled === true);
-        this.editingProfileId = '';
-        this.setMessage(enabled
-            ? this.label('provider.fileOriginOverrideEnabled', 'Remote endpoint attempts are enabled for this page session. Browser TLS and CORS enforcement still applies.')
-            : this.label('provider.fileOriginLocalOnly', 'File mode supports local loopback providers such as Ollama; remote and credentialed providers are unavailable.'), enabled ? 'warning' : 'info');
-        this.refresh();
-        return enabled === true;
-    },
-
     readHeaders() {
         return [...document.querySelectorAll('#openai-provider-header-rows .provider-header-row')]
             .map(row => ({
@@ -403,13 +384,12 @@ const AIProviderUI = {
     readOpenAIForm(id = '') {
         const nativeHost = typeof YAW_HOST !== 'undefined' && YAW_HOST.capabilities().native === true;
         const replaceControl = document.getElementById('openai-provider-replace-credential');
-        const localOnly = typeof App !== 'undefined' && App.isFileOrigin() && !YAW_OPENAI_COMPATIBLE_PROVIDER.fileOriginRemoteOverrideEnabled();
-        const replacingCredential = localOnly || !replaceControl || replaceControl.checked === true;
+        const replacingCredential = !replaceControl || replaceControl.checked === true;
         return {
             id: id || undefined,
             name: document.getElementById('openai-provider-name')?.value || '',
             endpoint: document.getElementById('openai-provider-endpoint')?.value || '',
-            apiKey: nativeHost || localOnly ? '' : (replacingCredential ? (document.getElementById('openai-provider-key')?.value || '') : ''),
+            apiKey: nativeHost ? '' : (replacingCredential ? (document.getElementById('openai-provider-key')?.value || '') : ''),
             model: document.getElementById('openai-provider-model')?.value || '',
             protocol: document.getElementById('openai-provider-protocol')?.value || 'auto',
             organization: document.getElementById('openai-provider-organization')?.value || '',
@@ -418,18 +398,13 @@ const AIProviderUI = {
             maxCompletionTokens: document.getElementById('openai-provider-max-completion-tokens')?.value || YAW_OPENAI_COMPATIBLE_PROVIDER.DEFAULT_MAX_COMPLETION_TOKENS,
             reasoningEffort: document.getElementById('openai-provider-reasoning-effort')?.value || 'provider',
             temperature: document.getElementById('openai-provider-temperature')?.value || '',
-            replaceCredential: !nativeHost && (localOnly || replaceControl?.checked === true),
-            additionalHeaders: nativeHost || localOnly ? [] : (replacingCredential ? this.readHeaders() : [])
+            replaceCredential: !nativeHost && replaceControl?.checked === true,
+            additionalHeaders: nativeHost ? [] : (replacingCredential ? this.readHeaders() : [])
         };
     },
 
     async runPuter(action) {
         if (this.busy) return false;
-        if (typeof App !== 'undefined' && App.isFileOrigin()) {
-            this.setMessage(this.label('provider.fileOriginLocalOnly', 'File mode supports local loopback providers such as Ollama; remote and credentialed providers are unavailable.'), 'error');
-            this.refresh();
-            return false;
-        }
         const model = document.getElementById('provider-puter-model')?.value || '';
         this.busy = true;
         this.setMessage(this.label('provider.working', 'Working...'));

@@ -22,7 +22,8 @@ const normalizeProfile = value => Object.prototype.hasOwnProperty.call(profileIn
 const normalizePerspective = value => Object.prototype.hasOwnProperty.call(perspectiveInstructions, value) ? value : 'player';
 const narrationId = targetId => `yaw_narration_first_party.v${profileVersion}.exchange.${targetId}`;
 const setting = (key, fallback) => MODS.getSetting(key, fallback);
-const connectionAvailable = id => Boolean(id) && MODS.ai.listConnections().some(connection => connection.id === id);
+const llmConnections = () => MODS.ai.listConnections('text.generate');
+const connectionAvailable = id => Boolean(id) && llmConnections().some(connection => connection.id === id);
 const variantFor = value => {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index++) {

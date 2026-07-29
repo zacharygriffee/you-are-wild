@@ -4,6 +4,10 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Downloaded `file://` play no longer hides or blocks remote LLM profiles behind
+  an opaque-origin override. The provider panel and narration settings expose
+  every compatible text-generation profile, warn that REST endpoint CORS
+  support varies, and keep browser credentials session-only.
 - Camp Safety now follows the same physical quest-return contract as other
   original-giver work: accepting it reserves one nearby Wolfkin, its Defeat
   objective becomes ready to report without awarding gold or XP, and only the

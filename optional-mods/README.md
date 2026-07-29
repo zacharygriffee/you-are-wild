@@ -45,7 +45,10 @@ standard orchestrator remains available.
 OpenAI-Compatible profiles are the canonical browser-direct text provider for
 reference narration packages. Puter remains an optional keyless adapter: it
 owns browser sign-in, places no API key in module settings or saves, and exposes
-only an opaque session connection to compatible narration modules.
+only an opaque session connection to compatible narration modules. Simple
+Narrator discovers every active `text.generate` connection through the
+provider-neutral module API; it does not filter by provider implementation,
+browser origin, or native host.
 
 `you-are-wild-explicit.yawmod.json` is the first-party provider for explicit
 creation options, settings, and narrative. Install it through the local Mod

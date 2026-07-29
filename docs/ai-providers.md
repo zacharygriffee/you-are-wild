@@ -85,14 +85,12 @@ suppresses referrers, and prevents additional headers from overriding
 authorization or transport headers. The remote endpoint must allow the browser
 origin through CORS.
 
-When the game runs from a `file://` origin, the provider panel switches to
-local-only mode. It exposes only unauthenticated loopback OpenAI-compatible
-profiles and defaults new connections to Ollama at
-`http://localhost:11434/v1`. Remote endpoints, credentials, additional secret
-headers, and Puter sign-in remain unavailable in this mode. Ollama includes
-`file://*` among its default allowed origins; custom local runners must provide
-equivalent CORS support. Serving the game through HTTPS or `http://localhost`
-restores the full provider panel.
+When the game runs from a `file://` origin, the browser represents the page
+with an opaque `null` origin. This is a compatibility warning, not a provider
+gate: HTTPS REST endpoints, session credentials, Puter, and no-auth loopback
+providers remain available. Each remote provider decides through CORS whether
+to accept requests from that origin. Credentials remain session-only, and the
+normal fixed-origin, TLS, redirect, and header protections still apply.
 
 Character limits are enforced locally after generation. Each profile also has
 a configurable completion-token ceiling that is sent as `max_output_tokens` for
@@ -151,11 +149,11 @@ unsupported values, in which case the Activity Log reports a sanitized
 `unsupported_reasoning_effort` diagnostic. Higher levels may require a much
 larger completion-token ceiling because hidden reasoning shares that budget.
 
-## File-Origin Advanced Override
+## File-Origin REST Compatibility
 
-`file://` remains unauthenticated-loopback-only by default. A player may
-explicitly enable remote endpoint attempts for the current page session. The
-override and credentials are never persisted, HTTPS remains required for
-authenticated endpoints, redirects remain blocked, and normal browser TLS and
-CORS enforcement decides whether the request can succeed. This is not a global
-origin-gate bypass.
+There is no separate remote-endpoint override. The game attempts an explicitly
+configured HTTPS endpoint directly and reports a sanitized network/CORS error
+when the provider rejects the browser's opaque origin. This does not relax
+transport safety: authenticated plaintext HTTP remains forbidden, redirects
+remain blocked, credentials remain session-only, and the approved endpoint
+origin cannot change during a request.

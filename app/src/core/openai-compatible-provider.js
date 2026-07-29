@@ -42,16 +42,6 @@ const YAW_OPENAI_COMPATIBLE_PROVIDER = (() => {
         MIN_MAX_COMPLETION_TOKENS,
         MAX_MAX_COMPLETION_TOKENS,
         REASONING_EFFORTS: [...REASONING_EFFORTS],
-        fileOriginRemoteOverride: false,
-
-        setFileOriginRemoteOverride(enabled) {
-            this.fileOriginRemoteOverride = this.isFileOrigin() && enabled === true;
-            return this.fileOriginRemoteOverride;
-        },
-
-        fileOriginRemoteOverrideEnabled() {
-            return this.isFileOrigin() && this.fileOriginRemoteOverride === true;
-        },
 
         isFileOrigin() {
             return window.location?.protocol === 'file:' || window.location?.origin === 'null';
@@ -64,15 +54,6 @@ const YAW_OPENAI_COMPATIBLE_PROVIDER = (() => {
                 || url.hostname.endsWith('.localhost')
                 || /^127(?:\.\d{1,3}){3}$/.test(url.hostname)
                 || url.hostname === '[::1]';
-        },
-
-        assertPageOriginCompatible(endpoint, credential = {}) {
-            if (!this.isFileOrigin()) return true;
-            if (this.fileOriginRemoteOverrideEnabled()) return true;
-            if (!this.isLoopbackEndpoint(endpoint) || this.credentialHasValues(credential)) {
-                throw fail('file_origin_local_only');
-            }
-            return true;
         },
 
         register() {
@@ -217,7 +198,6 @@ const YAW_OPENAI_COMPATIBLE_PROVIDER = (() => {
             const normalized = this.normalizeProfile(profileInput, existing);
             const additionalHeaders = replacesCredential ? this.normalizeHeaders(input.additionalHeaders || []) : [];
             const submittedCredential = { apiKey: String(input.apiKey || ''), additionalHeaders };
-            this.assertPageOriginCompatible(normalized.metadata.endpoint, submittedCredential);
             this.assertPlaintextNoAuth(normalized.metadata.endpoint, submittedCredential);
             const downgradedToPlaintext = Boolean(existing?.connected)
                 && !this.isPlaintextEndpoint(existing.metadata?.endpoint)
@@ -244,7 +224,6 @@ const YAW_OPENAI_COMPATIBLE_PROVIDER = (() => {
                 apiKey: String(apiKey || ''),
                 additionalHeaders: this.normalizeHeaders(additionalHeaders)
             };
-            this.assertPageOriginCompatible(profile.metadata?.endpoint, credential);
             this.assertPlaintextNoAuth(profile.metadata?.endpoint, credential);
             YAW_AI_PROVIDER_MANAGER.connectProfile(profile.id, credential);
             return this.snapshot(profile.id);
@@ -410,7 +389,6 @@ const YAW_OPENAI_COMPATIBLE_PROVIDER = (() => {
         async requestProtocol(protocol, { profileId, profileName, instructions, input, maxCharacters, metadata, credential, signal }, chatTokenParameter = 'max_completion_tokens') {
             if (!fetchRequest) throw fail('transport_unavailable');
             const endpoint = this.endpointFor(metadata.endpoint, protocol);
-            this.assertPageOriginCompatible(endpoint, credential);
             const approvedOrigin = new URL(metadata.endpoint).origin;
             if (new URL(endpoint).origin !== approvedOrigin) throw fail('origin_mismatch');
             this.assertPlaintextNoAuth(endpoint, credential);

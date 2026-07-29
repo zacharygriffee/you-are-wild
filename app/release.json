@@ -29,6 +29,7 @@
         "Progressive Tutorial V2 unlocks replayable lessons and point-of-choice guidance when each mechanic becomes relevant."
       ],
       "changed": [
+        "Downloaded file play now exposes all compatible LLM profiles and attempts configured HTTPS REST endpoints directly, with an opaque-origin CORS warning instead of a remote-provider gate.",
         "Procedural quests return to their original giver by default and expose direction, distance, next step, and known-route guidance.",
         "The item catalog no longer promises crafting before a crafting system exists; supported items have an implemented use or an explicit trade, quest, or key purpose.",
         "Legacy companion Role and AI Order values migrate into separate Duty, Stance, and Control records while remaining compatibility mirrors.",
@@ -64,6 +65,7 @@
         "Progressive Tutorial V2 desbloquea lecciones repetibles y ayuda contextual cuando cada mecanica se vuelve relevante."
       ],
       "changed": [
+        "El juego descargado ahora muestra todos los perfiles LLM compatibles e intenta directamente los endpoints REST HTTPS configurados, con una advertencia CORS sobre el origen opaco en lugar de bloquear proveedores remotos.",
         "Las misiones procedurales regresan a su guia original por defecto y muestran direccion, distancia, siguiente paso y ruta conocida.",
         "El catalogo ya no promete fabricacion antes de existir el sistema; cada objeto tiene uso implementado o un proposito claro de comercio, mision o llave.",
         "Los valores antiguos de Rol y Orden IA migran a registros separados de Deber, Postura y Control sin perder compatibilidad.",

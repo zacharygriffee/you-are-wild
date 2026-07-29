@@ -193,6 +193,7 @@ const AIProviderUI = {
                     <div><dt>${this.escape(this.label('provider.protocol', 'Protocol'))}</dt><dd>${this.escape(metadata.protocol || 'auto')}</dd></div>
                 </dl>
                 <div class="provider-actions" role="group" aria-label="${this.escape(this.label('provider.connectionActions', 'Connection actions'))}">
+                    <button class="nav-btn" type="button" onclick="AIProviderUI.runOpenAI('credential','${id}')" ${this.busy ? 'disabled' : ''}>${this.escape(metadata.credentialPresent ? this.label('provider.replaceCredential', 'Replace Credential') : this.label('provider.setCredential', 'Set Credential'))}</button>
                     <button class="nav-btn" type="button" onclick="AIProviderUI.runOpenAI('test','${id}')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.test', 'Test'))}</button>
                     <button class="nav-btn" type="button" onclick="AIProviderUI.runOpenAI('disconnect','${id}')" ${!metadata.credentialPresent || this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.clearCredential', 'Clear Credential'))}</button>
                 </div>
@@ -217,6 +218,18 @@ const AIProviderUI = {
         const reasoningSelected = value => (metadata.reasoningEffort || 'provider') === value ? 'selected' : '';
         const replacingCredential = !profile?.connected;
         const endpoint = metadata.endpoint || (localOnly ? 'http://localhost:11434/v1' : 'https://api.openai.com/v1');
+        const credentialEditor = nativeHost
+            ? `<div class="provider-disclosure"><strong>${this.escape(this.label('provider.trustedCredentialTitle', 'Credential entry is isolated'))}</strong><br>${this.escape(this.label('provider.trustedCredentialHelp', 'After this profile is saved, the desktop host opens a separate trusted window that does not load the game or executable modules. The API key never enters this renderer.'))}</div>`
+            : `<label class="provider-field"><span>${this.escape(this.label('provider.apiKey', 'API key'))}</span><input id="openai-provider-key" type="password" maxlength="500" value="" autocomplete="new-password" placeholder="${this.escape(localOnly ? this.label('provider.fileOriginNoCredential', 'Unavailable in file mode') : (profile?.connected ? this.label('provider.keepCredential', 'Current credential remains active') : this.label('provider.noAuthAllowed', 'Optional for no-auth local endpoints')))}" ${localOnly || !replacingCredential ? 'disabled' : ''}><small>${this.escape(localOnly ? this.label('provider.fileOriginNoCredentialHelp', 'Credentials are disabled for file-origin connections.') : this.label('provider.apiKeyHelp', 'Held only in memory for this browser session.'))}</small></label>`;
+        const credentialControls = nativeHost
+            ? ''
+            : `${profile?.connected && !localOnly ? `<label class="provider-replace-credential"><input id="openai-provider-replace-credential" type="checkbox" onchange="AIProviderUI.toggleCredentialReplacement(this.checked)"><span><strong>${this.escape(this.label('provider.replaceCredential', 'Replace session credential and headers'))}</strong><small>${this.escape(this.label('provider.replaceCredentialHelp', 'Re-enter every secret value. Saving without this option keeps the current session credential unchanged.'))}</small></span></label>` : ''}
+                <fieldset id="openai-provider-credential-fields" class="provider-headers" ${localOnly || !replacingCredential ? 'disabled' : ''}><legend>${this.escape(this.label('provider.additionalHeaders', 'Additional session headers'))}</legend><small>${this.escape(this.label('provider.additionalHeadersHelp', 'Values are session-only. Authorization and transport-controlled headers cannot be overridden.'))}</small><div id="openai-provider-header-rows">${this.renderHeaderRows(profile)}</div><button class="nav-btn" type="button" onclick="AIProviderUI.addHeaderRow()">${this.escape(this.label('provider.addHeader', 'Add Header'))}</button></fieldset>`;
+        const disclosure = nativeHost
+            ? this.label('provider.nativeTrustedDisclosure', 'Only non-secret profile metadata is handled here. Credential persistence and provider authentication remain inside the trusted desktop host.')
+            : (localOnly
+                ? this.label('provider.fileOriginDisclosure', 'File mode permits only unauthenticated loopback endpoints. Ollama supports OpenAI-compatible requests at http://localhost:11434/v1.')
+                : this.label('provider.browserDirectDisclosure', 'Browser-direct requests send the credential only to the exact endpoint origin you approved and require compatible CORS behavior. Redirects are blocked.'));
         const title = profile
             ? this.label('provider.editor.editTitle', 'Edit provider connection')
             : this.label('provider.editor.addTitle', 'Add provider connection');
@@ -226,7 +239,7 @@ const AIProviderUI = {
                 <div class="provider-form-grid">
                     <label class="provider-field"><span>${this.escape(this.label('provider.connectionName', 'Connection name'))}</span><input id="openai-provider-name" type="text" maxlength="120" value="${this.escape(profile?.name || this.label('provider.openai.defaultName', 'OpenAI-Compatible API'))}" required></label>
                     <label class="provider-field"><span>${this.escape(this.label('provider.endpoint', 'API endpoint'))}</span><input id="openai-provider-endpoint" type="url" maxlength="500" value="${this.escape(endpoint)}" required><small>${this.escape(localOnly ? this.label('provider.fileOriginEndpointHelp', 'Use an unauthenticated loopback OpenAI-compatible endpoint, such as http://localhost:11434/v1 for Ollama.') : this.label('provider.endpointHelp', 'Base URL. Authenticated endpoints require HTTPS; loopback HTTP is strictly no-auth.'))}</small></label>
-                    <label class="provider-field"><span>${this.escape(this.label('provider.apiKey', 'API key'))}</span><input id="openai-provider-key" type="password" maxlength="500" value="" autocomplete="new-password" placeholder="${this.escape(localOnly ? this.label('provider.fileOriginNoCredential', 'Unavailable in file mode') : (profile?.connected ? this.label('provider.keepCredential', 'Current credential remains active') : this.label('provider.noAuthAllowed', 'Optional for no-auth local endpoints')))}" ${localOnly || !replacingCredential ? 'disabled' : ''}><small>${this.escape(localOnly ? this.label('provider.fileOriginNoCredentialHelp', 'Credentials are disabled for file-origin connections.') : (nativeHost ? this.label('provider.nativeCredentialHelp', 'Sent directly to the native host and never returned to the game renderer.') : this.label('provider.apiKeyHelp', 'Held only in memory for this browser session.')))}</small></label>
+                    ${credentialEditor}
                     <label class="provider-field"><span>${this.escape(this.label('provider.model', 'Model'))}</span><input id="openai-provider-model" type="text" maxlength="200" value="${this.escape(metadata.model || '')}" placeholder="gpt-5-mini or openai/gpt-*" required></label>
                     <label class="provider-field"><span>${this.escape(this.label('provider.protocol', 'API protocol'))}</span><select id="openai-provider-protocol"><option value="auto" ${select('auto')}>${this.escape(this.label('provider.protocol.auto', 'Auto-detect'))}</option><option value="responses" ${select('responses')}>${this.escape(this.label('provider.protocol.responses', 'OpenAI Responses API'))}</option><option value="chat" ${select('chat')}>${this.escape(this.label('provider.protocol.chat', 'OpenAI Chat Completions'))}</option></select></label>
                     <label class="provider-field"><span>${this.escape(this.label('provider.timeout', 'Request timeout'))}</span><input id="openai-provider-timeout" type="number" min="${YAW_OPENAI_COMPATIBLE_PROVIDER.MIN_TIMEOUT_MS}" max="${YAW_OPENAI_COMPATIBLE_PROVIDER.MAX_TIMEOUT_MS}" step="1000" value="${this.escape(metadata.timeoutMs || YAW_OPENAI_COMPATIBLE_PROVIDER.DEFAULT_TIMEOUT_MS)}"><small>${this.escape(this.label('provider.timeoutHelp', 'Maximum wait per request in milliseconds. The 30-second default gives reasoning-heavy models time to finish.'))}</small></label>
@@ -236,10 +249,8 @@ const AIProviderUI = {
                     <label class="provider-field"><span>${this.escape(this.label('provider.project', 'Project header'))}</span><input id="openai-provider-project" type="text" maxlength="160" value="${this.escape(metadata.project || '')}"></label>
                     <label class="provider-field"><span>${this.escape(this.label('provider.temperature', 'Temperature'))}</span><input id="openai-provider-temperature" type="number" min="0" max="2" step="0.1" value="${metadata.temperature ?? ''}" placeholder="${this.escape(this.label('provider.unspecified', 'Unspecified'))}"><small>${this.escape(this.label('provider.temperatureHelp', 'Sent only when specified.'))}</small></label>
                 </div>
-                ${profile?.connected && !localOnly ? `<label class="provider-replace-credential"><input id="openai-provider-replace-credential" type="checkbox" onchange="AIProviderUI.toggleCredentialReplacement(this.checked)"><span><strong>${this.escape(this.label('provider.replaceCredential', 'Replace session credential and headers'))}</strong><small>${this.escape(this.label('provider.replaceCredentialHelp', 'Re-enter every secret value. Saving without this option keeps the current session credential unchanged.'))}</small></span></label>` : ''}
-                ${nativeHost && !localOnly ? `<label class="provider-replace-credential"><input id="openai-provider-remember-credential" type="checkbox" checked><span><strong>${this.escape(this.label('provider.rememberSecurely', 'Remember securely'))}</strong><small>${this.escape(this.label('provider.rememberSecurelyHelp', 'Requires an operating-system credential backend. Uncheck to use the credential for this session only.'))}</small></span></label>` : ''}
-                <fieldset id="openai-provider-credential-fields" class="provider-headers" ${localOnly || !replacingCredential ? 'disabled' : ''}><legend>${this.escape(this.label('provider.additionalHeaders', 'Additional session headers'))}</legend><small>${this.escape(this.label('provider.additionalHeadersHelp', 'Values are session-only. Authorization and transport-controlled headers cannot be overridden.'))}</small><div id="openai-provider-header-rows">${this.renderHeaderRows(profile)}</div><button class="nav-btn" type="button" onclick="AIProviderUI.addHeaderRow()">${this.escape(this.label('provider.addHeader', 'Add Header'))}</button></fieldset>
-                <p class="provider-disclosure">${this.escape(localOnly ? this.label('provider.fileOriginDisclosure', 'File mode permits only unauthenticated loopback endpoints. Ollama supports OpenAI-compatible requests at http://localhost:11434/v1.') : this.label('provider.browserDirectDisclosure', 'Browser-direct requests send the credential only to the exact endpoint origin you approved and require compatible CORS behavior. Redirects are blocked.'))}</p>
+                ${credentialControls}
+                <p class="provider-disclosure">${this.escape(disclosure)}</p>
                 <div class="provider-actions"><button class="nav-btn primary" type="submit" ${this.busy ? 'disabled' : ''}>${this.escape(profile?.connected ? this.label('provider.save', 'Save') : this.label('provider.connect', 'Connect'))}</button><button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="cancel-provider-editor" data-command-slot="exit" onclick="AIProviderUI.closeEditor()" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('ui.cancel', 'Cancel'))}</button></div>
             </form>`;
     },
@@ -385,6 +396,7 @@ const AIProviderUI = {
     },
 
     readOpenAIForm(id = '') {
+        const nativeHost = typeof YAW_HOST !== 'undefined' && YAW_HOST.capabilities().native === true;
         const replaceControl = document.getElementById('openai-provider-replace-credential');
         const localOnly = typeof App !== 'undefined' && App.isFileOrigin() && !YAW_OPENAI_COMPATIBLE_PROVIDER.fileOriginRemoteOverrideEnabled();
         const replacingCredential = localOnly || !replaceControl || replaceControl.checked === true;
@@ -392,7 +404,7 @@ const AIProviderUI = {
             id: id || undefined,
             name: document.getElementById('openai-provider-name')?.value || '',
             endpoint: document.getElementById('openai-provider-endpoint')?.value || '',
-            apiKey: localOnly ? '' : (replacingCredential ? (document.getElementById('openai-provider-key')?.value || '') : ''),
+            apiKey: nativeHost || localOnly ? '' : (replacingCredential ? (document.getElementById('openai-provider-key')?.value || '') : ''),
             model: document.getElementById('openai-provider-model')?.value || '',
             protocol: document.getElementById('openai-provider-protocol')?.value || 'auto',
             organization: document.getElementById('openai-provider-organization')?.value || '',
@@ -401,9 +413,8 @@ const AIProviderUI = {
             maxCompletionTokens: document.getElementById('openai-provider-max-completion-tokens')?.value || YAW_OPENAI_COMPATIBLE_PROVIDER.DEFAULT_MAX_COMPLETION_TOKENS,
             reasoningEffort: document.getElementById('openai-provider-reasoning-effort')?.value || 'provider',
             temperature: document.getElementById('openai-provider-temperature')?.value || '',
-            replaceCredential: localOnly || replaceControl?.checked === true,
-            additionalHeaders: localOnly ? [] : (replacingCredential ? this.readHeaders() : []),
-            rememberCredential: document.getElementById('openai-provider-remember-credential')?.checked === true
+            replaceCredential: !nativeHost && (localOnly || replaceControl?.checked === true),
+            additionalHeaders: nativeHost || localOnly ? [] : (replacingCredential ? this.readHeaders() : [])
         };
     },
 
@@ -467,13 +478,9 @@ const AIProviderUI = {
                         throw Object.assign(new Error(created?.error?.message || 'Native profile creation failed'), created?.error || {});
                     }
                     profileId = created.profile.id;
-                    if (formInput.apiKey) {
-                        const replaced = await YAW_HOST.providers.replaceCredential(profileId, formInput.apiKey, {
-                            persist: formInput.rememberCredential
-                        });
-                        if (!replaced?.ok) {
-                            throw Object.assign(new Error(replaced?.error?.message || 'Native credential storage failed'), replaced?.error || {});
-                        }
+                    const configured = await YAW_HOST.providers.configureCredential(profileId);
+                    if (!configured?.ok) {
+                        throw Object.assign(new Error(configured?.error?.message || 'Native credential setup failed'), configured?.error || {});
                     }
                     await YAW_HOST.syncNativeProviderConnections();
                 } else {
@@ -481,7 +488,19 @@ const AIProviderUI = {
                     profileId = connected.id;
                 }
                 this.editingProfileId = '';
-                this.setMessage(this.label('provider.savedSession', 'Connection metadata was saved and the session credential is active.'), 'success');
+                this.setMessage(nativeHost
+                    ? this.label('provider.nativeProfileSaved', 'Connection metadata was saved. Credential custody remains in the trusted desktop host.')
+                    : this.label('provider.savedSession', 'Connection metadata was saved and the session credential is active.'), 'success');
+            } else if (action === 'credential') {
+                if (!nativeProfile) throw Object.assign(new Error('Native provider profile is unavailable'), { code: 'profile_unavailable' });
+                const result = await YAW_HOST.providers.configureCredential(profileId);
+                if (!result?.ok) {
+                    throw Object.assign(new Error(result?.error?.message || 'Native credential setup failed'), result?.error || {});
+                }
+                await YAW_HOST.syncNativeProviderConnections();
+                this.setMessage(result.canceled
+                    ? this.label('provider.credentialUnchanged', 'Credential was left unchanged.')
+                    : this.label('provider.credentialUpdatedTrusted', 'Credential was updated in the trusted desktop window.'), 'success');
             } else if (action === 'test') {
                 const result = nativeProfile
                     ? await YAW_HOST.providers.test(profileId)

@@ -740,11 +740,11 @@ asyncTest('Host public surface rejects bridge escape hatches and returns seriali
     distribution: { status: async () => ({ ok: true }) },
     files: { exportSave: async () => ({ ok: true }), importSave: async () => ({ ok: true }), readFile: async () => 'secret' },
     providers: {
+      configureCredential: async () => ({ ok: true }),
       createProfile: async () => ({ ok: true }),
       forgetCredential: async () => ({ ok: true }),
       generate: async () => ({ ok: true }),
       listProfiles: async () => ({ ok: true, profiles: [] }),
-      replaceCredential: async () => ({ ok: true }),
       test: async () => ({ ok: true })
     }
   };
@@ -757,6 +757,14 @@ asyncTest('Host public surface rejects bridge escape hatches and returns seriali
   for (const forbidden of ['getCredential', 'readSecret', 'rawIpc', 'invokeArbitrary', 'readArbitraryFile', 'writeArbitraryFile']) {
     assertNotContains(publicKeys, forbidden, `Host surface must not expose ${forbidden}`);
   }
+});
+
+test('Native credential entry is delegated to a trusted host window without a renderer secret argument', () => {
+  assertContains(hostCapabilitiesContent, "configureCredential(profileId)", 'Host contract should expose trusted credential configuration');
+  assertNotContains(hostCapabilitiesContent, "replaceCredential(profileId, credential", 'Game renderer host contract must not accept credential material');
+  assertContains(providerUiContent, "YAW_HOST.providers.configureCredential(profileId)", 'Core provider UI should request trusted native credential entry');
+  assertNotContains(providerUiContent, "YAW_HOST.providers.replaceCredential", 'Core provider UI must not send native credentials from the game renderer');
+  assertContains(providerUiContent, 'The API key never enters this renderer.', 'Native provider UI should explain the trusted-window boundary');
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {

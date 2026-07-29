@@ -52,6 +52,12 @@ malicious same-page code.
 Puter owns its browser sign-in and user-pays session. The game stores no Puter
 API key. Its optional model ID is non-secret profile metadata.
 
+In the Pear/Electron host, API-key entry moves to a dedicated trusted window.
+The normal game renderer requests credential configuration using only an
+opaque profile ID. It never renders, receives, or forwards the key. The trusted
+window loads no game or module code and submits the credential directly to
+Electron main for session custody or `safeStorage` encryption.
+
 ### OpenAI-Compatible API
 
 The OpenAI-Compatible adapter supports browser-direct Responses and Chat

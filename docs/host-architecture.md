@@ -42,7 +42,7 @@ window.yawHost
 └── providers
     ├── listProfiles()
     ├── createProfile()
-    ├── replaceCredential()
+    ├── configureCredential()
     ├── forgetCredential()
     ├── test()
     └── generate()
@@ -62,7 +62,11 @@ MODS.ai.listConnections(capability)
 MODS.ai.cancelPending()
 ```
 
-Credential management is not present on `MODS`. Module settings continue rejecting credential-like keys and values.
+Credential management is not present on `MODS`. For the native host,
+`configureCredential(profileId)` opens a separate trusted window that does not
+load the game or executable modules; the game renderer never receives or
+forwards the key. Module settings continue rejecting credential-like keys and
+values.
 
 ```text
 YAW module

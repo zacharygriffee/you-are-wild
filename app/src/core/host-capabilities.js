@@ -20,7 +20,7 @@ const YAW_HOST = (() => {
         app: ['platform'],
         distribution: ['status'],
         files: ['exportSave', 'importSave'],
-        providers: ['createProfile', 'forgetCredential', 'generate', 'listProfiles', 'replaceCredential', 'test']
+        providers: ['configureCredential', 'createProfile', 'forgetCredential', 'generate', 'listProfiles', 'test']
     });
     const state = {
         nativeSnapshot: null,
@@ -273,8 +273,8 @@ const YAW_HOST = (() => {
             createProfile(input) {
                 return call('providers', 'createProfile', [input], 'providers.secure_transport');
             },
-            replaceCredential(profileId, credential, options = {}) {
-                return call('providers', 'replaceCredential', [profileId, credential, options], 'providers.persistent_credentials');
+            configureCredential(profileId) {
+                return call('providers', 'configureCredential', [profileId], 'providers.secure_transport');
             },
             forgetCredential(profileId) {
                 return call('providers', 'forgetCredential', [profileId], 'providers.secure_transport');

@@ -745,7 +745,9 @@ asyncTest('Host public surface rejects bridge escape hatches and returns seriali
       forgetCredential: async () => ({ ok: true }),
       generate: async () => ({ ok: true }),
       listProfiles: async () => ({ ok: true, profiles: [] }),
-      test: async () => ({ ok: true })
+      removeProfile: async () => ({ ok: true }),
+      test: async () => ({ ok: true }),
+      updateProfile: async () => ({ ok: true })
     }
   };
   const { YAW_HOST } = loadHostCapabilitiesForTest({ yawHost: dangerous });
@@ -765,6 +767,15 @@ test('Native credential entry is delegated to a trusted host window without a re
   assertContains(providerUiContent, "YAW_HOST.providers.configureCredential(profileId)", 'Core provider UI should request trusted native credential entry');
   assertNotContains(providerUiContent, "YAW_HOST.providers.replaceCredential", 'Core provider UI must not send native credentials from the game renderer');
   assertContains(providerUiContent, 'The API key never enters this renderer.', 'Native provider UI should explain the trusted-window boundary');
+});
+
+test('Native provider profiles expose bounded edit and destructive removal flows', () => {
+  assertContains(hostCapabilitiesContent, 'updateProfile(profileId, input)', 'Host contract should expose bounded native profile updates');
+  assertContains(hostCapabilitiesContent, 'removeProfile(profileId)', 'Host contract should expose bounded native profile removal');
+  assertContains(providerUiContent, "YAW_HOST.providers.updateProfile(profileId, profileInput)", 'Core provider UI should update native profile metadata');
+  assertContains(providerUiContent, "YAW_HOST.providers.removeProfile(profileId)", 'Core provider UI should remove native profiles through the host');
+  assertContains(providerUiContent, 'permanently delete its stored credential', 'Provider removal should warn that credential deletion is permanent');
+  assertContains(providerUiContent, 'Because the endpoint changed, its stored credential was deleted', 'Endpoint edits should explain credential invalidation');
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {

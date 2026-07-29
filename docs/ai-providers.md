@@ -32,6 +32,13 @@ The exception is an HTTPS-to-plaintext loopback edit: the active credential is
 replaced with an empty no-auth credential before the edited connection can be
 used.
 
+The Pear/Electron host applies a stronger endpoint rule because its credentials
+can survive a renderer session: changing any native profile endpoint deletes
+the associated session or encrypted credential before saving the new endpoint.
+Changing the model, protocol, timeout, token ceiling, reasoning, temperature,
+organization, or project retains the credential. Removing a native profile
+permanently deletes both its metadata and its stored credential.
+
 ## Credential Boundary
 
 Credentials and additional header values live only in a private in-memory

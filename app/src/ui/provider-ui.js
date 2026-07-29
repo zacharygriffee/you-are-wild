@@ -177,6 +177,7 @@ const AIProviderUI = {
     renderNativeProfile(profile) {
         const metadata = profile.metadata || {};
         const id = this.escape(this.js(profile.id));
+        const profileId = this.escape(profile.id);
         const state = metadata.credentialPresent
             ? (metadata.secureStorage
                 ? this.label('provider.state.securelyRemembered', 'Credential remembered securely')
@@ -193,9 +194,11 @@ const AIProviderUI = {
                     <div><dt>${this.escape(this.label('provider.protocol', 'Protocol'))}</dt><dd>${this.escape(metadata.protocol || 'auto')}</dd></div>
                 </dl>
                 <div class="provider-actions" role="group" aria-label="${this.escape(this.label('provider.connectionActions', 'Connection actions'))}">
+                    <button class="nav-btn" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="edit-provider-connection" data-provider-profile-id="${profileId}" onclick="AIProviderUI.openEditor('${id}')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.edit', 'Edit'))}</button>
                     <button class="nav-btn" type="button" onclick="AIProviderUI.runOpenAI('credential','${id}')" ${this.busy ? 'disabled' : ''}>${this.escape(metadata.credentialPresent ? this.label('provider.replaceCredential', 'Replace Credential') : this.label('provider.setCredential', 'Set Credential'))}</button>
                     <button class="nav-btn" type="button" onclick="AIProviderUI.runOpenAI('test','${id}')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.test', 'Test'))}</button>
                     <button class="nav-btn" type="button" onclick="AIProviderUI.runOpenAI('disconnect','${id}')" ${!metadata.credentialPresent || this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.clearCredential', 'Clear Credential'))}</button>
+                    <button class="nav-btn danger" type="button" onclick="AIProviderUI.runOpenAI('remove','${id}')" ${this.busy ? 'disabled' : ''}>${this.escape(this.label('provider.remove', 'Remove'))}</button>
                 </div>
             </article>`;
     },
@@ -219,7 +222,7 @@ const AIProviderUI = {
         const replacingCredential = !profile?.connected;
         const endpoint = metadata.endpoint || (localOnly ? 'http://localhost:11434/v1' : 'https://api.openai.com/v1');
         const credentialEditor = nativeHost
-            ? `<div class="provider-disclosure"><strong>${this.escape(this.label('provider.trustedCredentialTitle', 'Credential entry is isolated'))}</strong><br>${this.escape(this.label('provider.trustedCredentialHelp', 'After this profile is saved, the desktop host opens a separate trusted window that does not load the game or executable modules. The API key never enters this renderer.'))}</div>`
+            ? `<div class="provider-disclosure"><strong>${this.escape(this.label('provider.trustedCredentialTitle', 'Credential entry is isolated'))}</strong><br>${this.escape(this.label('provider.trustedCredentialHelp', 'Credential entry and replacement use a separate trusted desktop window that does not load the game or executable modules. The API key never enters this renderer.'))}</div>`
             : `<label class="provider-field"><span>${this.escape(this.label('provider.apiKey', 'API key'))}</span><input id="openai-provider-key" type="password" maxlength="500" value="" autocomplete="new-password" placeholder="${this.escape(localOnly ? this.label('provider.fileOriginNoCredential', 'Unavailable in file mode') : (profile?.connected ? this.label('provider.keepCredential', 'Current credential remains active') : this.label('provider.noAuthAllowed', 'Optional for no-auth local endpoints')))}" ${localOnly || !replacingCredential ? 'disabled' : ''}><small>${this.escape(localOnly ? this.label('provider.fileOriginNoCredentialHelp', 'Credentials are disabled for file-origin connections.') : this.label('provider.apiKeyHelp', 'Held only in memory for this browser session.'))}</small></label>`;
         const credentialControls = nativeHost
             ? ''
@@ -259,7 +262,8 @@ const AIProviderUI = {
         const editing = this.editingProfileId === 'new'
             ? null
             : profiles.find(profile => profile.id === this.editingProfileId) || null;
-        const editor = this.editingProfileId ? this.renderOpenAIEditor(editing) : '';
+        const editorOpen = this.editingProfileId === 'new' || Boolean(editing);
+        const editor = editorOpen ? this.renderOpenAIEditor(editing) : '';
         const fileOrigin = typeof App !== 'undefined' && App.isFileOrigin();
         const override = YAW_OPENAI_COMPATIBLE_PROVIDER.fileOriginRemoteOverrideEnabled();
         const localOnly = fileOrigin && !override;
@@ -273,7 +277,7 @@ const AIProviderUI = {
                 ${profiles.map(profile => this.renderOpenAIProfile(profile)).join('')}
                 ${profiles.length || editor ? '' : `<p class="provider-empty">${this.escape(this.label('provider.openai.empty', 'No OpenAI-compatible connections saved.'))}</p>`}
                 ${editor}
-                ${this.editingProfileId ? '' : `<button class="nav-btn primary" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="add-provider-connection" onclick="AIProviderUI.openEditor('new')">${this.escape(localOnly ? this.label('provider.addLocalConnection', 'Add Local Connection') : this.label('provider.addConnection', 'Add Connection'))}</button>`}
+                ${editorOpen ? '' : `<button class="nav-btn primary" type="button" data-command-surface="ai-providers" data-command-mode="system" data-command-control="add-provider-connection" onclick="AIProviderUI.openEditor('new')">${this.escape(localOnly ? this.label('provider.addLocalConnection', 'Add Local Connection') : this.label('provider.addConnection', 'Add Connection'))}</button>`}
             </section>`;
     },
 
@@ -299,7 +303,8 @@ const AIProviderUI = {
             if (provider.id === YAW_PUTER_PROVIDER.PROVIDER_ID) return this.renderPuter(provider, ownedProfiles);
             if (provider.id === YAW_OPENAI_COMPATIBLE_PROVIDER.PROVIDER_ID) return this.renderOpenAI(provider, ownedProfiles);
             if (typeof YAW_HOST !== 'undefined' && provider.id === YAW_HOST.NATIVE_PROVIDER_ID) {
-                return `<section class="provider-service"><div class="provider-service-heading"><div><h2>${this.escape(provider.name)}</h2><p>${this.escape(provider.description)}</p></div><div class="provider-capabilities">${this.capabilityBadges(provider.capabilities)}</div></div>${ownedProfiles.map(profile => this.renderNativeProfile(profile)).join('')}</section>`;
+                const editing = ownedProfiles.find(profile => profile.id === this.editingProfileId) || null;
+                return `<section class="provider-service"><div class="provider-service-heading"><div><h2>${this.escape(provider.name)}</h2><p>${this.escape(provider.description)}</p></div><div class="provider-capabilities">${this.capabilityBadges(provider.capabilities)}</div></div>${ownedProfiles.map(profile => this.renderNativeProfile(profile)).join('')}${editing ? this.renderOpenAIEditor(editing) : ''}</section>`;
             }
             return `<section class="provider-service"><div class="provider-service-heading"><div><h2>${this.escape(provider.name)}</h2><p>${this.escape(provider.description)}</p></div><div class="provider-capabilities">${this.capabilityBadges(provider.capabilities)}</div></div></section>`;
         }).join('');
@@ -450,7 +455,7 @@ const AIProviderUI = {
 
     async runOpenAI(action, profileId = '') {
         if (this.busy) return false;
-        if (action === 'remove' && !confirm(this.label('provider.confirmRemove', 'Remove this provider connection profile?'))) return false;
+        if (action === 'remove' && !confirm(this.label('provider.confirmRemove', 'Remove this provider connection and permanently delete its stored credential?'))) return false;
         const formInput = action === 'save' ? this.readOpenAIForm(profileId) : null;
         this.busy = true;
         this.setMessage(this.label('provider.working', 'Working...'));
@@ -462,7 +467,7 @@ const AIProviderUI = {
             const nativeProfile = Boolean(nativeHost && profile?.providerId === YAW_HOST.NATIVE_PROVIDER_ID);
             if (action === 'save') {
                 if (nativeHost) {
-                    const created = await YAW_HOST.providers.createProfile({
+                    const profileInput = {
                         name: formInput.name,
                         endpoint: formInput.endpoint,
                         model: formInput.model,
@@ -473,24 +478,37 @@ const AIProviderUI = {
                         temperature: formInput.temperature,
                         organization: formInput.organization,
                         project: formInput.project
-                    });
-                    if (!created?.ok) {
-                        throw Object.assign(new Error(created?.error?.message || 'Native profile creation failed'), created?.error || {});
+                    };
+                    if (nativeProfile) {
+                        const updated = await YAW_HOST.providers.updateProfile(profileId, profileInput);
+                        if (!updated?.ok) {
+                            throw Object.assign(new Error(updated?.error?.message || 'Native profile update failed'), updated?.error || {});
+                        }
+                        await YAW_HOST.syncNativeProviderConnections();
+                        this.editingProfileId = '';
+                        this.setMessage(updated.credentialInvalidated
+                            ? this.label('provider.endpointCredentialCleared', 'Connection settings were saved. Because the endpoint changed, its stored credential was deleted; set the credential again for the new endpoint.')
+                            : this.label('provider.nativeProfileUpdated', 'Connection settings were saved. The trusted desktop host retained credential custody.'), updated.credentialInvalidated ? 'warning' : 'success');
+                    } else {
+                        const created = await YAW_HOST.providers.createProfile(profileInput);
+                        if (!created?.ok) {
+                            throw Object.assign(new Error(created?.error?.message || 'Native profile creation failed'), created?.error || {});
+                        }
+                        profileId = created.profile.id;
+                        const configured = await YAW_HOST.providers.configureCredential(profileId);
+                        if (!configured?.ok) {
+                            throw Object.assign(new Error(configured?.error?.message || 'Native credential setup failed'), configured?.error || {});
+                        }
+                        await YAW_HOST.syncNativeProviderConnections();
+                        this.editingProfileId = '';
+                        this.setMessage(this.label('provider.nativeProfileSaved', 'Connection metadata was saved. Credential custody remains in the trusted desktop host.'), 'success');
                     }
-                    profileId = created.profile.id;
-                    const configured = await YAW_HOST.providers.configureCredential(profileId);
-                    if (!configured?.ok) {
-                        throw Object.assign(new Error(configured?.error?.message || 'Native credential setup failed'), configured?.error || {});
-                    }
-                    await YAW_HOST.syncNativeProviderConnections();
                 } else {
                     const connected = YAW_OPENAI_COMPATIBLE_PROVIDER.connect(formInput);
                     profileId = connected.id;
+                    this.editingProfileId = '';
+                    this.setMessage(this.label('provider.savedSession', 'Connection metadata was saved and the session credential is active.'), 'success');
                 }
-                this.editingProfileId = '';
-                this.setMessage(nativeHost
-                    ? this.label('provider.nativeProfileSaved', 'Connection metadata was saved. Credential custody remains in the trusted desktop host.')
-                    : this.label('provider.savedSession', 'Connection metadata was saved and the session credential is active.'), 'success');
             } else if (action === 'credential') {
                 if (!nativeProfile) throw Object.assign(new Error('Native provider profile is unavailable'), { code: 'profile_unavailable' });
                 const result = await YAW_HOST.providers.configureCredential(profileId);
@@ -524,9 +542,17 @@ const AIProviderUI = {
                 }
                 this.setMessage(this.label('provider.credentialCleared', 'Session credential cleared. Saved non-secret metadata remains.'), 'success');
             } else if (action === 'remove') {
-                YAW_OPENAI_COMPATIBLE_PROVIDER.remove(profileId);
+                if (nativeProfile) {
+                    const result = await YAW_HOST.providers.removeProfile(profileId);
+                    if (!result?.ok) {
+                        throw Object.assign(new Error(result?.error?.message || 'Native provider removal failed'), result?.error || {});
+                    }
+                    await YAW_HOST.syncNativeProviderConnections();
+                } else {
+                    YAW_OPENAI_COMPATIBLE_PROVIDER.remove(profileId);
+                }
                 if (this.editingProfileId === profileId) this.editingProfileId = '';
-                this.setMessage(this.label('provider.removed', 'Provider connection removed.'), 'success');
+                this.setMessage(this.label('provider.removed', 'Provider connection and stored credential removed.'), 'success');
             }
             this.busy = false;
             this.refresh();

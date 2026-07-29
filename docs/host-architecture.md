@@ -42,6 +42,8 @@ window.yawHost
 └── providers
     ├── listProfiles()
     ├── createProfile()
+    ├── updateProfile()
+    ├── removeProfile()
     ├── configureCredential()
     ├── forgetCredential()
     ├── test()
@@ -72,6 +74,14 @@ Credential management is not present on `MODS`. For the native host,
 load the game or executable modules; the game renderer never receives or
 forwards the key. Module settings continue rejecting credential-like keys and
 values.
+
+Native profile metadata can be edited through the same bounded contract. Model,
+protocol, timeout, token ceiling, reasoning, temperature, organization, and
+project changes retain credential custody in main. An endpoint change
+invalidates and deletes the associated session or encrypted credential before
+the new endpoint is persisted, so renderer code cannot redirect an existing
+key. Removing a native profile deletes both its non-secret metadata and any
+associated credential record.
 
 ```text
 YAW module

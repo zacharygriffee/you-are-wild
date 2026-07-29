@@ -20,7 +20,7 @@ const YAW_HOST = (() => {
         app: ['platform'],
         distribution: ['status'],
         files: ['exportSave', 'importSave'],
-        providers: ['configureCredential', 'createProfile', 'forgetCredential', 'generate', 'listProfiles', 'test']
+        providers: ['configureCredential', 'createProfile', 'forgetCredential', 'generate', 'listProfiles', 'removeProfile', 'test', 'updateProfile']
     });
     const state = {
         nativeSnapshot: null,
@@ -273,6 +273,12 @@ const YAW_HOST = (() => {
             createProfile(input) {
                 return call('providers', 'createProfile', [input], 'providers.secure_transport');
             },
+            updateProfile(profileId, input) {
+                return call('providers', 'updateProfile', [profileId, input], 'providers.secure_transport');
+            },
+            removeProfile(profileId) {
+                return call('providers', 'removeProfile', [profileId], 'providers.secure_transport');
+            },
             configureCredential(profileId) {
                 return call('providers', 'configureCredential', [profileId], 'providers.secure_transport');
             },
@@ -355,6 +361,12 @@ const YAW_HOST = (() => {
                         endpoint: String(profile.endpoint || ''),
                         model: String(profile.model || ''),
                         protocol: String(profile.protocol || ''),
+                        timeoutMs: Number(profile.timeoutMs) || 0,
+                        maxCompletionTokens: Number(profile.maxCompletionTokens) || 0,
+                        reasoningEffort: String(profile.reasoningEffort || 'provider'),
+                        temperature: profile.temperature === null ? null : Number(profile.temperature),
+                        organization: String(profile.organization || ''),
+                        project: String(profile.project || ''),
                         secureStorage: profile.secureStorage === true,
                         credentialPresent: profile.credentialPresent === true
                     },

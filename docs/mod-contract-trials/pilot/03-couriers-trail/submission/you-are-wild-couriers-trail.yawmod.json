@@ -1,0 +1,40 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_couriers_trail",
+  "gameVersion": "0.17.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_couriers_trail",
+      "name": "You Are Wild: Courier's Trail",
+      "version": "1.0.0",
+      "description": "Adds practical courier supplies and a recoverable satchel quest with a guaranteed nearby trail placement.",
+      "type": "content_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.16.0",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": [
+          "file",
+          "https",
+          "localhost",
+          "http"
+        ],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": true
+      },
+      "permissions": [
+        "content:add_item",
+        "content:add_quest"
+      ],
+      "dependencies": [],
+      "contentCategories": [],
+      "gameplayVariants": [],
+      "settings": []
+    },
+    "code": "MODS.addItem({\n  id: 'field_dressing',\n  name: 'Courier Field Dressing',\n  type: 'consumable',\n  purpose: 'use',\n  effect: 'heal',\n  healAmount: 18,\n  stackable: true,\n  maxStack: 10,\n  value: 14,\n  icon: '🩹',\n  desc: 'A compact courier dressing that restores 18 condition.',\n  acquisition: {\n    merchantTables: [\n      { id: 'general', qty: 2 },\n      { id: 'traveler', qty: 2 }\n    ],\n    search: true,\n    searchWeight: 3\n  }\n});\n\nMODS.addItem({\n  id: 'waxed_route_cord',\n  name: 'Waxed Route Cord',\n  type: 'material',\n  purpose: 'trade',\n  effect: 'sell',\n  stackable: true,\n  maxStack: 20,\n  value: 8,\n  icon: '🧵',\n  desc: 'Waxed cord used by couriers to bind parcels and mark a trail; a trade good worth 8 gold.',\n  acquisition: {\n    merchantTables: [\n      { id: 'general', qty: 2 },\n      { id: 'traveler', qty: 3 }\n    ],\n    search: true,\n    searchWeight: 4\n  }\n});\n\nMODS.addItem({\n  id: 'courier_satchel',\n  name: 'Weathered Courier Satchel',\n  type: 'quest',\n  purpose: 'quest',\n  stackable: false,\n  value: 0,\n  icon: '🎒',\n  desc: 'A mud-streaked satchel bearing a courier seal. It belongs with its waiting dispatcher.'\n});\n\nMODS.addQuestTemplate({\n  id: 'recover_courier_satchel',\n  title: \"The Courier's Trail\",\n  description: 'A courier vanished between waymarks. Follow the marked trail, recover the sealed satchel, and return it to the dispatcher who sent you.',\n  acquisition: {\n    structures: ['cabin', 'camp']\n  },\n  turnInPolicy: {\n    type: 'original_giver'\n  },\n  objectives: [{\n    id: 'recover_satchel',\n    type: 'recover',\n    label: 'Recover the Weathered Courier Satchel',\n    item: {\n      definitionId: 'yaw_couriers_trail:courier_satchel',\n      name: 'Weathered Courier Satchel',\n      quantity: 1\n    },\n    required: 1\n  }],\n  worldDirectives: [{\n    id: 'place_lost_satchel',\n    type: 'place',\n    content: {\n      kind: 'item',\n      id: 'yaw_couriers_trail:courier_satchel'\n    },\n    count: 1,\n    distance: {\n      min: 3,\n      max: 6\n    },\n    objectiveId: 'recover_satchel',\n    locationLabel: \"Courier's last waymark\"\n  }],\n  consumeOnTurnIn: ['yaw_couriers_trail:courier_satchel'],\n  reward: {\n    xp: 24,\n    gold: 18\n  },\n  stageGraph: {\n    initialStage: 'offered',\n    stages: [{\n      id: 'offered',\n      label: 'Awaiting departure',\n      transitions: [{\n        id: 'take_route_slip',\n        event: 'accept',\n        to: 'following_trail',\n        effects: [{\n          type: 'log',\n          text: 'The dispatcher gives you the courier’s last route slip. Beyond the next waymarks, the trail goes quiet.'\n        }]\n      }]\n    }, {\n      id: 'following_trail',\n      label: 'Following the courier trail',\n      transitions: [{\n        id: 'secure_satchel',\n        event: 'objective_complete',\n        to: 'returning',\n        effects: [{\n          type: 'log',\n          text: 'You lift the weathered satchel from the trail. Its courier seal is scarred but unbroken; the dispatcher will want it back.'\n        }]\n      }, {\n        id: 'trail_failed',\n        event: 'fail',\n        to: 'failed',\n        effects: [{\n          type: 'log',\n          text: 'The courier’s trail is abandoned, leaving the missing dispatch unresolved.'\n        }]\n      }]\n    }, {\n      id: 'returning',\n      label: 'Returning to the dispatcher',\n      transitions: [{\n        id: 'return_satchel',\n        event: 'turn_in',\n        to: 'delivered',\n        effects: [{\n          type: 'log',\n          text: 'The dispatcher checks the battered seal, then clasps the satchel close. The lost route can finally be accounted for.'\n        }]\n      }, {\n        id: 'return_failed',\n        event: 'fail',\n        to: 'failed',\n        effects: [{\n          type: 'log',\n          text: 'The recovered dispatch never reaches its waiting keeper.'\n        }]\n      }]\n    }, {\n      id: 'delivered',\n      label: 'Satchel delivered',\n      transitions: []\n    }, {\n      id: 'failed',\n      label: 'Trail abandoned',\n      transitions: []\n    }]\n  }\n});",
+    "assets": {}
+  }
+}

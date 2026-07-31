@@ -1,0 +1,40 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_school_of_steel",
+  "gameVersion": "0.17.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_school_of_steel",
+      "name": "You Are Wild: School of Steel",
+      "version": "1.0.0",
+      "description": "Adds three broadly available Fight techniques: a focused strike, a three-target sweep, and a stunning blow.",
+      "type": "content_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.17.0",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": [
+          "file",
+          "https",
+          "localhost",
+          "http"
+        ],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": true
+      },
+      "permissions": [
+        "content:add_locale",
+        "mechanics:add_combat_technique"
+      ],
+      "dependencies": [],
+      "contentCategories": [],
+      "gameplayVariants": [],
+      "settings": []
+    },
+    "code": "MODS.registerLocaleEntries('en', {\n  'yaw_school_of_steel.technique.measuredStrike': 'Measured Strike',\n  'yaw_school_of_steel.technique.measuredStrike.description': 'Focus an ordinary Fight on one target for 40% more damage.',\n  'yaw_school_of_steel.technique.sweepingRhythm': 'Sweeping Rhythm',\n  'yaw_school_of_steel.technique.sweepingRhythm.description': 'Spread a practiced attack across up to three targets, recovering half the usual split reduction.',\n  'yaw_school_of_steel.technique.staggeringBlow': 'Staggering Blow',\n  'yaw_school_of_steel.technique.staggeringBlow.description': 'Trade damage for a 60% chance to stun the target for one turn.'\n});\nMODS.registerLocaleEntries('es', {\n  'yaw_school_of_steel.technique.measuredStrike': 'Golpe medido',\n  'yaw_school_of_steel.technique.measuredStrike.description': 'Concentra un ataque normal en un solo objetivo para infligir un 40 % más de daño.',\n  'yaw_school_of_steel.technique.sweepingRhythm': 'Ritmo envolvente',\n  'yaw_school_of_steel.technique.sweepingRhythm.description': 'Extiende un ataque calculado a un máximo de tres objetivos y recupera la mitad de la reducción habitual al repartir el daño.',\n  'yaw_school_of_steel.technique.staggeringBlow': 'Golpe desestabilizador',\n  'yaw_school_of_steel.technique.staggeringBlow.description': 'Sacrifica daño por un 60 % de probabilidad de aturdir al objetivo durante un turno.'\n});\nMODS.registerCombatTechnique('measured-strike', {\n  label: 'Measured Strike',\n  labelKey: 'yaw_school_of_steel.technique.measuredStrike',\n  description: 'Focus an ordinary Fight on one target for 40% more damage.',\n  descriptionKey: 'yaw_school_of_steel.technique.measuredStrike.description',\n  icon: '🎯',\n  eligibility: {},\n  equipment: {},\n  damage: { multiplier: 1.4, flat: 0 },\n  area: { maxTargets: 1, distribution: 'split', recovery: 0 }\n});\nMODS.registerCombatTechnique('sweeping-rhythm', {\n  label: 'Sweeping Rhythm',\n  labelKey: 'yaw_school_of_steel.technique.sweepingRhythm',\n  description: 'Spread a practiced attack across up to three targets, recovering half the usual split reduction.',\n  descriptionKey: 'yaw_school_of_steel.technique.sweepingRhythm.description',\n  icon: '🌀',\n  eligibility: {},\n  equipment: {},\n  damage: { multiplier: 1, flat: 0 },\n  area: { maxTargets: 3, distribution: 'split', recovery: 0.5 }\n});\nMODS.registerCombatTechnique('staggering-blow', {\n  label: 'Staggering Blow',\n  labelKey: 'yaw_school_of_steel.technique.staggeringBlow',\n  description: 'Trade damage for a 60% chance to stun the target for one turn.',\n  descriptionKey: 'yaw_school_of_steel.technique.staggeringBlow.description',\n  icon: '💫',\n  eligibility: {},\n  equipment: {},\n  damage: { multiplier: 0.75, flat: 0 },\n  area: { maxTargets: 1, distribution: 'split', recovery: 0 },\n  status: { effect: 'stun', chance: 0.6, turns: 1, power: 1 }\n});",
+    "assets": {}
+  }
+}

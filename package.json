@@ -4,7 +4,9 @@
   "scripts": {
     "build": "npm --prefix app run build",
     "check": "npm --prefix app run check",
-    "test": "npm --prefix app test",
+    "test": "npm --prefix app test && npm run test:mod-tooling",
+    "test:mod-tooling": "node scripts/validate-mod-author-kit.mjs && node --test test/module-validator.test.mjs test/simple-narrator-scene-evaluation.test.mjs",
+    "validate:mod": "node docs/mod-author-kit/tools/validate-module.mjs",
     "test:core": "npm --prefix app run test:core",
     "test:ui": "npm --prefix app run test:ui",
     "test:media": "npm --prefix app run test:media",
@@ -17,6 +19,6 @@
     "clean": "npm --prefix app run clean",
     "audit:branding": "node scripts/branding-audit.js",
     "audit:map-assets": "npm --prefix app run build:hosted --silent && node scripts/map-tileset-acceptance.js",
-    "full-build": "npm --prefix app run full-build && npm run audit:map-assets"
+    "full-build": "npm --prefix app run full-build && npm run test:mod-tooling && npm run audit:map-assets"
   }
 }

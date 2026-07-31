@@ -5,6 +5,21 @@ It describes the capabilities that exist in the current runtime, not planned
 APIs. Historical plans, release notes, changelogs, and generated examples are
 not doctrine.
 
+For a portable, self-contained snapshot that can be handed to an authoring
+agent without the game source, use the
+[Mod Author Kit](mod-author-kit/README.md). The kit freezes the current
+`0.17.0` package/API contracts, bounded vocabularies, inventories, templates,
+and source-independent release checklist in one directory.
+
+The copied kit includes a dependency-free static package validator:
+
+```bash
+node docs/mod-author-kit/tools/validate-module.mjs path/to/module.yawmod.json
+```
+
+A passing validator report is `static-checked` evidence, not proof that a
+module was installed or exercised through browser lifecycle transitions.
+
 ## Authority And Scope
 
 When documentation disagrees, use this order:
@@ -70,6 +85,8 @@ New executable packages must use the version-one envelope:
       "trustBoundary": "trusted-local",
       "runtimeRequirements": {
         "origins": ["file", "https", "localhost", "http"],
+        "hosts": [],
+        "capabilities": [],
         "network": false,
         "secureContext": false,
         "hotToggleSafe": true
@@ -104,9 +121,12 @@ for compatibility. It is not the authoring format for new distributable mods.
   enabled first.
 - `minGameVersion` is a numeric version such as `0.12.2`. `gameVersion` inside
   a legacy manifest is normalized only as a compatibility alias.
-- `runtimeRequirements` may declare `origins`, `network`, `secureContext`, and
-  `hotToggleSafe`. Omitting it permits every current origin, no network or
-  secure-context requirement, and restart-required toggling during a run.
+- `runtimeRequirements` may declare `origins`, semantic `hosts` and
+  `capabilities`, `network`, `secureContext`, and `hotToggleSafe`. Host and
+  capability declarations only block activation when incompatible; they do
+  not grant methods or native authority. Omitting the object permits every
+  current origin and host, no capability, network, or secure-context
+  requirement, and restart-required toggling during a run.
 - `settings` contains bounded declarative controls. It is not a secret store.
 - `trustBoundary` must be `trusted-local`.
 

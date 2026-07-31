@@ -1,0 +1,39 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "replace_me_art",
+  "gameVersion": "0.17.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "replace_me_art",
+      "name": "Replace Me Art",
+      "version": "1.0.0",
+      "description": "Owns an optional code-free presentation pack.",
+      "type": "presentation_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.17.0",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": [
+          "file",
+          "https",
+          "localhost",
+          "http"
+        ],
+        "hosts": [],
+        "capabilities": [],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": true
+      },
+      "permissions": [
+        "media:read"
+      ],
+      "dependencies": [],
+      "settings": []
+    },
+    "code": "MODS.log('Replace Me Art enabled.');\n",
+    "assets": {}
+  }
+}

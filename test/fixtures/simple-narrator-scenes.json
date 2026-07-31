@@ -1,0 +1,376 @@
+{
+  "schema": "yaw-simple-narrator-evaluation-v1",
+  "fixtures": [
+    {
+      "id": "managed-player-actor",
+      "description": "A managed connection narrates a safe player action without changing the structured scene.",
+      "connection": {
+        "id": "managed:narration",
+        "providerId": "managed-service",
+        "displayName": "Managed narration",
+        "modelId": "story-quick",
+        "capabilities": ["text.generate"]
+      },
+      "settings": {
+        "profile": "storyteller",
+        "perspective": "player",
+        "systemPrompt": "Use a spare, immediate voice.",
+        "recentBeatLimit": 4,
+        "maxCharacters": 420
+      },
+      "envelope": {
+        "exchangeId": "exchange-managed-actor",
+        "policy": {
+          "posture": "sfw",
+          "enabledCategories": []
+        }
+      },
+      "context": {
+        "version": 1,
+        "target": {
+          "beatId": null,
+          "exchangeId": "exchange-managed-actor"
+        },
+        "policy": {
+          "posture": "sfw",
+          "enabledCategories": [],
+          "gameplayVariants": {}
+        },
+        "mode": "adventure",
+        "location": {
+          "x": 4,
+          "y": 7,
+          "biome": "grove",
+          "label": "Mossy crossing",
+          "time": "Morning",
+          "hour": 8,
+          "day": 2
+        },
+        "viewpoint": {
+          "mode": "player",
+          "player": {
+            "id": "player-1",
+            "name": "Zx"
+          },
+          "participation": "actor",
+          "beatRoles": [
+            {
+              "beatId": "beat-managed-1",
+              "participation": "actor"
+            }
+          ]
+        },
+        "beats": [
+          {
+            "id": "beat-managed-1",
+            "exchangeId": "exchange-managed-actor",
+            "source": "combat",
+            "summary": "Zx drives the wolf back with a measured strike.",
+            "dialogue": []
+          }
+        ],
+        "recentBeats": [
+          {
+            "id": "beat-prior-1",
+            "exchangeId": "exchange-prior",
+            "source": "movement",
+            "summary": "Zx enters the mossy crossing.",
+            "dialogue": []
+          },
+          {
+            "id": "beat-managed-1",
+            "exchangeId": "exchange-managed-actor",
+            "source": "combat",
+            "summary": "Zx drives the wolf back with a measured strike.",
+            "dialogue": []
+          }
+        ],
+        "characters": [
+          {
+            "id": "player-1",
+            "name": "Zx",
+            "species": "human",
+            "disposition": "party"
+          },
+          {
+            "id": "wolf-1",
+            "name": "Wolfkin",
+            "species": "wolf",
+            "disposition": "hostile"
+          }
+        ],
+        "quests": [],
+        "activity": [],
+        "extensions": {}
+      },
+      "expect": {
+        "profile": "storyteller",
+        "perspective": "player",
+        "inputPosture": "sfw",
+        "outputRating": "safe",
+        "instructionFragments": [
+          "Perspective contract - Player POV",
+          "Structured viewpoint roles remain authoritative",
+          "Profile contract - Storyteller",
+          "Use a spare, immediate voice."
+        ]
+      }
+    },
+    {
+      "id": "session-character-observer",
+      "description": "A browser-session connection narrates an observed Mature exchange using only supplied reactions and dialogue.",
+      "connection": {
+        "id": "session:local-narration",
+        "providerId": "browser-openai-compatible",
+        "displayName": "Local session model",
+        "modelId": "gemma-local",
+        "capabilities": ["text.generate"]
+      },
+      "settings": {
+        "profile": "characters",
+        "perspective": "third_person_limited",
+        "systemPrompt": "Keep reactions concrete and restrained.",
+        "recentBeatLimit": 6,
+        "maxCharacters": 500
+      },
+      "envelope": {
+        "exchangeId": "exchange-session-observer",
+        "policy": {
+          "posture": "mature",
+          "enabledCategories": ["violence"]
+        }
+      },
+      "context": {
+        "version": 1,
+        "target": {
+          "beatId": null,
+          "exchangeId": "exchange-session-observer"
+        },
+        "policy": {
+          "posture": "mature",
+          "enabledCategories": ["violence"],
+          "gameplayVariants": {}
+        },
+        "mode": "adventure",
+        "location": {
+          "x": 9,
+          "y": 3,
+          "biome": "road",
+          "label": "Old road",
+          "time": "Dusk",
+          "hour": 18,
+          "day": 5
+        },
+        "viewpoint": {
+          "mode": "player",
+          "player": {
+            "id": "player-2",
+            "name": "Mira"
+          },
+          "participation": "observer",
+          "beatRoles": [
+            {
+              "beatId": "beat-session-1",
+              "participation": "observer"
+            }
+          ]
+        },
+        "beats": [
+          {
+            "id": "beat-session-1",
+            "exchangeId": "exchange-session-observer",
+            "source": "encounter",
+            "summary": "Wolfkin lowers her spear while Batfolk backs away.",
+            "dialogue": [
+              {
+                "speakerId": "wolf-2",
+                "text": "Leave the road."
+              }
+            ]
+          }
+        ],
+        "recentBeats": [
+          {
+            "id": "beat-session-1",
+            "exchangeId": "exchange-session-observer",
+            "source": "encounter",
+            "summary": "Wolfkin lowers her spear while Batfolk backs away.",
+            "dialogue": [
+              {
+                "speakerId": "wolf-2",
+                "text": "Leave the road."
+              }
+            ]
+          }
+        ],
+        "characters": [
+          {
+            "id": "wolf-2",
+            "name": "Wolfkin",
+            "species": "wolf",
+            "disposition": "wary"
+          },
+          {
+            "id": "bat-2",
+            "name": "Batfolk",
+            "species": "bat",
+            "disposition": "hostile"
+          }
+        ],
+        "quests": [],
+        "activity": [],
+        "extensions": {}
+      },
+      "expect": {
+        "profile": "characters",
+        "perspective": "third_person_limited",
+        "inputPosture": "mature",
+        "outputRating": "mature",
+        "instructionFragments": [
+          "Third-person limited",
+          "For observer beats, center the actual actors",
+          "Profile contract - Character Reactions",
+          "never invent dialogue",
+          "Keep reactions concrete and restrained."
+        ]
+      }
+    },
+    {
+      "id": "native-hybrid-mixed",
+      "description": "An opaque native connection receives the same bounded scene JSON as every other transport.",
+      "connection": {
+        "id": "native:profile-73",
+        "providerId": "native-openai-compatible",
+        "displayName": "Desktop provider",
+        "modelId": "local-story",
+        "capabilities": ["text.generate"]
+      },
+      "settings": {
+        "profile": "hybrid",
+        "perspective": "cinematic",
+        "systemPrompt": "Use one compact paragraph.",
+        "recentBeatLimit": 3,
+        "maxCharacters": 360
+      },
+      "envelope": {
+        "exchangeId": "exchange-native-mixed",
+        "policy": {
+          "posture": "sfw",
+          "enabledCategories": []
+        }
+      },
+      "context": {
+        "version": 1,
+        "target": {
+          "beatId": null,
+          "exchangeId": "exchange-native-mixed"
+        },
+        "policy": {
+          "posture": "sfw",
+          "enabledCategories": [],
+          "gameplayVariants": {}
+        },
+        "mode": "adventure",
+        "location": {
+          "x": 2,
+          "y": 11,
+          "biome": "cave",
+          "label": "Echoing chamber",
+          "time": "Night",
+          "hour": 23,
+          "day": 8
+        },
+        "viewpoint": {
+          "mode": "player",
+          "player": {
+            "id": "player-3",
+            "name": "Tarin"
+          },
+          "participation": "mixed",
+          "beatRoles": [
+            {
+              "beatId": "beat-native-1",
+              "participation": "actor"
+            },
+            {
+              "beatId": "beat-native-2",
+              "participation": "observer"
+            }
+          ]
+        },
+        "beats": [
+          {
+            "id": "beat-native-1",
+            "exchangeId": "exchange-native-mixed",
+            "source": "movement",
+            "summary": "Tarin raises the lantern.",
+            "dialogue": []
+          },
+          {
+            "id": "beat-native-2",
+            "exchangeId": "exchange-native-mixed",
+            "source": "encounter",
+            "summary": "A cave bat circles above the pool.",
+            "dialogue": []
+          }
+        ],
+        "recentBeats": [
+          {
+            "id": "beat-native-1",
+            "exchangeId": "exchange-native-mixed",
+            "source": "movement",
+            "summary": "Tarin raises the lantern.",
+            "dialogue": []
+          },
+          {
+            "id": "beat-native-2",
+            "exchangeId": "exchange-native-mixed",
+            "source": "encounter",
+            "summary": "A cave bat circles above the pool.",
+            "dialogue": []
+          }
+        ],
+        "characters": [
+          {
+            "id": "player-3",
+            "name": "Tarin",
+            "species": "human",
+            "disposition": "party"
+          },
+          {
+            "id": "bat-3",
+            "name": "Cave bat",
+            "species": "bat",
+            "disposition": "neutral"
+          }
+        ],
+        "quests": [
+          {
+            "id": "quest-1",
+            "title": "The Hollow Road",
+            "stage": "explore"
+          }
+        ],
+        "activity": [
+          {
+            "type": "movement",
+            "text": "Entered the echoing chamber."
+          }
+        ],
+        "extensions": {}
+      },
+      "expect": {
+        "profile": "hybrid",
+        "perspective": "cinematic",
+        "inputPosture": "sfw",
+        "outputRating": "safe",
+        "instructionFragments": [
+          "Perspective contract - Cinematic",
+          "mixed = follow each beatRoles entry",
+          "Profile contract - Hybrid",
+          "Use one compact paragraph."
+        ]
+      }
+    }
+  ]
+}

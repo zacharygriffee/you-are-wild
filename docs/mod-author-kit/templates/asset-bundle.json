@@ -1,0 +1,36 @@
+{
+  "packageType": "yaw-asset-bundle",
+  "packageVersion": 1,
+  "bundle": {
+    "id": "replace.me.assets",
+    "targetModuleId": "replace_me_art",
+    "name": "Replace Me Assets",
+    "version": "1.0.0",
+    "description": "Optional presentation resources.",
+    "author": "Replace Me",
+    "license": "Replace-Me",
+    "contentRating": "safe",
+    "minGameVersion": "0.17.0",
+    "minModuleVersion": "1.0.0",
+    "provenance": {
+      "note": "Replace with real asset provenance."
+    },
+    "presentations": [],
+    "resources": [
+      {
+        "id": "replace.resource",
+        "uri": "./replace.webp",
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "mimeType": "image/webp",
+        "byteLength": 1,
+        "width": 1,
+        "height": 1,
+        "role": "replace-role",
+        "license": "Replace-Me",
+        "provenance": {
+          "note": "Replace every placeholder and calculate the exact SHA-256."
+        }
+      }
+    ]
+  }
+}

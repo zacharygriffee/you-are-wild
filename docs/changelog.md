@@ -4,6 +4,10 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Mature posture now selects richer English and Spanish narration for bounded
+  encounter, combat, social, feeding, and containment outcomes. SFW posture
+  retains neutral copy, missing Mature variants fall back to the active locale,
+  and no content posture changes deterministic resolution.
 - Moddable Core V1 now gives the shipped game and trusted-local modules the
   same owned, data-only registries for actions, status effects, restraints,
   equipment, body mass, biome recipes, and audio packs. Core retains seeded

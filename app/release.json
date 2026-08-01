@@ -34,6 +34,7 @@
         "Automatic combat events can use readable, fast, or instant presentation pacing without changing turn order, simulation time, saves, or immediate player commands.",
         "Merchants now declare finite or authored-restock lifecycles instead of silently replenishing depleted finite stock.",
         "Downloaded file play exposes compatible LLM profiles and attempts configured HTTPS REST endpoints directly, with an opaque-origin CORS warning instead of a remote-provider gate.",
+        "Mature posture selects richer localized encounter, combat, social, feeding, and containment narration while SFW posture retains the existing neutral text.",
         "Contributed combat actions collapse into a bounded upward-opening menu on compact mobile layouts while remaining directly discoverable on larger surfaces."
       ],
       "fixed": [
@@ -66,6 +67,7 @@
         "Los eventos automaticos de combate pueden usar ritmo legible, rapido o instantaneo sin cambiar turnos, tiempo simulado, partidas ni ordenes inmediatas.",
         "Los mercaderes declaran inventario finito o reposicion escrita en lugar de rellenar silenciosamente existencias finitas.",
         "El juego descargado muestra perfiles LLM compatibles e intenta endpoints REST HTTPS configurados, con una advertencia CORS para el origen opaco.",
+        "La postura Madura selecciona narracion localizada mas expresiva para encuentros, combate, acciones sociales, alimentacion y contencion; la postura SFW conserva el texto neutral existente.",
         "Las acciones aportadas se agrupan en un menu limitado que se abre hacia arriba en pantallas moviles compactas."
       ],
       "fixed": [

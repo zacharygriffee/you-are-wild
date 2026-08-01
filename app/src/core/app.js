@@ -3303,7 +3303,7 @@
                         target.hunger = Math.max(0, (target.hunger || 0) - (40 * spentReserve));
                         actor.lactationCooldown = 3;
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = this._label(playerActor ? 'feed.nurseResult.player' : 'feed.nurseResult.named', playerActor
+                        result = this._mlabel(playerActor ? 'feed.nurseResult.player' : 'feed.nurseResult.named', playerActor
                             ? '{actor} nurse {target}, restoring vitality and easing their hunger.'
                             : '{actor} nurses {target}, restoring vitality and easing their hunger.', {
                             actor: actorName,
@@ -3396,7 +3396,7 @@
                         target.forcedFed = true;
                         actor.forcedFed = true;
                         this._awardCombatXP(this.XP_REWARDS.feedEnemy);
-                        result = this._label(actorIsPlayer ? 'feed.legacy.forceResult.player' : 'feed.legacy.forceResult.named', actorIsPlayer
+                        result = this._mlabel(actorIsPlayer ? 'feed.legacy.forceResult.player' : 'feed.legacy.forceResult.named', actorIsPlayer
                             ? '{holder} restrains {target} while {actor} force the handoff, placing them in your belly against their will.'
                             : "{holder} restrains {target} while {actor} forces the handoff, placing them in {actor}'s belly against their will.", {
                             holder: holder.name,
@@ -3417,7 +3417,7 @@
                         actor.CPun = Math.min(actor.MPun, actor.CPun + slurpAmount);
                         actor.hunger = Math.max(0, (actor.hunger || 0) - 20);
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = this._label(actorIsPlayer ? 'feed.legacy.drawResult.player' : 'feed.legacy.drawResult.named', actorIsPlayer
+                        result = this._mlabel(actorIsPlayer ? 'feed.legacy.drawResult.player' : 'feed.legacy.drawResult.named', actorIsPlayer
                             ? '{actor} draw vitality from {target}, leaving them weakened but whole.'
                             : '{actor} draws vitality from {target}, leaving them weakened but whole.', { actor: displayActorName, target: target.name });
                         break;

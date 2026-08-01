@@ -1,6 +1,6 @@
 {
   "snapshot": {
-    "gameVersion": "0.17.0",
+    "gameVersion": "0.18.0",
     "moduleApi": 1
   },
   "origins": ["file", "https", "localhost", "http"],

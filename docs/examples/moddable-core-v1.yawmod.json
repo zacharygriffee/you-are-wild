@@ -9,7 +9,7 @@
       "description": "A source-independent fixture proving the bounded world, body, equipment, resource, status, restraint, action, technique, and recovery contracts compose.",
       "author": "You Are Wild",
       "contentRating": "safe",
-      "minGameVersion": "0.17.0",
+      "minGameVersion": "0.18.0",
       "permissions": [
         "world:add_biome",
         "world:add_biome_recipe",

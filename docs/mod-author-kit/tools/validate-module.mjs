@@ -355,7 +355,7 @@ export function validateModulePackage(packageData, metadata, options = {}) {
       errors.push(issue('invalid_trust_boundary', '$.trustBoundary', `Expected ${TRUST_BOUNDARY}.`));
     }
     if (packageData.gameVersion !== undefined && !NUMERIC_VERSION.test(String(packageData.gameVersion).replace(/^v/i, ''))) {
-      errors.push(issue('invalid_game_version', '$.gameVersion', 'Game version must be numeric, such as 0.17.0.'));
+      errors.push(issue('invalid_game_version', '$.gameVersion', 'Game version must be numeric, such as 0.18.0.'));
     }
     if (!plainObject(packageData.module)) {
       errors.push(issue('missing_module', '$.module', 'Canonical package requires a module object.'));
@@ -396,7 +396,7 @@ export function validateModulePackage(packageData, metadata, options = {}) {
 
   const minGameVersion = String(manifest?.minGameVersion || manifest?.gameVersion || '').trim().replace(/^v/i, '');
   if (minGameVersion && !NUMERIC_VERSION.test(minGameVersion)) {
-    errors.push(issue('invalid_min_game_version', 'module.manifest.minGameVersion', 'Minimum game version must be numeric, such as 0.17.0.'));
+    errors.push(issue('invalid_min_game_version', 'module.manifest.minGameVersion', 'Minimum game version must be numeric, such as 0.18.0.'));
   } else if (minGameVersion && compareVersions(minGameVersion, contractIndex.gameVersion) > 0) {
     warnings.push(issue('future_game_version', 'module.manifest.minGameVersion', `Module requires a newer game than this ${contractIndex.gameVersion} kit snapshot.`));
   }

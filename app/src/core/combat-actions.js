@@ -111,7 +111,9 @@ const YAW_COMBAT_ACTIONS = {
                 profiles.forEach(profile => buttons.push(profileButton(profile)));
             } else {
                 const moreLabel = app._escapeHtml(app._label('action.contributed.more', 'More actions'));
-                buttons.push(`<details class="contributed-action-menu"><summary class="action-btn" aria-label="${moreLabel}">${moreLabel}</summary><div class="contributed-action-list">${profiles.map(profileButton).join('')}</div></details>`);
+                const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
+                const close = `<button type="button" class="action-btn compact-secondary" data-command-surface="combat-intents" data-command-mode="combat" data-command-control="close-contributed-actions" data-command-slot="exit" aria-label="${closeLabel}" onclick="event.stopPropagation();this.closest('details')?.removeAttribute('open')">${closeLabel}</button>`;
+                buttons.push(`<details class="contributed-action-menu"><summary class="action-btn" aria-label="${moreLabel}">${moreLabel}</summary><div class="contributed-action-list">${profiles.map(profileButton).join('')}${close}</div></details>`);
             }
         }
         if (allies.length > 0) {

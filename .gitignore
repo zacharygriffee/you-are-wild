@@ -7,6 +7,10 @@ npm-debug.log*
 .serve/
 dist/
 
+# Local concept art that depicts deferred portal/population work and is not
+# release-accurate for Moddable Core V1.
+/docs/assets/moddable-core-contracts.png
+
 # Local debug exports
 combat-log-*.txt
 debug/combat-logs/

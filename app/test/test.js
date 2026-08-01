@@ -832,13 +832,15 @@ test('Native provider profiles expose bounded edit and destructive removal flows
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.17.0', 'Release manifest should identify the active development version');
-  assertEqual(releaseInfo.status, 'draft', 'The next version should remain a development draft until it is approved for release');
-  assertEqual(releaseInfo.channel, 'development', 'The next version should not impersonate the published select-group alpha channel');
-  assertEqual(releaseInfo.releasedAt, null, 'A development draft should not claim a release date');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('Quest Contract V2')), 'Release notes should describe the complete quest lifecycle');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('Companion Behavior V2')), 'Release notes should describe the companion behavior contract');
+  assertEqual(releaseInfo.version, '0.18.0', 'Release manifest should identify the active candidate version');
+  assertEqual(releaseInfo.status, 'candidate', 'The exact version should remain a candidate until operator release approval');
+  assertEqual(releaseInfo.channel, 'alpha', 'The candidate should retain the select-group alpha channel');
+  assertEqual(releaseInfo.candidateFor, 'select-group-alpha', 'The candidate should not imply public-preview promotion');
+  assertEqual(releaseInfo.releasedAt, null, 'An unpublished candidate should not claim a release date');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('Moddable Core V1')), 'Release notes should describe the new bounded mechanics contracts');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('Grab, Pull, and Escape')), 'Release notes should describe the restraint action slice');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('select playtest group')), 'Release notes should disclose the alpha distribution boundary');
+  assert(releaseInfo.notes.es.added.some(note => note.includes('Moddable Core V1')), 'Spanish release notes should describe the same candidate boundary');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
   assertContains(buildContent, 'window.YAW_RELEASE = Object.freeze', 'Build should inject release metadata into the generated artifact');
@@ -849,7 +851,7 @@ test('Release manifest is the authoritative public version and compatibility sou
 test('Elemental Species package stays within the supported species contribution boundary', () => {
   const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
   const manifest = packageData.module.manifest;
-  assertEqual(packageData.gameVersion, '0.17.0', 'Elemental package production metadata should target the current game build');
+  assertEqual(packageData.gameVersion, '0.18.0', 'Elemental package production metadata should target the current game build');
   assertEqual(manifest.minGameVersion, '0.14.0', 'Elemental package should require the doctrine-tested module surface');
   assertEqual(manifest.contentRating, 'safe', 'Elemental species identity content should remain safe-rated');
   assertEqual(manifest.permissions.length, 1, 'Elemental package should request only one capability');
@@ -11773,6 +11775,44 @@ test('Restraint Relationship V1 tracks source ownership pull movement expiry and
   assertEqual(target.status.grabbed, undefined, 'Release should remove the mediated status when no relationship still needs it');
 });
 
+test('Core Grab Pull and Escape resolve through one deterministic restraint action flow', () => {
+  const ledger = new Function('window', `${resourceLedgerContent}\nreturn YAW_RESOURCE_LEDGER;`)({});
+  const statuses = new Function('window', `${statusEffectsContent}\nreturn YAW_STATUS_EFFECTS;`)({});
+  const restraints = new Function('window', 'YAW_STATUS_EFFECTS', `${restraintsContent}\nreturn YAW_RESTRAINTS;`)({}, statuses);
+  const actions = new Function(
+    'window',
+    'YAW_RESOURCE_LEDGER',
+    'YAW_STATUS_EFFECTS',
+    'YAW_RESTRAINTS',
+    'YAW_ACTION_OUTCOMES',
+    'YAW_RECRUITMENT_FLOW',
+    `${actionProfilesContent}\nreturn YAW_ACTION_PROFILES;`
+  )({}, ledger, statuses, restraints, new Function(`${actionOutcomesContent}\nreturn YAW_ACTION_OUTCOMES;`)(), new Function('window', `${recruitmentFlowContent}\nreturn YAW_RECRUITMENT_FLOW;`)({}));
+  const actor = { id: 'grabber', name: 'Grabber', CPun: 20, MPun: 20, str: 20, combatRow: 'front', status: {} };
+  const target = { id: 'escapee', name: 'Escapee', CPun: 20, MPun: 20, str: 1, combatRow: 'back', disposition: 'enemy', status: {} };
+  const app = {
+    player: actor,
+    party: [actor],
+    creatures: [target],
+    DISPOSITION: { ENEMY: 'enemy', FRIENDLY: 'friendly', PARTY: 'party' },
+    combatState: { active: true, round: 1, currentTurn: 0 },
+    _unitSelectionId(unit) { return unit.id; },
+    _combatStateRoll(_namespace, unit) { return unit === actor ? 0.9 : 0.1; },
+    _label(_key, fallback) { return fallback; }
+  };
+
+  const grab = actions.resolve(app, 'core:grab', { mode: 'combat', actor, target });
+  assertEqual(grab.success, true, 'Grab should commit through the seeded action contest');
+  assertEqual(restraints.active(app, target, { source: actor }).length, 1, 'Grab should create one source-owned restraint relationship');
+  const pull = actions.resolve(app, 'core:pull', { mode: 'combat', actor, target });
+  assertEqual(pull.success, true, 'Pull should resolve only for the actor who owns the restraint');
+  assertEqual(target.combatRow, 'front', 'Pull should move the held target into the source row');
+  const escape = actions.resolve(app, 'core:escape', { mode: 'combat', actor: target });
+  assertEqual(escape.success, true, 'Escape should resolve as a bounded self action while restrained');
+  assertEqual(restraints.active(app, target).length, 0, 'Escape should remove the active relationship without mutating unrelated units');
+  assertEqual(target.status.grabbed, undefined, 'Escape should remove the mediated presentation status');
+});
+
 test('Action Resolver V1 owns deterministic data-only checks costs effects and outcomes', () => {
   const ledger = new Function('window', `${resourceLedgerContent}\nreturn YAW_RESOURCE_LEDGER;`)({});
   const statuses = new Function('window', `${statusEffectsContent}\nreturn YAW_STATUS_EFFECTS;`)({});
@@ -12512,6 +12552,52 @@ test('Moddable Core V1 fixture composes bounded public contracts and unloads cle
   assertEqual(app.biomes.fixture_mire, undefined, 'Unload should remove fixture biome definition');
   assertEqual(modules._testActionProfiles.profile('yaw_moddable_core_fixture:silkSnare'), null, 'Unload should remove fixture mechanics');
   assertEqual(modules._testRecoveryModes.profile('yaw_moddable_core_fixture:cocoon'), null, 'Unload should remove the fixture exclusive mode');
+});
+
+asyncTest('0.18 fixture installs enables resolves reloads disables and deletes without residue', async () => {
+  const packageData = JSON.parse(fs.readFileSync(MODDABLE_CORE_V1_FIXTURE, 'utf8'));
+  const modules = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  modules.db = fakeDb.db;
+  const moduleId = packageData.module.manifest.id;
+  const actionKey = `${moduleId}:silkSnare`;
+  const resourceKey = `${moduleId}:silk`;
+  const restraintKey = `${moduleId}:silk_hold`;
+
+  const installed = await modules.installModule(packageData);
+  assertEqual(installed.enabled, false, 'The candidate fixture should install disabled');
+  await modules.setModuleEnabled(moduleId, true);
+  assert(modules.activeModules.has(moduleId), 'Enabling should activate the persisted fixture runtime');
+  assert(modules._testActionProfiles.profile(actionKey), 'Enable should register the owned action definition');
+
+  const app = modules._testApp;
+  const actor = { id: 'fixture-actor', name: 'Fixture Actor', CPun: 20, MPun: 20, resourceLedger: {}, status: {} };
+  const target = { id: 'fixture-target', name: 'Fixture Target', CPun: 20, MPun: 20, disposition: 'enemy', status: {} };
+  app.player = actor;
+  app.party = [actor];
+  app.creatures = [target];
+  app.DISPOSITION = { ENEMY: 'enemy', FRIENDLY: 'friendly', PARTY: 'party' };
+  app.combatState = { active: true, round: 1, currentTurn: 0 };
+  app._unitSelectionId = unit => unit.id;
+  modules._testResourceLedger.grant(actor, resourceKey, 2);
+  const result = modules._testActionProfiles.resolve(app, actionKey, { mode: 'combat', actor, target });
+  assertEqual(result.success, true, 'The enabled fixture should resolve its public data-only action');
+  assertEqual(modules._testResourceLedger.state(actor, resourceKey).current, 1, 'Resolution should spend the owned resource exactly once');
+  assertEqual(modules._testRestraints.active(app, target).some(entry => entry.profile === restraintKey), true, 'Resolution should apply the owned restraint');
+
+  modules.unloadModule(moduleId);
+  assertEqual(modules._testActionProfiles.profile(actionKey), null, 'Runtime unload should remove the owned action before refresh restoration');
+  assertEqual(modules._testRestraints.active(app, target).length, 0, 'Runtime unload should remove active owned relationships');
+  const restored = await modules.loadEnabledModules();
+  assertEqual(restored.includes(moduleId), true, 'Startup restoration should reload the persisted enabled fixture');
+  assert(modules._testActionProfiles.profile(actionKey), 'Restored runtime should recreate the owned action definition');
+
+  await modules.setModuleEnabled(moduleId, false);
+  assertEqual(modules._testActionProfiles.profile(actionKey), null, 'Disable should remove the restored action definition');
+  await modules.deleteModule(moduleId);
+  assertEqual(fakeDb.data.modules.has(moduleId), false, 'Delete should remove the persisted fixture record');
+  assertEqual(modules._testResourceLedger.profile(resourceKey), null, 'Delete should leave no owned resource definition');
+  assertEqual(modules._testRestraints.profile(restraintKey), null, 'Delete should leave no owned restraint definition');
 });
 
 test('Biome Recipe V1 reclassifies only new matching tiles and keeps materialized geography stable', () => {
@@ -30218,8 +30304,8 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertContains(sceneFeedDoc, 'result metadata, tags, deltas, and sub-events', 'Scene Feed DSL should require expanded sheet metadata and effect details');
   assertContains(controlModel, '[Scene Feed DSL](scene-feed-dsl.md)', 'Control model should link to the Scene Feed DSL contract');
   assertContains(nextObjectives, '# Active Objectives', 'Next objectives should read as a concise active handoff');
-  assertContains(nextObjectives, 'Core gameplay remains deterministic and does not depend on an LLM or remote', 'Next objectives should preserve the deterministic core boundary');
-  assertContains(nextObjectives, '## Explicitly deferred decisions', 'Next objectives should keep decision-heavy backlog separate from ready implementation work');
+  assertContains(nextObjectives, 'Core gameplay remains deterministic, offline-capable, and', 'Next objectives should preserve the deterministic core boundary');
+  assertContains(nextObjectives, '## Later gameplay and mod work', 'Next objectives should keep post-release gameplay backlog separate from candidate work');
   assertContains(nextObjectives, '## Delivery boundary', 'Next objectives should state the autonomous implementation boundary');
   assertNotContains(nextObjectives, '## Open Objectives (Priority Order)', 'Next objectives should not keep stale active-work headings');
   assertNotContains(nextObjectives, '## Next Execution Goals', 'Next objectives should not keep stale execution-goal headings');
@@ -30375,9 +30461,9 @@ test('Control model records accepted mechanics decisions', () => {
   assertContains(controlModel, 'Feast V2 is stomach-first by default', 'Control model should record stomach-first Feast V2 doctrine');
   assertContains(controlModel, 'Desktop and mobile feedback use the same persistent newest-first Scene Feed contract', 'Scene Feed doctrine should require one responsive stream contract');
   assertContains(nextObjectives, '`control-model.md`', 'Next objectives should link accepted mechanics doctrine');
-  assertContains(nextObjectives, '## Explicitly deferred decisions', 'Next objectives should separate deferred decisions from autonomous work');
-  assertContains(nextObjectives, 'Gameplay-bearing body-build taxonomy and preference design.', 'Next objectives should preserve the unresolved body-build decision');
-  assertContains(nextObjectives, '`feast-containment-v2.md`', 'Next objectives should link the implemented Feast V2 doctrine');
+  assertContains(nextObjectives, '## Later gameplay and mod work', 'Next objectives should separate deferred gameplay from candidate work');
+  assertContains(nextObjectives, 'permanent body-piece stat consequences', 'Next objectives should preserve the unresolved permanent body consequence decision');
+  assertContains(nextObjectives, '`moddable-core-v1.md`', 'Next objectives should link the implemented Moddable Core V1 doctrine');
   assertNotContains(nextObjectives, 'feast/containment redesign, formal row-blocking doctrine', 'Next objectives should not preserve stale undecided feast wording in the status summary');
 });
 

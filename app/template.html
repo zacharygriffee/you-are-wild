@@ -8262,13 +8262,13 @@
             }
 
             .mobile-combat-intents .contributed-action-list {
-                position: absolute;
-                right: 0;
-                bottom: calc(100% + 6px);
-                z-index: 35;
+                position: fixed;
+                left: max(16px, calc((100vw - 430px) / 2 + 16px));
+                right: max(16px, calc((100vw - 430px) / 2 + 16px));
+                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 12px);
+                z-index: 90;
                 display: none;
                 gap: 6px;
-                min-width: min(240px, calc(100vw - 40px));
                 max-height: min(50vh, 300px);
                 overflow-y: auto;
                 padding: 8px;
@@ -10127,7 +10127,7 @@
             <div class="menu-footer">
                 <p data-i18n="ui.menu.edition">Dark mode tactical edition</p>
                 <p data-i18n="ui.menu.contentDefault">Safe content is enabled by default</p>
-                <p><span data-i18n="release.version">Version</span> <span data-release-version>0.12.0</span></p>
+                <p><span data-i18n="release.version">Version</span> <span data-release-version>0.18.0</span></p>
             </div>
         </div>
     </div>
@@ -10775,7 +10775,7 @@
     <div id="screen-release" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="release-notes-title" aria-describedby="release-notes-version">
         <main class="system-screen-shell" aria-labelledby="release-notes-title">
             <div class="system-screen-header">
-                <div><h1 id="release-notes-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="release.whatsNew">What's New</h1><span class="release-version-badge" id="release-notes-version">v0.16.0 · Development draft</span></div>
+                <div><h1 id="release-notes-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="release.whatsNew">What's New</h1><span class="release-version-badge" id="release-notes-version">v0.18.0 · Candidate</span></div>
                 <button class="nav-btn mobile-screen-exit-source" type="button" data-command-surface="release-notes" data-command-mode="system" data-command-control="close-release-notes" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
             </div>
             <div id="release-notes-content"></div>

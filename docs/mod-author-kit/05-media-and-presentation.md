@@ -67,7 +67,7 @@ Asset bundles contain JSON and referenced bytes, never executable code.
     "author": "Example Author",
     "license": "CC-BY-4.0",
     "contentRating": "safe",
-    "minGameVersion": "0.17.0",
+    "minGameVersion": "0.18.0",
     "minModuleVersion": "1.0.0",
     "provenance": {
       "homepage": "https://assets.example/"

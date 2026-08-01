@@ -36,7 +36,7 @@ function fixture({
     packageVersion: 1,
     packageId: id,
     trustBoundary: 'trusted-local',
-    gameVersion: '0.17.0',
+    gameVersion: '0.18.0',
     module: {
       manifest: {
         id,

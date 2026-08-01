@@ -43,7 +43,9 @@ const YAW_SETTINGS_FLOW = {
             cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
             partyPlayFightMode: 'nonlethal',
             inventoryRecovery: 'death-bag',
-            recoveryMode: 'core:regenerate',
+            recoveryMode: 'core:ghost',
+            combatPacing: 'readable',
+            combatReadSpeed: 32,
             highContrast: false, reducedMotion: false, fontSize: 14
         };
     },
@@ -79,6 +81,11 @@ const YAW_SETTINGS_FLOW = {
         normalized.recoveryMode = recoveryMode.length <= 193 && /^[a-zA-Z0-9_.:-]+:[a-zA-Z0-9_.:-]+$/.test(recoveryMode)
             ? recoveryMode
             : defaults.recoveryMode;
+        normalized.combatPacing = ['instant', 'fast', 'readable'].includes(source.combatPacing)
+            ? source.combatPacing
+            : defaults.combatPacing;
+        const parsedReadSpeed = Number(source.combatReadSpeed);
+        normalized.combatReadSpeed = Math.max(10, Math.min(120, Number.isFinite(parsedReadSpeed) ? Math.round(parsedReadSpeed) : defaults.combatReadSpeed));
         const parsedFontSize = Number(source.fontSize);
         normalized.fontSize = Math.max(12, Math.min(20, Number.isFinite(parsedFontSize) ? Math.round(parsedFontSize) : defaults.fontSize));
         return normalized;
@@ -341,6 +348,12 @@ const YAW_SETTINGS_FLOW = {
         if (key === 'fontSize') {
             const parsed = Number(value);
             app.settings.fontSize = Math.max(12, Math.min(20, Number.isFinite(parsed) ? parsed : 14));
+        } else if (key === 'combatReadSpeed') {
+            const parsed = Number(value);
+            app.settings.combatReadSpeed = Math.max(10, Math.min(120, Number.isFinite(parsed) ? Math.round(parsed) : 32));
+        } else if (key === 'combatPacing') {
+            if (!['instant', 'fast', 'readable'].includes(String(value))) return;
+            app.settings.combatPacing = String(value);
         } else if (key === 'highContrast' || key === 'reducedMotion') {
             app.settings[key] = Boolean(value);
         } else {
@@ -370,11 +383,18 @@ const YAW_SETTINGS_FLOW = {
         const reducedMotion = document.getElementById('setting-reduced-motion');
         const fontSize = document.getElementById('setting-font-size');
         const fontSizeValue = document.getElementById('setting-font-size-value');
+        const combatPacing = document.getElementById('setting-combat-pacing');
+        const combatReadSpeed = document.getElementById('setting-combat-read-speed');
+        const combatReadSpeedValue = document.getElementById('setting-combat-read-speed-value');
         const size = Math.max(12, Math.min(20, Number(app.settings.fontSize) || 14));
         if (highContrast) highContrast.checked = Boolean(app.settings.highContrast);
         if (reducedMotion) reducedMotion.checked = Boolean(app.settings.reducedMotion);
         if (fontSize) fontSize.value = String(size);
         if (fontSizeValue) fontSizeValue.textContent = `${size}px`;
+        if (combatPacing) combatPacing.value = ['instant', 'fast', 'readable'].includes(app.settings.combatPacing) ? app.settings.combatPacing : 'readable';
+        const readSpeed = Math.max(10, Math.min(120, Number(app.settings.combatReadSpeed) || 32));
+        if (combatReadSpeed) combatReadSpeed.value = String(readSpeed);
+        if (combatReadSpeedValue) combatReadSpeedValue.textContent = `${readSpeed} char/s`;
     },
 
     renderRecoveryModeOptions(app) {

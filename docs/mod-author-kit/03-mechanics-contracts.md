@@ -181,6 +181,233 @@ When the module is absent, saved ledger values remain dormant. Reinstalling a
 compatible provider restores the profile. Do not reuse a resource ID for a
 different meaning.
 
+## Body Mass Ledger V1
+
+Permission: `mechanics:add_body_profile`
+
+```js
+MODS.registerBodyProfile('renewable_slime', {
+  label: 'Renewable slime body',
+  labelKey: 'example_mod.body.renewableSlime',
+  massPerSize: 30,
+  minimumViablePercent: 20,
+  renewable: true,
+  piecePercents: [5, 10, 20],
+  regrowth: { trigger: 'digestion', every: 3, amount: 2 },
+  corpseYieldPercent: 100
+});
+```
+
+Register the profile before a same-module Species Profile V1 references it:
+
+```js
+MODS.addSpecies({
+  id: 'moss_slime',
+  name: 'Moss Slime',
+  profile: {
+    bodyProfile: 'example_mod:renewable_slime'
+  }
+});
+```
+
+Mass is conserved body quantity, separate from Condition, Strength,
+Constitution, and inventory. `massPerSize` is 1–1000;
+`minimumViablePercent` is 1–100; `piecePercents` contains 1–8 unique
+percentages from 1–50; and `corpseYieldPercent` is 0–100. Regrowth is available
+only to a renewable profile and uses Resource Ledger-style `digestion`,
+`hour`, or `rest` triggers with bounded `every` and `amount`.
+
+The core deterministically initializes old saves from stable size facts,
+records at most 64 immutable mass transactions, creates opaque
+`yaw-body-piece-v1` records, converts remaining living mass to corpse mass,
+and spends that mass alongside existing corpse portions. The first release
+does not impose permanent stat or maximum-Condition penalties; that balance
+gate remains closed until scenario evidence exists.
+
+Modules can define profiles but cannot directly add, remove, or duplicate
+mass. A species may reference only a body profile owned by the same module.
+Unknown providers leave saved mass state dormant and never reinterpret it as a
+different body.
+
+## Status Effect V1
+
+Permission: `mechanics:add_status_effect`
+
+```js
+MODS.registerStatusEffect('webbed', {
+  label: 'Webbed',
+  labelKey: 'example_mod.status.webbed',
+  description: 'The target cannot act until the webbing expires.',
+  domains: ['combat', 'feast'],
+  duration: { default: 2, max: 5 },
+  stacking: { mode: 'refresh', max: 1 },
+  persistence: 'combat',
+  restriction: 'skip-turn',
+  cureTags: ['cutting', 'solvent'],
+  resistanceTags: ['web-resistant']
+});
+```
+
+The saved identity is `<module-id>:<status-id>`. Registration is data-only and
+does not apply the status. Action Profile V1 and other documented core
+resolvers will reference registered statuses; hooks may not apply them
+directly.
+
+Allowed fields are:
+
+| Field | Contract |
+| --- | --- |
+| `label`, `description`, `icon` | Bounded fallback presentation. |
+| `labelKey`, `descriptionKey` | Optional locale keys in the owning module namespace. |
+| `domains` | Up to 24 of `combat`, `feast`, `social`, `medical`, `traversal`. |
+| `duration` | `{default,max}` integer turns from 1 through 999. |
+| `stacking` | `{mode,max}` where mode is `replace`, `refresh`, or `stack`; maximum 20 stacks. |
+| `persistence` | `combat` or `persistent`. |
+| `restriction` | `none` or `skip-turn`. |
+| `periodic` | Optional `{stat,amount}` for `condition`, `spirit`, or `hunger`; amount -100 through 100 per round per stack/power. |
+| `cureTags`, `resistanceTags` | Bounded semantic token lists. |
+
+Core owns application, seeded checks, duration, periodic processing, removal,
+Scene outcomes, and save normalization. A missing or disabled owner removes
+its active temporary statuses and prevents future application. Committed
+historical outcomes remain in Scene and Activity records.
+
+Core registers compatibility profiles for bleed, burn, poison, freeze, stun,
+charm, fear, restrained, grabbed, snared, and enveloped. Their existing
+special processors remain authoritative until each mechanic migrates to the
+generic vocabulary.
+
+## Restraint Relationship V1
+
+Permission: `mechanics:add_restraint_profile`
+
+```js
+MODS.registerRestraintProfile('vineHold', {
+  label: 'Vine held',
+  labelKey: 'example_mod.restraint.vineHold',
+  description: 'A living vine anchors its target.',
+  kind: 'snare',
+  statusProfile: 'example_mod:vineHeld',
+  duration: 3,
+  strength: 2,
+  breakOnSourceDown: false
+});
+```
+
+A status says what presentation and periodic restrictions apply. A restraint
+relationship separately records who or what holds whom. The core stores only
+the profile key, opaque source and target IDs, remaining turns, and bounded
+power. Modules never receive a mutable relationship object.
+
+Kinds are `grab`, `snare`, `web`, `tentacle`, and `generic`. A module
+restraint may reference a core status or a status owned by the same module.
+Duration is 1–999 turns, strength is -100 through 100, and
+`breakOnSourceDown` defaults to true. Unknown fields and executable callbacks
+are rejected.
+
+Action Resolver V1 applies, pulls through, escapes, releases, expires, and
+publishes outcomes for these relationships. Naming another module's status or
+restraint does not grant authority over it. Unloading the owner removes its
+active relationships. Core provides `core:grab`, `core:snare`, `core:web`, and
+`core:tentacle`; Grab, Pull, and Escape are initial core action profiles.
+
+## Action Resolver V1
+
+Permission: `mechanics:add_action_profile`
+
+```js
+MODS.registerActionProfile('webPull', {
+  label: 'Web Pull',
+  labelKey: 'example_mod.action.webPull',
+  description: 'Spend web reserve to slow a hostile target.',
+  icon: '🕸️',
+  category: 'control',
+  modes: ['exploration', 'combat'],
+  scope: 'target',
+  relations: ['hostile'],
+  check: {
+    actorStat: 'str',
+    targetStat: 'spd',
+    modifier: 2,
+    difficulty: 10
+  },
+  costs: [
+    { resource: 'example_mod:web', amount: 1 }
+  ],
+  effects: [
+    {
+      type: 'status',
+      target: 'target',
+      profile: 'example_mod:webbed',
+      turns: 2,
+      power: 1
+    }
+  ]
+});
+```
+
+The saved identity is `<module-id>:<action-id>`. The profile is immutable,
+owned by the registering module, and contains no callbacks. Registration does
+not grant an authority beyond this resolver.
+
+Allowed top-level fields are bounded presentation (`label`, `labelKey`,
+`description`, `descriptionKey`, `icon`), a semantic `category`, `modes`,
+`scope`, `relations`, bounded `requirements`, an optional deterministic
+`check`, up to eight `costs`, and up to twelve `effects` or
+`failureEffects`.
+
+- Modes are `exploration` and `combat`.
+- Scope is `self` or `target`.
+- Relations are `self`, `party`, `friendly`, `neutral`, and `hostile`.
+- Check stats are `Figh`, `Flir`, `Fuck`, `Feas`, `Feed`, `Flee`, `str`,
+  `con`, `spd`, `wis`, `cha`, and the bounded current-Spirit ratio
+  `spirit`. `appetiteMultiplier` may add 0–10 times the actor's appetite.
+- A cost references a registered Resource Ledger V1 key and a positive bounded
+  integer amount. Costs are checked before commitment and spent atomically
+  when the attempt commits.
+- A `stat` effect may change only `condition`, `spirit`, or `hunger`, is
+  clamped by the core, and selects `actor` or `target`.
+- A `status` effect references a Status Effect V1 key, bounded turns and
+  power, and selects `actor` or `target`.
+- A `restraint` effect creates an owned Restraint Relationship V1; `pull`
+  moves a target through an existing source-owned relationship; and
+  `release-restraint` removes the selected unit's active relationship.
+- `requirements.restraint` is `none`, `source`, or `target`. `source` means
+  the actor must already hold the selected target. `target` means the actor
+  must currently be restrained. `requirements.minAppetite` is a bounded
+  0–100 threshold. `requirements.structures` accepts at most sixteen structure
+  IDs and makes the action available only at one of those overworld structures
+  or inside its matching interior. This is the V1 structure-interaction seam:
+  it does not grant arbitrary tile or interior mutation.
+- `recruit-ready` moves a valid non-party target into the existing core
+  recruitment-ready state; `withdraw-combat` removes the selected actor or
+  target from the remainder of the encounter.
+
+Core `core:seduce` is the first recruitment-oriented action profile. It
+requires appetite 4, resolves current Spirit plus an appetite contribution
+against the target's Wisdom, marks a success as recruitment-ready, and
+withdraws both participants from the remainder of combat. It does not bypass
+party capacity or automatically transfer the target into the party.
+
+The core resolves eligibility, participant relationships, seeded checks,
+resource spending, state mutation, rendering refresh, turn advancement, and
+an immutable `yaw-action-outcome-v1` event. Modules may observe the committed
+event through `onActionCommitted`; they cannot veto or alter it.
+
+## Combat Event Pacing V1
+
+Automatic enemy and autonomous-companion events use a presentation-only delay
+before the next turn. The player may choose `readable`, `fast`, or `instant`
+pacing and a bounded reading speed of 10–120 characters per second. Readable
+delays are clamped to 250–2,400 milliseconds; fast delays are clamped to
+80–500 milliseconds.
+
+The deterministic action is already committed before this delay begins.
+Changing pacing never changes initiative, random rolls, state, saves, hooks,
+or outcomes. An explicitly instant presentation bypasses the delay. This is
+not a reaction, interrupt, priority, or rollback contract; mods cannot insert
+work between commitment and the next turn.
+
 ## Combat Technique V1
 
 Permission: `mechanics:add_combat_technique`
@@ -264,6 +491,17 @@ Core owns deterministic rolls, reach, damage, status processing, target order,
 turn cost, Scene facts, saves, and defeat. A technique has no execution
 callback and never replaces Basic Attack. On unload, owned profiles and queued
 commands that reference them are removed.
+
+## Elemental boundary
+
+Core does not define an elemental damage chart, resistance system, status
+interaction matrix, or elemental resource economy. Modules may use their own
+namespaced resource profiles, statuses, action profiles, technique tags,
+species abilities, presentation, and post-commit narration to build such a
+system within the existing bounded contracts. A tag by itself has no
+mechanical authority, and modules may not reinterpret another owner's tag or
+silently alter core damage. A future shared elemental contract requires a
+separate versioned decision.
 
 ## Recovery Mode V1
 

@@ -43,7 +43,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         if ((app.syncSelection?.active && !app._isCombatGroupCompose?.()) || app.feedSelection?.active) return '';
         if (app.targetSelection?.source === 'combat') return '';
         if (app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent) return '';
-        const buttons = app._combatActionButtons(actor, { compact: false });
+        const buttons = app._combatActionButtons(actor, { compact: true });
         if (!buttons) return '';
         const label = app._escapeHtml(app._label('mobile.combat.intents', 'Combat intents'));
         return `<div class="mobile-combat-intents" data-command-surface="combat-intents" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${label}">${buttons}</div>`;

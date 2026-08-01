@@ -42,6 +42,41 @@ new geographical region into an existing or generated world. Reusing an
 existing biome ID temporarily replaces that definition while the module is
 enabled and restores it on unload. New mods should prefer a new ID.
 
+## Biome Recipe V1
+
+Permission: `world:add_biome_recipe`
+
+Register the biome with `MODS.addBiome()` first, then declare how new,
+previously unmaterialized tiles may adopt it:
+
+```js
+MODS.registerBiomeRecipe('mistwood_edge', {
+  biome: 'mistwood',
+  mode: 'boundary',
+  weight: 18,
+  minDistance: 4,
+  maxDistance: 80,
+  replaces: ['forest', 'grove'],
+  salt: 'mistwood-edge-v1'
+});
+```
+
+The target biome must be owned by the same module. IDs, owner, biome, and salt
+are bounded tokens. `weight` is an integer 1–100, distance bounds are
+0–1,000,000, and `replaces` contains at most 32 biome IDs.
+
+`boundary` recipes consider tiles adjoining a different core region;
+`procedural` recipes consider any matching tile. Core sorts recipes by stable
+owner-qualified key and uses the world seed, coordinate, and salt for the
+placement roll. Already materialized tiles are never reclassified when a
+module is enabled or disabled, and the resulting effective biome persists with
+the ordinary world delta.
+
+`placed` and `portal` are accepted declarative extension modes but do not
+auto-place terrain in V1. They reserve interoperable intent for later
+structure/action contracts without giving modules a generation callback or
+arbitrary world mutation.
+
 ## Species Profile V1
 
 Permission: `content:add_species`
@@ -103,6 +138,7 @@ Exact profile fields:
 | `size` | Integer 1–8; default 4. |
 | `difficulty` | Integer 1–5; default 2. |
 | `bodyParts` | At most 11 unique entries from the vocabulary below. |
+| `bodyProfile` | Optional Body Mass Ledger V1 key owned by the same module and registered before the species. |
 | `abilities` | Boolean map using only the vocabulary below. False entries are omitted after normalization. |
 | `temperament` | Boolean map using only the vocabulary below. |
 | `canon` | Only `sapience`, `bodyPlan`, `baselineInteraction`, `adultEligibility`, `interactionEligibility`, and `traits`. |
@@ -202,10 +238,10 @@ The only actionable effect is a healing consumable:
 inert effect `sell` or legacy inert effect `craft`. Quest/key items use the
 matching purpose and are protected from ordinary sale/drop while required.
 
-Module equipment, slots, equipment bonuses, equipment effects, damage, buffs,
-cures, callbacks, arbitrary use actions, new merchant tables, and new loot
-tables do not exist in this contract. They reject or remain mechanically inert;
-do not advertise them.
+Equipment is intentionally not an Item Definition V2 subtype for module
+authorization. Use the separate Equipment Definition V1 permission and API
+below. Damage, buffs, cures, callbacks, arbitrary use actions, new merchant
+tables, and new loot tables do not exist in either contract.
 
 `acquisition` may contain only:
 
@@ -219,6 +255,51 @@ do not advertise them.
 Use table IDs from `06-inventories.md`. Item instances save the stable identity
 in `definitionId`. When the provider is unavailable, saved instances remain
 opaque unavailable-provider objects.
+
+## Equipment Definition V1
+
+Permission: `content:add_equipment`
+
+```js
+MODS.addEquipment({
+  id: 'web_gauntlet',
+  name: 'Web Gauntlet',
+  icon: '🧤',
+  desc: 'A fitted launcher for trained web techniques.',
+  slot: 'hands',
+  equipBonus: { Figh: 1, str: 1 },
+  techniqueTags: ['web-launcher'],
+  value: 65,
+  acquisition: {
+    merchantTables: [{ id: 'general', qty: 1 }],
+    lootTables: [{ id: 'basicGear', weight: 1 }]
+  }
+});
+```
+
+An ordinary Item Definition is inventory content whose purpose is use, trade,
+quest progress, or key ownership. Equipment is a non-stackable item whose
+purpose is to occupy one existing equipment slot, contribute bounded stats,
+and satisfy declarative Combat Technique V1 tags. Keeping the permissions
+separate lets a host or package policy allow ordinary content without allowing
+mechanical stat changes.
+
+Equipment uses the same stable `<module-id>:<id>` identity and unavailable
+provider behavior as Item Definition V2. It always normalizes to
+`type: "equipment"`, `purpose: "equip"`, `stackable: false`, and
+`maxStack: 1`.
+
+Allowed slots are `head`, `body`, `hands`, `feet`, `accessory1`, and
+`accessory2`. `equipBonus` must contain at least one non-zero integer from -10
+through 10, using only `Figh`, `Feas`, `Flir`, `Fuck`, `Flee`, `Feed`, `str`,
+`con`, `spd`, `int`, `wis`, or `cha`. `techniqueTags` accepts up to 16 unique
+bounded semantic tokens.
+
+Equipment V1 cannot add slots, callbacks, arbitrary equipment effects,
+periodic mutations, credentials, or script-driven equip behavior. Use Resource
+Ledger V1 and Combat Technique V1 for renewable technique costs and bounded
+combat behavior. Acquisition uses the existing tables and limits described
+for Item Definition V2.
 
 ## Quest Contract V2
 

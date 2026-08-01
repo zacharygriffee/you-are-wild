@@ -40,7 +40,7 @@ const YAW_DEFEAT_RECOVERY = {
                 companionRoster: Array.isArray(state.companionRoster) ? this.clone(state.companionRoster, []) : [],
                 status: this.PLAYER_STATES.includes(state.status) ? state.status : (state.pending ? 'dead' : 'active'),
                 cause: this.normalizeCause(state.cause || state.outcome),
-                recoveryModeKey: String(state.recoveryModeKey || YAW_RECOVERY_MODES?.selectedKey?.(app) || 'core:regenerate'),
+                recoveryModeKey: String(state.recoveryModeKey || YAW_RECOVERY_MODES?.selectedKey?.(app) || 'core:ghost'),
                 recoveryPhase: String(state.recoveryPhase || (state.status === 'recovering' ? 'journey' : 'prompt')),
                 shrineAnchor: state.shrineAnchor ? this.normalizeAnchor(app, state.shrineAnchor) : null,
                 safeAnchor: this.normalizeAnchor(app, state.safeAnchor || app.safeAnchor),
@@ -57,7 +57,7 @@ const YAW_DEFEAT_RECOVERY = {
             cause: this.normalizeCause(state.cause || state.outcome || 'defeat'),
             source: state.source || 'legacy-save',
             outcome: state.outcome || 'defeat',
-            recoveryModeKey: 'core:regenerate',
+            recoveryModeKey: 'core:ghost',
             recoveryPhase: 'prompt',
             shrineAnchor: null,
             defeatedAt: { ...this.defeatLocation(app), ...(state.defeatedAt || {}) },
@@ -89,7 +89,7 @@ const YAW_DEFEAT_RECOVERY = {
             cause: this.normalizeCause(input.cause || input.outcome || 'defeat'),
             source: String(input.source || 'gameplay'),
             outcome: String(input.outcome || (terminal ? 'defeat' : status)),
-            recoveryModeKey: String(input.recoveryModeKey || existing?.recoveryModeKey || YAW_RECOVERY_MODES?.selectedKey?.(app) || 'core:regenerate'),
+            recoveryModeKey: String(input.recoveryModeKey || existing?.recoveryModeKey || YAW_RECOVERY_MODES?.selectedKey?.(app) || 'core:ghost'),
             recoveryPhase: String(input.recoveryPhase || existing?.recoveryPhase || 'prompt'),
             shrineAnchor: input.shrineAnchor
                 ? this.normalizeAnchor(app, input.shrineAnchor)

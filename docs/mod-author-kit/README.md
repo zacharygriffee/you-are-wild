@@ -70,9 +70,11 @@ A module that cannot answer all four is not complete.
   gameplay requirements.
 - Asset URLs and provider connection IDs are session handles and must not be
   treated as durable paths.
-- A registered definition is not a promise of general world placement.
+- Biome Recipe V1 is the only general geography-placement seam; other
+  registered definitions are not placement promises.
 - There is no public arbitrary structure, landmark, route, interior, crafting,
-  audio, video, 3D, shader, CSS, or filesystem contract.
+  video, 3D, shader, CSS, or filesystem contract. Audio Pack V1 is restricted
+  to code-free semantic cues backed by owned bundle resources.
 - Unknown permissions, hooks, schema fields, enum values, and ownership
   collisions reject installation or enablement.
 

@@ -39,7 +39,7 @@ const MODULE_SYSTEM = {
     DEFAULT_HOST_MANIFEST_PATH: 'yaw-host.json',
     REMOTE_PACKAGE_MAX_BYTES: 2 * 1024 * 1024,
     REMOTE_PACKAGE_TIMEOUT_MS: 15000,
-    KNOWN_PERMISSIONS: ['ui.read', 'ui:contribute', 'media:read', 'media:provide', 'scene:add_template', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_quest', 'content:add_template', 'content:add_locale', 'content:add_creation_option', 'content:add_action_variant', 'content:add_perk_profile', 'mechanics:add_resource_profile', 'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'],
+    KNOWN_PERMISSIONS: ['ui.read', 'ui:contribute', 'media:read', 'media:provide', 'scene:add_template', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide', 'world:add_biome', 'world:add_biome_recipe', 'content:add_species', 'content:add_item', 'content:add_equipment', 'content:add_quest', 'content:add_template', 'content:add_locale', 'content:add_creation_option', 'content:add_action_variant', 'content:add_perk_profile', 'mechanics:add_resource_profile', 'mechanics:add_status_effect', 'mechanics:add_restraint_profile', 'mechanics:add_action_profile', 'mechanics:add_body_profile', 'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'],
     db: null,
     hostManifest: null,
     hostManifestState: { status: 'uninitialized', reason: '', url: '' },
@@ -50,6 +50,8 @@ const MODULE_SYSTEM = {
     hooks: {
         onMapGenerate: [],
         onEncounterStart: [],
+        onEncounterResolved: [],
+        onAutonomousEvent: [],
         onCombatAction: [],
         onDigestionTick: [],
         onSubActionExecute: [],
@@ -62,6 +64,7 @@ const MODULE_SYSTEM = {
         onGameLoad: [],
         onGameSave: [],
         onTick: [],
+        onActionCommitted: [],
         onSceneBeat: [],
         onSceneExchangeClosed: [],
         onContentPolicyChanged: []
@@ -1948,6 +1951,13 @@ const MODULE_SYSTEM = {
                     }, 'error');
                 }
             }
+            if (typeof YAW_AUDIO_RUNTIME !== 'undefined') {
+                try {
+                    await YAW_AUDIO_RUNTIME.activateModule(module.id);
+                } catch (error) {
+                    console.warn(`Audio pack activation failed for ${module.id}: ${error?.message || error}`);
+                }
+            }
             
             App.initSpeciesGrid?.();
             console.log(`Module loaded: ${module.manifest.name}`);
@@ -1964,6 +1974,7 @@ const MODULE_SYSTEM = {
         if (!this.ownedContributions.has(moduleId)) {
             this.ownedContributions.set(moduleId, {
                 biomes: new Map(),
+                biomeRecipes: [],
                 species: new Set(),
                 speciesProfiles: [],
                 items: new Set(),
@@ -1976,6 +1987,10 @@ const MODULE_SYSTEM = {
                 localeDefinitions: [],
                 actionVariants: [],
                 resourceProfiles: [],
+                statusEffects: [],
+                restraintProfiles: [],
+                actionProfiles: [],
+                bodyProfiles: [],
                 combatTechniques: [],
                 recoveryModes: [],
                 perkProfiles: [],
@@ -2001,6 +2016,28 @@ const MODULE_SYSTEM = {
             });
         }
         App.biomes[id] = { ...biomeDef, id };
+    },
+
+    _addOwnedBiomeRecipe(moduleId, recipeId, definition) {
+        if (typeof YAW_BIOME_RECIPES === 'undefined') throw new Error('Biome Recipe V1 is unavailable');
+        const biome = String(definition?.biome || '').trim();
+        if (!biome || !this._contributionRecord(moduleId).biomes.has(biome)) {
+            throw new Error('Biome recipe must target a biome contributed by the same module');
+        }
+        const profile = YAW_BIOME_RECIPES.register(moduleId, recipeId, definition);
+        this._contributionRecord(moduleId).biomeRecipes.push({ key: profile.key });
+        return {
+            version: profile.version,
+            id: profile.id,
+            key: profile.key,
+            biome: profile.biome,
+            mode: profile.mode,
+            weight: profile.weight,
+            minDistance: profile.minDistance,
+            maxDistance: profile.maxDistance,
+            replaces: [...profile.replaces],
+            salt: profile.salt
+        };
     },
 
     _normalizeDataContribution(value, label) {
@@ -2040,7 +2077,7 @@ const MODULE_SYSTEM = {
         if (speciesDef.profile == null) return null;
         const profile = speciesDef.profile;
         if (!profile || typeof profile !== 'object' || Array.isArray(profile)) throw new Error('Species profile must be an object');
-        this._assertKnownKeys(profile, ['version', 'baseStats', 'size', 'difficulty', 'bodyParts', 'abilities', 'temperament', 'canon', 'encounters'], 'Species profile');
+        this._assertKnownKeys(profile, ['version', 'baseStats', 'size', 'difficulty', 'bodyParts', 'bodyProfile', 'abilities', 'temperament', 'canon', 'encounters'], 'Species profile');
         const version = Number(profile.version ?? this.SPECIES_PROFILE_VERSION);
         if (version !== this.SPECIES_PROFILE_VERSION) throw new Error(`Unsupported species profile version ${profile.version}`);
 
@@ -2071,6 +2108,10 @@ const MODULE_SYSTEM = {
         const normalizedParts = [...new Set(bodyParts.map(part => String(part || '').trim()))];
         for (const part of normalizedParts) {
             if (!this.SPECIES_PROFILE_BODY_PARTS.includes(part)) throw new Error(`Species profile bodyParts contains unsupported part ${part}`);
+        }
+        const bodyProfile = profile.bodyProfile == null ? '' : String(profile.bodyProfile).trim();
+        if (bodyProfile && !/^[a-zA-Z0-9_.:-]+:[a-zA-Z0-9_.:-]+$/.test(bodyProfile)) {
+            throw new Error('Species profile bodyProfile must be a namespaced body profile key');
         }
 
         const canon = profile.canon == null ? {} : profile.canon;
@@ -2122,6 +2163,7 @@ const MODULE_SYSTEM = {
             size,
             difficulty,
             bodyParts: normalizedParts,
+            bodyProfile,
             abilities: this._normalizeProfileBooleanMap(profile.abilities, this.SPECIES_PROFILE_ABILITIES, 'Species profile abilities'),
             temperament: this._normalizeProfileBooleanMap(profile.temperament, this.SPECIES_PROFILE_TEMPERAMENTS, 'Species profile temperament'),
             canon: normalizedCanon,
@@ -2345,6 +2387,76 @@ const MODULE_SYSTEM = {
         return registered;
     },
 
+    _addOwnedEquipment(moduleId, value) {
+        if (typeof YAW_ITEM_REGISTRY === 'undefined') throw new Error('Item Registry V2 is unavailable');
+        const source = this._normalizeDataContribution(value, 'Equipment');
+        const allowed = new Set([
+            'id', 'name', 'nameKey', 'icon', 'desc', 'descriptionKey', 'type',
+            'purpose', 'value', 'slot', 'equipBonus', 'techniqueTags',
+            'legacyNames', 'acquisition'
+        ]);
+        for (const field of Object.keys(source)) {
+            if (!allowed.has(field)) throw new Error(`Equipment definition contains unsupported field ${field}`);
+        }
+        if (!String(source.name || '').trim()) throw new Error('Equipment definition name is required');
+        if (source.type !== undefined && source.type !== 'equipment') throw new Error('Equipment definition type must be equipment');
+        if (source.purpose !== undefined && source.purpose !== 'equip') throw new Error('Equipment definition purpose must be equip');
+        const slot = String(source.slot || '');
+        if (!Object.prototype.hasOwnProperty.call(App.EQUIPMENT_SLOTS || {}, slot)) {
+            throw new Error(`Equipment definition uses unsupported slot ${slot || '(empty)'}`);
+        }
+        if (!source.equipBonus || typeof source.equipBonus !== 'object' || Array.isArray(source.equipBonus)) {
+            throw new Error('Equipment definition equipBonus must be an object');
+        }
+        const equipBonus = {};
+        for (const [stat, raw] of Object.entries(source.equipBonus)) {
+            if (!(App.EQUIPMENT_STAT_KEYS || []).includes(stat)) throw new Error(`Equipment definition uses unsupported stat ${stat}`);
+            const amount = Number(raw);
+            if (!Number.isInteger(amount) || amount < -10 || amount > 10) {
+                throw new Error(`Equipment bonus ${stat} must be an integer from -10 to 10`);
+            }
+            if (amount !== 0) equipBonus[stat] = amount;
+        }
+        if (!Object.keys(equipBonus).length) throw new Error('Equipment definition requires at least one non-zero bonus');
+        const techniqueTags = source.techniqueTags === undefined ? [] : source.techniqueTags;
+        if (!Array.isArray(techniqueTags) || techniqueTags.length > 16) {
+            throw new Error('Equipment techniqueTags must be a bounded array');
+        }
+        const normalizedTags = [...new Set(techniqueTags.map(tag => String(tag || '').trim()).filter(Boolean))];
+        if (normalizedTags.some(tag => tag.length > 64 || !/^[a-zA-Z0-9_.:-]+$/.test(tag))) {
+            throw new Error('Equipment techniqueTags must contain bounded semantic tokens');
+        }
+        const namespace = String(moduleId).toLowerCase();
+        const rawId = String(source.id || '').trim();
+        const id = (rawId.includes(':') ? rawId : `${namespace}:${rawId}`).toLowerCase();
+        if (!id.startsWith(`${namespace}:`)) {
+            throw new Error(`Equipment definition id must use the ${namespace}: namespace`);
+        }
+        const registered = YAW_ITEM_REGISTRY.register(App, moduleId, {
+            ...source,
+            id,
+            name: String(source.name).trim().slice(0, 120),
+            icon: String(source.icon || '🛡️').slice(0, 16),
+            desc: String(source.desc || '').slice(0, 400),
+            type: 'equipment',
+            purpose: 'equip',
+            stackable: false,
+            maxStack: 1,
+            value: Math.max(0, Math.min(1000, Math.floor(Number(source.value) || 0))),
+            slot,
+            equipBonus,
+            techniqueTags: normalizedTags
+        }, {
+            legacyNames: Array.isArray(source.legacyNames) ? source.legacyNames.slice(0, 16) : []
+        });
+        App.items = App.items || [];
+        App.items.push(registered);
+        const record = this._contributionRecord(moduleId);
+        record.items.add(registered);
+        this._placeOwnedItem(moduleId, registered, record);
+        return registered;
+    },
+
     _placeOwnedItem(moduleId, definition, record = this._contributionRecord(moduleId)) {
         const acquisition = definition.acquisition;
         if (acquisition == null) return;
@@ -2461,6 +2573,95 @@ const MODULE_SYSTEM = {
         };
     },
 
+    _addOwnedStatusEffect(moduleId, statusId, definition) {
+        if (typeof YAW_STATUS_EFFECTS === 'undefined') throw new Error('Status Effect V1 is unavailable');
+        const profile = YAW_STATUS_EFFECTS.register(moduleId, statusId, definition);
+        this._contributionRecord(moduleId).statusEffects.push({ key: profile.key });
+        return {
+            version: profile.version,
+            id: profile.id,
+            key: profile.key,
+            label: profile.label,
+            labelKey: profile.labelKey,
+            description: profile.description,
+            descriptionKey: profile.descriptionKey,
+            icon: profile.icon,
+            domains: [...profile.domains],
+            duration: { ...profile.duration },
+            stacking: { ...profile.stacking },
+            persistence: profile.persistence,
+            restriction: profile.restriction,
+            periodic: profile.periodic ? { ...profile.periodic } : null,
+            cureTags: [...profile.cureTags],
+            resistanceTags: [...profile.resistanceTags]
+        };
+    },
+
+    _addOwnedActionProfile(moduleId, actionId, definition) {
+        if (typeof YAW_ACTION_PROFILES === 'undefined') throw new Error('Action Resolver V1 is unavailable');
+        const profile = YAW_ACTION_PROFILES.register(moduleId, actionId, definition);
+        this._contributionRecord(moduleId).actionProfiles.push({ key: profile.key });
+        return {
+            version: profile.version,
+            id: profile.id,
+            key: profile.key,
+            label: profile.label,
+            labelKey: profile.labelKey,
+            description: profile.description,
+            descriptionKey: profile.descriptionKey,
+            icon: profile.icon,
+            category: profile.category,
+            modes: [...profile.modes],
+            scope: profile.scope,
+            relations: [...profile.relations],
+            requirements: { ...profile.requirements },
+            check: profile.check ? { ...profile.check } : null,
+            costs: profile.costs.map(cost => ({ ...cost })),
+            effects: profile.effects.map(effect => ({ ...effect })),
+            failureEffects: profile.failureEffects.map(effect => ({ ...effect }))
+        };
+    },
+
+    _addOwnedRestraintProfile(moduleId, restraintId, definition) {
+        if (typeof YAW_RESTRAINTS === 'undefined') throw new Error('Restraint Relationship V1 is unavailable');
+        const profile = YAW_RESTRAINTS.register(moduleId, restraintId, definition);
+        this._contributionRecord(moduleId).restraintProfiles.push({ key: profile.key });
+        return {
+            version: profile.version,
+            id: profile.id,
+            key: profile.key,
+            label: profile.label,
+            labelKey: profile.labelKey,
+            description: profile.description,
+            descriptionKey: profile.descriptionKey,
+            icon: profile.icon,
+            kind: profile.kind,
+            statusProfile: profile.statusProfile,
+            duration: profile.duration,
+            strength: profile.strength,
+            breakOnSourceDown: profile.breakOnSourceDown
+        };
+    },
+
+    _addOwnedBodyProfile(moduleId, bodyId, definition) {
+        if (typeof YAW_BODY_MASS === 'undefined') throw new Error('Body Mass Ledger V1 is unavailable');
+        const profile = YAW_BODY_MASS.register(moduleId, bodyId, definition);
+        this._contributionRecord(moduleId).bodyProfiles.push({ key: profile.key });
+        return {
+            version: profile.version,
+            id: profile.id,
+            key: profile.key,
+            label: profile.label,
+            labelKey: profile.labelKey,
+            massPerSize: profile.massPerSize,
+            minimumViablePercent: profile.minimumViablePercent,
+            renewable: profile.renewable,
+            piecePercents: [...profile.piecePercents],
+            regrowth: profile.regrowth ? { ...profile.regrowth } : null,
+            corpseYieldPercent: profile.corpseYieldPercent
+        };
+    },
+
     _addOwnedCombatTechnique(moduleId, techniqueId, definition) {
         if (typeof YAW_COMBAT_TECHNIQUES === 'undefined') throw new Error('Combat Technique V1 is unavailable');
         const profile = YAW_COMBAT_TECHNIQUES.register(moduleId, techniqueId, definition);
@@ -2522,6 +2723,14 @@ const MODULE_SYSTEM = {
         if (App.species.some(species => String(species?.id) === entry.id)) {
             throw new Error(`Species definition id ${entry.id} is already registered`);
         }
+        if (profile?.bodyProfile) {
+            const namespace = `${String(moduleId)}:`;
+            if (typeof YAW_BODY_MASS === 'undefined'
+                || !profile.bodyProfile.startsWith(namespace)
+                || !YAW_BODY_MASS.profile?.(profile.bodyProfile)) {
+                throw new Error('Species bodyProfile must reference a body profile owned by the same module');
+            }
+        }
 
         const record = this._contributionRecord(moduleId);
         const profileRecord = { id: entry.id, maps: [], encounters: [] };
@@ -2542,6 +2751,7 @@ const MODULE_SYSTEM = {
 
         setMapValue('SPECIES_BASE_STATS', { ...profile.baseStats });
         setMapValue('SPECIES_DEFAULT_PARTS', [...profile.bodyParts]);
+        if (profile.bodyProfile) setMapValue('SPECIES_BODY_PROFILES', profile.bodyProfile);
         setMapValue('SPECIES_ABILITIES', { ...profile.abilities });
         setMapValue('SPECIES_DIFFICULTY', profile.difficulty);
         setMapValue('SPECIES_SIZE', profile.size);
@@ -3119,8 +3329,13 @@ const MODULE_SYSTEM = {
             languageChanged = languageChanged || result?.languageChanged === true;
         }
         CONTENT?.unregisterCreationOptions?.(moduleId);
+        if (typeof YAW_BIOME_RECIPES !== 'undefined') YAW_BIOME_RECIPES.unregisterOwner?.(moduleId);
         if (typeof YAW_SUB_ACTIONS !== 'undefined') YAW_SUB_ACTIONS.unregisterOwner?.(App, moduleId);
         if (typeof YAW_RESOURCE_LEDGER !== 'undefined') YAW_RESOURCE_LEDGER.unregisterOwner?.(moduleId);
+        if (typeof YAW_STATUS_EFFECTS !== 'undefined') YAW_STATUS_EFFECTS.unregisterOwner?.(moduleId, App);
+        if (typeof YAW_RESTRAINTS !== 'undefined') YAW_RESTRAINTS.unregisterOwner?.(moduleId, App);
+        if (typeof YAW_ACTION_PROFILES !== 'undefined') YAW_ACTION_PROFILES.unregisterOwner?.(moduleId);
+        if (typeof YAW_BODY_MASS !== 'undefined') YAW_BODY_MASS.unregisterOwner?.(moduleId);
         if (typeof YAW_COMBAT_TECHNIQUES !== 'undefined') YAW_COMBAT_TECHNIQUES.unregisterOwner?.(moduleId, App);
         if (typeof YAW_RECOVERY_MODES !== 'undefined') YAW_RECOVERY_MODES.unregisterOwner?.(moduleId, App);
         if (typeof YAW_PERK_REGISTRY !== 'undefined') YAW_PERK_REGISTRY.unregisterOwner?.(moduleId);
@@ -3162,6 +3377,7 @@ const MODULE_SYSTEM = {
             );
         }
         this._removeModuleContributions(moduleId);
+        if (typeof YAW_BIOME_RECIPES !== 'undefined') YAW_BIOME_RECIPES.unregisterOwner(moduleId);
         if (typeof YAW_AI_PROVIDER_MANAGER !== 'undefined') YAW_AI_PROVIDER_MANAGER.unregisterOwner(moduleId);
         if (typeof YAW_NARRATION_SYSTEM !== 'undefined') {
             YAW_NARRATION_SYSTEM.removeContextExtensions(moduleId);
@@ -3170,6 +3386,7 @@ const MODULE_SYSTEM = {
         }
         if (typeof YAW_TILESET_RUNTIME !== 'undefined') YAW_TILESET_RUNTIME.deactivateModule(moduleId);
         if (typeof YAW_SPRITE_RUNTIME !== 'undefined') YAW_SPRITE_RUNTIME.deactivateModule(moduleId);
+        if (typeof YAW_AUDIO_RUNTIME !== 'undefined') YAW_AUDIO_RUNTIME.deactivateModule(moduleId);
         if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') YAW_MEDIA_REPOSITORY.releaseOwner(moduleId);
         if (typeof YAW_MEDIA_REPOSITORY !== 'undefined') YAW_MEDIA_REPOSITORY.unregisterProviderOwner?.(moduleId);
         for (const key of [...this.settingActions.keys()]) {
@@ -3195,6 +3412,11 @@ const MODULE_SYSTEM = {
                 self._requirePermission(moduleId, manifest, 'world:add_biome');
                 self._addOwnedBiome(moduleId, biomeDef);
             },
+
+            registerBiomeRecipe(recipeId, definition) {
+                self._requirePermission(moduleId, manifest, 'world:add_biome_recipe');
+                return self._addOwnedBiomeRecipe(moduleId, recipeId, definition);
+            },
             
             addSpecies(speciesDef) {
                 self._requirePermission(moduleId, manifest, 'content:add_species');
@@ -3204,6 +3426,11 @@ const MODULE_SYSTEM = {
             addItem(itemDef) {
                 self._requirePermission(moduleId, manifest, 'content:add_item');
                 return self._addOwnedItem(moduleId, itemDef);
+            },
+
+            addEquipment(equipmentDef) {
+                self._requirePermission(moduleId, manifest, 'content:add_equipment');
+                return self._addOwnedEquipment(moduleId, equipmentDef);
             },
 
             addQuestTemplate(questDef) {
@@ -3248,6 +3475,26 @@ const MODULE_SYSTEM = {
             registerResourceProfile(resourceId, definition) {
                 self._requirePermission(moduleId, manifest, 'mechanics:add_resource_profile');
                 return self._addOwnedResourceProfile(moduleId, resourceId, definition);
+            },
+
+            registerStatusEffect(statusId, definition) {
+                self._requirePermission(moduleId, manifest, 'mechanics:add_status_effect');
+                return self._addOwnedStatusEffect(moduleId, statusId, definition);
+            },
+
+            registerRestraintProfile(restraintId, definition) {
+                self._requirePermission(moduleId, manifest, 'mechanics:add_restraint_profile');
+                return self._addOwnedRestraintProfile(moduleId, restraintId, definition);
+            },
+
+            registerActionProfile(actionId, definition) {
+                self._requirePermission(moduleId, manifest, 'mechanics:add_action_profile');
+                return self._addOwnedActionProfile(moduleId, actionId, definition);
+            },
+
+            registerBodyProfile(bodyId, definition) {
+                self._requirePermission(moduleId, manifest, 'mechanics:add_body_profile');
+                return self._addOwnedBodyProfile(moduleId, bodyId, definition);
             },
 
             registerCombatTechnique(techniqueId, definition) {

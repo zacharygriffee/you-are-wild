@@ -277,7 +277,11 @@ const YAW_WORLD_STATE = {
     getTile(app, x, y) {
         const key = app._tileKey(x, y);
         if (app.worldMap.has(key)) return app.worldMap.get(key);
-        const tile = app.applyTileDelta(app.getBaseTile(x, y), app.getTileDelta(x, y));
+        const delta = app.getTileDelta(x, y);
+        const base = !delta && typeof YAW_BIOME_RECIPES !== 'undefined'
+            ? YAW_BIOME_RECIPES.apply(app, app.getBaseTile(x, y))
+            : app.getBaseTile(x, y);
+        const tile = app.applyTileDelta(base, delta);
         app.worldMap.set(key, tile);
         return tile;
     },

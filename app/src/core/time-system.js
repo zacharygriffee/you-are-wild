@@ -58,6 +58,7 @@ const YAW_TIME_SYSTEM = {
                 previousDay,
                 currentDay: app.dayCount || 0
             });
+            if (typeof YAW_AUTONOMOUS_ACTORS !== 'undefined') YAW_AUTONOMOUS_ACTORS.tick(app);
         }
     },
 

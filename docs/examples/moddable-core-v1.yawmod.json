@@ -1,0 +1,29 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "module": {
+    "manifest": {
+      "id": "yaw_moddable_core_fixture",
+      "name": "Moddable Core V1 Conformance Fixture",
+      "version": "1.0.0",
+      "description": "A source-independent fixture proving the bounded world, body, equipment, resource, status, restraint, action, technique, and recovery contracts compose.",
+      "author": "You Are Wild",
+      "contentRating": "safe",
+      "minGameVersion": "0.17.0",
+      "permissions": [
+        "world:add_biome",
+        "world:add_biome_recipe",
+        "content:add_species",
+        "content:add_equipment",
+        "mechanics:add_resource_profile",
+        "mechanics:add_status_effect",
+        "mechanics:add_restraint_profile",
+        "mechanics:add_action_profile",
+        "mechanics:add_body_profile",
+        "mechanics:add_combat_technique",
+        "mechanics:add_recovery_mode"
+      ]
+    },
+    "code": "MODS.addBiome({ id: 'fixture_mire', name: 'Fixture Mire', role: 'region', icon: '🕸️', danger: 3, descriptions: ['Silver threads span the reeds.'] });\nMODS.registerBiomeRecipe('mire_edge', { biome: 'fixture_mire', mode: 'boundary', weight: 10, minDistance: 4, maxDistance: 40, replaces: ['swamp'], salt: 'fixture-mire-v1' });\nMODS.registerResourceProfile('silk', { label: 'silk', capacity: 4, regeneration: { trigger: 'rest', every: 1, amount: 1 } });\nMODS.registerStatusEffect('webbed', { label: 'Webbed', domains: ['combat'], duration: { default: 2, max: 4 }, restriction: 'skip-turn' });\nMODS.registerRestraintProfile('silk_hold', { label: 'Silk held', kind: 'web', statusProfile: 'yaw_moddable_core_fixture:webbed', duration: 2, breakOnSourceDown: true });\nconst body = MODS.registerBodyProfile('moth_body', { massPerSize: 18, minimumViablePercent: 25, renewable: true, piecePercents: [10], regrowth: { trigger: 'rest', every: 2, amount: 1 } });\nMODS.addSpecies({ id: 'fixture_moth', name: 'Fixture Moth', icon: '🦋', desc: 'A conformance creature.', profile: { size: 3, difficulty: 2, bodyProfile: body.key } });\nMODS.addEquipment({ id: 'silk_gloves', name: 'Silk Gloves', slot: 'hands', equipBonus: { spd: 1 }, techniqueTags: ['threaded'], value: 20 });\nMODS.registerActionProfile('silkSnare', { label: 'Silk Snare', labelKey: 'yaw_moddable_core_fixture.action.silkSnare', description: 'Spend silk to bind a hostile target.', descriptionKey: 'yaw_moddable_core_fixture.action.silkSnare.description', icon: '🕸️', category: 'control', modes: ['combat'], scope: 'target', relations: ['hostile'], costs: [{ resource: 'yaw_moddable_core_fixture:silk', amount: 1 }], effects: [{ type: 'restraint', target: 'target', profile: 'yaw_moddable_core_fixture:silk_hold', turns: 2, power: 1 }] });\nMODS.registerCombatTechnique('threadedStrike', { label: 'Threaded Strike', labelKey: 'yaw_moddable_core_fixture.technique.threadedStrike', eligibility: {}, equipment: { required: true, anyTags: ['threaded'], allTags: [], slots: ['hands'] }, reach: 'melee', damage: { multiplier: 1, flat: 1 }, area: { maxTargets: 1, distribution: 'full', recovery: 0 } });\nMODS.registerRecoveryMode('cocoon', { label: 'Cocoon pilgrimage', labelKey: 'yaw_moddable_core_fixture.recovery.cocoon', description: 'Return as a harmless spirit to recover at home.', descriptionKey: 'yaw_moddable_core_fixture.recovery.cocoon.description', icon: '🦋', entry: 'defeat-site', resolution: 'shrine', inventory: 'retain', traversal: 'ethereal', restrictions: ['combat', 'inventory', 'hunger', 'interactions', 'recruitment', 'structures'], vitalityPercent: 20 });"
+  }
+}

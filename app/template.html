@@ -8256,6 +8256,32 @@
                 min-height: 44px;
             }
 
+            .mobile-combat-intents .contributed-action-menu {
+                position: relative;
+                min-width: 0;
+            }
+
+            .mobile-combat-intents .contributed-action-list {
+                position: absolute;
+                right: 0;
+                bottom: calc(100% + 6px);
+                z-index: 35;
+                display: none;
+                gap: 6px;
+                min-width: min(240px, calc(100vw - 40px));
+                max-height: min(50vh, 300px);
+                overflow-y: auto;
+                padding: 8px;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+                background: var(--bg-secondary);
+                box-shadow: var(--shadow-lg);
+            }
+
+            .mobile-combat-intents .contributed-action-menu[open] > .contributed-action-list {
+                display: grid;
+            }
+
             .mobile-combat-phase-controls.combat-plan-cancel-only .unit-actions {
                 display: flex;
                 justify-content: flex-end;
@@ -10663,6 +10689,18 @@
                     <label style="display: grid; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span style="display:flex;justify-content:space-between;gap:12px;"><span data-i18n="settings.baseFontSize">Base Font Size</span><span id="setting-font-size-value">14px</span></span>
                         <input type="range" id="setting-font-size" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="fontSize" min="12" max="20" step="1" value="14" aria-label="Base font size" data-i18n-aria-label="settings.baseFontSize" oninput="App.updateAccessibilitySetting('fontSize', this.value)">
+                    </label>
+                    <label style="display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                        <span data-i18n="settings.combatPacing">Automatic combat pacing</span>
+                        <select id="setting-combat-pacing" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="combatPacing" onchange="App.updateAccessibilitySetting('combatPacing', this.value)">
+                            <option value="readable" data-i18n="settings.combatPacing.readable">Readable</option>
+                            <option value="fast" data-i18n="settings.combatPacing.fast">Fast</option>
+                            <option value="instant" data-i18n="settings.combatPacing.instant">Instant</option>
+                        </select>
+                    </label>
+                    <label style="display: grid; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span style="display:flex;justify-content:space-between;gap:12px;"><span data-i18n="settings.combatReadSpeed">Combat reading speed</span><span id="setting-combat-read-speed-value">32 char/s</span></span>
+                        <input type="range" id="setting-combat-read-speed" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="combatReadSpeed" min="10" max="120" step="2" value="32" aria-label="Combat reading speed" data-i18n-aria-label="settings.combatReadSpeed" oninput="App.updateAccessibilitySetting('combatReadSpeed', this.value)">
                     </label>
                 </div>
             </div>

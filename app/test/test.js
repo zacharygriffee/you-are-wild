@@ -28,6 +28,7 @@ const NEUTRAL_CONFORMANCE_MOD_PACKAGE = path.join(__dirname, '..', '..', 'docs',
 const NEUTRAL_CONFORMANCE_LOCALE_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'neutral-conformance-locale-pack.yawmod.json');
 const FRENCH_PREVIEW_LOCALE_PACKAGE = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-french-preview.yawmod.json');
 const UI_CONTRIBUTION_EXAMPLE_PACKAGE = path.join(__dirname, '..', '..', 'docs', 'examples', 'ui-contribution-v1.yawmod.json');
+const MODDABLE_CORE_V1_FIXTURE = path.join(__dirname, '..', '..', 'docs', 'examples', 'moddable-core-v1.yawmod.json');
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
 const BALANCE_COST_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'balance-cost-doctrine.md');
@@ -164,6 +165,11 @@ const tileEventFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-ev
 const structureNavigationContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'structure-navigation.js'), 'utf8');
 const movementFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'movement-flow.js'), 'utf8');
 const resourceLedgerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'resource-ledger.js'), 'utf8');
+const statusEffectsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'status-effects.js'), 'utf8');
+const restraintsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'restraints.js'), 'utf8');
+const actionProfilesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-profiles.js'), 'utf8');
+const autonomousActorsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'autonomous-actors.js'), 'utf8');
+const bodyMassContent = `${fs.readFileSync(path.join(SRC_DIR, 'core', 'body-mass.js'), 'utf8')}\n${autonomousActorsContent}`;
 const combatTechniqueContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-techniques.js'), 'utf8');
 const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-actions.js'), 'utf8');
 const uiTextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'ui-text.js'), 'utf8');
@@ -190,7 +196,8 @@ const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'pan
 const panelCommandsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-commands.js'), 'utf8');
 const unitStatsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-stats.js'), 'utf8');
 const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
-const combatStateRollContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-state-roll.js'), 'utf8');
+const combatPacingContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-pacing.js'), 'utf8');
+const combatStateRollContent = `${combatPacingContent}\n${fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-state-roll.js'), 'utf8')}`;
 const combatRulesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-rules.js'), 'utf8');
 const combatStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-status.js'), 'utf8');
 const combatTurnsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-turns.js'), 'utf8');
@@ -250,7 +257,9 @@ const traversalSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'trave
 const worldGenerationContent = `${fs.readFileSync(worldGenerationPath, 'utf8')}\n${traversalSystemContent}`;
 const assetManifestPath = path.join(SRC_DIR, 'core', 'asset-manifest.js');
 const assetManifestContent = fs.readFileSync(assetManifestPath, 'utf8');
-const worldStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-state.js'), 'utf8');
+const biomeRecipesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'biome-recipes.js'), 'utf8');
+const worldScalingContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-scaling.js'), 'utf8');
+const worldStateContent = `${biomeRecipesContent}\n${worldScalingContent}\n${fs.readFileSync(path.join(SRC_DIR, 'core', 'world-state.js'), 'utf8')}`;
 const worldStoreContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-store.js'), 'utf8');
 const worldRandomContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-random.js'), 'utf8');
 const encounterPreferencesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'encounter-preferences.js'), 'utf8');
@@ -266,12 +275,15 @@ const assetBundleV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'asset-b
 const tilesetPackV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'tileset-pack-v1.js'), 'utf8');
 const tilesetRuntimeContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tileset-runtime.js'), 'utf8');
 const spritePackV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'sprite-pack-v1.js'), 'utf8');
-const spriteRuntimeContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sprite-runtime.js'), 'utf8');
+const audioPackV1Content = fs.readFileSync(path.join(SRC_DIR, 'core', 'audio-pack-v1.js'), 'utf8');
+const audioRuntimeContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'audio-runtime.js'), 'utf8');
+const spriteRuntimeContent = `${fs.readFileSync(path.join(SRC_DIR, 'core', 'sprite-runtime.js'), 'utf8')}\n${audioPackV1Content}\n${audioRuntimeContent}`;
 const narrationSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'narration-system.js'), 'utf8');
 const hostCapabilitiesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'host-capabilities.js'), 'utf8');
 const puterProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'puter-provider.js'), 'utf8');
 const openAICompatibleProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'openai-compatible-provider.js'), 'utf8');
 const managedServiceProviderContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'managed-service-provider.js'), 'utf8');
+const actionOutcomesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-outcomes.js'), 'utf8');
 const marketplaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marketplace.js'), 'utf8');
 const explicitProviderPath = path.join(__dirname, '..', '..', 'optional-mods', 'you-are-wild-explicit.yawmod.json');
 const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
@@ -627,6 +639,9 @@ function loadModuleSystemForTest(options = {}) {
     STRUCTURES: {},
     MERCHANT_STOCK_TABLES: {},
     EQUIPMENT_LOOT_TABLES: {},
+    SPECIES_BODY_PROFILES: {},
+    EQUIPMENT_SLOTS: { head: 'Head', body: 'Body', hands: 'Hands', feet: 'Feet', accessory1: 'Accessory 1', accessory2: 'Accessory 2' },
+    EQUIPMENT_STAT_KEYS: ['Figh', 'Feas', 'Flir', 'Fuck', 'Flee', 'Feed', 'str', 'con', 'spd', 'int', 'wis', 'cha'],
     party: [],
     creatures: [],
     explorationActorIds: [],
@@ -665,8 +680,29 @@ function loadModuleSystemForTest(options = {}) {
   const spritePackV1 = options.spritePackV1 || loadMediaSystemForTest().YAW_SPRITE_PACK_V1;
   const spriteRuntime = options.spriteRuntime;
   const resourceLedger = options.resourceLedger || new Function('window', `${resourceLedgerContent}\nreturn YAW_RESOURCE_LEDGER;`)({});
+  const statusEffects = options.statusEffects || new Function('window', `${statusEffectsContent}\nreturn YAW_STATUS_EFFECTS;`)({});
+  const restraints = options.restraints || new Function(
+    'window',
+    'YAW_STATUS_EFFECTS',
+    `${restraintsContent}\nreturn YAW_RESTRAINTS;`
+  )({}, statusEffects);
+  const recruitmentFlow = options.recruitmentFlow || new Function(
+    'window',
+    `${recruitmentFlowContent}\nreturn YAW_RECRUITMENT_FLOW;`
+  )({});
+  const actionProfiles = options.actionProfiles || new Function(
+    'window',
+    'YAW_RESOURCE_LEDGER',
+    'YAW_STATUS_EFFECTS',
+    'YAW_RESTRAINTS',
+    'YAW_ACTION_OUTCOMES',
+    'YAW_RECRUITMENT_FLOW',
+    `${actionProfilesContent}\nreturn YAW_ACTION_PROFILES;`
+  )({}, resourceLedger, statusEffects, restraints, new Function(`${actionOutcomesContent}\nreturn YAW_ACTION_OUTCOMES;`)(), recruitmentFlow);
+  const bodyMass = options.bodyMass || new Function('window', `${bodyMassContent}\nreturn YAW_BODY_MASS;`)({});
   const combatTechniques = options.combatTechniques || new Function('window', `${combatTechniqueContent}\nreturn YAW_COMBAT_TECHNIQUES;`)({});
   const recoveryModes = options.recoveryModes || new Function('window', `${recoveryModesContent}\nreturn YAW_RECOVERY_MODES;`)({});
+  const biomeRecipes = options.biomeRecipes || new Function('window', 'WorldGen', `${biomeRecipesContent}\nreturn YAW_BIOME_RECIPES;`)({}, loadWorldGenForTest());
   const itemRegistry = options.itemRegistry || new Function('window', `${itemRegistryContent}\nreturn YAW_ITEM_REGISTRY;`)({});
   const itemEffects = options.itemEffects || new Function('window', `${itemEffectsContent}\nreturn YAW_ITEM_EFFECTS;`)({});
   const perkRuntime = options.perkRuntime || new Function(
@@ -680,15 +716,20 @@ function loadModuleSystemForTest(options = {}) {
   App._getItemDef = item => itemRegistry.definition(App, item);
   App._itemDefinitionId = item => itemRegistry.definitionId(App, item);
   App._normalizeItemInstance = item => itemRegistry.normalizeInstance(App, item);
-  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SPRITE_PACK_V1', 'YAW_SPRITE_RUNTIME', 'YAW_SUB_ACTIONS', 'YAW_STORY_EVENTS', 'YAW_RESOURCE_LEDGER', 'YAW_COMBAT_TECHNIQUES', 'YAW_RECOVERY_MODES', 'YAW_ITEM_REGISTRY', 'YAW_ITEM_EFFECTS', 'YAW_PERK_REGISTRY', 'YAW_QUEST_FLOW', 'YAW_HOST', 'YAW_CONTENT_ACCESS', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, spritePackV1, spriteRuntime, options.subActions, options.storyEvents, resourceLedger, combatTechniques, recoveryModes, itemRegistry, itemEffects, perkRuntime.YAW_PERK_REGISTRY, questRuntime.YAW_QUEST_FLOW, options.YAW_HOST, options.YAW_CONTENT_ACCESS);
+  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', 'YAW_MEDIA_REPOSITORY', 'YAW_ASSET_BUNDLE_V1', 'YAW_TILESET_PACK_V1', 'YAW_TILESET_RUNTIME', 'YAW_SPRITE_PACK_V1', 'YAW_SPRITE_RUNTIME', 'YAW_SUB_ACTIONS', 'YAW_STORY_EVENTS', 'YAW_RESOURCE_LEDGER', 'YAW_STATUS_EFFECTS', 'YAW_RESTRAINTS', 'YAW_ACTION_PROFILES', 'YAW_BODY_MASS', 'YAW_COMBAT_TECHNIQUES', 'YAW_RECOVERY_MODES', 'YAW_BIOME_RECIPES', 'YAW_ITEM_REGISTRY', 'YAW_ITEM_EFFECTS', 'YAW_PERK_REGISTRY', 'YAW_QUEST_FLOW', 'YAW_HOST', 'YAW_CONTENT_ACCESS', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT, mediaRepository, assetBundleV1, tilesetPackV1, tilesetRuntime, spritePackV1, spriteRuntime, options.subActions, options.storyEvents, resourceLedger, statusEffects, restraints, actionProfiles, bodyMass, combatTechniques, recoveryModes, biomeRecipes, itemRegistry, itemEffects, perkRuntime.YAW_PERK_REGISTRY, questRuntime.YAW_QUEST_FLOW, options.YAW_HOST, options.YAW_CONTENT_ACCESS);
   MODULE_SYSTEM._testApp = App;
   MODULE_SYSTEM._testItemRegistry = itemRegistry;
   MODULE_SYSTEM._testItemEffects = itemEffects;
   MODULE_SYSTEM._testPerkEffects = perkRuntime.YAW_PERK_EFFECTS;
   MODULE_SYSTEM._testPerkRegistry = perkRuntime.YAW_PERK_REGISTRY;
   MODULE_SYSTEM._testResourceLedger = resourceLedger;
+  MODULE_SYSTEM._testStatusEffects = statusEffects;
+  MODULE_SYSTEM._testRestraints = restraints;
+  MODULE_SYSTEM._testActionProfiles = actionProfiles;
+  MODULE_SYSTEM._testBodyMass = bodyMass;
   MODULE_SYSTEM._testCombatTechniques = combatTechniques;
   MODULE_SYSTEM._testRecoveryModes = recoveryModes;
+  MODULE_SYSTEM._testBiomeRecipes = biomeRecipes;
   MODULE_SYSTEM._testQuestContract = questRuntime.YAW_QUEST_CONTRACT;
   MODULE_SYSTEM._testQuestFlow = questRuntime.YAW_QUEST_FLOW;
   return MODULE_SYSTEM;
@@ -707,7 +748,7 @@ function loadMediaSystemForTest(options = {}) {
   const source = [mediaContractContent, mediaIndexedDbStoreContent, mediaHttpProvidersContent, mediaRepositoryContent, assetBundleV1Content, tilesetPackV1Content, tilesetRuntimeContent, spritePackV1Content, spriteRuntimeContent].join('\n');
   return new Function(
     'globalThis', 'window', 'fetch', 'navigator', 'URL', 'Blob', 'AbortController', 'setTimeout', 'clearTimeout',
-    `${source}\nreturn { YAW_MEDIA_CONTRACT, YAWIndexedDBMediaStore, YAWHttpMediaSource, YAWEndpointMediaStore, YAWMediaRepository, YAW_ASSET_BUNDLE_V1, YAW_TILESET_PACK_V1, YAW_TILESET_RUNTIME, YAW_SPRITE_PACK_V1, YAW_SPRITE_RUNTIME };`
+    `${source}\nreturn { YAW_MEDIA_CONTRACT, YAWIndexedDBMediaStore, YAWHttpMediaSource, YAWEndpointMediaStore, YAWMediaRepository, YAW_ASSET_BUNDLE_V1, YAW_TILESET_PACK_V1, YAW_TILESET_RUNTIME, YAW_SPRITE_PACK_V1, YAW_SPRITE_RUNTIME, YAW_AUDIO_PACK_V1, YAW_AUDIO_RUNTIME };`
   )(
     globalObject,
     window,
@@ -896,7 +937,48 @@ asyncTest('Narrative hooks receive a fresh frozen public envelope', async () => 
   MODULE_SYSTEM.registerHook('onSceneBeat', payload => received.push(payload), 0, 'narrator-b');
   await MODULE_SYSTEM.executePublicHook('onSceneBeat', envelope);
   assertEqual(received.length, 2, 'Both narrative hooks should run');
-  assert(received[0] !== received[1] && received[0] !== envelope, 'Each hook should receive its own copied envelope');
+    assert(received[0] !== received[1] && received[0] !== envelope, 'Each hook should receive its own copied envelope');
+});
+
+asyncTest('Action Outcome V1 publishes only frozen serializable post-commit data', async () => {
+  const outcomes = new Function(`${actionOutcomesContent}\nreturn YAW_ACTION_OUTCOMES;`)();
+  const received = [];
+  const moduleSystem = {
+    async executePublicHook(event, envelope) {
+      received.push({ event, envelope });
+    }
+  };
+  const app = {
+    dayCount: 3,
+    timeHour: 14,
+    combatState: { active: true, round: 2, turnIndex: 4 },
+    _unitSelectionId(unit) { return unit.id; }
+  };
+  const envelope = await outcomes.publish(app, {
+    action: 'core:fight',
+    mode: 'combat',
+    result: 'success',
+    actors: [{ id: 'actor-1', name: 'Private actor name' }],
+    targets: [{ id: 'target-1', name: 'Private target name' }],
+    costs: [{ kind: 'hunger', amount: 3 }],
+    effects: [{ kind: 'condition', amount: -7 }],
+    detail: {
+      model: 'safe-model-id',
+      apiKey: 'must-not-appear',
+      nested: { authorizationHeader: 'must-not-appear-either' }
+    }
+  }, moduleSystem);
+  assertEqual(received.length, 1, 'One post-commit hook should be published');
+  assertEqual(received[0].event, 'onActionCommitted', 'The public action hook name should be stable');
+  assert(received[0].envelope === envelope, 'Publish should return the exact frozen envelope sent to the public hook boundary');
+  assert(Object.isFrozen(envelope) && Object.isFrozen(envelope.detail) && Object.isFrozen(envelope.time), 'Action outcomes should be deeply frozen');
+  assertEqual(envelope.schema, 'yaw-action-outcome-v1', 'Action outcome schema should be explicit');
+  assertEqual(envelope.actors.join(','), 'actor-1', 'Actor objects should collapse to opaque ids');
+  assertEqual(envelope.targets.join(','), 'target-1', 'Target objects should collapse to opaque ids');
+  const serialized = JSON.stringify(envelope);
+  assertNotContains(serialized, 'Private actor name', 'Action outcomes should not expose actor object fields');
+  assertNotContains(serialized, 'must-not-appear', 'Action outcomes should remove credential-shaped detail fields');
+  assertNotContains(serialized.toLowerCase(), 'authorizationheader', 'Action outcomes should remove nested authorization-shaped fields');
 });
 
 asyncTest('UI Contribution V1 is permissioned bounded frozen and removed with its owner', async () => {
@@ -6296,6 +6378,10 @@ test('Action UI helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_ACTION_UI.icon(key)', 'App action icon wrapper should delegate to the helper');
   assertContains(buildContent, "'src/core/action-rules.js'", 'Action rules helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/action-rules.js'") < buildContent.indexOf("'src/core/app.js'"), 'Action rules helper should load before app.js');
+  assertContains(buildContent, "'src/core/action-outcomes.js'", 'Action Outcome V1 should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/action-outcomes.js'") < buildContent.indexOf("'src/core/app.js'"), 'Action Outcome V1 should load before app emitters');
+  assertContains(actionOutcomesContent, "SCHEMA: 'yaw-action-outcome-v1'", 'Action Outcome V1 should expose a stable schema');
+  assertNotContains(actionOutcomesContent, 'Math.random', 'Action outcome ids should not use ambient randomness');
   assertContains(actionRulesContent, 'const YAW_ACTION_RULES = {', 'Action rules helper should expose the action rules service');
   assertContains(actionRulesContent, 'actionRatingFromRoll(entry, roll)', 'Action rules helper should own action rating math');
   assertContains(actionRulesContent, 'combatActionRating(app, entry, actor, target = null, purpose =', 'Action rules helper should own combat ratings');
@@ -8901,17 +8987,18 @@ test('Canonical module doctrine matches the implemented package and capability b
   assertContains(doctrine, 'The installer still accepts the older bare `{ manifest, code, assets }` shape', 'Module doctrine should distinguish compatibility input from the authoring format');
   for (const permission of [
     'ui.read', 'media:read', 'scene:add_template', 'scene:read_narrative', 'scene:narrate', 'ai:request', 'ai:provide',
-    'world:add_biome', 'content:add_species', 'content:add_item', 'content:add_quest', 'content:add_template',
+    'world:add_biome', 'world:add_biome_recipe', 'content:add_species', 'content:add_item', 'content:add_equipment', 'content:add_quest', 'content:add_template',
     'content:add_locale', 'content:add_creation_option', 'content:add_action_variant',
-    'mechanics:add_resource_profile', 'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'
+    'mechanics:add_resource_profile', 'mechanics:add_status_effect', 'mechanics:add_restraint_profile', 'mechanics:add_action_profile', 'mechanics:add_body_profile',
+    'mechanics:add_combat_technique', 'mechanics:add_recovery_mode'
   ]) {
     assertContains(moduleSystemContent, `'${permission}'`, `Runtime should declare permission ${permission}`);
     assertContains(doctrine, `\`${permission}\``, `Module doctrine should document permission ${permission}`);
   }
   for (const event of [
-    'onMapGenerate', 'onEncounterStart', 'onCombatAction', 'onDigestionTick', 'onSubActionExecute',
+    'onMapGenerate', 'onEncounterStart', 'onEncounterResolved', 'onAutonomousEvent', 'onCombatAction', 'onDigestionTick', 'onSubActionExecute',
     'onDefeat', 'onDefeatEncounterSettled', 'onPlayerState', 'onRegenerate', 'onPlayerMove',
-    'onGameStart', 'onGameLoad', 'onGameSave', 'onTick', 'onSceneBeat',
+    'onGameStart', 'onGameLoad', 'onGameSave', 'onTick', 'onActionCommitted', 'onSceneBeat',
     'onSceneExchangeClosed', 'onContentPolicyChanged'
   ]) {
     assertContains(moduleSystemContent, `${event}: []`, `Runtime should declare hook ${event}`);
@@ -10361,6 +10448,17 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     executeHook(event, ...args) {
       hooks.push({ event, payload: args[0], args });
       return Promise.resolve();
+    },
+    executePublicHook(event, envelope) {
+      const freeze = value => {
+        if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+        Object.freeze(value);
+        Object.values(value).forEach(freeze);
+        return value;
+      };
+      const payload = freeze(JSON.parse(JSON.stringify(envelope)));
+      hooks.push({ event, payload, args: [payload] });
+      return Promise.resolve();
     }
   };
   const math = Object.create(Math);
@@ -10368,7 +10466,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${spritePackV1Content}\n${spriteRuntimeContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${recoveryModesContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${balanceSystemContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${resourceLedgerContent}\n${combatTechniqueContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${companionBehaviorContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${itemRegistryContent}\n${itemEffectsContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questContractContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${contentAccessContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${spritePackV1Content}\n${spriteRuntimeContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${recoveryModesContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${balanceSystemContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${resourceLedgerContent}\n${combatTechniqueContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${actionOutcomesContent}\n${statusEffectsContent}\n${restraintsContent}\n${actionProfilesContent}\n${bodyMassContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${companionBehaviorContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${itemRegistryContent}\n${itemEffectsContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questContractContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${contentAccessContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -10846,6 +10944,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
         'ui.tutorial.lesson.combat.title': 'Combat Turns',
         'ui.tutorial.lesson.combat.content': 'Combat follows the visible turn order. Manual companions wait for your choice; autonomous companions choose through the same legal action rules. Skip and Flee remain available when no target works.',
         'ui.tutorial.combat.content': 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Select actors, mark targets, choose an intent, then commit group plans. Each intent owns its reach: social actions can cross rows, while physical attempts may fail and explain why in the Scene Feed.',
+        'recovery.riseGhost': 'Rise as Ghost',
         'structure.notEnterable': 'There is no interior to enter here.',
         'capacity.tooFull': '{actor} tries, but {owner} {container} is too full for {target}.',
         'target.manyToManyActionDone': '{actors} act together with {targets}: {results}'
@@ -10856,6 +10955,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
         'ui.tutorial.lesson.combat.title': 'Turnos de combate',
         'ui.tutorial.lesson.combat.content': 'El combate sigue el orden visible. Los companeros manuales esperan tu eleccion; los autonomos eligen con las mismas reglas legales. Saltar y Huir siguen disponibles cuando ningun objetivo funciona.',
         'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Hablar, Comer, Jugar, Alimentar o Huir. Selecciona actores, marca objetivos, elige una intencion y confirma planes grupales. Cada intencion tiene su propio alcance: las acciones sociales pueden cruzar filas, mientras que los intentos fisicos pueden fallar y explicarse en la Scene Feed.',
+        'recovery.riseGhost': 'Levantarse como fantasma',
         'structure.notEnterable': 'No hay un interior para entrar aqui.',
         'capacity.tooFull': '{actor} lo intenta, pero no hay espacio para {target} en {owner} {container}.',
         'target.manyToManyActionDone': '{actors} actuan juntos con {targets}: {results}',
@@ -10873,6 +10973,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   App.showExplorationActions = function() {};
   App.autoSave = async function() {};
   App._pruneUnreferencedWorldStore = async function() { return 0; };
+  App.settings.combatPacing = options.combatPacing || 'instant';
   return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners, moduleSystem, content: appWindow.__testContent, window: appWindow, showExplorationActions };
 }
 
@@ -11592,6 +11693,227 @@ test('Resource Ledger V1 bounds renewal spending and dormant unknown state', () 
   assertEqual(ledger.state(unit, 'core:nurse').current, 1, 'Renewal should grant only the authored amount at the authored interval');
 });
 
+test('Status Effect V1 is built before combat status processing and app normalization', () => {
+  assertContains(buildContent, "'src/core/status-effects.js'", 'Status Effect V1 should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/status-effects.js'") < buildContent.indexOf("'src/core/combat-status.js'"), 'Status profiles should load before combat status processing');
+  assert(buildContent.indexOf("'src/core/status-effects.js'") < buildContent.indexOf("'src/core/app.js'"), 'Status profiles should load before app normalization and action resolution');
+});
+
+test('Status Effect V1 bounds data-only profiles stacking periodic effects and restrictions', () => {
+  const registry = new Function('window', `${statusEffectsContent}\nreturn YAW_STATUS_EFFECTS;`)({});
+  const profile = registry.register('status-pack', 'webbed', {
+    label: 'Webbed',
+    labelKey: 'status-pack.status.webbed',
+    domains: ['combat', 'feast'],
+    duration: { default: 2, max: 5 },
+    stacking: { mode: 'stack', max: 2 },
+    persistence: 'combat',
+    restriction: 'skip-turn',
+    periodic: { stat: 'condition', amount: -2 },
+    cureTags: ['cutting']
+  });
+  assert(Object.isFrozen(profile) && Object.isFrozen(profile.duration), 'Status profiles should be deeply frozen');
+  const unit = { id: 'target', name: 'Target', CPun: 20, MPun: 20, status: {} };
+  registry.apply(unit, profile.key, { turns: 2, source: 'test' });
+  registry.apply(unit, profile.key, { turns: 3, source: 'test' });
+  assertEqual(unit.status[profile.key].stacks, 2, 'Stacking profiles should clamp at the authored maximum');
+  assertEqual(unit.status[profile.key].turns, 3, 'Stacking should retain the longest bounded duration');
+  const reason = registry.skipTurn({ _label(_key, fallback, vars) { return fallback.replace('{name}', vars.name).replace('{status}', vars.status); } }, unit);
+  assertContains(reason, 'Webbed', 'Skip-turn restrictions should provide the safe status label');
+  registry.processRound(unit);
+  assertEqual(unit.CPun, 16, 'Periodic condition should apply amount times stack and power');
+  assertEqual(unit.status[profile.key].turns, 2, 'Generic round processing should decrement once');
+  registry.clearCombat([unit]);
+  assertEqual(unit.status[profile.key], undefined, 'Combat-persistent module statuses should clear at combat exit');
+
+  let rejected = false;
+  try {
+    registry.register('status-pack', 'unsafe', {
+      onTick() {},
+      periodic: { stat: 'inventory', amount: 1000 }
+    });
+  } catch (error) {
+    rejected = /unsupported field|periodic.stat|serializable/.test(error.message);
+  }
+  assertEqual(rejected, true, 'Executable callbacks and unsupported state mutations should reject registration');
+});
+
+test('Action Resolver V1 is built after resources and statuses and before interaction dispatch', () => {
+  assertContains(buildContent, "'src/core/action-profiles.js'", 'Action Resolver V1 should be included in SCRIPT_ORDER');
+  assertContains(buildContent, "'src/core/restraints.js'", 'Restraint Relationship V1 should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/resource-ledger.js'") < buildContent.indexOf("'src/core/action-profiles.js'"), 'Resources should load before action profiles');
+  assert(buildContent.indexOf("'src/core/status-effects.js'") < buildContent.indexOf("'src/core/action-profiles.js'"), 'Statuses should load before action profiles');
+  assert(buildContent.indexOf("'src/core/restraints.js'") < buildContent.indexOf("'src/core/action-profiles.js'"), 'Restraint relationships should load before action profiles');
+  assert(buildContent.indexOf("'src/core/action-profiles.js'") < buildContent.indexOf("'src/core/interaction-dispatch.js'"), 'Action profiles should load before shared dispatch');
+});
+
+test('Restraint Relationship V1 tracks source ownership pull movement expiry and release', () => {
+  const statuses = new Function('window', `${statusEffectsContent}\nreturn YAW_STATUS_EFFECTS;`)({});
+  const restraints = new Function('window', 'YAW_STATUS_EFFECTS', `${restraintsContent}\nreturn YAW_RESTRAINTS;`)({}, statuses);
+  const source = { id: 'holder', name: 'Holder', CPun: 20, combatRow: 'front', status: {} };
+  const target = { id: 'held', name: 'Held', CPun: 20, combatRow: 'back', status: {} };
+  const app = {
+    player: source,
+    party: [source],
+    creatures: [target],
+    _unitSelectionId(unit) { return unit.id; }
+  };
+  const applied = restraints.apply(app, source, target, 'core:grab', { turns: 2 });
+  assertEqual(applied.sourceId, 'holder', 'A restraint should retain only the opaque source identity');
+  assertEqual(restraints.active(app, target, { source }).length, 1, 'Source-owned relationship should be queryable for Pull authorization');
+  assert(target.status.grabbed, 'Restraint presentation should be mediated through its registered status profile');
+  const pull = restraints.pull(app, source, target);
+  assertEqual(pull.moved, true, 'Pull should move a held target toward the source row');
+  assertEqual(target.combatRow, 'front', 'Pull should use bounded combat-row state');
+  restraints.tick(app);
+  assertEqual(restraints.active(app, target).length, 1, 'Relationship should remain until its declared duration expires');
+  source.CPun = 0;
+  restraints.tick(app);
+  assertEqual(restraints.active(app, target).length, 0, 'A downed source should release breakable restraints');
+  assertEqual(target.status.grabbed, undefined, 'Release should remove the mediated status when no relationship still needs it');
+});
+
+test('Action Resolver V1 owns deterministic data-only checks costs effects and outcomes', () => {
+  const ledger = new Function('window', `${resourceLedgerContent}\nreturn YAW_RESOURCE_LEDGER;`)({});
+  const statuses = new Function('window', `${statusEffectsContent}\nreturn YAW_STATUS_EFFECTS;`)({});
+  const restraints = new Function('window', 'YAW_STATUS_EFFECTS', `${restraintsContent}\nreturn YAW_RESTRAINTS;`)({}, statuses);
+  const actions = new Function(
+    'window',
+    'YAW_RESOURCE_LEDGER',
+    'YAW_STATUS_EFFECTS',
+    'YAW_RESTRAINTS',
+    'YAW_ACTION_OUTCOMES',
+    'YAW_RECRUITMENT_FLOW',
+    `${actionProfilesContent}\nreturn YAW_ACTION_PROFILES;`
+  )({}, ledger, statuses, restraints, new Function(`${actionOutcomesContent}\nreturn YAW_ACTION_OUTCOMES;`)(), new Function('window', `${recruitmentFlowContent}\nreturn YAW_RECRUITMENT_FLOW;`)({}));
+  ledger.register('action-pack', 'web', { label: 'web reserve', capacity: 3 });
+  statuses.register('action-pack', 'webbed', {
+    label: 'Webbed',
+    duration: { default: 2, max: 5 },
+    restriction: 'skip-turn'
+  });
+  const profile = actions.register('action-pack', 'webPull', {
+    label: 'Web Pull',
+    modes: ['exploration', 'combat'],
+    scope: 'target',
+    relations: ['hostile'],
+    check: { actorStat: 'str', targetStat: 'spd', modifier: 5 },
+    costs: [{ resource: 'action-pack:web', amount: 1 }],
+    effects: [{ type: 'status', target: 'target', profile: 'action-pack:webbed', turns: 2, power: 1 }]
+  });
+  assert(Object.isFrozen(profile) && Object.isFrozen(profile.effects), 'Action profiles should be deeply frozen');
+  const actor = { id: 'actor', name: 'Actor', CPun: 20, MPun: 20, str: 15, resourceLedger: {} };
+  const target = { id: 'target', name: 'Target', CPun: 20, MPun: 20, spd: 5, disposition: 'enemy', status: {} };
+  ledger.grant(actor, 'action-pack:web', 2);
+  const app = {
+    DISPOSITION: { ENEMY: 'enemy', FRIENDLY: 'friendly', PARTY: 'party' },
+    party: [actor],
+    location: { x: 0, y: 0 },
+    combatState: { active: false },
+    _unitSelectionId(unit) { return unit.id; },
+    _explorationActionRoll(_namespace, unit) { return unit === actor ? 0.9 : 0.1; },
+    _label(_key, fallback) { return fallback; }
+  };
+  const result = actions.resolve(app, profile.key, { mode: 'exploration', actor, target });
+  assertEqual(result.ok, true, 'A valid data-only action should commit');
+  assertEqual(result.success, true, 'Seeded stat contest should decide success');
+  assertEqual(ledger.state(actor, 'action-pack:web').current, 1, 'Committed action should spend its declared resource exactly once');
+  assert(target.status['action-pack:webbed'], 'Successful action should apply its declared status through the core registry');
+  assert(Object.isFrozen(result.outcome), 'Committed action should produce an immutable outcome');
+  assertEqual(result.outcome.actors[0], 'actor', 'Outcome should expose an opaque actor id');
+  assertEqual(result.outcome.targets[0], 'target', 'Outcome should expose an opaque target id');
+
+  let callbackRejected = false;
+  try {
+    actions.register('action-pack', 'unsafe', { onResolve() {} });
+  } catch (error) {
+    callbackRejected = /unsupported field/.test(error.message);
+  }
+  assertEqual(callbackRejected, true, 'Action profiles should reject executable resolver callbacks');
+  let crossOwnerRejected = false;
+  try {
+    actions.register('action-pack', 'crossOwner', {
+      costs: [{ resource: 'other-pack:secret', amount: 1 }]
+    });
+  } catch (error) {
+    crossOwnerRejected = /owned by the module/.test(error.message);
+  }
+  assertEqual(crossOwnerRejected, true, 'Naming another module resource should not grant authority over it');
+});
+
+test('Core Seduce is an appetite-gated Spirit recruitment action that withdraws both combatants', () => {
+  const ledger = new Function('window', `${resourceLedgerContent}\nreturn YAW_RESOURCE_LEDGER;`)({});
+  const statuses = new Function('window', `${statusEffectsContent}\nreturn YAW_STATUS_EFFECTS;`)({});
+  const restraints = new Function('window', 'YAW_STATUS_EFFECTS', `${restraintsContent}\nreturn YAW_RESTRAINTS;`)({}, statuses);
+  const recruitment = new Function('window', `${recruitmentFlowContent}\nreturn YAW_RECRUITMENT_FLOW;`)({});
+  const actions = new Function(
+    'window',
+    'YAW_RESOURCE_LEDGER',
+    'YAW_STATUS_EFFECTS',
+    'YAW_RESTRAINTS',
+    'YAW_ACTION_OUTCOMES',
+    'YAW_RECRUITMENT_FLOW',
+    `${actionProfilesContent}\nreturn YAW_ACTION_PROFILES;`
+  )({}, ledger, statuses, restraints, new Function(`${actionOutcomesContent}\nreturn YAW_ACTION_OUTCOMES;`)(), recruitment);
+  const actor = { id: 'seducer', name: 'Seducer', CPun: 20, MPun: 20, CPle: 20, MPle: 20, appetite: 4 };
+  const target = { id: 'candidate', name: 'Candidate', CPun: 20, MPun: 20, CPle: 5, MPle: 20, wis: 1, disposition: 'enemy' };
+  const app = {
+    player: actor,
+    party: [actor],
+    creatures: [target],
+    DISPOSITION: { ENEMY: 'enemy', FRIENDLY: 'friendly', PARTY: 'party' },
+    combatState: { active: true, round: 1, currentTurn: 0 },
+    _isCorpse() { return false; },
+    _normalizeUnit() {},
+    _unitSelectionId(unit) { return unit.id; },
+    _combatStateRoll(_namespace, unit) { return unit === actor ? 0.9 : 0.1; },
+    _label(_key, fallback) { return fallback; }
+  };
+  actor.appetite = 3;
+  assertEqual(actions.availability(app, 'core:seduce', actor, target, 'combat').reason, 'appetite', 'Below-threshold appetite should keep Seduce unavailable');
+  actor.appetite = 4;
+  const result = actions.resolve(app, 'core:seduce', { mode: 'combat', actor, target });
+  assertEqual(result.success, true, 'Current Spirit plus appetite should resolve against target Wisdom deterministically');
+  assertEqual(target.disposition, 'friendly', 'Successful Seduce should use the core recruitment-ready transition');
+  assertEqual(target.recruitReady, true, 'Successful target should be eligible for normal post-combat recruitment');
+  assertEqual(actor.fledCombat, true, 'Seduce should withdraw the actor from the remaining encounter');
+  assertEqual(target.fledCombat, true, 'Seduce should withdraw the target from the remaining encounter');
+  assertEqual(app.party.includes(target), false, 'Seduce should not bypass party capacity by auto-transferring the target');
+});
+
+test('Body Mass Ledger V1 conserves pieces regrowth and corpse consumption without stat penalties', () => {
+  assertContains(buildContent, "'src/core/body-mass.js'", 'Body Mass Ledger V1 should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/body-mass.js'") < buildContent.indexOf("'src/core/app.js'"), 'Body mass normalization should load before app unit and corpse paths');
+  const mass = new Function('window', `${bodyMassContent}\nreturn YAW_BODY_MASS;`)({});
+  const profile = mass.register('body-pack', 'renewable', {
+    label: 'Renewable body',
+    massPerSize: 30,
+    minimumViablePercent: 20,
+    renewable: true,
+    piecePercents: [10, 20],
+    regrowth: { trigger: 'digestion', every: 2, amount: 3 },
+    corpseYieldPercent: 100
+  });
+  const unit = { id: 'body-unit', name: 'Body Unit', species: 'slime', size: 4, str: 12, MPun: 80, bodyProfileKey: profile.key };
+  const app = { dayCount: 2, timeHour: 6, _unitSelectionId(value) { return value.id; }, SPECIES_BODY_PROFILES: {} };
+  const state = mass.ensure(app, unit);
+  assertEqual(state.maximum, 120, 'Maximum mass should derive deterministically from size and the profile');
+  const piece = mass.removePiece(app, unit, 10, { reason: 'fixture-piece' });
+  assertEqual(piece.mass, 12, 'Piece mass should be an allowed percentage of the stable maximum');
+  assert(Object.isFrozen(piece) && Object.isFrozen(piece.transaction), 'Pieces and transactions should be immutable');
+  assertEqual(unit.bodyMass.current, 108, 'Removing a piece should debit conserved living mass once');
+  assertEqual(unit.str, 12, 'Mass V1 should not silently apply balance-gated permanent stat loss');
+  mass.tick(app, unit, 'digestion', 1);
+  assertEqual(unit.bodyMass.current, 108, 'Regrowth should wait for the authored interval');
+  mass.tick(app, unit, 'digestion', 1);
+  assertEqual(unit.bodyMass.current, 111, 'Renewable regrowth should credit only the authored amount');
+  const corpse = { ...unit, kind: 'remains', size: 4 };
+  mass.toCorpse(app, corpse);
+  const transfer = mass.consumeCorpse(corpse, 1, 4);
+  assertEqual(transfer.before - transfer.after, transfer.mass, 'Corpse consumption should conserve the debited mass');
+  assertEqual(corpse.corpseMassRemaining, corpse.corpseMassMaximum - transfer.mass, 'Corpse ledger should retain remaining conserved mass');
+});
+
 test('Combat Technique V1 is built before combat variants reach and resolution', () => {
   assertContains(buildContent, "'src/core/combat-techniques.js'", 'Combat technique registry should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/combat-techniques.js'") < buildContent.indexOf("'src/core/sub-actions.js'"), 'Combat techniques should load before contextual variant orchestration');
@@ -11642,7 +11964,8 @@ test('Combat Technique V1 bounds profiles and resolves equipment reach area dama
 test('Recovery Mode V1 bounds profiles localization and shrine restrictions', () => {
   const registry = new Function('window', `${recoveryModesContent}\nreturn YAW_RECOVERY_MODES;`)({});
   assertEqual(registry.available().length, 2, 'Core should provide immediate regeneration and ghost pilgrimage');
-  assertEqual(registry.profile('core:regenerate').resolution, 'immediate', 'Default recovery should remain immediate');
+  assertEqual(registry.profile(registry.DEFAULT_KEY).key, 'core:ghost', 'Ghost pilgrimage should be the default core recovery');
+  assertEqual(registry.profile('core:regenerate').resolution, 'immediate', 'Home regeneration should remain available as a bounded profile');
   assertEqual(registry.profile('core:ghost').resolution, 'shrine', 'Ghost recovery should require a shrine journey');
   const profile = registry.register('test-recovery', 'pilgrimage', {
     label: 'Moon pilgrimage',
@@ -12128,6 +12451,505 @@ test('Module resource profiles are permissioned owned bounded and dormant on unl
   assertEqual(api.resources.read(unit, 'sap'), null, 'Dormant state should not remain an executable capability while its owner is unloaded');
 });
 
+test('Module biome recipes are permissioned same-owner deterministic declarations removed on unload', () => {
+  const modules = loadModuleSystemForTest();
+  let denied = false;
+  try {
+    modules.createModAPI('denied-world', { permissions: [] }).registerBiomeRecipe('edge', {
+      biome: 'mistwood',
+      mode: 'boundary'
+    });
+  } catch (error) {
+    denied = /permission/.test(error.message);
+  }
+  assertEqual(denied, true, 'Biome recipes should require an explicit permission');
+
+  const api = modules.createModAPI('world-module', {
+    permissions: ['world:add_biome', 'world:add_biome_recipe']
+  });
+  api.addBiome({ id: 'mistwood', name: 'Mistwood', danger: 3 });
+  const profile = api.registerBiomeRecipe('edge', {
+    biome: 'mistwood',
+    mode: 'boundary',
+    weight: 25,
+    minDistance: 3,
+    maxDistance: 60,
+    replaces: ['forest'],
+    salt: 'edge-v1'
+  });
+  assertEqual(profile.key, 'world-module:edge', 'Recipe identity should be owner qualified');
+  assertEqual(profile.biome, 'mistwood', 'Recipe should target the same owner biome');
+  assert(Object.isFrozen(modules._testBiomeRecipes.profile(profile.key)), 'Active recipe should be immutable');
+
+  let foreignRejected = false;
+  try {
+    api.registerBiomeRecipe('foreign', { biome: 'core-biome', mode: 'procedural' });
+  } catch (error) {
+    foreignRejected = /same module/.test(error.message);
+  }
+  assertEqual(foreignRejected, true, 'A recipe must not gain authority over another owner biome');
+  modules.unloadModule('world-module');
+  assertEqual(modules._testBiomeRecipes.profile(profile.key), null, 'Unload should remove the active owned recipe');
+});
+
+test('Moddable Core V1 fixture composes bounded public contracts and unloads cleanly', () => {
+  const packageData = JSON.parse(fs.readFileSync(MODDABLE_CORE_V1_FIXTURE, 'utf8'));
+  const modules = loadModuleSystemForTest();
+  const manifest = modules._normalizeManifest(packageData.module.manifest);
+  const api = modules.createModAPI(manifest.id, manifest);
+  new Function('MODS', packageData.module.code)(api);
+  const app = modules._testApp;
+  assert(app.biomes.fixture_mire, 'Fixture should contribute its owned biome');
+  assert(modules._testBiomeRecipes.profile('yaw_moddable_core_fixture:mire_edge'), 'Fixture should contribute a deterministic biome recipe');
+  assert(modules._testResourceLedger.profile('yaw_moddable_core_fixture:silk'), 'Fixture should contribute an owned resource');
+  assert(modules._testStatusEffects.profile('yaw_moddable_core_fixture:webbed'), 'Fixture should contribute an owned status');
+  assert(modules._testRestraints.profile('yaw_moddable_core_fixture:silk_hold'), 'Fixture should contribute an owned restraint');
+  assert(modules._testActionProfiles.profile('yaw_moddable_core_fixture:silkSnare'), 'Fixture should contribute a bounded resolver action');
+  assert(modules._testBodyMass.profile('yaw_moddable_core_fixture:moth_body'), 'Fixture should contribute body mass rules');
+  assert(modules._testCombatTechniques.profile('yaw_moddable_core_fixture:threadedStrike'), 'Fixture should contribute a resource-compatible technique');
+  assert(modules._testRecoveryModes.profile('yaw_moddable_core_fixture:cocoon'), 'Fixture should contribute a recovery mode');
+  modules.unloadModule(manifest.id);
+  assertEqual(app.biomes.fixture_mire, undefined, 'Unload should remove fixture biome definition');
+  assertEqual(modules._testActionProfiles.profile('yaw_moddable_core_fixture:silkSnare'), null, 'Unload should remove fixture mechanics');
+  assertEqual(modules._testRecoveryModes.profile('yaw_moddable_core_fixture:cocoon'), null, 'Unload should remove the fixture exclusive mode');
+});
+
+test('Biome Recipe V1 reclassifies only new matching tiles and keeps materialized geography stable', () => {
+  const { App, window } = loadAppForCombat(() => 0.5);
+  const recipes = window.YAW_BIOME_RECIPES;
+  const pinned = App.getTile(2, 2);
+  const pinnedBiome = pinned.biome;
+  const candidateBase = App.getBaseTile(24, 24);
+  App.biomes.mistwood_test = {
+    id: 'mistwood_test',
+    name: 'Mistwood Test',
+    danger: 4,
+    descriptions: ['Test mist.']
+  };
+  recipes.register('fixture-world', 'procedural', {
+    biome: 'mistwood_test',
+    mode: 'procedural',
+    weight: 100,
+    replaces: [candidateBase.biome],
+    minDistance: 1,
+    maxDistance: 100,
+    salt: 'fixture-v1'
+  });
+  recipes.register('fixture-world', 'portal', {
+    biome: 'mistwood_test',
+    mode: 'portal',
+    weight: 100,
+    replaces: [candidateBase.biome]
+  });
+  assertEqual(App.getTile(2, 2).biome, pinnedBiome, 'Enabling a recipe must not rewrite an already materialized tile');
+  const generated = App.getTile(24, 24);
+  assertEqual(generated.biome, 'mistwood_test', 'A new matching tile should apply the deterministic procedural recipe');
+  assertEqual(generated.biomeRecipe, 'fixture-world:procedural', 'Materialized tiles should record the recipe identity');
+  const portalOnlyBase = App.getBaseTile(25, 24);
+  const portalOnly = recipes.apply({
+    ...App,
+    biomes: App.biomes
+  }, portalOnlyBase);
+  assert(portalOnly.biome !== 'mistwood_test' || portalOnly.biomeRecipe !== 'fixture-world:portal', 'Portal declarations must not auto-place terrain');
+});
+
+test('World Scaling V1 increases bounded danger and rewards by distance biome and cave depth', () => {
+  const { App, window } = loadAppForCombat(() => 0.5);
+  App.biomes.safe_test = { danger: 1 };
+  App.biomes.danger_test = { danger: 4 };
+  const origin = window.YAW_WORLD_SCALING.profile(App, { x: 0, y: 0, biome: 'safe_test' }, 1);
+  const distant = window.YAW_WORLD_SCALING.profile(App, { x: 40, y: 0, biome: 'danger_test' }, 1);
+  const cave = window.YAW_WORLD_SCALING.profile(App, {
+    x: 40,
+    y: 0,
+    biome: 'danger_test',
+    caveDepth: 4
+  }, 1);
+  assert(distant.difficulty > origin.difficulty, 'Distance and biome danger should raise bounded difficulty');
+  assert(cave.rewardMultiplier > distant.rewardMultiplier, 'Cave depth should increase the reward profile');
+  assertEqual(cave.difficulty, 5, 'World difficulty should remain bounded at five');
+  assert(Object.isFrozen(cave), 'Scaling profiles should be immutable serializable snapshots');
+});
+
+test('Structure-bound action profiles stay unavailable away from their declared structures', () => {
+  const { App, window } = loadAppForCombat(() => 0.5);
+  const actor = makeUnit('Caretaker', { id: 'structure-actor' });
+  App.player = actor;
+  App.party = [actor];
+  App.location = { x: 0, y: 0 };
+  const tile = App.getTile(0, 0);
+  tile.structure = 'shrine';
+  const profile = window.YAW_ACTION_PROFILES.register('fixture-structure', 'offer', {
+    label: 'Leave Offering',
+    modes: ['exploration'],
+    scope: 'self',
+    relations: ['self'],
+    requirements: { structures: ['shrine'] },
+    effects: [{ type: 'stat', target: 'actor', stat: 'spirit', amount: 1 }]
+  });
+  assertEqual(window.YAW_ACTION_PROFILES.availability(App, profile, actor, actor, 'exploration').ok, true, 'Declared structure should satisfy the bounded action requirement');
+  tile.structure = 'camp';
+  assertEqual(window.YAW_ACTION_PROFILES.availability(App, profile, actor, actor, 'exploration').reason, 'structure', 'Other structures should not expose the interaction');
+});
+
+test('Encounter Outcome V1 is frozen redacted and emitted only after combat resolves', () => {
+  const { App, hooks } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'encounter-player' });
+  const enemy = makeUnit('Wolf', {
+    id: 'encounter-wolf',
+    species: 'wolf',
+    disposition: App.DISPOSITION.ENEMY
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState.active = true;
+  App.combatState.round = 3;
+  App.combatState.xpEarned = 12;
+  App.combatState.sceneExchangeId = 'combat-fixture';
+  App.endCombat('disengage');
+  const emitted = hooks.filter(entry => entry.event === 'onEncounterResolved');
+  assertEqual(emitted.length, 1, 'Combat completion should publish exactly one resolved encounter boundary');
+  const outcome = emitted[0].payload;
+  assertEqual(outcome.result, 'disengage', 'Encounter result should preserve the committed resolution');
+  assertEqual(outcome.round, 3, 'Encounter outcome should snapshot the resolved round before state cleanup');
+  assertEqual(outcome.xpEarned, 12, 'Encounter outcome should snapshot bounded earned XP');
+  assert(Object.isFrozen(outcome) && Object.isFrozen(outcome.participants), 'Encounter outcome and participant list should be frozen');
+  assert(!JSON.stringify(outcome).includes('CPun'), 'Encounter hooks should not expose live combat statistics');
+  assert(!Object.values(outcome.participants[0]).some(value => typeof value === 'object'), 'Participant summaries should contain no live object references');
+});
+
+test('Dismissed recruits enter bounded deterministic autonomy with remembered not omniscient player knowledge', () => {
+  const { App, window, hooks } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'autonomy-player' });
+  const recruit = makeUnit('Former Scout', {
+    id: 'autonomy-recruit',
+    disposition: App.DISPOSITION.PARTY,
+    wis: 12
+  });
+  App.player = player;
+  App.party = [player, recruit];
+  App.location = { x: 0, y: 0 };
+  const tile = App.getTile(0, 0);
+  App.creatures = [];
+  tile.creatures = [];
+  assertEqual(App._dismissPartyMemberConfirmed(1), true, 'Confirmed dismissal should complete');
+  const dismissed = App.creatures.find(unit => unit.id === recruit.id);
+  assert(dismissed?.autonomousActor?.active, 'Dismissed recruit should retain an active persistent autonomy record');
+  assertEqual(dismissed.autonomousActor.knowledge.player.x, 0, 'Dismissal should remember only the actually observed player location');
+
+  delete dismissed.autonomousActor.knowledge.player;
+  dismissed.autonomousActor.nextStepAt = 1;
+  App.location = { x: 100, y: 100 };
+  App.dayCount = 100;
+  App.timeHour = 0;
+  const changes = window.YAW_AUTONOMOUS_ACTORS.tick(App);
+  assert(changes.length > 0, 'An overdue dismissed recruit should process at least one coarse step');
+  assert(changes.length <= window.YAW_AUTONOMOUS_ACTORS.MAX_STEPS_PER_TICK, 'Long elapsed time should use a bounded number of coarse steps');
+  assert(!changes.some(change => change.intent === 'seek-player'), 'An actor without a sighting must not seek the player by omniscience');
+  assert(dismissed.autonomousActor.ledger.length <= window.YAW_AUTONOMOUS_ACTORS.MAX_LEDGER, 'Autonomy event history should remain bounded');
+  assert(hooks.filter(entry => entry.event === 'onAutonomousEvent').length === changes.length, 'Each committed coarse step should emit one frozen public event');
+
+  const occurrences = [...App.worldMap.values()]
+    .flatMap(worldTile => worldTile.creatures || [])
+    .filter(unit => unit.id === recruit.id);
+  assertEqual(occurrences.length, 1, 'Autonomous travel must preserve one stable actor identity across tiles');
+});
+
+test('Perception V1 distinguishes visible large targets from concealed small targets deterministically', () => {
+  const { App, window } = loadAppForCombat(() => 0);
+  const observer = makeUnit('Observer', { id: 'observer', wis: 12 });
+  const large = makeUnit('Large Target', { id: 'large-target', size: 12, concealment: 0 });
+  const hidden = makeUnit('Hidden Target', { id: 'hidden-target', size: 1, concealment: 20 });
+  const visible = window.YAW_AUTONOMOUS_ACTORS.perception(App, observer, large, { x: 2, y: 2, distance: 0 });
+  const concealed = window.YAW_AUTONOMOUS_ACTORS.perception(App, observer, hidden, { x: 2, y: 2, distance: 2, moving: false });
+  assertEqual(visible.observed, true, 'Large nearby targets should be observable');
+  assertEqual(concealed.observed, false, 'Small concealed distant targets should remain hidden when the deterministic score fails');
+  assert(Object.isFrozen(visible) && Object.isFrozen(concealed), 'Perception results should be immutable snapshots');
+});
+
+test('Audio Pack V1 accepts owned semantic cues and rejects executable or TTS channels', () => {
+  const packRuntime = new Function('window', `${audioPackV1Content}\nreturn YAW_AUDIO_PACK_V1;`)({});
+  const resources = [{
+    id: 'audio.hit',
+    mimeType: 'audio/ogg',
+    byteLength: 1200,
+    role: 'audio'
+  }];
+  const pack = packRuntime.normalizePresentation({
+    type: 'yaw-audio-pack',
+    version: 1,
+    id: 'fixture.audio',
+    name: 'Fixture Audio',
+    cues: {
+      'combat.action': { resourceId: 'audio.hit', volume: 0.6, cooldownMs: 100 }
+    }
+  }, { resources });
+  assertEqual(pack.cues['combat.action'][0].resourceId, 'audio.hit', 'Audio cue should retain only an owned resource identity');
+  assert(Object.isFrozen(pack) && Object.isFrozen(pack.cues['combat.action']), 'Audio pack declarations should be immutable');
+  let ttsRejected = false;
+  try {
+    packRuntime.normalizePresentation({
+      type: 'yaw-audio-pack',
+      version: 1,
+      id: 'unsafe.audio',
+      name: 'Unsafe Audio',
+      tts: { prompt: 'speak' },
+      cues: { 'combat.action': { resourceId: 'audio.hit' } }
+    }, { resources });
+  } catch (error) {
+    ttsRejected = /unsupported field/.test(error.message);
+  }
+  assertEqual(ttsRejected, true, 'Audio Pack V1 must not contain AI, prompt, or TTS generation channels');
+});
+
+asyncTest('Audio runtime leases owner media internally and returns no resource URL to gameplay callers', async () => {
+  const { YAW_AUDIO_RUNTIME } = loadMediaSystemForTest();
+  YAW_AUDIO_RUNTIME.clear?.();
+  const released = [];
+  const repository = {
+    async ownerMetadata() {
+      return {
+        presentations: [{
+          type: 'yaw-audio-pack',
+          version: 1,
+          id: 'fixture.runtime.audio',
+          name: 'Runtime Audio',
+          cues: { 'encounter.start': { resourceId: 'start.ogg' } }
+        }]
+      };
+    },
+    async listOwner() {
+      return [{ descriptor: { id: 'start.ogg', mimeType: 'audio/ogg', byteLength: 500, role: 'audio' } }];
+    },
+    async acquire(owner, resourceId) {
+      assertEqual(owner, 'audio-module', 'Runtime should acquire only from the owning module catalog');
+      assertEqual(resourceId, 'start.ogg', 'Runtime should acquire only the declared cue resource');
+      return { leaseId: 'lease-audio', url: 'blob:private-audio', resourceId };
+    },
+    release(owner, leaseId) { released.push({ owner, leaseId }); }
+  };
+  await YAW_AUDIO_RUNTIME.activateModule('audio-module', { repository });
+  const result = YAW_AUDIO_RUNTIME.play('encounter.start');
+  assertEqual(result.ok, true, 'Resolved cue should be accepted even when this test environment has no Audio element');
+  assertEqual(Object.prototype.hasOwnProperty.call(result, 'url'), false, 'Gameplay-facing playback result must not expose the leased media URL');
+  YAW_AUDIO_RUNTIME.deactivateModule('audio-module', { repository });
+  assertEqual(released[0].leaseId, 'lease-audio', 'Module unload should release the internal audio lease');
+});
+
+test('Combat Event Pacing V1 follows bounded reading speed and supports explicit instant presentation', () => {
+  const scheduled = [];
+  const pacing = new Function(
+    'window',
+    'setTimeout',
+    'clearTimeout',
+    `${combatPacingContent}\nreturn YAW_COMBAT_PACING;`
+  )({}, (callback, delay) => {
+    scheduled.push({ callback, delay });
+    return scheduled.length;
+  }, () => {});
+  const app = {
+    settings: { combatPacing: 'readable', combatReadSpeed: 20 },
+    log: [{ text: 'A sufficiently descriptive automatic combat event resolves.' }],
+    combatState: { active: true }
+  };
+  let advanced = 0;
+  pacing.advance(app, () => { advanced++; });
+  assertEqual(advanced, 0, 'Readable automatic events should wait before advancing');
+  assert(scheduled[0].delay >= 250 && scheduled[0].delay <= 2400, 'Readable delay should remain bounded');
+  scheduled[0].callback();
+  assertEqual(advanced, 1, 'Scheduled presentation should advance exactly once');
+  app.settings.combatPacing = 'instant';
+  pacing.advance(app, () => { advanced++; });
+  assertEqual(advanced, 2, 'Instant pacing should advance without a timer');
+  assertEqual(pacing.delayMs(app, 'anything', { instant: true }), 0, 'An explicitly instant presentation should bypass delay regardless of reading speed');
+});
+
+test('Module equipment uses existing slots bounded stats and declarative technique tags', () => {
+  const modules = loadModuleSystemForTest();
+  const app = modules._testApp;
+  let denied = false;
+  try {
+    modules.createModAPI('denied-equipment', { permissions: [] }).addEquipment({
+      id: 'glove',
+      name: 'Glove',
+      slot: 'hands',
+      equipBonus: { str: 1 }
+    });
+  } catch (error) {
+    denied = /permission/.test(error.message);
+  }
+  assertEqual(denied, true, 'Equipment should require a permission separate from ordinary items');
+  const api = modules.createModAPI('equipment-module', { permissions: ['content:add_equipment'] });
+  const definition = api.addEquipment({
+    id: 'web_gauntlet',
+    name: 'Web Gauntlet',
+    slot: 'hands',
+    equipBonus: { Figh: 1, str: 2 },
+    techniqueTags: ['web-launcher'],
+    value: 65
+  });
+  assertEqual(definition.id, 'equipment-module:web_gauntlet', 'Equipment identity should use the owner namespace');
+  assertEqual(definition.type, 'equipment', 'Equipment should normalize to the distinct mechanical type');
+  assertEqual(definition.stackable, false, 'Equipment should never become a stackable ordinary item');
+  assertEqual(definition.equipBonus.str, 2, 'Bounded stat bonuses should remain declarative data');
+  assertEqual(definition.techniqueTags[0], 'web-launcher', 'Technique tags should be available to Combat Technique V1');
+  assert(Object.isFrozen(definition), 'Registered equipment definitions should be immutable');
+  let unsafeRejected = false;
+  try {
+    api.addEquipment({
+      id: 'unsafe',
+      name: 'Unsafe',
+      slot: 'hands',
+      equipBonus: { str: 1 },
+      equipEffect: 'arbitrary-callback'
+    });
+  } catch (error) {
+    unsafeRejected = /unsupported field/.test(error.message);
+  }
+  assertEqual(unsafeRejected, true, 'Equipment should reject arbitrary effect channels');
+  modules.unloadModule('equipment-module');
+  assertEqual(modules._testItemRegistry.definition(app, definition.id).id, undefined, 'Module unload should remove the live equipment capability');
+});
+
+test('Module status effects are permissioned owned data-only and removed safely on unload', () => {
+  const modules = loadModuleSystemForTest();
+  const app = modules._testApp;
+  const unit = { id: 'status-target', name: 'Status Target', CPun: 20, MPun: 20, status: {} };
+  app.party = [unit];
+  let denied = false;
+  try {
+    modules.createModAPI('denied-status', { permissions: [] }).registerStatusEffect('webbed', {
+      restriction: 'skip-turn'
+    });
+  } catch (error) {
+    denied = /permission/.test(error.message);
+  }
+  assertEqual(denied, true, 'Modules should need the explicit status-effect permission');
+
+  const api = modules.createModAPI('status-module', { permissions: ['mechanics:add_status_effect'] });
+  const profile = api.registerStatusEffect('webbed', {
+    label: 'Webbed',
+    domains: ['combat'],
+    duration: { default: 2, max: 4 },
+    restriction: 'skip-turn'
+  });
+  assertEqual(profile.key, 'status-module:webbed', 'Public status registration should return a namespaced key');
+  modules._testStatusEffects.apply(unit, profile.key, { turns: 2, source: 'fixture' });
+  assert(unit.status[profile.key], 'Registered status should be applicable only through the core registry');
+  modules.unloadModule('status-module');
+  assertEqual(modules._testStatusEffects.profile(profile.key), null, 'Module unload should remove its active status definition');
+  assertEqual(unit.status[profile.key], undefined, 'Module unload should remove temporary status state owned by the missing provider');
+});
+
+test('Module action profiles are permissioned namespaced data-only and removed on unload', () => {
+  const modules = loadModuleSystemForTest();
+  let denied = false;
+  try {
+    modules.createModAPI('denied-action', { permissions: [] }).registerActionProfile('focus', {
+      scope: 'self',
+      relations: ['self']
+    });
+  } catch (error) {
+    denied = /permission/.test(error.message);
+  }
+  assertEqual(denied, true, 'Modules should need the explicit action-profile permission');
+  const api = modules.createModAPI('action-module', { permissions: ['mechanics:add_action_profile'] });
+  const profile = api.registerActionProfile('steady', {
+    label: 'Steady',
+    modes: ['combat'],
+    scope: 'self',
+    relations: ['self'],
+    effects: [{ type: 'stat', target: 'actor', stat: 'spirit', amount: 2 }]
+  });
+  assertEqual(profile.key, 'action-module:steady', 'Public action registration should return a namespaced key');
+  assert(Object.isFrozen(modules._testActionProfiles.profile(profile.key)), 'Runtime action definition should remain immutable');
+  modules.unloadModule('action-module');
+  assertEqual(modules._testActionProfiles.profile(profile.key), null, 'Module unload should remove the owned action capability');
+});
+
+test('Module restraint profiles are permissioned owned and remove active relationships on unload', () => {
+  const modules = loadModuleSystemForTest();
+  const app = modules._testApp;
+  const source = { id: 'source', name: 'Source', CPun: 20, status: {} };
+  const target = { id: 'target', name: 'Target', CPun: 20, status: {} };
+  app.player = source;
+  app.party = [source];
+  app.creatures = [target];
+  app._unitSelectionId = unit => unit.id;
+  let denied = false;
+  try {
+    modules.createModAPI('denied-restraint', { permissions: [] }).registerRestraintProfile('vine', {
+      statusProfile: 'core:restrained'
+    });
+  } catch (error) {
+    denied = /permission/.test(error.message);
+  }
+  assertEqual(denied, true, 'Modules should need the explicit restraint-profile permission');
+  const api = modules.createModAPI('restraint-module', { permissions: ['mechanics:add_restraint_profile'] });
+  const profile = api.registerRestraintProfile('vine', {
+    label: 'Vine held',
+    kind: 'snare',
+    statusProfile: 'core:restrained',
+    duration: 3,
+    breakOnSourceDown: false
+  });
+  modules._testRestraints.apply(app, source, target, profile.key);
+  assertEqual(modules._testRestraints.active(app, target).length, 1, 'Core should own an active relationship created from the module profile');
+  modules.unloadModule('restraint-module');
+  assertEqual(modules._testRestraints.profile(profile.key), null, 'Unload should remove the owned restraint definition');
+  assertEqual(modules._testRestraints.active(app, target).length, 0, 'Unload should remove active relationships whose definition disappeared');
+});
+
+test('Module body profiles bind only to same-module species and leave saved ledgers data-only', () => {
+  const modules = loadModuleSystemForTest();
+  const app = modules._testApp;
+  app.biomes = {};
+  let denied = false;
+  try {
+    modules.createModAPI('denied-body', { permissions: [] }).registerBodyProfile('slime', {
+      renewable: true,
+      regrowth: { trigger: 'rest', every: 1, amount: 1 }
+    });
+  } catch (error) {
+    denied = /permission/.test(error.message);
+  }
+  assertEqual(denied, true, 'Modules should need the explicit body-profile permission');
+  const api = modules.createModAPI('body-module', {
+    permissions: ['mechanics:add_body_profile', 'content:add_species']
+  });
+  const profile = api.registerBodyProfile('slime', {
+    massPerSize: 20,
+    minimumViablePercent: 20,
+    renewable: true,
+    piecePercents: [10],
+    regrowth: { trigger: 'rest', every: 2, amount: 1 }
+  });
+  api.addSpecies({
+    id: 'body_slime',
+    name: 'Body Slime',
+    profile: { bodyProfile: profile.key }
+  });
+  assertEqual(app.SPECIES_BODY_PROFILES.body_slime, profile.key, 'Same-module species should bind to its owned body profile');
+  const unit = { id: 'slime-unit', species: 'body_slime', size: 3 };
+  modules._testBodyMass.ensure(app, unit);
+  assertEqual(unit.bodyMass.maximum, 60, 'Bound species should initialize from the owned body profile');
+  let crossOwnerRejected = false;
+  try {
+    api.addSpecies({
+      id: 'foreign_body',
+      name: 'Foreign Body',
+      profile: { bodyProfile: 'other-module:body' }
+    });
+  } catch (error) {
+    crossOwnerRejected = /same module/.test(error.message);
+  }
+  assertEqual(crossOwnerRejected, true, 'Naming another module body profile should not grant authority');
+  modules.unloadModule('body-module');
+  assertEqual(modules._testBodyMass.profile(profile.key), null, 'Unload should remove the live profile');
+  assertEqual(unit.bodyMass.current, 60, 'Unload should not erase or reinterpret saved mass data');
+});
+
 test('Module combat techniques are permissioned namespaced owned and removed with queued work on unload', () => {
   const modules = loadModuleSystemForTest();
   const app = modules._testApp;
@@ -12198,8 +13020,8 @@ test('Module recovery modes are permissioned owned and safely fall back on unloa
   app.closeIntentMenu = () => { app._recoveryMenuClosed = true; };
   modules.unloadModule('recovery-module');
   assertEqual(modules._testRecoveryModes.profile(profile.key), null, 'Module unload should remove its active recovery profile');
-  assertEqual(app.settings.recoveryMode, 'core:regenerate', 'Module unload should restore the default recovery setting');
-  assertEqual(app.defeatState.recoveryModeKey, 'core:regenerate', 'An in-progress owned journey should fall back to the default recovery mode');
+  assertEqual(app.settings.recoveryMode, 'core:ghost', 'Module unload should restore the default recovery setting');
+  assertEqual(app.defeatState.recoveryModeKey, 'core:ghost', 'An in-progress owned journey should fall back to the default recovery mode');
   assertEqual(app.defeatState.recoveryPhase, 'prompt', 'An unavailable journey should return to an explicit recovery prompt');
   assertEqual(app.defeatState.status, 'dead', 'An unavailable journey should no longer leave the player in ghost state');
   assertEqual(app._recoveryMenuClosed, true, 'Unloading the active recovery owner should close transient recovery UI');
@@ -13838,7 +14660,7 @@ test('Defeat ends combat into a durable recovery state', () => {
   assertContains(elements.get('scene-title').textContent, 'Defeat', 'Defeat should render a recovery title');
   assertNotContains(elements.get('scene-description').innerHTML, 'App.regenerateFromDefeat()', 'Defeat presentation should not embed recovery action controls');
   assertEqual(elements.get('mobile-scene-sheet').classList.contains('rich-content'), false, 'Defeat mobile scene should not use the fixed rich-content sheet over recovery controls');
-  assertContains(elements.get('desktop-context-belt').innerHTML, 'Regenerate', 'Defeat should offer regeneration in the desktop command belt');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'Rise as Ghost', 'Default defeat should offer the ghost pilgrimage in the desktop command belt');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), 'defeat-recovery', 'Defeat desktop command belt should identify the recovery surface');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), 'recovery', 'Defeat desktop command belt should identify recovery command mode');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="regenerate"', 'Defeat desktop command belt should expose Regenerate structurally');
@@ -13848,7 +14670,7 @@ test('Defeat ends combat into a durable recovery state', () => {
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-mode="recovery" data-command-control="end-game"', 'Defeat desktop End Game should identify recovery command mode');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), 'defeat-recovery', 'Defeat mobile command belt should identify the recovery surface');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-mode'), 'recovery', 'Defeat mobile command belt should identify recovery command mode');
-  assertContains(elements.get('mobile-explore-actions').innerHTML, 'Regenerate', 'Defeat should offer regeneration in the mobile command belt');
+  assertContains(elements.get('mobile-explore-actions').innerHTML, 'Rise as Ghost', 'Default defeat should offer the ghost pilgrimage in the mobile command belt');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-mode="recovery" data-command-control="regenerate"', 'Defeat mobile Regenerate should identify recovery command mode');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), true, 'Defeat recovery should show the mobile command belt');
   assertEqual(Boolean(elements.get('mobile-control-belt').hidden), false, 'Defeat recovery should unhide the mobile command belt');
@@ -15330,9 +16152,9 @@ test('Defeat renders recovery choices instead of return confirmation', () => {
   assert(!defeated.App.pendingConfirm, 'Defeat should not open an in-app confirmation dialog');
   assertEqual(defeated.App.defeatState.pending, true, 'Defeat should preserve a pending recovery state');
   assertNotContains(defeated.elements.get('scene-description').innerHTML, 'App.regenerateFromDefeat()', 'Defeat recovery should keep controls out of presentation content');
-  assertContains(defeated.elements.get('desktop-context-belt').innerHTML, 'Regenerar', 'Defeat recovery should localize regenerate action in the desktop command belt');
+  assertContains(defeated.elements.get('desktop-context-belt').innerHTML, 'Levantarse como fantasma', 'Defeat recovery should localize the default ghost action in the desktop command belt');
   assertContains(defeated.elements.get('desktop-context-belt').innerHTML, 'Terminar partida', 'Defeat recovery should localize end-game action in the desktop command belt');
-  assertContains(defeated.elements.get('mobile-explore-actions').innerHTML, 'Regenerar', 'Defeat recovery should localize regenerate action in the mobile command belt');
+  assertContains(defeated.elements.get('mobile-explore-actions').innerHTML, 'Levantarse como fantasma', 'Defeat recovery should localize the default ghost action in the mobile command belt');
   assertEqual(shownScreen, null, 'Defeat should not immediately return to menu');
   defeated.App.endDefeatedRun();
   assertEqual(shownScreen, 'menu', 'End Game should return to the menu');
@@ -16061,9 +16883,10 @@ test('Combat actions emit module hook payloads', () => {
   App.combatState.active = true;
   App.nextTurn = function() {};
   App.executeAction('fight', 0);
-  assertEqual(hooks.length, 1, 'Combat action should emit one module hook');
-  assertEqual(hooks[0].event, 'onCombatAction');
-  assertEqual(hooks[0].payload.action, 'fight');
+  const combatHooks = hooks.filter(entry => entry.event === 'onCombatAction');
+  assertEqual(combatHooks.length, 1, 'Combat action should emit one legacy combat hook');
+  assertEqual(combatHooks[0].payload.action, 'fight');
+  assertEqual(hooks.filter(entry => entry.event === 'onActionCommitted').length, 1, 'Combat action should also emit one immutable post-commit outcome');
 });
 
 test('Traversal and encounter start emit module hook payloads', () => {
@@ -27428,6 +28251,35 @@ test('Merchant stock refreshes every three in-game days', () => {
   assertEqual(merchant.stockLastRefreshDay, 3, 'Refresh day should update');
 });
 
+test('Finite merchants preserve scarcity while authored services use explicit restock intervals', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const finite = makeUnit('Road Peddler', {
+    disposition: App.DISPOSITION.MERCHANT,
+    stockLifecycle: 'finite',
+    stockTable: 'general',
+    stock: [{ name: 'Healing Herb', price: 10, qty: 0 }],
+    stockLastRefreshDay: 0
+  });
+  App.dayCount = 30;
+  App._refreshMerchantStock(finite);
+  assertEqual(finite.stock[0].qty, 0, 'Finite procedural stock should remain depleted regardless of elapsed days');
+
+  const service = makeUnit('Shrine Supplier', {
+    disposition: App.DISPOSITION.MERCHANT,
+    stockLifecycle: 'authored-restock',
+    stockRestockDays: 7,
+    stockTable: 'general',
+    stock: [{ name: 'Healing Herb', price: 10, qty: 0 }],
+    stockLastRefreshDay: 0
+  });
+  App.dayCount = 6;
+  App._refreshMerchantStock(service);
+  assertEqual(service.stock[0].qty, 0, 'Authored service should respect its explicit interval');
+  App.dayCount = 7;
+  App._refreshMerchantStock(service);
+  assert(service.stock.some(item => item.qty > 0), 'Authored service should replenish from its designed table at the interval');
+});
+
 test('Default merchant restock quantities are deterministic by world seed and merchant identity', () => {
   const lowRandom = loadAppForCombat(() => 0);
   const highRandom = loadAppForCombat(() => 0.99);
@@ -31575,7 +32427,7 @@ test('Save slot status feedback uses display slot labels', async () => {
   assertEqual(recovery.App.defeatState.pending, true, 'Loaded fallen player should enter pending defeat recovery');
   assertEqual(recovery.App.combatState.active, false, 'Loaded fallen player should not resume combat');
   assertNotContains(recovery.elements.get('scene-description').innerHTML, 'App.regenerateFromDefeat()', 'Load recovery should keep regeneration controls out of presentation content');
-  assertContains(recovery.elements.get('desktop-context-belt').innerHTML, 'Regenerar', 'Load recovery should render the localized regeneration choice in the desktop command belt');
+  assertContains(recovery.elements.get('desktop-context-belt').innerHTML, 'Levantarse como fantasma', 'Load recovery should render the localized default ghost choice in the desktop command belt');
 });
 
 test('Settings destructive confirmations localize', async () => {

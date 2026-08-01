@@ -198,6 +198,45 @@ Fallbacks stay within the pack and cannot cycle. A missing match falls through
 to older packs and the existing emoji. Artwork never changes hit boxes,
 targeting, state, abilities, or saves.
 
+## Audio Pack V1
+
+One code-free `yaw-audio-pack` presentation may map semantic game events to
+audio resources owned by the target module's installed asset bundle:
+
+```json
+{
+  "type": "yaw-audio-pack",
+  "version": 1,
+  "id": "example.soundscape",
+  "name": "Example Soundscape",
+  "cues": {
+    "encounter.start": {
+      "resourceId": "audio.encounter.start",
+      "volume": 0.7,
+      "cooldownMs": 500
+    },
+    "combat.action": [
+      { "resourceId": "audio.combat.hit.1", "volume": 0.6 },
+      { "resourceId": "audio.combat.hit.2", "volume": 0.6 }
+    ]
+  }
+}
+```
+
+A pack has 1–128 semantic events and at most eight variants per event. A cue
+contains only `resourceId`, volume 0–1, and an optional cooldown of 0–60,000
+milliseconds. Resources must use a supported packaged audio MIME type. Core
+leases, selects, plays, and releases the resources; gameplay and modules never
+receive the private lease URL through this contract.
+
+Current core events include `encounter.start`, `encounter.victory`,
+`encounter.defeat`, `encounter.flee`, `encounter.disengage`, and
+`combat.action`. Missing cues are silent and never affect mechanics.
+
+Audio Pack V1 contains no callbacks, microphones, speech recognition, prompts,
+AI generation, streaming provider, or TTS channel. Those are intentionally
+outside this phase.
+
 ## Tileset Pack V1
 
 One `yaw-tileset-pack` presentation may appear in a bundle. Atlas resources use

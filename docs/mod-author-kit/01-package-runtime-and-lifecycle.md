@@ -194,6 +194,8 @@ Only these events exist:
 | --- | --- |
 | `onMapGenerate` | observe supported map-generation payload |
 | `onEncounterStart` | observe encounter start |
+| `onEncounterResolved` | frozen Encounter Outcome V1 after combat resolution |
+| `onAutonomousEvent` | frozen coarse Autonomous Actor V1 event |
 | `onCombatAction` | observe committed combat action |
 | `onDigestionTick` | digestion-triggered module work |
 | `onSubActionExecute` | committed Feed/Feast/Play variant outcome |
@@ -206,13 +208,18 @@ Only these events exist:
 | `onGameLoad` | loaded run boundary |
 | `onGameSave` | save notification |
 | `onTick` | time/tick notification |
+| `onActionCommitted` | copied/frozen committed Action Outcome V1 envelope |
 | `onSceneBeat` | copied/frozen committed Scene Beat |
 | `onSceneExchangeClosed` | copied/frozen closed exchange |
 | `onContentPolicyChanged` | posture/category policy replacement |
 
-Hooks do not grant authority over the event they observe. Narrative hooks run
-after deterministic state commits. Save hydration does not replay hooks.
-Unknown hook names reject registration.
+Hooks do not grant authority over the event they observe. Encounter, action,
+and narrative outcome hooks run after deterministic state commits. The
+`onEncounterResolved` envelope contains only a bounded encounter ID, result,
+round, XP total, location summary, and redacted participant summaries; it does
+not expose live combatants. `onAutonomousEvent` reports only the actor's stable
+ID, sequence, time, high-level intent, and committed origin/destination. Save
+hydration does not replay hooks. Unknown hook names reject registration.
 
 ## Ownership and cleanup
 

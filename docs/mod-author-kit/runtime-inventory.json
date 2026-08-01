@@ -45,10 +45,10 @@
     "system.utilities"
   ],
   "hooks": [
-    "onMapGenerate", "onEncounterStart", "onCombatAction", "onDigestionTick",
+    "onMapGenerate", "onEncounterStart", "onEncounterResolved", "onAutonomousEvent", "onCombatAction", "onDigestionTick",
     "onSubActionExecute", "onDefeat", "onDefeatEncounterSettled",
     "onPlayerState", "onRegenerate", "onPlayerMove", "onGameStart",
-    "onGameLoad", "onGameSave", "onTick", "onSceneBeat",
+    "onGameLoad", "onGameSave", "onTick", "onActionCommitted", "onSceneBeat",
     "onSceneExchangeClosed", "onContentPolicyChanged"
   ],
   "speciesProfile": {

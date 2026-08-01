@@ -932,7 +932,9 @@
                 cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
                 partyPlayFightMode: 'nonlethal',
                 inventoryRecovery: 'death-bag',
-                recoveryMode: 'core:regenerate',
+                recoveryMode: 'core:ghost',
+                combatPacing: 'readable',
+                combatReadSpeed: 32,
                 highContrast: false, reducedMotion: false, fontSize: 14
             },
 
@@ -1989,6 +1991,7 @@
                 target.corpseName = target.corpseName || target.name;
                 target.corpseIcon = target.corpseIcon || target.icon;
                 target.decayTurns = target.decayTurns ?? 12;
+                if (typeof YAW_BODY_MASS !== 'undefined') YAW_BODY_MASS.toCorpse(this, target);
                 this._normalizeRemainsRecord(target, {
                     corpseOf: target.id || target.name,
                     displayName: target.corpseName || target.name,
@@ -2128,6 +2131,7 @@
                 unit.size = unit.size || this.SPECIES_SIZE[unit.species] || 4;
                 unit.appetite = unit.appetite || 4;
                 unit.bodyParts = unit.bodyParts || this.SPECIES_DEFAULT_PARTS[unit.species] || [];
+                if (typeof YAW_BODY_MASS !== 'undefined') YAW_BODY_MASS.ensure(this, unit);
                 unit.creationOptions = unit.creationOptions && typeof unit.creationOptions === 'object' && !Array.isArray(unit.creationOptions)
                     ? JSON.parse(JSON.stringify(unit.creationOptions))
                     : {};
@@ -2197,19 +2201,48 @@
                 return '';
             },
 
+            _canObserveUnit(observer, target, context = {}) {
+                return typeof YAW_AUTONOMOUS_ACTORS === 'undefined'
+                    ? true
+                    : YAW_AUTONOMOUS_ACTORS.canObserve(this, observer, target, context);
+            },
+
             _emitModuleHook(event, payload = {}) {
                 if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM.executeHook) {
                     MODULE_SYSTEM.executeHook(event, { ...payload, app: this }).catch(() => {});
                 }
             },
 
+            _emitPublicModuleHook(event, envelope = {}) {
+                if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM.executePublicHook) {
+                    MODULE_SYSTEM.executePublicHook(event, envelope).catch(() => {});
+                }
+            },
+
             _emitCombatAction(action, actor, target, result) {
+                if (typeof YAW_AUDIO_RUNTIME !== 'undefined') {
+                    YAW_AUDIO_RUNTIME.play('combat.action', {
+                        actorId: this._unitSelectionId?.(Array.isArray(actor) ? actor[0] : actor),
+                        targetId: this._unitSelectionId?.(Array.isArray(target) ? target[0] : target)
+                    });
+                }
                 this.emitStoryResult({
                     mode: 'combat',
                     actors: Array.isArray(actor) ? actor : [actor].filter(Boolean),
                     targets: Array.isArray(target) ? target : [target].filter(Boolean),
                     action
                 }, result, { mode: 'combat' });
+                if (typeof YAW_ACTION_OUTCOMES !== 'undefined') {
+                    YAW_ACTION_OUTCOMES.publish(this, {
+                        action: String(action || 'unknown').includes(':') ? String(action) : `core:${String(action || 'unknown')}`,
+                        mode: 'combat',
+                        result: 'committed',
+                        actors: Array.isArray(actor) ? actor : [actor].filter(Boolean),
+                        targets: Array.isArray(target) ? target : [target].filter(Boolean),
+                        summary: typeof result === 'string' ? result : (result?.summary || ''),
+                        detail: { compatibilitySource: 'legacy-combat-emitter' }
+                    }).catch(() => {});
+                }
                 this._emitModuleHook('onCombatAction', { action, actor, target, result });
             },
 
@@ -2540,7 +2573,10 @@
                         YAW_QUEST_CONTRACT.WORLD_CONTENT_KINDS.CREATURE,
                         tile
                     );
-                    const danger = biome.danger || 3;
+                    const worldScale = typeof YAW_WORLD_SCALING !== 'undefined'
+                        ? YAW_WORLD_SCALING.profile(this, tile, biome.danger || 3)
+                        : { difficulty: biome.danger || 3 };
+                    const danger = worldScale.difficulty;
                     const playerMaxDiff = this.player.level <= 3 ? 2 : (this.player.level <= 6 ? 3 : 4);
                     const policyMax = encounterPolicy?.maxDifficulty != null && Number.isFinite(Number(encounterPolicy.maxDifficulty))
                         ? Number(encounterPolicy.maxDifficulty)
@@ -3453,6 +3489,18 @@
                 return YAW_SUB_ACTIONS.register(this, action, subId, config, { owner: 'legacy-runtime', trustedLegacy: true });
             },
             _emitSubAction(action, subId, actor, target, result) {
+                if (!this.combatState?.active && typeof YAW_ACTION_OUTCOMES !== 'undefined') {
+                    YAW_ACTION_OUTCOMES.publish(this, {
+                        action: String(action || 'unknown').includes(':') ? String(action) : `core:${String(action || 'unknown')}`,
+                        variant: String(subId || ''),
+                        mode: 'adventure',
+                        result: 'committed',
+                        actors: [actor].filter(Boolean),
+                        targets: [target].filter(Boolean),
+                        summary: typeof result === 'string' ? result : (result?.summary || ''),
+                        detail: { compatibilitySource: 'legacy-sub-action-emitter' }
+                    }).catch(() => {});
+                }
                 if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM.executeHook) {
                     MODULE_SYSTEM.executeHook('onSubActionExecute', { action, subId, actor, target, result, app: this }).catch(() => {});
                 }
@@ -3592,6 +3640,10 @@
             },
 
             nextTurn() {
+                if (this.combatState.presentationAutomatic && typeof YAW_COMBAT_PACING !== 'undefined') {
+                    this.combatState.presentationAutomatic = false;
+                    return YAW_COMBAT_PACING.advance(this, () => YAW_COMBAT_LIFECYCLE.nextTurn(this));
+                }
                 return YAW_COMBAT_LIFECYCLE.nextTurn(this);
             },
 

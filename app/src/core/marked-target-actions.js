@@ -43,6 +43,33 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 html: `<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"${effectPreview ? ` data-multi-effect-percent="${effectPreview.minPercent === effectPreview.maxPercent ? effectPreview.minPercent : `${effectPreview.minPercent}-${effectPreview.maxPercent}`}" data-multi-target-count="${effectPreview.targetCount}"` : ''} title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`
             };
         });
+        if (primaryActor && singleCreatureTarget && typeof YAW_ACTION_PROFILES !== 'undefined') {
+            const contributed = YAW_ACTION_PROFILES.available(app, {
+                mode: 'exploration',
+                actor: primaryActor,
+                target: singleCreatureTarget
+            }).filter(entry => entry.profile.scope === 'target');
+            const profileButton = profile => {
+                const key = app._escapeHtml(profile.key);
+                const labelText = YAW_ACTION_PROFILES.label(app, profile);
+                const label = app._escapeHtml(labelText);
+                const icon = app._escapeHtml(profile.icon || '✨');
+                const callKey = app._escapeJsString(profile.key);
+                const actionSource = ['desktop', 'desktop-target', 'composer-tray', 'panel-tray', 'mobile-target'].includes(source)
+                    ? 'composer-tray'
+                    : 'target-bar';
+                return `<button class="action-btn contributed-action" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${key}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${label}" aria-label="${label}" onclick="App.resolveExplorationTargetAction('${callKey}',null,'${app._escapeJsString(actionSource)}')"><span class="action-icon" aria-hidden="true">${icon}</span><span class="action-caption">${label}</span></button>`;
+            };
+            if (contributed.length <= 3) {
+                contributed.forEach(entry => buttonEntries.push({ action: entry.profile.key, html: profileButton(entry.profile) }));
+            } else {
+                const moreLabel = app._escapeHtml(app._label('action.contributed.more', 'More actions'));
+                buttonEntries.push({
+                    action: 'contributed-actions',
+                    html: `<details class="contributed-action-menu"><summary class="action-btn" aria-label="${moreLabel}">${moreLabel}</summary><div class="contributed-action-list">${contributed.map(entry => profileButton(entry.profile)).join('')}</div></details>`
+                });
+            }
+        }
         if (singleCorpseTarget) {
             const targetName = singleCorpseTarget.corpseName || singleCorpseTarget.name || app._label('disposition.remains', 'Remains');
             const corpseButton = (labelAction, dispatchAction = labelAction, icon = '', enabled = true, titleText = '') => {

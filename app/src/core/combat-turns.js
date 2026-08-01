@@ -137,10 +137,13 @@ const YAW_COMBAT_TURNS = {
         app._writeCombatRefreshSnapshot();
         const isParty = app.party.includes(currentUnit);
         if (isParty && (currentUnit.name === app.player.name || companionControl === 'manual')) {
+            app.combatState.presentationAutomatic = false;
             app.showActorActions(currentUnit);
         } else if (isParty) {
+            app.combatState.presentationAutomatic = true;
             app.allyTurn(currentUnit);
         } else {
+            app.combatState.presentationAutomatic = true;
             app.enemyTurn(currentUnit);
         }
     },
@@ -176,6 +179,7 @@ const YAW_COMBAT_TURNS = {
                 c.hunger = Math.min(100, (c.hunger || 0) + 3);
             }
         }
+        if (typeof YAW_RESTRAINTS !== 'undefined') YAW_RESTRAINTS.tick(app);
         app._processStatusEffects();
         app._applyTerrainRoundEffects(living);
         app._processDigestion();

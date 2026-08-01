@@ -100,6 +100,8 @@ Every accepted hook name:
 ```text
 onMapGenerate
 onEncounterStart
+onEncounterResolved
+onAutonomousEvent
 onCombatAction
 onDigestionTick
 onSubActionExecute
@@ -112,6 +114,7 @@ onGameStart
 onGameLoad
 onGameSave
 onTick
+onActionCommitted
 onSceneBeat
 onSceneExchangeClosed
 onContentPolicyChanged
@@ -119,9 +122,12 @@ onContentPolicyChanged
 
 Source-independent authoring rule:
 
-- `onSceneBeat(envelope)`, `onSceneExchangeClosed(envelope)`, and
+- `onEncounterResolved(envelope)`, `onAutonomousEvent(envelope)`,
+  `onActionCommitted(envelope)`, `onSceneBeat(envelope)`,
+  `onSceneExchangeClosed(envelope)`, and
   `onContentPolicyChanged(policy)` have bounded copied narration contracts
-  described in `04-ui-scene-narration-ai.md`.
+  described in `01-package-runtime-and-lifecycle.md` and
+  `04-ui-scene-narration-ai.md`.
 - `onGameStart()` and `onGameLoad()` are safe boundaries for clearing
   module-private queues and caches; do not depend on their runtime-bearing
   payload.
@@ -184,8 +190,10 @@ scene:narrate
 ai:request
 ai:provide
 world:add_biome
+world:add_biome_recipe
 content:add_species
 content:add_item
+content:add_equipment
 content:add_quest
 content:add_template
 content:add_locale
@@ -193,6 +201,10 @@ content:add_creation_option
 content:add_action_variant
 content:add_perk_profile
 mechanics:add_resource_profile
+mechanics:add_status_effect
+mechanics:add_restraint_profile
+mechanics:add_action_profile
+mechanics:add_body_profile
 mechanics:add_combat_technique
 mechanics:add_recovery_mode
 ```

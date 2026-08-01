@@ -4,6 +4,21 @@
  */
 
 const YAW_COMBAT_SYNC = {
+    isQueuedParticipant(app, unit) {
+        if (!unit || !app.party.includes(unit) || unit.CPun <= 0) return false;
+        if (typeof app._isCombatQueueUnitValid === 'function' && !app._isCombatQueueUnitValid(unit)) return false;
+        const unitId = app._unitSelectionId?.(unit) || String(unit.id || unit.name || '');
+        return (app.combatState?.turnQueue || []).some(entry => {
+            const queued = entry?.unit || entry;
+            const queuedId = app._unitSelectionId?.(queued) || String(queued?.id || queued?.name || '');
+            return queued === unit || (unitId && queuedId === unitId);
+        });
+    },
+
+    isSelectableParticipant(app, unit) {
+        return Boolean(unit && app.party.includes(unit));
+    },
+
     isParticipant(app, sync, unit) {
         if (!sync || !unit) return false;
         const unitId = app._unitSelectionId?.(unit) || String(unit.id || unit.name || '');
@@ -23,6 +38,7 @@ const YAW_COMBAT_SYNC = {
     },
 
     showMenu(app) {
+        app._sanitizeCombatState?.({ preserveTurn: true });
         const allies = app.party.filter(p => p.CPun > 0 && p.name !== app.player.name);
         if (allies.length === 0) {
             app.log.push({ text: app._label('combat.sync.noAllies', 'No allies available for sync.'), type: 'combat' });
@@ -41,6 +57,7 @@ const YAW_COMBAT_SYNC = {
     },
 
     selectParticipants(app, syncType) {
+        app._sanitizeCombatState?.({ preserveTurn: true });
         const actor = app.activeActor || app._currentCombatActor() || app.player;
         const actorId = app._unitSelectionId(actor);
         app.combatTargetId = null;
@@ -81,7 +98,7 @@ const YAW_COMBAT_SYNC = {
         const validIds = [];
         for (const id of app.syncSelection.participantIds || []) {
             const unit = app.party.find(candidate => app._unitSelectionId(candidate) === id || String(candidate.id || candidate.name) === id);
-            if (unit && unit.CPun > 0) {
+            if (this.isSelectableParticipant(app, unit)) {
                 const unitId = app._unitSelectionId(unit);
                 if (!validIds.includes(unitId)) validIds.push(unitId);
             }
@@ -115,6 +132,7 @@ const YAW_COMBAT_SYNC = {
 
     ensureSlotCompose(app) {
         if (!app.combatState?.active || app.feedSelection?.active) return false;
+        app._sanitizeCombatState?.({ preserveTurn: true });
         const actor = app.activeActor || app._currentCombatActor() || app.player;
         if (!actor || !app.party.includes(actor) || actor.CPun <= 0) return false;
         const actorId = app._unitSelectionId(actor);
@@ -141,7 +159,7 @@ const YAW_COMBAT_SYNC = {
         if (!this.ensureSlotCompose(app)) return false;
         const key = String(id || '');
         const unit = app.party.find(candidate => app._unitSelectionId(candidate) === key || String(candidate.id || candidate.name) === key);
-        if (!unit || unit.CPun <= 0) return false;
+        if (!this.isSelectableParticipant(app, unit)) return false;
         const unitId = app._unitSelectionId(unit);
         const actorId = app.syncSelection.actorId;
         if (unitId !== actorId) {
@@ -228,11 +246,21 @@ const YAW_COMBAT_SYNC = {
         const targets = (command?.targets?.length ? command.targets : [target]).filter((unit, index, list) => unit && list.indexOf(unit) === index);
         if (!targets.length) return false;
         const selectedParticipants = command?.actors?.length ? command.actors : (app._syncParticipants || app._syncSelectedParticipants() || []);
-        const participants = selectedParticipants
-            .filter(unit => unit && unit.CPun > 0);
+        const participants = selectedParticipants.filter(Boolean);
         if (!participants || participants.length < 2) {
             app.log.push({ text: app._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'), type: 'combat' });
             app.renderLog();
+            return false;
+        }
+        const unavailable = participants.find(unit => typeof YAW_COMBAT_PLANNING !== 'undefined'
+            && YAW_COMBAT_PLANNING.unavailableParticipantReason?.(app, unit));
+        if (unavailable) {
+            const failedCommand = command || app._buildPanelInteractionCommand({
+                mode: 'combat', actors: participants, targets, action: syncType,
+                source: 'sync-composer', timing: 'slowest-participant',
+                metadata: { baseAction: app._syncBaseAction(syncType) }
+            });
+            app._reportInvalidCombatCommand?.(failedCommand, 'actor-unavailable');
             return false;
         }
         const queueEntries = participants.map(p => {
@@ -240,10 +268,12 @@ const YAW_COMBAT_SYNC = {
             return index >= 0 ? { index, entry: app.combatState.turnQueue[index] } : null;
         });
         if (queueEntries.some(entry => !entry)) {
-            app.log.push({ text: app._label('combat.sync.failedNoQueue', 'Sync failed! Participants are no longer in the turn queue.'), type: 'combat' });
-            app.renderLog();
-            app.renderParty();
-            app.renderCreatures();
+            const failedCommand = command || app._buildPanelInteractionCommand({
+                mode: 'combat', actors: participants, targets, action: syncType,
+                source: 'sync-composer', timing: 'slowest-participant',
+                metadata: { baseAction: app._syncBaseAction(syncType) }
+            });
+            app._reportInvalidCombatCommand?.(failedCommand, 'actor-unavailable');
             return false;
         }
         let slowestIdx = -1, slowestInit = Infinity;
@@ -326,10 +356,10 @@ const YAW_COMBAT_SYNC = {
         sync.resolved = true;
         const incapacitated = (sync.participants || []).filter(p => !p || p.CPun <= 0 || p.knockedOut || p.fledCombat);
         if (incapacitated.length > 0) {
-            app.log.push({ text: app._label('combat.sync.failedIncapacitated', 'Sync failed! {names} cannot participate.', {
-                names: incapacitated.map(p => p?.name || app._label('ui.unknown', 'Unknown')).join(', ')
-            }), type: 'combat' });
-            app.renderLog();
+            app._reportInvalidCombatCommand?.({
+                mode: 'combat', actors: sync.participants || [], targets: [sync.target].filter(Boolean), action: sync.type,
+                source: 'sync-resolution', metadata: { baseAction: app._syncBaseAction(sync.type) }
+            }, 'actor-unavailable');
             app.nextTurn();
             return;
         }
@@ -337,8 +367,10 @@ const YAW_COMBAT_SYNC = {
         const queuedTargets = (sync.targets?.length ? sync.targets : [sync.target])
             .filter((unit, index, list) => app._isCombatQueueUnitValid(unit) && unit.disposition === app.DISPOSITION.ENEMY && list.indexOf(unit) === index);
         if (!queuedTargets.length || sync.participants.length < 2) {
-            app.log.push({ text: app._label('combat.sync.failedInvalid', 'Sync failed! The target or participants are no longer available.'), type: 'combat' });
-            app.renderLog();
+            app._reportInvalidCombatCommand?.({
+                mode: 'combat', actors: sync.participants || [], targets: [sync.target].filter(Boolean), action: sync.type,
+                source: 'sync-resolution', metadata: { baseAction: app._syncBaseAction(sync.type) }
+            }, 'group-action-unavailable');
             app.nextTurn();
             return;
         }
@@ -453,10 +485,14 @@ const YAW_COMBAT_SYNC = {
                 break;
             }
             case 'sync_flirt': {
-                let totalCharm = sync.participants.reduce((sum, p) => sum + (p.Flir || 0) + (p.cha || 10) * 0.5, 0);
+                const isSeduce = (sync.techniqueKey || sync.plan?.subAction) === 'seduce';
+                let totalCharm = sync.participants.reduce((sum, p) => sum
+                    + (p.Flir || 0)
+                    + (p.cha || 10) * 0.5
+                    + (isSeduce ? (p.Fuck || 0) : 0), 0);
                 if (app.settings.sameSpeciesBonus) {
                     const speciesMatch = sync.participants.filter(p => p.species === sync.target.species).length;
-                    totalCharm += speciesMatch * 3;
+                    totalCharm += speciesMatch * (isSeduce ? 5 : 3);
                 }
                 const resist = (sync.target.wis || 10) + (app._safeRatio(sync.target.CPle, sync.target.MPle) * 10);
                 if (totalCharm > resist * 1.2) {
@@ -465,8 +501,12 @@ const YAW_COMBAT_SYNC = {
                     sync.target.Figh = Math.max(1, (sync.target.Figh || 10) - 2);
                     sync.target.disposition = app.DISPOSITION.FRIENDLY;
                     sync.target.willing = true;
-                    app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
-                    result = app._label('combat.sync.talkConvinced', '{participants} talk {target} into standing down! They are convinced.', {
+                    app._awardCombatXP(isSeduce ? app.XP_REWARDS.seduceEnemy : app.XP_REWARDS.flirtEnemy);
+                    result = app._label(
+                        isSeduce ? 'combat.sync.seduceConvinced' : 'combat.sync.talkConvinced',
+                        isSeduce
+                            ? '{participants} draw {target} into a charged exchange, and their resistance gives way.'
+                            : '{participants} talk with {target} until they choose to stand down.', {
                         participants: participantNames,
                         target: sync.target.name
                     });
@@ -476,7 +516,11 @@ const YAW_COMBAT_SYNC = {
                     sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
                     sync.target.charmed = (sync.target.charmed || 0) + 1;
                     sync.target.Figh = Math.max(1, (sync.target.Figh || 10) - 1);
-                    result = app._label('combat.sync.talkSoftened', '{participants} talk with {target}, softening their guard. Spirit rises to {current}/{max}.', {
+                    result = app._label(
+                        isSeduce ? 'combat.sync.seduceSoftened' : 'combat.sync.talkSoftened',
+                        isSeduce
+                            ? '{participants} draw {target} closer, softening their guard. Spirit rises to {current}/{max}.'
+                            : '{participants} talk with {target}, softening their guard. Spirit rises to {current}/{max}.', {
                         participants: participantNames,
                         target: sync.target.name,
                         current: sync.target.CPle,
@@ -485,7 +529,13 @@ const YAW_COMBAT_SYNC = {
                     const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
-                    result = app._label('combat.sync.talkResisted', "{target} resists the group's combined charm!", { target: sync.target.name });
+                    result = app._label(
+                        isSeduce ? 'combat.sync.seduceResisted' : 'combat.sync.talkResisted',
+                        isSeduce
+                            ? '{target} pulls away from the group’s overture.'
+                            : '{target} resists the group’s combined appeal.',
+                        { target: sync.target.name }
+                    );
                 }
                 break;
             }

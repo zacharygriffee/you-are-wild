@@ -6,13 +6,11 @@
 const YAW_COMBAT_INTENTS = {
     execute(app, action, actor = app.activeActor || app._currentCombatActor()) {
         if (!app.combatState.active) {
-            app.log.push({ text: app._label('combat.notInCombat', 'Not in combat!'), type: 'combat' });
-            app.renderLog();
+            app._reportInvalidCombatCommand?.({ mode: 'combat', actors: [actor || app.player].filter(Boolean), targets: [], action, source: 'combat-intent' }, 'not-in-combat');
             return false;
         }
         if (app.combatState.processing) {
-            app.log.push({ text: app._label('combat.waitForTurn', 'Wait for your turn!'), type: 'combat' });
-            app.renderLog();
+            app._reportInvalidCombatCommand?.({ mode: 'combat', actors: [actor || app._currentCombatActor() || app.player].filter(Boolean), targets: [], action, source: 'combat-intent' }, 'resolving');
             return false;
         }
         const currentEntry = app.combatState.turnQueue[app.combatState.currentTurn];
@@ -20,13 +18,17 @@ const YAW_COMBAT_INTENTS = {
         const isCurrentActor = current && actor && app._unitSelectionId(current) === app._unitSelectionId(actor);
         const isControllable = current && app.party.includes(current) && (current.name === app.player?.name || current.obedient !== false);
         if (!isCurrentActor || !isControllable) {
-            app.log.push({ text: app._label('combat.notYourTurn', 'Not your turn!'), type: 'combat' });
-            app.renderLog();
+            app._reportInvalidCombatCommand?.({ mode: 'combat', actors: [actor || current || app.player].filter(Boolean), targets: [], action, source: 'combat-intent' }, 'not-current-actor');
             return false;
         }
         app.activeActor = current;
         if (action === 'skip') {
             app._clearTransientInteractionState?.();
+            app.nextTurn();
+            return true;
+        }
+        if (current.status?.fear?.turns > 0) {
+            app._reportInvalidCombatCommand?.({ mode: 'combat', actors: [current], targets: [], action, source: 'combat-intent' }, 'actor-unavailable');
             app.nextTurn();
             return true;
         }

@@ -27,7 +27,7 @@ const YAW_COMBAT_ACTIONS = {
     },
 
     syncParticipantButton(app, unit, compact = false) {
-        if (!unit || unit.CPun <= 0) return '';
+        if (!unit || !app.party.includes(unit)) return '';
         const participantPhase = app.syncSelection?.active && app.syncSelection.phase === 'participants';
         const planActive = app._isCombatPlanActive?.() || false;
         const composeAvailable = app.combatState?.active && !app.syncSelection?.active && !app.feedSelection?.active;
@@ -87,21 +87,21 @@ const YAW_COMBAT_ACTIONS = {
             const instantWinTitle = app._escapeHtml(app._label('combat.instantWinTitle', 'Instantly defeat all enemies'));
             buttons.push(`<button class="action-btn" data-command-surface="combat-intents" data-command-mode="combat" data-command-control="instant-win" style="background:var(--accent-warning);color:var(--bg-primary);" title="${instantWinTitle}" aria-label="${instantWinTitle}" onclick="event.stopPropagation();App.instantWin()">⚡ ${instantWinLabel}</button>`);
         }
-        if (enemies.length > 0) {
-            buttons.push(app._combatIntentButton('fight', actor));
-            buttons.push(app._combatIntentButton('flirt', actor));
-            buttons.push(app._combatIntentButton('feast', actor));
-            buttons.push(app._combatIntentButton('fuck', actor));
-        }
         // V1 contributed actions resolve one actor at a time. Do not advertise them
         // while the group composer is selecting a shared built-in intent.
+        let controlProfiles = [];
+        let profiles = [];
+        let profileButton = null;
         if (typeof YAW_ACTION_PROFILES !== 'undefined' && !app.combatPlanSelection?.active) {
-            const profiles = [...YAW_ACTION_PROFILES.profiles.values()]
+            const availableProfiles = [...YAW_ACTION_PROFILES.profiles.values()]
                 .filter(profile => profile.modes.includes('combat'))
+                .filter(profile => !YAW_SUB_ACTIONS?.routesActionProfile?.(profile.key))
                 .filter(profile => profile.scope === 'self'
                     ? YAW_ACTION_PROFILES.availability(app, profile, actor, actor, 'combat').ok
                     : enemies.some(enemy => YAW_ACTION_PROFILES.availability(app, profile, actor, enemy, 'combat').ok));
-            const profileButton = profile => {
+            controlProfiles = availableProfiles.filter(profile => profile.category === 'control');
+            profiles = availableProfiles.filter(profile => profile.category !== 'control');
+            profileButton = profile => {
                 const label = YAW_ACTION_PROFILES.label(app, profile);
                 const key = app._escapeJsString(profile.key);
                 const attrs = `data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="${app._escapeHtml(profile.key)}" data-command-grammar="actor-target-intent" data-command-slot="intent"`;
@@ -109,12 +109,27 @@ const YAW_COMBAT_ACTIONS = {
             };
             if (!compact && profiles.length <= 3) {
                 profiles.forEach(profile => buttons.push(profileButton(profile)));
-            } else {
+            } else if (profiles.length > 0) {
                 const moreLabel = app._escapeHtml(app._label('action.contributed.more', 'More actions'));
                 const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
                 const close = `<button type="button" class="action-btn compact-secondary" data-command-surface="combat-intents" data-command-mode="combat" data-command-control="close-contributed-actions" data-command-slot="exit" aria-label="${closeLabel}" onclick="event.stopPropagation();this.closest('details')?.removeAttribute('open')">${closeLabel}</button>`;
                 buttons.push(`<details class="contributed-action-menu"><summary class="action-btn" aria-label="${moreLabel}">${moreLabel}</summary><div class="contributed-action-list">${profiles.map(profileButton).join('')}${close}</div></details>`);
             }
+        }
+        if (enemies.length > 0) {
+            if (controlProfiles.length > 0) {
+                const fightLabel = app._escapeHtml(app._combatActionLabel?.('fight') || app._uiLabel('fight'));
+                const fightAttrs = 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="fight" data-command-grammar="actor-target-intent" data-command-slot="intent"';
+                const attack = YAW_ACTION_UI.iconButton(app, 'fight', app._actionIcon('fight'), "event.stopPropagation();App.executeCombatIntent('fight')", '', fightAttrs, fightLabel);
+                const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
+                const close = `<button type="button" class="action-btn compact-secondary" data-command-surface="combat-intents" data-command-mode="combat" data-command-control="close-fight-controls" data-command-slot="exit" aria-label="${closeLabel}" onclick="event.stopPropagation();this.closest('details')?.removeAttribute('open')">${closeLabel}</button>`;
+                buttons.push(`<details class="contributed-action-menu fight-control-menu"><summary class="action-btn" ${fightAttrs} aria-label="${fightLabel}">⚔️ ${fightLabel}</summary><div class="contributed-action-list">${attack}${controlProfiles.map(profileButton).join('')}${close}</div></details>`);
+            } else {
+                buttons.push(app._combatIntentButton('fight', actor));
+            }
+            buttons.push(app._combatIntentButton('flirt', actor));
+            buttons.push(app._combatIntentButton('feast', actor));
+            buttons.push(app._combatIntentButton('fuck', actor));
         }
         if (allies.length > 0) {
             const feedClass = app._combatPendingIntent?.() === 'feed' ? 'selected' : '';

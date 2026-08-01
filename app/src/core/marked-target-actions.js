@@ -33,7 +33,8 @@ const YAW_MARKED_TARGET_ACTIONS = {
             const defaultSubAction = app.SUB_ACTIONS[key] ? app._getDefaultSubAction(key) : null;
             const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
             const variantPresentation = String(source || '').startsWith('desktop') ? 'desktop' : '';
-            const handler = ['feed', 'feast', 'fuck'].includes(key)
+            const maturePosture = CONTENT?.preferences?.posture === 'mature' || Number(CONTENT?.preferences?.maxTier || 0) >= 1;
+            const handler = (['feed', 'feast'].includes(key) || (maturePosture && ['flirt', 'fuck'].includes(key)))
                 ? `App.openExplorationSubActionSheet('${key}','${actionSource}','${variantPresentation}')`
                 : defaultSubAction
                 ? `App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')`
@@ -48,7 +49,8 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 mode: 'exploration',
                 actor: primaryActor,
                 target: singleCreatureTarget
-            }).filter(entry => entry.profile.scope === 'target');
+            }).filter(entry => entry.profile.scope === 'target'
+                && !YAW_SUB_ACTIONS?.routesActionProfile?.(entry.profile.key));
             const profileButton = profile => {
                 const key = app._escapeHtml(profile.key);
                 const labelText = YAW_ACTION_PROFILES.label(app, profile);

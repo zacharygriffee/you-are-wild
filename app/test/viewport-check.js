@@ -4114,7 +4114,7 @@ async function checkViewport(browser, name, width, height) {
         latestExchange: read('#desktop-scene-feed-latest .scene-exchange-group.latest'),
         composer: read('#desktop-command-composer'),
         belt: read('#desktop-context-belt'),
-        actionButtons: Array.from(document.querySelectorAll('#desktop-context-belt button')).map(button => {
+        actionButtons: Array.from(document.querySelectorAll('#desktop-context-belt button')).filter(button => !button.closest('details:not([open])')).map(button => {
           const rect = button.getBoundingClientRect();
           return {
             text: button.textContent.trim(),

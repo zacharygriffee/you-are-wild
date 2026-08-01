@@ -271,16 +271,57 @@ const YAW_COMBAT_ACTOR_STATE = {
     sanitize(app, options = {}) {
         if (!app.combatState?.active) return false;
         const preserveTurn = options.preserveTurn !== false;
-        const previousUnit = app.combatState.turnQueue?.[app.combatState.currentTurn]?.unit || null;
+        // During a direct action, the queue can be repaired before the actor
+        // has ever been written into it. Preserve that active actor as the
+        // current turn rather than letting a newly inserted faster unit steal
+        // the unresolved turn.
+        const previousUnit = app.combatState.turnQueue?.[app.combatState.currentTurn]?.unit
+            || app.activeActor
+            || null;
+        const sameUnit = (left, right) => {
+            if (left === right) return true;
+            const leftId = app._unitSelectionId?.(left) || String(left?.id || left?.name || '');
+            const rightId = app._unitSelectionId?.(right) || String(right?.id || right?.name || '');
+            return Boolean(leftId && rightId && leftId === rightId);
+        };
         const validQueue = (app.combatState.turnQueue || [])
-            .filter(entry => entry && app._isCombatQueueUnitValid(entry.unit));
+            .filter(entry => entry && app._isCombatQueueUnitValid(entry.unit))
+            .filter((entry, index, queue) => !queue.slice(0, index).some(other => sameUnit(other.unit, entry.unit)));
+        // A save restore, companion change, or interrupted combat update can leave a
+        // living party member out of the current round. Do not hide their agency:
+        // restore one ordinary turn for every valid combatant while retaining the
+        // existing queue order and removing genuinely invalid entries above.
+        const combatants = [
+            ...(app.party || []),
+            ...(app.creatures || []).filter(unit => unit?.disposition === app.DISPOSITION.ENEMY)
+        ].filter(unit => app._isCombatQueueUnitValid(unit));
+        for (const unit of combatants) {
+            if (validQueue.some(entry => sameUnit(entry.unit, unit))) continue;
+            const entry = {
+                unit,
+                initiative: app._calcInitiative?.(unit) || 0,
+                actedThisRound: false
+            };
+            const insertionIndex = validQueue.findIndex(existing => Number(existing.initiative || 0) < Number(entry.initiative || 0));
+            if (insertionIndex < 0) validQueue.push(entry);
+            else validQueue.splice(insertionIndex, 0, entry);
+        }
         app.combatState.turnQueue = validQueue;
         app.combatState.syncActions = (app.combatState.syncActions || []).map(sync => {
             const participants = (sync.participants || []).filter(unit => app._isCombatQueueUnitValid(unit) && (app.party || []).includes(unit));
             const targets = (sync.targets?.length ? sync.targets : [sync.target])
                 .filter((unit, index, list) => app._isCombatQueueUnitValid(unit) && unit?.disposition === app.DISPOSITION.ENEMY && list.indexOf(unit) === index);
             const target = targets[0] || null;
-            return { ...sync, participants, target, targets };
+            // Queue repair can insert a missing combatant ahead of a prepared
+            // group action. The resolution point belongs to the slowest
+            // participant, not a stale numeric slot, so rebind it by identity.
+            const participantIndexes = participants
+                .map(participant => validQueue.findIndex(entry => sameUnit(entry.unit, participant)))
+                .filter(index => index >= 0);
+            const resolveAtIndex = participantIndexes.length === participants.length
+                ? Math.max(...participantIndexes)
+                : sync.resolveAtIndex;
+            return { ...sync, participants, target, targets, resolveAtIndex };
         }).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved);
         if (validQueue.length === 0) {
             app.combatState.currentTurn = 0;

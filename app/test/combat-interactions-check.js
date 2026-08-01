@@ -326,12 +326,21 @@ async function setupAdventure(page, options = {}) {
 }
 
 async function clickIntentAndTarget(page, action) {
-  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('${action}')"]`).first().click();
+  await chooseCombatIntent(page, '#desktop-context-belt', action);
   const target = page.locator('#enemies-content .compact-tactical-card').first();
   await assert.doesNotReject(() => target.waitFor({ state: 'visible', timeout: 1000 }), `${action} should render a target card`);
   await target.click();
   const confirmCount = await page.locator('#desktop-context-belt button[data-command-control="confirm-targets"]').count();
   assert.strictEqual(confirmCount, 0, `${action} should resolve from target tap without a generic target confirmation`);
+}
+
+async function chooseCombatIntent(page, surface, action) {
+  const visibleIntent = page.locator(`${surface} [data-command-intent="${action}"]:visible`).first();
+  await visibleIntent.click();
+  // Some primary intents expose a safe default plus optional sub-actions in a
+  // details menu. Choose the default only when that menu actually opened.
+  const defaultIntent = page.locator(`${surface} button[onclick*="executeCombatIntent('${action}')"]:visible`).first();
+  if (await defaultIntent.count()) await defaultIntent.click();
 }
 
 async function mobileCombatToolbeltMetrics(page) {
@@ -342,7 +351,10 @@ async function mobileCombatToolbeltMetrics(page) {
     const rects = buttons.map(button => {
       const rect = button.getBoundingClientRect();
       return { width: rect.width, height: rect.height, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
-    }).filter(rect => rect.width > 0 && rect.height > 0);
+    }).filter((rect, index) => {
+      const button = buttons[index];
+      return !button.closest('details:not([open])') && rect.width > 0 && rect.height > 0;
+    });
     const min = (values, fallback = 0) => values.length ? Math.min(...values) : fallback;
     return {
       buttonCount: rects.length,
@@ -568,8 +580,7 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(state.enemyPun, 100, 'Desktop target card body without pending intent should not attack');
   assert.strictEqual(state.combatTargetId, null, 'Desktop target card body without pending intent should not mark');
   assert.strictEqual(state.targetSelection, null, 'Desktop target card body without pending intent should not arm target-pick');
-
-  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await chooseCombatIntent(page, '#desktop-context-belt', 'fight');
   const quickTarget = page.locator('#scene-description .desktop-battle-lane.enemy .micro-tactical-card.targetable');
   assert.strictEqual(await quickTarget.count(), 1, 'Pending one-to-one intent should make the eligible enemy micro card targetable');
   const quickTargetState = await quickTarget.evaluate(card => ({
@@ -625,7 +636,7 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(state.markRowGrammar, 'actor-target-intent', 'Desktop combat Mark row should preserve composer grammar metadata');
   assert.strictEqual(state.markRowSlot, 'target', 'Desktop combat Mark row should identify the target command slot');
 
-  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await chooseCombatIntent(page, '#desktop-context-belt', 'fight');
   state = await page.evaluate(() => ({
     enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
     combatTargetId: App.combatTargetId,
@@ -646,7 +657,7 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(state.commandAction, 'fight', 'Desktop direct Mark + Fight should dispatch the selected intent');
 
   await setupCombat(page);
-  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await chooseCombatIntent(page, '#desktop-context-belt', 'fight');
   await page.locator('#enemies-content .compact-tactical-card').first().click();
   state = await page.evaluate(() => ({
     enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
@@ -717,7 +728,7 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(state.markRowGrammar, 'actor-target-intent', 'Mobile combat Mark row should preserve composer grammar metadata');
   assert.strictEqual(state.markRowSlot, 'target', 'Mobile combat Mark row should identify the target command slot');
 
-  await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await chooseCombatIntent(page, '#mobile-combat-toolbelt', 'fight');
   state = await page.evaluate(() => ({
     enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
     combatTargetId: App.combatTargetId,
@@ -737,7 +748,7 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.deepStrictEqual(state.commandTargetIds, ['enemy-1'], 'Mobile direct Mark + Fight should dispatch the marked enemy id');
 
   await setupCombat(page);
-  await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await chooseCombatIntent(page, '#mobile-combat-toolbelt', 'fight');
   await page.locator('#mobile-creature-strip .mobile-unit-chip').first().click();
   state = await page.evaluate(() => ({
     enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
@@ -922,17 +933,21 @@ async function runContextualVariantComposerFlow(page) {
   assert.strictEqual(state.horizontalOverflow, false, 'Pair previews should remain inside the desktop viewport');
   await page.locator('#desktop-intent-menu [data-command-control="back-variant"]').click();
 
+  await page.evaluate(() => {
+    CONTENT.setPosture('mature');
+    App.renderExplorationActions();
+  });
   await page.locator(`#desktop-context-belt button[onclick*="openExplorationSubActionSheet('fuck','composer-tray','desktop')"]`).click();
   state = await page.evaluate(() => {
     const menu = document.querySelector('#desktop-intent-menu');
     return {
       scopes: Array.from(menu?.querySelectorAll('.action-variant-group') || []).map(group => group.getAttribute('data-command-scope')),
-      selfRoute: (menu?.innerHTML || '').includes("resolveExplorationSelfSubAction('fuck','seduce'"),
-      targetRoute: (menu?.innerHTML || '').includes("resolveExplorationTargetAction('fuck','seduce'")
+      selfRoute: (menu?.innerHTML || '').includes("resolveExplorationSelfSubAction('fuck','fuck'"),
+      targetRoute: (menu?.innerHTML || '').includes("resolveExplorationTargetAction('fuck','fuck'")
     };
   });
   assert.deepStrictEqual(state.scopes, ['self', 'target'], 'Targeted Play should use the same Self and Targets grouping contract');
-  assert.strictEqual(state.selfRoute, true, 'Targeted Play should keep its self Play route inside the submenu');
+  assert.strictEqual(state.selfRoute, true, 'Targeted Play should keep its self route inside the submenu');
   assert.strictEqual(state.targetRoute, true, 'Targeted Play should keep its marked-target route inside the submenu');
   await page.locator('#desktop-intent-menu [data-command-control="back-variant"]').click();
 
@@ -989,8 +1004,12 @@ async function runContextualVariantComposerFlow(page) {
 }
 
 async function runReachabilityMatrix(page) {
+  await page.evaluate(() => {
+    CONTENT.setPosture('sfw');
+    App.defaultSubActions.flirt = 'flirt';
+  });
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
-  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await chooseCombatIntent(page, '#desktop-context-belt', 'fight');
   let target = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
   let attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
@@ -1018,8 +1037,9 @@ async function runReachabilityMatrix(page) {
   assert.strictEqual(state.correction, null, 'Committed unreachable Fight should not create a UI error');
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => CONTENT.setPosture('mature'));
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
-  await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await chooseCombatIntent(page, '#mobile-combat-toolbelt', 'fight');
   target = page.locator('#mobile-creature-strip button[data-command-control="mark-combat-target"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
   attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
@@ -1082,11 +1102,16 @@ async function runReachabilityMatrix(page) {
   assert(state.sceneFeed.includes('out of reach') || state.sceneFeed.includes('close contact'), 'Committed unreachable Feast should fail through Scene Feed');
   assert.strictEqual(state.correction, null, 'Committed unreachable Feast should not create a UI error');
 
+  await page.evaluate(() => {
+    CONTENT.setPosture('sfw');
+    App.defaultSubActions.flirt = 'flirt';
+  });
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
   await clickIntentAndTarget(page, 'flirt');
   state = await page.evaluate(() => ({ enemyPle: App.creatures[0]?.CPle }));
   assert(state.enemyPle > 0, 'Flirt should still target flying back-row enemies because it is not physical reach');
 
+  await page.evaluate(() => CONTENT.setPosture('mature'));
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
   await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fuck')"]`).first().click();
   target = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
@@ -1141,6 +1166,10 @@ async function runMultiEnemyCombatTargetingFlow(page) {
   };
 
   await page.setViewportSize({ width: 1365, height: 768 });
+  await page.evaluate(() => {
+    CONTENT.setPosture('sfw');
+    App.defaultSubActions.flirt = 'flirt';
+  });
   await prepare();
   await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('flirt')"]`).first().click();
   let state = await page.evaluate(() => {
@@ -1201,7 +1230,7 @@ async function runMultiEnemyCombatTargetingFlow(page) {
   assert(state.frontPle > 0, 'Desktop target tap should affect the selected front enemy');
   assert.strictEqual(state.backPle, 0, 'Desktop single target tap should not affect an unselected second enemy');
   assert.strictEqual(state.targetSelection, null, 'Desktop front-row target tap should clear target-pick state');
-  assert.strictEqual(state.commandSource, 'combat-quick-target', 'Desktop target-card confirmation should identify the quick-target source');
+  assert.strictEqual(state.commandSource, 'action-variant-options', 'Desktop Talk target should identify its resolved sub-action source');
   assert.deepStrictEqual(state.commandTargets, ['front-enemy'], 'Desktop target tap should record the selected enemy id');
   assert.strictEqual(state.centerHasIntentControls, false, 'Desktop multi-enemy resolution should keep center free of intent/action controls');
 
@@ -1271,7 +1300,7 @@ async function runMultiEnemyCombatTargetingFlow(page) {
   assert(state.frontPle > 0, 'Mobile target tap should affect the selected front enemy');
   assert.strictEqual(state.backPle, 0, 'Mobile single target tap should not affect an unselected second enemy');
   assert.strictEqual(state.targetSelection, null, 'Mobile front-row target tap should clear target-pick state');
-  assert.strictEqual(state.commandSource, 'combat-quick-target', 'Mobile target-card confirmation should identify the quick-target source');
+  assert.strictEqual(state.commandSource, 'action-variant-options', 'Mobile Talk target should identify its resolved sub-action source');
   assert.deepStrictEqual(state.commandTargets, ['front-enemy'], 'Mobile target tap should record the selected enemy id');
   assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should remain active after direct target resolution');
   assert.strictEqual(state.centerHasIntentControls, false, 'Mobile multi-enemy resolution should keep center free of intent/action controls');
@@ -1309,7 +1338,7 @@ async function runStaleSyncParticipantFlow(page) {
   assert.strictEqual(state.currentActed, false, 'Rejected stale sync should not mark the active actor as acted');
   assert.strictEqual(state.phase, 'target', 'Rejected stale sync should preserve target-pick state for correction');
   assert.deepStrictEqual(state.participantIds, ['player-1', 'ally-1'], 'Rejected stale sync should preserve selected participants for correction');
-  assert(state.lastLog.includes('Participants are no longer in the turn queue'), 'Rejected stale sync should explain the correction');
+  assert(state.lastLog.includes('not in this battle') && state.lastLog.includes('turn order'), 'Rejected stale sync should narrate why the companion cannot join');
 }
 
 async function runCombatSlotGroupComposerFlow(page) {
@@ -1664,13 +1693,15 @@ async function runCombatSlotGroupComposerFlow(page) {
       queued,
       syncCount: App.combatState.syncActions.length,
       planActive: Boolean(App.combatPlanSelection?.active),
-      participants: App._combatPlanActors().map(unit => unit.id || unit.name)
+      participants: App._combatPlanActors().map(unit => unit.id || unit.name),
+      lastLog: App.log[App.log.length - 1]?.text || ''
     };
   });
   assert.strictEqual(state.queued, false, 'Slot group with incapacitated helper should not queue');
   assert.strictEqual(state.syncCount, 0, 'Incapacitated helper should not create a queued action');
   assert.strictEqual(state.planActive, true, 'Incapacitated helper should leave planner state active for correction');
-  assert.deepStrictEqual(state.participants, ['player-1'], 'Incapacitated helper should be removed before queueing');
+  assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Incapacitated helper should remain selected so the failed group attempt can be explained');
+  assert(state.lastLog.includes('down') && state.lastLog.includes('cannot join'), 'Incapacitated helper should fail through narration instead of disappearing from the plan');
 
   await prepare();
   await page.locator(`#party-content button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]`).first().click();
@@ -2400,7 +2431,7 @@ async function runAdventureMarkedTargetFlow(page) {
   assert.strictEqual(trayState.centerHasSentence, false, 'Center tile should not contain the desktop command sentence slot');
   assert.strictEqual(trayState.centerHasActorControls, false, 'Center tile should stay free of actor controls while a target is marked');
 
-  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','flirt','composer-tray')"]`).first().click();
   const resolved = await page.evaluate(() => ({
     targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
     targetsRemaining: App.explorationTargetIds.length,
@@ -2616,7 +2647,7 @@ async function runDesktopCompactCardRoundTripFlow(page) {
   assert(state.sentenceText.includes('Ally') && state.sentenceText.includes('Friendly'), 'Closing desktop Stats should keep the composer sentence visible');
   assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Closing desktop Stats should keep composer target intents visible');
 
-  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','flirt','composer-tray')"]`).first().click();
   state = await page.evaluate(() => ({
     commandAction: App.lastIntentCommand?.action || '',
     commandSubAction: App.lastIntentCommand?.subAction || '',
@@ -2628,7 +2659,7 @@ async function runDesktopCompactCardRoundTripFlow(page) {
     centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.commandAction, 'flirt', 'Desktop compact-card intent should resolve through shared intent dispatch');
-  assert.strictEqual(state.commandSubAction, 'tease', 'Desktop compact-card intent should preserve the selected safe sub-action');
+  assert.strictEqual(state.commandSubAction, 'flirt', 'Desktop compact-card intent should preserve the selected safe sub-action');
   assert.strictEqual(state.commandSource, 'composer-tray', 'Desktop compact-card intent should preserve composer source metadata');
   assert.deepStrictEqual(state.commandActors, ['ally-1', 'scout-1'], 'Desktop compact-card intent should record selected actors');
   assert(state.commandTargets.includes('friendly-1') && state.commandTargets.includes('player-1'), 'Desktop compact-card intent should record mixed party and creature targets');
@@ -2670,7 +2701,7 @@ async function runStaleMarkedActorFlow(page) {
   assert.deepStrictEqual(state.targetIds, ['creature:friendly-1'], 'Stale actor setup should preserve marked creature target');
   assert.strictEqual(state.centerHasActorControls, false, 'Stale actor composer should keep center free of actor controls');
 
-  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','flirt','composer-tray')"]`).first().click();
   state = await page.evaluate(() => ({
     targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
     actorIds: [...App.explorationActorIds],
@@ -2778,7 +2809,7 @@ async function runSelectionSemanticsFlow(page) {
   assert.deepStrictEqual(state.targets, ['creature:friendly-1'], 'Creature focus should not clear or add target marks');
 
   await setupCombat(page);
-  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await chooseCombatIntent(page, '#desktop-context-belt', 'fight');
   state = await page.evaluate(() => {
     const enemyCard = document.querySelector('#enemies-content .unit-card');
     const pick = document.querySelector('#enemies-content button[data-command-control="mark-combat-target"]');
@@ -3216,7 +3247,7 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.hasComposerSource, true, 'Mobile tray should dispatch through the shared composer-tray command source');
   assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls while mobile target tray is active');
 
-  await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).first().click();
+  await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','flirt','composer-tray')"]`).first().click();
   state = await page.evaluate(() => ({
     targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
     targetsRemaining: App.explorationTargetIds.length,
@@ -3346,7 +3377,7 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.targetId, null, 'Mobile variant Back should preserve the absence of a prior marked target');
   await page.locator(`#mobile-combat-toolbelt button[data-command-control="cancel-targeting"]`).first().click();
 
-  await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await chooseCombatIntent(page, '#mobile-combat-toolbelt', 'fight');
   const mobilePick = page.locator('#mobile-creature-strip button[data-command-control="mark-combat-target"]').first();
   await assert.doesNotReject(() => mobilePick.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile combat target mark should render in creature strip');
   state = await page.evaluate(() => {
@@ -3937,7 +3968,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:ally-1'], 'Transaction Back should keep mixed and self targets');
   assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Transaction Back should keep shared composer intents visible');
 
-  await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).click();
+  await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','flirt','composer-tray')"]`).click();
   state = await page.evaluate(() => ({
     action: App.lastIntentCommand?.action || '',
     subAction: App.lastIntentCommand?.subAction || '',
@@ -3949,7 +3980,7 @@ async function runCompactRailRoundTripFlow(page) {
     centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.action, 'flirt', 'Safe mobile target intent should route through shared intent dispatch');
-  assert.strictEqual(state.subAction, 'tease', 'Safe mobile target intent should preserve the selected sub-action');
+  assert.strictEqual(state.subAction, 'flirt', 'Safe mobile target intent should preserve the selected sub-action');
   assert.strictEqual(state.source, 'composer-tray', 'Resolved compact rail intent should preserve composer-tray source metadata');
   assert(state.targetIds.includes('merchant-1') && state.targetIds.includes('ally-1'), 'Resolved compact rail intent should record the mixed creature and acting-party-member targets');
   assert.strictEqual(state.targetsRemaining.length, 0, 'Resolved compact rail intent should clear marked targets intentionally');
@@ -4412,7 +4443,11 @@ async function runCombatProgressInvariantFlow(page) {
     ].filter(button => {
       const rect = button.getBoundingClientRect();
       const style = getComputedStyle(button);
-      return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+      return !button.closest('details:not([open])')
+        && rect.width > 0
+        && rect.height > 0
+        && style.display !== 'none'
+        && style.visibility !== 'hidden';
     });
     return {
       progress: App._combatProgressState(),
@@ -4437,8 +4472,8 @@ async function runCombatProgressInvariantFlow(page) {
     assert.strictEqual(state.buttonsInViewport, true, `${viewport.name}: active combat controls should stay within the viewport`);
 
     if (viewport.name === 'short mobile') {
-      const disclosure = page.locator('#mobile-combat-toolbelt details.contributed-action-menu');
-      assert.strictEqual(await disclosure.count(), 1, 'short mobile: contributed actions should use one compact disclosure');
+      const disclosure = page.locator('#mobile-combat-toolbelt details.fight-control-menu');
+      assert.strictEqual(await disclosure.count(), 1, 'short mobile: Fight sub-actions should use one compact disclosure');
       await disclosure.locator('summary').click();
       const contributed = await page.evaluate(() => {
         const details = document.querySelector('#mobile-combat-toolbelt details.contributed-action-menu');
@@ -4464,14 +4499,14 @@ async function runCombatProgressInvariantFlow(page) {
           buttons
         };
       });
-      assert.strictEqual(contributed.open, true, 'short mobile: activating More actions should open the disclosure');
-      assert.notStrictEqual(contributed.display, 'none', 'short mobile: opened contributed actions should be rendered');
-      assert(contributed.buttons.length > 0, 'short mobile: the opened disclosure should contain available action profiles');
-      assert(contributed.listRect.left >= -1 && contributed.listRect.right <= viewport.width + 1, 'short mobile: contributed-action overlay should stay horizontally bounded');
-      assert(contributed.listRect.top >= -1 && contributed.listRect.bottom <= contributed.dockTop + 1, 'short mobile: contributed-action overlay should stay above the fixed dock');
-      assert(contributed.buttons.every(button => button.left >= -1 && button.right <= viewport.width + 1 && button.top >= -1 && button.bottom <= contributed.dockTop + 1), 'short mobile: every contributed action should be fully reachable');
-      await disclosure.locator('[data-command-control="close-contributed-actions"]').click();
-      assert.strictEqual(await disclosure.evaluate(details => details.open), false, 'short mobile: the overlay should expose a reachable explicit close action');
+      assert.strictEqual(contributed.open, true, 'short mobile: activating Fight should open the sub-action disclosure');
+      assert.notStrictEqual(contributed.display, 'none', 'short mobile: opened Fight sub-actions should be rendered');
+      assert(contributed.buttons.length > 0, 'short mobile: the opened disclosure should contain available Fight sub-actions');
+      assert(contributed.listRect.left >= -1 && contributed.listRect.right <= viewport.width + 1, 'short mobile: Fight sub-action overlay should stay horizontally bounded');
+      assert(contributed.listRect.top >= -1 && contributed.listRect.bottom <= contributed.dockTop + 1, 'short mobile: Fight sub-action overlay should stay above the fixed dock');
+      assert(contributed.buttons.every(button => button.left >= -1 && button.right <= viewport.width + 1 && button.top >= -1 && button.bottom <= contributed.dockTop + 1), 'short mobile: every Fight sub-action should be fully reachable');
+      await disclosure.locator('[data-command-control="close-fight-controls"]').click();
+      assert.strictEqual(await disclosure.evaluate(details => details.open), false, 'short mobile: Fight sub-actions should expose a reachable explicit close action');
     }
 
     await page.evaluate(() => App.selectTarget('fight'));

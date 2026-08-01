@@ -28,6 +28,13 @@ const YAW_COMBAT_FEED = {
             app._renderInteractionState?.({ exploration: false, toolbelt: true });
             return false;
         }
+        const maturePosture = CONTENT?.preferences?.posture === 'mature' || Number(CONTENT?.preferences?.maxTier || 0) >= 1;
+        const directSocialDefault = !maturePosture && ['flirt', 'fuck'].includes(action)
+            ? validVariants.find(variant => variant.id === app._getDefaultSubAction(action))
+            : null;
+        if (directSocialDefault) {
+            return this.executeSubAction(app, directSocialDefault.id, actor, targets[0], action, { actors, targets });
+        }
         if (resolution.decision === 'direct') {
             return this.executeSubAction(app, validVariants[0].id, actor, targets[0], action, { actors, targets });
         }
@@ -183,6 +190,21 @@ const YAW_COMBAT_FEED = {
         const actor = command.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
         const target = command.targets?.[0] || null;
         if (!target) return false;
+        // The primary Talk and Play variants are presentation choices, not
+        // separate mechanics. Route them through the established combat
+        // resolvers so they retain their full outcome logic instead of falling
+        // through to the generic “not implemented” variant response.
+        if ((action === 'flirt' && subId === 'flirt') || (action === 'fuck' && subId === 'fuck')) {
+            const priorResult = app.lastCombatActionResult;
+            const resolved = app._resolveCombatAction({ ...command, subAction: null });
+            // A legacy turn hook may return a falsy scheduling value after the
+            // direct action has already committed. The committed result is the
+            // authoritative command outcome.
+            return resolved !== false || (app.lastCombatActionResult !== priorResult
+                && app.lastCombatActionResult?.action === action
+                && app.lastCombatActionResult?.actor === actor
+                && app.lastCombatActionResult?.target === target);
+        }
         const reach = app._combatReachResult?.(actor, target, action);
         if (reach?.canAttempt && !reach.canSucceed) {
             app._applyActionCost?.(action, actor, target, {}, { mode: 'combat', source: 'combat-variant-reach-failure', emitScene: true });
@@ -205,6 +227,15 @@ const YAW_COMBAT_FEED = {
             mode: 'combat'
         });
         app.log.push({ text: result, type: action === 'feed' ? 'heal' : 'combat' });
+        app.lastCombatActionResult = {
+            action,
+            actor,
+            actors: command.actors?.length ? command.actors : [actor],
+            target,
+            targets: command.targets?.length ? command.targets : [target],
+            result,
+            subAction: subId
+        };
         app._emitSubAction?.(action, subId, actor, target, result);
         app._emitCombatAction(action, actor, target, result);
         app.feedSelection = null;

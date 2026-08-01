@@ -4,7 +4,7 @@
  */
 
 const YAW_SUB_ACTIONS = {
-    CONTEXTUAL_ACTIONS: new Set(['feed', 'feast', 'fuck']),
+    CONTEXTUAL_ACTIONS: new Set(['feed', 'feast', 'flirt', 'fuck']),
     MAX_VARIANTS_PER_ACTION: 24,
     MAX_ID_LENGTH: 64,
     MAX_PAIR_PREVIEWS: 8,
@@ -60,12 +60,13 @@ const YAW_SUB_ACTIONS = {
             grapple: { label: 'Grapple', sfwLabel: 'Grapple', icon: '🤼', validate: (a, t) => a.str > t.spd, execute: 'grapple', setting: null }
         },
         fuck: {
-            seduce: { label: 'Seduce', sfwLabel: 'Play', icon: '💕', validate: () => true, execute: 'seduce', setting: null, scope: 'both' },
+            fuck: { label: 'Fuck', sfwLabel: 'Play', matureLabel: 'Fuck', icon: '🔥', validate: () => true, execute: 'fuck', setting: null, scope: 'both' },
             dominate: { label: 'Dominate', sfwLabel: 'Overpower', icon: '⛓️', validate: (a, t) => App.settings.powerDynamics && a.Fuck > t.Fuck, execute: 'dominate', setting: 'powerDynamics' },
             submit: { label: 'Submit', sfwLabel: 'Yield', icon: '🙇', validate: (a, t) => App.settings.powerDynamics && a.Fuck < t.Fuck, execute: 'submit', setting: 'powerDynamics' }
         },
         flirt: {
-            tease: { label: 'Tease', sfwLabel: 'Talk', icon: '😘', validate: () => true, execute: 'tease', setting: null },
+            flirt: { label: 'Flirt', sfwLabel: 'Talk', matureLabel: 'Flirt', icon: '😘', validate: () => true, execute: 'flirt', setting: null },
+            seduce: { label: 'Seduce', sfwLabel: 'Talk', matureLabel: 'Seduce', icon: '💕', validate: () => true, execute: 'seduce', setting: null, actionProfile: 'core:seduce', minPosture: 'mature' },
             gift: { label: 'Gift', sfwLabel: 'Gift', icon: '🎁', validate: (a) => a.inventory && a.inventory.length > 0, execute: 'gift', setting: null },
             dance: { label: 'Dance', sfwLabel: 'Dance', icon: '💃', validate: () => true, execute: 'dance', setting: null }
         },
@@ -76,7 +77,7 @@ const YAW_SUB_ACTIONS = {
         }
     },
 
-    defaults: { feast: 'swallow', feed: 'tend', fight: 'attack', fuck: 'seduce', flirt: 'tease', flee: 'run' },
+    defaults: { feast: 'swallow', feed: 'tend', fight: 'attack', fuck: 'fuck', flirt: 'flirt', flee: 'run' },
 
     defaultActions() {
         return { ...this.defaults };
@@ -84,7 +85,8 @@ const YAW_SUB_ACTIONS = {
 
     getDefault(app, action) {
         const selected = app.defaultSubActions[action] || this.defaults[action] || action;
-        return app.SUB_ACTIONS[action]?.[selected]?.legacy === true
+        const definition = app.SUB_ACTIONS[action]?.[selected];
+        return !definition || definition.legacy === true
             ? (this.defaults[action] || action)
             : selected;
     },
@@ -304,7 +306,7 @@ const YAW_SUB_ACTIONS = {
                         ? app._combatReachResult?.(pair.actor, pair.target, action)
                         : null;
                     const pressure = app._canAffordActionPressure?.(action, pair.actor, { mode: context.mode || 'adventure' }) || { ok: true };
-                    const available = this.isAvailable(app, def, pair.actor, pair.target, holder)
+                    const available = this.isAvailable(app, def, pair.actor, pair.target, holder, context.mode || 'adventure')
                         && pressure.ok !== false;
                     const attempt = available && action === 'feast' && ['swallow', 'cockVore', 'unbirth'].includes(id)
                         ? this.feastAttemptAssessment(app, pair.actor, pair.target, {
@@ -325,7 +327,13 @@ const YAW_SUB_ACTIONS = {
                 });
                 const validPairs = evaluations.filter(entry => entry.available);
                 const invalidPairs = evaluations.filter(entry => !entry.available);
-                const available = validPairs.length > 0;
+                // A coordinated Seduce needs every selected participant to be
+                // ready; advertising it when one helper lacks the appetite
+                // requirement only creates a later refusal.
+                const requireEveryActor = action === 'flirt' && id === 'seduce' && actors.length > 1;
+                const available = requireEveryActor
+                    ? evaluations.length > 0 && invalidPairs.length === 0
+                    : validPairs.length > 0;
                 const status = available && invalidPairs.length ? 'partial' : (available ? 'available' : 'unavailable');
                 const failed = invalidPairs[0] || pairs[0] || { actor: actors[0], target: targets[0] };
                 const reason = status === 'available' ? '' : (
@@ -417,34 +425,55 @@ const YAW_SUB_ACTIONS = {
         return this.resolve(app, action, { actors: [actor], targets: [target] }).variants;
     },
 
-    isAvailable(app, def, actor, target, holder = []) {
+    isAvailable(app, def, actor, target, holder = [], mode = 'adventure') {
         if (!def || typeof def.validate !== 'function') return false;
         try {
+            if (def.actionProfile && typeof YAW_ACTION_PROFILES !== 'undefined') {
+                return YAW_ACTION_PROFILES.availability(app, def.actionProfile, actor, target, mode === 'combat' ? 'combat' : 'exploration').ok;
+            }
             return !!def.validate(actor, target, holder);
         } catch (error) {
             return false;
         }
     },
 
+    actionProfile(action, subAction) {
+        const key = this.definitions[action]?.[subAction]?.actionProfile;
+        return key && typeof YAW_ACTION_PROFILES !== 'undefined'
+            ? YAW_ACTION_PROFILES.profile(key)
+            : null;
+    },
+
+    routesActionProfile(profileKey) {
+        return Object.values(this.definitions).some(group => Object.values(group)
+            .some(def => def.actionProfile === profileKey));
+    },
+
     label(app, action, subAction) {
         const legacyExplicit = CONTENT.preferences.maxTier >= 2 && CONTENT.preferences.explicitDescriptions === true;
         const subDefs = app.SUB_ACTIONS[action];
         if (!subDefs || !subDefs[subAction]) return subAction;
-        const matureCoreLabel = subDefs[subAction].minPosture === 'mature'
-            && (Number(CONTENT.preferences.maxTier || 0) >= 1 || CONTENT.preferences.posture === 'mature');
-        const isSFW = !matureCoreLabel
+        const maturePosture = Number(CONTENT.preferences.maxTier || 0) >= 1 || CONTENT.preferences.posture === 'mature';
+        const matureCoreLabel = Boolean(subDefs[subAction].matureLabel)
+            && maturePosture;
+        const isSFW = !maturePosture
             && CONTENT?.isCategoryEnabled?.('explicit.sexual') !== true
             && !legacyExplicit;
-        const fallback = isSFW ? (subDefs[subAction].sfwLabel || subDefs[subAction].label) : subDefs[subAction].label;
-        return app._label(`subaction.${action}.${subAction}${isSFW ? '.sfw' : ''}`, fallback);
+        const fallback = matureCoreLabel
+            ? subDefs[subAction].matureLabel
+            : (isSFW ? (subDefs[subAction].sfwLabel || subDefs[subAction].label) : subDefs[subAction].label);
+        const suffix = matureCoreLabel ? '.mature' : (isSFW ? '.sfw' : '');
+        return app._label(`subaction.${action}.${subAction}${suffix}`, fallback);
     },
 
     register(app, action, subId, config = {}, options = {}) {
         const requestedAction = String(action || '').trim();
-        const normalizedAction = requestedAction === 'play' ? 'fuck' : requestedAction;
+        const normalizedAction = requestedAction === 'play'
+            ? 'fuck'
+            : (requestedAction === 'talk' ? 'flirt' : requestedAction);
         const normalizedId = String(subId || '').trim();
         const trustedLegacy = options.trustedLegacy === true;
-        if (!this.CONTEXTUAL_ACTIONS.has(normalizedAction) && !(trustedLegacy && app.SUB_ACTIONS[normalizedAction])) throw new Error('Action variants may only extend Feed, Feast, or Play in V1');
+        if (!this.CONTEXTUAL_ACTIONS.has(normalizedAction) && !(trustedLegacy && app.SUB_ACTIONS[normalizedAction])) throw new Error('Action variants may only extend Feed, Feast, Talk, or Play in V1');
         if (!/^[a-z][a-zA-Z0-9_-]*$/.test(normalizedId) || normalizedId.length > this.MAX_ID_LENGTH) throw new Error('Action variant id is invalid');
         if (!config || typeof config !== 'object') throw new Error('Action variant definition must be an object');
         if (typeof config.validate !== 'function' || typeof config.execute !== 'function') throw new Error('Action variants require validate and execute functions');

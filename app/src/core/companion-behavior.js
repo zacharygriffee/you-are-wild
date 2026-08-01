@@ -310,8 +310,11 @@ const YAW_COMPANION_BEHAVIOR = {
         if (shouldAdvance) candidates.push({ action: 'advance', target: null, subAction: null, command: null });
         for (const target of enemies) {
             add('fight', target);
-            add('flirt', target);
-            add('fuck', target);
+            // Autonomous companions choose a concrete contextual action. The
+            // player-facing path may open a variant sheet, but AI turns must
+            // resolve the selected safe default rather than leave an open UI.
+            add('flirt', target, app._getDefaultSubAction?.('flirt') || 'flirt');
+            add('fuck', target, app._getDefaultSubAction?.('fuck') || 'fuck');
             if ((ally.hunger || 0) >= 45 && canSwallow(target)) add('feast', target, 'swallow');
         }
         // Hunger and stomach capacity are deliberately separate. A hungry

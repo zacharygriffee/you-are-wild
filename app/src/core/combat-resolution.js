@@ -132,6 +132,10 @@ const YAW_COMBAT_RESOLUTION = {
     executeActionAgainstTarget(app, action, actor, target) {
         const options = arguments[4] || {};
         const advanceTurn = options.advanceTurn !== false;
+        // Direct resolvers are also used by the deterministic AI and tests.
+        // When repairing an incomplete queue, retain the actor who actually
+        // initiated this command until its turn is consumed.
+        if (app.combatState?.active && actor) app.activeActor = actor;
         app.combatState.processing = true;
         try {
             if (!target || !actor || (target.CPun <= 0 && !app._isCorpse(target))) {
@@ -392,10 +396,10 @@ const YAW_COMBAT_RESOLUTION = {
             return true;
         } catch (e) {
             console.error('Combat action failed:', e);
-            app._pushLog(app._label('combat.actionFailed', 'Combat action failed. Try another action.'), 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action, phase: 'error' });
-            app.renderLog();
-            app.renderCreatures();
-            app.renderParty();
+            app._reportInvalidCombatCommand?.({
+                mode: 'combat', actors: [actor].filter(Boolean), targets: [target].filter(Boolean), action,
+                source: 'combat-resolution', metadata: { baseAction: action }
+            }, 'resolution-interrupted');
             app._recoverCombatProgress?.('combat-action-error');
             return false;
         } finally {

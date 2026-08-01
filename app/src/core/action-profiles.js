@@ -397,9 +397,19 @@ const YAW_ACTION_PROFILES = {
                 return this._applyEffect(unit, effect, profile);
             })
             .filter(Boolean);
-        const text = check.success
-            ? `${actor.name || 'Actor'} uses ${this.label(app, profile)} on ${target.name || 'target'}.`
-            : `${actor.name || 'Actor'} fails to use ${this.label(app, profile)} on ${target.name || 'target'}.`;
+        const actorName = actor?.name === app.player?.name
+            ? app._label('party.you', 'You')
+            : (actor?.name || app._label('ui.ally', 'Someone'));
+        const targetName = target?.name || app._label('target.targetRole', 'the target');
+        const narrationKey = `combat.profile.${profile.key.replace(':', '.')}.${check.success ? 'success' : 'failure'}`;
+        const narrationFallback = check.success
+            ? '{actor} commits to {action} against {target}.'
+            : '{actor} tries {action} against {target}, but the attempt does not take hold.';
+        const text = app._label(narrationKey, narrationFallback, {
+            actor: actorName,
+            target: targetName,
+            action: this.label(app, profile)
+        });
         const outcomeInput = {
             mode,
             action: profile.key,
@@ -475,7 +485,7 @@ YAW_ACTION_PROFILES.register('core', 'grab', {
     label: 'Grab',
     icon: '🤝',
     category: 'control',
-    modes: ['exploration', 'combat'],
+    modes: ['combat'],
     scope: 'target',
     relations: ['hostile'],
     check: { actorStat: 'str', targetStat: 'str', modifier: 0 },
@@ -508,7 +518,7 @@ YAW_ACTION_PROFILES.register('core', 'seduce', {
     label: 'Seduce',
     icon: '💕',
     category: 'social-control',
-    modes: ['combat'],
+    modes: ['exploration', 'combat'],
     scope: 'target',
     relations: ['hostile'],
     requirements: { minAppetite: 4 },

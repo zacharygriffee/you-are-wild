@@ -8,9 +8,10 @@ date, publish Sites, create public release assets, or promote the channel.
 
 Local evidence last refreshed: **2026-08-01**.
 
-Release-payload commit: `8d9f5918b4df61021010a9f7d66efbb9c5c5b091`.
-GitHub CI: [run 30686042187](https://github.com/zacharygriffee/you-are-wild/actions/runs/30686042187)
-completed successfully for that exact commit on 2026-08-01.
+Integrated candidate commit: `ee7d1c76a7948f4a5b88cb38bd9d7df29e7a66cf`.
+GitHub CI: [run 30688296051](https://github.com/zacharygriffee/you-are-wild/actions/runs/30688296051)
+completed successfully for that exact commit on 2026-08-01. This supersedes
+the earlier pre-integration payload recorded at `8d9f5918b4df61021010a9f7d66efbb9c5c5b091`.
 
 ## Documentation and identity
 
@@ -42,6 +43,8 @@ completed successfully for that exact commit on 2026-08-01.
 - [x] Dismissed-recruit autonomy and perception-limited sightings pass.
 - [x] Combat pacing remains presentation-only and absent from saves.
 - [x] Audio Pack V1 remains semantic, owned, bounded, and free of AI or TTS.
+- [x] Mature narration selects English and Spanish posture-aware variants,
+  preserves SFW text, and falls back to the ordinary active-locale key.
 
 ## Exact-candidate compatibility and runtime smoke
 

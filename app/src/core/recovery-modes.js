@@ -6,7 +6,7 @@
 const YAW_RECOVERY_MODES = {
     VERSION: 1,
     MAX_PROFILES: 64,
-    DEFAULT_KEY: 'core:regenerate',
+    DEFAULT_KEY: 'core:ghost',
     ENTRY: new Set(['defeat-site', 'safe-anchor']),
     RESOLUTION: new Set(['immediate', 'shrine']),
     INVENTORY: new Set(['settings', 'death-bag', 'retain']),

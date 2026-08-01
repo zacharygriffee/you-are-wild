@@ -264,6 +264,14 @@ const YAW_PARTY_MANAGEMENT = {
             formerPartyRole: this.getRole(app, unit),
             partyRole: this.getDuty(app, unit)
         }, {});
+        if (typeof YAW_AUTONOMOUS_ACTORS !== 'undefined') {
+            YAW_AUTONOMOUS_ACTORS.ensure(app, dismissed, tile);
+            dismissed.autonomousActor.knowledge.player = {
+                x: Number(app.location?.x) || 0,
+                y: Number(app.location?.y) || 0,
+                seenAt: YAW_AUTONOMOUS_ACTORS.absoluteHour(app)
+            };
+        }
         const sameUnit = candidate => app._unitSelectionId(candidate) === app._unitSelectionId(dismissed);
         app.creatures = app._tileCreatures([...(app.creatures || []).filter(candidate => !sameUnit(candidate)), dismissed]);
         tile.creatures = app._tileCreatures([...(tile.creatures || []).filter(candidate => !sameUnit(candidate)), dismissed]);

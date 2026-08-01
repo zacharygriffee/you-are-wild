@@ -4,6 +4,23 @@
  */
 
 const YAW_RECRUITMENT_FLOW = {
+    persuade(app, target, actor = app.player, options = {}) {
+        if (!target || app._isCorpse(target) || app.party.includes(target)) return null;
+        target.alive = true;
+        target.knockedOut = false;
+        target.disposition = app.DISPOSITION.FRIENDLY;
+        target.willing = true;
+        target.recruitReady = true;
+        target.submission = {
+            by: app._unitSelectionId?.(actor) || actor?.id || actor?.name || null,
+            day: Number(app.dayCount || 0),
+            hour: Number(app.timeHour || 0),
+            source: options.source || 'seduce'
+        };
+        app._normalizeUnit?.(target, { disposition: app.DISPOSITION.FRIENDLY });
+        return target;
+    },
+
     subdue(app, target, actor = app.player, options = {}) {
         if (!target || app._isCorpse(target)) return null;
         const wasHostile = target.disposition === app.DISPOSITION.ENEMY;

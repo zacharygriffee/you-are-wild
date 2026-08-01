@@ -459,6 +459,7 @@ const YAW_UNIT_CONTAINMENT = {
         record.decayTurns = record.decayTurns ?? defaults.decayTurns ?? 12;
         record.depleted = Boolean(record.depleted || record.scavenged || record.edibleRemaining <= 0 || record.portionsRemaining <= 0);
         record.scavenged = record.depleted;
+        if (typeof YAW_BODY_MASS !== 'undefined') YAW_BODY_MASS.normalizeCorpse(record);
         return record;
     },
 
@@ -471,9 +472,13 @@ const YAW_UNIT_CONTAINMENT = {
             record.scavenged = true;
             return null;
         }
+        const portionsBefore = record.edibleRemaining;
         record.edibleRemaining = Math.max(0, record.edibleRemaining - consumed);
         record.portionsRemaining = record.edibleRemaining;
         record.remainingPortions = record.edibleRemaining;
+        const massTransfer = typeof YAW_BODY_MASS !== 'undefined'
+            ? YAW_BODY_MASS.consumeCorpse(record, consumed, portionsBefore)
+            : null;
         if (record.edibleRemaining <= 0) {
             record.depleted = true;
             record.scavenged = true;
@@ -483,7 +488,7 @@ const YAW_UNIT_CONTAINMENT = {
             actor.hunger = Math.max(0, (actor.hunger || 0) - 10 * consumed);
             actor.CPun = Math.min(maxPun, (actor.CPun || 0) + 5 * consumed);
         }
-        return { actor, consumed, remaining: record.edibleRemaining };
+        return { actor, consumed, remaining: record.edibleRemaining, massTransfer };
     },
 
     isDepletedRemains(record) {

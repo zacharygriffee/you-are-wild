@@ -537,6 +537,11 @@ async function checkFileOriginLocalePack(browser) {
   await clearBrowserStorage(page);
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+  await page.waitForFunction(
+    () => window.YAW_STARTUP_READINESS?.state('modules')?.status === 'ready',
+    null,
+    { timeout: 10000 }
+  );
   await page.evaluate(() => App.skipTutorial?.());
   await page.evaluate(async ({ targetPackage, localePackage }) => {
     await MODULE_SYSTEM.installModule(targetPackage);

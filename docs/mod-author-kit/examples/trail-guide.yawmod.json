@@ -1,0 +1,42 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "trail_guide",
+  "gameVersion": "0.18.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "trail_guide",
+      "name": "Trail Guide",
+      "version": "1.0.0",
+      "description": "Adds Moss Hares and a small trail-token quest.",
+      "type": "content_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.17.0",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": [
+          "file",
+          "https",
+          "localhost",
+          "http"
+        ],
+        "hosts": [],
+        "capabilities": [],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": false
+      },
+      "permissions": [
+        "content:add_species",
+        "content:add_item",
+        "content:add_quest",
+        "ui:contribute"
+      ],
+      "dependencies": [],
+      "settings": []
+    },
+    "code": "MODS.addSpecies({\n  id: 'moss_hare',\n  name: 'Moss Hare',\n  icon: '🐇',\n  desc: 'A cautious hare camouflaged by living moss.',\n  profile: {\n    version: 1,\n    baseStats: {\n      MPun: 70,\n      MPle: 90,\n      Figh: 6,\n      Feas: 7,\n      Flir: 8,\n      Fuck: 7,\n      Flee: 16,\n      Feed: 9,\n      hunger: 35,\n      str: 6,\n      con: 9,\n      spd: 16,\n      int: 8,\n      wis: 12,\n      cha: 9\n    },\n    size: 2,\n    difficulty: 1,\n    bodyParts: ['fangs'],\n    abilities: {\n      small: true,\n      fastFlee: true\n    },\n    temperament: {\n      timid: true,\n      prey: true\n    },\n    canon: {\n      sapience: 'animal',\n      bodyPlan: 'quadruped',\n      baselineInteraction: 'animal',\n      adultEligibility: 'ineligible',\n      interactionEligibility: {\n        social: true,\n        combat: true,\n        feed: true,\n        feast: true,\n        sensitiveSocial: false\n      },\n      traits: ['moss-camouflaged', 'crepuscular']\n    },\n    encounters: [\n      {\n        biome: 'forest',\n        table: 'friendly',\n        weight: 8\n      },\n      {\n        biome: 'grove',\n        table: 'friendly',\n        weight: 5\n      }\n    ]\n  }\n});\n\nMODS.addItem({\n  id: 'trail_token',\n  name: 'Mossbound Trail Token',\n  type: 'quest',\n  purpose: 'quest',\n  stackable: false,\n  icon: '🍃',\n  desc: 'A protected token marking a safe moss-hare trail.',\n  value: 0\n});\n\nMODS.addQuestTemplate({\n  id: 'follow_the_moss',\n  title: 'Follow the Moss',\n  description: 'Recover a trail token placed near a quiet grove.',\n  acquisition: {\n    structures: ['cabin', 'camp']\n  },\n  turnInPolicy: {\n    type: 'original_giver'\n  },\n  objectives: [{\n    id: 'recover_token',\n    type: 'recover',\n    item: {\n      definitionId: 'trail_guide:trail_token',\n      quantity: 1\n    },\n    required: 1,\n    label: 'Recover the Mossbound Trail Token'\n  }],\n  worldDirectives: [{\n    id: 'place_token',\n    type: 'place',\n    content: {\n      kind: 'item',\n      id: 'trail_guide:trail_token'\n    },\n    count: 1,\n    distance: {\n      min: 2,\n      max: 5\n    },\n    biomes: ['grove', 'forest'],\n    objectiveId: 'recover_token',\n    locationLabel: 'Moss-hare trail'\n  }],\n  reward: {\n    xp: 12,\n    gold: 8\n  }\n});\n\nMODS.registerUiContribution('system.utilities', 'trail_guide_about', {\n  label: 'Trail Guide',\n  description: 'Review what the Trail Guide pack adds.',\n  icon: '🍃',\n  tone: 'info',\n  onInvoke(context) {\n    return {\n      title: 'Trail Guide',\n      description: 'Adds Moss Hares and a small trail-token quest.',\n      rows: [\n        {\n          label: 'Current mode',\n          value: context.mode\n        },\n        {\n          label: 'Works offline',\n          value: 'Yes'\n        }\n      ]\n    };\n  }\n});\n\nMODS.log('Trail Guide enabled.');\n",
+    "assets": {}
+  }
+}

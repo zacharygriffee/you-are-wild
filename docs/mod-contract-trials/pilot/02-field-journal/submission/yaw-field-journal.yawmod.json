@@ -1,0 +1,39 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "yaw_field_journal",
+  "gameVersion": "0.17.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "yaw_field_journal",
+      "name": "Field Journal",
+      "version": "1.0.0",
+      "description": "Adds bounded field observations to nearby-creature roster entries and a current party and location summary.",
+      "author": "Blind contract trial author",
+      "type": "feature_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.14.0",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": [
+          "file",
+          "https",
+          "localhost",
+          "http"
+        ],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": true
+      },
+      "permissions": [
+        "ui.read",
+        "ui:contribute"
+      ],
+      "dependencies": [],
+      "settings": []
+    },
+    "code": "const titleCase = value => {\n  const text = String(value || '').trim();\n  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : 'Unknown';\n};\n\nconst boundedList = (values, fallback, limit = 5) => {\n  const entries = (Array.isArray(values) ? values : [])\n    .map(value => String(value || '').trim())\n    .filter(Boolean);\n  if (!entries.length) return fallback;\n  const visible = entries.slice(0, limit);\n  const remainder = entries.length - visible.length;\n  return `${visible.join(', ')}${remainder > 0 ? `, +${remainder} more` : ''}`.slice(0, 160);\n};\n\nMODS.registerUiContribution('roster.here.badges', 'field-state', {\n  label: 'Field state',\n  description: 'A quick field-journal observation for this creature.',\n  tone: 'info',\n  priority: 0,\n  read(context) {\n    const unit = context.unit;\n    const statuses = Array.isArray(unit?.statuses) ? unit.statuses : [];\n    if (statuses.length) {\n      return {\n        label: statuses.length === 1 ? '1 condition' : `${statuses.length} conditions`,\n        tone: 'warning'\n      };\n    }\n    const disposition = String(unit?.disposition || '').trim().toLowerCase();\n    if (disposition === 'enemy' || disposition === 'hostile') {\n      return { label: 'Hostile', tone: 'danger' };\n    }\n    if (disposition === 'ally' || disposition === 'party' || disposition === 'friendly') {\n      return { label: 'Friendly', tone: 'success' };\n    }\n    return { label: 'Observed', tone: 'info' };\n  }\n});\n\nMODS.registerUiContribution('roster.details.sections', 'creature-notes', {\n  label: 'Field journal',\n  description: 'Bounded public details about this nearby creature.',\n  priority: 0,\n  when(context) {\n    return context.unitType === 'creature' && Boolean(context.unit);\n  },\n  read(context) {\n    const unit = context.unit;\n    if (!unit) return { rows: [] };\n    const punishment = unit.punishment || { current: 0, max: 0 };\n    const spirit = unit.spirit || { current: 0, max: 0 };\n    return {\n      rows: [\n        { label: 'Species', value: titleCase(unit.species) },\n        { label: 'Disposition', value: titleCase(unit.disposition) },\n        { label: 'Punishment', value: `${punishment.current} / ${punishment.max}` },\n        { label: 'Spirit', value: `${spirit.current} / ${spirit.max}` },\n        { label: 'Capabilities', value: boundedList(unit.capabilities, 'None observed') },\n        { label: 'Conditions', value: boundedList(unit.statuses, 'None observed') }\n      ]\n    };\n  }\n});\n\nMODS.registerUiContribution('system.utilities', 'current-summary', {\n  label: 'Field journal',\n  description: 'Summarize the current party and location from public information.',\n  icon: '◇',\n  tone: 'info',\n  priority: 0,\n  onInvoke() {\n    const context = MODS.getContext({ limit: 1 });\n    const location = context.location || { x: 0, y: 0, tile: null };\n    const tile = location.tile || {};\n    const party = Array.isArray(context.party) ? context.party : [];\n    const partyNames = party.map(member => member?.name).filter(Boolean);\n    const biome = tile.displayBiome || tile.biome || 'Uncharted';\n    const danger = tile.dangerBand?.id || tile.danger || 'Unknown';\n    return {\n      title: 'Field journal',\n      description: 'A quick field summary of the current location and traveling party.',\n      rows: [\n        { label: 'Coordinates', value: `${location.x}, ${location.y}` },\n        { label: 'Terrain', value: titleCase(biome) },\n        { label: 'Local danger', value: titleCase(danger) },\n        { label: 'Party', value: `${party.length} ${party.length === 1 ? 'member' : 'members'}` },\n        { label: 'Travelers', value: boundedList(partyNames, 'No party members', 4) },\n        { label: 'Mode', value: titleCase(context.mode) }\n      ]\n    };\n  }\n});\n\nMODS.log('Field Journal contributions registered.');",
+    "assets": {}
+  }
+}

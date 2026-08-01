@@ -5,6 +5,21 @@ It describes the capabilities that exist in the current runtime, not planned
 APIs. Historical plans, release notes, changelogs, and generated examples are
 not doctrine.
 
+For a portable, self-contained snapshot that can be handed to an authoring
+agent without the game source, use the
+[Mod Author Kit](mod-author-kit/README.md). The kit freezes the current
+`0.18.0` package/API contracts, bounded vocabularies, inventories, templates,
+and source-independent release checklist in one directory.
+
+The copied kit includes a dependency-free static package validator:
+
+```bash
+node docs/mod-author-kit/tools/validate-module.mjs path/to/module.yawmod.json
+```
+
+A passing validator report is `static-checked` evidence, not proof that a
+module was installed or exercised through browser lifecycle transitions.
+
 ## Authority And Scope
 
 When documentation disagrees, use this order:
@@ -70,6 +85,8 @@ New executable packages must use the version-one envelope:
       "trustBoundary": "trusted-local",
       "runtimeRequirements": {
         "origins": ["file", "https", "localhost", "http"],
+        "hosts": [],
+        "capabilities": [],
         "network": false,
         "secureContext": false,
         "hotToggleSafe": true
@@ -104,9 +121,12 @@ for compatibility. It is not the authoring format for new distributable mods.
   enabled first.
 - `minGameVersion` is a numeric version such as `0.12.2`. `gameVersion` inside
   a legacy manifest is normalized only as a compatibility alias.
-- `runtimeRequirements` may declare `origins`, `network`, `secureContext`, and
-  `hotToggleSafe`. Omitting it permits every current origin, no network or
-  secure-context requirement, and restart-required toggling during a run.
+- `runtimeRequirements` may declare `origins`, semantic `hosts` and
+  `capabilities`, `network`, `secureContext`, and `hotToggleSafe`. Host and
+  capability declarations only block activation when incompatible; they do
+  not grant methods or native authority. Omitting the object permits every
+  current origin and host, no capability, network, or secure-context
+  requirement, and restart-required toggling during a run.
 - `settings` contains bounded declarative controls. It is not a secret store.
 - `trustBoundary` must be `trusted-local`.
 
@@ -163,8 +183,10 @@ Implemented permissions:
 | `ai:request` | request an existing opaque provider connection |
 | `ai:provide` | register a trusted provider adapter and session connection |
 | `world:add_biome` | add or temporarily replace an owned biome definition; this legacy seam is not a save-stable geography-placement promise |
+| `world:add_biome_recipe` | register an owned deterministic Biome Recipe V1 for boundary or procedural placement |
 | `content:add_species` | add owned serializable species data |
 | `content:add_item` | register an owned Item Definition V2 |
+| `content:add_equipment` | register owned equipment for existing slots and bounded stat/technique tags |
 | `content:add_quest` | register an owned bounded Quest Contract V2 template |
 | `content:add_template` | register owned legacy content templates for documented core request keys |
 | `content:add_locale` | register an owned locale definition and bounded target-owned translation entries |
@@ -172,6 +194,10 @@ Implemented permissions:
 | `content:add_action_variant` | register an owned Feed, Feast, or Play variant |
 | `content:add_perk_profile` | register an owned data-only Perk Profile V1 |
 | `mechanics:add_resource_profile` | register and mutate an owned bounded Resource Ledger V1 profile |
+| `mechanics:add_status_effect` | register an owned data-only Status Effect V1 profile |
+| `mechanics:add_restraint_profile` | register an owned data-only source-to-target restraint profile |
+| `mechanics:add_action_profile` | register an owned data-only Action Resolver V1 profile |
+| `mechanics:add_body_profile` | register an owned Body Mass Ledger V1 profile for same-module species |
 | `mechanics:add_combat_technique` | register an owned declarative Combat Technique V1 Fight profile |
 | `mechanics:add_recovery_mode` | register an owned declarative Recovery Mode V1 profile |
 
@@ -341,10 +367,14 @@ re-created.
 
 This quest-scoped contract does not expose general world generation. Species
 Profile V1 may still contribute rare encounters to existing biome tables, and
-`world:add_biome` remains a runtime definition seam. There is no public
-structure, landmark, resource-site, route, interior, or executable placement
-callback. The separate world-recipe prerequisites remain documented in
-[Content Placement V1 Decision](content-placement-v1-decision.md).
+`world:add_biome` remains the definition seam. Biome Recipe V1 adds bounded,
+deterministic `boundary` and `procedural` placement for a biome owned by the
+same module. Once a generated tile is materialized, its effective biome is
+pinned through normal world persistence. `placed` and `portal` recipes may be
+declared for forward compatibility but do not auto-place terrain in V1. There
+is still no public structure, landmark, resource-site, route, interior, or
+executable placement callback. See
+[Biome Boundary and World Recipe V1 Decision](biome-boundary-world-recipe-v1-decision.md).
 
 ### UI Contribution V1
 
@@ -588,17 +618,23 @@ actions, targeting, collision, or save state. See
 
 The current hook registry accepts exactly:
 
-- `onMapGenerate`, `onEncounterStart`, `onCombatAction`;
+- `onMapGenerate`, `onEncounterStart`, `onEncounterResolved`,
+  `onAutonomousEvent`, `onCombatAction`;
 - `onDigestionTick`, `onSubActionExecute`;
 - `onDefeat`, `onDefeatEncounterSettled`, `onPlayerState`, `onRegenerate`;
 - `onPlayerMove`, `onGameStart`, `onGameLoad`, `onGameSave`, `onTick`;
+- `onActionCommitted`;
 - `onSceneBeat`, `onSceneExchangeClosed`, `onContentPolicyChanged`.
 
 Unknown hook names reject registration. Hooks and tracked timers are removed on
 unload. A hook is notification or a documented extension seam, not permission
-to bypass authoritative resolution. Narrative hooks receive copied/frozen
-envelopes after deterministic state commits; save hydration does not replay
-them.
+to bypass authoritative resolution. `onEncounterResolved`,
+`onActionCommitted`, and narrative hooks
+receive copied/frozen envelopes after deterministic state commits; save
+hydration does not replay them. Action outcomes use the
+`yaw-action-outcome-v1` schema and contain only opaque actor/target IDs,
+bounded safe detail, and deterministic game-time metadata. They cannot veto or
+mutate the action.
 
 ## Action Variant Contract
 

@@ -52,6 +52,31 @@ const YAW_COMBAT_INTENTS = {
             app.renderLog();
             return false;
         }
+        const actionProfile = typeof YAW_ACTION_PROFILES !== 'undefined'
+            ? YAW_ACTION_PROFILES.profile(action)
+            : null;
+        if (actionProfile) {
+            if (actionProfile.scope === 'self') {
+                return app._dispatchInteractionCommand(app._buildPanelInteractionCommand({
+                    mode: 'combat',
+                    actors: [current],
+                    targets: [current],
+                    action,
+                    source: 'combat-composer',
+                    constraints: { requireCurrentTurn: true, hostileOnly: false, checkReach: false, checkRows: false }
+                }));
+            }
+            if (app._combatMarkedTarget?.()) return app._executeCombatIntentOnMarkedTarget(action, current);
+            const currentActorId = app._unitSelectionId(current);
+            if (app.targetSelection?.source === 'combat'
+                && app.targetSelection.action === action
+                && (!app.targetSelection.actorId || app.targetSelection.actorId === currentActorId)) {
+                app.cancelTargetSelection();
+                return true;
+            }
+            app.selectTarget(action);
+            return true;
+        }
         if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast' || action === 'scavenge') {
             if (action !== 'scavenge' && YAW_COMBAT_PLANNING.shouldPlanIntent(app)) {
                 if (!YAW_COMBAT_PLANNING.requiresCommit(app)) {

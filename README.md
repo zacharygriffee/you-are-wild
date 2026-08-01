@@ -62,3 +62,12 @@ If source changes, regenerate that file with `npm run build` and verify it with 
 ## Host integration
 
 The browser fallback, bounded native host contract, credential-custody rules, and native module compatibility declarations are documented in [docs/host-architecture.md](docs/host-architecture.md).
+
+## Moddable Core
+
+The implemented mechanics roadmap and remaining deferred slices are documented
+in [docs/moddable-core-v1.md](docs/moddable-core-v1.md). The portable
+source-independent API is [docs/mod-author-kit/README.md](docs/mod-author-kit/README.md),
+and [docs/examples/moddable-core-v1.yawmod.json](docs/examples/moddable-core-v1.yawmod.json)
+is the conformance fixture that composes the public world, equipment, body,
+resource, status, restraint, action, technique, and recovery contracts.

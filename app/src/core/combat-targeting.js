@@ -44,6 +44,12 @@ const YAW_COMBAT_TARGETING = {
             const actor = app.activeActor || app.player;
             if (app.targetSelection.action === 'scavenge') return app._canScavengeCorpse(unit);
             if (unit.CPun <= 0) return false;
+            const profile = typeof YAW_ACTION_PROFILES !== 'undefined'
+                ? YAW_ACTION_PROFILES.profile(app.targetSelection.action)
+                : null;
+            if (profile) {
+                return YAW_ACTION_PROFILES.availability(app, profile, actor, unit, 'combat').ok;
+            }
             if (['feed', 'feast'].includes(app.targetSelection.action)) return true;
             return unit.disposition === app.DISPOSITION.ENEMY && Boolean(app._combatReachResult?.(actor, unit, app.targetSelection.action)?.canAttempt);
         }
@@ -143,6 +149,23 @@ const YAW_COMBAT_TARGETING = {
                 ? app._syncSelectedParticipants()
                 : [actor];
             return YAW_COMBAT_FEED.executeVariantAction(app, action, actor, targets, { actors, targets });
+        }
+        if (typeof YAW_ACTION_PROFILES !== 'undefined' && YAW_ACTION_PROFILES.profile(action)) {
+            if (targets.length !== 1) {
+                app._reportInvalidCombatCommand?.({ action, actors: [actor], targets }, 'single-target-required');
+                return false;
+            }
+            const command = app._buildPanelInteractionCommand({
+                mode: 'combat',
+                actors: [actor],
+                targets,
+                action,
+                source: 'combat-composer',
+                constraints: { requireCurrentTurn: true, hostileOnly: false, checkReach: false, checkRows: false }
+            });
+            this.clearMarkedTargets(app);
+            app.targetSelection = null;
+            return app._dispatchInteractionCommand(command);
         }
         if (app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
             return app.queueCombatGroupIntent(action);

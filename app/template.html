@@ -8256,6 +8256,32 @@
                 min-height: 44px;
             }
 
+            .mobile-combat-intents .contributed-action-menu {
+                position: relative;
+                min-width: 0;
+            }
+
+            .mobile-combat-intents .contributed-action-list {
+                position: fixed;
+                left: max(16px, calc((100vw - 430px) / 2 + 16px));
+                right: max(16px, calc((100vw - 430px) / 2 + 16px));
+                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 12px);
+                z-index: 90;
+                display: none;
+                gap: 6px;
+                max-height: min(50vh, 300px);
+                overflow-y: auto;
+                padding: 8px;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+                background: var(--bg-secondary);
+                box-shadow: var(--shadow-lg);
+            }
+
+            .mobile-combat-intents .contributed-action-menu[open] > .contributed-action-list {
+                display: grid;
+            }
+
             .mobile-combat-phase-controls.combat-plan-cancel-only .unit-actions {
                 display: flex;
                 justify-content: flex-end;
@@ -10101,7 +10127,7 @@
             <div class="menu-footer">
                 <p data-i18n="ui.menu.edition">Dark mode tactical edition</p>
                 <p data-i18n="ui.menu.contentDefault">Safe content is enabled by default</p>
-                <p><span data-i18n="release.version">Version</span> <span data-release-version>0.12.0</span></p>
+                <p><span data-i18n="release.version">Version</span> <span data-release-version>0.18.0</span></p>
             </div>
         </div>
     </div>
@@ -10664,6 +10690,18 @@
                         <span style="display:flex;justify-content:space-between;gap:12px;"><span data-i18n="settings.baseFontSize">Base Font Size</span><span id="setting-font-size-value">14px</span></span>
                         <input type="range" id="setting-font-size" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="fontSize" min="12" max="20" step="1" value="14" aria-label="Base font size" data-i18n-aria-label="settings.baseFontSize" oninput="App.updateAccessibilitySetting('fontSize', this.value)">
                     </label>
+                    <label style="display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                        <span data-i18n="settings.combatPacing">Automatic combat pacing</span>
+                        <select id="setting-combat-pacing" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="combatPacing" onchange="App.updateAccessibilitySetting('combatPacing', this.value)">
+                            <option value="readable" data-i18n="settings.combatPacing.readable">Readable</option>
+                            <option value="fast" data-i18n="settings.combatPacing.fast">Fast</option>
+                            <option value="instant" data-i18n="settings.combatPacing.instant">Instant</option>
+                        </select>
+                    </label>
+                    <label style="display: grid; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span style="display:flex;justify-content:space-between;gap:12px;"><span data-i18n="settings.combatReadSpeed">Combat reading speed</span><span id="setting-combat-read-speed-value">32 char/s</span></span>
+                        <input type="range" id="setting-combat-read-speed" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="combatReadSpeed" min="10" max="120" step="2" value="32" aria-label="Combat reading speed" data-i18n-aria-label="settings.combatReadSpeed" oninput="App.updateAccessibilitySetting('combatReadSpeed', this.value)">
+                    </label>
                 </div>
             </div>
 
@@ -10737,7 +10775,7 @@
     <div id="screen-release" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="release-notes-title" aria-describedby="release-notes-version">
         <main class="system-screen-shell" aria-labelledby="release-notes-title">
             <div class="system-screen-header">
-                <div><h1 id="release-notes-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="release.whatsNew">What's New</h1><span class="release-version-badge" id="release-notes-version">v0.16.0 · Development draft</span></div>
+                <div><h1 id="release-notes-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="release.whatsNew">What's New</h1><span class="release-version-badge" id="release-notes-version">v0.18.0 · Candidate</span></div>
                 <button class="nav-btn mobile-screen-exit-source" type="button" data-command-surface="release-notes" data-command-mode="system" data-command-control="close-release-notes" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
             </div>
             <div id="release-notes-content"></div>

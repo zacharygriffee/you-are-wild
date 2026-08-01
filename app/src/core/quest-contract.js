@@ -741,10 +741,15 @@ const YAW_QUEST_CONTRACT = {
         const sequence = Math.max(0, Math.floor(Number(context.sequence) || 0));
         const distance = Math.max(2, Math.min(8, 2 + Math.floor(app._worldRoll(`quest-v2-${archetype}-distance`, origin.x, origin.y, sequence, level) * (3 + Math.min(4, level)))));
         const destination = this.proceduralCoordinate(app, origin, archetype, sequence, distance);
-        const danger = Math.max(1, level + Math.floor(distance / 3));
+        const authoredDanger = Math.max(1, level + Math.floor(distance / 3));
+        const destinationTile = app.getBaseTile?.(destination.x, destination.y) || destination;
+        const worldScale = typeof YAW_WORLD_SCALING !== 'undefined'
+            ? YAW_WORLD_SCALING.profile(app, destinationTile, authoredDanger)
+            : { difficulty: authoredDanger, rewardMultiplier: 1 };
+        const danger = worldScale.difficulty;
         const reward = {
-            xp: 6 + distance * 2 + danger * 3,
-            gold: 3 + distance + danger * 2
+            xp: Math.max(1, Math.round((6 + distance * 2 + danger * 3) * worldScale.rewardMultiplier)),
+            gold: Math.max(1, Math.round((3 + distance + danger * 2) * worldScale.rewardMultiplier))
         };
         const id = `proc_${archetype}_${origin.x}_${origin.y}_${sequence}`;
         const common = {

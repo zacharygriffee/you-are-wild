@@ -4,6 +4,34 @@
  */
 
 const YAW_COMBAT_LIFECYCLE = {
+    publicOutcome(app, outcome) {
+        const summarize = unit => Object.freeze({
+            id: String(app._unitSelectionId?.(unit) || unit?.id || unit?.name || 'unit'),
+            name: String(unit?.name || 'Unit').slice(0, 120),
+            species: String(unit?.species || '').slice(0, 80),
+            disposition: String(unit?.disposition || '').slice(0, 40),
+            active: Boolean((Number(unit?.CPun) || 0) > 0 && !unit?.knockedOut && !app._isCorpse?.(unit))
+        });
+        const participants = [...new Set([...(app.party || []), ...(app.creatures || [])])]
+            .slice(0, 64)
+            .map(summarize);
+        const tile = app._currentExplorationTile?.() || {};
+        return Object.freeze({
+            version: 1,
+            encounterId: String(app.combatState?.sceneExchangeId || `encounter:${Number(tile.x) || 0},${Number(tile.y) || 0}`).slice(0, 160),
+            result: String(outcome || 'victory').slice(0, 32),
+            round: Math.max(0, Math.floor(Number(app.combatState?.round) || 0)),
+            xpEarned: Math.max(0, Math.floor(Number(app.combatState?.xpEarned) || 0)),
+            location: Object.freeze({
+                x: Number(tile.x) || 0,
+                y: Number(tile.y) || 0,
+                biome: String(tile.biome || '').slice(0, 80),
+                structure: String(tile.structure || '').slice(0, 80)
+            }),
+            participants: Object.freeze(participants)
+        });
+    },
+
     admission(app, enemies, options = {}) {
         const hostiles = app._livingEnemies(Array.isArray(enemies) ? enemies : app.creatures);
         if (app.combatState?.active) return { allowed: false, reason: 'already-active', enemies: hostiles };
@@ -160,6 +188,7 @@ const YAW_COMBAT_LIFECYCLE = {
             round: app.combatState.round,
             tile: app._currentExplorationTile()
         });
+        if (typeof YAW_AUDIO_RUNTIME !== 'undefined') YAW_AUDIO_RUNTIME.play('encounter.start');
         app.renderParty();
         app.renderCreatures();
         app.renderMobileCombatToolbelt();
@@ -179,11 +208,14 @@ const YAW_COMBAT_LIFECYCLE = {
 
     endCombat(app, result) {
         const outcome = result === true ? 'victory' : result === false ? 'defeat' : (result || 'victory');
+        const publicOutcome = this.publicOutcome(app, outcome);
+        if (typeof YAW_COMBAT_PACING !== 'undefined') YAW_COMBAT_PACING.cancel(app);
         let pendingPlayerDeath = Boolean(app.defeatState?.pending && app.defeatState?.terminal);
         if (app.combatState?.sceneExchangeId && app.combatState?.round > 0 && typeof YAW_NARRATION_SYSTEM !== 'undefined') {
             YAW_NARRATION_SYSTEM.closeExchange(app, `${app.combatState.sceneExchangeId}-round-${app.combatState.round}`, { reason: 'combat-ended' });
         }
         YAW_COMBAT_STATUS.clearCombatOnlyStatuses([app.player, ...app.party, ...app.creatures]);
+        if (typeof YAW_RESTRAINTS !== 'undefined') YAW_RESTRAINTS.clearCombat(app);
         app.mode = app.GAME_MODE.NORMAL;
         app.combatState.active = false;
         app.combatState.processing = false;
@@ -248,6 +280,8 @@ const YAW_COMBAT_LIFECYCLE = {
             app.showExplorationActions();
             app.renderMobileCombatToolbelt();
         }
+        app._emitPublicModuleHook?.('onEncounterResolved', publicOutcome);
+        if (typeof YAW_AUDIO_RUNTIME !== 'undefined') YAW_AUDIO_RUNTIME.play(`encounter.${outcome}`);
         app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'combat', 'quests', 'sceneFeed', 'activityLog'], `combat-end-${outcome}`);
         app.autoSave();
     },

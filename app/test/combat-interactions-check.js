@@ -4436,6 +4436,44 @@ async function runCombatProgressInvariantFlow(page) {
     assert.strictEqual(state.rootVisible, true, `${viewport.name}: active combat composer should be visible`);
     assert.strictEqual(state.buttonsInViewport, true, `${viewport.name}: active combat controls should stay within the viewport`);
 
+    if (viewport.name === 'short mobile') {
+      const disclosure = page.locator('#mobile-combat-toolbelt details.contributed-action-menu');
+      assert.strictEqual(await disclosure.count(), 1, 'short mobile: contributed actions should use one compact disclosure');
+      await disclosure.locator('summary').click();
+      const contributed = await page.evaluate(() => {
+        const details = document.querySelector('#mobile-combat-toolbelt details.contributed-action-menu');
+        const list = details?.querySelector('.contributed-action-list');
+        const dock = document.querySelector('.mobile-panel-dock');
+        const listRect = list?.getBoundingClientRect();
+        const dockRect = dock?.getBoundingClientRect();
+        const buttons = Array.from(list?.querySelectorAll('button') || []).map(button => {
+          const rect = button.getBoundingClientRect();
+          return {
+            intent: button.getAttribute('data-command-intent') || '',
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom
+          };
+        });
+        return {
+          open: Boolean(details?.open),
+          display: list ? getComputedStyle(list).display : 'none',
+          listRect: listRect ? { left: listRect.left, right: listRect.right, top: listRect.top, bottom: listRect.bottom } : null,
+          dockTop: dockRect?.top ?? innerHeight,
+          buttons
+        };
+      });
+      assert.strictEqual(contributed.open, true, 'short mobile: activating More actions should open the disclosure');
+      assert.notStrictEqual(contributed.display, 'none', 'short mobile: opened contributed actions should be rendered');
+      assert(contributed.buttons.length > 0, 'short mobile: the opened disclosure should contain available action profiles');
+      assert(contributed.listRect.left >= -1 && contributed.listRect.right <= viewport.width + 1, 'short mobile: contributed-action overlay should stay horizontally bounded');
+      assert(contributed.listRect.top >= -1 && contributed.listRect.bottom <= contributed.dockTop + 1, 'short mobile: contributed-action overlay should stay above the fixed dock');
+      assert(contributed.buttons.every(button => button.left >= -1 && button.right <= viewport.width + 1 && button.top >= -1 && button.bottom <= contributed.dockTop + 1), 'short mobile: every contributed action should be fully reachable');
+      await disclosure.locator('[data-command-control="close-contributed-actions"]').click();
+      assert.strictEqual(await disclosure.evaluate(details => details.open), false, 'short mobile: the overlay should expose a reachable explicit close action');
+    }
+
     await page.evaluate(() => App.selectTarget('fight'));
     state = await readComposer();
     assert.strictEqual(state.progress.phase, 'targeting', `${viewport.name}: target selection should be a diagnosed transient phase`);

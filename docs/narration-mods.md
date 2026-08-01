@@ -217,3 +217,19 @@ occur before a pending record exists are reported as Errors.
 
 The optional packages are not included in `dist/you-are-wild.html`; install
 them through the local Mod Manager when testing the narration API.
+
+## Provider-independent scene evaluations
+
+`test/fixtures/simple-narrator-scenes.json` supplies versioned, provider-neutral
+scene JSON for a managed connection, a browser-session connection, and a native
+opaque connection. The fixtures cover player-actor, observer, and mixed
+viewpoints; safe and Mature posture; current and recent beats; characters;
+supplied dialogue; quests; activity; profiles; perspectives; and output
+bounds.
+
+`test/simple-narrator-scene-evaluation.test.mjs` executes the maintained Simple
+Narrator source with a bounded mock `MODS` API. It proves that every transport
+receives the same unchanged structured context, only the selected opaque
+connection ID crosses the module boundary, credential-shaped fields are
+absent, unavailable connections fail closed, and no network or real provider
+credential is needed.

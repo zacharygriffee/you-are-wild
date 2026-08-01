@@ -4,6 +4,32 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Moddable Core V1 now gives the shipped game and trusted-local modules the
+  same owned, data-only registries for actions, status effects, restraints,
+  equipment, body mass, biome recipes, and audio packs. Core retains seeded
+  resolution, costs, saves, rendering, ownership cleanup, and conflict
+  arbitration. Modules receive immutable post-commit observations rather than
+  veto, DOM, filesystem, credential, or arbitrary callback authority.
+- Core Grab, Pull, and Escape use explicit source-target restraint
+  relationships. Appetite-gated Seduce resolves Spirit against Wisdom, makes a
+  successful target recruitment-ready, withdraws both participants, and never
+  bypasses party capacity. A source-independent fixture composes these seams
+  with owned resources, techniques, equipment, species, biome placement, body
+  rules, and recovery, then unloads without residual definitions.
+- Biome Recipe and World Scaling V1 provide bounded deterministic seams for
+  unmaterialized tile classification and distance/biome/cave/structure danger
+  and reward pressure. Materialized sparse geography remains pinned; complete
+  new-world recipe sets, `mapModsHash`, designed regions, anomalies, portal
+  worlds, and regional population remain explicit later work.
+- Dismissed recruits now use persistent six-hour coarse autonomy with bounded
+  event history and perception-limited sightings. Merchants explicitly choose
+  finite or authored-restock lifecycles. Neither contract pretends to provide
+  a regional economy or persistent supply simulation.
+- Automatic combat presentation can be readable, fast, or instant without
+  changing deterministic order or saved state. Audio Pack V1 maps semantic
+  events to internally leased packaged media without AI, TTS, or executable
+  playback callbacks. Compact mobile combat places contributed actions in a
+  bounded upward-opening disclosure above the fixed dock.
 - Native builds expose a Pear Desktop settings entry that opens a host-owned
   trusted window. Browser builds remain unchanged, and game modules receive no
   update or peer-availability mutation methods.

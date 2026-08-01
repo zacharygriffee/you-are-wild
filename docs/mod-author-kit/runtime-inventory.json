@@ -1,0 +1,109 @@
+{
+  "snapshot": {
+    "gameVersion": "0.18.0",
+    "moduleApi": 1
+  },
+  "origins": ["file", "https", "localhost", "http"],
+  "hosts": ["browser", "pear-electron"],
+  "hostCapabilities": [
+    "app.host_settings",
+    "files.export_save",
+    "files.import_save",
+    "providers.session_transport",
+    "providers.secure_transport",
+    "providers.persistent_credentials",
+    "distribution.read_status"
+  ],
+  "contentRatings": ["safe", "mature", "adult"],
+  "provenance": ["user", "remote", "host", "built-in"],
+  "locales": ["en", "es"],
+  "species": [
+    "human", "wolf", "fox", "cat", "dragon", "naga", "bear", "tiger",
+    "bunny", "slime", "harpy", "bat", "deer", "frog", "plant", "shroom",
+    "bee", "goblin", "mouse", "rat", "pig", "cow", "sheep", "horse",
+    "lizard", "spider", "centaur", "drow", "hyena", "raccoon", "otter",
+    "fish", "crab", "siren", "troll", "bandit", "skeleton", "goat", "eagle"
+  ],
+  "biomes": [
+    "grove", "forest", "swamp", "plains", "cave", "jungle", "dungeon",
+    "manor", "beach", "road", "cliff", "water", "bridge", "farm",
+    "indoors", "entrance"
+  ],
+  "structures": [
+    "cabin", "hut", "cave", "ruins", "camp", "shrine", "pond", "tree",
+    "spring", "burrow", "nest", "web", "manor", "dungeon"
+  ],
+  "questAcquisitionStructures": ["cabin", "hut", "ruins", "camp", "shrine"],
+  "merchantTables": ["general", "traveler", "herbalist", "relic", "outfitter"],
+  "lootTables": ["basicGear", "armory", "relicGear"],
+  "equipmentSlots": ["head", "body", "hands", "feet", "accessory1", "accessory2"],
+  "uiSlots": [
+    "composer.place.after",
+    "roster.party.badges",
+    "roster.here.badges",
+    "roster.details.sections",
+    "system.utilities"
+  ],
+  "hooks": [
+    "onMapGenerate", "onEncounterStart", "onEncounterResolved", "onAutonomousEvent", "onCombatAction", "onDigestionTick",
+    "onSubActionExecute", "onDefeat", "onDefeatEncounterSettled",
+    "onPlayerState", "onRegenerate", "onPlayerMove", "onGameStart",
+    "onGameLoad", "onGameSave", "onTick", "onActionCommitted", "onSceneBeat",
+    "onSceneExchangeClosed", "onContentPolicyChanged"
+  ],
+  "speciesProfile": {
+    "bodyParts": [
+      "fangs", "wings", "tail", "claws", "horns", "webbing", "scales",
+      "fins", "stinger", "tentacles", "pincers"
+    ],
+    "abilities": [
+      "rage", "menacing", "flying", "ranged", "constrictor", "poisonous",
+      "darkvision", "bloodsuck", "swimming", "floopy", "enveloped", "venom",
+      "antiflying", "tasty", "fastFlee", "small", "livestock", "laughing"
+    ],
+    "temperaments": [
+      "timid", "prey", "fastFlee", "herd", "livestock", "aquatic",
+      "territorial", "aggressive", "swarm", "opportunistic", "pack",
+      "nocturnal", "cunning", "ambush", "apex", "aerial", "adaptable",
+      "relentless", "passive", "playful", "enveloping"
+    ],
+    "interactions": [
+      "social", "party", "quest", "merchant", "recruit", "sensitiveSocial",
+      "combat", "feed", "feast"
+    ]
+  },
+  "perkEffects": {
+    "stats": [
+      "MPun", "MPle", "Figh", "Feas", "Flir", "Fuck", "Flee", "Feed",
+      "str", "con", "spd", "int", "wis", "cha"
+    ],
+    "flags": ["predatorScent", "fearResist", "nightVision"]
+  },
+  "combatTechnique": {
+    "reach": ["melee", "ranged", "hybrid", "special"],
+    "distribution": ["split", "full"],
+    "status": ["bleed", "burn", "freeze", "stun", "sleep", "charm", "fear"]
+  },
+  "recoveryMode": {
+    "entry": ["defeat-site", "safe-anchor"],
+    "resolution": ["immediate", "shrine"],
+    "inventory": ["settings", "death-bag", "retain"],
+    "traversal": ["normal", "ethereal"],
+    "restrictions": [
+      "combat", "inventory", "hunger", "interactions", "recruitment",
+      "structures"
+    ]
+  },
+  "spritePack": {
+    "states": ["idle", "wounded", "defeated", "contained", "ghost"],
+    "facings": ["any", "north", "east", "south", "west"],
+    "scaling": ["smooth", "pixelated"],
+    "fit": ["contain", "cover"]
+  },
+  "tilesetPack": {
+    "slots": ["base", "route", "feature", "marker", "presence"],
+    "scaling": ["smooth", "pixelated"],
+    "blend": ["normal", "multiply", "screen"],
+    "rotation": [0, 90, 180, 270]
+  }
+}

@@ -156,11 +156,28 @@ const YAW_INTERACTION_DISPATCH = {
 
     validate(app, command) {
         if (!command || !command.action) return { ok: false, reason: 'missing-action' };
+        const actionProfile = typeof YAW_ACTION_PROFILES !== 'undefined'
+            ? YAW_ACTION_PROFILES.profile(command.action)
+            : null;
         if (YAW_RECOVERY_MODES?.isJourney?.(app)
             && (YAW_RECOVERY_MODES.restricts(app, 'interactions') || YAW_RECOVERY_MODES.restricts(app, 'combat'))) {
             return { ok: false, reason: 'recovery-restricted' };
         }
         if (!command.actors?.length) return { ok: false, reason: 'missing-actor' };
+        if (actionProfile) {
+            if (command.actors.length !== 1) return { ok: false, reason: 'too-many-actors' };
+            if (actionProfile.scope === 'target' && command.targets?.length !== 1) {
+                return { ok: false, reason: command.targets?.length ? 'too-many-targets' : 'missing-target' };
+            }
+            const availability = YAW_ACTION_PROFILES.availability(
+                app,
+                actionProfile,
+                command.actors[0],
+                actionProfile.scope === 'self' ? command.actors[0] : command.targets?.[0],
+                command.mode === 'combat' ? 'combat' : 'exploration'
+            );
+            return availability.ok ? { ok: true, actionProfile } : { ok: false, reason: availability.reason, actionProfile };
+        }
         if (['fight', 'flirt', 'fuck', 'feast', 'feed', 'inspect'].includes(command.action) && !command.targets?.length && command.mode !== 'combat') {
             return { ok: false, reason: 'missing-target' };
         }
@@ -234,6 +251,9 @@ const YAW_INTERACTION_DISPATCH = {
             distribution: command.distribution,
             planMode: command.planMode || command.plan?.mode || 'exploration'
         };
+        if (typeof YAW_ACTION_PROFILES !== 'undefined' && YAW_ACTION_PROFILES.profile(command.action)) {
+            return YAW_ACTION_PROFILES.dispatch(app, command);
+        }
         return this.dispatchAdventure(app, command);
     },
 
@@ -259,6 +279,9 @@ const YAW_INTERACTION_DISPATCH = {
             resolveAt: command.resolveAt,
             planMode: command.planMode || command.plan?.mode || 'combat'
         };
+        if (typeof YAW_ACTION_PROFILES !== 'undefined' && YAW_ACTION_PROFILES.profile(command.action)) {
+            return YAW_ACTION_PROFILES.dispatch(app, command);
+        }
         if (command.timing === 'queued' || command.timing === 'slowest-participant') return app.queueSyncAction(command.action, command.targets?.[0], command);
         if (['feed', 'feast'].includes(command.action) && command.subAction) return app._resolveCombatFeedCommand(command);
         if (['feed', 'feast'].includes(command.action) && !command.targets?.length) return app.executeActionVariant(command.action, command.actors[0]);
@@ -321,6 +344,9 @@ const YAW_INTERACTION_DISPATCH = {
 
     dispatchAdventure(app, command) {
         if (!command || command.mode === 'combat') return false;
+        if (typeof YAW_ACTION_PROFILES !== 'undefined' && YAW_ACTION_PROFILES.profile(command.action)) {
+            return YAW_ACTION_PROFILES.dispatch(app, command);
+        }
         const actors = (command.actors || []).filter(actor => actor && app._isLivingCreature(actor));
         const targets = (command.targets || []).filter(target => target && app._isLivingCreature(target));
         if (!command.action || actors.length === 0 || targets.length === 0) return false;

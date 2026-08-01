@@ -93,6 +93,29 @@ const YAW_COMBAT_ACTIONS = {
             buttons.push(app._combatIntentButton('feast', actor));
             buttons.push(app._combatIntentButton('fuck', actor));
         }
+        // V1 contributed actions resolve one actor at a time. Do not advertise them
+        // while the group composer is selecting a shared built-in intent.
+        if (typeof YAW_ACTION_PROFILES !== 'undefined' && !app.combatPlanSelection?.active) {
+            const profiles = [...YAW_ACTION_PROFILES.profiles.values()]
+                .filter(profile => profile.modes.includes('combat'))
+                .filter(profile => profile.scope === 'self'
+                    ? YAW_ACTION_PROFILES.availability(app, profile, actor, actor, 'combat').ok
+                    : enemies.some(enemy => YAW_ACTION_PROFILES.availability(app, profile, actor, enemy, 'combat').ok));
+            const profileButton = profile => {
+                const label = YAW_ACTION_PROFILES.label(app, profile);
+                const key = app._escapeJsString(profile.key);
+                const attrs = `data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="${app._escapeHtml(profile.key)}" data-command-grammar="actor-target-intent" data-command-slot="intent"`;
+                return YAW_ACTION_UI.iconButton(app, profile.key, profile.icon, `event.stopPropagation();App.executeCombatIntent('${key}')`, '', attrs, label);
+            };
+            if (!compact && profiles.length <= 3) {
+                profiles.forEach(profile => buttons.push(profileButton(profile)));
+            } else {
+                const moreLabel = app._escapeHtml(app._label('action.contributed.more', 'More actions'));
+                const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
+                const close = `<button type="button" class="action-btn compact-secondary" data-command-surface="combat-intents" data-command-mode="combat" data-command-control="close-contributed-actions" data-command-slot="exit" aria-label="${closeLabel}" onclick="event.stopPropagation();this.closest('details')?.removeAttribute('open')">${closeLabel}</button>`;
+                buttons.push(`<details class="contributed-action-menu"><summary class="action-btn" aria-label="${moreLabel}">${moreLabel}</summary><div class="contributed-action-list">${profiles.map(profileButton).join('')}${close}</div></details>`);
+            }
+        }
         if (allies.length > 0) {
             const feedClass = app._combatPendingIntent?.() === 'feed' ? 'selected' : '';
             buttons.push(app._iconActionButton('feed', app._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')", feedClass, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="feed" data-command-grammar="actor-target-intent" data-command-slot="intent"'));

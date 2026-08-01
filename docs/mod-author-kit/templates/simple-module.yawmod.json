@@ -1,0 +1,37 @@
+{
+  "packageType": "yaw-module",
+  "packageVersion": 1,
+  "packageId": "replace_me",
+  "gameVersion": "0.18.0",
+  "trustBoundary": "trusted-local",
+  "module": {
+    "manifest": {
+      "id": "replace_me",
+      "name": "Replace Me",
+      "version": "1.0.0",
+      "description": "Replace this with a concise player-facing description.",
+      "type": "feature_pack",
+      "contentRating": "safe",
+      "minGameVersion": "0.17.0",
+      "trustBoundary": "trusted-local",
+      "runtimeRequirements": {
+        "origins": [
+          "file",
+          "https",
+          "localhost",
+          "http"
+        ],
+        "hosts": [],
+        "capabilities": [],
+        "network": false,
+        "secureContext": false,
+        "hotToggleSafe": true
+      },
+      "permissions": [],
+      "dependencies": [],
+      "settings": []
+    },
+    "code": "MODS.log('Replace Me enabled.');\n",
+    "assets": {}
+  }
+}

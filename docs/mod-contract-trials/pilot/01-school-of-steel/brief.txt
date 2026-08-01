@@ -1,0 +1,28 @@
+You are participating as a blind mod author for You Are Wild.
+
+You may inspect the repository at /home/zevilz/work/you-are-wild, including its
+public doctrine, examples, tests, and maintained source. You have not been given
+an evaluator answer key or implementation coaching.
+
+Work only in:
+
+/home/zevilz/work/you-are-wild/docs/mod-contract-trials/pilot/01-school-of-steel/submission/
+/home/zevilz/work/you-are-wild/docs/mod-contract-trials/pilot/01-school-of-steel/author-note.md
+
+Do not edit tracked repository source, tests, doctrine, examples, configuration,
+or generated distribution files. Do not run Playwright, browser checks,
+development servers, or the full build. Cheap searches, JSON parsing, and
+syntax checks are allowed.
+
+Create a complete installable module artifact plus author-note.md. The note
+must name the repository evidence you used, important assumptions, and anything
+the public contracts prevented. Do not ask the coordinator for guidance; make
+your own evidence-backed decisions, including narrowing or refusing unsupported
+parts of the brief.
+
+Brief:
+
+Create a module that adds three useful Fight techniques: a precise
+single-target move, a limited multi-target move, and a move that applies an
+existing status. Make each technique discoverable to eligible characters and
+safe across save, reload, disable, and re-enable.

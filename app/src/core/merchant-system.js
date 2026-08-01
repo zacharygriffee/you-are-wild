@@ -50,6 +50,8 @@ const YAW_MERCHANT_SYSTEM = {
             stockTable,
             stock: this.stockFromTable(app, stockTable),
             stockLastRefreshDay: app.dayCount || 0,
+            stockLifecycle: merchantConfig.stockLifecycle || 'authored-restock',
+            stockRestockDays: Math.max(1, Math.min(365, Math.floor(Number(merchantConfig.restockDays) || 3))),
             serviceOrigin: YAW_UNIT_CONTAINMENT.overworldServiceOrigin(tile, structureId),
             serviceSuspended: false,
             tags: [sp?.name || sid, 'Merchant', app.biomes[biomeId]?.name || biomeId],
@@ -154,9 +156,14 @@ const YAW_MERCHANT_SYSTEM = {
     refreshStock(app, merchant, force = false) {
         if (!merchant || merchant.disposition !== app.DISPOSITION.MERCHANT) return merchant;
         const currentDay = app.dayCount || 0;
-        const needsStock = !merchant.stock || merchant.stock.length === 0;
-        const stale = currentDay - (merchant.stockLastRefreshDay ?? currentDay) >= 3;
-        if (force || needsStock || stale) {
+        const lifecycle = ['finite', 'authored-restock'].includes(merchant.stockLifecycle)
+            ? merchant.stockLifecycle
+            : 'authored-restock';
+        const interval = Math.max(1, Math.min(365, Math.floor(Number(merchant.stockRestockDays) || 3)));
+        const uninitialized = !Array.isArray(merchant.stock);
+        const stale = lifecycle === 'authored-restock'
+            && currentDay - (merchant.stockLastRefreshDay ?? currentDay) >= interval;
+        if (force || uninitialized || stale) {
             merchant.stock = merchant.stockTable ? this.stockFromTable(app, merchant.stockTable) : this.defaultStock(app, merchant, currentDay);
             merchant.stockLastRefreshDay = currentDay;
         } else {

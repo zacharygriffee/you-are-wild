@@ -28,6 +28,7 @@ const YAW_COMBAT_STATUS = {
                 changed++;
             }
         }
+        if (typeof YAW_STATUS_EFFECTS !== 'undefined') changed += YAW_STATUS_EFFECTS.clearCombat(units);
         return changed;
     },
 
@@ -56,6 +57,10 @@ const YAW_COMBAT_STATUS = {
 
     skipTurnFromStatus(app, unit) {
         const status = unit?.status || {};
+        const moduleStatusReason = typeof YAW_STATUS_EFFECTS !== 'undefined'
+            ? YAW_STATUS_EFFECTS.skipTurn(app, unit)
+            : null;
+        if (moduleStatusReason) return moduleStatusReason;
         if (status.stun?.turns > 0) {
             status.stun.turns--;
             if (status.stun.turns <= 0) delete status.stun;
@@ -233,6 +238,9 @@ const YAW_COMBAT_STATUS = {
                 if (unit.status.fear.turns <= 0) delete unit.status.fear;
             }
             if (unit.status.frightened) delete unit.status.frightened;
+            if (typeof YAW_STATUS_EFFECTS !== 'undefined') {
+                YAW_STATUS_EFFECTS.processRound(unit);
+            }
             if (unit !== app.player && app.party.includes(unit) && unit.CPun <= 0) {
                 app.log.push({ text: app._label('combat.status.succumbsWounds', '{name} succumbs to their wounds.', { name: unit.name }), type: 'combat' });
                 app._dropPartyCorpse(unit, 'status');

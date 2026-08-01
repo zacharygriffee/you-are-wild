@@ -818,11 +818,11 @@ const YAW_UNIT_CONTAINMENT = {
         const targetName = prey.name || app._label('containment.targetFallback', 'the contained creature');
         const holderName = holder.name || app._label('containment.holderFallback', 'their holder');
         const summaries = {
-            contained: app._label('containment.beat.contained', "{target} is held in {holder}'s stomach.", { target: targetName, holder: holderName }),
-            digesting: app._label('containment.beat.digesting', "{target} weakens while held in {holder}'s stomach.", { target: targetName, holder: holderName }),
-            softened: app._label('containment.beat.softened', '{target} is fully softened inside {holder}, but remains alive and can be released.', { target: targetName, holder: holderName }),
+            contained: app._mlabel('containment.beat.contained', "{target} is held in {holder}'s stomach.", { target: targetName, holder: holderName }),
+            digesting: app._mlabel('containment.beat.digesting', "{target} weakens while held in {holder}'s stomach.", { target: targetName, holder: holderName }),
+            softened: app._mlabel('containment.beat.softened', '{target} is fully softened inside {holder}, but remains alive and can be released.', { target: targetName, holder: holderName }),
             released: app._label('containment.beat.released', "{target} is released from {holder}'s stomach, weakened but alive.", { target: targetName, holder: holderName }),
-            terminal: app._label('containment.beat.terminal', '{target} is fully digested inside {holder}. {holder} feels restored.', { target: targetName, holder: holderName })
+            terminal: app._mlabel('containment.beat.terminal', '{target} is fully digested inside {holder}. {holder} feels restored.', { target: targetName, holder: holderName })
         };
         return app.emitSceneBeat({
             mode: app.combatState?.active ? 'combat' : 'adventure',

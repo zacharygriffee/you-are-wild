@@ -181,6 +181,9 @@
             _label(key, fallback, vars = {}) {
                 return YAW_UI_TEXT.label(this, key, fallback, vars);
             },
+            _mlabel(key, fallback, vars = {}) {
+                return YAW_UI_TEXT.mlabel(this, key, fallback, vars);
+            },
             _uiLabel(key) {
                 return YAW_UI_TEXT.uiLabel(this, key);
             },
@@ -3097,7 +3100,7 @@
                             this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                         }
                         const playerActor = actor.name === this.player?.name;
-                        result = this._label(playerActor ? 'feast.swallowResult.player' : 'feast.swallowResult.named', playerActor
+                        result = this._mlabel(playerActor ? 'feast.swallowResult.player' : 'feast.swallowResult.named', playerActor
                             ? '{actor} eats {target}! They are held in your belly.'
                             : "{actor} eats {target}! They are held in {owner}'s belly.", {
                             actor: actorName,
@@ -3113,7 +3116,7 @@
                             awardXP: options.awardXP
                         });
                         result = outcome.depleted
-                            ? this._label(actorIsPlayer ? 'feast.chewResult.player' : 'feast.chewResult', actorIsPlayer
+                            ? this._mlabel(actorIsPlayer ? 'feast.chewResult.player' : 'feast.chewResult', actorIsPlayer
                                 ? '{actor} chew into {target} for {amount} vitality and punishment damage. {target} is depleted and leaves recoverable remains.'
                                 : '{actor} chews into {target} for {amount} vitality and punishment damage. {target} is depleted and leaves recoverable remains.', {
                                 actor: actorName,
@@ -3182,7 +3185,7 @@
                         prey.digestionProgress = 100;
                         YAW_UNIT_CONTAINMENT.terminalize(this, actor, prey, { key: 'stomach' });
                         const playerActor = actor.name === this.player?.name;
-                        result = this._label(playerActor ? 'feast.digestResult.player' : 'feast.digestResult.named', playerActor
+                        result = this._mlabel(playerActor ? 'feast.digestResult.player' : 'feast.digestResult.named', playerActor
                             ? '{actor} actively digest {target}, fully breaking them down.'
                             : '{actor} actively digests {target}, fully breaking them down.', {
                             actor: actorName,
@@ -3291,7 +3294,7 @@
                         }
                         this._containTargetIn(target, actor, 'stomach', { willingSacrifice: true, feedContract: 'offer-whole' });
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = this._label('feed.offerWholeResult', '{actor} willingly offers themself to {target} and settles in their belly.', {
+                        result = this._mlabel('feed.offerWholeResult', '{actor} willingly offers themself to {target} and settles in their belly.', {
                             actor: actor.name,
                             target: target.name
                         });
@@ -3336,7 +3339,7 @@
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
                         this._containTargetIn(actor, target, 'stomach', { willingSacrifice: true });
                         this._awardCombatXP(this.XP_REWARDS.feedEnemy);
-                        result = this._label('feed.legacy.sacrificeResult', '{target} willingly offers themself to {actor} and settles in their belly.', { target: target.name, actor: displayActorName });
+                        result = this._mlabel('feed.legacy.sacrificeResult', '{target} willingly offers themself to {actor} and settles in their belly.', { target: target.name, actor: displayActorName });
                         break;
                     }
                     case 'feed.forceFeed': {
@@ -4543,7 +4546,7 @@
                         if (charm > resist) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
                             const playerActor = actor === this.player || actor.name === this.player?.name;
-                            result = this._label(playerActor ? 'explore.fuck.successPlayer' : 'explore.fuck.success', playerActor
+                            result = this._mlabel(playerActor ? 'explore.fuck.successPlayer' : 'explore.fuck.success', playerActor
                                 ? '{actor} play with {target}. Spirit rises to {current}/{max}.'
                                 : '{actor} plays with {target}. Spirit rises to {current}/{max}.', {
                                 actor: actorName,
@@ -4555,7 +4558,7 @@
                                 target.willing = true;
                                 target.orgasmed = true;
                                 target.disposition = this.DISPOSITION.FRIENDLY;
-                                result += ` ${this._label('explore.fuck.devoted', '{target} relaxes and becomes completely friendly.', { target: target.name })}`;
+                                result += ` ${this._mlabel('explore.fuck.devoted', '{target} relaxes and becomes completely friendly.', { target: target.name })}`;
                                 this._updateQuestProgress('seduce', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                                 if (this.settings.refractoryPeriod) {
                                     target.refractory = true;
@@ -4568,7 +4571,7 @@
                                 result += ` ${this._label('explore.recruit.possible', '{target} may be willing to join the party.', { target: target.name })}`;
                             }
                         } else {
-                            result = this._label('explore.fuck.resists', '{target} does not want to play.', { target: target.name });
+                            result = this._mlabel('explore.fuck.resists', '{target} does not want to play.', { target: target.name });
                             affected = false;
                         }
                         break;
@@ -4623,7 +4626,7 @@
                             target.charmed = (target.charmed || 0) + 1;
                             target.Figh = Math.max(1, (target.Figh || 10) - 1);
                             const playerActor = actor === this.player || actor.name === this.player?.name;
-                            result = this._label(playerActor ? 'explore.flirt.successPlayer' : 'explore.flirt.success', playerActor
+                            result = this._mlabel(playerActor ? 'explore.flirt.successPlayer' : 'explore.flirt.success', playerActor
                                 ? '{actor} talk with {target}. Their guard lowers. Spirit rises to {current}/{max}.'
                                 : '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', {
                                 actor: actorName,
@@ -4632,7 +4635,7 @@
                                 max: target.MPle
                             });
                             if (target.charmed >= 3) {
-                                result += ` ${this._label('explore.flirt.charmed', '{target} is utterly charmed and becomes friendly!', { target: target.name })}`;
+                                result += ` ${this._mlabel('explore.flirt.charmed', '{target} is utterly charmed and becomes friendly!', { target: target.name })}`;
                                 target.disposition = this.DISPOSITION.FRIENDLY;
                                 target.willing = true;
                             }

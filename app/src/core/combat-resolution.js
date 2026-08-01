@@ -282,7 +282,7 @@ const YAW_COMBAT_RESOLUTION = {
                     target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.3));
                     target.charmed = (target.charmed || 0) + 1;
                     target.Figh = Math.max(1, (target.Figh || 10) - 1);
-                    result = app._label(actorIsPlayer ? 'combat.action.talkSuccess.player' : 'combat.action.talkSuccess.named', actorIsPlayer
+                    result = app._mlabel(actorIsPlayer ? 'combat.action.talkSuccess.player' : 'combat.action.talkSuccess.named', actorIsPlayer
                         ? '{actor} talk with {target}! Their guard lowers. Spirit rises to {current}/{max}.'
                         : '{actor} talks with {target}! Their guard lowers. Spirit rises to {current}/{max}.', {
                         actor: actorName,
@@ -325,7 +325,7 @@ const YAW_COMBAT_RESOLUTION = {
                 if (charm > resist) {
                     const oldPle = target.CPle;
                     target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
-                    result = app._label(actorIsPlayer ? 'combat.action.playSuccess.player' : 'combat.action.playSuccess.named', actorIsPlayer
+                    result = app._mlabel(actorIsPlayer ? 'combat.action.playSuccess.player' : 'combat.action.playSuccess.named', actorIsPlayer
                         ? '{actor} play with {target}! Spirit rises to {current}/{max}.'
                         : '{actor} plays with {target}! Spirit rises to {current}/{max}.', {
                         actor: actorName,

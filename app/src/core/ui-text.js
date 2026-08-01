@@ -13,6 +13,17 @@ const YAW_UI_TEXT = {
         return label === key ? String(fallback ?? '').replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '') : label;
     },
 
+    mlabel(app, key, fallback, vars = {}) {
+        const isMature = (typeof CONTENT !== 'undefined')
+            && (CONTENT?.preferences?.posture === 'mature' || Number(CONTENT?.preferences?.maxTier || 0) >= 1);
+        if (isMature) {
+            const matureKey = key + '.mature';
+            const matureLabel = app._t(matureKey, vars);
+            if (matureLabel !== matureKey) return matureLabel;
+        }
+        return this.label(app, key, fallback, vars);
+    },
+
     primaryActionLabel(app, action) {
         const legacyExplicit = CONTENT.preferences.maxTier >= 2 && CONTENT.preferences.explicitDescriptions === true;
         const isSFW = CONTENT?.isCategoryEnabled?.('explicit.sexual') !== true && !legacyExplicit;

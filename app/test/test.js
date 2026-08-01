@@ -33754,6 +33754,41 @@ test('Chew uses its canonical label in Mature posture and its safe label in SFW'
   assertEqual(App._getActionLabel('feast', 'chew'), 'Break Down', 'SFW posture should retain the safe Chew label');
 });
 
+test('Mature narration labels are posture-aware localized and safely fall back', () => {
+  const { App, content } = loadAppForCombat(() => 0);
+  const vars = { actor: 'You', target: 'Bunnyfolk' };
+  content.locales.en['feed.nurseResult.player.mature'] = '{actor} draw {target} close and let them nurse, restoring vitality and easing their hunger.';
+  content.locales.es['feed.nurseResult.player.mature'] = '{actor} acercas a {target} y lo dejas amamantar, restaurando su vitalidad y calmando su hambre.';
+
+  content.preferences.posture = 'sfw';
+  content.preferences.maxTier = 0;
+  assertEqual(
+    App._mlabel('feed.nurseResult.player', '{actor} nurse {target}.', vars),
+    'You nurse Bunnyfolk, restoring vitality and easing their hunger.',
+    'SFW posture should retain the ordinary localized narration'
+  );
+
+  content.preferences.posture = 'mature';
+  content.preferences.maxTier = 1;
+  assertEqual(
+    App._mlabel('feed.nurseResult.player', '{actor} nurse {target}.', vars),
+    'You draw Bunnyfolk close and let them nurse, restoring vitality and easing their hunger.',
+    'Mature posture should select the richer localized narration'
+  );
+
+  content.setLanguage('es');
+  assertEqual(
+    App._mlabel('feed.nurseResult.player', '{actor} amamanta a {target}.', vars),
+    'You acercas a Bunnyfolk y lo dejas amamantar, restaurando su vitalidad y calmando su hambre.',
+    'Mature narration should follow the active locale'
+  );
+  assertEqual(
+    App._mlabel('feed.nurseResult.named', '{actor} nurses {target}.', vars),
+    'You amamanta a Bunnyfolk, restaura su vitalidad y alivia su hambre.',
+    'A missing Mature variant should fall back to the ordinary localized key'
+  );
+});
+
 test('Group chew applies vital damage without synthetic portion records', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', { id: 'group-vital-1', Feas: 30, size: 7, hunger: 50, stomach: [] });

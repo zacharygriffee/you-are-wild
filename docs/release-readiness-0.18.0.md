@@ -1,12 +1,16 @@
 # Release Readiness — 0.18.0
 
-Status: **locally verified — candidate not published**
+Status: **verified — candidate not published**
 
 This checklist records evidence for the exact 0.18.0 Moddable Core V1
 select-group alpha candidate. Local or CI success does not assign a release
 date, publish Sites, create public release assets, or promote the channel.
 
 Local evidence last refreshed: **2026-08-01**.
+
+Release-payload commit: `8d9f5918b4df61021010a9f7d66efbb9c5c5b091`.
+GitHub CI: [run 30686042187](https://github.com/zacharygriffee/you-are-wild/actions/runs/30686042187)
+completed successfully for that exact commit on 2026-08-01.
 
 ## Documentation and identity
 
@@ -62,8 +66,8 @@ Local evidence last refreshed: **2026-08-01**.
 - [x] Branding audit passes.
 - [x] `git diff --check` passes.
 - [x] Generated-source cleanliness passes.
-- [ ] Candidate changes are committed and pushed intentionally to `main`.
-- [ ] GitHub CI is observed green for the exact candidate commit.
+- [x] Candidate changes are committed and pushed intentionally to `main`.
+- [x] GitHub CI is observed green for the exact candidate commit.
 
 ## External/operator gates
 

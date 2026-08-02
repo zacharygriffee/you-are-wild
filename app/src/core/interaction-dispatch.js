@@ -158,13 +158,13 @@ const YAW_INTERACTION_DISPATCH = {
         const routed = typeof YAW_SUB_ACTIONS !== 'undefined'
             ? YAW_SUB_ACTIONS.actionProfile(command.action, command.subAction)
             : null;
-        // Group Seduce resolves through the synchronized Talk resolver, which
-        // owns its shared contribution and delayed-turn behavior. The direct
-        // profile remains authoritative for one actor.
+        // Group Seduce resolves through the shared Talk resolver, which owns
+        // contribution and narration for both immediate exploration and
+        // delayed combat. The direct profile remains authoritative for one
+        // actor only.
         if (routed?.key === 'core:seduce'
             && command.action === 'flirt'
             && command.subAction === 'seduce'
-            && command.timing === 'slowest-participant'
             && (command.actors || []).length > 1) return null;
         return routed || (typeof YAW_ACTION_PROFILES !== 'undefined'
             ? YAW_ACTION_PROFILES.profile(command.action)
@@ -263,6 +263,8 @@ const YAW_INTERACTION_DISPATCH = {
         if (!valid.ok) {
             if (valid.reason === 'recovery-restricted') {
                 app._guardRecoveryCapability?.('interactions', { action: command?.action });
+            } else {
+                this.reportInvalidAdventure(app, command, valid.reason);
             }
             return false;
         }
@@ -403,7 +405,9 @@ const YAW_INTERACTION_DISPATCH = {
         } else if (reason === 'invalid-combat-technique') {
             text = app._label('combat.technique.invalid', 'That combat technique is no longer available for the selected actors and targets.');
         }
-        app.combatCorrectionMessage = { text, reason, action: command?.action || '', targetId: target?.id || target?.name || '', time: Date.now() };
+        // A failed attempt is part of the encounter fiction, never a separate UI warning.
+        // Keep controls usable and let the Scene Feed carry the reason it did not resolve.
+        app.combatCorrectionMessage = null;
         app._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
         app.emitStoryResult?.({
             ...(command || {}),
@@ -422,6 +426,35 @@ const YAW_INTERACTION_DISPATCH = {
         });
         app.renderLog();
         app._renderInteractionState({ exploration: false, toolbelt: true });
+    },
+
+    reportInvalidAdventure(app, command, reason = 'invalid-target') {
+        const actor = command?.actors?.[0] || app._getExplorationActors?.()?.[0] || app.player;
+        const target = command?.targets?.[0] || null;
+        const action = app._uiLabel?.(command?.action || 'action') || 'action';
+        const name = actor?.name || app._label('ui.ally', 'Someone');
+        let text = app._label('explore.narration.noOpening', '{name} cannot find a way to {action} right now.', { name, action });
+        if (reason === 'missing-target') {
+            text = app._label('explore.narration.needTarget', '{name} looks for a clear target before trying to {action}.', { name, action });
+        } else if (reason === 'missing-actor') {
+            text = app._label('explore.narration.needActor', 'No one is ready to carry out {action}.', { action });
+        } else if (reason === 'ineligible-target') {
+            text = app._label('explore.narration.ineligibleTarget', '{name} cannot use {action} with that target.', { name, action });
+        } else if (reason === 'too-many-actors' || reason === 'too-many-targets') {
+            text = app._label('explore.narration.focus', '{name} needs a clearer focus for {action}.', { name, action });
+        }
+        app._pushLog?.(text, 'discovery', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
+        app.emitStoryResult?.({
+            ...(command || {}),
+            mode: 'adventure',
+            actors: command?.actors?.length ? command.actors : [actor].filter(Boolean),
+            targets: command?.targets?.length ? command.targets : [target].filter(Boolean),
+            action: command?.action || 'action',
+            tags: [reason],
+            source: 'adventure-validation'
+        }, text, { resultKind: 'failure', importance: 'hint', tags: [reason], source: 'adventure-validation' });
+        app.renderLog?.();
+        app._renderInteractionState?.({ exploration: true, toolbelt: false });
     },
 
     dispatchAdventure(app, command) {

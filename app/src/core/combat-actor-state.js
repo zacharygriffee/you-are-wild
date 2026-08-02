@@ -309,8 +309,13 @@ const YAW_COMBAT_ACTOR_STATE = {
         app.combatState.turnQueue = validQueue;
         app.combatState.syncActions = (app.combatState.syncActions || []).map(sync => {
             const participants = (sync.participants || []).filter(unit => app._isCombatQueueUnitValid(unit) && (app.party || []).includes(unit));
+            const baseAction = app._syncBaseAction?.(sync.type) || String(sync.type || '').replace(/^sync_/, '');
+            const approach = sync.techniqueKey || sync.plan?.subAction || null;
+            const selfFeast = baseAction === 'feast' && ['digest', 'release'].includes(approach);
             const targets = (sync.targets?.length ? sync.targets : [sync.target])
-                .filter((unit, index, list) => app._isCombatQueueUnitValid(unit) && unit?.disposition === app.DISPOSITION.ENEMY && list.indexOf(unit) === index);
+                .filter((unit, index, list) => app._isCombatQueueUnitValid(unit)
+                    && (selfFeast ? participants.includes(unit) : unit?.disposition === app.DISPOSITION.ENEMY)
+                    && list.indexOf(unit) === index);
             const target = targets[0] || null;
             // Queue repair can insert a missing combatant ahead of a prepared
             // group action. The resolution point belongs to the slowest

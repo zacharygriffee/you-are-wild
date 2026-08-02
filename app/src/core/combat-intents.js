@@ -34,7 +34,7 @@ const YAW_COMBAT_INTENTS = {
         }
         const pressure = app._canAffordActionPressure?.(action, current, { mode: 'combat' }) || { ok: true };
         if (!pressure.ok) {
-            app.combatCorrectionMessage = { text: pressure.text, reason: pressure.reason || 'cost-blocked', action, time: Date.now() };
+            app.combatCorrectionMessage = null;
             app._pushLog?.(pressure.text, 'combat', { actor: current, action, phase: pressure.reason || 'cost-blocked' });
             app.emitStoryResult?.({
                 mode: 'combat',
@@ -83,7 +83,14 @@ const YAW_COMBAT_INTENTS = {
             if (action !== 'scavenge' && YAW_COMBAT_PLANNING.shouldPlanIntent(app)) {
                 if (!YAW_COMBAT_PLANNING.requiresCommit(app)) {
                     if (app._combatMarkedTarget?.()) {
-                        return app._executeCombatIntentOnMarkedTarget(action, current);
+                        return app._executeCombatIntentOnMarkedTarget(action, current, { forceChoose: true });
+                    }
+                    if (action === 'feast' && YAW_COMBAT_FEED.hasAvailableSelfAction(app, action, [current])) {
+                        return YAW_COMBAT_FEED.executeVariantAction(app, action, current, null, {
+                            actors: [current],
+                            scope: 'self',
+                            forceChoose: true
+                        });
                     }
                     app.selectTarget(action);
                     return true;
@@ -91,10 +98,18 @@ const YAW_COMBAT_INTENTS = {
                 return app.setCombatPlanIntent(action);
             }
             if (action !== 'scavenge' && app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
-                return app.queueCombatGroupIntent(action);
+                const participants = app._syncSelectedParticipants();
+                if (action === 'feast' && YAW_COMBAT_FEED.hasAvailableSelfAction(app, action, participants)) {
+                    return YAW_COMBAT_FEED.executeVariantAction(app, action, participants[0], null, {
+                        actors: participants,
+                        scope: 'self',
+                        forceChoose: true
+                    });
+                }
+                return app.queueCombatGroupIntent(action, { forceChoose: true });
             }
             if (action !== 'scavenge' && app._combatMarkedTarget?.()) {
-                return app._executeCombatIntentOnMarkedTarget(action, current);
+                return app._executeCombatIntentOnMarkedTarget(action, current, { forceChoose: true });
             }
             const currentActorId = app._unitSelectionId(current);
             if (app.targetSelection?.source === 'combat'
@@ -102,6 +117,13 @@ const YAW_COMBAT_INTENTS = {
                 && (!app.targetSelection.actorId || app.targetSelection.actorId === currentActorId || app.targetSelection.actorId === current.id || app.targetSelection.actorId === current.name)) {
                 app.cancelTargetSelection();
                 return true;
+            }
+            if (action === 'feast' && YAW_COMBAT_FEED.hasAvailableSelfAction(app, action, [current])) {
+                return YAW_COMBAT_FEED.executeVariantAction(app, action, current, null, {
+                    actors: [current],
+                    scope: 'self',
+                    forceChoose: true
+                });
             }
             app.selectTarget(action);
             return true;
@@ -111,10 +133,10 @@ const YAW_COMBAT_INTENTS = {
                 return app.setCombatPlanIntent(action);
             }
             if (app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
-                return app.queueCombatGroupIntent(action);
+                return app.queueCombatGroupIntent(action, { forceChoose: true });
             }
             if (app._combatMarkedTarget?.()) {
-                return app._executeCombatIntentOnMarkedTarget(action, current);
+                return app._executeCombatIntentOnMarkedTarget(action, current, { forceChoose: true });
             }
             const currentActorId = app._unitSelectionId(current);
             if (app.targetSelection?.source === 'combat'

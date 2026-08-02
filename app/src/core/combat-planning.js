@@ -133,6 +133,16 @@ const YAW_COMBAT_PLANNING = {
     setIntent(app, action) {
         if (!this.ensure(app)) return false;
         app.combatCorrectionMessage = null;
+        const actors = this.actors(app);
+        if (action === 'feast'
+            && this.markedTargets(app).length === 0
+            && YAW_COMBAT_FEED.hasAvailableSelfAction(app, action, actors)) {
+            return YAW_COMBAT_FEED.executeVariantAction(app, action, actors[0], null, {
+                actors,
+                scope: 'self',
+                forceChoose: true
+            });
+        }
         app.combatPlanSelection.pendingIntent = action || null;
         app.targetSelection = null;
         app._clearCenterActionsForCombat?.();
@@ -210,7 +220,7 @@ const YAW_COMBAT_PLANNING = {
         return map[action] || null;
     },
 
-    confirm(app) {
+    confirm(app, options = {}) {
         if (!app.combatPlanSelection?.active) return false;
         const intendedGroup = Boolean(app.combatPlanSelection.hadGroupActors);
         this.normalize(app);
@@ -268,9 +278,14 @@ const YAW_COMBAT_PLANNING = {
             return false;
         }
         if (actors.length === 1 && !intendedGroup) {
-            if (action === 'fight' && targets.length > 0) {
+            const opensApproachChooser = ['fight', 'flirt', 'fuck', 'feast', 'feed'].includes(action);
+            if (opensApproachChooser && targets.length > 0) {
                 app.combatPlanSelection = null;
-                return YAW_COMBAT_FEED.executeVariantAction(app, 'fight', actors[0], targets, { actors, targets });
+                return YAW_COMBAT_FEED.executeVariantAction(app, action, actors[0], targets, {
+                    actors,
+                    targets,
+                    forceChoose: options.forceChoose === true
+                });
             }
             const singleCommand = app._buildPanelInteractionCommand({
                 mode: 'combat',
@@ -314,9 +329,13 @@ const YAW_COMBAT_PLANNING = {
             app._reportInvalidCombatCommand?.(command, valid.reason);
             return false;
         }
-        if (action === 'fight' && targets.length > 0) {
+        if (['fight', 'flirt', 'fuck', 'feast', 'feed'].includes(action) && targets.length > 0) {
             app.combatPlanSelection = null;
-            return YAW_COMBAT_FEED.executeVariantAction(app, 'fight', actors[0], targets, { actors, targets });
+            return YAW_COMBAT_FEED.executeVariantAction(app, action, actors[0], targets, {
+                actors,
+                targets,
+                forceChoose: options.forceChoose === true
+            });
         }
         return app._dispatchInteractionCommand(command);
     },
@@ -331,7 +350,7 @@ const YAW_COMBAT_PLANNING = {
             : app._label('combat.action.commitIntent', 'Commit {intent}', { intent: intentLabel }));
         const cancelLabel = app._escapeHtml(app._label('combat.group.cancel', 'Cancel Group'));
         const confirm = pendingIntent
-            ? `<button class="action-btn primary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-combat-plan" data-command-slot="intent" data-command-intent="${app._escapeHtml(pendingIntent)}" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="event.stopPropagation();App.confirmCombatPlan()">${confirmLabel}</button>`
+            ? `<button class="action-btn primary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-combat-plan" data-command-slot="intent" data-command-intent="${app._escapeHtml(pendingIntent)}" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="event.stopPropagation();App.confirmCombatPlan(true)">${confirmLabel}</button>`
             : '';
         const reset = options.includeReset === false
             ? ''
@@ -347,6 +366,16 @@ const YAW_COMBAT_PLANNING = {
         const target = app.creatures.find(c => String(c.id || c.name) === String(targetId) || app._unitSelectionId(c) === String(targetId));
         if (!target) return false;
         const actor = this.currentActor(app);
+        if (['fight', 'flirt', 'fuck', 'feast', 'feed'].includes(action)) {
+            app.targetSelection = null;
+            app._clearCombatMarkedTargets?.();
+            app.combatPlanSelection = null;
+            return YAW_COMBAT_FEED.executeVariantAction(app, action, actor, [target], {
+                actors: [actor].filter(Boolean),
+                targets: [target],
+                forceChoose: true
+            });
+        }
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',
             actors: [actor].filter(Boolean),

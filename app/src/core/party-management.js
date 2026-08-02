@@ -90,6 +90,10 @@ const YAW_PARTY_MANAGEMENT = {
         return app._label(`party.controlDescription.${key}`, app.PARTY_CONTROLS[key].description);
     },
 
+    providerAvailable(app) {
+        return YAW_COMPANION_BEHAVIOR.hasProviderController(app);
+    },
+
     preferredRowLabel(app, preferredRow) {
         const key = app.PARTY_PREFERRED_ROWS?.[preferredRow] ? preferredRow : 'auto';
         return app._label(`party.preferredRow.${key}`, app.PARTY_PREFERRED_ROWS?.[key]?.label || key);
@@ -129,7 +133,29 @@ const YAW_PARTY_MANAGEMENT = {
 
     setControl(app, index, control) {
         const unit = app.party[index];
-        return this.saveBehaviorChange(app, unit, 'control', control, this.controlLabel(app, control));
+        const unavailableProvider = control === 'provider' && !this.providerAvailable(app);
+        const effectiveControl = unavailableProvider ? 'deterministic' : control;
+        const changed = this.saveBehaviorChange(app, unit, 'control', effectiveControl, this.controlLabel(app, effectiveControl));
+        if (!changed || !unavailableProvider) return changed;
+        const text = app._label('party.controlProviderUnavailable', '{name} has no AI assistance configured, so they will act autonomously.', {
+            name: unit?.name || app._label('unit.partyMember', 'That companion')
+        });
+        app.log.push({ text, type: 'discovery' });
+        app.emitSceneBeat?.({
+            mode: app.combatState?.active ? 'combat' : 'adventure',
+            actors: [unit].filter(Boolean),
+            targets: [],
+            action: 'companion-control',
+            tags: ['companion-behavior', 'provider-unavailable', 'autonomous-fallback'],
+            source: 'companion-behavior'
+        }, text, {
+            resultKind: 'feedback',
+            importance: 'hint',
+            tags: ['companion-behavior', 'provider-unavailable', 'autonomous-fallback'],
+            source: 'companion-behavior'
+        });
+        app.renderLog();
+        return true;
     },
 
     setPreferredRow(app, index, preferredRow) {
@@ -159,17 +185,24 @@ const YAW_PARTY_MANAGEMENT = {
                     : (field === 'stance'
                         ? this.stanceLabel(app, key)
                         : (field === 'control' ? this.controlLabel(app, key) : this.preferredRowLabel(app, key)));
-                return `<option value="${key}" ${value === key ? 'selected' : ''}>${app._escapeHtml(title)}</option>`;
+                const unavailableProvider = field === 'control' && key === 'provider' && !this.providerAvailable(app);
+                const unavailableText = app._label('party.controlProviderUnavailableOption', 'AI assistance is not configured. Autonomous control will be used instead.');
+                const optionTitle = unavailableProvider ? unavailableText : title;
+                const optionState = [value === key ? 'selected' : '', unavailableProvider ? 'disabled' : ''].filter(Boolean).join(' ');
+                return `<option value="${key}"${optionState ? ` ${optionState}` : ''} title="${app._escapeHtml(optionTitle)}">${app._escapeHtml(title)}${unavailableProvider ? ` (${app._escapeHtml(app._label('party.unavailable', 'unavailable'))})` : ''}</option>`;
             }).join('');
             const aria = app._label(`party.${field}For`, `${label} for {name}`, { name: unitName });
             return `<label class="companion-behavior-field"><span>${app._escapeHtml(label)}</span><select class="nav-btn" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="${controlKey}" title="${app._escapeHtml(description)}" aria-label="${app._escapeHtml(aria)}" onchange="App.${setter}(${index},this.value);App.refreshHoldingsWindow()">${choices}</select><small class="companion-behavior-preview">${app._escapeHtml(description)}</small></label>`;
         };
         const dutyDescription = `${this.dutyDescription(app, behavior.duty)} ${app._label('party.tradeoff', 'Tradeoff')}: ${this.dutyTradeoff(app, behavior.duty)}`;
+        const controlDescription = this.providerAvailable(app)
+            ? this.controlDescription(app, behavior.control)
+            : `${this.controlDescription(app, behavior.control)} ${app._label('party.controlProviderUnavailableOption', 'AI assistance is not configured. Autonomous control will be used instead.')}`;
         const title = app._label('party.manageBehaviorFor', 'Behavior: {name}', { name: unitName });
         return `<section class="holdings-section holdings-behavior-section" data-command-surface="holdings-window" data-command-mode="exploration" aria-label="${app._escapeHtml(title)}">
             <h3>${app._escapeHtml(title)}</h3>
             <p class="holding-entry-meta">${app._escapeHtml(app._label('party.manageBehaviorHelp', 'Choose how this companion approaches exploration and autonomous turns.'))}</p>
-            <div class="unit-actions unit-management-actions" style="display:grid;gap:10px;">${select('duty', app.PARTY_DUTIES, dutyDescription)}${select('stance', app.PARTY_STANCES, this.stanceDescription(app, behavior.stance))}${select('control', app.PARTY_CONTROLS, this.controlDescription(app, behavior.control))}${select('preferredRow', app.PARTY_PREFERRED_ROWS, this.preferredRowDescription(app, behavior.preferredRow))}</div>
+            <div class="unit-actions unit-management-actions" style="display:grid;gap:10px;">${select('duty', app.PARTY_DUTIES, dutyDescription)}${select('stance', app.PARTY_STANCES, this.stanceDescription(app, behavior.stance))}${select('control', app.PARTY_CONTROLS, controlDescription)}${select('preferredRow', app.PARTY_PREFERRED_ROWS, this.preferredRowDescription(app, behavior.preferredRow))}</div>
         </section>`;
     },
 

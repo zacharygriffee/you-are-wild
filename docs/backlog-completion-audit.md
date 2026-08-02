@@ -11,13 +11,14 @@ implementation.
 | --- | --- | --- |
 | Public Module Contract V1 | `docs/modding.md`; neutral conformance and locale-pack fixtures; tests for Scene template ownership, creation persistence, Play dispatch, save/reload, disable/delete/reinstall, dependency floors, namespace diagnostics, and unload cleanup | Automated acceptance complete. Continue only for a demonstrated third-party contradiction. |
 | Death/Defeat V3 and companions | Shared resolver, recovery policies, scoped Hardcore deletion, death bags, pending companion settlement, Drop Off/Rejoin, sparse/full save compatibility, module/environment cause identity | Automated acceptance complete for documented V3 boundaries. Longer operator saves remain observational rather than an implementation blocker. |
-| Interaction and Feed Contract V1 | Shape matrix, selected actor/target direction, self/mixed targets, many-to-many ordering, partial failure, queued invalidation, committed in-world failure, one-cost/one-practice accounting, canonical Feed variants, bounded pair-by-pair availability and once-per-actor cost previews | Automated acceptance complete for the current grammar. Add fixtures only for a newly demonstrated contradiction. |
+| Interaction and Feed Contract V1 | Shape matrix, selected actor/target direction, self/mixed targets, many-to-many ordering, partial failure, queued invalidation, committed in-world failure, one-cost/one-practice accounting, canonical Feed variants, bounded pair-by-pair availability and once-per-actor cost previews; shared Fight technique chooser and Mature Talk/Play approach chooser | Automated acceptance complete for the current grammar. Add fixtures only for a newly demonstrated contradiction. |
+| Companion behavior availability and support safety | AI-assisted control is disabled without a registered controller; legacy or in-flight AI-assisted selection falls back to deterministic Autonomous with narration; autonomous restorative Feed/Tend candidates reject hostile targets even if stale state retains a party reference | Automated acceptance complete for the current contract. Add fixtures only for a newly demonstrated contradiction. |
 | Digestion and survival pacing | Fast/slow total-nutrition parity, size scaling, rest acceleration, empty-rest hunger, bounded hunger-rate bands, visible rate, containment terminal/nonterminal separation | Automated acceptance complete for current formulas. Numeric retuning remains operator-mediated. |
 | Balance instrumentation | Schema-v2 scenario report, neutral command/effect/XP reference, every multi-Fight practice tier, interaction resource matrix | Tend is now condition-only care with net-effect support XP capped across one full target pool and no self/no-op reward. Remaining nutrition-bearing reserve design is deferred. |
 | Responsive UI, accessibility, localization | 313–1365px viewport matrix; 12–20px text; English/Spanish key parity and source guards; touch targets; high contrast; reduced motion; dialog relationships, isolation, focus trap/restoration, file-origin browser flows, unified mobile Roster, persistent composer, and five bounded UI Contribution V1 slots | Automated acceptance is complete for the current contract. Continue only for demonstrated defects, physical-device findings, or release-candidate smoke evidence. |
 | Map, tileset, interior, and terrain | Deterministic start/recovery anchors; traversal and interior graph tests; Textured/Lightweight/partial-pack semantic equivalence; degraded fallback; artifact audit; cold/cache/zero-atlas browser fixtures; live route/POI desktop/mobile review | Automated acceptance complete. Continue coast/cave/building/art-pack visual review when representative states surface in operator play. |
 | Optional/deferred contracts | Feature-placement doctrine plus implemented Media Repository, Asset Bundle V1, Tileset Pack V1, Sprite Pack V1, Locale Pack V1, Resource Ledger V1, Combat Technique V1, Recovery Mode V1, narration ownership, and provider seams | Current V1 foundations are complete. New row/reach rules, Offer Piece mass-ledger replacement, richer recovery profiles, and concrete new media providers remain deferred pending their named decision and evidence. |
-| Delivery | Full build, viewport, interaction, branding, artifact, and diff gates | Local gates must be rerun for the exact 0.16.0 candidate. CI observation, rollback selection, push, and Sites publication remain operator-gated. |
+| Delivery | Full build, viewport, interaction, branding, artifact, and diff gates | Local gates must be rerun for the exact 0.18.1 candidate. CI observation, rollback selection, push, and Sites publication remain operator-gated. |
 
 ## Cross-cutting invariant ledger
 
@@ -51,18 +52,22 @@ operator-mediated decision:
 
 ## Dormant definitions are not capabilities
 
-Core still contains compatibility-era internal labels for possible Fight,
-Talk, and Flee sub-actions. The public action-variant contract intentionally
-admits only Feed, Feast, and Play; Combat Technique V1 separately admits
-declarative named Fight profiles without callbacks. Disarm, Grapple, Gift, Dance, Retreat, and
-Surrender must not become visible or moddable merely because a definition
-exists: each would require authored resolution, reach/status/equipment rules,
-costs, Scene outcomes, AI behavior, save semantics where applicable, and
-desktop/mobile acceptance.
+Core still contains compatibility-era internal labels for possible Fight and
+Flee sub-actions. The public action-variant contract admits Feed, Feast, Talk,
+and Play; Combat Technique V1 separately admits declarative named Fight
+profiles without callbacks. Talk now exposes Flirt and Dance as visible social
+approaches that share one resolver: the same cost, reach, Spirit, recruitment,
+and combat outcome contract applies, while the chosen approach remains part of
+the command/presentation context. Play approaches likewise route through the
+same Play resolver unless an explicitly authored Action Profile owns one.
 
-Talk/Flee expansion and bespoke Fight callbacks remain design slices, not
-missing router flags. Ordinary Fight continues to provide Basic Attack through
-the deterministic resolver when no authored technique is selected.
+Disarm, Grapple, Gift, Retreat, and Surrender must not become visible or
+moddable merely because a definition exists: each would require authored
+resolution, reach/status/equipment rules, costs, Scene outcomes, AI behavior,
+save semantics where applicable, and desktop/mobile acceptance. Talk/Flee
+expansion and bespoke Fight callbacks remain design slices, not missing router
+flags. Ordinary Fight continues to provide Basic Attack through the
+deterministic resolver when no authored technique is selected.
 
 Natural sleep and the legacy combat-sleep effect are likewise dormant rather
 than a current gameplay capability. The persisted fields and vocabulary remain

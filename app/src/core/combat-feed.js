@@ -5,37 +5,81 @@
  */
 
 const YAW_COMBAT_FEED = {
+    selfResolution(app, action, actors = []) {
+        if (action !== 'feast' || typeof YAW_SUB_ACTIONS === 'undefined') return null;
+        return YAW_SUB_ACTIONS.resolve(app, action, {
+            actors: [...new Set((actors || []).filter(unit => unit && unit.CPun > 0))],
+            targets: [],
+            scope: 'self',
+            mode: 'combat'
+        });
+    },
+
+    hasAvailableSelfAction(app, action, actors = []) {
+        return Boolean(this.selfResolution(app, action, actors)?.variants.some(variant => variant.available));
+    },
+
     executeVariantAction(app, action, actor = app.activeActor || app._currentCombatActor() || app.player, target = null, options = {}) {
         actor = actor || app.activeActor || app._currentCombatActor() || app.player;
         const actors = [...new Set((options.actors || [actor]).filter(unit => unit && unit.CPun > 0))];
-        const targets = [...new Set((options.targets || (Array.isArray(target) ? target : [target])).filter(unit => unit && unit.CPun > 0))];
+        let targets = [...new Set((options.targets || (Array.isArray(target) ? target : [target])).filter(unit => unit && unit.CPun > 0))];
+        let scope = options.scope === 'self' ? 'self' : 'target';
+        const inferredSelf = action === 'feast'
+            && actors.length > 0
+            && targets.length > 0
+            && targets.length === actors.length
+            && targets.every(unit => actors.includes(unit));
+        if (scope === 'self' || inferredSelf || (!targets.length && this.hasAvailableSelfAction(app, action, actors))) {
+            scope = 'self';
+            targets = [...actors];
+        }
         if (!targets.length) {
             app.selectTarget(action);
             return true;
         }
         const resolution = action === 'fight' && typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
             ? YAW_COMBAT_TECHNIQUES.resolve(app, { actors, targets, mode: 'combat' })
-            : YAW_SUB_ACTIONS.resolve(app, action, { actors, targets, mode: 'combat' });
+            : YAW_SUB_ACTIONS.resolve(app, action, { actors, targets, scope, mode: 'combat' });
         const validVariants = resolution.variants.filter(variant => variant.available);
         if (validVariants.length === 0) {
             const fallback = app._label('variant.noOptions', 'No {action} variants are available for {name}. Choose another target.', {
                 action: app._uiLabel(action),
                 name: targets.map(unit => unit.name).join(', ')
             });
-            app.log.push({ text: fallback, type: 'combat' });
+            app.combatCorrectionMessage = null;
+            app._pushLog?.(fallback, 'combat', { actor, targetName: targets.map(unit => unit.name).join(', '), action, phase: 'no-action-variants' });
+            app.emitStoryResult?.({
+                mode: 'combat',
+                actors,
+                targets,
+                action,
+                tags: ['no-action-variants'],
+                source: 'combat-variant-validation'
+            }, fallback, {
+                mode: 'combat',
+                resultKind: 'failure',
+                importance: 'normal',
+                tags: ['no-action-variants'],
+                source: 'combat-variant-validation'
+            });
             app.renderLog();
-            app.combatCorrectionMessage = { text: fallback, reason: 'no-action-variants', action, time: Date.now() };
             app._renderInteractionState?.({ exploration: false, toolbelt: true });
             return false;
         }
+        // Player-facing primary interactions always pause at the shared
+        // approach surface. A single currently available approach is still an
+        // option worth naming; silently committing it made SFW Play and
+        // context-limited Feed appear to have no sub-actions at all.
+        // Low-level callers may still request the currently selected/default
+        // approach directly; all visible primary controls pass forceChoose.
         const maturePosture = CONTENT?.preferences?.posture === 'mature' || Number(CONTENT?.preferences?.maxTier || 0) >= 1;
         const directSocialDefault = !maturePosture && ['flirt', 'fuck'].includes(action)
             ? validVariants.find(variant => variant.id === app._getDefaultSubAction(action))
             : null;
-        if (directSocialDefault) {
+        if (directSocialDefault && options.forceChoose !== true) {
             return this.executeSubAction(app, directSocialDefault.id, actor, targets[0], action, { actors, targets });
         }
-        if (resolution.decision === 'direct') {
+        if (resolution.decision === 'direct' && options.forceChoose !== true) {
             return this.executeSubAction(app, validVariants[0].id, actor, targets[0], action, { actors, targets });
         }
         const selection = {
@@ -49,6 +93,7 @@ const YAW_COMBAT_FEED = {
             targetId: app._unitSelectionId(targets[0]),
             targetIds: targets.map(unit => app._unitSelectionId(unit)),
             targetType: app.party.includes(targets[0]) ? 'party' : (targets[0].disposition === app.DISPOSITION.ENEMY ? 'enemy' : 'creature'),
+            scope,
             subIds: validVariants.map(variant => variant.id),
             variants: resolution.variants,
             resume: {
@@ -91,7 +136,7 @@ const YAW_COMBAT_FEED = {
             action,
             actors: actors.length ? actors : [actor],
             targets,
-            scope: 'target',
+            scope: selection.scope || 'target',
             mode: 'combat',
             source,
             presentation: desktop ? 'desktop' : 'sheet',
@@ -146,13 +191,26 @@ const YAW_COMBAT_FEED = {
         }
         const resolution = isFight
             ? YAW_COMBAT_TECHNIQUES.resolve(app, { actors, targets, preferred: subId, mode: 'combat' })
-            : YAW_SUB_ACTIONS.resolve(app, action, { actors, targets, preferred: subId, mode: 'combat' });
+            : YAW_SUB_ACTIONS.resolve(app, action, {
+                actors,
+                targets,
+                scope: selection?.scope || options.scope || 'target',
+                preferred: subId,
+                mode: 'combat'
+            });
         if (!resolution.variants.find(variant => variant.id === subId)?.available) {
             this.failSubAction(app, action, 'variant.noLongerAvailable', 'That variant is no longer available. Choose another.');
             return false;
         }
         const grouped = actors.length > 1;
-        const dispatchAction = isFight && grouped ? 'sync_fight' : action;
+        const fightControlProfile = isFight && typeof YAW_ACTION_PROFILES !== 'undefined'
+            ? YAW_ACTION_PROFILES.profile(subId)
+            : null;
+        const dispatchAction = fightControlProfile
+            ? fightControlProfile.key
+            : grouped && ['fight', 'flirt', 'fuck', 'feed'].includes(action)
+            ? `sync_${action}`
+            : action;
         const targetType = targets.some(unit => app.party.includes(unit))
             ? (targets.every(unit => app.party.includes(unit)) ? 'party' : 'mixed')
             : (targets.every(unit => unit.disposition === app.DISPOSITION.ENEMY) ? 'enemy' : 'creature');
@@ -166,15 +224,23 @@ const YAW_COMBAT_FEED = {
             constraints: {
                 requireCurrentTurn: true,
                 hostileOnly: false,
-                checkReach: true,
-                checkRows: true,
-                minActors: grouped ? 2 : 1,
+                checkReach: selection?.scope !== 'self',
+                checkRows: selection?.scope !== 'self',
+                minActors: fightControlProfile ? 1 : (grouped ? 2 : 1),
                 minTargets: 1,
-                maxTargets: isFight || (action === 'feast' && subId === 'chew')
-                    ? YAW_COMBAT_TECHNIQUES.MAX_TARGETS
-                    : 1
+                maxTargets: selection?.scope === 'self'
+                    ? null
+                    : (isFight && !fightControlProfile || (action === 'feast' && subId === 'chew')
+                        ? YAW_COMBAT_TECHNIQUES.MAX_TARGETS
+                        : 1)
             },
-            metadata: { phase: 'action-variant', baseAction: action, consumeCurrentTurn: true }
+            metadata: {
+                phase: 'action-variant',
+                baseAction: action,
+                semanticApproach: subId,
+                scope: selection?.scope || 'target',
+                consumeCurrentTurn: true
+            }
         });
         app.feedSelection = null;
         app._clearCombatMarkedTargets?.();
@@ -190,18 +256,29 @@ const YAW_COMBAT_FEED = {
         const actor = command.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
         const target = command.targets?.[0] || null;
         if (!target) return false;
-        // The primary Talk and Play variants are presentation choices, not
-        // separate mechanics. Route them through the established combat
-        // resolvers so they retain their full outcome logic instead of falling
-        // through to the generic “not implemented” variant response.
-        if ((action === 'flirt' && subId === 'flirt') || (action === 'fuck' && subId === 'fuck')) {
+        // Core approaches such as Flirt/Dance and Play are presentation
+        // choices inside a semantic family, not separate mechanics. Route
+        // them through the family resolver so they retain costs, checks,
+        // Spirit, recruitment, and combat outcomes instead of falling through
+        // to the generic “not implemented” variant response.
+        const semanticAction = subDef.semanticAction || null;
+        if (semanticAction) {
             const priorResult = app.lastCombatActionResult;
-            const resolved = app._resolveCombatAction({ ...command, subAction: null });
+            const resolved = app._resolveCombatAction({
+                ...command,
+                action: semanticAction,
+                subAction: null,
+                metadata: {
+                    ...(command.metadata || {}),
+                    baseAction: action,
+                    semanticApproach: subId
+                }
+            });
             // A legacy turn hook may return a falsy scheduling value after the
             // direct action has already committed. The committed result is the
             // authoritative command outcome.
             return resolved !== false || (app.lastCombatActionResult !== priorResult
-                && app.lastCombatActionResult?.action === action
+                && app.lastCombatActionResult?.action === semanticAction
                 && app.lastCombatActionResult?.actor === actor
                 && app.lastCombatActionResult?.target === target);
         }

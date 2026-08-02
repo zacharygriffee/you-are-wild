@@ -89,7 +89,6 @@ const YAW_COMBAT_ACTIONS = {
         }
         // V1 contributed actions resolve one actor at a time. Do not advertise them
         // while the group composer is selecting a shared built-in intent.
-        let controlProfiles = [];
         let profiles = [];
         let profileButton = null;
         if (typeof YAW_ACTION_PROFILES !== 'undefined' && !app.combatPlanSelection?.active) {
@@ -99,7 +98,6 @@ const YAW_COMBAT_ACTIONS = {
                 .filter(profile => profile.scope === 'self'
                     ? YAW_ACTION_PROFILES.availability(app, profile, actor, actor, 'combat').ok
                     : enemies.some(enemy => YAW_ACTION_PROFILES.availability(app, profile, actor, enemy, 'combat').ok));
-            controlProfiles = availableProfiles.filter(profile => profile.category === 'control');
             profiles = availableProfiles.filter(profile => profile.category !== 'control');
             profileButton = profile => {
                 const label = YAW_ACTION_PROFILES.label(app, profile);
@@ -117,16 +115,10 @@ const YAW_COMBAT_ACTIONS = {
             }
         }
         if (enemies.length > 0) {
-            if (controlProfiles.length > 0) {
-                const fightLabel = app._escapeHtml(app._combatActionLabel?.('fight') || app._uiLabel('fight'));
-                const fightAttrs = 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="fight" data-command-grammar="actor-target-intent" data-command-slot="intent"';
-                const attack = YAW_ACTION_UI.iconButton(app, 'fight', app._actionIcon('fight'), "event.stopPropagation();App.executeCombatIntent('fight')", '', fightAttrs, fightLabel);
-                const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
-                const close = `<button type="button" class="action-btn compact-secondary" data-command-surface="combat-intents" data-command-mode="combat" data-command-control="close-fight-controls" data-command-slot="exit" aria-label="${closeLabel}" onclick="event.stopPropagation();this.closest('details')?.removeAttribute('open')">${closeLabel}</button>`;
-                buttons.push(`<details class="contributed-action-menu fight-control-menu"><summary class="action-btn" ${fightAttrs} aria-label="${fightLabel}">⚔️ ${fightLabel}</summary><div class="contributed-action-list">${attack}${controlProfiles.map(profileButton).join('')}${close}</div></details>`);
-            } else {
-                buttons.push(app._combatIntentButton('fight', actor));
-            }
+            // Fight always starts the shared actor -> target -> approach flow.
+            // Control approaches such as Grab and Pull appear in that same
+            // post-target approach panel instead of a bespoke inline menu.
+            buttons.push(app._combatIntentButton('fight', actor));
             buttons.push(app._combatIntentButton('flirt', actor));
             buttons.push(app._combatIntentButton('feast', actor));
             buttons.push(app._combatIntentButton('fuck', actor));
@@ -177,7 +169,7 @@ const YAW_COMBAT_ACTIONS = {
                 ? app._label('target.confirmAction.count', 'Use {action} on {count} selected targets', { action: actionText, count: markedTargets.length })
                 : app._label('target.confirmAction', 'Use {action} on selected target', { action: actionText }));
             const confirm = markedTargets.length
-                ? `<button class="action-btn primary" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="App.confirmCombatTargets()">${confirmLabel}</button>`
+                ? `<button class="action-btn primary" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="App.confirmCombatTargets(true)">${confirmLabel}</button>`
                 : '';
             return `<div class="panel-interaction-tray combat-target-tray" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" role="region" aria-label="${label}"><div class="target-action-row" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${label}">${confirm}<button class="action-btn compact-secondary" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button></div></div>`;
         }
@@ -185,11 +177,8 @@ const YAW_COMBAT_ACTIONS = {
         if (!actions) return '';
         const label = app._escapeHtml(app._label('combat.intentControls', 'Combat intent controls'));
         const groupControls = app._combatPlanControls?.() || app._combatGroupComposeControls?.() || '';
-        const correction = app.combatCorrectionMessage?.text
-            ? `<div class="combat-correction-message" role="status" aria-live="polite">${app._escapeHtml(app.combatCorrectionMessage.text)}</div>`
-            : '';
         const showActions = !(app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent);
-        return `<div class="desktop-combat-composer" role="group" aria-label="${label}">${correction}${groupControls}${showActions ? actions : ''}</div>`;
+        return `<div class="desktop-combat-composer" role="group" aria-label="${label}">${groupControls}${showActions ? actions : ''}</div>`;
     },
 
     renderDesktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {

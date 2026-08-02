@@ -184,7 +184,7 @@ const YAW_COMBAT_SYNC = {
         return map[action] || null;
     },
 
-    queueSlotIntent(app, action) {
+    queueSlotIntent(app, action, options = {}) {
         if (!this.isSlotCompose(app)) return false;
         this.normalizeSlotCompose(app);
         const syncType = this.typeForIntent(action);
@@ -196,15 +196,16 @@ const YAW_COMBAT_SYNC = {
             targets,
             action: syncType || action,
             source: 'combat-slot-composer',
-            targetType: 'enemy',
+            targetType: app._combatPlanTargetType?.(targets)
+                || (targets.every(unit => app.party.includes(unit)) ? 'party' : 'enemy'),
             shape: participants.length > 1 && targets.length > 1 ? 'many-to-many' : 'many-to-one',
             timing: 'slowest-participant',
             distribution: targets.length > 1 ? 'all' : 'single',
             constraints: {
                 requireCurrentTurn: true,
-                hostileOnly: true,
-                checkReach: true,
-                checkRows: true,
+                hostileOnly: syncType !== 'sync_feed',
+                checkReach: syncType !== 'sync_feed',
+                checkRows: syncType !== 'sync_feed',
                 minActors: 2,
                 minTargets: 1,
                 maxTargets: null
@@ -219,6 +220,13 @@ const YAW_COMBAT_SYNC = {
         if (!valid.ok) {
             app._reportInvalidCombatCommand?.(command, valid.reason);
             return false;
+        }
+        if (['fight', 'flirt', 'fuck', 'feast', 'feed'].includes(action)) {
+            return YAW_COMBAT_FEED.executeVariantAction(app, action, participants[0], targets, {
+                actors: participants,
+                targets,
+                forceChoose: options.forceChoose === true
+            });
         }
         return app._dispatchInteractionCommand(command);
     },
@@ -298,16 +306,16 @@ const YAW_COMBAT_SYNC = {
             action: syncType,
             subAction: command?.subAction || null,
             source: command?.source || 'sync-composer',
-            targetType: 'enemy',
+            targetType: targets.every(unit => app.party.includes(unit)) ? 'party' : 'enemy',
             shape: targets.length > 1 ? 'many-to-many' : 'many-to-one',
             timing: 'slowest-participant',
             resolveAt: slowestIdx,
             distribution: targets.length > 1 ? 'all' : 'single',
             constraints: {
                 requireCurrentTurn: true,
-                hostileOnly: true,
-                checkReach: true,
-                checkRows: true,
+                hostileOnly: syncType !== 'sync_feed',
+                checkReach: syncType !== 'sync_feed',
+                checkRows: syncType !== 'sync_feed',
                 minActors: 2,
                 minTargets: 1,
                 maxTargets: null
@@ -364,8 +372,20 @@ const YAW_COMBAT_SYNC = {
             return;
         }
         sync.participants = (sync.participants || []).filter(unit => app._isCombatQueueUnitValid(unit) && app.party.includes(unit));
+        const baseAction = app._syncBaseAction(sync.type);
+        const queuedApproach = sync.techniqueKey || sync.plan?.subAction || null;
+        const selfFeast = baseAction === 'feast' && ['digest', 'release'].includes(queuedApproach);
         const queuedTargets = (sync.targets?.length ? sync.targets : [sync.target])
-            .filter((unit, index, list) => app._isCombatQueueUnitValid(unit) && unit.disposition === app.DISPOSITION.ENEMY && list.indexOf(unit) === index);
+            .filter((unit, index, list) => {
+                if (!app._isCombatQueueUnitValid(unit) || list.indexOf(unit) !== index) return false;
+                // Feed is support.  Its canonical target is a living party
+                // member; it must never fall through to the old hostile
+                // force-feeding behavior.
+                if (selfFeast) return app.party.includes(unit) && sync.participants.includes(unit);
+                return baseAction === 'feed'
+                    ? app.party.includes(unit)
+                    : unit.disposition === app.DISPOSITION.ENEMY;
+            });
         if (!queuedTargets.length || sync.participants.length < 2) {
             app._reportInvalidCombatCommand?.({
                 mode: 'combat', actors: sync.participants || [], targets: [sync.target].filter(Boolean), action: sync.type,
@@ -376,7 +396,6 @@ const YAW_COMBAT_SYNC = {
         }
         sync.targets = queuedTargets;
         sync.target = queuedTargets[0];
-        const baseAction = app._syncBaseAction(sync.type);
         const technique = baseAction === 'fight' && typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
             ? YAW_COMBAT_TECHNIQUES.selected(app, sync.participants || [], sync.techniqueKey || sync.plan?.subAction || 'basic', queuedTargets.length)
             : null;
@@ -387,31 +406,19 @@ const YAW_COMBAT_SYNC = {
             app.nextTurn();
             return result;
         }
-        if (app._isReachSensitiveCombatAction?.(baseAction)) {
+        const reachByTarget = new Map();
+        if (!selfFeast && app._isReachSensitiveCombatAction?.(baseAction)) {
             for (const target of queuedTargets) {
-                const reachResults = (sync.participants || []).map(unit => app._combatReachResult?.(unit, target, baseAction, {
-                    techniqueKey: sync.techniqueKey || sync.plan?.subAction
-                })).filter(Boolean);
-                if (reachResults.length !== (sync.participants || []).length || !reachResults.every(result => result.canSucceed)) {
-                    const reach = reachResults.find(result => result?.canAttempt && !result.canSucceed) || reachResults[0] || null;
-                    for (const participant of sync.participants || []) {
-                        app._applyActionCost?.(baseAction, participant, target, {}, {
-                            mode: 'combat',
-                            source: 'sync-reach-failure',
-                            emitScene: true
-                        });
-                    }
-                    const result = YAW_COMBAT_RESOLUTION.reachFailure(app, baseAction, sync.participants || [], target, reach);
-                    if (baseAction === 'fight' && queuedTargets.length > 1) {
-                        app._awardMultiInteractionPractice?.(sync.participants || [], 'fight', queuedTargets, { success: false });
-                    }
-                    app.renderLog();
-                    app.renderParty();
-                    app.renderCreatures();
-                    app.renderCombatSceneForTurn?.(app._currentCombatActor?.() || app.activeActor || app.player);
-                    app.nextTurn();
-                    return result;
-                }
+                const entries = (sync.participants || []).map(participant => ({
+                    participant,
+                    reach: app._combatReachResult?.(participant, target, baseAction, {
+                        techniqueKey: sync.techniqueKey || sync.plan?.subAction
+                    }) || null
+                }));
+                reachByTarget.set(target, {
+                    capable: entries.filter(entry => entry.reach?.canSucceed).map(entry => entry.participant),
+                    blocked: entries.filter(entry => !entry.reach?.canSucceed)
+                });
             }
         }
         for (const participant of sync.participants || []) {
@@ -436,13 +443,22 @@ const YAW_COMBAT_SYNC = {
         for (let targetIndex = 0; targetIndex < queuedTargets.length; targetIndex++) {
             const target = queuedTargets[targetIndex];
             sync.target = target;
-            const participantNames = sync.participants.map(participant => participant.name).join(', ');
+            const targetReach = reachByTarget.get(target) || null;
+            const targetParticipants = targetReach?.capable || sync.participants;
+            const reachNarration = (targetReach?.blocked || []).map(({ participant, reach }) =>
+                app._combatReachFailureText?.([participant], target, baseAction, reach)
+                || app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', {
+                    actor: participant?.name || app._label('target.actorRole', 'Actor'),
+                    target: target?.name || app._label('target.targetRole', 'Target')
+                })
+            ).join(' ');
+            const participantNames = targetParticipants.map(participant => participant.name).join(', ');
             let result = '';
-            switch (sync.type) {
+            if (targetParticipants.length > 0) switch (sync.type) {
             case 'sync_fuck': {
-                let totalCharm = sync.participants.reduce((sum, p) => sum + (p.Fuck || 0) + (p.Flir || 0), 0);
+                let totalCharm = targetParticipants.reduce((sum, p) => sum + (p.Fuck || 0) + (p.Flir || 0), 0);
                 if (app.settings.sameSpeciesBonus) {
-                    const speciesMatch = sync.participants.filter(p => p.species === sync.target.species).length;
+                    const speciesMatch = targetParticipants.filter(p => p.species === sync.target.species).length;
                     totalCharm += speciesMatch * 5;
                 }
                 const resist = (sync.target.wis || 10) + (app._safeRatio(sync.target.CPle, sync.target.MPle) * 10);
@@ -464,7 +480,7 @@ const YAW_COMBAT_SYNC = {
                     setTimeout(() => {
                         app._confirmRecruitCreature(sync.target);
                     }, 100);
-                    const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
+                    const breakthrough = app._resolveSpiritThreshold?.(targetParticipants[0], sync.target, sync.type, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else if (totalCharm > resist) {
                     sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
@@ -477,7 +493,7 @@ const YAW_COMBAT_SYNC = {
                         sync.target.orgasmed = true;
                         if (app.settings.refractoryPeriod) sync.target.refractory = true;
                     }
-                    const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
+                    const breakthrough = app._resolveSpiritThreshold?.(targetParticipants[0], sync.target, sync.type, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
                     result = app._label('combat.sync.playRejected', '{target} does not want to play with the group!', { target: sync.target.name });
@@ -485,13 +501,15 @@ const YAW_COMBAT_SYNC = {
                 break;
             }
             case 'sync_flirt': {
-                const isSeduce = (sync.techniqueKey || sync.plan?.subAction) === 'seduce';
-                let totalCharm = sync.participants.reduce((sum, p) => sum
+                const approach = sync.techniqueKey || sync.plan?.subAction;
+                const isSeduce = approach === 'seduce';
+                const isDance = approach === 'dance';
+                let totalCharm = targetParticipants.reduce((sum, p) => sum
                     + (p.Flir || 0)
                     + (p.cha || 10) * 0.5
                     + (isSeduce ? (p.Fuck || 0) : 0), 0);
                 if (app.settings.sameSpeciesBonus) {
-                    const speciesMatch = sync.participants.filter(p => p.species === sync.target.species).length;
+                    const speciesMatch = targetParticipants.filter(p => p.species === sync.target.species).length;
                     totalCharm += speciesMatch * (isSeduce ? 5 : 3);
                 }
                 const resist = (sync.target.wis || 10) + (app._safeRatio(sync.target.CPle, sync.target.MPle) * 10);
@@ -503,44 +521,50 @@ const YAW_COMBAT_SYNC = {
                     sync.target.willing = true;
                     app._awardCombatXP(isSeduce ? app.XP_REWARDS.seduceEnemy : app.XP_REWARDS.flirtEnemy);
                     result = app._label(
-                        isSeduce ? 'combat.sync.seduceConvinced' : 'combat.sync.talkConvinced',
+                        isSeduce ? 'combat.sync.seduceConvinced' : (isDance ? 'combat.sync.danceConvinced' : 'combat.sync.talkConvinced'),
                         isSeduce
                             ? '{participants} draw {target} into a charged exchange, and their resistance gives way.'
-                            : '{participants} talk with {target} until they choose to stand down.', {
+                            : (isDance
+                                ? '{participants} draw {target} into a shared rhythm until they choose to stand down.'
+                                : '{participants} talk with {target} until they choose to stand down.'), {
                         participants: participantNames,
                         target: sync.target.name
                     });
-                    const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
+                    const breakthrough = app._resolveSpiritThreshold?.(targetParticipants[0], sync.target, sync.type, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else if (totalCharm > resist) {
                     sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
                     sync.target.charmed = (sync.target.charmed || 0) + 1;
                     sync.target.Figh = Math.max(1, (sync.target.Figh || 10) - 1);
                     result = app._label(
-                        isSeduce ? 'combat.sync.seduceSoftened' : 'combat.sync.talkSoftened',
+                        isSeduce ? 'combat.sync.seduceSoftened' : (isDance ? 'combat.sync.danceSoftened' : 'combat.sync.talkSoftened'),
                         isSeduce
                             ? '{participants} draw {target} closer, softening their guard. Spirit rises to {current}/{max}.'
-                            : '{participants} talk with {target}, softening their guard. Spirit rises to {current}/{max}.', {
+                            : (isDance
+                                ? '{participants} dance with {target}, softening their guard. Spirit rises to {current}/{max}.'
+                                : '{participants} talk with {target}, softening their guard. Spirit rises to {current}/{max}.'), {
                         participants: participantNames,
                         target: sync.target.name,
                         current: sync.target.CPle,
                         max: sync.target.MPle
                     });
-                    const breakthrough = app._resolveSpiritThreshold?.(sync.participants[0], sync.target, sync.type, { emitScene: false });
+                    const breakthrough = app._resolveSpiritThreshold?.(targetParticipants[0], sync.target, sync.type, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
                     result = app._label(
-                        isSeduce ? 'combat.sync.seduceResisted' : 'combat.sync.talkResisted',
+                        isSeduce ? 'combat.sync.seduceResisted' : (isDance ? 'combat.sync.danceResisted' : 'combat.sync.talkResisted'),
                         isSeduce
                             ? '{target} pulls away from the group’s overture.'
-                            : '{target} resists the group’s combined appeal.',
+                            : (isDance
+                                ? '{target} declines the group’s invitation to dance.'
+                                : '{target} resists the group’s combined appeal.'),
                         { target: sync.target.name }
                     );
                 }
                 break;
             }
             case 'sync_fight': {
-                const totalStr = sync.participants.reduce((sum, participant) => {
+                const totalStr = targetParticipants.reduce((sum, participant) => {
                     const rawContribution = participant.Figh || 0;
                     const contribution = typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
                         ? YAW_COMBAT_TECHNIQUES.damageValue(rawContribution, technique)
@@ -549,9 +573,9 @@ const YAW_COMBAT_SYNC = {
                     return sum + contribution * (effect?.scale ?? 1);
                 }, 0);
                 const def = app._effectiveCon(sync.target);
-                const dmg = Math.max(1, Math.floor(totalStr - def * 0.5 + app._combatDamageVariance(sync.participants[0], sync.target, `sync-fight:${sync.participants.map(p => app._unitSelectionId(p)).join('|')}`, 10)));
+                const dmg = Math.max(1, Math.floor(totalStr - def * 0.5 + app._combatDamageVariance(targetParticipants[0], sync.target, `sync-fight:${targetParticipants.map(p => app._unitSelectionId(p)).join('|')}`, 10)));
                 sync.target.CPun -= dmg;
-                const techniqueStatus = technique ? app._applyTechniqueStatus?.(sync.participants[0], sync.target, technique, dmg) : false;
+                const techniqueStatus = technique ? app._applyTechniqueStatus?.(targetParticipants[0], sync.target, technique, dmg) : false;
                 result = technique
                     ? app._label('combat.sync.techniqueHit', '{participants} combine {technique} against {target}, dealing {amount} punishment!', {
                         participants: participantNames,
@@ -575,49 +599,79 @@ const YAW_COMBAT_SYNC = {
                     result += ` ${app._label('combat.sync.fightCollapse', '{target} is overwhelmed and collapses!', { target: sync.target.name })}`;
                     app._awardCombatXP(app.XP_REWARDS.defeatEnemy);
                     if (app.settings.powerDynamics) {
-                        app._subdueCreature(sync.target, sync.participants[0], { source: 'group-fight' });
+                        app._subdueCreature(sync.target, targetParticipants[0], { source: 'group-fight' });
                         result += ` ${app._label('combat.subduedRecruitable', '{name} yields and may be recruited.', { name: sync.target.name })}`;
-                    } else app._makeCorpse(sync.target, 'fight', { actor: sync.participants[0], source: 'group-fight' });
+                    } else app._makeCorpse(sync.target, 'fight', { actor: targetParticipants[0], source: 'group-fight' });
                 }
                 break;
             }
             case 'sync_feed': {
-                const totalFeas = sync.participants.reduce((sum, p) => sum + (p.Feas || 0), 0);
-                const canEat = sync.target.CPun <= sync.target.MPun * 0.3 || totalFeas > sync.target.Flee + 5;
-                if (canEat) {
-                    const eater = sync.participants[0];
-                    if (!app._canFitPrey(eater, sync.target, 'stomach')) {
-                        result = app._capacityFailureMessage(eater, sync.target, 'stomach');
-                        break;
-                    }
-                    app._containTargetIn(eater, sync.target, 'stomach');
-                    app._awardCombatXP(app.XP_REWARDS.consumeEnemy);
-                    result = app._label('combat.sync.feedSuccess', "{participants} force {target} into {eater}'s stomach!", {
+                const approach = sync.techniqueKey || sync.plan?.subAction || 'tend';
+                if (!['tend', 'nurse'].includes(approach)) {
+                    result = app._label('feed.group.approachUnavailable', '{participants} cannot coordinate {approach} for {target} right now.', {
+                        participants: participantNames,
+                        approach: app._uiLabel?.(approach) || approach,
+                        target: sync.target.name
+                    });
+                    break;
+                }
+                if (approach === 'tend') {
+                    const totalRestored = sync.participants.reduce((sum, participant) => {
+                        const tend = app._resolveTendEffect(participant, sync.target, { emitScene: false });
+                        return sum + Math.max(0, Number(tend?.restoredCondition) || 0);
+                    }, 0);
+                    result = app._label('feed.group.tendResult', '{participants} tend {target}, restoring {amount} punishment.', {
                         participants: participantNames,
                         target: sync.target.name,
-                        eater: eater.name
+                        amount: totalRestored
                     });
-                } else {
-                    result = app._label('combat.sync.feedResisted', '{target} is too strong to be force-fed!', { target: sync.target.name });
+                    break;
                 }
+                const nursingActors = sync.participants.filter(participant => YAW_SUB_ACTIONS.resolve(app, 'feed', {
+                    actors: [participant], targets: [sync.target], mode: 'combat', preferred: 'nurse'
+                }).variants.some(variant => variant.id === 'nurse' && variant.available));
+                if (!nursingActors.length) {
+                    result = app._label('feed.group.nurseUnavailable', '{participants} are no longer ready to nurse {target}.', {
+                        participants: participantNames,
+                        target: sync.target.name
+                    });
+                    break;
+                }
+                result = nursingActors.map(participant => {
+                    const actorInfo = app._actorNameAndVerb?.(participant) || { actorName: participant.name, actorVerb: 's' };
+                    return app._doSubAction('feed', 'nurse', participant, sync.target, actorInfo.actorName, actorInfo.actorVerb, { mode: 'combat' });
+                }).join(' ');
                 break;
             }
             case 'feast': {
                 const subAction = sync.techniqueKey
                     || sync.plan?.subAction
                     || (app.settings.chewing ? 'chew' : app._getDefaultSubAction('feast'));
+                if (['digest', 'release'].includes(subAction)) {
+                    const selfActor = sync.participants.find(participant => participant === sync.target);
+                    if (!selfActor) {
+                        result = app._label('combat.selfFeast.actorUnavailable', '{target} is no longer able to complete that self-directed Feast action.', {
+                            target: sync.target.name
+                        });
+                        break;
+                    }
+                    const actorInfo = app._actorNameAndVerb?.(selfActor) || { actorName: selfActor.name, actorVerb: 's' };
+                    result = app._doSubAction('feast', subAction, selfActor, selfActor, actorInfo.actorName, actorInfo.actorVerb, { mode: 'combat' });
+                    meaningfulAttempt = true;
+                    break;
+                }
                 if (subAction === 'chew') {
                     const multiEffect = queuedTargets.length > 1
-                        ? app._multiInteractionEffect?.(sync.participants[0], 'chew', queuedTargets.length)
+                        ? app._multiInteractionEffect?.(targetParticipants[0], 'chew', queuedTargets.length)
                         : null;
-                    result = app._groupChewFeast(sync.participants, sync.target, {
+                    result = app._groupChewFeast(targetParticipants, sync.target, {
                         mode: 'combat',
                         multiEffect
                     });
                     meaningfulAttempt = true;
                     break;
                 }
-                const selection = app._selectGroupFeastPrimary(sync.participants, sync.target);
+                const selection = app._selectGroupFeastPrimary(targetParticipants, sync.target);
                 if (!selection.primary || !selection.canOverpower) {
                     result = app._label('group.feast.resisted', '{actors} try to eat {target}, but {target} resists the group.', {
                         actors: participantNames,
@@ -625,7 +679,7 @@ const YAW_COMBAT_SYNC = {
                     });
                     break;
                 }
-                const helpers = sync.participants.filter(participant => participant !== selection.primary);
+                const helpers = targetParticipants.filter(participant => participant !== selection.primary);
                 app._containTargetIn(selection.primary, sync.target, 'stomach');
                 app._awardCombatXP(app.XP_REWARDS.consumeEnemy);
                 result = app._label('group.feast.swallow', '{helpers} help {primary} eat {target}.', {
@@ -637,6 +691,7 @@ const YAW_COMBAT_SYNC = {
                 break;
             }
             }
+            if (reachNarration) result = result ? `${reachNarration} ${result}` : reachNarration;
             if (targetIndex === 0 && spreadText) result += ` ${spreadText}`;
             app.log.push({ text: result, type: 'combat' });
             app._emitCombatAction(sync.type, sync.participants, sync.target, result);

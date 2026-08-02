@@ -60,15 +60,24 @@ const YAW_SUB_ACTIONS = {
             grapple: { label: 'Grapple', sfwLabel: 'Grapple', icon: '🤼', validate: (a, t) => a.str > t.spd, execute: 'grapple', setting: null }
         },
         fuck: {
-            fuck: { label: 'Fuck', sfwLabel: 'Play', matureLabel: 'Fuck', icon: '🔥', validate: () => true, execute: 'fuck', setting: null, scope: 'both' },
-            dominate: { label: 'Dominate', sfwLabel: 'Overpower', icon: '⛓️', validate: (a, t) => App.settings.powerDynamics && a.Fuck > t.Fuck, execute: 'dominate', setting: 'powerDynamics' },
-            submit: { label: 'Submit', sfwLabel: 'Yield', icon: '🙇', validate: (a, t) => App.settings.powerDynamics && a.Fuck < t.Fuck, execute: 'submit', setting: 'powerDynamics' }
+            // Approaches retain their own labels and narration hooks, but route
+            // through one established intent resolver. This keeps a growing
+            // Play family from accidentally becoming several incompatible
+            // mechanics.
+            fuck: { label: 'Fuck', sfwLabel: 'Play', matureLabel: 'Fuck', icon: '🔥', validate: () => true, execute: 'fuck', semanticAction: 'fuck', semantics: 'narration', setting: null, scope: 'both' },
+            // These need their own resolved outcomes before they can be player
+            // choices. Keeping them deferred prevents a menu label from
+            // promising a distinction that the resolver does not make.
+            dominate: { label: 'Dominate', sfwLabel: 'Overpower', icon: '⛓️', validate: (a, t) => App.settings.powerDynamics && a.Fuck > t.Fuck, execute: 'dominate', semanticAction: 'fuck', semantics: 'mechanical', deferred: true, setting: 'powerDynamics' },
+            submit: { label: 'Submit', sfwLabel: 'Yield', icon: '🙇', validate: (a, t) => App.settings.powerDynamics && a.Fuck < t.Fuck, execute: 'submit', semanticAction: 'fuck', semantics: 'mechanical', deferred: true, setting: 'powerDynamics' }
         },
         flirt: {
-            flirt: { label: 'Flirt', sfwLabel: 'Talk', matureLabel: 'Flirt', icon: '😘', validate: () => true, execute: 'flirt', setting: null },
-            seduce: { label: 'Seduce', sfwLabel: 'Talk', matureLabel: 'Seduce', icon: '💕', validate: () => true, execute: 'seduce', setting: null, actionProfile: 'core:seduce', minPosture: 'mature' },
-            gift: { label: 'Gift', sfwLabel: 'Gift', icon: '🎁', validate: (a) => a.inventory && a.inventory.length > 0, execute: 'gift', setting: null },
-            dance: { label: 'Dance', sfwLabel: 'Dance', icon: '💃', validate: () => true, execute: 'dance', setting: null }
+            // Flirt and Dance are social approaches, not separate resolution
+            // systems. Their shared Talk resolver owns costs, checks, Spirit,
+            // recruitment, and combat outcomes.
+            flirt: { label: 'Flirt', sfwLabel: 'Talk', matureLabel: 'Flirt', icon: '😘', validate: () => true, execute: 'flirt', semanticAction: 'flirt', semantics: 'narration', setting: null },
+            seduce: { label: 'Seduce', sfwLabel: 'Talk', matureLabel: 'Seduce', icon: '💕', validate: () => true, execute: 'seduce', setting: null, actionProfile: 'core:seduce', semantics: 'mechanical', minPosture: 'mature' },
+            dance: { label: 'Dance', sfwLabel: 'Dance', icon: '💃', validate: () => true, execute: 'dance', semanticAction: 'flirt', semantics: 'narration', setting: null }
         },
         flee: {
             run: { label: 'Run', sfwLabel: 'Flee', icon: '🏃', validate: () => true, execute: 'run', setting: null },
@@ -291,6 +300,7 @@ const YAW_SUB_ACTIONS = {
         const holder = app.party.filter(unit => !actors.includes(unit) && !targets.includes(unit) && unit.CPun > 0);
         const variants = Object.entries(subDefs)
             .filter(([, def]) => context.includeLegacy === true || def.legacy !== true)
+            .filter(([, def]) => def.deferred !== true)
             .filter(([, def]) => this.isVisibleForContent(def))
             // A disabled setting is not an actionable option. Keep genuine
             // actor/target limits visible as clues, but do not advertise
@@ -298,6 +308,14 @@ const YAW_SUB_ACTIONS = {
             .filter(([, def]) => !def.setting || app.settings?.[def.setting] === true)
             .filter(([, def]) => this.supportsScope(def, scope))
             .map(([id, def]) => {
+                // Actor count changes availability, not the interaction tree.
+                // Group combat cannot yet coordinate whole-body Feed
+                // approaches, but those approaches stay visible with a reason
+                // so single, multiple, and self targeting retain one menu.
+                const unsupportedGroupCombatFeed = context.mode === 'combat'
+                    && action === 'feed'
+                    && actors.length > 1
+                    && !['tend', 'nurse'].includes(id);
                 const helperBonus = actors
                     .filter(Boolean)
                     .reduce((sum, helper) => sum + Math.floor((Number(helper.Feas) || 10) * 0.5), 0);
@@ -306,7 +324,8 @@ const YAW_SUB_ACTIONS = {
                         ? app._combatReachResult?.(pair.actor, pair.target, action)
                         : null;
                     const pressure = app._canAffordActionPressure?.(action, pair.actor, { mode: context.mode || 'adventure' }) || { ok: true };
-                    const available = this.isAvailable(app, def, pair.actor, pair.target, holder, context.mode || 'adventure')
+                    const available = !unsupportedGroupCombatFeed
+                        && this.isAvailable(app, def, pair.actor, pair.target, holder, context.mode || 'adventure')
                         && pressure.ok !== false;
                     const attempt = available && action === 'feast' && ['swallow', 'cockVore', 'unbirth'].includes(id)
                         ? this.feastAttemptAssessment(app, pair.actor, pair.target, {
@@ -337,7 +356,12 @@ const YAW_SUB_ACTIONS = {
                 const status = available && invalidPairs.length ? 'partial' : (available ? 'available' : 'unavailable');
                 const failed = invalidPairs[0] || pairs[0] || { actor: actors[0], target: targets[0] };
                 const reason = status === 'available' ? '' : (
-                    failed.pressure?.ok === false
+                    unsupportedGroupCombatFeed
+                        ? app._label('feed.group.combatApproachUnavailable', '{participants} cannot coordinate {approach} together during combat.', {
+                            participants: actors.map(actor => actor.name).join(', '),
+                            approach: app._getActionLabel(action, id)
+                        })
+                    : failed.pressure?.ok === false
                         ? String(failed.pressure.text || app._label('variant.unavailable.cost', 'The actor cannot afford this action right now.'))
                         : this.unavailableReason(app, action, id, def, failed.actor, failed.target, holder)
                 );
@@ -352,7 +376,12 @@ const YAW_SUB_ACTIONS = {
                     const pairReason = entry.available
                         ? (entry.attempt?.hint || app._label('variant.pair.ready', 'Ready'))
                         : (
-                            entry.pressure?.ok === false
+                            unsupportedGroupCombatFeed
+                                ? app._label('feed.group.combatApproachUnavailable', '{participants} cannot coordinate {approach} together during combat.', {
+                                    participants: actors.map(actor => actor.name).join(', '),
+                                    approach: app._getActionLabel(action, id)
+                                })
+                            : entry.pressure?.ok === false
                                 ? String(entry.pressure.text || app._label('variant.unavailable.cost', 'The actor cannot afford this action right now.'))
                                 : this.unavailableReason(app, action, id, def, entry.actor, entry.target, holder)
                         );

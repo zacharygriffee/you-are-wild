@@ -225,6 +225,10 @@ const YAW_EXPLORATION_SELECTION = {
     },
 
     resolveTargetAction(app, action, subAction = null, source = 'target-bar') {
+        // Choosing an approach completes the menu interaction even when the
+        // game narrates that the attempt cannot proceed. Leaving the modal
+        // surface mounted after a failed attempt blocks the corrected input.
+        app.closeIntentMenu?.();
         const targets = this.getTargets(app);
         if (targets.length === 0) return false;
         const actorState = this.selectedActorState(app);
@@ -247,6 +251,7 @@ const YAW_EXPLORATION_SELECTION = {
     },
 
     resolveSelfSubAction(app, action, subAction, source = 'actor-belt') {
+        app.closeIntentMenu?.();
         const def = app.SUB_ACTIONS[action]?.[subAction];
         if (!def || !YAW_SUB_ACTIONS.supportsScope(def, 'self')) return false;
         const actorState = this.selectedActorState(app);

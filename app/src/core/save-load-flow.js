@@ -269,6 +269,11 @@ const YAW_SAVE_LOAD_FLOW = {
             if (parseInt(saveTime, 10) > 0) app._setStoredValue('lastSaveTime', saveTime);
 
             app.showScreen('game');
+            // Loading a different slot bypasses movement, so refresh the
+            // persistent map-header coordinate instead of leaving the prior
+            // run's location visible above the newly restored map.
+            const coords = document.getElementById('coords');
+            if (coords) coords.textContent = `${app.location.x}, ${app.location.y}`;
             app.renderMap();
             app.renderParty();
             app.renderCreatures();

@@ -6,7 +6,6 @@
 const YAW_MOBILE_COMBAT_TOOLBELT = {
     prompt(app, actor = app._currentCombatActor()) {
         if (!app.combatState?.active) return '';
-        if (app.combatCorrectionMessage?.text) return app.combatCorrectionMessage.text;
         if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             if (app.syncSelection.phase === 'choose') {
                 return app._label('combat.sync.chooseAction', 'Choose Sync Action');
@@ -107,7 +106,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
                 ? app._label('target.confirmAction.count', 'Use {action} on {count} selected targets', { action: actionLabel, count: markedTargets.length })
                 : app._label('target.confirmAction', 'Use {action} on selected target', { action: actionLabel });
             const confirm = markedTargets.length
-                ? button(confirmAction, 'event.stopPropagation();App.confirmCombatTargets()', 'action-btn primary', confirmAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent"')
+                ? button(confirmAction, 'event.stopPropagation();App.confirmCombatTargets(true)', 'action-btn primary', confirmAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent"')
                 : '';
             const cancel = button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn compact-secondary', cancelAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit"');
             return row(app._label('target.controls', 'Target controls'), 'combat-targeting', confirm + cancel);
@@ -159,9 +158,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const status = app._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', { round, turn, total });
         const title = app._label('mobile.combat.actor', '{name} to act', { name: actorName });
         const prompt = this.prompt(app, actor);
-        const promptClass = app.combatCorrectionMessage?.text
-            ? 'mobile-combat-prompt combat-correction-message'
-            : 'mobile-combat-prompt';
+        const promptClass = 'mobile-combat-prompt';
         const sentence = this.selectionSentence(app);
         const phaseControls = this.phaseControls(app, actor);
         const intents = this.intentButtons(app, actor);

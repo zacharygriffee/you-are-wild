@@ -195,7 +195,8 @@ const YAW_COMBAT_RULES = {
         }
         if (profile === 'contact' || base === 'feast') {
             const hasContactAccess = this.hasContactPermission(actor, target, base);
-            if (!sameSide && actor?.combatRow === 'back' && !hasContactAccess) {
+            const aerialContact = Boolean(actor?.flying && target?.flying);
+            if (!sameSide && actor?.combatRow === 'back' && !aerialContact && !hasContactAccess) {
                 result.reason = 'contact-needs-front-row';
                 result.counterplay = 'advance-or-social';
                 return result;
@@ -203,7 +204,7 @@ const YAW_COMBAT_RULES = {
             if (!sameSide && target?.combatRow === 'back') {
                 result.protectedBackRow = this.isBackRowProtected(app, target);
                 result.exposedBackRow = !result.protectedBackRow;
-                if (result.protectedBackRow && !hasContactAccess) {
+                if (result.protectedBackRow && !aerialContact && !hasContactAccess) {
                     result.reason = 'contact-protected-back-row';
                     result.counterplay = 'front-blockers-or-social';
                     return result;

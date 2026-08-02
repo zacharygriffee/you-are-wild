@@ -48,19 +48,22 @@ const YAW_INTERACTION_STATE = {
             const actors = app._combatPlanActors?.() || [];
             const targets = app._combatMarkedTargets?.() || [];
             const action = app._combatPendingIntent?.() || 'choose';
+            const targetType = targets.length === 0 ? 'enemy' : (targets.every(unit => app.party.includes(unit))
+                ? 'party'
+                : (targets.some(unit => app.party.includes(unit)) ? 'mixed' : 'enemy'));
             return app._buildInteractionPlan({
                 mode: 'combat',
                 actors,
                 targets,
                 action,
                 source: 'combat-planner',
-                targetType: 'enemy',
+                targetType,
                 shape: actors.length > 1 && targets.length > 1 ? 'many-to-many' : (actors.length > 1 ? 'many-to-one' : undefined),
                 timing: 'slowest-participant',
                 distribution: targets.length > 1 ? 'all' : 'single',
                 constraints: {
                     requireCurrentTurn: actors.some(unit => app._isCurrentCombatActor?.(unit)),
-                    hostileOnly: true,
+                    hostileOnly: false,
                     checkReach: true,
                     checkRows: true,
                     minActors: 2,
@@ -78,21 +81,25 @@ const YAW_INTERACTION_STATE = {
                 ? (app._combatMarkedTargets?.() || [])
                 : [];
             const action = app.syncSelection.type || (app.syncSelection.phase === 'compose' ? 'choose' : 'sync');
+            const baseAction = app._syncBaseAction?.(action) || action;
+            const targetType = targets.length === 0 ? (baseAction === 'feed' ? 'party' : 'enemy') : (targets.every(unit => app.party.includes(unit))
+                ? 'party'
+                : (targets.some(unit => app.party.includes(unit)) ? 'mixed' : 'enemy'));
             return app._buildInteractionPlan({
                 mode: 'combat',
                 actors,
                 targets,
                 action,
                 source: 'sync-selection',
-                targetType: 'enemy',
+                targetType,
                 shape: actors.length > 1 && targets.length > 1 ? 'many-to-many' : (actors.length > 1 ? 'many-to-one' : undefined),
                 timing: 'slowest-participant',
                 distribution: targets.length > 1 ? 'all' : 'single',
                 constraints: {
                     requireCurrentTurn: true,
-                    hostileOnly: true,
-                    checkReach: true,
-                    checkRows: true,
+                    hostileOnly: baseAction !== 'feed',
+                    checkReach: baseAction !== 'feed',
+                    checkRows: baseAction !== 'feed',
                     minActors: 2,
                     minTargets: 1,
                     maxTargets: app.syncSelection.phase === 'target' ? 1 : null
@@ -103,11 +110,13 @@ const YAW_INTERACTION_STATE = {
 
         if (app.feedSelection?.active) {
             const feedActor = this.actorById(app, app.feedSelection.actorId) || actor;
+            const feedActors = (app.feedSelection.actors || [feedActor]).filter(Boolean);
+            const feedTargets = (app.feedSelection.targets || [app.feedSelection.target]).filter(Boolean);
             const variantAction = app.feedSelection.action || 'feed';
             return app._buildInteractionPlan({
                 mode: 'combat',
-                actors: [feedActor].filter(Boolean),
-                targets: [app.feedSelection.target].filter(Boolean),
+                actors: feedActors,
+                targets: feedTargets,
                 action: variantAction,
                 source: 'action-variant-selection',
                 targetType: app.feedSelection.targetType || 'party',
@@ -120,17 +129,20 @@ const YAW_INTERACTION_STATE = {
         if (app.targetSelection?.source === 'combat') {
             const targetActor = this.actorById(app, app.targetSelection.actorId) || actor;
             const selectedTargets = app.targetSelection.action === 'scavenge' ? [] : (app._combatMarkedTargets?.() || []);
+            const targetType = selectedTargets.length === 0 ? 'enemy' : (selectedTargets.every(unit => app.party.includes(unit))
+                ? 'party'
+                : (selectedTargets.some(unit => app.party.includes(unit)) ? 'mixed' : 'enemy'));
             return app._buildInteractionPlan({
                 mode: 'combat',
                 actors: [targetActor].filter(Boolean),
                 targets: selectedTargets,
                 action: app.targetSelection.action || null,
                 source: 'combat-targeting',
-                targetType: 'enemy',
+                targetType,
                 timing: 'current-turn',
                 constraints: {
                     requireCurrentTurn: true,
-                    hostileOnly: app.targetSelection.action !== 'scavenge',
+                    hostileOnly: false,
                     checkReach: app.targetSelection.action !== 'scavenge',
                     checkRows: app.targetSelection.action !== 'scavenge',
                     minTargets: 1

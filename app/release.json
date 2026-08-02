@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.18.0",
+  "version": "0.18.1",
   "status": "candidate",
   "releasedAt": null,
   "channel": "alpha",
@@ -42,7 +42,9 @@
         "Disabling or deleting a module removes its active definitions, relationships, leases, and uncommitted runtime state without rewriting committed history.",
         "Biome recipes affect only matching unmaterialized tiles, and sparse materialized geography remains pinned across module removal and save reload.",
         "Combat pacing timers remain transient and never enter the combat save DTO.",
-        "Group and single-actor mobile combat controls remain above the fixed dock across the maintained viewport matrix."
+        "Group and single-actor mobile combat controls remain above the fixed dock across the maintained viewport matrix.",
+        "Fight uses the same bounded approach chooser as Feast; Mature Talk and Play expose their specific approaches while SFW retains broad neutral defaults.",
+        "Unavailable AI-assisted companion control falls back to Autonomous with narration, and autonomous support never restores a hostile target."
       ],
       "knownIssues": [
         "This alpha candidate is intended for a select playtest group, not general public distribution.",
@@ -75,7 +77,9 @@
         "Desactivar o borrar un modulo elimina sus definiciones, relaciones, recursos multimedia y estado no confirmado sin reescribir la historia confirmada.",
         "Las recetas de bioma solo afectan casillas compatibles no materializadas; la geografia materializada permanece fijada tras eliminar un modulo o recargar.",
         "Los temporizadores de ritmo de combate son transitorios y nunca entran en los datos guardados de combate.",
-        "Los controles de combate individuales y grupales permanecen sobre la barra fija en la matriz movil mantenida."
+        "Los controles de combate individuales y grupales permanecen sobre la barra fija en la matriz movil mantenida.",
+        "Lucha usa el mismo selector limitado de enfoques que Comer; Hablar y Jugar en postura Madura muestran sus enfoques especificos mientras SFW conserva opciones neutrales amplias.",
+        "El control asistido por IA no disponible vuelve a Autonomo con narracion, y el apoyo autonomo nunca restaura a un objetivo hostil."
       ],
       "knownIssues": [
         "Esta candidata alfa esta destinada a un grupo selecto de pruebas, no a distribucion publica general.",

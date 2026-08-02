@@ -126,7 +126,10 @@ const YAW_COMBAT_RESOLUTION = {
             app.nextTurn();
             return resolved;
         }
-        return app.executeActionAgainstTarget(command.action, actor, target, { subAction: command.subAction || null });
+        return app.executeActionAgainstTarget(command.action, actor, target, {
+            subAction: command.subAction || null,
+            semanticApproach: command.metadata?.semanticApproach || null
+        });
     },
 
     executeActionAgainstTarget(app, action, actor, target) {
@@ -276,6 +279,7 @@ const YAW_COMBAT_RESOLUTION = {
                 break;
             }
             case 'flirt': {
+                const dancing = options.semanticApproach === 'dance';
                 let charm = app._combatActionRating(actor.Flir + (actor.cha || 10) * 0.5, actor, target, 'player-flirt');
                 if (app.settings.sameSpeciesBonus && target.species === actor.species) {
                     charm += 3;
@@ -286,9 +290,18 @@ const YAW_COMBAT_RESOLUTION = {
                     target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.3));
                     target.charmed = (target.charmed || 0) + 1;
                     target.Figh = Math.max(1, (target.Figh || 10) - 1);
-                    result = app._mlabel(actorIsPlayer ? 'combat.action.talkSuccess.player' : 'combat.action.talkSuccess.named', actorIsPlayer
-                        ? '{actor} talk with {target}! Their guard lowers. Spirit rises to {current}/{max}.'
-                        : '{actor} talks with {target}! Their guard lowers. Spirit rises to {current}/{max}.', {
+                    result = dancing
+                        ? app._label(actorIsPlayer ? 'combat.action.danceSuccess.player' : 'combat.action.danceSuccess.named', actorIsPlayer
+                            ? '{actor} dance with {target}! Their guard lowers. Spirit rises to {current}/{max}.'
+                            : '{actor} dances with {target}! Their guard lowers. Spirit rises to {current}/{max}.', {
+                            actor: actorName,
+                            target: target.name,
+                            current: target.CPle,
+                            max: target.MPle
+                        })
+                        : app._mlabel(actorIsPlayer ? 'combat.action.talkSuccess.player' : 'combat.action.talkSuccess.named', actorIsPlayer
+                            ? '{actor} talk with {target}! Their guard lowers. Spirit rises to {current}/{max}.'
+                            : '{actor} talks with {target}! Their guard lowers. Spirit rises to {current}/{max}.', {
                         actor: actorName,
                         target: target.name,
                         current: target.CPle,
@@ -313,7 +326,9 @@ const YAW_COMBAT_RESOLUTION = {
                     const breakthrough = targetWasParty ? null : app._resolveSpiritThreshold?.(actor, target, action, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
-                    result = app._label('combat.action.talkRejected', '{target} rejects the conversation with {actor}!', {
+                    result = app._label(dancing ? 'combat.action.danceRejected' : 'combat.action.talkRejected', dancing
+                        ? '{target} declines to dance with {actor}!'
+                        : '{target} rejects the conversation with {actor}!', {
                         actor: actorName,
                         target: target.name
                     });

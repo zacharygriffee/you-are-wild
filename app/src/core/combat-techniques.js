@@ -329,6 +329,40 @@ const YAW_COMBAT_TECHNIQUES = {
                 actorCosts: []
             });
         }
+        // Core target-control profiles are Fight approaches, not a second
+        // combat toolbar. They deliberately join the same resolver as Basic
+        // Attack and authored techniques, while remaining unavailable for
+        // multi-actor or multi-target commands they cannot legally resolve.
+        if (context.mode === 'combat' && typeof YAW_ACTION_PROFILES !== 'undefined') {
+            const controlProfiles = [...YAW_ACTION_PROFILES.profiles.values()]
+                .filter(profile => profile.category === 'control'
+                    && profile.scope === 'target'
+                    && profile.modes.includes('combat'));
+            for (const profile of controlProfiles) {
+                const availability = actors.length === 1 && targets.length === 1
+                    ? YAW_ACTION_PROFILES.availability(app, profile, actors[0], targets[0], 'combat')
+                    : { ok: false, reason: app._label('combat.control.oneTarget', 'This control approach needs one actor and one target.') };
+                variants.push({
+                    id: profile.key,
+                    label: YAW_ACTION_PROFILES.label(app, profile),
+                    icon: profile.icon,
+                    available: availability.ok,
+                    status: availability.ok ? 'available' : 'unavailable',
+                    reason: availability.ok ? '' : (availability.reason || app._label('variant.unavailable.generic', 'This approach is not available right now.')),
+                    hint: app._label('combat.control.approachHint', 'A tactical control approach within Fight.'),
+                    requirements: [app._label('combat.control.requirement', 'Control')],
+                    cost: null,
+                    owner: profile.owner,
+                    scope: 'target',
+                    approachKind: 'control',
+                    validPairCount: availability.ok ? 1 : 0,
+                    pairCount: 1,
+                    pairPreviews: [],
+                    pairPreviewOverflow: 0,
+                    actorCosts: []
+                });
+            }
+        }
         const selectable = variants.filter(variant => variant.available);
         const preferred = String(context.preferred || '');
         const selected = selectable.find(variant => variant.id === preferred) || selectable[0] || null;

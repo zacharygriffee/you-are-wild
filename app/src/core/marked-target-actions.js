@@ -30,15 +30,11 @@ const YAW_MARKED_TARGET_ACTIONS = {
             const actionSource = ['desktop', 'desktop-target', 'composer-tray', 'panel-tray', 'mobile-target'].includes(source)
                 ? 'composer-tray'
                 : 'target-bar';
-            const defaultSubAction = app.SUB_ACTIONS[key] ? app._getDefaultSubAction(key) : null;
-            const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
             const variantPresentation = String(source || '').startsWith('desktop') ? 'desktop' : '';
-            const maturePosture = CONTENT?.preferences?.posture === 'mature' || Number(CONTENT?.preferences?.maxTier || 0) >= 1;
-            const handler = (['feed', 'feast'].includes(key) || (maturePosture && ['flirt', 'fuck'].includes(key)))
-                ? `App.openExplorationSubActionSheet('${key}','${actionSource}','${variantPresentation}')`
-                : defaultSubAction
-                ? `App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')`
-                : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
+            // Every primary family has one player-facing contract: choose the
+            // family, then choose its approach in the shared surface. Content
+            // posture changes labels and visible approaches, never routing.
+            const handler = `App.openExplorationSubActionSheet('${key}','${actionSource}','${variantPresentation}')`;
             return {
                 action: key,
                 html: `<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"${effectPreview ? ` data-multi-effect-percent="${effectPreview.minPercent === effectPreview.maxPercent ? effectPreview.minPercent : `${effectPreview.minPercent}-${effectPreview.maxPercent}`}" data-multi-target-count="${effectPreview.targetCount}"` : ''} title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`
@@ -131,16 +127,24 @@ const YAW_MARKED_TARGET_ACTIONS = {
 
     openSubActionSheet(app, action, source = 'target-bar', presentation = '') {
         const targets = app._getExplorationTargets();
-        if (!app.SUB_ACTIONS[action]) return targets.length > 0 ? app.resolveExplorationTargetAction(action, null, source) : false;
+        const isFight = action === 'fight';
+        if (!isFight && !app.SUB_ACTIONS[action]) return targets.length > 0 ? app.resolveExplorationTargetAction(action, null, source) : false;
         const actors = app._getExplorationActors();
+        const targetResolution = targets.length === 0 ? null : (isFight
+            ? YAW_COMBAT_TECHNIQUES.resolve(app, { actors, targets, scope: 'target', mode: 'adventure' })
+            : YAW_SUB_ACTIONS.resolve(app, action, { actors, targets, scope: 'target', mode: 'adventure' }));
         const groups = [];
-        const selfResolution = YAW_SUB_ACTIONS.resolve(app, action, { actors, scope: 'self', mode: 'adventure' });
-        if (selfResolution.variants.length > 0) {
-            groups.push({
-                scope: 'self',
-                label: app._label('variant.scope.self', 'Self'),
-                selectCall: `App.resolveExplorationSelfSubAction('${app._escapeJsString(action)}','{id}','${app._escapeJsString(source || 'actor-belt')}')`
-            });
+        const selfResolution = !isFight
+            ? YAW_SUB_ACTIONS.resolve(app, action, { actors, scope: 'self', mode: 'adventure' })
+            : null;
+        if (selfResolution) {
+            if (selfResolution.variants.length > 0) {
+                groups.push({
+                    scope: 'self',
+                    label: app._label('variant.scope.self', 'Self'),
+                    selectCall: `App.resolveExplorationSelfSubAction('${app._escapeJsString(action)}','{id}','${app._escapeJsString(source || 'actor-belt')}')`
+                });
+            }
         }
         if (targets.length > 0) {
             groups.push({

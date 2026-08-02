@@ -185,7 +185,8 @@ const balanceCostDoc = fs.readFileSync(BALANCE_COST_DOCTRINE, 'utf8');
 const controlModelContent = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'control-model.md'), 'utf8');
 const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
 const multiInteractionSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'multi-interaction-system.js'), 'utf8');
-const interactionPlanContent = `${multiInteractionSystemContent}\n${fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-plan.js'), 'utf8')}`;
+const interactionFamiliesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-families.js'), 'utf8');
+const interactionPlanContent = `${multiInteractionSystemContent}\n${interactionFamiliesContent}\n${fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-plan.js'), 'utf8')}`;
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
 const interactionStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-state.js'), 'utf8');
 const companionBehaviorContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'companion-behavior.js'), 'utf8');
@@ -832,7 +833,7 @@ test('Native provider profiles expose bounded edit and destructive removal flows
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.18.0', 'Release manifest should identify the active candidate version');
+  assertEqual(releaseInfo.version, '0.18.1', 'Release manifest should identify the active candidate version');
   assertEqual(releaseInfo.status, 'candidate', 'The exact version should remain a candidate until operator release approval');
   assertEqual(releaseInfo.channel, 'alpha', 'The candidate should retain the select-group alpha channel');
   assertEqual(releaseInfo.candidateFor, 'select-group-alpha', 'The candidate should not imply public-preview promotion');
@@ -851,7 +852,7 @@ test('Release manifest is the authoritative public version and compatibility sou
 test('Elemental Species package stays within the supported species contribution boundary', () => {
   const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
   const manifest = packageData.module.manifest;
-  assertEqual(packageData.gameVersion, '0.18.0', 'Elemental package production metadata should target the current game build');
+  assertEqual(packageData.gameVersion, '0.18.1', 'Elemental package production metadata should target the current game build');
   assertEqual(manifest.minGameVersion, '0.14.0', 'Elemental package should require the doctrine-tested module surface');
   assertEqual(manifest.contentRating, 'safe', 'Elemental species identity content should remain safe-rated');
   assertEqual(manifest.permissions.length, 1, 'Elemental package should request only one capability');
@@ -5963,7 +5964,7 @@ test('Marked target action helper module is registered before app code', () => {
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked target helper should emit composer-tray command metadata for contextual utilities');
   assertContains(markedTargetActionsContent, "['desktop', 'desktop-target', 'composer-tray', 'panel-tray', 'mobile-target'].includes(source)", 'Marked target helper should normalize rendered tray aliases to the composer source');
   assertContains(markedTargetActionsContent, 'openSubActionSheet(app, action, source = \'target-bar\', presentation = \'\')', 'Marked target helper should own selected-target sub-action sheets and presentation routing');
-  assertContains(markedTargetActionsContent, "App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')", 'Marked target buttons should dispatch through the shared exploration resolver');
+  assertContains(markedTargetActionsContent, "App.openExplorationSubActionSheet('${key}','${actionSource}','${variantPresentation}')", 'Marked target buttons should open the shared approach chooser');
   assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}"', 'Marked target intent buttons should identify the target composer surface');
   assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-control="clear-targets"', 'Marked target clear should identify the target composer surface');
   assertContains(markedTargetActionsContent, 'data-command-control="clear-targets" data-command-slot="exit"', 'Marked target clear should identify the exit slot');
@@ -6153,6 +6154,30 @@ test('Companion Behavior V2 ranks every Duty and Stance combination through lega
       assert(first[0].action === 'hold' || first[0].command, `${duty}/${stance} should produce a dispatchable command or Hold`);
     }
   }
+});
+
+test('Autonomous support never tends a hostile unit, even if a stale party reference exists', () => {
+  const behavior = new Function('window', `${companionBehaviorContent}\nreturn YAW_COMPANION_BEHAVIOR;`)({});
+  const player = { id: 'player', name: 'You', CPun: 100, MPun: 100 };
+  const ally = {
+    id: 'support-ally', name: 'Support Ally', CPun: 100, MPun: 100,
+    companionBehavior: { version: 2, duty: 'support', stance: 'defensive', control: 'deterministic' }
+  };
+  const hostile = { id: 'hostile', name: 'Hostile', disposition: 'enemy', CPun: 20, MPun: 100, Figh: 20 };
+  const app = {
+    player,
+    // Simulate a stale reference during combat repair: this must not turn a
+    // hostile creature into a support target.
+    party: [player, ally, hostile],
+    creatures: [hostile],
+    DISPOSITION: { ENEMY: 'enemy' },
+    _buildPanelInteractionCommand(context) { return { ...context }; },
+    _validateInteractionCommand() { return { ok: true }; },
+    _canScavengeCorpse() { return false; },
+    _combatStateRoll() { return 0.25; }
+  };
+  const candidates = behavior.candidates(app, ally);
+  assertEqual(candidates.some(candidate => candidate.action === 'feed' && candidate.target === hostile), false, 'Hostiles must never be proposed as autonomous Feed/Tend targets');
 });
 
 test('Autonomous companions digest instead of repeatedly attempting an over-capacity Feast', () => {
@@ -6687,7 +6712,7 @@ test('Combat planning helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-sync.js'") < buildContent.indexOf("'src/core/combat-planning.js'"), 'Combat planning helper should load after legacy sync primitives');
   assert(buildContent.indexOf("'src/core/combat-planning.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat planning helper should load before app.js');
   assertContains(combatPlanningContent, 'const YAW_COMBAT_PLANNING = {', 'Combat planning helper should expose the planning service');
-  assertContains(appContent, 'YAW_COMBAT_PLANNING.confirm(this)', 'App combat planning wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_PLANNING.confirm(this, { forceChoose })', 'App combat planning wrapper should delegate to the helper');
 });
 
 test('Combat mobility helper module is registered before app code', () => {
@@ -6740,8 +6765,8 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, "app.syncSelection?.active", 'Mobile combat prompt should be phase-aware for Sync states');
   assertContains(mobileCombatToolbeltContent, "app.feedSelection?.active", 'Mobile combat prompt should be phase-aware for Feed states');
   assertContains(mobileCombatToolbeltContent, "app.targetSelection?.source === 'combat'", 'Mobile combat prompt should be phase-aware for target-pick states');
-  assertContains(mobileCombatToolbeltContent, 'app.combatCorrectionMessage?.text', 'Mobile combat prompt should surface invalid-command correction feedback');
-  assertContains(mobileCombatToolbeltContent, 'mobile-combat-prompt combat-correction-message', 'Mobile combat prompt should visibly distinguish correction feedback');
+  assertNotContains(mobileCombatToolbeltContent, 'app.combatCorrectionMessage?.text', 'Mobile combat prompt should not surface invalid-command warnings outside narration');
+  assertNotContains(mobileCombatToolbeltContent, 'combat-correction-message', 'Mobile combat prompt should keep failed attempts in the Scene Feed rather than a warning banner');
   assertContains(mobileCombatToolbeltContent, "app._label('mobile.combat.markTargets'", 'Mobile combat target prompt should use shared multi-mark target wording');
   assertContains(mobileCombatToolbeltContent, 'intentButtons(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own shared combat intent controls');
   assertContains(mobileCombatToolbeltContent, 'phaseControls(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt should own transient combat phase controls');
@@ -8345,6 +8370,7 @@ test('Published 0.14 representative save loads through the current slot migratio
   assertEqual(loaded.App.player.species, 'human', 'Current slot migration should preserve the player species');
   assertEqual(loaded.App.location.x, 4, 'Current slot migration should restore the saved x coordinate');
   assertEqual(loaded.App.location.y, -2, 'Current slot migration should restore the saved y coordinate');
+  assertEqual(loaded.elements.get('coords').textContent, '4, -2', 'Loading a slot should refresh the Review Map header coordinates');
   assertEqual(loaded.App.worldMeta.generatorVersion, 3, 'Current slot migration should not rewrite the recorded generator');
   assertEqual(loaded.App.inventory[0].id, 'healing_herb', 'Current slot migration should restore inventory');
   assertEqual(loaded.App.quests[0].id, 'fixture-quest', 'Current slot migration should restore active quests');
@@ -9821,7 +9847,8 @@ test('Mobile game shell prevents horizontal overflow', () => {
   assertContains(template, ':root.mobile-combat-active', 'mobile combat should expose a state hook without reserving an empty toolbar');
   assertContains(template, 'height: calc(100dvh - var(--mobile-actions-height) - env(safe-area-inset-bottom))', 'mobile app should reserve space above bottom toolbar');
   assertContains(template, '.mobile-context-menu', 'mobile context menu styles should exist');
-  assertContains(template, 'max-height: calc(100dvh - var(--mobile-actions-height)', 'mobile context menus should be viewport bounded above the action toolbar');
+  assertContains(template, '--mobile-context-clearance: max(var(--mobile-actions-height), 68px)', 'mobile context menus should reserve the larger of the active combat toolbar and exploration dock');
+  assertContains(template, 'max-height: calc(100dvh - var(--mobile-context-clearance)', 'mobile context menus should be viewport bounded above the active bottom controls');
   assertContains(template, '-webkit-overflow-scrolling: touch', 'mobile context menus should support momentum scrolling');
   assertContains(template, '.intent-menu-radial .mobile-context-menu-actions', 'radial intent menus should have dedicated mobile layout hooks');
   assertContains(template, '.combat-turn-order', 'combat center should style passive turn order feedback');
@@ -9940,7 +9967,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-selection-sentence" role="status" aria-live="polite" aria-atomic="true"', 'Mobile command sentence should announce actor-target-intent changes as an atomic status');
   assertContains(template, 'id="selection-sentence" role="status" aria-live="polite" aria-atomic="true"', 'Desktop command sentence should announce actor-target-intent changes as an atomic status');
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
-  assertContains(template, '.combat-correction-message', 'Combat correction feedback should have a visible composer style');
+  assertNotContains(template, '.combat-correction-message', 'Combat failure feedback should not reserve a warning-banner presentation style');
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
   assertContains(template, 'class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent"', 'Desktop command composer shell should own sentence and controls structurally');
   assertContains(template, 'id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" data-i18n-aria-label="ui.commandComposer" aria-hidden="true" hidden', 'Desktop command composer shell should start hidden with a localized accessible name until it has real controls');
@@ -12242,6 +12269,121 @@ test('Talk and Play keep broad labels while Mature sub-actions name their specif
   assertEqual(target.recruitReady, true, 'Seduce should retain the core recruitment-ready effect');
 });
 
+test('Mature group Seduce carries one explicit Talk approach through the shared combat plan', () => {
+  const { App, content } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'group-seduce-player', Flir: 80, Fuck: 80, cha: 20, appetite: 6, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'group-seduce-ally', Flir: 70, Fuck: 70, cha: 20, appetite: 6, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'group-seduce-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, CPle: 0, MPle: 100, wis: 1, combatRow: 'front' });
+  content.preferences.posture = 'mature';
+  content.preferences.maxTier = 1;
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: []
+  };
+  App.activeActor = player;
+  App.combatPlanSelection = {
+    active: true, source: 'combat-planner', actorIds: [player.id, ally.id], pendingIntent: 'flirt', explicitActors: true, hadGroupActors: true
+  };
+  App.combatTargetIds = [enemy.id];
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
+  assertEqual(App.confirmCombatPlan(), true, 'Mature group Talk should offer its meaningful approaches after actors and target are chosen');
+  assertEqual(App.feedSelection?.action, 'flirt', 'The shared approach selection should preserve Talk as the primary family');
+  assertEqual(App._executeActionVariant('seduce', player), true, 'Selecting Seduce should queue the shared group command instead of producing an invalid move');
+  const sync = App.combatState.syncActions[0];
+  assertEqual(sync.type, 'sync_flirt', 'Group Seduce should use Talk synchronization rather than an unrelated action path');
+  assertEqual(sync.techniqueKey, 'seduce', 'Group Seduce should retain its explicit approach through delayed resolution');
+  assertEqual(sync.plan.family, 'flirt', 'The queued plan should expose the canonical Talk family');
+  assertEqual(sync.plan.approach, 'seduce', 'The queued plan should expose the selected Seduce approach');
+  App._resolveSyncAction(sync);
+  assert(enemy.CPle > 0, 'The group Seduce attempt should resolve as an in-world social outcome');
+  assertEqual(App.combatCorrectionMessage, null, 'A valid group Seduce should not surface an invalid-command correction');
+  assertEqual(advanced, 2, 'Queueing and resolving group Seduce should each advance exactly once');
+});
+
+test('Group Feed is a support command and never reinterprets an ally target as hostile force-feeding', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'group-feed-player', Feed: 30, combatRow: 'back' });
+  const helper = makeUnit('Helper', { id: 'group-feed-helper', Feed: 20, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'group-feed-ally', CPun: 20, MPun: 100, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'group-feed-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, helper, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: helper, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: []
+  };
+  App.activeActor = player;
+  App.combatPlanSelection = {
+    active: true, source: 'combat-planner', actorIds: [player.id, helper.id], pendingIntent: 'feed', explicitActors: true, hadGroupActors: true
+  };
+  App.explorationTargetIds = [`party:${ally.id}`];
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
+  assertEqual(App.confirmCombatPlan(), true, 'Group Feed should commit through the same actor-target-approach contract');
+  assertEqual(App.combatState.syncActions.length, 1, 'Group Feed should queue one support action');
+  const sync = App.combatState.syncActions[0];
+  assertEqual(sync.type, 'sync_feed', 'The group command should retain the Feed family');
+  assertEqual(sync.target, ally, 'Group Feed should retain the explicitly selected ally target');
+  assertEqual(sync.plan.targetType, 'party', 'The queued Feed plan should identify its party target');
+  App._resolveSyncAction(sync);
+  assert(ally.CPun > 20, 'Group Feed should restore the chosen ally');
+  assertEqual(enemy.CPun, 100, 'Group Feed should not affect an unrelated enemy');
+  assertNotContains(App.log[App.log.length - 1].text, 'force', 'Group Feed narration should not revive the retired hostile force-feed behavior');
+  assertEqual(advanced, 2, 'Queueing and resolving group Feed should each advance exactly once');
+});
+
+test('Group Nurse resolves the selected Feed approach instead of falling back to Tend', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'group-nurse-combat-player', lactating: true, lactationCooldown: 0, resourceLedger: { 'core:nurse': { current: 1, progress: 0 } }, Feed: 20, combatRow: 'front' });
+  const helper = makeUnit('Helper', { id: 'group-nurse-combat-helper', lactating: true, lactationCooldown: 0, resourceLedger: { 'core:nurse': { current: 1, progress: 0 } }, Feed: 20, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'group-nurse-combat-ally', CPun: 10, MPun: 100, hunger: 90, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'group-nurse-combat-enemy', disposition: App.DISPOSITION.ENEMY, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, helper, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: helper, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: []
+  };
+  App.activeActor = player;
+  App.combatPlanSelection = {
+    active: true, source: 'combat-planner', actorIds: [player.id, helper.id], pendingIntent: 'feed', explicitActors: true, hadGroupActors: true
+  };
+  App.explorationTargetIds = [`party:${ally.id}`];
+  App.nextTurn = function() {};
+
+  assertEqual(App.confirmCombatPlan(), true, 'Group Feed should expose Nurse when it is a real shared approach');
+  assertEqual(App.feedSelection?.variants.some(variant => variant.id === 'nurse' && variant.available), true, 'Group Feed picker should expose the available Nurse approach');
+  assertEqual(App._executeActionVariant('nurse', player), true, 'The selected Nurse approach should queue successfully');
+  App._resolveSyncAction(App.combatState.syncActions[0]);
+  assertEqual(player.lactationCooldown, 3, 'The first nurse should spend its cooldown at group resolution');
+  assertEqual(helper.lactationCooldown, 3, 'The second nurse should spend its cooldown at group resolution');
+  assert(ally.CPun > 10, 'Group Nurse should restore the explicit ally target');
+  assertContains(App.log[App.log.length - 1].text, 'nurses Ally', 'Group Nurse narration should name the selected approach and target');
+});
+
+test('Invalid exploration commands narrate the failed attempt instead of returning a player-facing error', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const target = makeUnit('Target', { id: 'narrated-invalid-target' });
+  App.player = makeUnit('You', { id: 'narrated-invalid-player' });
+  App.party = [App.player];
+  App.creatures = [target];
+
+  const resolved = App._dispatchInteractionCommand({
+    mode: 'adventure', actors: [], targets: [target], action: 'flirt', source: 'test-invalid-exploration'
+  });
+  assertEqual(resolved, false, 'The invalid command should not create a mechanical outcome');
+  assertContains(App.log[App.log.length - 1].text, 'No one is ready', 'The failed command should be narrated as an in-world refusal');
+  assertEqual(App.latestSceneBeat.resultKind, 'failure', 'The narrated refusal should also reach Scene Feed as a failure outcome');
+});
+
 test('Feast attempts stay selectable while labels preview resistance clues and outcomes resolve after commitment', () => {
   const resistant = loadAppForCombat(() => 0);
   const plant = makeUnit('Plantfolk', { id: 'attempt-plant', Feas: 5, size: 3, appetite: 8 });
@@ -12374,6 +12516,205 @@ test('Actor-scoped variants live beneath contextual interaction buttons without 
   assertEqual(App.lastIntentCommand.scope, 'self', 'Self action dispatch should record its explicit scope');
 });
 
+test('Actor-only Play exposes its sole SFW approach through the shared submenu', () => {
+  const { App, body } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'direct-self-play', CPle: 10, MPle: 100, Fuck: 40 });
+  App.player = actor;
+  App.party = [actor];
+  App.explorationActorIds = [actor.id];
+  App.explorationActorSelectionExplicit = true;
+
+  const resolution = App.openExplorationTargetSubActionSheet('fuck', 'actor-belt');
+  assertEqual(resolution.action, 'fuck', 'Actor-only Play should preserve its family in the shared submenu');
+  assertContains(body.innerHTML, 'Choose a Play option', 'Actor-only Play should name its approach instead of silently committing it');
+  assertContains(body.innerHTML, "resolveExplorationSelfSubAction('fuck','fuck','actor-belt')", 'Actor-only Play should expose the canonical SFW Play approach');
+  assertEqual(App.resolveExplorationSelfSubAction('fuck', 'fuck', 'actor-belt'), true, 'Selecting the Play approach should commit the self interaction');
+  assertEqual(actor.CPle > 10, true, 'Selecting actor-only Play should apply its effect');
+  assertEqual(App.lastIntentCommand.subAction, 'fuck', 'Actor-only Play should record its canonical approach');
+});
+
+test('SFW exploration primary interactions share one approach surface for single, group, and self routes', () => {
+  const { App, body, content } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'tree-player', CPun: 60, MPun: 100, CPle: 10, MPle: 100, size: 7, appetite: 7 });
+  const helper = makeUnit('Helper', { id: 'tree-helper', CPun: 50, MPun: 100, size: 6, appetite: 6 });
+  const first = makeUnit('First', { id: 'tree-first', disposition: App.DISPOSITION.FRIENDLY, CPun: 30, MPun: 100, size: 2, willingPrey: true });
+  const second = makeUnit('Second', { id: 'tree-second', disposition: App.DISPOSITION.FRIENDLY, CPun: 40, MPun: 100, size: 2, willingPrey: true });
+  content.preferences.posture = 'sfw';
+  content.preferences.maxTier = 0;
+  content.preferences.explicitDescriptions = false;
+  App.player = player;
+  App.party = [player, helper];
+  App.creatures = [first, second];
+
+  const families = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
+  for (const selection of [
+    { actors: [player.id], targets: ['creature:tree-first'], label: 'single' },
+    { actors: [player.id, helper.id], targets: ['creature:tree-first', 'creature:tree-second'], label: 'group' }
+  ]) {
+    App.explorationActorIds = selection.actors;
+    App.explorationActorSelectionExplicit = true;
+    App.explorationTargetIds = selection.targets;
+    const controls = App._renderExplorationTargetActions('desktop');
+    for (const family of families) {
+      assertContains(controls, `App.openExplorationSubActionSheet('${family}','composer-tray','desktop')`, `${selection.label} ${family} should enter the shared approach surface`);
+      body.innerHTML = '';
+      const resolution = App.openExplorationSubActionSheet(family, 'composer-tray', 'desktop');
+      assertEqual(resolution.action, family, `${selection.label} ${family} should preserve its canonical family`);
+      assertContains(body.innerHTML, 'data-command-surface="action-variant-options"', `${selection.label} ${family} should use the shared approach command surface`);
+      assertContains(body.innerHTML, `data-command-intent="${family}"`, `${selection.label} ${family} should retain its primary intent id`);
+      assertContains(body.innerHTML, 'data-command-control="back-variant"', `${selection.label} ${family} should expose the same Back contract`);
+      App.closeIntentMenu();
+    }
+  }
+
+  App.explorationActorIds = [player.id, helper.id];
+  App.explorationTargetIds = [];
+  for (const family of ['feed', 'feast', 'fuck']) {
+    body.innerHTML = '';
+    const resolution = App.openExplorationSubActionSheet(family, 'actor-belt', 'desktop');
+    assertEqual(resolution.action, family, `Self ${family} should preserve its canonical family`);
+    assertContains(body.innerHTML, 'data-command-scope="self"', `Self ${family} should use an explicit self group`);
+    assertNotContains(body.innerHTML, 'data-command-scope="target"', `Self ${family} should not invent a target group`);
+    App.closeIntentMenu();
+  }
+});
+
+test('Combat primary interactions keep the same approach tree for single multiple and self participants', () => {
+  const { App, body, window } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'combat-tree-player', CPun: 60, MPun: 100, combatRow: 'front', size: 7, appetite: 7 });
+  const helper = makeUnit('Helper', { id: 'combat-tree-helper', CPun: 60, MPun: 100, combatRow: 'front', size: 6, appetite: 6 });
+  const first = makeUnit('First', { id: 'combat-tree-first', disposition: App.DISPOSITION.ENEMY, CPun: 30, MPun: 100, combatRow: 'front', size: 2, willingPrey: true });
+  const second = makeUnit('Second', { id: 'combat-tree-second', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100, combatRow: 'front', size: 2, willingPrey: true });
+  App.player = player;
+  App.party = [player, helper];
+  App.creatures = [first, second];
+  App.combatState = {
+    active: true, round: 1, currentTurn: 0, processing: false,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: helper, initiative: 20 }, { unit: first, initiative: 10 }, { unit: second, initiative: 9 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+
+  const optionIdsByFamily = new Map();
+  for (const selection of [
+    { actors: [player], targets: [first], label: 'single' },
+    { actors: [player, helper], targets: [first, second], label: 'multiple' }
+  ]) {
+    for (const family of ['fight', 'flirt', 'fuck', 'feast', 'feed']) {
+      body.innerHTML = '';
+      App.feedSelection = null;
+      const opened = window.YAW_COMBAT_FEED.executeVariantAction(App, family, player, selection.targets, {
+        actors: selection.actors,
+        targets: selection.targets,
+        forceChoose: true
+      });
+      assertEqual(opened, true, `${selection.label} combat ${family} should open its approach surface`);
+      assertEqual(App.feedSelection?.action, family, `${selection.label} combat ${family} should preserve its canonical family`);
+      assertContains(body.innerHTML, 'data-command-surface="action-variant-options" data-command-mode="combat"', `${selection.label} combat ${family} should use the shared combat approach surface`);
+      assertContains(body.innerHTML, `data-command-intent="${family}"`, `${selection.label} combat ${family} should retain its primary intent id`);
+      assertNotContains(body.innerHTML, '<details', `${selection.label} combat ${family} should not fall back to a bespoke inline menu`);
+      const optionIds = (App.feedSelection?.variants || []).map(variant => variant.id).join(',');
+      if (!optionIdsByFamily.has(family)) optionIdsByFamily.set(family, optionIds);
+      assertEqual(optionIds, optionIdsByFamily.get(family), `${selection.label} combat ${family} should expose the same approach ids as the single-actor route`);
+      for (const variant of App.feedSelection?.variants || []) {
+        assertContains(body.innerHTML, `data-command-intent="${family}:${variant.id}"`, `${selection.label} combat ${family} should render ${variant.id} even when its current availability changes`);
+      }
+      App.cancelActionVariantSelection();
+    }
+  }
+});
+
+test('Combat self Feast exposes and commits Digest through the shared single and group approach surface', () => {
+  const single = loadAppForCombat(() => 0);
+  const singlePlayer = makeUnit('You', { id: 'self-feast-player', CPun: 80, MPun: 100, combatRow: 'front', size: 7, appetite: 7 });
+  const singleEnemy = makeUnit('Enemy', { id: 'self-feast-enemy', disposition: single.App.DISPOSITION.ENEMY, CPun: 40, MPun: 100, combatRow: 'front' });
+  singlePlayer.stomach = [makeUnit('Held', { id: 'self-feast-held', CPun: 10, MPun: 40, size: 1, inStomach: true, releaseEligible: true })];
+  single.App.player = singlePlayer;
+  single.App.party = [singlePlayer];
+  single.App.creatures = [singleEnemy];
+  single.App.combatState = {
+    active: true, round: 1, currentTurn: 0, processing: false,
+    turnQueue: [{ unit: singlePlayer, initiative: 20 }, { unit: singleEnemy, initiative: 10 }],
+    syncActions: []
+  };
+  single.App.activeActor = singlePlayer;
+
+  assertEqual(single.App.executeCombatIntent('feast', singlePlayer), true, 'Combat Eat should open self Feast when the current actor holds prey');
+  assertEqual(single.App.feedSelection?.scope, 'self', 'Combat self Feast should preserve self scope');
+  assertContains(single.body.innerHTML, 'data-command-intent="feast:digest"', 'Combat self Feast should expose Digest in the shared approach surface');
+  assertContains(single.body.innerHTML, 'data-command-intent="feast:release"', 'Combat self Feast should expose Release beside Digest');
+  assertEqual(single.App.targetSelection, null, 'Combat self Feast should not force an external target picker');
+  assertEqual(single.App._executeActionVariant('digest', singlePlayer), true, 'Choosing combat Digest should commit the self-directed turn action');
+  assertEqual(single.App._activeContainedPrey(singlePlayer, 'stomach').length, 0, 'Combat Digest should resolve the held prey without opening Holdings');
+  assertEqual(single.App.lastIntentCommand.subAction, 'digest', 'Combat Digest should record the chosen self approach');
+
+  const group = loadAppForCombat(() => 0);
+  const leader = makeUnit('Leader', { id: 'group-self-feast-leader', CPun: 80, MPun: 100, combatRow: 'front', size: 7, appetite: 7 });
+  const helper = makeUnit('Helper', { id: 'group-self-feast-helper', CPun: 80, MPun: 100, combatRow: 'front', size: 6, appetite: 6 });
+  const enemy = makeUnit('Enemy', { id: 'group-self-feast-enemy', disposition: group.App.DISPOSITION.ENEMY, CPun: 40, MPun: 100, combatRow: 'front' });
+  leader.stomach = [makeUnit('Leader Held', { id: 'group-leader-held', CPun: 10, MPun: 40, size: 1, inStomach: true, releaseEligible: true })];
+  helper.stomach = [makeUnit('Helper Held', { id: 'group-helper-held', CPun: 10, MPun: 40, size: 1, inStomach: true, releaseEligible: true })];
+  group.App.player = leader;
+  group.App.party = [leader, helper];
+  group.App.creatures = [enemy];
+  group.App.combatState = {
+    active: true, round: 1, currentTurn: 0, processing: false,
+    turnQueue: [{ unit: leader, initiative: 30 }, { unit: helper, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  group.App.activeActor = leader;
+
+  assertEqual(group.window.YAW_COMBAT_FEED.executeVariantAction(group.App, 'feast', leader, null, {
+    actors: [leader, helper], scope: 'self', forceChoose: true
+  }), true, 'Selected combat actors should share the self Feast approach surface');
+  assertEqual(group.App.feedSelection?.variants.map(variant => variant.id).join(','), 'digest,release', 'Single and group self Feast should expose the same approach ids');
+  assertContains(group.body.innerHTML, 'data-command-intent="feast:digest"', 'Group self Feast should expose Digest through the same menu');
+  assertEqual(group.App._executeActionVariant('digest', leader), true, 'Choosing group Digest should queue the shared self-directed combat plan');
+  assertEqual(group.App.lastIntentCommand.subAction, 'digest', 'Group self Feast should preserve Digest as its approach');
+  assertEqual(group.App.lastIntentCommand.targetIds.join(','), 'group-self-feast-leader,group-self-feast-helper', 'Group self Feast should keep each selected actor as a self target');
+  assertEqual(group.App._activeContainedPrey(leader, 'stomach').length, 0, 'Group self Digest should resolve the leader\'s held prey');
+  assertEqual(group.App._activeContainedPrey(helper, 'stomach').length, 0, 'Group self Digest should resolve the helper\'s held prey');
+});
+
+test('Queued group self Feast survives combat restore with party self targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const leader = makeUnit('Leader', { id: 'restore-self-feast-leader', CPun: 80, MPun: 100 });
+  const helper = makeUnit('Helper', { id: 'restore-self-feast-helper', CPun: 80, MPun: 100 });
+  const enemy = makeUnit('Enemy', { id: 'restore-self-feast-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
+  App.player = leader;
+  App.party = [leader, helper];
+  App.creatures = [enemy];
+
+  const restored = App._restoreCombatState({
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    activeActorId: leader.id,
+    turnQueue: [
+      { unitId: leader.id, initiative: 30, actedThisRound: true },
+      { unitId: helper.id, initiative: 20, actedThisRound: true },
+      { unitId: enemy.id, initiative: 10, actedThisRound: false }
+    ],
+    syncActions: [{
+      type: 'feast',
+      techniqueKey: 'digest',
+      participantIds: [leader.id, helper.id],
+      targetId: leader.id,
+      targetIds: [leader.id, helper.id],
+      resolveAtIndex: 1,
+      round: 2,
+      resolved: false
+    }]
+  });
+
+  assertEqual(restored, true, 'An active combat with living enemies should restore');
+  assertEqual(App.combatState.syncActions.length, 1, 'Restore should retain the queued group self Feast');
+  assertEqual(App.combatState.syncActions[0].techniqueKey, 'digest', 'Restore should not treat Digest as a missing fight technique');
+  assertEqual(App.combatState.syncActions[0].targets[0], leader, 'Restore should retain the leader as their own Feast target');
+  assertEqual(App.combatState.syncActions[0].targets[1], helper, 'Restore should retain the helper as their own Feast target');
+  assertEqual(App.combatState.syncActions[0].plan?.constraints?.checkReach, false, 'Restored self Feast should not apply external combat reach');
+});
+
 test('Combat Feast variant Back restores the selected target and chosen variant reaches InteractionPlan', () => {
   const { App, elements, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'variant-feast-player', Feas: 80, size: 8, appetite: 8 });
@@ -12484,6 +12825,15 @@ test('Combat Technique V1 appears beneath Fight and reaches deterministic damage
   assert(enemy.CPun < before, 'Selected technique should resolve deterministic combat damage');
   assertEqual(enemy.status.stun?.source, `technique:${profile.key}`, 'Selected technique should apply only its bounded authored status profile');
   assertEqual(App._techniqueTurnAdvanced, true, 'Technique resolution should consume one combat turn');
+
+  enemy.CPun = enemy.MPun;
+  enemy.status = {};
+  App.combatState.active = false;
+  const explorationBefore = enemy.CPun;
+  assertEqual(App.outsideActionOnTarget('fight', enemy, player, { subAction: profile.key }), true, 'Exploration Fight should accept the same selected technique');
+  assert(enemy.CPun < explorationBefore, 'The selected technique should affect exploration Fight rather than silently reverting to a basic hit');
+  assertEqual(enemy.status.stun?.source, `technique:${profile.key}`, 'Exploration Fight should preserve the selected technique status effect');
+  assertContains(App.log[App.log.length - 1].text, 'Sweeping Arc', 'Exploration narration should name the chosen technique');
 });
 
 test('Module action variant registration is permissioned bounded owned and executable', () => {
@@ -15945,7 +16295,8 @@ test('Combat target dispatch uses the clicked unit instead of filtered index dri
   assertEqual(App.combatTargetIds.join(','), 'enemy-second', 'Direct target click should mark the clicked enemy id');
   assertEqual(first.CPun, beforeFirst, 'Direct target click should not damage an earlier filtered enemy before confirmation');
   assertEqual(second.CPun, beforeSecond, 'Direct target click should not damage the clicked enemy before confirmation');
-  App.confirmCombatTargets();
+  App.confirmCombatTargets(true);
+  App._executeActionVariant('basic', player);
   assertEqual(first.CPun, beforeFirst, 'Confirmed target dispatch should not damage an earlier filtered enemy');
   assert(second.CPun < beforeSecond, 'Confirmed target dispatch should damage the clicked enemy id');
 });
@@ -17426,7 +17777,7 @@ test('Center tile stays traversal and context only across interaction states', (
   assertNotContains(el('desktop-presence-rail').innerHTML, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Selected desktop creature state should not duplicate target semantics in the stage rail');
   assertContains(el('enemies-content').innerHTML, 'selected-target', 'Selected desktop creature state should remain visible in the creature side panel');
   assertContains(el('selection-sentence').innerHTML, 'Friendly', 'Creature presence focus should update the desktop target sentence');
-  assertContains(el('desktop-context-belt').innerHTML, "resolveExplorationTargetAction('fight'", 'Creature presence focus should expose target actions through the desktop composer belt');
+  assertContains(el('desktop-context-belt').innerHTML, "openExplorationSubActionSheet('fight'", 'Creature presence focus should expose Fight through the shared approach chooser');
   assert(el('panel-enemies').focused !== true, 'Desktop creature presence focus should not force-open the detail panel');
   assertEqual(App.focusPresenceOverflow('target'), true, 'Presence overflow focus should resolve through the requested target picker path');
   assertEqual(el('panel-enemies').focused, true, 'Presence overflow should prefer the creature detail panel when creatures are present');
@@ -17755,7 +18106,7 @@ test('Center presence focus selects mobile composer state without opening drawer
   assert(App.explorationTargetIds.includes('creature:guide-1'), 'Mobile creature presence focus should mark the target');
   App.renderMap();
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile creature presence focus should update the target sentence');
-  assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile creature presence focus should expose target actions in the visible tray');
+  assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "openExplorationSubActionSheet('fight'", 'Mobile creature presence focus should expose Fight through the shared approach chooser');
   assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Mobile creature presence focus should not open the creature drawer');
   assertNotContains(document.getElementById('mobile-target-action-tray').innerHTML, 'showIntentMenu(', 'Mobile creature presence focus should not open an action menu');
 });
@@ -18109,6 +18460,33 @@ test('Intent sub-action sheet records selected sub-action while preserving dispa
   assertEqual(App.lastIntentCommand.subAction, 'dance', 'Selected sub-action should be recorded on the normalized intent command');
   assertEqual(App.defaultSubActions.flirt, 'dance', 'Selected sub-action should become the new default for that primary action');
   assert(friendly.CPle > 0, 'Sub-action selection should preserve existing outside-combat action execution');
+  assertContains(App.log[App.log.length - 1].text, 'dance with Friendly', 'Dance should retain its own narration while sharing Talk mechanics');
+});
+
+test('Combat Dance shares the Talk resolver instead of falling through as unimplemented', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'dance-player', Flir: 40, cha: 24, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', {
+    id: 'dance-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100,
+    CPle: 0, MPle: 100, wis: 1, combatRow: 'front'
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: []
+  };
+  App.activeActor = player;
+  App.nextTurn = () => {};
+
+  assertEqual(App._resolveCombatFeedCommand({
+    mode: 'combat', action: 'flirt', subAction: 'dance', actors: [player], targets: [enemy]
+  }), true, 'Dance should resolve as a successful combat command');
+  assert(enemy.CPle > 0, 'Dance should apply the same Spirit progress as Talk');
+  assertEqual(App.lastCombatActionResult.action, 'flirt', 'Dance should preserve the Talk semantic resolver');
+  assertContains(App.log[App.log.length - 1].text, 'dance with Enemy', 'Combat Dance should retain its own narration');
+  assertNotContains(App.log[App.log.length - 1].text, 'not implemented', 'Dance should never surface an implementation-error narration');
 });
 
 test('Intent feast sub-action affects outside-combat resolution and cleanup', () => {
@@ -19000,7 +19378,9 @@ test('Panel wrappers use one command dispatcher for combat target clicks', () =>
   assertEqual(App.executeActionOnTarget('fight', 'enemy-combat-panel-dispatch'), true, 'Combat target card should mark the target during target-pick');
   assertEqual(seen.length, 0, 'Combat target click should not dispatch until the marked target is confirmed');
   assertEqual(App.combatTargetIds.join(','), 'enemy-combat-panel-dispatch', 'Combat target click should preserve the marked target id');
-  assertEqual(App.confirmCombatTargets(), true, 'Combat target confirmation should resolve through shared panel dispatch');
+  assertEqual(App.confirmCombatTargets(true), true, 'Combat target confirmation should open the shared Fight approach panel');
+  assertEqual(seen.length, 0, 'Opening the shared approach panel should not dispatch before an approach is selected');
+  assertEqual(App._executeActionVariant('basic', player), true, 'Selecting Basic should resolve through shared panel dispatch');
   assertEqual(seen.length, 1, 'Combat target confirmation should hit the same dispatcher once');
   assertEqual(seen[0].mode, 'combat', 'Combat target click should build a combat command');
   assertEqual(seen[0].source, 'action-variant-options', 'Combat target confirmation should identify the shared Fight variant command surface');
@@ -19316,9 +19696,15 @@ test('Fight nests control actions and group Play repairs a missing valid compani
   App.activeActor = player;
 
   const controlsHtml = App._combatActionButtons(player);
-  assertContains(controlsHtml, 'fight-control-menu', 'Core restraint actions should be grouped inside the Fight control menu');
-  assertContains(controlsHtml, 'data-command-intent="core:grab"', 'Fight controls should expose Grab instead of adding a standalone belt action');
-  assertNotContains(controlsHtml, 'data-command-intent="core:pull"', 'Pull should remain hidden until the actor holds a target');
+  assertNotContains(controlsHtml, 'fight-control-menu', 'Fight should not create a bespoke inline control menu');
+  assertContains(controlsHtml, "App.executeCombatIntent('fight')", 'Fight should remain a standard combat intent button');
+  assertNotContains(controlsHtml, 'data-command-intent="core:grab"', 'Grab should live in the shared Fight approach panel instead of the action belt');
+  assertEqual(App.executeCombatIntent('fight'), true, 'Fight should enter normal target selection before its approaches are shown');
+  assertEqual(App.toggleCombatTarget(enemy.id), true, 'Fight target selection should allow the hostile target');
+  assertEqual(App.confirmCombatTargets(), true, 'Fight target confirmation should open the common approach panel when Grab is available');
+  assertEqual(App.feedSelection?.variants.some(variant => variant.id === 'core:grab' && variant.available), true, 'Fight approach panel should expose the usable Grab control');
+  assertEqual(App.cancelActionVariantSelection(), true, 'Closing the Fight approach panel should restore target selection cleanly');
+  App.cancelTargetSelection();
   assertContains(App._syncParticipantButton(stale), 'data-command-control="toggle-combat-plan-actor"', 'A living companion missing from a stale queue should retain an actor control');
 
   assertEqual(App.toggleCombatPlanActor(stale.id), true, 'Selecting a living companion should repair their missing turn entry instead of removing their agency');
@@ -19338,7 +19724,7 @@ test('Fight nests control actions and group Play repairs a missing valid compani
 });
 
 test('Group actor controls narrate a companion fear refusal instead of hiding the actor', () => {
-  const { App } = loadAppForCombat(() => 0);
+  const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'fear-player', Fuck: 40, combatRow: 'front' });
   const mouse = makeUnit('Mousefolk', { id: 'fear-mouse', Fuck: 40, combatRow: 'front' });
   const enemy = makeUnit('Enemy', { id: 'fear-enemy', disposition: App.DISPOSITION.ENEMY, combatRow: 'front' });
@@ -19359,6 +19745,10 @@ test('Group actor controls narrate a companion fear refusal instead of hiding th
   assertEqual(App.confirmCombatPlan(), false, 'The group action should not resolve while Mousefolk is afraid');
   assertContains(App.log[App.log.length - 1].text, 'Mousefolk is too afraid to comply', 'The refusal should be narrated clearly');
   assertNotContains(App.log[App.log.length - 1].text, 'Sync failed', 'The refusal should not be presented as a sync error');
+  assertEqual(App.combatCorrectionMessage, null, 'The refusal should not create an out-of-world warning state');
+  assertContains(App.latestSceneBeat.summary, 'Mousefolk is too afraid to comply', 'The Scene Feed should receive the refusal narration');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'Mousefolk is too afraid to comply', 'Desktop controls should not repeat the refusal as a warning banner');
+  assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Mousefolk is too afraid to comply', 'Mobile controls should not repeat the refusal as a warning banner');
 });
 
 test('Combat group planner maps Eat into progressive Feast resolution', () => {
@@ -19410,7 +19800,9 @@ test('Combat group planner maps Eat into progressive Feast resolution', () => {
   let advanced = 0;
   App.nextTurn = function() { advanced++; };
 
-  assertEqual(App.confirmCombatPlan(), true, 'Group Eat should queue through the combat planner');
+  assertEqual(App.confirmCombatPlan(), true, 'Group Eat should first choose its meaningful Feast approach through the combat planner');
+  assertEqual(App.feedSelection?.active, true, 'Group Eat should retain its selected actors and target while choosing an approach');
+  assertEqual(App._executeActionVariant('chew', player), true, 'Choosing Chew should queue the coordinated Feast action');
   assertEqual(App.combatState.syncActions.length, 1, 'Group Eat should create one coordinated Feast action');
   const sync = App.combatState.syncActions[0];
   assertEqual(sync.type, 'feast', 'Group Eat should preserve Feast as the synchronized resolver type');
@@ -19515,7 +19907,7 @@ test('Many-to-many combat Chew resolves progressively with one cost and one prac
   };
   [player, ally, first, second].forEach(unit => App._normalizeUnit(unit));
   App.activeActor = player;
-  App._combatActionRating = unit => unit.Feas;
+  App._combatActionRating = rating => rating;
   App._combatDamageVariance = () => 0;
   App._physicalDamageMultiplier = () => 1;
   App._effectiveCon = target => target.con;
@@ -19545,6 +19937,68 @@ test('Many-to-many combat Chew resolves progressively with one cost and one prac
   assertEqual(player.multiActionPractice.multi.chew.commands, 1, 'Group Chew lead should train once across all targets');
   assertEqual(ally.multiActionPractice.multi.chew.commands, 1, 'Group Chew helper should train once across all targets');
   assertEqual(advanced, 1, 'Group Chew should advance exactly once after resolving all targets');
+});
+
+test('Mixed-reach group Chew narrates the blocked actor while a capable actor still resolves', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('ZX', { id: 'mixed-chew-zx', Feas: 30, hunger: 10, combatRow: 'front' });
+  const eaglefolk = makeUnit('Eaglefolk', { id: 'mixed-chew-eaglefolk', Feas: 30, hunger: 20, combatRow: 'back', flying: true });
+  const harpy = makeUnit('Harpy', {
+    id: 'mixed-chew-harpy',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 100,
+    MPun: 100,
+    con: 20,
+    combatRow: 'back',
+    flying: true
+  });
+  App.player = player;
+  App.party = [player, eaglefolk];
+  App.creatures = [harpy];
+  App.settings.chewing = true;
+  App.combatState = {
+    active: true,
+    round: 6,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [
+      { unit: player, initiative: 30 },
+      { unit: eaglefolk, initiative: 20 },
+      { unit: harpy, initiative: 10 }
+    ],
+    syncActions: []
+  };
+  [player, eaglefolk, harpy].forEach(unit => App._normalizeUnit(unit));
+  App.activeActor = player;
+  App._combatActionRating = rating => rating;
+  App._combatDamageVariance = () => 0;
+  App._physicalDamageMultiplier = () => 1;
+  App._effectiveCon = target => target.con;
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+  const sync = {
+    type: 'feast',
+    techniqueKey: 'chew',
+    participants: [player, eaglefolk],
+    target: harpy,
+    targets: [harpy],
+    plan: { subAction: 'chew' },
+    resolved: false
+  };
+
+  assertEqual(App._combatReachResult(player, harpy, 'feast').canSucceed, false, 'Grounded ZX should not have contact reach to a flying Harpy');
+  assertEqual(App._combatReachResult(eaglefolk, harpy, 'feast').canSucceed, true, 'Flying Eaglefolk should have aerial contact reach to a flying Harpy');
+  App._resolveSyncAction(sync);
+
+  const result = App.log[App.log.length - 1]?.text || '';
+  assert(harpy.CPun < harpy.MPun, `The flying Eaglefolk should still Chew the flying Harpy (${harpy.CPun}/${harpy.MPun}): ${result}`);
+  assertContains(result, 'ZX tries Eat on Harpy', 'The grounded actor should receive narrative reach feedback');
+  assertContains(result, 'Eaglefolk chew into Harpy', 'The capable actor should receive the successful group outcome');
+  assertNotContains(result, 'ZX, Eaglefolk chew into Harpy', 'The result should not credit the blocked actor with the successful Chew');
+  assertEqual(player.hunger, 12, 'The blocked actor should still spend their committed Feast effort');
+  assertEqual(eaglefolk.hunger, 22, 'The capable actor should spend their committed Feast effort once');
+  assertEqual(advanced, 1, 'The mixed group result should consume one coordinated resolution');
 });
 
 test('Queued group action drops an unavailable target and resolves remaining valid marks', () => {
@@ -19993,7 +20447,8 @@ test('Combat target-first marking supports multiple selected targets', () => {
   assertContains(elements.get('selection-sentence').innerHTML, 'Targets', 'Combat composer sentence should expose plural target labeling');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-target-count'), '2', 'Desktop composer should expose the selected combat target count');
 
-  assertEqual(App.executeCombatIntent('fight'), true, 'Target-first Fight should resolve against selected combat targets');
+  assertEqual(App.executeCombatIntent('fight'), true, 'Target-first Fight should open its shared approach panel for the selected targets');
+  assertEqual(App._executeActionVariant('basic', player), true, 'Selecting Basic should resolve against every marked combat target');
 
   assert(enemyA.CPun < 100, 'First marked combat target should take damage');
   assert(enemyB.CPun < 100, 'Second marked combat target should take damage');
@@ -20531,7 +20986,7 @@ test('Marked self-included group feed tends instead of consuming helpers', () =>
   assertContains(App.log[App.log.length - 1].text, 'tend Target together', 'Marked self-included feed should log tending semantics');
 });
 
-test('Marked Feed picker offers actor-to-target whole-self feeding without exposing legacy sacrifice', () => {
+test('Marked Feed exposes its only actor-to-target whole-self option without legacy sacrifice', () => {
   const { App, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const predator = makeUnit('Predator', { id: 'predator-1', size: 6, appetite: 6, Feed: 30 });
@@ -20540,10 +20995,11 @@ test('Marked Feed picker offers actor-to-target whole-self feeding without expos
   App.party = [player, predator, prey];
   App.explorationActorIds = ['prey-1'];
   App.toggleExplorationTarget('party', 'predator-1');
-  App.openExplorationTargetSubActionSheet('feed', 'target-bar');
-  assertContains(body.innerHTML, "App.resolveExplorationTargetAction('feed','offerWhole','target-bar')", 'Marked Feed sheet should expose Offer Self for the willing selected actor');
+  const resolution = App.openExplorationTargetSubActionSheet('feed', 'target-bar');
+  assertEqual(resolution.action, 'feed', 'Marked Feed should preserve its family in the shared submenu');
+  assertContains(body.innerHTML, "App.resolveExplorationTargetAction('feed','offerWhole','target-bar')", 'The shared picker should expose the meaningful Offer Self approach');
   assertNotContains(body.innerHTML, "App.resolveExplorationTargetAction('feed','sacrifice','target-bar')", 'Marked Feed sheet should hide the legacy inverse-direction sacrifice alias');
-  App.resolveExplorationTargetAction('feed', 'offerWhole', 'target-bar');
+  assertEqual(App.resolveExplorationTargetAction('feed', 'offerWhole', 'target-bar'), true, 'Selecting Offer Self should commit the marked Feed interaction');
   assertEqual(predator.stomach.length, 1, 'Offer Self should resolve against the selected consumer even when the consumer is at full health');
   assertEqual(predator.stomach[0].name, 'Prey', 'Predator should receive the willing prey');
   assertEqual(App.party.includes(prey), false, 'Offered party actor should leave the active party through containment');
@@ -23859,7 +24315,8 @@ test('Combat target selection is rendered on creature panel cards', () => {
   App.executeActionOnTarget('fight', 'enemy-1');
   assertEqual(enemy.CPun, 100, 'Panel target action should mark before resolving selected enemy');
   assertEqual(App.combatTargetIds.join(','), 'enemy-1', 'Panel target action should preserve selected target for confirmation');
-  assertEqual(App.confirmCombatTargets(), true, 'Confirmed target-pick should resolve selected target marks');
+  assertEqual(App.confirmCombatTargets(true), true, 'Confirmed target-pick should open the shared Fight approach panel');
+  assertEqual(App._executeActionVariant('basic', player), true, 'Selecting Basic should resolve the marked target');
   assert(enemy.CPun < 100, 'Panel target action should damage selected enemy');
   centerHtml = elements.get('scene-description')?.innerHTML || '';
   const sceneFeedHtml = elements.get('desktop-scene-feed-latest')?.innerHTML || '';
@@ -24133,7 +24590,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'data-selection-mode="mark-target" data-selection-state="marked" data-command-slot="target"', 'Marked mobile creature cue should identify the target slot');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'aria-pressed="true"', 'Mobile creature cue should expose pressed state after focus');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile creature cue should update the composer sentence');
-  assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile creature cue should expose target actions in the visible tray');
+  assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "openExplorationSubActionSheet('fight'", 'Mobile creature cue should expose Fight through the shared approach chooser');
   assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Single mobile creature cue should not force-open the creature drawer');
   App.toggleMobileActorBelt();
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Add You as actor"', 'Mobile actor belt should advertise adding the implicit fallback actor until it is explicitly selected');
@@ -24154,7 +24611,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   App.toggleExplorationTarget('party', 'ally-1');
   assert(App.explorationTargetIds.includes('party:ally-1'), 'Mobile compact party rail should mark party members as targets');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Ally', 'Mobile composer sentence should show a party target chosen from the compact rail');
-  assertContains(elements.get('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile compact party target should expose shared target actions');
+  assertContains(elements.get('mobile-target-action-tray').innerHTML, "openExplorationSubActionSheet('fight'", 'Mobile compact party target should expose Fight through the shared approach chooser');
   App.clearExplorationTargets();
   App.focusMobileCreaturePresence();
   App.renderMobileExplorationControls();
@@ -24189,7 +24646,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(trayHtml, 'data-command-intent="fight"', 'Mobile target action tray should mark primary intent buttons with stable action ids');
   assertContains(trayHtml, 'data-command-mode="exploration" data-command-intent="fight"', 'Mobile target action tray should identify exploration command mode on intent buttons');
   assertContains(trayHtml, 'data-command-mode="exploration" data-command-intent="fight" data-command-grammar="actor-target-intent"', 'Mobile target action tray should identify the shared command grammar on intent buttons');
-  assertContains(trayHtml, "resolveExplorationTargetAction('fight'", 'Marked mobile creature should expose Fight in the visible target-action tray');
+  assertContains(trayHtml, "openExplorationSubActionSheet('fight'", 'Marked mobile creature should expose Fight through the shared approach chooser');
   assertContains(trayHtml, "openExplorationSubActionSheet('flirt'", 'Marked mobile creature should expose Talk through its Mature sub-action sheet');
   assertContains(trayHtml, 'data-command-intent="inspect"', 'Mobile target action tray should mark contextual utility intents with stable action ids');
   assertContains(trayHtml, 'data-command-mode="exploration" data-command-intent="inspect" data-command-grammar="actor-target-intent"', 'Mobile target action tray should identify the shared command grammar on contextual utility intents');
@@ -25588,7 +26045,8 @@ test('Obedient ally turns use the same panel target selection', () => {
   assertEqual(App.targetSelection, null, 'Repeating the same combat intent should cancel target selection');
   App.executeCombatIntent('fight');
   App.executeActionOnTarget('fight', 'enemy-ally');
-  App.confirmCombatTargets();
+  App.confirmCombatTargets(true);
+  App._executeActionVariant('basic', ally);
   assert(enemy.CPun < 100, 'Ally panel target action should damage selected enemy');
 });
 
@@ -25888,6 +26346,8 @@ test('Companion Behavior opens in Holdings during exploration and remains unavai
   assertContains(html, 'set-companion-stance', 'Behavior detail should expose Stance control');
   assertContains(html, 'set-companion-control', 'Behavior detail should expose Control control');
   assertContains(html, 'set-companion-preferredRow', 'Behavior detail should expose preferred combat row');
+  assertContains(html, 'value="provider" disabled', 'Behavior detail should disable AI-assisted control when no controller is configured');
+  assertContains(html, 'AI assisted (unavailable)', 'Behavior detail should explain the unavailable AI-assisted option');
   App.combatState.active = true;
   assertEqual(App.showCompanionBehavior(1), false, 'Combat should not open management controls that do not change the active turn');
   html = holdingsHtml(elements);
@@ -26283,6 +26743,19 @@ test('Companion Duty Stance and Control change logs localize', () => {
   assertEqual(App.log[App.log.length - 1].text, 'Ally: la actitud ahora es defensiva.', 'Stance change log should localize');
   App.setCompanionControl(1, 'deterministic');
   assertEqual(App.log[App.log.length - 1].text, 'Ally: el control ahora es autonomo.', 'Control change log should localize');
+});
+
+test('Unavailable AI-assisted control defers to Autonomous with narrated feedback', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'provider-player' });
+  const ally = makeUnit('Ally', { id: 'provider-ally' });
+  App.player = player;
+  App.party = [player, ally];
+
+  assertEqual(App.setCompanionControl(1, 'provider'), true, 'Selecting unavailable AI assistance should be handled safely');
+  assertEqual(App._getCompanionControl(ally), 'deterministic', 'Unavailable AI assistance should defer to Autonomous control');
+  assertContains(App.log[App.log.length - 1].text, 'no AI assistance configured', 'The fallback should be narrated instead of reported as an error');
+  assert(App.storyEvents.some(event => event.tags?.includes('autonomous-fallback')), 'The fallback should reach the Scene Feed as feedback');
 });
 
 test('Party leader and reorder logs localize', () => {
@@ -33215,11 +33688,11 @@ test('Desktop marked-target actions stay bounded and dispatch default actions di
   assertContains(html, 'class="target-action-row"', 'Desktop marked-target actions should be wrapped in a bounded row');
   assertContains(html, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop marked-target actions should identify the shared command grammar');
   assertContains(html, 'data-command-actor-count="1" data-command-target-count="1"', 'Desktop marked-target action row should expose actor and target counts like the composer sentence');
-  assertContains(html, "App.resolveExplorationTargetAction('fight','attack','composer-tray')", 'Desktop marked-target Fight should dispatch the default attack directly through the composer source');
+  assertContains(html, "App.openExplorationSubActionSheet('fight','composer-tray','desktop')", 'Desktop marked-target Fight should open the shared contextual approach chooser');
   assertContains(html, 'data-command-intent="fight" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Desktop marked-target Fight should identify itself as an intent-slot control');
   assertContains(html, "App.openExplorationSubActionSheet('feast','composer-tray','desktop')", 'Desktop marked-target Feast should open the shared contextual variant surface with desktop presentation');
   assertNotContains(html, "'desktop-target'", 'Rendered desktop marked-target actions should not emit the legacy desktop-target source');
-  assertNotContains(html, 'aria-controls="desktop-intent-menu"', 'Desktop marked-target default actions should not require a popup');
+  assertNotContains(html, "resolveExplorationTargetAction('fight','attack','composer-tray')", 'Desktop marked-target Fight should not bypass its approach chooser');
 
   App.openExplorationTargetSubActionSheet('fight', 'desktop-target');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop marked-target sub-actions should use desktop popup');
@@ -34516,7 +34989,7 @@ test('Mobile creature long-press marks living targets without opening action men
   App.showMobileCreatureContext('willing-1');
   assertEqual(App.explorationTargetIds.includes('creature:willing-1'), true, 'Living creature long-press should mark the creature as the current target');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Living creature long-press should not open a duplicate primary-action menu');
-  assertContains(App._renderExplorationTargetActions('mobile-target'), "resolveExplorationTargetAction('fight'", 'Marked living creature should use the visible mobile target tray for actions');
+  assertContains(App._renderExplorationTargetActions('mobile-target'), "openExplorationSubActionSheet('fight'", 'Marked living creature should expose Fight through the visible approach chooser');
   assertNotContains(App._renderExplorationTargetActions('mobile-target'), 'selected-target-summary', 'Mobile target tray should leave actor target summaries to the composer sentence');
 });
 

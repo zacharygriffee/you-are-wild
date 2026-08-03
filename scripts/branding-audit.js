@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const targets = ['package.json', 'README.md', 'docs', 'app', 'dist/you-are-wild.html'];
+const targets = ['package.json', 'README.md', 'ACKNOWLEDGMENTS.md', 'docs', 'app', 'dist/you-are-wild.html'];
 const patterns = [
   /FightFuckFeed/g,
   /Fight Fuck Feed/g,
@@ -20,7 +20,7 @@ const patterns = [
 ];
 
 const allowed = [
-  { file: 'README.md', text: 'legacy/FightFuckFeed.me.html' },
+  { file: 'ACKNOWLEDGMENTS.md', text: 'FightFuckFeed.me' },
   { file: 'docs/next-objectives.md', text: 'legacy `fff-log-view` is still read for migration' },
   { file: 'docs/next-objectives.md', text: 'Replace internal `FFF`/`FFFme` identifiers' },
   { file: 'docs/next-objectives.md', text: 'while `FFF_*` IndexedDB names are legacy cleanup targets only' },
@@ -89,6 +89,11 @@ function isAllowed(file, line) {
 }
 
 const failures = [];
+for (const removedPath of ['legacy', 'archive']) {
+  if (fs.existsSync(path.join(root, removedPath))) {
+    failures.push(`${removedPath}: predecessor snapshots must not be tracked in the maintained tree`);
+  }
+}
 for (const target of targets) {
   for (const file of walk(target)) {
     const full = path.join(root, file);
@@ -109,4 +114,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Branding audit passed: only approved legacy migration references remain.');
+console.log('Branding audit passed: only the acknowledgment and approved data-migration references remain.');

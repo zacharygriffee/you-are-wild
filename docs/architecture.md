@@ -128,11 +128,5 @@ and map/tileset acceptance. CI uploads generated artifacts; `dist/` is not a
 source input. Sites versions are immutable and rollback-ready. Saving or
 publishing a Sites version remains operator-mediated.
 
-## Legacy and historical material
-
-- `legacy/` contains the original monolithic app and backups.
-- `archive/` contains historical experiments and plans.
-- Documents explicitly marked superseded are context only.
-
 Agents should work from this document, `next-objectives.md`,
 `backlog-completion-audit.md`, focused doctrine, maintained source, and tests.

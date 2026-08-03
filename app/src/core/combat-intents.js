@@ -27,9 +27,9 @@ const YAW_COMBAT_INTENTS = {
             app.nextTurn();
             return true;
         }
-        if (current.status?.fear?.turns > 0) {
-            app._reportInvalidCombatCommand?.({ mode: 'combat', actors: [current], targets: [], action, source: 'combat-intent' }, 'actor-unavailable');
-            app.nextTurn();
+        if (app._fearState?.(current) === 'terrified') {
+            app._clearTransientInteractionState?.();
+            app.processTurn();
             return true;
         }
         const pressure = app._canAffordActionPressure?.(action, current, { mode: 'combat' }) || { ok: true };

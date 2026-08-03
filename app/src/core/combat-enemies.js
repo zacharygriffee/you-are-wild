@@ -77,11 +77,18 @@ const YAW_COMBAT_ENEMIES = {
         const target = app._selectEnemyTarget(enemy, reachableTargets.length > 0 ? reachableTargets : targets);
         if (enemy.menacing && target.CPun / target.MPun < 0.4
             && app._combatStateRoll('combat-menacing-fear', enemy, app._unitSelectionId(target)) < 0.3) {
-            app.log.push({ text: app._label('combat.enemyTerrifies', '{enemy} is terrifying! {target} cowers in fear.', {
-                enemy: enemy.name,
-                target: target.name
-            }), type: 'combat' });
-            target.status.frightened = true;
+            const fearResult = app._applyFearStatus?.(target, {
+                turns: 1,
+                by: enemy.name,
+                source: 'combat-menacing',
+                terror: true
+            });
+            if (fearResult !== 'resisted') {
+                app.log.push({ text: app._label('combat.enemyTerrifies', '{enemy}\'s presence sends {target} into terror.', {
+                    enemy: enemy.name,
+                    target: target.name
+                }), type: 'combat' });
+            }
             app.renderLog();
         }
         if (enemy.rage && enemy.CPun < enemy.MPun * 0.5) {
@@ -100,7 +107,7 @@ const YAW_COMBAT_ENEMIES = {
                 app.nextTurn();
                 return;
             }
-            const fleeText = app._label('combat.enemyFlees', '{name} flees in terror!', { name: enemy.name });
+            const fleeText = app._label('combat.enemyFlees', '{name} loses their nerve and flees!', { name: enemy.name });
             app.log.push({ text: fleeText, type: 'combat' });
             enemy.fledCombat = true;
             app._emitCombatAction('enemy_flee', enemy, null, fleeText);

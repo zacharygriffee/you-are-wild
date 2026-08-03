@@ -128,7 +128,10 @@
       creationOptions: unit.creationOptions && typeof unit.creationOptions === 'object' ? JSON.parse(JSON.stringify(unit.creationOptions)) : {},
       lifeStage: unit.lifeStage || unit.ageCategory || null,
       adultEligibility: unit.adultEligibility || null,
-      adultEligible: typeof unit.adultEligible === 'boolean' ? unit.adultEligible : null
+      adultEligible: typeof unit.adultEligible === 'boolean' ? unit.adultEligible : null,
+      combatStatus: unit.status && typeof unit.status === 'object'
+        ? JSON.parse(JSON.stringify(unit.status))
+        : {}
     };
   };
   const logEntry = entry => {

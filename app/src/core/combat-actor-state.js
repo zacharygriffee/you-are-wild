@@ -18,7 +18,8 @@ const YAW_COMBAT_ACTOR_STATE = {
         if (status.restrained?.turns > 0) return 'restrained';
         if (status.stuck?.turns > 0) return 'stuck';
         if (status.enveloped?.turns > 0) return 'enveloped';
-        if (status.fear?.turns > 0 && unit.CPun < unit.MPun * 0.3) return 'fear-flee';
+        if (status.terror?.turns > 0 || status.frightened
+            || (status.fear?.turns > 0 && unit.CPun < unit.MPun * 0.3)) return 'terror-flee';
         return null;
     },
 

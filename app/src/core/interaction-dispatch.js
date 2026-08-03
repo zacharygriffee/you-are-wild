@@ -376,7 +376,7 @@ const YAW_INTERACTION_DISPATCH = {
             const unavailable = (command?.actors || []).find(unit => {
                 if (!unit || unit.CPun <= 0 || unit.knockedOut || unit.fledCombat) return true;
                 const status = unit.status || {};
-                return Boolean(status.fear?.turns > 0 || status.stun?.turns > 0 || status.freeze?.skip
+                return Boolean(status.terror?.turns > 0 || status.frightened || status.stun?.turns > 0 || status.freeze?.skip
                     || status.restrained?.turns > 0 || status.stuck?.turns > 0 || status.enveloped?.turns > 0);
             }) || (command?.actors || []).find(unit => {
                 const id = app._unitSelectionId?.(unit) || String(unit?.id || unit?.name || '');
@@ -389,8 +389,8 @@ const YAW_INTERACTION_DISPATCH = {
             const name = unavailable?.name || app._label('ui.ally', 'That companion');
             const action = actionLabel;
             const status = unavailable?.status || {};
-            if (status.fear?.turns > 0) {
-                text = app._label('combat.actorUnavailable.fear', '{name} is too afraid to comply with the {action} action.', { name, action });
+            if (status.terror?.turns > 0 || status.frightened) {
+                text = app._label('combat.actorUnavailable.terror', '{name} is already breaking away in terror and cannot join the {action} action.', { name, action });
             } else if (unavailable?.fledCombat) {
                 text = app._label('combat.actorUnavailable.fled', '{name} has fled and cannot join the {action} action.', { name, action });
             } else if (unavailable?.CPun <= 0 || unavailable?.knockedOut) {

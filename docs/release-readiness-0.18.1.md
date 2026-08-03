@@ -27,6 +27,10 @@ candidate revision is committed.
   both exploration and combat command paths.
 - [x] Missing AI assistance narrates deterministic Autonomous fallback.
 - [x] Autonomous support cannot select a hostile Feed/Tend target.
+- [x] Afraid and Terrified use one start-of-turn contract across player,
+  companion, enemy, queued-action, save/load, desktop, and mobile paths.
+- [x] Group cancellation remains in the command sentence and does not insert a
+  layout-shifting row above the primary interaction belt.
 - [ ] Representative older-save load is rerun from the committed candidate.
 - [ ] Candidate changes are committed and pushed intentionally.
 - [ ] GitHub CI is observed green for that exact candidate commit.

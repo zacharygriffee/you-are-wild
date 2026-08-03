@@ -2160,6 +2160,7 @@
                 unit.stockLastRefreshDay = unit.stockLastRefreshDay ?? this.dayCount ?? 0;
                 unit.cum = unit.cum || 0;
                 unit.status = unit.status || {};
+                if (typeof YAW_COMBAT_STATUS !== 'undefined') YAW_COMBAT_STATUS.normalizeFearStatus(unit);
                 unit.lactating = unit.lactating || false;
                 unit.lactationCooldown = unit.lactationCooldown || 0;
                 YAW_RESOURCE_LEDGER.normalizeUnit(unit);
@@ -2931,6 +2932,15 @@
 
             _skipTurnFromStatus(unit) {
                 return YAW_COMBAT_STATUS.skipTurnFromStatus(this, unit);
+            },
+            _fearState(unit) {
+                return YAW_COMBAT_STATUS.fearState(this, unit);
+            },
+            _resolveFearTurn(unit) {
+                return YAW_COMBAT_STATUS.resolveFearTurn(this, unit);
+            },
+            _applyFearStatus(unit, options = {}) {
+                return YAW_COMBAT_STATUS.applyFearStatus(this, unit, options);
             },
 
             _applyAttackStatus(actor, target, dmg) {

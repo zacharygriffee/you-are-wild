@@ -6548,6 +6548,8 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatStatusContent, 'const YAW_COMBAT_STATUS = {', 'Combat status helper should expose the combat status service');
   assertContains(combatStatusContent, 'wakeOnDamage(app, unit)', 'Combat status helper should own sleep wake behavior');
   assertContains(combatStatusContent, 'skipTurnFromStatus(app, unit)', 'Combat status helper should own status skip behavior');
+  assertContains(combatStatusContent, 'normalizeFearStatus(unit)', 'Combat status helper should own legacy fear-state migration');
+  assertContains(combatStatusContent, 'resolveFearTurn(app, unit)', 'Combat status helper should own the canonical turn-start Fear/Terror resolver');
   assertContains(combatStatusContent, 'applyAttackStatus(_app, actor, target, _dmg)', 'Combat status helper should own attack status application');
   assertContains(combatStatusContent, 'charmedTargetsFor(app, unit)', 'Combat status helper should own charm targeting');
   assertContains(combatStatusContent, 'processStatusEffects(app)', 'Combat status helper should own round status processing');
@@ -8220,6 +8222,7 @@ test('Binary save compatibility metadata preserves multi-action practice and mod
   const Binary = loadBinaryForTest();
   const player = makeSerializableUnit('You', {
     id: 'binary-practice-player',
+    status: { terror: { turns: 2, by: 'Harpy', source: 'combat-menacing' } },
     multiActionPractice: {
       multi: {
         fight: { xp: 73, commands: 9, contextKey: 'combat:test', contextGain: 4 },
@@ -8238,6 +8241,8 @@ test('Binary save compatibility metadata preserves multi-action practice and mod
   assertEqual(loaded.questState.partyMultiActionPractice[0].multi.fight.xp, 73, 'Binary export/import metadata should preserve Fight practice even though the legacy unit codec is fixed');
   assertEqual(loaded.questState.partyMultiActionPractice[0].multi.chew.xp, 31, 'Binary export/import metadata should preserve additive Chew practice without a save-schema migration');
   assertEqual(loaded.questState.playerCompatibility.creationOptions['test-provider']['crest-style'], 'ember', 'Binary compatibility metadata should preserve bounded provider-owned creation choices');
+  assertEqual(loaded.questState.playerCompatibility.combatStatus.terror.turns, 2, 'Binary compatibility metadata should preserve the player terror state outside the fixed legacy unit codec');
+  assertEqual(loaded.questState.partyCompatibility[0].combatStatus.terror.by, 'Harpy', 'Party compatibility metadata should preserve causal terror provenance for combat restore');
   assertEqual(loaded.questState.partyResourceLedgers[0]['test-provider:ember'].current, 2, 'Binary compatibility metadata should preserve namespaced unit resource state outside the fixed legacy unit codec');
 });
 
@@ -10049,8 +10054,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'max-height: min(268px, 40dvh);\n                overflow-y: visible;', 'mobile combat action belt should reserve enough zero-scroll height for the primary intent grid');
   assertContains(mobileCombatToolbeltContent, "if (app.targetSelection?.source === 'combat') return '';", 'mobile combat should hide the full intent grid during target confirmation phases');
   assertContains(mobileCombatToolbeltContent, 'if (app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent) return \'\';', 'mobile combat should hide the full intent grid once a group intent is pending');
-  assertContains(mobileCombatToolbeltContent, "const phaseClass = app.combatPlanSelection.pendingIntent ? '' : ' combat-plan-cancel-only';", 'mobile combat should keep a cancel-only escape available before a group intent is selected');
-  assertContains(mobileCombatToolbeltContent, 'app._combatPlanControls?.({ includeReset: true })', 'mobile combat should expose shared group reset and cancel controls without duplicating planner rules');
+  assertContains(mobileCombatToolbeltContent, "if (!app.combatPlanSelection.pendingIntent) return '';", 'mobile combat should not insert a duplicate group-cancel row before the intent grid');
+  assertContains(mobileCombatToolbeltContent, 'app._combatPlanControls?.({ includeReset: false })', 'mobile group confirmation should rely on the command-sentence actor exit instead of a duplicate cancel button');
   assertContains(template, '.mobile-location-actions', 'mobile location actions should have bounded control-belt styling');
   assertNotContains(template, 'class="mobile-scene-actions action-bar"', 'mobile presentation sheet should not own location action controls');
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');
@@ -10960,12 +10965,20 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   appWindow.__testContent.locales.en['explore.fuck.successPlayer'] = '{actor} play with {target}. Spirit rises to {current}/{max}.';
   appWindow.__testContent.locales.es['explore.fuck.successPlayer'] = '{actor} juegas con {target}. El animo sube a {current}/{max}.';
   Object.assign(appWindow.__testContent.locales.en, {
+    'combat.enemyFlees': '{name} loses their nerve and flees!',
+    'combat.status.fearResisted': '{name} holds steady and resists the fear.',
+    'combat.status.terrorFlee': '{name} breaks in terror and flees!',
+    'combat.status.terrorCornered': '{name} panics with nowhere safe to run and cowers through the turn.',
     'combat.actorUnavailable.turnOrder': '{name} is not in this battle\'s turn order yet, so they cannot join the {action} action.',
     'combat.narration.notInCombat': '{name} looks around, but there is no battle to continue.',
     'combat.narration.resolving': '{name} waits for the current exchange to finish.',
     'combat.narration.otherTurn': '{name} holds back; it is {current}’s turn.'
   });
   Object.assign(appWindow.__testContent.locales.es, {
+    'combat.enemyFlees': '{name} pierde el valor y huye!',
+    'combat.status.fearResisted': '{name} se mantiene firme y resiste el miedo.',
+    'combat.status.terrorFlee': '{name} cede al terror y huye!',
+    'combat.status.terrorCornered': '{name} entra en panico sin una ruta segura y se encoge durante el turno.',
     'combat.actorUnavailable.turnOrder': '{name} aun no esta en el orden de turnos de esta batalla, asi que no puede unirse a la accion {action}.',
     'combat.actorUnavailable.fallen': '{name} esta fuera de combate y no puede unirse a la accion {action}.',
     'combat.narration.notInCombat': '{name} mira alrededor, pero no hay una batalla que continuar.',
@@ -14685,7 +14698,7 @@ test('Charmed lone enemy without a reversed target advances instead of stalling'
   assertEqual(App.latestSceneBeat.tags.includes('turn-skipped'), true, 'Charmed no-target skip should emit a causal Scene Beat');
 });
 
-test('Fear can skip or force low-health combatants to flee', () => {
+test('Low-health fear escalates to terror and forces a living player to flee', () => {
   const { App } = loadAppForCombat(() => 0);
   const scared = makeUnit('Scared', { CPun: 20, MPun: 100, status: { fear: { turns: 2, by: 'Enemy' } } });
   App.player = scared;
@@ -14701,24 +14714,194 @@ test('Fear can skip or force low-health combatants to flee', () => {
   assertContains(App.log.map(entry => entry.text).join('\n'), 'escaped', 'Fear retreat should resolve with escape semantics');
 });
 
-test('Fear freeze skip is deterministic by combat state', () => {
-  const buildCase = random => {
-    const { App } = loadAppForCombat(random);
-    App.worldMeta = { seed: 'fear-freeze-0', generatorVersion: 2 };
-    const scared = makeUnit('Scared', { id: 'scared-unit', CPun: 80, MPun: 100, status: { fear: { turns: 2, by: 'Enemy' } } });
-    App.player = scared;
-    App.party = [scared];
-    App.creatures = [makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY })];
-    App.location = { x: 0, y: 0 };
-    App.dayCount = 0;
-    App.timeHour = 0;
-    App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: scared, initiative: 10 }], syncActions: [] };
-    return App._skipTurnFromStatus(scared);
+test('Afraid players retain agency and can voluntarily Fight or Flee', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const scared = makeUnit('Scared', { id: 'scared-unit', CPun: 80, MPun: 100, status: { fear: { turns: 2, by: 'Enemy' } } });
+  const enemy = makeUnit('Enemy', { id: 'fear-target', disposition: App.DISPOSITION.ENEMY });
+  App.player = scared;
+  App.party = [scared];
+  App.creatures = [enemy];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: scared, initiative: 10 }], syncActions: [] };
+  App.activeActor = scared;
+  const outcome = App._resolveFearTurn(scared);
+  assertEqual(outcome.kind, 'afraid', 'Ordinary fear should remain Afraid above the terror threshold');
+  assertEqual(outcome.consumesTurn, false, 'Afraid should never consume the turn before the player chooses');
+  assertEqual(App.executeCombatIntent('fight'), true, 'Afraid should allow an ordinary combat intent');
+  assertEqual(App.targetSelection?.action, 'fight', 'Afraid Fight should enter the canonical target flow');
+  App.cancelTargetSelection();
+  let fleeingActor = null;
+  App.attemptFlee = actor => { fleeingActor = actor; return true; };
+  assertEqual(App.executeCombatIntent('flee'), true, 'Afraid should allow voluntary Flee');
+  assertEqual(fleeingActor, scared, 'Voluntary Flee should use the afraid current actor');
+});
+
+test('Terrified player turns flee automatically before desktop or mobile controls appear', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'terror-player', status: { terror: { turns: 1, by: 'Enemy' } } });
+  const enemy = makeUnit('Enemy', { id: 'terror-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 10 }], syncActions: [] };
+  App._fleeDestination = () => ({ to: { x: 1, y: 0 }, direction: 'east' });
+  let retreat = null;
+  let ended = null;
+  App._retreatPartyFromCombat = (actor, options) => { retreat = { actor, options }; return options.destination; };
+  App.endCombat = result => { ended = result; App.combatState.active = false; };
+  App.processTurn();
+  assertEqual(retreat.actor, player, 'Terrified player should retreat the traveling party through the canonical player flee path');
+  assertEqual(ended, 'flee', 'Terrified player should end combat as an escape rather than defeat');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'breaks in terror and flees', 'Forced player flight should be narrated in the Scene Feed');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'executeCombatIntent', 'Desktop should not present doomed controls before terror resolves');
+  assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'executeCombatIntent', 'Mobile should not present doomed controls before terror resolves');
+  assertEqual(App.combatCorrectionMessage, null, 'Forced terror flight should not create a warning banner');
+});
+
+test('Terror applied after an actor acts survives the round boundary and resolves on their next turn', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'late-terror-player' });
+  const enemy = makeUnit('Enemy', { id: 'late-terror-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 1,
+    processing: false,
+    turnQueue: [{ unit: player, initiative: 20, actedThisRound: true }, { unit: enemy, initiative: 10 }],
+    syncActions: []
   };
-  const lowRandom = buildCase(() => 0);
-  const highRandom = buildCase(() => 0.99);
-  assertEqual(lowRandom, highRandom, 'Fear freeze skip should not depend on ambient Math.random');
-  assertContains(lowRandom, 'freezes in fear', 'Seed should exercise the fear freeze branch');
+  App._applyFearStatus(player, { terror: true, turns: 1, by: enemy.name, source: 'late-round-test' });
+  App.combatState.round = 2;
+  App._processStatusEffects();
+  assertEqual(App._fearState(player), 'terrified', 'Round processing must not expire Terror before the affected actor receives its involuntary turn');
+
+  App.combatState.currentTurn = 0;
+  App.combatState.turnQueue = [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }];
+  App._fleeDestination = () => null;
+  let advanced = 0;
+  App.nextTurn = () => { advanced++; };
+  App.processTurn();
+  assertEqual(advanced, 1, 'Late-round Terror should consume the actor next turn when escape is blocked');
+  assertEqual(App._fearState(player), 'steady', 'One-turn Terror should expire after its involuntary turn resolves');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'nowhere safe to run', 'The delayed Terror outcome should still be narrated');
+});
+
+test('Terrified companion and enemy turns use actor-specific escape consequences', () => {
+  const companionCase = loadAppForCombat(() => 0.5);
+  const companionPlayer = makeUnit('You', { id: 'terror-companion-player' });
+  const companion = makeUnit('Companion', { id: 'terror-companion', status: { terror: { turns: 1 } } });
+  const companionEnemy = makeUnit('Enemy', { id: 'terror-companion-enemy', disposition: companionCase.App.DISPOSITION.ENEMY });
+  companionCase.App.player = companionPlayer;
+  companionCase.App.party = [companionPlayer, companion];
+  companionCase.App.creatures = [companionEnemy];
+  companionCase.App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: companion, initiative: 20 }, { unit: companionPlayer, initiative: 10 }, { unit: companionEnemy, initiative: 5 }], syncActions: [] };
+  companionCase.App._fleeDestination = () => ({ to: { x: 1, y: 0 }, direction: 'east' });
+  let relocatedCompanion = null;
+  companionCase.App._relocateFleeingPartyMember = unit => {
+    relocatedCompanion = unit;
+    companionCase.App.party = companionCase.App.party.filter(candidate => candidate !== unit);
+    companionCase.App.combatState.turnQueue = companionCase.App.combatState.turnQueue.filter(entry => entry.unit !== unit);
+    return {};
+  };
+  let companionAdvanced = 0;
+  companionCase.App.nextTurn = () => { companionAdvanced++; };
+  companionCase.App.allyTurn = () => { throw new Error('Terrified companion must flee before autonomous behavior'); };
+  companionCase.App.processTurn();
+  assertEqual(relocatedCompanion, companion, 'Terrified companion should leave alone through the recoverable companion path');
+  assertEqual(companionCase.App.party.includes(companionPlayer), true, 'Companion terror must not retreat the player');
+  assertEqual(companionAdvanced, 1, 'Companion terror should consume exactly that companion turn');
+
+  const enemyCase = loadAppForCombat(() => 0.5);
+  const enemyPlayer = makeUnit('You', { id: 'terror-enemy-player' });
+  const terrifiedEnemy = makeUnit('Enemy', { id: 'terror-actor-enemy', disposition: enemyCase.App.DISPOSITION.ENEMY, status: { terror: { turns: 1 } } });
+  enemyCase.App.player = enemyPlayer;
+  enemyCase.App.party = [enemyPlayer];
+  enemyCase.App.creatures = [terrifiedEnemy];
+  enemyCase.App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: terrifiedEnemy, initiative: 10 }, { unit: enemyPlayer, initiative: 5 }], syncActions: [] };
+  enemyCase.App._fleeDestination = () => ({ to: { x: -1, y: 0 }, direction: 'west' });
+  let relocatedEnemy = null;
+  enemyCase.App._relocateFleeingCreature = unit => {
+    relocatedEnemy = unit;
+    enemyCase.App.creatures = enemyCase.App.creatures.filter(candidate => candidate !== unit);
+    enemyCase.App.combatState.turnQueue = enemyCase.App.combatState.turnQueue.filter(entry => entry.unit !== unit);
+    return {};
+  };
+  let enemyEnd = null;
+  enemyCase.App.endCombat = result => { enemyEnd = result; enemyCase.App.combatState.active = false; };
+  enemyCase.App.enemyTurn = () => { throw new Error('Terrified enemy must flee before AI behavior'); };
+  enemyCase.App.processTurn();
+  assertEqual(relocatedEnemy, terrifiedEnemy, 'Terrified enemy should disengage alone through the creature flee path');
+  assertEqual(enemyEnd, 'disengage', 'The final terrified enemy leaving should disengage combat without victory semantics');
+});
+
+test('Cornered terror consumes the turn through narration without an error surface', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'cornered-player', status: { terror: { turns: 2 } } });
+  const enemy = makeUnit('Enemy', { id: 'cornered-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: player, initiative: 10 }, { unit: enemy, initiative: 5 }], syncActions: [] };
+  App._fleeDestination = () => null;
+  let advanced = 0;
+  App.nextTurn = () => { advanced++; };
+  App.processTurn();
+  assertEqual(advanced, 1, 'Cornered terror should consume exactly one turn');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'nowhere safe to run', 'Cornered terror should narrate why escape failed');
+  assertContains(App.latestSceneBeat.summary, 'nowhere safe to run', 'Cornered terror should publish the reason to the Scene Feed');
+  assertEqual(App.combatCorrectionMessage, null, 'Cornered terror should not create a correction warning');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'nowhere safe to run', 'Desktop controls should not duplicate narration as a warning');
+  assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'nowhere safe to run', 'Mobile controls should not duplicate narration as a warning');
+});
+
+test('Afraid manual and autonomous turns reach the same ordinary command paths', () => {
+  const manualCase = loadAppForCombat(() => 0.5);
+  const manualPlayer = makeUnit('You', { id: 'afraid-ui-player', status: { fear: { turns: 2 } } });
+  const manualEnemy = makeUnit('Enemy', { id: 'afraid-ui-enemy', disposition: manualCase.App.DISPOSITION.ENEMY });
+  manualCase.App.player = manualPlayer;
+  manualCase.App.party = [manualPlayer];
+  manualCase.App.creatures = [manualEnemy];
+  manualCase.App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: manualPlayer, initiative: 10 }, { unit: manualEnemy, initiative: 5 }], syncActions: [] };
+  manualCase.App.processTurn();
+  assertContains(manualCase.elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Afraid player should receive normal desktop intents');
+  assertContains(manualCase.elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('flee')", 'Afraid player should retain desktop Flee');
+  assertContains(manualCase.elements.get('mobile-combat-toolbelt').innerHTML, "executeCombatIntent('fight')", 'Afraid player should receive normal mobile intents');
+  assertContains(manualCase.elements.get('mobile-combat-toolbelt').innerHTML, "executeCombatIntent('flee')", 'Afraid player should retain mobile Flee');
+
+  const allyCase = loadAppForCombat(() => 0.5);
+  const allyPlayer = makeUnit('You', { id: 'afraid-ally-player' });
+  const ally = makeUnit('Ally', { id: 'afraid-ally', obedient: false, status: { fear: { turns: 2 } }, companionBehavior: { control: 'autonomous', duty: 'fighter', stance: 'aggressive' } });
+  const allyEnemy = makeUnit('Enemy', { id: 'afraid-ally-enemy', disposition: allyCase.App.DISPOSITION.ENEMY });
+  allyCase.App.player = allyPlayer;
+  allyCase.App.party = [allyPlayer, ally];
+  allyCase.App.creatures = [allyEnemy];
+  allyCase.App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: ally, initiative: 10 }, { unit: allyEnemy, initiative: 5 }, { unit: allyPlayer, initiative: 1 }], syncActions: [] };
+  let autonomousActor = null;
+  allyCase.App.allyTurn = unit => { autonomousActor = unit; };
+  allyCase.App.processTurn();
+  assertEqual(autonomousActor, ally, 'Afraid autonomous companion should still reach ordinary companion AI');
+
+  const enemyCase = loadAppForCombat(() => 0.5);
+  const enemyPlayer = makeUnit('You', { id: 'afraid-ai-player' });
+  const afraidEnemy = makeUnit('Enemy', { id: 'afraid-ai-enemy', disposition: enemyCase.App.DISPOSITION.ENEMY, status: { fear: { turns: 2 } } });
+  enemyCase.App.player = enemyPlayer;
+  enemyCase.App.party = [enemyPlayer];
+  enemyCase.App.creatures = [afraidEnemy];
+  enemyCase.App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: afraidEnemy, initiative: 10 }, { unit: enemyPlayer, initiative: 5 }], syncActions: [] };
+  let enemyActor = null;
+  enemyCase.App.enemyTurn = unit => { enemyActor = unit; };
+  enemyCase.App.processTurn();
+  assertEqual(enemyActor, afraidEnemy, 'Afraid enemy should still reach ordinary enemy AI');
+});
+
+test('Legacy frightened state normalizes into canonical terror', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const unit = App._normalizeUnit(makeUnit('Legacy', { status: { frightened: true } }));
+  assertEqual(Boolean(unit.status.frightened), false, 'Legacy frightened marker should not survive normalization');
+  assertEqual(unit.status.terror?.turns, 1, 'Legacy frightened marker should migrate to one turn of terror');
+  assertEqual(App._fearState(unit), 'terrified', 'Migrated legacy state should use the canonical terror resolver');
 });
 
 test('Loaded-style units are normalized for combat assumptions', () => {
@@ -14993,7 +15176,7 @@ test('Loading combat on an enemy turn resumes the turn instead of freezing', asy
     label: 'Formation Strike',
     area: { maxTargets: 2, distribution: 'full' }
   });
-  const player = makeUnit('You', { id: 'player-load-resume', Figh: 20 });
+  const player = makeUnit('You', { id: 'player-load-resume', Figh: 20, status: { fear: { turns: 2, by: 'Harpy', source: 'combat-technique' } } });
   const enemy = makeUnit('Harpy', {
     id: 'enemy-load-resume',
     species: 'harpy',
@@ -15040,6 +15223,7 @@ test('Loading combat on an enemy turn resumes the turn instead of freezing', asy
   assertEqual(restored, true, 'Enemy-turn combat slot should load');
   assertEqual(resumedEnemyId, 'enemy-load-resume', 'Load should process the restored enemy turn');
   assertEqual(loadedApp.App.combatState.active, true, 'Combat should remain active after resuming the enemy turn');
+  assertEqual(loadedApp.App.player.status.fear?.by, 'Harpy', 'Combat slot load should restore canonical Afraid status and its cause');
   assertEqual(loadedApp.App.combatState.turnQueue[loadedApp.App.combatState.currentTurn]?.unit?.id, 'player-load-resume', 'Enemy turn should advance to a usable player turn');
   assertContains(elements.get('scene-title').textContent, "You's turn", 'Loaded combat should render a usable player turn after enemy resumes');
   assertContains(elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Loaded combat should restore player composer actions');
@@ -19723,7 +19907,7 @@ test('Fight nests control actions and group Play repairs a missing valid compani
   assertEqual(advanced, 2, 'Resolving Group Play should advance once after the collective action');
 });
 
-test('Group actor controls narrate a companion fear refusal instead of hiding the actor', () => {
+test('Group actor controls preserve an afraid companion\'s agency', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'fear-player', Fuck: 40, combatRow: 'front' });
   const mouse = makeUnit('Mousefolk', { id: 'fear-mouse', Fuck: 40, combatRow: 'front' });
@@ -19741,14 +19925,58 @@ test('Group actor controls narrate a companion fear refusal instead of hiding th
   assertContains(App._syncParticipantButton(mouse), 'toggle-combat-plan-actor', 'A fearful companion should keep an actor control');
   assertEqual(App.toggleCombatPlanActor(mouse.id), true, 'A fearful companion should remain selectable for the attempted group action');
   assertEqual(App.toggleCombatTarget(enemy.id), true, 'The group target should remain selectable');
-  assertEqual(App.setCombatPlanIntent('fuck'), true, 'Group Play should remain selectable before the outcome is narrated');
-  assertEqual(App.confirmCombatPlan(), false, 'The group action should not resolve while Mousefolk is afraid');
-  assertContains(App.log[App.log.length - 1].text, 'Mousefolk is too afraid to comply', 'The refusal should be narrated clearly');
-  assertNotContains(App.log[App.log.length - 1].text, 'Sync failed', 'The refusal should not be presented as a sync error');
-  assertEqual(App.combatCorrectionMessage, null, 'The refusal should not create an out-of-world warning state');
-  assertContains(App.latestSceneBeat.summary, 'Mousefolk is too afraid to comply', 'The Scene Feed should receive the refusal narration');
-  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'Mousefolk is too afraid to comply', 'Desktop controls should not repeat the refusal as a warning banner');
-  assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Mousefolk is too afraid to comply', 'Mobile controls should not repeat the refusal as a warning banner');
+  assertEqual(App.setCombatPlanIntent('fuck'), true, 'Group Play should remain selectable while a participant is afraid');
+  let advanced = 0;
+  App.nextTurn = () => { advanced++; };
+  assertEqual(App.confirmCombatPlan(), true, 'Afraid should not block the companion from committing to the group action');
+  assertEqual(App.combatState.syncActions[0].participants.includes(mouse), true, 'The afraid companion should remain in the queued group');
+  assertEqual(advanced, 1, 'Committing the afraid group should consume the lead turn once');
+  assertEqual(App.combatCorrectionMessage, null, 'Afraid group participation should not create an out-of-world warning state');
+  assertNotContains(App.log.map(entry => entry.text).join('\n'), 'too afraid to comply', 'Ordinary fear should not narrate a false refusal');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'too afraid to comply', 'Desktop controls should not show a fear warning banner');
+  assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'too afraid to comply', 'Mobile controls should not show a fear warning banner');
+});
+
+test('Terror interrupts a queued group at the affected participant turn through narration', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'terror-group-player', Fuck: 40 });
+  const companion = makeUnit('Companion', { id: 'terror-group-companion', Fuck: 40 });
+  const enemy = makeUnit('Enemy', { id: 'terror-group-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, companion];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true, round: 1, currentTurn: 0, processing: false,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: companion, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: []
+  };
+  App.activeActor = player;
+  App.toggleCombatPlanActor(companion.id);
+  App.toggleCombatTarget(enemy.id);
+  App.setCombatPlanIntent('fuck');
+  let advances = 0;
+  App.nextTurn = () => { advances++; };
+  assertEqual(App.confirmCombatPlan(), true, 'Group action should be queued before terror begins');
+  assertEqual(App.combatState.syncActions.length, 1, 'Prepared group should exist before the participant panics');
+  companion.status = { terror: { turns: 1, by: enemy.name } };
+  App.combatState.currentTurn = 1;
+  App.activeActor = companion;
+  App._fleeDestination = () => ({ to: { x: 1, y: 0 }, direction: 'east' });
+  App._relocateFleeingPartyMember = unit => {
+    App.party = App.party.filter(candidate => candidate !== unit);
+    App.combatState.turnQueue = App.combatState.turnQueue.filter(entry => entry.unit !== unit);
+    return {};
+  };
+  let resolvedGroups = 0;
+  App._resolveSyncAction = () => { resolvedGroups++; };
+  App.processTurn();
+  assertEqual(resolvedGroups, 0, 'Terror should resolve before the queued group action');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'breaks in terror and flees', 'The affected participant should receive an individual terror outcome');
+  assertNotContains(App.log.map(entry => entry.text).join('\n'), 'Sync failed', 'Interrupted group should not emit a system-like sync error');
+  assertEqual(App.combatCorrectionMessage, null, 'Interrupted group should not create a warning banner');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'Sync failed', 'Desktop should leave the interruption in narration');
+  assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Sync failed', 'Mobile should leave the interruption in narration');
+  App._sanitizeCombatState({ preserveTurn: true });
+  assertEqual(App.combatState.syncActions.length, 0, 'Queue normalization should retire a group that no longer has enough participants');
 });
 
 test('Combat group planner maps Eat into progressive Feast resolution', () => {
@@ -25365,8 +25593,8 @@ test('Desktop combat planner keeps sentence edits and an explicit group cancel',
   App.renderSelectionSentence();
   App.renderDesktopCombatComposer(player);
   assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-control="clear-actor-slot"', 'Group actor selection should remain clearable from its command-sentence slot');
-  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="clear-combat-group"', 'Desktop composer should expose an explicit group cancel before intent selection');
-  assertContains(elements.get('desktop-context-belt').innerHTML, 'Cancel Group', 'Desktop composer should label the full-plan exit clearly');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="clear-combat-group"', 'Desktop composer should not insert a duplicate group-cancel row before intent selection');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'aria-label="Cancel group selection"', 'Desktop command sentence should label its stable actor exit as the canonical group cancel');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="fight"', 'Group planning without an intent should keep the primary intent row visible');
 
   App.combatPlanSelection.pendingIntent = 'fight';
@@ -25374,7 +25602,7 @@ test('Desktop combat planner keeps sentence edits and an explicit group cancel',
   App.renderDesktopCombatComposer(player);
   const pendingHtml = elements.get('desktop-context-belt').innerHTML;
   assertContains(pendingHtml, 'data-command-control="confirm-combat-plan"', 'Pending group plan should retain its explicit commit command');
-  assertContains(pendingHtml, 'data-command-control="clear-combat-group"', 'Pending group plan should retain an explicit group cancel beside commit');
+  assertNotContains(pendingHtml, 'data-command-control="clear-combat-group"', 'Pending group plan should avoid a duplicate cancel beside commit');
   assertNotContains(pendingHtml, 'data-command-control="clear-combat-intent"', 'Pending intent should use the sentence slot exit instead of a duplicate Change Intent button');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-control="clear-intent-slot"', 'Pending intent should remain clearable through its sentence slot');
   App.combatTargetId = App._unitSelectionId(enemy);
@@ -27122,8 +27350,8 @@ test('Outnumbered low-health enemies can flee', () => {
   assertEqual(App.creatures.includes(enemy), false, 'Outnumbered wounded enemy should leave the area on morale flee');
   assertEqual(App.combatState.active, false, 'Combat should end when the last enemy flees');
   assertEqual(player.xp, 0, 'Enemy fleeing should not award default victory XP');
-  assertContains(App.log.map(entry => entry.text).join('\n'), 'Enemy huye aterrorizado!', 'Enemy morale flee log should localize');
-  assertContains(App.latestStoryEvent?.summary || '', 'Enemy huye aterrorizado!', 'Enemy morale flee Scene feedback should use localized prose instead of a result token');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'Enemy pierde el valor y huye!', 'Enemy morale flee log should localize without conflating morale with Terror');
+  assertContains(App.latestStoryEvent?.summary || '', 'Enemy pierde el valor y huye!', 'Enemy morale flee Scene feedback should use localized prose instead of a result token');
   assertContains(App.log[App.log.length - 1].text, 'The encounter breaks off.', 'Enemy-only flee should use a non-victory disengage outcome');
 });
 
@@ -27219,7 +27447,7 @@ test('Enemy target dodge is deterministic by combat state', () => {
   assertContains(lowRandom.log, 'dodges Enemy', 'Seeded enemy dodge fixture should exercise the dodge branch');
 });
 
-test('Menacing enemy fear is deterministic by combat state', () => {
+test('Menacing enemy terror is deterministic by combat state', () => {
   const buildCase = random => {
     const { App } = loadAppForCombat(random);
     App.worldMeta = { seed: 'enemy-fear', generatorVersion: 2 };
@@ -27236,11 +27464,11 @@ test('Menacing enemy fear is deterministic by combat state', () => {
     App._enemyCallReinforcement = function() { return false; };
     App.nextTurn = function() { this._enemyTurnAdvanced = true; };
     App.enemyTurn(enemy);
-    return { frightened: !!player.status.frightened, advanced: !!App._enemyTurnAdvanced };
+    return { terrified: !!player.status.terror, advanced: !!App._enemyTurnAdvanced };
   };
   const lowRandom = buildCase(() => 0);
   const highRandom = buildCase(() => 0.99);
-  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Menacing fear status should not depend on ambient Math.random');
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Menacing terror status should not depend on ambient Math.random');
 });
 
 test('Pack enemies can call reinforcements when wounded', () => {
@@ -30502,9 +30730,11 @@ test('Non-numeric perk effects can modify exploration and combat status behavior
 
   const fearCase = loadAppForCombat(() => 0);
   const unit = makeUnit('Stalwart', { status: { fear: { turns: 2, by: 'Enemy' } }, perks: [{ id: 'iron_will', perkEffect: 'fearResist' }] });
-  const skipped = fearCase.App._skipTurnFromStatus(unit);
-  assertEqual(skipped, null, 'Fear resist perk should prevent fear turn loss');
+  const outcome = fearCase.App._resolveFearTurn(unit);
+  assertEqual(outcome.kind, 'resisted', 'Fear resist perk should resolve either fear severity as resisted');
+  assertEqual(outcome.consumesTurn, false, 'Fear resistance should preserve the turn');
   assertEqual(Boolean(unit.status.fear), false, 'Fear resist perk should clear fear status');
+  assertContains(outcome.summary, 'resists the fear', 'Fear resistance should provide causal narration');
 });
 
 test('Species-specific perk variants are available only to matching species', () => {

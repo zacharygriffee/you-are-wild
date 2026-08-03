@@ -173,12 +173,15 @@ const YAW_COMBAT_ACTIONS = {
                 : '';
             return `<div class="panel-interaction-tray combat-target-tray" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" role="region" aria-label="${label}"><div class="target-action-row" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${label}">${confirm}<button class="action-btn compact-secondary" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button></div></div>`;
         }
+        const label = app._escapeHtml(app._label('combat.intentControls', 'Combat intent controls'));
+        const pendingGroupIntent = Boolean(app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent);
+        if (pendingGroupIntent) {
+            const confirm = app._combatPlanControls?.({ includeReset: false }) || '';
+            return confirm ? `<div class="desktop-combat-composer" role="group" aria-label="${label}">${confirm}</div>` : '';
+        }
         const actions = this.actionButtons(app, actor, { source: 'desktop-composer' });
         if (!actions) return '';
-        const label = app._escapeHtml(app._label('combat.intentControls', 'Combat intent controls'));
-        const groupControls = app._combatPlanControls?.() || app._combatGroupComposeControls?.() || '';
-        const showActions = !(app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent);
-        return `<div class="desktop-combat-composer" role="group" aria-label="${label}">${groupControls}${showActions ? actions : ''}</div>`;
+        return `<div class="desktop-combat-composer" role="group" aria-label="${label}">${actions}</div>`;
     },
 
     renderDesktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {

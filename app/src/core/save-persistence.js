@@ -404,7 +404,8 @@ const YAW_SAVE_PERSISTENCE = {
             creationOptions: this.serializableClone(unit.creationOptions || {}, {}),
             lifeStage: unit.lifeStage || unit.ageCategory || null,
             adultEligibility: this.serializableClone(unit.adultEligibility || null, null),
-            adultEligible: typeof unit.adultEligible === 'boolean' ? unit.adultEligible : null
+            adultEligible: typeof unit.adultEligible === 'boolean' ? unit.adultEligible : null,
+            combatStatus: this.serializableClone(unit.status || {}, {})
         } : null;
         const partyRoles = {};
         const partyAIOrders = {};

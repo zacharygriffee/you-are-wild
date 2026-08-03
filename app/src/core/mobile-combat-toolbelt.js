@@ -54,19 +54,14 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const row = (label, surface, buttons) => `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="${app._escapeHtml(surface)}" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(label)}"><div class="unit-actions unit-combat-actions compact" data-command-surface="${app._escapeHtml(surface)}" data-command-mode="combat" data-command-grammar="actor-target-intent">${buttons}</div></div>`;
         const cancelLabel = app._label('ui.cancel', 'Cancel');
         if (app.combatPlanSelection?.active) {
-            const controls = app._combatPlanControls?.({ includeReset: true }) || '';
-            const intentLabel = app.combatPlanSelection.pendingIntent
-                ? app._uiLabel(app.combatPlanSelection.pendingIntent)
-                : app._label('ui.chooseAction', 'Choose');
-            const phaseLabel = app.combatPlanSelection.pendingIntent
-                ? app._label('combat.group.commitIntent', 'Commit Group {intent}', { intent: intentLabel })
-                : app._label('combat.group.cancel', 'Cancel Group');
-            const phaseClass = app.combatPlanSelection.pendingIntent ? '' : ' combat-plan-cancel-only';
-            return controls ? `<div class="mobile-combat-intents mobile-combat-phase-controls${phaseClass}" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(phaseLabel)}">${controls}</div>` : '';
+            if (!app.combatPlanSelection.pendingIntent) return '';
+            const controls = app._combatPlanControls?.({ includeReset: false }) || '';
+            const intentLabel = app._uiLabel(app.combatPlanSelection.pendingIntent);
+            const phaseLabel = app._label('combat.group.commitIntent', 'Commit Group {intent}', { intent: intentLabel });
+            return controls ? `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(phaseLabel)}">${controls}</div>` : '';
         }
         if (app._isCombatGroupCompose?.()) {
-            const clearGroup = app._label('combat.group.clear', 'Clear Group');
-            return row(clearGroup, 'combat-group-compose', button(clearGroup, 'event.stopPropagation();App.clearCombatGroupCompose()', 'action-btn', clearGroup, 'data-command-surface="combat-group-compose" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-group" data-command-slot="exit"'));
+            return '';
         }
         if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             const cancelSync = app._label('combat.sync.cancel', 'Cancel Sync');

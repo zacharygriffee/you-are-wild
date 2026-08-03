@@ -80,6 +80,9 @@ const YAW_SAVE_LOAD_FLOW = {
                     unit.adultEligibility = { ...compatible.adultEligibility };
                 }
                 if (typeof compatible.adultEligible === 'boolean') unit.adultEligible = compatible.adultEligible;
+                if (compatible.combatStatus && typeof compatible.combatStatus === 'object' && !Array.isArray(compatible.combatStatus)) {
+                    unit.status = JSON.parse(JSON.stringify(compatible.combatStatus));
+                }
                 if ((!unit.parts || !unit.chest) && identity) {
                     const fallback = fallbackCompatibilityForIdentity(identity);
                     unit.parts = unit.parts || fallback.parts;

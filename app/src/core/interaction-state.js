@@ -360,7 +360,11 @@ const YAW_INTERACTION_STATE = {
                 ? `<span class="selection-sentence-change">${app._escapeHtml(app._label('ui.change', 'Change'))}</span>`
                 : '';
             const clearable = this.isSlotClearable(app, part);
-            const clearTitle = app._escapeHtml(app._label('target.clearSlot', 'Clear {slot}: {value}', { slot: part.label, value: part.value }));
+            const groupSelectionActive = app.combatState?.active && part.slot === 'actor'
+                && (app.combatPlanSelection?.active || app._isCombatGroupCompose?.());
+            const clearTitle = app._escapeHtml(groupSelectionActive
+                ? app._label('combat.group.cancelSelection', 'Cancel group selection')
+                : app._label('target.clearSlot', 'Clear {slot}: {value}', { slot: part.label, value: part.value }));
             const clear = clearable
                 ? `<button type="button" class="selection-sentence-clear" data-command-surface="command-sentence" data-command-control="clear-${slot}-slot" data-command-slot="${slot}" title="${clearTitle}" aria-label="${clearTitle}" onclick="event.stopPropagation();App.clearComposerSlot('${slot}')">×</button>`
                 : '';

@@ -31,7 +31,7 @@ const YAW_COMBAT_PLANNING = {
         if (unit.CPun <= 0 || unit.knockedOut) return 'fallen';
         if (unit.fledCombat) return 'fled';
         const status = unit.status || {};
-        if (status.fear?.turns > 0) return 'fear';
+        if (status.terror?.turns > 0 || status.frightened) return 'terror';
         if (status.stun?.turns > 0) return 'stunned';
         if (status.freeze?.skip) return 'frozen';
         if (status.restrained?.turns > 0) return 'restrained';

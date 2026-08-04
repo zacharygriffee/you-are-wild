@@ -72,12 +72,11 @@ const YAW_SUB_ACTIONS = {
             submit: { label: 'Submit', sfwLabel: 'Yield', icon: '🙇', validate: (a, t) => App.settings.powerDynamics && a.Fuck < t.Fuck, execute: 'submit', semanticAction: 'fuck', semantics: 'mechanical', deferred: true, setting: 'powerDynamics' }
         },
         flirt: {
-            // Flirt and Dance are social approaches, not separate resolution
-            // systems. Their shared Talk resolver owns costs, checks, Spirit,
-            // recruitment, and combat outcomes.
+            // Flirt is the canonical social approach. Dance previously routed
+            // through this exact resolver and is migrated below rather than
+            // remaining as a duplicate player-facing choice.
             flirt: { label: 'Flirt', sfwLabel: 'Talk', matureLabel: 'Flirt', icon: '😘', validate: () => true, execute: 'flirt', semanticAction: 'flirt', semantics: 'narration', setting: null },
-            seduce: { label: 'Seduce', sfwLabel: 'Talk', matureLabel: 'Seduce', icon: '💕', validate: () => true, execute: 'seduce', setting: null, actionProfile: 'core:seduce', semantics: 'mechanical', minPosture: 'mature' },
-            dance: { label: 'Dance', sfwLabel: 'Dance', icon: '💃', validate: () => true, execute: 'dance', semanticAction: 'flirt', semantics: 'narration', setting: null }
+            seduce: { label: 'Seduce', sfwLabel: 'Talk', matureLabel: 'Seduce', icon: '💕', validate: () => true, execute: 'seduce', setting: null, actionProfile: 'core:seduce', semantics: 'mechanical', minPosture: 'mature' }
         },
         flee: {
             run: { label: 'Run', sfwLabel: 'Flee', icon: '🏃', validate: () => true, execute: 'run', setting: null },
@@ -88,12 +87,21 @@ const YAW_SUB_ACTIONS = {
 
     defaults: { feast: 'swallow', feed: 'tend', fight: 'attack', fuck: 'fuck', flirt: 'flirt', flee: 'run' },
 
+    normalizeSubAction(action, subAction) {
+        const family = String(action || '').replace(/^sync_/, '');
+        const selected = subAction == null ? null : String(subAction);
+        // Keep old defaults and queued commands loadable after consolidating
+        // Dance into the mechanically identical Flirt approach.
+        if (family === 'flirt' && selected === 'dance') return 'flirt';
+        return selected;
+    },
+
     defaultActions() {
         return { ...this.defaults };
     },
 
     getDefault(app, action) {
-        const selected = app.defaultSubActions[action] || this.defaults[action] || action;
+        const selected = this.normalizeSubAction(action, app.defaultSubActions[action] || this.defaults[action] || action);
         const definition = app.SUB_ACTIONS[action]?.[selected];
         return !definition || definition.legacy === true
             ? (this.defaults[action] || action)
@@ -479,6 +487,7 @@ const YAW_SUB_ACTIONS = {
     },
 
     label(app, action, subAction) {
+        subAction = this.normalizeSubAction(action, subAction);
         const legacyExplicit = CONTENT.preferences.maxTier >= 2 && CONTENT.preferences.explicitDescriptions === true;
         const subDefs = app.SUB_ACTIONS[action];
         if (!subDefs || !subDefs[subAction]) return subAction;

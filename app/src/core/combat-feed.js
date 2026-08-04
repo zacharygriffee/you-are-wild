@@ -250,13 +250,14 @@ const YAW_COMBAT_FEED = {
 
     resolveCommand(app, command) {
         const action = command?.action || 'feed';
-        const subId = command?.subAction;
+        const subId = YAW_SUB_ACTIONS.normalizeSubAction(action, command?.subAction);
+        if (command && subId !== command.subAction) command = { ...command, subAction: subId };
         const subDef = app.SUB_ACTIONS[action]?.[subId];
         if (!subDef) return false;
         const actor = command.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
         const target = command.targets?.[0] || null;
         if (!target) return false;
-        // Core approaches such as Flirt/Dance and Play are presentation
+        // Core approaches such as Flirt and Play are presentation
         // choices inside a semantic family, not separate mechanics. Route
         // them through the family resolver so they retain costs, checks,
         // Spirit, recruitment, and combat outcomes instead of falling through

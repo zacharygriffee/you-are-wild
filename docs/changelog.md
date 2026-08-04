@@ -4,6 +4,16 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Interaction vocabulary now has one canonical contract across exploration and
+  combat: Talk exposes Flirt plus mechanically distinct Mature Seduce, legacy
+  Dance choices migrate to Flirt, Play keeps deferred Dominate/Submit hidden,
+  and the Feast family is labeled Eat on desktop and mobile while retaining its
+  compatible internal ID.
+- Party Holdings now supports bounded party-facing companion names and shared-
+  Pack loadout management. Renames preserve stable identity, species, history,
+  equipment, and save references; Pack owner selection chooses an equipment
+  recipient without introducing per-companion backpacks. Rejected operations
+  remain unchanged and produce narrative feedback.
 - Mature posture now selects richer English and Spanish narration for bounded
   encounter, combat, social, feeding, and containment outcomes. SFW posture
   retains neutral copy, missing Mature variants fall back to the active locale,

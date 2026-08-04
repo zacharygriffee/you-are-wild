@@ -35,7 +35,6 @@ flowchart TD
 
     talk --> flirt["Flirt or safe Talk"]
     talk --> seduce["Seduce: mature mechanical"]
-    talk --> dance["Dance: narration approach"]
 
     eat --> eatTarget["Target approaches"]
     eat --> eatSelf["Self approaches"]
@@ -72,17 +71,18 @@ Important registry details:
   eligible module techniques, and the combat-only Grab/Pull control profiles.
   The older `fight.attack`, `fight.disarm`, and `fight.grapple` sub-action
   definitions are not used by that chooser.
-- Flirt and Dance share the Talk mechanic and differ narratively. Seduce routes
-  through the `core:seduce` mechanical action profile.
+- Flirt is the one ordinary Talk approach. Compatibility-era `dance` defaults
+  and queued commands normalize to Flirt before planning or resolution. Seduce
+  routes through the `core:seduce` mechanical action profile.
 - Play currently has one active approach. Dominate and Submit are deliberately
   deferred until they have distinct resolved outcomes.
 - Feed's legacy adapters (`heal`, `breastfeed`, `sacrifice`, `forceFeed`,
   `slurp`, and `fragment`) are excluded from the normal approach menu.
 - Eat self approaches are resolved against each selected actor. They do not
   require a separate target, which is what permits Digest during combat.
-- The broad Feast-family label is currently inconsistent by surface:
-  exploration uses `Eat`, while `_combatActionLabel('feast')` special-cases the
-  combat belt and approach title to `Feast`.
+- The Feast-family player-facing label is `Eat` in exploration and combat,
+  including single, group, desktop, and mobile surfaces. The internal action id
+  remains `feast` for saves, modules, and resolver compatibility.
 
 ## 2. Contextual and utility interaction tree
 

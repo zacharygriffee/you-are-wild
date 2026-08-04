@@ -188,9 +188,7 @@
                 return YAW_UI_TEXT.uiLabel(this, key);
             },
             _combatActionLabel(action) {
-                return action === 'feast'
-                    ? this._label('action.feast.menu', 'Feast')
-                    : this._uiLabel(action);
+                return this._uiLabel(action);
             },
             _escapeJsString(value) {
                 return String(value ?? '').replace(/\\/g, "\\\\").replace(/'/g, "\\'");
@@ -3124,6 +3122,7 @@
 
             // ===== SUB-ACTION ENGINE =====
             _doSubAction(action, subId, actor, target, actorName, actorVerb, options = {}) {
+                subId = YAW_SUB_ACTIONS.normalizeSubAction(action, subId);
                 const subDef = this.SUB_ACTIONS[action] && this.SUB_ACTIONS[action][subId];
                 if (!subDef) return `[Unknown sub-action ${action}.${subId}]`;
                 const actorIsPlayer = actor === this.player || actor?.name === this.player?.name;
@@ -3605,6 +3604,9 @@
             setCompanionPreferredRow(index, preferredRow) {
                 return YAW_PARTY_MANAGEMENT.setPreferredRow(this, index, preferredRow);
             },
+            renamePartyMember(ownerId, proposedName) {
+                return YAW_PARTY_MANAGEMENT.rename(this, ownerId, proposedName);
+            },
             showCompanionBehavior(index) {
                 return YAW_PARTY_MANAGEMENT.showBehavior(this, index);
             },
@@ -3987,9 +3989,10 @@
                 // than the legacy sub-action table.  Keep the selected
                 // approach intact so exploration and combat resolve the same
                 // named technique.
-                const selectedSubAction = options.subAction && (action === 'fight'
+                const requestedSubAction = YAW_SUB_ACTIONS.normalizeSubAction(action, options.subAction);
+                const selectedSubAction = requestedSubAction && (action === 'fight'
                     ? typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
-                    : this.SUB_ACTIONS[action]?.[options.subAction]) ? options.subAction : null;
+                    : this.SUB_ACTIONS[action]?.[requestedSubAction]) ? requestedSubAction : null;
                 let primaryActor = livingActors[0] || this.player || null;
                 let helpers = livingActors.filter(actor => actor && actor !== primaryActor);
                 let recipient = null;
@@ -4134,9 +4137,10 @@
             outsideMutualGroupAction(action, participants = [], options = {}) {
                 const living = [...new Set((participants || []).filter(unit => unit && this._isLivingCreature(unit)))];
                 if (living.length <= 1) return false;
-                const selectedSubAction = options.subAction && (action === 'fight'
+                const requestedSubAction = YAW_SUB_ACTIONS.normalizeSubAction(action, options.subAction);
+                const selectedSubAction = requestedSubAction && (action === 'fight'
                     ? typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
-                    : this.SUB_ACTIONS[action]?.[options.subAction]) ? options.subAction : null;
+                    : this.SUB_ACTIONS[action]?.[requestedSubAction]) ? requestedSubAction : null;
                 const names = living.map(unit => unit.name).join(', ');
                 if (action === 'feed' && selectedSubAction && !['tend', 'heal'].includes(selectedSubAction)) {
                     this.log.push({ text: this._label('feed.noValidTarget', 'No valid target for this feed action.'), type: 'discovery' });
@@ -4345,9 +4349,10 @@
                 // than the legacy SUB_ACTIONS table. Preserve authored
                 // namespaced techniques, while accepting `attack` as the
                 // compatibility alias for the canonical Basic approach.
+                const requestedSubAction = YAW_SUB_ACTIONS.normalizeSubAction(action, options.subAction);
                 const selectedSubAction = action === 'fight'
-                    ? (options.subAction === 'attack' ? 'basic' : (options.subAction || null))
-                    : (options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null);
+                    ? (requestedSubAction === 'attack' ? 'basic' : (requestedSubAction || null))
+                    : (requestedSubAction && this.SUB_ACTIONS[action]?.[requestedSubAction] ? requestedSubAction : null);
                 const names = livingActors.map(actor => actor.name).join(', ');
                 let result = '';
                 let startCombatAfter = false;
@@ -4513,7 +4518,6 @@
                     case 'fuck': {
                         const selfIncludedPartyTarget = this.party.includes(target) && livingActors.includes(target);
                         const isSeduce = action === 'flirt' && selectedSubAction === 'seduce';
-                        const isDance = action === 'flirt' && selectedSubAction === 'dance';
                         const totalCharm = livingActors.reduce((sum, actor) => sum
                             + (actor[action === 'fuck' ? 'Fuck' : 'Flir'] || 10)
                             + (actor.cha || 10) * 0.5
@@ -4535,9 +4539,9 @@
                                     max: target.MPle
                                 });
                             } else {
-                                result = this._label(isSeduce ? 'combat.sync.seduceSoftened' : (isDance ? 'combat.sync.danceSoftened' : 'group.social.focus'), isSeduce
+                                result = this._label(isSeduce ? 'combat.sync.seduceSoftened' : 'group.social.focus', isSeduce
                                     ? '{actors} draw {target} closer, softening their guard. Spirit rises to {current}/{max}.'
-                                    : (isDance ? '{actors} dance with {target}, softening their guard. Spirit rises to {current}/{max}.' : '{actors} focus on {target}. Spirit rises to {current}/{max}.'), {
+                                    : '{actors} focus on {target}. Spirit rises to {current}/{max}.', {
                                     actors: names,
                                     participants: names,
                                     target: target.name,
@@ -4554,9 +4558,9 @@
                             const breakthrough = this._resolveSpiritThreshold?.(livingActors[0], target, action, { emitScene: false });
                             if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                         } else {
-                            result = this._label(isSeduce ? 'combat.sync.seduceResisted' : (isDance ? 'combat.sync.danceResisted' : 'group.social.resists'), isSeduce
+                            result = this._label(isSeduce ? 'combat.sync.seduceResisted' : 'group.social.resists', isSeduce
                                 ? '{target} pulls away from the group’s overture.'
-                                : (isDance ? '{target} declines the group’s invitation to dance.' : "{target} resists the group's attention."), { target: target.name });
+                                : "{target} resists the group's attention.", { target: target.name });
                         }
                         break;
                     }
@@ -4606,9 +4610,10 @@
                 // than the legacy SUB_ACTIONS table. Preserve authored
                 // namespaced techniques, while accepting `attack` as the
                 // compatibility alias for the canonical Basic approach.
+                const requestedSubAction = YAW_SUB_ACTIONS.normalizeSubAction(action, options.subAction);
                 const selectedSubAction = action === 'fight'
-                    ? (options.subAction === 'attack' ? 'basic' : (options.subAction || null))
-                    : (options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null);
+                    ? (requestedSubAction === 'attack' ? 'basic' : (requestedSubAction || null))
+                    : (requestedSubAction && this.SUB_ACTIONS[action]?.[requestedSubAction] ? requestedSubAction : null);
                 let result = '';
                 let affected = true;
                 let startCombatAfter = false;
@@ -4765,7 +4770,6 @@
                         break;
                     }
                     case 'flirt': {
-                        const dancing = selectedSubAction === 'dance';
                         let charm = this._explorationActionRating(actor.Flir + (actor.cha || 10) * 0.5, actor, target, 'single-flirt');
                         if (this.settings.sameSpeciesBonus && target.species === actor.species) {
                             charm += 3;
@@ -4776,16 +4780,7 @@
                             target.charmed = (target.charmed || 0) + 1;
                             target.Figh = Math.max(1, (target.Figh || 10) - 1);
                             const playerActor = actor === this.player || actor.name === this.player?.name;
-                            result = dancing
-                                ? this._label(playerActor ? 'explore.dance.successPlayer' : 'explore.dance.success', playerActor
-                                    ? '{actor} dance with {target}. Their guard lowers. Spirit rises to {current}/{max}.'
-                                    : '{actor} dances with {target}. Their guard lowers. Spirit rises to {current}/{max}.', {
-                                    actor: actorName,
-                                    target: target.name,
-                                    current: target.CPle,
-                                    max: target.MPle
-                                })
-                                : this._mlabel(playerActor ? 'explore.flirt.successPlayer' : 'explore.flirt.success', playerActor
+                            result = this._mlabel(playerActor ? 'explore.flirt.successPlayer' : 'explore.flirt.success', playerActor
                                     ? '{actor} talk with {target}. Their guard lowers. Spirit rises to {current}/{max}.'
                                     : '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', {
                                 actor: actorName,
@@ -4804,9 +4799,7 @@
                                 result += ` ${this._label('explore.recruit.possible', '{target} may be willing to join the party.', { target: target.name })}`;
                             }
                         } else {
-                            result = this._label(dancing ? 'explore.dance.rebuff' : 'explore.flirt.rebuff', dancing
-                                ? '{target} declines to dance.'
-                                : '{target} rejects the conversation!', { target: target.name });
+                            result = this._label('explore.flirt.rebuff', '{target} rejects the conversation!', { target: target.name });
                             affected = false;
                         }
                         break;

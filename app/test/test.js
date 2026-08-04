@@ -10702,6 +10702,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'perk.name.bunny_soft_charm': 'Soft Charm', 'perk.desc.bunny_soft_charm': 'Flir +2.',
           'perk.name.dragon_ancient_bulk': 'Ancient Bulk', 'perk.desc.dragon_ancient_bulk': 'CON +3.',
           'perk.name.dragon_dominant_appetite': 'Dominant Appetite', 'perk.desc.dragon_dominant_appetite': 'Feas +3.',
+          'holdings.selectPackOwner': 'Choose {name} as the equipment recipient', 'holdings.sharedPackRecipient': 'Items are shared. Equip actions currently target {name}.', 'holdings.equipToOwner': 'Equip to {name}', 'holdings.equipItemToOwner': 'Equip {item} to {name}', 'holdings.equipOwnerMissing': 'The intended companion is no longer available, so the item stays in the shared Pack.', 'holdings.equipItemUnavailable': '{name} finds nothing suitable to equip, so the shared Pack remains unchanged.', 'holdings.unequipEmpty': '{name} has nothing equipped there, so their loadout remains unchanged.', 'holdings.unequipPackFull': '{name} keeps {item} equipped because the shared Pack has no room.',
+          'party.renameFor': 'Party name for {name}', 'party.renameHelp': 'This changes the party-facing name without changing species, history, or identity.', 'party.renameSave': 'Save Name', 'party.renameMissing': 'That companion is no longer with the party, so the name remains unchanged.', 'party.renamePlayerUnavailable': 'Your own name remains part of your character identity.', 'party.renameEmpty': '{name} does not answer to an empty name.', 'party.renameTooLong': '{name} cannot settle on a name that long.', 'party.renameDuplicate': '{name} pauses; someone in the party already answers to {newName}.', 'party.renamed': '{oldName} asks the party to call them {newName}.',
           'action.fight': 'Fight', 'action.flirt': 'Talk', 'action.fuck': 'Play', 'action.feast': 'Eat', 'action.feast.menu': 'Feast', 'action.feed': 'Feed', 'action.flee': 'Flee', 'action.moveRow': 'Move Row', 'action.advance': 'Advance', 'action.retreat': 'Retreat', 'action.sync': 'Sync', 'action.skip': 'Skip', 'action.search': 'Search', 'action.rest': 'Rest', 'action.inventory': 'Items', 'action.interact': 'Interact', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge', 'action.scavenged': 'Scavenged', 'variant.pickTarget': 'Pick a target to choose {action} options.', 'variant.chooseForTarget': 'Choose {action} option for selected target',
           'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}', 'inventory.full': 'Inventory is full.', 'inventory.empty': 'Empty.', 'inventory.noItemsMatch': 'No items match the current filter.', 'inventory.titleWithCount': 'Inventory ({count}/{max})', 'inventory.equippedSection': 'Equipped', 'holdings.titleWithInventory': 'Holdings / Inventory ({count}/{max})', 'holdings.umbrella': 'Character / Holdings', 'holdings.tabs': 'Holdings sections', 'holdings.pack': 'Pack / Inventory', 'holdings.containers': 'Containers', 'holdings.ground': 'Here / Ground', 'inventory.equipped': 'Equipped {name}.', 'inventory.unequipped': 'Unequipped {name}.', 'inventory.noEquipment': 'No equipment', 'inventory.noBonus': 'No bonus', 'inventory.effect': 'Effect',
           'item.category': 'Category', 'item.category.all': 'All', 'item.category.consumable': 'Consumable', 'item.category.equipment': 'Equipment', 'item.category.valuable': 'Valuable', 'item.category.material': 'Trade Good', 'item.category.misc': 'Misc', 'item.sort': 'Sort', 'item.sort.name': 'Name', 'item.sort.type': 'Type', 'item.sort.valueDesc': 'Value ↓', 'item.sort.valueAsc': 'Value ↑', 'item.unknown': 'Unknown',
@@ -10902,6 +10904,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'perk.name.bunny_soft_charm': 'Encanto suave', 'perk.desc.bunny_soft_charm': 'Coqueteo +2.',
           'perk.name.dragon_ancient_bulk': 'Corpulencia ancestral', 'perk.desc.dragon_ancient_bulk': 'CON +3.',
           'perk.name.dragon_dominant_appetite': 'Apetito dominante', 'perk.desc.dragon_dominant_appetite': 'Festin +3.',
+          'holdings.selectPackOwner': 'Elegir a {name} como destinatario del equipo', 'holdings.sharedPackRecipient': 'Los objetos son compartidos. Las acciones de equipar ahora se dirigen a {name}.', 'holdings.equipToOwner': 'Equipar a {name}', 'holdings.equipItemToOwner': 'Equipar {item} a {name}', 'holdings.equipOwnerMissing': 'El companero previsto ya no esta disponible, asi que el objeto permanece en la mochila compartida.', 'holdings.equipItemUnavailable': '{name} no encuentra nada adecuado que equipar, asi que la mochila compartida queda igual.', 'holdings.unequipEmpty': '{name} no tiene nada equipado ahi, asi que su conjunto queda igual.', 'holdings.unequipPackFull': '{name} mantiene {item} equipado porque no hay espacio en la mochila compartida.',
+          'party.renameFor': 'Nombre en el grupo para {name}', 'party.renameHelp': 'Esto cambia el nombre mostrado en el grupo sin cambiar especie, historia ni identidad.', 'party.renameSave': 'Guardar nombre', 'party.renameMissing': 'Ese companero ya no esta con el grupo, asi que el nombre permanece igual.', 'party.renamePlayerUnavailable': 'Tu propio nombre sigue formando parte de la identidad del personaje.', 'party.renameEmpty': '{name} no responde a un nombre vacio.', 'party.renameTooLong': '{name} no puede decidirse por un nombre tan largo.', 'party.renameDuplicate': '{name} se detiene; alguien del grupo ya responde a {newName}.', 'party.renamed': '{oldName} pide al grupo que ahora le llame {newName}.',
           'action.fight': 'Luchar', 'action.flirt': 'Hablar', 'action.fuck': 'Jugar', 'action.feast': 'Comer', 'action.feast.menu': 'Festin', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.advance': 'Avanzar', 'action.retreat': 'Retirarse', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.search': 'Buscar', 'action.rest': 'Descansar', 'action.inventory': 'Objetos', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar', 'action.scavenged': 'Rebuscado', 'variant.pickTarget': 'Elige un objetivo para escoger opciones de {action}.', 'variant.chooseForTarget': 'Escoge una opcion de {action} para el objetivo seleccionado',
           'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}', 'inventory.full': 'El inventario esta lleno.', 'inventory.empty': 'Vacio.', 'inventory.noItemsMatch': 'No hay articulos que coincidan con el filtro actual.', 'inventory.titleWithCount': 'Inventario ({count}/{max})', 'inventory.equippedSection': 'Equipado', 'holdings.titleWithInventory': 'Inventario / Pertenencias ({count}/{max})', 'holdings.umbrella': 'Personaje / Pertenencias', 'holdings.tabs': 'Secciones de pertenencias', 'holdings.pack': 'Mochila / Inventario', 'holdings.containers': 'Contenedores', 'holdings.ground': 'Aqui / Suelo', 'inventory.equipped': 'Equipaste {name}.', 'inventory.unequipped': 'Desequipaste {name}.', 'inventory.noEquipment': 'Sin equipo', 'inventory.noBonus': 'Sin bonificacion', 'inventory.effect': 'Efecto',
           'item.category': 'Categoria', 'item.category.all': 'Todos', 'item.category.consumable': 'Consumible', 'item.category.equipment': 'Equipo', 'item.category.valuable': 'Valioso', 'item.category.material': 'Mercancía', 'item.category.misc': 'Varios', 'item.sort': 'Ordenar', 'item.sort.name': 'Nombre', 'item.sort.type': 'Tipo', 'item.sort.valueDesc': 'Valor ↓', 'item.sort.valueAsc': 'Valor ↑', 'item.unknown': 'Desconocido',
@@ -12250,6 +12254,7 @@ test('Talk and Play keep broad labels while Mature sub-actions name their specif
   let talk = App._resolveActionVariants('flirt', { actors: [actor], targets: [target] });
   let play = App._resolveActionVariants('fuck', { actors: [actor], targets: [target] });
   assertEqual(talk.variants.some(variant => variant.id === 'seduce'), false, 'SFW Talk should not expose Mature Seduce');
+  assertEqual(talk.variants.some(variant => variant.id === 'dance'), false, 'SFW Talk should not expose the consolidated Dance label');
   assertEqual(App._getActionLabel('flirt', 'flirt'), 'Talk', 'SFW Talk should retain its broad label');
   assertEqual(App._getActionLabel('fuck', 'fuck'), 'Play', 'SFW Play should retain its broad label');
   App.defaultSubActions.flirt = 'tease';
@@ -12262,10 +12267,22 @@ test('Talk and Play keep broad labels while Mature sub-actions name their specif
   talk = App._resolveActionVariants('flirt', { actors: [actor], targets: [target] });
   play = App._resolveActionVariants('fuck', { actors: [actor], targets: [target] });
   assertEqual(talk.variants.some(variant => variant.id === 'seduce' && variant.available), true, 'Mature Talk should expose the appetite-gated Seduce sub-action');
+  assertEqual(talk.variants.some(variant => variant.id === 'dance'), false, 'Mature Talk should expose Flirt and Seduce without duplicate Dance semantics');
   assertEqual(App._getActionLabel('flirt', 'flirt'), 'Flirt', 'Mature Talk should name the Flirt sub-action');
   assertEqual(App._getActionLabel('flirt', 'seduce'), 'Seduce', 'Mature Talk should name the Seduce sub-action');
   assertEqual(App._getActionLabel('fuck', 'fuck'), 'Fuck', 'Mature Play should name the specific Play sub-action');
   assertEqual(play.variants.some(variant => variant.id === 'fuck' && variant.available), true, 'Mature Play should retain its existing action behavior behind the renamed sub-action');
+  App.settings.powerDynamics = true;
+  for (const context of [
+    { actors: [actor], targets: [target], mode: 'adventure' },
+    { actors: [actor, makeUnit('Helper', { id: 'taxonomy-helper' })], targets: [target], mode: 'combat' },
+    { actors: [actor], targets: [actor], scope: 'self', mode: 'combat' }
+  ]) {
+    const contextualTalk = App._resolveActionVariants('flirt', context);
+    const contextualPlay = App._resolveActionVariants('fuck', context);
+    assertEqual(contextualTalk.variants.some(variant => variant.id === 'dance'), false, 'Consolidated Dance must stay hidden for exploration, combat, group, and self shapes');
+    assertEqual(contextualPlay.variants.some(variant => variant.id === 'dominate' || variant.id === 'submit'), false, 'Deferred Dominate and Submit must stay hidden for every actor/target shape');
+  }
 
   App.explorationActorIds = [actor.id];
   App.explorationActorSelectionExplicit = true;
@@ -12539,7 +12556,7 @@ test('Actor-only Play exposes its sole SFW approach through the shared submenu',
 
   const resolution = App.openExplorationTargetSubActionSheet('fuck', 'actor-belt');
   assertEqual(resolution.action, 'fuck', 'Actor-only Play should preserve its family in the shared submenu');
-  assertContains(body.innerHTML, 'Choose a Play option', 'Actor-only Play should name its approach instead of silently committing it');
+  assertContains(body.innerHTML, 'Choose an option for Play', 'Actor-only Play should name its approach instead of silently committing it');
   assertContains(body.innerHTML, "resolveExplorationSelfSubAction('fuck','fuck','actor-belt')", 'Actor-only Play should expose the canonical SFW Play approach');
   assertEqual(App.resolveExplorationSelfSubAction('fuck', 'fuck', 'actor-belt'), true, 'Selecting the Play approach should commit the self interaction');
   assertEqual(actor.CPle > 10, true, 'Selecting actor-only Play should apply its effect');
@@ -12741,10 +12758,10 @@ test('Combat Feast variant Back restores the selected target and chosen variant 
   App.nextTurn = function() { this._variantTurnAdvanced = true; };
 
   App.selectTarget('feast');
-  assertContains(elements.get('selection-sentence').innerHTML, 'Feast', 'Combat should name Feast as the parent intent instead of implying an immediate Eat action');
-  assertContains(elements.get('selection-sentence').innerHTML, 'Pick a target to choose Feast options.', 'Combat Feast targeting should explain that a variant choice follows target selection');
+  assertContains(elements.get('selection-sentence').innerHTML, 'Eat', 'Combat should use the same broad Eat family label as exploration');
+  assertContains(elements.get('selection-sentence').innerHTML, 'Pick a target to choose Eat options.', 'Combat Eat targeting should explain that a variant choice follows target selection');
   App.toggleCombatTarget(enemy.id);
-  assertContains(elements.get('desktop-context-belt').innerHTML, 'Choose Feast option for selected target', 'Combat Feast confirmation should lead to the submenu rather than imply an immediate Eat resolution');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'Choose Eat option for selected target', 'Combat Eat confirmation should lead to the submenu with the canonical family label');
   assertEqual(App.confirmCombatTargets(), true, 'Feast should enter variant selection after target confirmation');
   assertEqual(App.feedSelection?.action, 'feast', 'Compatibility selection state should preserve the canonical action');
   assertEqual(App.feedSelection?.variants.some(variant => variant.id === 'swallow' && variant.available), true, 'Feast picker should expose Swallow');
@@ -18624,7 +18641,7 @@ test('Contextual intent dispatch reports corpse loot and scavenge outcomes', () 
   assertEqual(App.selectIntent('creature', 'missing-corpse-intent', 'scavenge', 'sheet'), false, 'Missing corpse scavenge intent should report failure');
 });
 
-test('Intent sub-action sheet records selected sub-action while preserving dispatch', () => {
+test('Talk exposes one canonical Flirt approach and migrates the legacy Dance choice', () => {
   const { App, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', Flir: 30, cha: 20 });
   const friendly = makeUnit('Friendly', { id: 'friendly-sub', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
@@ -18635,19 +18652,19 @@ test('Intent sub-action sheet records selected sub-action while preserving dispa
   assertContains(body.innerHTML, 'data-command-surface="action-variant-options" data-command-mode="exploration"', 'Variant sheet should identify the shared exploration surface');
   assertContains(body.innerHTML, 'data-command-intent="flirt"', 'Sub-action sheet container should expose the primary intent id');
   assertContains(body.innerHTML, 'data-command-intent="flirt:flirt"', 'Default variant should expose a stable intent id');
-  assertContains(body.innerHTML, 'data-command-intent="flirt:dance"', 'Alternate variant should expose a stable intent id');
+  assertNotContains(body.innerHTML, 'data-command-intent="flirt:dance"', 'Mechanically duplicate Dance should not remain a player-facing choice');
   assertContains(body.innerHTML, 'data-command-control="back-variant"', 'Variant sheet should expose a structural Back exit');
   assertContains(body.innerHTML, 'data-command-control="back-variant" data-command-slot="exit"', 'Variant sheet Back should identify the exit slot');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','flirt')", 'Sub-action sheet should expose the default sub-action dispatch');
-  assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','dance')", 'Sub-action sheet should expose alternate registered sub-actions');
+  App.defaultSubActions.flirt = 'dance';
+  assertEqual(App._getDefaultSubAction('flirt'), 'flirt', 'Legacy saved Dance defaults should migrate to Flirt');
   App.selectIntent('creature', 'friendly-sub', 'flirt', 'sheet', 'dance');
-  assertEqual(App.lastIntentCommand.subAction, 'dance', 'Selected sub-action should be recorded on the normalized intent command');
-  assertEqual(App.defaultSubActions.flirt, 'dance', 'Selected sub-action should become the new default for that primary action');
+  assertEqual(App.lastIntentCommand.subAction, 'flirt', 'Legacy Dance commands should normalize to the canonical Flirt approach');
   assert(friendly.CPle > 0, 'Sub-action selection should preserve existing outside-combat action execution');
-  assertContains(App.log[App.log.length - 1].text, 'dance with Friendly', 'Dance should retain its own narration while sharing Talk mechanics');
+  assertContains(App.log[App.log.length - 1].text, 'talk with Friendly', 'Migrated Dance commands should use canonical Talk narration');
 });
 
-test('Combat Dance shares the Talk resolver instead of falling through as unimplemented', () => {
+test('Legacy combat Dance commands migrate to Flirt without changing Talk mechanics', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'dance-player', Flir: 40, cha: 24, combatRow: 'front' });
   const enemy = makeUnit('Enemy', {
@@ -18666,11 +18683,11 @@ test('Combat Dance shares the Talk resolver instead of falling through as unimpl
 
   assertEqual(App._resolveCombatFeedCommand({
     mode: 'combat', action: 'flirt', subAction: 'dance', actors: [player], targets: [enemy]
-  }), true, 'Dance should resolve as a successful combat command');
-  assert(enemy.CPle > 0, 'Dance should apply the same Spirit progress as Talk');
-  assertEqual(App.lastCombatActionResult.action, 'flirt', 'Dance should preserve the Talk semantic resolver');
-  assertContains(App.log[App.log.length - 1].text, 'dance with Enemy', 'Combat Dance should retain its own narration');
-  assertNotContains(App.log[App.log.length - 1].text, 'not implemented', 'Dance should never surface an implementation-error narration');
+  }), true, 'A saved Dance command should still resolve successfully');
+  assert(enemy.CPle > 0, 'Migrated Dance should preserve Talk Spirit progress');
+  assertEqual(App.lastCombatActionResult.action, 'flirt', 'Migrated Dance should preserve the Talk semantic resolver');
+  assertContains(App.log[App.log.length - 1].text, 'talk with Enemy', 'Migrated Dance should use canonical Talk narration');
+  assertNotContains(App.log[App.log.length - 1].text, 'not implemented', 'Migration should never surface an implementation-error narration');
 });
 
 test('Intent feast sub-action affects outside-combat resolution and cleanup', () => {
@@ -26292,7 +26309,7 @@ test('Player combat action controls localize in desktop composer', () => {
   const html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'aria-label="Luchar', 'Fight action should localize accessible label');
   assertContains(html, '<span class="action-caption">Hablar</span>', 'Flirt action should localize visible label');
-  assertContains(html, 'aria-label="Festin', 'Combat Feast action should localize its menu label');
+  assertContains(html, 'aria-label="Comer', 'Combat Eat action should use the same localized family label as exploration');
   assertContains(html, '<span class="action-caption">Jugar</span>', 'Play action label should localize visible label');
   assertContains(html, 'aria-label="Alimentar', 'Feed action should localize accessible label');
   assertNotContains(html, 'showInteractMenu', 'Combat action bar should keep creature interactions in party/creature panels');
@@ -29613,7 +29630,7 @@ test('Inventory full feedback localizes for equipment management', () => {
   App.inventory = Array.from({ length: App.MAX_INVENTORY }, (_, index) => ({ id: `filler-${index}`, name: 'Herb' }));
   App.updateLanguage('es');
   App.unequipItem('head');
-  assertContains(App.log[App.log.length - 1].text, 'El inventario esta lleno.', 'Full inventory equipment feedback should localize');
+  assertEqual(App.log[App.log.length - 1].text, 'Tu mantiene Leather Cap equipado porque no hay espacio en la mochila compartida.', 'Full shared-Pack feedback should localize and name the preserved loadout item');
   assertEqual(App.player.equipment.head.name, 'Leather Cap', 'Full inventory should block unequip');
 });
 
@@ -30330,12 +30347,11 @@ test('Holdings owner selector switches stats equipment and containers while pack
   App.setHoldingsTab('pack');
   html = holdingsHtml(elements);
   assertContains(html, 'Shared Pack', 'Pack tab should label inventory as shared party storage');
-  assertContains(html, 'Pack inventory is player-only for now. Containers remain available for Bunnyfolk.', 'Pack tab should explain disabled companion inventory selection');
-  assertContains(html, 'data-owner-selectable="false"', 'Pack tab should disable non-player owner selection for now');
+  assertContains(html, 'Items are shared. Equip actions currently target Bunnyfolk.', 'Pack tab should name the selected equipment recipient without implying a companion backpack');
+  assertNotContains(html, 'data-owner-selectable="false"', 'Pack tab should let the player select any party loadout recipient');
   assertContains(html, 'Focus Ring', 'Shared Pack should remain visible for selected companion owner');
-  assertContains(html, 'Equip Focus Ring', 'Pack equip action should remain available for the player inventory owner');
-  assertNotContains(html, 'Equip Focus Ring to Bunnyfolk', 'Pack tab should not target companion inventories yet');
-  assertNotContains(html, 'Equips target Bunnyfolk', 'Pack tab should not imply companion inventory ownership yet');
+  assertContains(html, 'Equip Focus Ring to Bunnyfolk', 'Pack equip action should target the selected companion loadout');
+  assertContains(html, "App.equipItem('ring-owner','ally-owner')", 'Pack equipment control should retain the selected companion stable id');
   App.setHoldingsTab('containers');
   App.setHoldingsOwner('ally-owner');
   html = holdingsHtml(elements);
@@ -30372,7 +30388,65 @@ test('Holdings owns companion behavior while cards retain only a behavior shortc
   assertContains(html, 'value="back" selected', 'Holdings should reflect the persisted preferred row after refresh');
 });
 
-test('Legacy Holdings equip seam can still target a companion owner directly', () => {
+test('Party renaming preserves stable identity, selections, narration, and save data', () => {
+  const Binary = loadBinaryForTest();
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'rename-player' });
+  const ally = makeUnit('Wolfkin', { species: 'wolf', id: undefined });
+  const stableAlly = makeUnit('Bunnyfolk', {
+    species: 'rabbit',
+    id: 'rename-stable-ally',
+    equipment: { accessory1: { id: 'ring-rename-stable', name: 'Focus Ring' } },
+    companionBehavior: { recruitmentContinuity: { joinedAt: '0,0', source: 'quest' } }
+  });
+  App.player = player;
+  App.party = [player, ally, stableAlly];
+  App.partyLeaderId = 'Wolfkin';
+  App.explorationActorId = 'Wolfkin';
+  App.explorationActorIds = ['Wolfkin'];
+  App.explorationTargetIds = ['party:Wolfkin'];
+  App.autoSave = () => true;
+
+  App.showPartyMemberStats(1);
+  let html = holdingsHtml(elements);
+  assertContains(html, 'data-command-control="rename-party-member"', 'Companion Stats should expose the inline rename form');
+  assertContains(html, 'maxlength="32"', 'Rename input should expose the bounded name contract');
+  assertContains(html, "App.renamePartyMember('party:1'", 'Compatibility-era companions should remain addressable by their existing party owner key before a stable id is established');
+
+  assertEqual(App.renamePartyMember('party:1', '   '), false, 'An empty rename attempt should resolve as narrative feedback');
+  assertContains(App.log[App.log.length - 1].text, 'does not answer to an empty name', 'Empty rename feedback should stay in-world');
+  assertEqual(App.renamePartyMember('party:1', 'you'), false, 'Party-facing names should remain unique without case sensitivity');
+  assertContains(App.log[App.log.length - 1].text, 'already answers to you', 'Duplicate rename feedback should explain the in-world conflict');
+
+  assertEqual(App.renamePartyMember('party:1', 'Ash'), true, 'A clear unique companion name should be accepted');
+  assertEqual(ally.name, 'Ash', 'The companion should use the chosen party-facing name');
+  assertEqual(ally.id, 'party-wolf-1', 'A compatibility-era companion should receive a stable id before the display name changes');
+  assertEqual(App.partyLeaderId, ally.id, 'Leadership should continue to reference the same renamed unit');
+  assertEqual(App.explorationActorId, ally.id, 'Single actor selection should survive the display-name change');
+  assertEqual(App.explorationActorIds[0], ally.id, 'Group actor selection should survive the display-name change');
+  assertEqual(App.explorationTargetIds[0], `party:${ally.id}`, 'Party target selection should survive the display-name change');
+  assertContains(App.log[App.log.length - 1].text, 'Wolfkin asks the party to call them Ash', 'Successful rename should be narrated rather than shown as a generic success alert');
+  assertEqual(App.renamePartyMember('rename-stable-ally', 'Juniper'), true, 'A companion with an established stable id should also be renameable');
+  assertEqual(stableAlly.id, 'rename-stable-ally', 'Renaming must never replace an established companion id');
+  assertEqual(stableAlly.equipment.accessory1.name, 'Focus Ring', 'Renaming should preserve the companion loadout');
+  assertEqual(stableAlly.companionBehavior.recruitmentContinuity.source, 'quest', 'Renaming should preserve companion history metadata');
+  html = holdingsHtml(elements);
+  assertContains(html, 'value="Ash"', 'The refreshed desktop/mobile Holdings surface should show the new name');
+  assertContains(html, `App.renamePartyMember('${ally.id}'`, 'The refreshed rename form should use the stable unit id');
+
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  const savedAlly = loaded.party[1];
+  assertEqual(savedAlly?.name, 'Ash', 'The renamed display name should survive binary save serialization');
+  assertEqual(savedAlly?.species, 'wolf', 'Renaming should not alter species identity');
+  assertEqual(loaded.questState.partyUnitRefs[1]?.id, ally.id, 'The compatibility companion stable id should survive in additive save metadata');
+  const savedStableAlly = loaded.party[2];
+  assertEqual(savedStableAlly?.name, 'Juniper', 'An established-id rename should survive binary save serialization');
+  assertEqual(loaded.questState.partyUnitRefs[2]?.id, 'rename-stable-ally', 'An established companion id should survive in additive save metadata');
+  assertEqual(loaded.questState.partyEquipment[2]?.accessory1?.name, 'Focus Ring', 'Companion loadouts should survive the same save round trip');
+  assertEqual(loaded.questState.partyRecruitmentContinuity['rename-stable-ally']?.source, 'quest', 'Companion history should survive the same save round trip');
+});
+
+test('Shared Pack companion loadout controls equip and unequip the selected owner', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-equip-owner' });
   const ally = makeUnit('Ally', { id: 'ally-equip-owner', con: 8, equipment: { body: null } });
@@ -30382,6 +30456,12 @@ test('Legacy Holdings equip seam can still target a companion owner directly', (
 
   App.showInventory();
   App.setHoldingsOwner('ally-equip-owner');
+  assertContains(holdingsHtml(elements), 'Equip Hide Armor to Ally', 'Companion loadout selection should be visible before committing equipment');
+  assertContains(holdingsHtml(elements), "App.equipItem('armor-owner','ally-equip-owner')", 'Companion loadout button should dispatch to the selected stable owner id');
+  App.combatState.active = true;
+  App.refreshHoldingsWindow();
+  assertContains(holdingsHtml(elements), 'data-command-mode="combat" data-command-control="equip-item"', 'The same companion loadout control should remain classified and usable during combat');
+  App.combatState.active = false;
   App.equipItem('armor-owner', 'ally-equip-owner');
   assertEqual(ally.equipment.body.name, 'Hide Armor', 'Equip should place the item on the selected companion');
   assertEqual(ally.con, 11, 'Companion equipment bonus should apply to the companion stats');
@@ -30393,6 +30473,14 @@ test('Legacy Holdings equip seam can still target a companion owner directly', (
   assertEqual(ally.con, 8, 'Unequip should restore companion baseline stats');
   assertEqual(App.inventory[0].name, 'Hide Armor', 'Unequipped companion item should return to shared pack');
   assertEqual(App.log[App.log.length - 1].text, 'Unequipped Hide Armor from Ally.', 'Unequip feedback should name the selected companion');
+
+  assertEqual(App.equipItem('armor-owner', 'missing-owner'), false, 'A stale loadout recipient should not silently equip the player instead');
+  assertContains(App.log[App.log.length - 1].text, 'intended companion is no longer available', 'A stale loadout recipient should receive narrative feedback');
+  App.equipItem('armor-owner', 'ally-equip-owner');
+  App.inventory = Array.from({ length: App.MAX_INVENTORY }, (_, index) => ({ id: `loadout-full-${index}`, name: `Packed ${index}` }));
+  assertEqual(App.unequipItem('body', 'ally-equip-owner'), false, 'A full shared Pack should leave the companion loadout intact');
+  assertEqual(ally.equipment.body.name, 'Hide Armor', 'Failed unequip should preserve the equipped item');
+  assertContains(App.log[App.log.length - 1].text, 'keeps Hide Armor equipped because the shared Pack has no room', 'Full-Pack failure should be narrated in-world');
 });
 
 test('Holdings contained detail preserves selected companion owner on Back and release routes', () => {
@@ -30638,6 +30726,36 @@ test('Equipment state persists through binary saves', () => {
   const loaded = Binary.loadGame(Binary.saveGame(App));
   assertEqual(loaded.questState.playerEquipment.head.name, 'Leather Cap', 'Equipped item should persist in save metadata');
   assertEqual(loaded.questState.playerEquipmentBaseStats.con, 10, 'Equipment baseline stats should persist in save metadata');
+});
+
+test('Companion loadouts restore through the binary slot load path', async () => {
+  const Binary = loadBinaryForTest();
+  const saved = loadAppForCombat(() => 0.5, { binary: Binary });
+  const player = makeUnit('You', { id: 'loadout-save-player' });
+  const ally = makeUnit('Juniper', {
+    id: 'loadout-save-ally',
+    con: 12,
+    equipment: { accessory1: { id: 'loadout-focus-ring', name: 'Focus Ring' } },
+    equipmentBaseStats: { str: 10, con: 12, spd: 10, int: 10, wis: 10, cha: 10, Figh: 10, Feas: 10, Flir: 10, Fuck: 10, Flee: 10, Feed: 10 }
+  });
+  saved.App.player = player;
+  saved.App.party = [player, ally];
+  saved.App.location = { x: 0, y: 0 };
+  saved.App.currentBiome = 'grove';
+  saved.App.worldMeta = { worldId: 'loadout-world', seed: 'loadout-seed', generatorVersion: 7, mapModsHash: 'core' };
+  saved.App.worldMap = new Map([['0,0', { ...saved.App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [], items: [] }]]);
+  saved.App.exploredTiles = new Set(['0,0']);
+  saved.App.inventory = [];
+  const bytes = Binary.saveGame(saved.App);
+
+  const restored = loadAppForCombat(() => 0.5, { binary: Binary });
+  restored.App._dbGet = async () => bytes;
+  restored.App.loadWorldStateFromMapStore = async () => {};
+  assertEqual(await restored.App.loadFromSlot('slot1'), true, 'A save containing a companion loadout should load normally');
+  const restoredAlly = restored.App.party.find(unit => unit.id === 'loadout-save-ally');
+  assertEqual(restoredAlly?.name, 'Juniper', 'The companion stable identity should restore before loadout ownership is applied');
+  assertEqual(restoredAlly?.equipment?.accessory1?.name, 'Focus Ring', 'The companion loadout should restore to the same stable party member');
+  assertEqual(restoredAlly?.equipmentBaseStats?.con, 12, 'The companion equipment baseline should restore without stat drift');
 });
 
 test('Perk tree queues player choices on level up instead of random perks', () => {
@@ -33885,7 +34003,7 @@ test('Desktop card intent menus stay suppressed for composer-owned actions', () 
   assertContains(appContent, 'closeMobileContextMenu() {\n                return this.closeIntentMenu();', 'Legacy mobile context close method should delegate to the shared intent close handler');
   assert(App._focusTrap, 'Desktop sub-action intent menus should activate the shared focus trap');
   assertContains(body.innerHTML, 'aria-describedby="desktop-intent-menu-title-description"', 'Desktop sub-action dialog should reference its visible purpose description');
-  assertContains(body.innerHTML, 'Choose a Talk option. Availability clues describe likely limits before the attempt.', 'Desktop sub-action dialog should explain the attempt-clue contract');
+  assertContains(body.innerHTML, 'Choose an option for Talk. Availability clues describe likely limits before the attempt.', 'Desktop sub-action dialog should explain the attempt-clue contract');
   assertEqual(elements.get('app').hasAttribute('inert'), true, 'Modal sub-action menus should make the underlying app inert');
   assertEqual(elements.get('app').getAttribute('aria-hidden'), 'true', 'Modal sub-action menus should hide the underlying app from assistive technology');
   assert(listeners.has('keydown'), 'Desktop intent menus should register keyboard focus handling');

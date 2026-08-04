@@ -35,8 +35,11 @@ The current implementation uses adapter helpers over existing fields. It does no
 
 - Inventory/Pack item controls remain Use, Equip, Drop, Buy, Sell, Loot, and related item actions.
 - Holdings exposes a party-owner selector. Stats, Equipped, and Containers render for the selected party owner. Switching owners preserves the active tab where possible and falls back to the player if the previous owner leaves.
-- Pack remains shared and player-owned in the visible core UI. The Pack tab disables non-player owner chips and always shows the player/shared Pack owner.
-- Equipping from Pack equips to the player in the visible core UI. Companion equip-from-Pack remains a deferred/compatibility-only path until companion equipment management gets a deliberate flow outside Pack.
+- Pack remains shared. Selecting a party owner on the Pack tab chooses the
+  recipient of Equip actions; it does not create or imply a companion backpack.
+- Equipping from Pack updates the selected owner's slot-based loadout. An
+  explicitly stale recipient leaves the item untouched and produces narrative
+  feedback instead of silently falling back to the player.
 - Unequipping from a selected owner returns the item to the shared Pack when inventory capacity allows.
 - Pack should be labeled as shared. Core does not expose per-companion backpacks.
 - Equipped items remain owner slot-based and are not loose pack items until unequipped.
@@ -48,6 +51,11 @@ The current implementation uses adapter helpers over existing fields. It does no
 - Mobile actor/target picker rails reserve their first slot for Details/Menu access. Bulky Clear/Close chips do not belong in the rail; clearing should happen through composer slot controls, selected-chip toggles, dock toggles, or other non-bulky affordances.
 - Side panels and mobile rails are tactical summary surfaces, not management surfaces. Expanded party/creature cards may show compact vitals, row/role, equipment summary, and container capacity/contents summary, but full Stats, Equipment, Pack, Containers, Release, Digest, and Inspect management belongs in Holdings.
 - Party-card Stats/Details routes should open Holdings for the selected owner instead of rendering a full stats or inventory page inside the narrow rail.
+- A companion's Stats tab owns party-facing renaming. Names must be non-empty,
+  unique within the party without case sensitivity, and at most 32 characters.
+  Renaming preserves or establishes a stable unit ID before changing display
+  text, retains species/history/equipment, survives saves, and reports accepted
+  or rejected attempts through narration.
 - The Holdings Containers tab owns detailed container sections. It should not repeat a nested "Containers" heading inside the Containers tab; the visible section headers should be concrete containers such as Belly, Inner, Reserve, or modded container names.
 
 ## Compatibility And Modding

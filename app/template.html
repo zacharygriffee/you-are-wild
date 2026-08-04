@@ -6007,6 +6007,30 @@
             font-size: 24px;
         }
 
+        .party-rename-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: end;
+            margin: 0 0 12px;
+            padding: 12px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(10, 20, 36, 0.48);
+        }
+
+        .party-rename-form label {
+            display: grid;
+            gap: 5px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .party-rename-form .holding-entry-meta {
+            grid-column: 1 / -1;
+        }
+
         .holdings-stat-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6277,6 +6301,14 @@
 
             .holdings-stat-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .party-rename-form {
+                grid-template-columns: 1fr;
+            }
+
+            .party-rename-form .nav-btn {
+                min-height: 44px;
             }
 
             .transaction-columns,

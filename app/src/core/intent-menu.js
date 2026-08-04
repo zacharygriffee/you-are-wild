@@ -165,7 +165,7 @@ const YAW_INTENT_MENU = {
         }).join('');
         const backLabel = app._escapeHtml(app._label('ui.back', 'Back'));
         const descriptionId = `${surface.titleId}-description`;
-        const description = app._escapeHtml(app._label('variant.dialogDescription', 'Choose a {action} option. Availability clues describe likely limits before the attempt.', {
+        const description = app._escapeHtml(app._label('variant.dialogDescription', 'Choose an option for {action}. Availability clues describe likely limits before the attempt.', {
             action: app._uiLabel(action)
         }));
         const cancelCall = context.cancelCall || 'App.closeIntentMenu()';

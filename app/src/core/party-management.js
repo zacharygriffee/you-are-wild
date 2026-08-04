@@ -94,6 +94,118 @@ const YAW_PARTY_MANAGEMENT = {
         return YAW_COMPANION_BEHAVIOR.hasProviderController(app);
     },
 
+    feedback(app, text, unit = null, tags = []) {
+        app.log = app.log || [];
+        app.log.push({ text, type: 'discovery' });
+        app.emitSceneBeat?.({
+            mode: app.combatState?.active ? 'combat' : 'adventure',
+            actors: [unit].filter(Boolean),
+            targets: [],
+            action: 'party-management',
+            tags: ['party-management', ...tags],
+            source: 'party-management'
+        }, text, {
+            resultKind: tags.includes('renamed') ? 'success' : 'feedback',
+            importance: tags.includes('renamed') ? 'notable' : 'hint',
+            tags: ['party-management', ...tags],
+            source: 'party-management'
+        });
+        app.renderLog?.();
+        return false;
+    },
+
+    remapUnitReferenceState(app, oldId, newId) {
+        if (!oldId || oldId === newId) return;
+        const replace = value => String(value || '') === String(oldId) ? newId : value;
+        const replacePartyTarget = value => String(value || '') === `party:${oldId}` ? `party:${newId}` : value;
+        app.partyLeaderId = replace(app.partyLeaderId);
+        app.explorationActorId = replace(app.explorationActorId);
+        app.explorationActorIds = (app.explorationActorIds || []).map(replace);
+        app.explorationTargetIds = (app.explorationTargetIds || []).map(replacePartyTarget);
+        app.combatTargetId = replace(app.combatTargetId);
+        app.combatTargetIds = (app.combatTargetIds || []).map(replace);
+        for (const state of [app.targetSelection, app.syncSelection, app.combatPlanSelection, app.feedSelection]) {
+            if (!state) continue;
+            state.actorId = replace(state.actorId);
+            state.targetId = replace(state.targetId);
+            if (Array.isArray(state.actorIds)) state.actorIds = state.actorIds.map(replace);
+            if (Array.isArray(state.targetIds)) state.targetIds = state.targetIds.map(replace);
+            if (Array.isArray(state.participantIds)) state.participantIds = state.participantIds.map(replace);
+        }
+    },
+
+    ensureStableUnitId(app, unit) {
+        if (unit?.id != null && String(unit.id)) return String(unit.id);
+        const oldId = app._unitSelectionId?.(unit) || unit?.name || '';
+        const baseName = String(unit?.species || unit?.name || 'companion')
+            .normalize('NFKD')
+            .replace(/[^a-zA-Z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .toLowerCase()
+            .slice(0, 32) || 'companion';
+        const used = new Set([...(app.party || []), ...(app.creatures || [])]
+            .map(candidate => candidate?.id)
+            .filter(value => value != null)
+            .map(String));
+        let suffix = 1;
+        let id = `party-${baseName}-${suffix}`;
+        while (used.has(id)) id = `party-${baseName}-${++suffix}`;
+        unit.id = id;
+        this.remapUnitReferenceState(app, oldId, id);
+        return id;
+    },
+
+    rename(app, ownerId, proposedName) {
+        const wanted = String(ownerId ?? '');
+        const unit = (app.party || []).find((candidate, index) => (
+            app._unitSelectionId(candidate) === wanted
+            || String(candidate?.id || '') === wanted
+            || `party:${index}` === wanted
+            || `name:${candidate?.name || ''}` === wanted
+        ));
+        if (!unit || !(app.party || []).includes(unit)) {
+            return this.feedback(app, app._label('party.renameMissing', 'That companion is no longer with the party, so the name remains unchanged.'), null, ['rename-failed', 'missing-companion']);
+        }
+        if (unit === app.player || unit.mc) {
+            return this.feedback(app, app._label('party.renamePlayerUnavailable', 'Your own name remains part of your character identity.'), unit, ['rename-failed', 'player']);
+        }
+        const oldName = unit.name || app._label('unit.partyMember', 'That companion');
+        const nextName = String(proposedName ?? '')
+            .replace(/[\u0000-\u001f\u007f]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (!nextName) {
+            return this.feedback(app, app._label('party.renameEmpty', '{name} does not answer to an empty name.', { name: oldName }), unit, ['rename-failed', 'empty-name']);
+        }
+        if ([...nextName].length > 32) {
+            return this.feedback(app, app._label('party.renameTooLong', '{name} cannot settle on a name that long.', { name: oldName }), unit, ['rename-failed', 'long-name']);
+        }
+        const duplicate = (app.party || []).find(candidate => candidate !== unit
+            && String(candidate?.name || '').trim().toLocaleLowerCase() === nextName.toLocaleLowerCase());
+        if (duplicate) {
+            return this.feedback(app, app._label('party.renameDuplicate', '{name} pauses; someone in the party already answers to {newName}.', {
+                name: oldName,
+                newName: nextName
+            }), unit, ['rename-failed', 'duplicate-name']);
+        }
+        if (oldName === nextName) return true;
+        const holdingsOwner = typeof YAW_HOLDINGS !== 'undefined' && app.holdingsWindow
+            ? YAW_HOLDINGS.ownerById(app, app.holdingsWindow.ownerId, { fallback: false })
+            : null;
+        const stableId = this.ensureStableUnitId(app, unit);
+        unit.name = nextName;
+        if (app.holdingsWindow && holdingsOwner === unit) app.holdingsWindow.ownerId = stableId;
+        const text = app._label('party.renamed', '{oldName} asks the party to call them {newName}.', { oldName, newName: nextName });
+        this.feedback(app, text, unit, ['renamed']);
+        app.renderParty?.();
+        app.renderCenterPresence?.();
+        if (app.combatState?.active) app.renderCombatSceneForTurn?.(app._currentCombatActor?.());
+        app.markAutoSaveDirty?.(['manifest', 'party', 'quests', 'combat', 'sceneFeed', 'activityLog'], 'party-rename');
+        app.autoSave?.();
+        if (typeof YAW_HOLDINGS !== 'undefined') YAW_HOLDINGS.refresh(app);
+        return true;
+    },
+
     preferredRowLabel(app, preferredRow) {
         const key = app.PARTY_PREFERRED_ROWS?.[preferredRow] ? preferredRow : 'auto';
         return app._label(`party.preferredRow.${key}`, app.PARTY_PREFERRED_ROWS?.[key]?.label || key);

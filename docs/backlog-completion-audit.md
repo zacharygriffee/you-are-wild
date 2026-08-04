@@ -55,11 +55,11 @@ operator-mediated decision:
 Core still contains compatibility-era internal labels for possible Fight and
 Flee sub-actions. The public action-variant contract admits Feed, Feast, Talk,
 and Play; Combat Technique V1 separately admits declarative named Fight
-profiles without callbacks. Talk now exposes Flirt and Dance as visible social
-approaches that share one resolver: the same cost, reach, Spirit, recruitment,
-and combat outcome contract applies, while the chosen approach remains part of
-the command/presentation context. Play approaches likewise route through the
-same Play resolver unless an explicitly authored Action Profile owns one.
+profiles without callbacks. Talk exposes one ordinary Flirt approach plus the
+mechanically distinct Mature Seduce approach. Legacy Dance defaults and queued
+commands migrate to Flirt before resolution. Play exposes only its implemented
+core approach; Dominate and Submit remain deferred until an explicitly authored
+Action Profile owns a complete distinct contract.
 
 Disarm, Grapple, Gift, Retreat, and Surrender must not become visible or
 moddable merely because a definition exists: each would require authored

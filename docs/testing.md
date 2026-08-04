@@ -12,10 +12,11 @@ npm run lint
 npm run check
 npm run test:viewport
 npm run test:interactions
+npm run test:alpha
 npm run full-build
 ```
 
-Run `npm run full-build` before committing. It cleans and rebuilds `dist/you-are-wild.html`, runs the unit/structure suite, lints source ordering, checks generated output, and runs viewport plus combat interaction checks.
+Run `npm run full-build` before committing. It cleans and rebuilds `dist/you-are-wild.html`, runs the unit/structure suite, lints source ordering, checks generated output, and runs viewport, combat-interaction, and Alpha Lab checks.
 
 ## CI
 
@@ -61,8 +62,12 @@ The browser-style checks cover:
 - combat interaction behavior
 - center play-surface constraints
 - composer-first combat behavior
+- deterministic Alpha Lab fixtures on desktop and mobile
+- isolated Alpha save/world storage and public report controls
 
 These checks are still targeted rather than exhaustive. Add focused tests when changing shared mechanics, persistence, module validation, content gating, panel interactions, or generated-template structure.
+
+The public-tester and browser-agent contract is documented in `docs/alpha-playtesting.md`.
 
 ## Save Persistence Checks
 

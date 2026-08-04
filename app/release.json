@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "version": "0.18.1",
+  "version": "0.18.2",
   "status": "released",
-  "releasedAt": "2026-08-03",
+  "releasedAt": "2026-08-04",
   "channel": "alpha",
   "saveSchema": 11,
   "moduleApi": 1,
@@ -20,6 +20,8 @@
   "notes": {
     "en": {
       "added": [
+        "Alpha Lab adds eight isolated guided missions for interaction, group, self-containment, combat, narration, companion, content-posture, and responsive playtesting, with review-before-share diagnostic reports.",
+        "Deterministic Alpha scenario URLs and the maintained browser-agent matrix make the same prepared states reproducible locally and in CI without touching ordinary adventure saves.",
         "Moddable Core V1 adds owned data-only action, status, restraint, equipment, body-mass, biome-recipe, audio-pack, and immutable post-commit outcome contracts.",
         "Action Resolver V1 provides deterministic costs, checks, effects, semantic structure requirements, and one scalable action catalog for core and module actions.",
         "Grab, Pull, and Escape establish source-target restraint relationships, while appetite-gated Seduce can make a target recruitment-ready and withdraw both participants from combat.",
@@ -29,6 +31,8 @@
         "Native hosts can expose a host-owned desktop settings window for updates and peer availability without granting those controls to game modules."
       ],
       "changed": [
+        "Talk, Play, Fight, Eat, and Feed now follow the canonical interaction and sub-action presentation across exploration, combat, single-actor, group, and self-selection contexts.",
+        "Party Holdings supports bounded companion renaming and shared-Pack loadout management while preserving stable companion identity and save references.",
         "Ghost pilgrimage is now the conservative default recovery mode; Regenerate and owned Recovery Mode V1 profiles remain available.",
         "Automatic combat events can use readable, fast, or instant presentation pacing without changing turn order, simulation time, saves, or immediate player commands.",
         "Merchants now declare finite or authored-restock lifecycles instead of silently replenishing depleted finite stock.",
@@ -37,6 +41,7 @@
         "Contributed combat actions collapse into a bounded upward-opening menu on compact mobile layouts while remaining directly discoverable on larger surfaces."
       ],
       "fixed": [
+        "Alpha reports identify the exact release, source revision, viewport, fixture, and bounded recent Scene context without automatic submission.",
         "Committed module outcomes are deeply frozen, serializable, credential-redacted observations that cannot veto or rewrite resolved actions.",
         "Disabling or deleting a module removes its active definitions, relationships, leases, and uncommitted runtime state without rewriting committed history.",
         "Biome recipes affect only matching unmaterialized tiles, and sparse materialized geography remains pinned across module removal and save reload.",
@@ -57,6 +62,8 @@
     },
     "es": {
       "added": [
+        "Laboratorio Alfa agrega ocho misiones aisladas para probar interacciones, grupos, contencion propia, combate, narracion, companeros, postura de contenido y diseno adaptable, con informes revisables antes de compartir.",
+        "Las URL deterministas de escenarios Alfa y la matriz mantenida para agentes de navegador hacen reproducibles los mismos estados sin tocar partidas normales.",
         "Moddable Core V1 agrega contratos propios y basados en datos para acciones, estados, restricciones, equipo, masa corporal, recetas de bioma, paquetes de audio y resultados inmutables posteriores a la confirmacion.",
         "Action Resolver V1 ofrece costes, pruebas, efectos y requisitos semanticos de estructuras deterministas en un catalogo escalable para acciones centrales y de modulos.",
         "Agarrar, Tirar y Escapar establecen relaciones entre origen y objetivo; Seducir requiere apetito, puede preparar el reclutamiento y retira a ambos participantes del combate.",
@@ -66,6 +73,8 @@
         "Los hosts nativos pueden mostrar una ventana propia de ajustes de escritorio sin entregar controles nativos a los modulos."
       ],
       "changed": [
+        "Hablar, Jugar, Luchar, Comer y Alimentar siguen la presentacion canonica de interacciones y subacciones en exploracion, combate, actores individuales, grupos y seleccion propia.",
+        "Pertenencias del grupo permite renombrar companeros y gestionar equipo desde una Mochila compartida sin cambiar su identidad estable ni referencias guardadas.",
         "La peregrinacion fantasmal ahora es la recuperacion conservadora predeterminada; Regenerar y los perfiles propios de Recovery Mode V1 siguen disponibles.",
         "Los eventos automaticos de combate pueden usar ritmo legible, rapido o instantaneo sin cambiar turnos, tiempo simulado, partidas ni ordenes inmediatas.",
         "Los mercaderes declaran inventario finito o reposicion escrita en lugar de rellenar silenciosamente existencias finitas.",
@@ -74,6 +83,7 @@
         "Las acciones aportadas se agrupan en un menu limitado que se abre hacia arriba en pantallas moviles compactas."
       ],
       "fixed": [
+        "Los informes Alfa identifican la version, revision de origen, ventana, escenario y contexto reciente limitado de Escena sin envio automatico.",
         "Los resultados confirmados de modulos son observaciones serializables, inmutables y sin credenciales que no pueden vetar ni reescribir acciones resueltas.",
         "Desactivar o borrar un modulo elimina sus definiciones, relaciones, recursos multimedia y estado no confirmado sin reescribir la historia confirmada.",
         "Las recetas de bioma solo afectan casillas compatibles no materializadas; la geografia materializada permanece fijada tras eliminar un modulo o recargar.",

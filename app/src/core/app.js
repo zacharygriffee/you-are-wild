@@ -1408,6 +1408,9 @@
                 console.log('App.init() - Mechanics Overhaul');
                 const hasPlayed = this._getStoredValue('hasPlayed');
                 const showFirstRunTutorial = !hasPlayed;
+                const requestedAlphaScenario = typeof YAW_ALPHA_LAB !== 'undefined'
+                    ? YAW_ALPHA_LAB.requestedScenario()
+                    : '';
                 if (showFirstRunTutorial) this._setStoredValue('hasPlayed', 'true');
                 // Load saved settings
                 try {
@@ -1447,7 +1450,8 @@
                 this._syncEncounterPreferenceUI();
                 this.showScreen('menu');
                 this.syncReleaseUI();
-                if (showFirstRunTutorial) this.showTutorial();
+                if (showFirstRunTutorial && !requestedAlphaScenario) this.showTutorial();
+                if (requestedAlphaScenario) setTimeout(() => YAW_ALPHA_LAB.launchFromUrl(this), 0);
             },
 
             initSpeciesGrid() {
@@ -6311,7 +6315,7 @@
                 return closed;
             },
             isOverlayScreen(name) {
-                return ['settings', 'providers', 'mods', 'market', 'release', 'activity'].includes(String(name || ''));
+                return ['settings', 'providers', 'mods', 'market', 'release', 'activity', 'alpha'].includes(String(name || ''));
             },
             openOverlayScreen(name) {
                 const target = String(name || '');
@@ -6393,6 +6397,9 @@
                 } else if (name === 'activity') {
                     document.getElementById('app').style.display = 'none';
                     this.renderLog();
+                } else if (name === 'alpha') {
+                    document.getElementById('app').style.display = 'none';
+                    YAW_ALPHA_LAB.render(this);
                 } else if (name === 'market') {
                     document.getElementById('app').style.display = 'none';
                     if (typeof MODULE_MARKETPLACE !== 'undefined' && MODULE_MARKETPLACE.ui && MODULE_MARKETPLACE.ui.showMarketplace) { try { MODULE_MARKETPLACE.ui.showMarketplace(); } catch(e) {} }
@@ -6401,7 +6408,7 @@
                     document.getElementById('save-manager').classList.add('active');
                     this.renderSaveManager();
                 }
-                const overlayId = name === 'save-manager' ? 'save-manager' : ['settings', 'providers', 'mods', 'market', 'release', 'activity'].includes(name) ? `screen-${name}` : '';
+                const overlayId = name === 'save-manager' ? 'save-manager' : this.isOverlayScreen(name) ? `screen-${name}` : '';
                 if (overlayId) this._activateFocusTrap(document.getElementById(overlayId), { close: () => this.returnToGame() });
             },
             returnToGame() {
@@ -6418,7 +6425,7 @@
                 this._restoreFocusTrap({ restoreFocus: false });
                 const returnScreen = this.settingsReturnScreen;
                 this.settingsReturnScreen = null;
-                ['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'screen-release', 'screen-activity', 'save-manager'].forEach(id => {
+                ['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'screen-release', 'screen-activity', 'screen-alpha', 'save-manager'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) { el.style.display = 'none'; el.classList.remove('active'); }
                 });
@@ -6719,6 +6726,30 @@
             },
             showActivityLogScreen() {
                 return this.openOverlayScreen('activity');
+            },
+            showAlphaLab(reportMode = false) {
+                return YAW_ALPHA_LAB.show(this, reportMode);
+            },
+            launchAlphaScenario(scenarioId) {
+                return YAW_ALPHA_LAB.launch(this, scenarioId);
+            },
+            exitAlphaScenario() {
+                return YAW_ALPHA_LAB.exit(this);
+            },
+            setAlphaOutcome(outcome) {
+                return YAW_ALPHA_LAB.setOutcome(this, outcome);
+            },
+            setAlphaChecklist(index, checked) {
+                return YAW_ALPHA_LAB.setChecklist(this, index, checked);
+            },
+            prepareAlphaReport() {
+                return YAW_ALPHA_LAB.prepareReport(this);
+            },
+            copyAlphaReport() {
+                return YAW_ALPHA_LAB.copyReport(this);
+            },
+            openAlphaIssue() {
+                return YAW_ALPHA_LAB.openIssue(this);
             },
             releaseInfo() {
                 return window.YAW_RELEASE || {

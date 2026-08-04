@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const ROOT_DIR = path.join(__dirname, '..');
 const SRC_DIR = path.join(__dirname, 'src');
@@ -31,6 +32,20 @@ const FIRST_PARTY_PACKAGE_MIRRORS = [
 ];
 const SITE_RELEASE_MIRROR = path.join(ROOT_DIR, 'site', 'release.json');
 const SITE_HOST_MANIFEST = path.join(ROOT_DIR, 'site', 'public', 'yaw-host.json');
+
+function loadBuildId() {
+  const ciRevision = String(process.env.GITHUB_SHA || '').trim();
+  if (ciRevision) return ciRevision.slice(0, 12);
+  try {
+    return execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], {
+      cwd: ROOT_DIR,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim() || 'unknown';
+  } catch (_error) {
+    return 'unknown';
+  }
+}
 
 function loadRelease() {
   let release;
@@ -240,6 +255,7 @@ const SCRIPT_ORDER = [
   'src/core/combat-scene.js',
   'src/core/scene-shell.js',
   'src/core/combat-save-state.js',
+  'src/core/alpha-lab.js',
   'src/core/app.js',
   'src/ui/settings-nav.js',
   'src/core/module-system.js',
@@ -306,9 +322,9 @@ function lint() {
   return errors === 0;
 }
 
-function tilesetBootstrap(release, mode = 'embedded') {
+function tilesetBootstrap(release, mode = 'embedded', buildId = 'unknown') {
   const graphicsMode = "new URLSearchParams(window.location.search).get('graphics') === 'emoji' ? 'emoji' : 'tileset'";
-  const commonStart = `window.YAW_RELEASE = Object.freeze(${JSON.stringify(release)});\nwindow.YAW_GRAPHICS_MODE = ${graphicsMode};\nwindow.YAW_BUNDLED_TILESET_URL = '';\nwindow.YAW_BUNDLED_TILESET_OVERLAY_URL = '';\nwindow.YAW_BUNDLED_TILESET_MATERIAL_URL = '';`;
+  const commonStart = `window.YAW_RELEASE = Object.freeze(${JSON.stringify(release)});\nwindow.YAW_BUILD_ID = ${JSON.stringify(buildId)};\nwindow.YAW_GRAPHICS_MODE = ${graphicsMode};\nwindow.YAW_BUNDLED_TILESET_URL = '';\nwindow.YAW_BUNDLED_TILESET_OVERLAY_URL = '';\nwindow.YAW_BUNDLED_TILESET_MATERIAL_URL = '';`;
   const disabledResult = `if (window.YAW_GRAPHICS_MODE === 'emoji') return Promise.resolve({ disabled: true, mode: 'emoji' });`;
 
   if (mode === 'external') {
@@ -342,7 +358,7 @@ function renderHtml(options = {}) {
 
   const release = loadRelease();
   if (!fs.existsSync(BUNDLED_TILESET) || !fs.existsSync(BUNDLED_TILESET_OVERLAYS) || !fs.existsSync(BUNDLED_TILESET_MATERIALS)) throw new Error('Bundled Tileset Pack atlas is missing');
-  const scripts = [tilesetBootstrap(release, options.tilesetMode)];
+  const scripts = [tilesetBootstrap(release, options.tilesetMode, loadBuildId())];
   let totalLines = 0;
 
   for (const relPath of SCRIPT_ORDER) {

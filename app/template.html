@@ -10070,6 +10070,119 @@
             background: var(--border-strong);
             border-radius: var(--radius-sm);
         }
+
+        .alpha-session-banner {
+            position: fixed;
+            top: 68px;
+            left: 50%;
+            z-index: 190;
+            transform: translateX(-50%);
+            width: min(760px, calc(100vw - 32px));
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 10px;
+            color: var(--text-primary);
+            background: color-mix(in srgb, var(--bg-secondary) 94%, var(--accent-primary));
+            border: 1px solid var(--accent-primary);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+        }
+        .alpha-session-banner[hidden] { display: none; }
+        .alpha-session-actions,
+        .alpha-report-actions,
+        .alpha-outcome-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .alpha-lab-shell {
+            width: min(1120px, 100%);
+            box-sizing: border-box;
+            margin: 0 auto;
+            padding: 24px;
+            overflow-y: auto;
+            max-height: 100dvh;
+        }
+        .alpha-lab-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .alpha-lab-header h1 { color: var(--accent-primary); margin: 0 0 6px; }
+        .alpha-lab-header p,
+        .alpha-lab-intro { color: var(--text-muted); margin: 0; }
+        .alpha-lab-intro { margin-bottom: 18px; }
+        .alpha-mission-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+            gap: 14px;
+            padding-bottom: max(24px, env(safe-area-inset-bottom));
+        }
+        .alpha-mission-card,
+        .alpha-report-panel {
+            min-width: 0;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+        }
+        .alpha-mission-card.active { border-color: var(--accent-primary); }
+        .alpha-mission-heading { display: flex; align-items: flex-start; gap: 12px; }
+        .alpha-mission-heading h2,
+        .alpha-report-panel h2 { margin: 0 0 8px; color: var(--text-primary); font-size: 17px; }
+        .alpha-mission-heading p,
+        .alpha-report-panel p { margin: 0 0 12px; color: var(--text-secondary); line-height: 1.45; }
+        .alpha-mission-icon { font-size: 24px; line-height: 1; }
+        .alpha-mission-card details { margin: 10px 0 14px; color: var(--text-secondary); }
+        .alpha-mission-card summary { cursor: pointer; color: var(--accent-primary); }
+        .alpha-mission-card li { margin: 6px 0; line-height: 1.4; }
+        .alpha-mission-card > .action-btn { width: 100%; }
+        .alpha-report-panel { margin-bottom: 18px; border-color: var(--accent-secondary); }
+        .alpha-checklist { display: grid; gap: 8px; margin: 14px 0; }
+        .alpha-check-row { display: flex; align-items: flex-start; gap: 9px; line-height: 1.4; }
+        .alpha-check-row input { margin-top: 3px; }
+        .alpha-notes-label { display: block; margin: 12px 0 6px; color: var(--text-secondary); }
+        #alpha-report-notes {
+            width: 100%;
+            box-sizing: border-box;
+            resize: vertical;
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            padding: 10px;
+        }
+        .alpha-report-actions { margin-top: 10px; }
+        .alpha-report-preview {
+            max-height: 320px;
+            overflow: auto;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            padding: 12px;
+            color: var(--text-secondary);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+        }
+        @media (max-width: 640px) {
+            .alpha-session-banner {
+                top: 64px;
+                align-items: flex-start;
+                width: calc(100vw - 16px);
+                font-size: 12px;
+            }
+            .alpha-session-actions .nav-btn { padding: 5px 7px; font-size: 11px; }
+            .alpha-lab-shell { padding: 16px 12px; }
+            .alpha-lab-header { align-items: stretch; }
+            .alpha-lab-header .nav-btn { flex: 0 0 auto; }
+            .alpha-report-actions > * { flex: 1 1 145px; }
+        }
     </style>
 </head>
 <body>
@@ -10108,6 +10221,9 @@
                     <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-release-notes" title="Open what's new" aria-label="Open what's new" data-i18n-title="release.openTitle" data-i18n-aria-label="release.openTitle" onclick="App.showReleaseNotes()">
                         ✨ <span data-i18n="release.whatsNew">What's New</span>
                     </button>
+                    <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-alpha-lab" title="Open Alpha Lab" aria-label="Open Alpha Lab" data-i18n-title="alpha.openTitle" data-i18n-aria-label="alpha.openTitle" onclick="App.showAlphaLab()">
+                        🧪 <span data-i18n="alpha.open">Alpha Lab</span>
+                    </button>
                 </div>
             </div>
 
@@ -10128,7 +10244,7 @@
             <div class="menu-footer">
                 <p data-i18n="ui.menu.edition">Dark mode tactical edition</p>
                 <p data-i18n="ui.menu.contentDefault">Safe content is enabled by default</p>
-                <p><span data-i18n="release.version">Version</span> <span data-release-version>0.18.1</span></p>
+                <p><span data-i18n="release.version">Version</span> <span data-release-version>0.18.2</span></p>
             </div>
         </div>
     </div>
@@ -10324,6 +10440,7 @@
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-holdings" title="Open holdings" aria-label="Open holdings" data-i18n-title="ui.nav.holdingsTitle" data-i18n-aria-label="ui.nav.holdingsTitle" onclick="App.closeAppMenu(); App.showCharacterStats()">📊 <span data-i18n="ui.holdings">Holdings</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-activity-log" title="Open activity log" aria-label="Open activity log" data-i18n-title="ui.activityLog.open" data-i18n-aria-label="ui.activityLog.open" onclick="App.closeAppMenu(); App.showActivityLogScreen()">📜 <span data-i18n="ui.activityLog">Activity Log</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-release-notes" title="Open what's new" aria-label="Open what's new" data-i18n-title="release.openTitle" data-i18n-aria-label="release.openTitle" onclick="App.closeAppMenu(); App.showReleaseNotes()">✨ <span data-i18n="release.whatsNew">What's New</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-alpha-lab" title="Open Alpha Lab" aria-label="Open Alpha Lab" data-i18n-title="alpha.openTitle" data-i18n-aria-label="alpha.openTitle" onclick="App.closeAppMenu(); App.showAlphaLab()">🧪 <span data-i18n="alpha.open">Alpha Lab</span></button>
                         <div id="module-system-utilities" class="module-system-utilities" hidden></div>
                         <button class="nav-btn" role="menuitem" data-host-catalog-entry hidden data-command-surface="app-system" data-command-mode="system" data-command-control="open-market" title="Open host catalog" aria-label="Open host catalog" data-i18n-title="market.openHostCatalogTitle" data-i18n-aria-label="market.openHostCatalogTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-mods" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
@@ -10338,6 +10455,8 @@
                     <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-holdings" title="Open holdings" aria-label="Open holdings" data-i18n-title="ui.nav.holdingsTitle" data-i18n-aria-label="ui.nav.holdingsTitle" onclick="App.showCharacterStats()">📊 <span data-i18n="ui.holdings">Holdings</span></button>
                 </nav>
             </header>
+
+            <aside id="alpha-session-banner" class="alpha-session-banner" aria-live="polite" hidden></aside>
 
             <!-- Stage -->
             <div class="stage">
@@ -10613,6 +10732,20 @@
     </div>
 
 
+    <!-- PUBLIC ALPHA PLAYTEST LAB -->
+    <div id="screen-alpha" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="alpha-lab-title" aria-describedby="alpha-lab-description">
+        <main class="alpha-lab-shell">
+            <header class="alpha-lab-header">
+                <div>
+                    <h1 id="alpha-lab-title">🧪 <span data-i18n="alpha.title">Alpha Lab</span></h1>
+                    <p id="alpha-lab-description" data-i18n="alpha.description">Prepared missions for checking behavior, clarity, and layout without risking your adventure.</p>
+                </div>
+                <button class="nav-btn" type="button" data-command-surface="alpha-lab" data-command-mode="system" data-command-control="close-alpha-lab" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
+            </header>
+            <div id="alpha-lab-content"></div>
+        </main>
+    </div>
+
     <!-- SETTINGS OVERLAY -->
     <div id="screen-settings" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-describedby="settings-description">
         <div style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
@@ -10776,7 +10909,7 @@
     <div id="screen-release" class="screen screen-overlay" role="dialog" aria-modal="true" aria-labelledby="release-notes-title" aria-describedby="release-notes-version">
         <main class="system-screen-shell" aria-labelledby="release-notes-title">
             <div class="system-screen-header">
-                <div><h1 id="release-notes-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="release.whatsNew">What's New</h1><span class="release-version-badge" id="release-notes-version">v0.18.1 · Candidate</span></div>
+                <div><h1 id="release-notes-title" style="color:var(--accent-primary);margin:0 0 8px;" data-i18n="release.whatsNew">What's New</h1><span class="release-version-badge" id="release-notes-version">v0.18.2</span></div>
                 <button class="nav-btn mobile-screen-exit-source" type="button" data-command-surface="release-notes" data-command-mode="system" data-command-control="close-release-notes" data-command-slot="exit" data-i18n="ui.close" onclick="returnToGame()">Close</button>
             </div>
             <div id="release-notes-content"></div>

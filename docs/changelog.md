@@ -4,6 +4,12 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Alpha Lab now gives public testers eight isolated, deterministic missions for
+  interaction consistency, mixed-capability groups, self-containment, combat,
+  failure narration, companion management, content posture, and responsive
+  layout. Reports are review-before-share diagnostic bundles; an exact URL
+  launcher and CI Playwright matrix exercise the same fixtures without touching
+  ordinary adventure saves.
 - Interaction vocabulary now has one canonical contract across exploration and
   combat: Talk exposes Flirt plus mechanically distinct Mature Seduce, legacy
   Dance choices migrate to Flirt, Play keeps deferred Dominate/Submit hidden,

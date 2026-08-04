@@ -6,7 +6,7 @@ belongs in `changelog.md`; requirement evidence belongs in
 
 ## Select-group alpha maintenance
 
-Version 0.18.1 is the active released select-group alpha for the accepted
+Version 0.18.2 is the active released public-access alpha for the accepted
 Moddable Core V1 boundary. Public access began on 2026-08-03 without a broader
 advertising campaign. During patch maintenance, do not add new module
 permissions, public UI slots, resolver effect types, saved schemas, media
@@ -18,7 +18,7 @@ documentation corrections, localization and accessibility fixes, and narrow
 hardening. Core gameplay remains deterministic, offline-capable, and
 independent of LLM or remote-service availability.
 
-## Immediate — 0.18.1 alpha patch maintenance
+## Immediate — 0.18.2 alpha patch maintenance
 
 1. Keep release identity synchronized across the application package,
    package lock, first-party packages, Mod Author Kit, fixtures, and tests.
@@ -70,7 +70,7 @@ demonstrated contradiction:
 
 ## Later gameplay and mod work
 
-The following remain valid backlog, but none blocks 0.18.1:
+The following remain valid backlog, but none blocks 0.18.2:
 
 - regional population aggregation and offscreen service simulation;
 - persistent merchant supply, unloading, and designed repopulation;
@@ -95,7 +95,7 @@ The following remain valid backlog, but none blocks 0.18.1:
 Commerce, paid mods, accounts, managed LLM entitlement, payment processors,
 public marketplace services, Pear seeding, mesh sidecars, and public-launch
 administration are separate tracks. They do not block this game release and
-must not be folded into 0.18.1 patch maintenance.
+must not be folded into 0.18.2 patch maintenance.
 
 ## Delivery boundary
 
@@ -112,8 +112,8 @@ operator-mediated.
 - `biome-boundary-world-recipe-v1-decision.md`
 - `body-mass-pieces-v1-decision.md`
 - `autonomous-population-v1-decision.md`
-- `release-readiness-0.18.1.md`
-- `releases/0.18.1.md`
+- `release-readiness-0.18.2.md`
+- `releases/0.18.2.md`
 - `architecture.md`
 - `backlog-completion-audit.md`
 - `control-model.md`

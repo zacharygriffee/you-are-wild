@@ -792,7 +792,7 @@ async function checkViewport(browser, name, width, height) {
     };
   });
   assert.deepStrictEqual(menuHierarchy.primary, ['start-new-game', 'open-load-slots'], `${name}: visible primary menu actions should be New and Load before a save exists`);
-  assert.deepStrictEqual(menuHierarchy.utility, ['open-settings', 'open-mods', 'open-help', 'open-activity-log', 'open-release-notes'], `${name}: utility menu actions should expose settings, mods, help, diagnostics, and release notes`);
+  assert.deepStrictEqual(menuHierarchy.utility, ['open-settings', 'open-mods', 'open-help', 'open-activity-log', 'open-release-notes', 'open-alpha-lab'], `${name}: utility menu actions should expose settings, mods, help, diagnostics, release notes, and Alpha Lab`);
   assert.strictEqual(menuHierarchy.hasDirectProviders, false, `${name}: AI Providers should be nested under Settings`);
   assert.strictEqual(menuHierarchy.hasDirectMarket, false, `${name}: Host Catalog should not be a top-level menu action`);
   assert(menuHierarchy.overflowY === 'auto' || menuHierarchy.overflowY === 'scroll', `${name}: main menu should retain a vertical scroll fallback`);

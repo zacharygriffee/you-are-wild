@@ -147,6 +147,7 @@ section('Structure Tests', 'core');
 
 const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
+const alphaLabContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'alpha-lab.js'), 'utf8');
 const startupReadinessContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'startup-readiness.js'), 'utf8');
 const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage-system.js'), 'utf8');
 const mapVisualsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'map-visuals.js'), 'utf8');
@@ -833,11 +834,11 @@ test('Native provider profiles expose bounded edit and destructive removal flows
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.18.1', 'Release manifest should identify the active patch version');
+  assertEqual(releaseInfo.version, '0.18.2', 'Release manifest should identify the active patch version');
   assertEqual(releaseInfo.status, 'released', 'The operator-approved version should be released');
   assertEqual(releaseInfo.channel, 'alpha', 'The release should retain the select-group alpha channel');
   assertEqual(Object.prototype.hasOwnProperty.call(releaseInfo, 'candidateFor'), false, 'A released alpha should not retain candidate-only metadata');
-  assertEqual(releaseInfo.releasedAt, '2026-08-03', 'The released alpha should carry its operator-assigned date');
+  assertEqual(releaseInfo.releasedAt, '2026-08-04', 'The released alpha should carry its operator-assigned date');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Moddable Core V1')), 'Release notes should describe the new bounded mechanics contracts');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Grab, Pull, and Escape')), 'Release notes should describe the restraint action slice');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('publicly accessible') && note.includes('unadvertised')), 'Release notes should disclose public access without broader promotion');
@@ -852,7 +853,7 @@ test('Release manifest is the authoritative public version and compatibility sou
 test('Elemental Species package stays within the supported species contribution boundary', () => {
   const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
   const manifest = packageData.module.manifest;
-  assertEqual(packageData.gameVersion, '0.18.1', 'Elemental package production metadata should target the current game build');
+  assertEqual(packageData.gameVersion, '0.18.2', 'Elemental package production metadata should target the current game build');
   assertEqual(manifest.minGameVersion, '0.14.0', 'Elemental package should require the doctrine-tested module surface');
   assertEqual(manifest.contentRating, 'safe', 'Elemental species identity content should remain safe-rated');
   assertEqual(manifest.permissions.length, 1, 'Elemental package should request only one capability');
@@ -9155,7 +9156,7 @@ test('Overlay close controls clear active overlay state', () => {
   assertContains(template, 'class="menu-actions"', 'Main menu actions should have a stable width-bounded container class');
   assertContains(template, '.menu-primary-actions .action-btn', 'Main menu play buttons should have a stable scoped sizing rule');
   assertContains(globalNavContent, 'return App.returnToGame();', 'global return helper should preserve App-level return context');
-  assertContains(appContent, "['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'screen-release', 'screen-activity', 'save-manager'].forEach", 'App returnToGame should close all overlay surfaces together');
+  assertContains(appContent, "['screen-settings', 'screen-providers', 'screen-mods', 'screen-market', 'screen-release', 'screen-activity', 'screen-alpha', 'save-manager'].forEach", 'App returnToGame should close all overlay surfaces together');
   assertContains(appContent, "el) { el.style.display = 'none'; el.classList.remove('active'); }", 'App returnToGame should clear active class from closed overlays');
   assertContains(template, 'onclick="App.openSettingsFromMenu()"', 'Main menu Settings should preserve menu return context');
   assertContains(settingsFlowContent, "settingsReturnScreen = 'menu'", 'Settings opened from the main menu should store an explicit menu return context');
@@ -9168,6 +9169,18 @@ test('Overlay close controls clear active overlay state', () => {
   assertContains(appContent, 'this.restoreOverlayReturnFocus(returnFocus, this.screen);', 'App overlay close should restore focus only after its destination screen is visible');
   assertContains(appContent, "document.getElementById('screen-menu').classList.add('active');", 'App returnToGame should restore active menu state when no game is running');
   assertContains(appContent, "this.screen = 'menu';", 'App returnToGame should restore menu screen state when no game is running');
+});
+
+test('Alpha Lab exposes isolated public missions and deterministic agent launch URLs', () => {
+  assertContains(template, 'id="screen-alpha"', 'Alpha Lab should have a public system screen');
+  assertContains(template, 'data-command-control="open-alpha-lab"', 'Alpha Lab should be reachable through classified navigation');
+  assertContains(template, 'id="alpha-session-banner"', 'An active Alpha mission should expose report and exit controls');
+  assertContains(alphaLabContent, "SAVE_DB_NAME: 'YAW_Alpha_Saves'", 'Alpha missions should not write the ordinary save database');
+  assertContains(alphaLabContent, "WORLD_DB_NAME: 'YAW_Alpha_Worlds'", 'Alpha missions should not write the ordinary world database');
+  assertContains(alphaLabContent, "new URLSearchParams(location.search).get('alphaScenario')", 'Agent scenarios should have a stable direct URL contract');
+  assertEqual((alphaLabContent.match(/id: '[a-z-]+'/g) || []).filter(entry => entry.includes('interaction') || entry.includes('containment') || entry.includes('combat') || entry.includes('narration') || entry.includes('companion') || entry.includes('content') || entry.includes('responsive')).length, 8, 'Alpha Lab should retain the maintained eight-mission fixture set');
+  assertContains(alphaLabContent, 'share it only when you are comfortable with its contents', 'Reports should be review-before-share');
+  assertNotContains(alphaLabContent, "fetch(this.ISSUE_URL", 'Alpha reports should never submit automatically');
 });
 
 test('Settings overlay returns to a centered active main menu from the menu route', () => {

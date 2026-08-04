@@ -1,6 +1,6 @@
 {
   "name": "you-are-wild",
-  "version": "0.18.1",
+  "version": "0.18.2",
   "private": true,
   "description": "Creature-focused exploration RPG built as a single-file HTML game with modular source",
   "scripts": {
@@ -13,11 +13,12 @@
     "test:media": "node test/test.js --filter=media",
     "test:viewport": "node test/viewport-check.js",
     "test:interactions": "node test/combat-interactions-check.js",
+    "test:alpha": "node test/alpha-playtest-check.js",
     "lint": "node build.js --lint-only",
     "watch": "node build.js --watch",
     "dev": "node dev.js",
     "clean": "rm -f ../dist/you-are-wild.html",
-    "full-build": "npm run clean && npm run build && npm run test && npm run lint && npm run check && npm run test:viewport && npm run test:interactions"
+    "full-build": "npm run clean && npm run build && npm run test && npm run lint && npm run check && npm run test:viewport && npm run test:interactions && npm run test:alpha"
   },
   "keywords": [
     "game",

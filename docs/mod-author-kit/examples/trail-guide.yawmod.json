@@ -2,7 +2,7 @@
   "packageType": "yaw-module",
   "packageVersion": 1,
   "packageId": "trail_guide",
-  "gameVersion": "0.18.1",
+  "gameVersion": "0.18.2",
   "trustBoundary": "trusted-local",
   "module": {
     "manifest": {

@@ -8,7 +8,7 @@ not doctrine.
 For a portable, self-contained snapshot that can be handed to an authoring
 agent without the game source, use the
 [Mod Author Kit](mod-author-kit/README.md). The kit freezes the current
-`0.18.2` package/API contracts, bounded vocabularies, inventories, templates,
+`0.18.3` package/API contracts, bounded vocabularies, inventories, templates,
 and source-independent release checklist in one directory.
 
 The copied kit includes a dependency-free static package validator:
@@ -48,6 +48,21 @@ Focused contracts:
 - [Tileset Pack V1](tileset-pack-v1.md)
 - [Locale Pack V1](locale-pack-v1.md)
 - [Combat Technique V1](combat-technique-v1.md)
+
+## Licensing Modules
+
+The game's repository license does not automatically become the license for
+an independently authored module. Every distributed module and asset bundle
+must identify the terms for its own original code, content, and assets. A mod
+author may choose a permissive license for that original work.
+
+Module installation does not relicense You Are Wild. Game code, text, artwork,
+or other game-owned material copied from `v0.18.2` or earlier remains under
+the legacy [MIT License](../LICENSES/MIT-0.18.2-and-earlier.md). Material copied
+from `v0.18.3` or later remains governed by the repository's
+[PolyForm Noncommercial License 1.0.0](../LICENSE.md) unless the copyright
+holder grants different terms in writing. Third-party material continues to
+use its own stated license.
 
 ## Trust Boundary
 

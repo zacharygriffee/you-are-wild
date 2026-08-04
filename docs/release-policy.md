@@ -158,3 +158,13 @@ request.
   older generator versions remain immutable.
 - Final compatibility claims require exact-candidate old-save and package
   lifecycle smoke before the record may become `released`.
+
+## Version 0.18.3 Candidate Compatibility
+
+- Existing 0.10.x through 0.18.2 saves remain within the maintained additive
+  migration contract. Save Schema remains 11 and Module API remains 1.
+- This patch changes repository and distribution licensing, not gameplay,
+  simulation, save, or module contracts.
+- The annotated `v0.18.2` tag is the final MIT-licensed revision. Version
+  `0.18.3` and later use PolyForm Noncommercial 1.0.0 unless a later release
+  or individual file expressly states otherwise.

@@ -5,7 +5,7 @@ source repository.
 
 ## Snapshot
 
-- Game version: `0.18.2` public-access alpha patch
+- Game version: `0.18.3` development candidate
 - Module API: `1`
 - Executable package type: `yaw-module`
 - Executable package version: `1`

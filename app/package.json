@@ -1,6 +1,6 @@
 {
   "name": "you-are-wild",
-  "version": "0.18.2",
+  "version": "0.18.3",
   "private": true,
   "description": "Creature-focused exploration RPG built as a single-file HTML game with modular source",
   "scripts": {
@@ -26,7 +26,7 @@
     "rpg",
     "browser"
   ],
-  "license": "MIT",
+  "license": "SEE LICENSE IN ../LICENSE.md",
   "devDependencies": {
     "playwright": "^1.61.1",
     "serve": "^14.2.0"

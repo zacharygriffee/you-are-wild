@@ -4,6 +4,10 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Licensing is explicitly versioned: the annotated `v0.18.2` tag preserves
+  the final MIT-licensed revision, while `v0.18.3` and later use PolyForm
+  Noncommercial 1.0.0. Independently authored mods may choose their own terms
+  for original work without relicensing copied game material.
 - Alpha Lab now gives public testers eight isolated, deterministic missions for
   interaction consistency, mixed-capability groups, self-containment, combat,
   failure narration, companion management, content posture, and responsive

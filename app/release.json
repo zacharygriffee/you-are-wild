@@ -1,20 +1,19 @@
 {
   "schema": 1,
   "version": "0.18.1",
-  "status": "candidate",
-  "releasedAt": null,
+  "status": "released",
+  "releasedAt": "2026-08-03",
   "channel": "alpha",
-  "candidateFor": "select-group-alpha",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Candidate expectation: existing 0.10.x through 0.16.0 saves load through maintained additive migrations. Recorded generator versions remain unchanged.",
+      "saves": "Release compatibility: existing 0.10.x through 0.16.0 saves load through maintained additive migrations. Recorded generator versions remain unchanged.",
       "mods": "Module API remains version 1. Existing minimum-version declarations remain valid; modules using the Moddable Core V1 action, status, restraint, equipment, body, biome-recipe, or audio contracts should require game version 0.18.0 or newer."
     },
     "es": {
-      "saves": "Expectativa de la candidata: las partidas 0.10.x a 0.16.0 cargan mediante migraciones aditivas mantenidas. Las versiones de generador registradas no cambian.",
+      "saves": "Compatibilidad de la version: las partidas 0.10.x a 0.16.0 cargan mediante migraciones aditivas mantenidas. Las versiones de generador registradas no cambian.",
       "mods": "La API de modulos sigue en la version 1. Los requisitos minimos existentes siguen validos; los modulos que usan los contratos de acciones, estados, restricciones, equipo, cuerpo, recetas de bioma o audio de Moddable Core V1 deben requerir la version 0.18.0 o posterior."
     }
   },
@@ -49,7 +48,7 @@
         "Combat group selection keeps the primary interaction belt stable: the command sentence owns group and intent cancellation instead of inserting a separate Cancel Group row."
       ],
       "knownIssues": [
-        "This alpha candidate is intended for a select playtest group, not general public distribution.",
+        "This select-group alpha is publicly accessible but intentionally unadvertised; broader promotion remains deferred.",
         "Regional population simulation, designed regions, placeable anomalies, portal worlds, and persistent merchant supply remain deferred beyond the bounded V1 seams.",
         "Permanent body-stat penalties, shrine economies, crafting, Sleep or Rest V2, terrain tactics, and shared elemental damage semantics remain deliberately deferred.",
         "AI or TTS audio generation, physical-device comfort, authored art, and human translation quality still require later work or operator review.",
@@ -86,7 +85,7 @@
         "La seleccion de grupo en combate mantiene estable la barra principal de interacciones: la frase de orden controla la cancelacion del grupo y de la intencion sin insertar una fila separada de Cancelar Grupo."
       ],
       "knownIssues": [
-        "Esta candidata alfa esta destinada a un grupo selecto de pruebas, no a distribucion publica general.",
+        "Esta alfa para un grupo selecto tiene acceso publico, pero no se anuncia; la promocion general sigue aplazada.",
         "La simulacion regional de poblacion, regiones disenadas, anomalias colocables, mundos portal y suministro persistente siguen aplazados mas alla de V1.",
         "Las penalizaciones corporales permanentes, economias de santuarios, fabricacion, Descanso V2, tacticas de terreno y dano elemental compartido siguen aplazados.",
         "El audio por IA o TTS, la comodidad fisica, el arte y la traduccion humana requieren trabajo posterior o revision del operador.",

@@ -764,6 +764,30 @@ function loadMediaSystemForTest(options = {}) {
   );
 }
 
+test('Repository and standalone build declare the versioned license boundary consistently', () => {
+  const repositoryRoot = path.join(__dirname, '..', '..');
+  const rootPackage = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'));
+  const appPackage = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'app', 'package.json'), 'utf8'));
+  const appLock = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'app', 'package-lock.json'), 'utf8'));
+  const license = fs.readFileSync(path.join(repositoryRoot, 'LICENSE.md'), 'utf8');
+  const legacyLicense = fs.readFileSync(path.join(repositoryRoot, 'LICENSES', 'MIT-0.18.2-and-earlier.md'), 'utf8');
+  const readme = fs.readFileSync(path.join(repositoryRoot, 'README.md'), 'utf8');
+
+  assertEqual(rootPackage.license, 'SEE LICENSE IN LICENSE.md', 'Root package should point to the repository license');
+  assertEqual(appPackage.license, 'SEE LICENSE IN ../LICENSE.md', 'App package should not claim the former MIT license');
+  assertEqual(appLock.packages[''].license, appPackage.license, 'App lockfile should mirror the app license metadata');
+  assertContains(license, '`v0.18.2` and every earlier release', 'License policy should preserve the legacy MIT boundary');
+  assertContains(license, '`v0.18.3` and every later release', 'License policy should identify the first noncommercial version');
+  assertContains(legacyLicense, 'Permission is hereby granted, free of charge', 'Legacy releases should retain the complete MIT grant');
+  assertContains(license, 'https://polyformproject.org/licenses/noncommercial/1.0.0/', 'License file should invoke the maintained PolyForm terms');
+  assertContains(license, 'Required Notice: Copyright 2026 Zachary Griffee.', 'License file should carry the required copyright notice');
+  assertContains(readme, 'The `v0.18.2` Git tag marks the final MIT-licensed revision.', 'README should identify the auditable license cutoff');
+  assertContains(readme, 'PolyForm Noncommercial is not an open-source license.', 'README should describe the source-available boundary accurately');
+  assertContains(templateContent, 'You Are Wild v0.18.2 and earlier remain licensed under the MIT License.', 'Standalone builds should disclose the historical MIT boundary');
+  assertContains(templateContent, 'Required Notice: You Are Wild is licensed under the PolyForm Noncommercial License 1.0.0.', 'Standalone builds should carry the required license notice');
+  assertContains(templateContent, '<meta name="license" content="PolyForm Noncommercial License 1.0.0">', 'Standalone builds should expose machine-readable license identity');
+});
+
 test('App object is defined', () => {
   assertContains(appContent, 'const App = {', 'App object declaration missing');
 });
@@ -834,11 +858,11 @@ test('Native provider profiles expose bounded edit and destructive removal flows
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.18.2', 'Release manifest should identify the active patch version');
-  assertEqual(releaseInfo.status, 'released', 'The operator-approved version should be released');
-  assertEqual(releaseInfo.channel, 'alpha', 'The release should retain the select-group alpha channel');
-  assertEqual(Object.prototype.hasOwnProperty.call(releaseInfo, 'candidateFor'), false, 'A released alpha should not retain candidate-only metadata');
-  assertEqual(releaseInfo.releasedAt, '2026-08-04', 'The released alpha should carry its operator-assigned date');
+  assertEqual(releaseInfo.version, '0.18.3', 'Release manifest should identify the active patch candidate');
+  assertEqual(releaseInfo.status, 'candidate', 'The license-boundary patch should remain a candidate until operator publication');
+  assertEqual(releaseInfo.channel, 'development', 'An unpublished candidate should use the development channel');
+  assertEqual(Object.prototype.hasOwnProperty.call(releaseInfo, 'candidateFor'), false, 'A patch candidate should not introduce an undeclared target field');
+  assertEqual(releaseInfo.releasedAt, null, 'An unpublished candidate should not claim a release date');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Moddable Core V1')), 'Release notes should describe the new bounded mechanics contracts');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Grab, Pull, and Escape')), 'Release notes should describe the restraint action slice');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('publicly accessible') && note.includes('unadvertised')), 'Release notes should disclose public access without broader promotion');
@@ -853,7 +877,7 @@ test('Release manifest is the authoritative public version and compatibility sou
 test('Elemental Species package stays within the supported species contribution boundary', () => {
   const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
   const manifest = packageData.module.manifest;
-  assertEqual(packageData.gameVersion, '0.18.2', 'Elemental package production metadata should target the current game build');
+  assertEqual(packageData.gameVersion, '0.18.3', 'Elemental package production metadata should target the current game build');
   assertEqual(manifest.minGameVersion, '0.14.0', 'Elemental package should require the doctrine-tested module surface');
   assertEqual(manifest.contentRating, 'safe', 'Elemental species identity content should remain safe-rated');
   assertEqual(manifest.permissions.length, 1, 'Elemental package should request only one capability');

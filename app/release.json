@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "version": "0.18.2",
-  "status": "released",
-  "releasedAt": "2026-08-04",
-  "channel": "alpha",
+  "version": "0.18.3",
+  "status": "candidate",
+  "releasedAt": null,
+  "channel": "development",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
@@ -31,6 +31,7 @@
         "Native hosts can expose a host-owned desktop settings window for updates and peer availability without granting those controls to game modules."
       ],
       "changed": [
+        "The project license is now explicitly versioned: v0.18.2 and earlier remain MIT-licensed, while v0.18.3 and later use PolyForm Noncommercial 1.0.0.",
         "Talk, Play, Fight, Eat, and Feed now follow the canonical interaction and sub-action presentation across exploration, combat, single-actor, group, and self-selection contexts.",
         "Party Holdings supports bounded companion renaming and shared-Pack loadout management while preserving stable companion identity and save references.",
         "Ghost pilgrimage is now the conservative default recovery mode; Regenerate and owned Recovery Mode V1 profiles remain available.",
@@ -73,6 +74,7 @@
         "Los hosts nativos pueden mostrar una ventana propia de ajustes de escritorio sin entregar controles nativos a los modulos."
       ],
       "changed": [
+        "La licencia del proyecto ahora esta versionada de forma explicita: v0.18.2 y anteriores conservan MIT, mientras v0.18.3 y posteriores usan PolyForm Noncommercial 1.0.0.",
         "Hablar, Jugar, Luchar, Comer y Alimentar siguen la presentacion canonica de interacciones y subacciones en exploracion, combate, actores individuales, grupos y seleccion propia.",
         "Pertenencias del grupo permite renombrar companeros y gestionar equipo desde una Mochila compartida sin cambiar su identidad estable ni referencias guardadas.",
         "La peregrinacion fantasmal ahora es la recuperacion conservadora predeterminada; Regenerar y los perfiles propios de Recovery Mode V1 siguen disponibles.",

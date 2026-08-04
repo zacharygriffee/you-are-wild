@@ -1,6 +1,7 @@
 {
   "name": "you-are-wild-repo",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE.md",
   "scripts": {
     "build": "npm --prefix app run build",
     "check": "npm --prefix app run check",

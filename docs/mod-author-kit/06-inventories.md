@@ -1,6 +1,6 @@
 # Current Runtime Inventories
 
-These are the built-in identifiers available in game `0.18.2`. They are
+These are the built-in identifiers available in game `0.18.3`. They are
 evidence for references, not permission to mutate the corresponding core
 records. A module may add its own identifiers only through a documented
 registration API.

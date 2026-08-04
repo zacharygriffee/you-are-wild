@@ -74,6 +74,24 @@ and [docs/examples/moddable-core-v1.yawmod.json](docs/examples/moddable-core-v1.
 is the conformance fixture that composes the public world, equipment, body,
 resource, status, restraint, action, technique, and recovery contracts.
 
+## License
+
+The license is versioned. Releases `v0.18.2` and earlier remain available
+under the [MIT License](LICENSES/MIT-0.18.2-and-earlier.md). Releases `v0.18.3`
+and later are source-available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE.md).
+The `v0.18.2` Git tag marks the final MIT-licensed revision.
+
+For `v0.18.3` and later, you may download, build, play, study, modify, and
+share the game for noncommercial purposes such as private play and hobby work.
+Commercial use is not permitted without a separate written license from the
+copyright holder.
+
+PolyForm Noncommercial is not an open-source license. Independently authored
+mods may declare more permissive terms for their own original work; those
+terms do not relicense the game or any game code, content, or assets copied
+into the mod.
+
 ## Acknowledgments
 
 See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for the project's intentional

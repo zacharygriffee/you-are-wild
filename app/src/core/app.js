@@ -3137,7 +3137,7 @@
                 switch (action + '.' + subId) {
                     case 'feast.swallow': {
                         if (actor === target) {
-                            result = this._label('group.feast.selfBlocked', '{target} cannot eat themself. Select another party member as the target.', { target: target.name });
+                            result = this._label('group.feast.selfBlocked', '{target} starts toward the feast, but no one can be both eater and meal.', { target: target.name });
                             break;
                         }
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
@@ -4147,7 +4147,13 @@
                     : this.SUB_ACTIONS[action]?.[requestedSubAction]) ? requestedSubAction : null;
                 const names = living.map(unit => unit.name).join(', ');
                 if (action === 'feed' && selectedSubAction && !['tend', 'heal'].includes(selectedSubAction)) {
-                    this.log.push({ text: this._label('feed.noValidTarget', 'No valid target for this feed action.'), type: 'discovery' });
+                    const result = this._label('explore.narration.variantClosed', '{actors} try {action} together, but that opening is gone before they can begin.', {
+                        actors: names,
+                        action: this._uiLabel(action),
+                        target: names
+                    });
+                    this.log.push({ text: result, type: 'discovery' });
+                    this.emitStoryResult({ mode: 'adventure', actors: living, targets: living, action, shape: 'mutual' }, result, { resultKind: 'failure' });
                     this.renderLog();
                     this.renderParty();
                     this.renderCreatures();
@@ -4197,7 +4203,7 @@
                         break;
                     }
                     case 'feast':
-                        result = this._label('group.mutual.feastBlocked', '{actors} cannot feast on themselves as a mutual group. Choose a primary target instead.', { actors: names });
+                        result = this._label('group.mutual.feastBlocked', '{actors} circle each other for Eat, but none can be both eater and meal.', { actors: names });
                         break;
                     default:
                         return false;
@@ -4375,7 +4381,10 @@
                             ? YAW_COMBAT_TECHNIQUES.selected(this, livingActors, selectedSubAction || 'basic', targetCount)
                             : null;
                         if (technique === false) {
-                            result = this._label('combat.technique.groupUnavailable', 'The group can no longer perform the prepared combat technique.');
+                            result = this._label('explore.narration.techniqueClosed', '{actors} move to {action}, but their prepared approach falls apart before anyone can land it.', {
+                                actors: names,
+                                action: this._uiLabel(action)
+                            });
                             break;
                         }
                         const totalFigh = livingActors.reduce((sum, actor) => {
@@ -4449,7 +4458,11 @@
                                 livingActors.filter(helper => helper !== actor && helper !== target)
                             ));
                             if (eligible.length === 0) {
-                                result = this._label('feed.noValidTarget', 'No valid target for this feed action.');
+                                result = this._label('explore.narration.variantClosed', '{actors} try {action} with {target}, but that opening is gone before they can begin.', {
+                                    actors: names,
+                                    action: this._uiLabel(action),
+                                    target: target.name
+                                });
                                 break;
                             }
                             const targetConsumingAliases = new Set(['sacrifice', 'forceFeed', 'slurp', 'fragment']);
@@ -4476,7 +4489,7 @@
                     }
                     case 'feast': {
                         if (this.party.includes(target) && livingActors.includes(target)) {
-                            result = this._label('group.feast.selfBlocked', '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', { target: target.name });
+                            result = this._label('group.feast.selfBlocked', '{target} starts toward the feast, but no one can be both eater and meal.', { target: target.name });
                             break;
                         }
                         const shouldChew = selectedSubAction === 'chew' || (!selectedSubAction && this.settings.chewing);
@@ -4750,7 +4763,7 @@
                             break;
                         }
                         if (actor === target) {
-                            result = this._label('group.feast.selfBlocked', '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', { target: target.name });
+                            result = this._label('group.feast.selfBlocked', '{target} starts toward the feast, but no one can be both eater and meal.', { target: target.name });
                             affected = false;
                             break;
                         }

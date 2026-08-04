@@ -6702,6 +6702,8 @@ test('Combat sync helper module is registered before app code', () => {
   assertContains(combatSyncContent, 'resolveAction(app, sync)', 'Combat sync helper should own delayed sync resolution');
   assertContains(combatSyncContent, "app._reportInvalidCombatCommand?.(", 'Combat sync helper should narrate an unavailable participant through the shared combat feedback path');
   assertNotContains(combatSyncContent, 'Sync failed! Participants are no longer in the turn queue.', 'Combat sync helper should not surface queue failures as technical errors');
+  assertNotContains(combatSyncContent, 'Need at least 2 participants for a sync action.', 'Combat sync helper should narrate missing support instead of logging a procedural requirement');
+  assertNotContains(combatSyncContent, 'The group can no longer perform the prepared combat technique.', 'Combat sync helper should narrate stale techniques instead of logging a procedural error');
   assertContains(combatSyncContent, "app._emitCombatAction(sync.type, sync.participants, sync.target, result)", 'Combat sync helper should preserve sync action event emission');
   assertContains(combatSyncContent, 'app.nextTurn()', 'Combat sync helper should continue advancing turns after resolution');
   assertContains(appContent, 'YAW_COMBAT_SYNC.showMenu(this)', 'App sync menu wrapper should delegate to the helper');
@@ -10651,6 +10653,16 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'combat.action.playSuccess.player': '{actor} play with {target}! Spirit rises to {current}/{max}.',
           'combat.action.playSuccess.named': '{actor} plays with {target}! Spirit rises to {current}/{max}.',
           'combat.action.playRejected': '{target} does not want to play!',
+          'combat.narration.needTarget': '{name} looks for an opening, but needs a target for {action}.',
+          'combat.narration.variantClosed': '{name} reaches for {action}, but the opening closes before the attempt can begin.',
+          'combat.narration.needCompanion': '{name} looks to the party for help with {action}, but no one else is ready to join.',
+          'combat.technique.invalid': '{names} lose the opening for {action}; their prepared technique falls apart before it can land.',
+          'combat.sync.playComplete': '{participants} play with {target}! They relax completely.',
+          'combat.sync.playComplete.mature': '{participants} and {target} willingly fuck together; {target} relaxes completely.',
+          'combat.sync.playPartial': '{participants} play with {target}! They are dazed but not fully relaxed.',
+          'combat.sync.playPartial.mature': '{participants} and {target} fuck together, but {target} still holds back.',
+          'combat.sync.playRejected': '{target} does not want to play with the group!',
+          'combat.sync.playRejected.mature': '{target} does not want to fuck the group.',
           'combat.sync.talkSoftened': '{participants} talk with {target}, softening their guard. Spirit rises to {current}/{max}.',
           'combat.sync.talkResisted': "{target} resists the group's combined charm!",
           'combat.sync.fightHit': '{participants} gang up on {target}, dealing {amount} punishment!',
@@ -10853,6 +10865,16 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'combat.action.playSuccess.player': '{actor} juegas con {target}! El animo sube a {current}/{max}.',
           'combat.action.playSuccess.named': '{actor} juega con {target}! El animo sube a {current}/{max}.',
           'combat.action.playRejected': '{target} no quiere jugar!',
+          'combat.narration.needTarget': '{name} busca una apertura, pero necesita un objetivo para {action}.',
+          'combat.narration.variantClosed': '{name} busca una oportunidad para {action}, pero se cierra antes de que pueda intentarlo.',
+          'combat.narration.needCompanion': '{name} busca apoyo del grupo para {action}, pero nadie más está listo para unirse.',
+          'combat.technique.invalid': '{names} pierden la oportunidad de {action}; la técnica preparada se deshace antes de ejecutarse.',
+          'combat.sync.playComplete': '{participants} juegan con {target}! Se relaja por completo.',
+          'combat.sync.playComplete.mature': '{participants} y {target} tienen sexo de mutuo acuerdo; {target} se relaja por completo.',
+          'combat.sync.playPartial': '{participants} juegan con {target}! Queda aturdido, pero no se relaja por completo.',
+          'combat.sync.playPartial.mature': '{participants} y {target} tienen sexo, pero {target} aún se contiene.',
+          'combat.sync.playRejected': '{target} no quiere jugar con el grupo!',
+          'combat.sync.playRejected.mature': '{target} no quiere tener sexo con el grupo.',
           'combat.sync.talkSoftened': '{participants} hablan con {target} y bajan su guardia. El animo sube a {current}/{max}.',
           'combat.sync.talkResisted': '{target} resiste el encanto combinado del grupo!',
           'combat.sync.fightHit': '{participants} atacan juntos a {target} y causan {amount} de castigo!',
@@ -11549,7 +11571,9 @@ test('Feed unavailable feedback localizes and does not throw without a selected 
   assertEqual(App._feedUnavailableTurnEnded, undefined, 'Choosing Feed without a target should not spend the turn');
 
   App._executeFeedSubAction('heal', player);
-  assertContains(App.log[App.log.length - 1].text, 'No hay objetivo valido', 'Stale Feed option should return to target selection without throwing');
+  assertContains(App.log[App.log.length - 1].text, 'busca una apertura', 'Stale Feed option should narrate why the attempt has no target');
+  assertEqual(App.latestSceneBeat?.resultKind, 'failure', 'Stale Feed option should publish its failed attempt to the Scene Feed');
+  assertEqual(App.log.some(entry => /No hay objetivo valido|Elige otra/i.test(entry.text)), false, 'Stale Feed option should not expose procedural correction text');
   assertEqual(App._feedUnavailableTurnEnded, undefined, 'Stale Feed option should not spend the combat turn');
 });
 
@@ -19937,6 +19961,86 @@ test('Fight nests control actions and group Play repairs a missing valid compani
   assertEqual(advanced, 2, 'Resolving Group Play should advance once after the collective action');
 });
 
+test('Group Play narration follows SFW and Mature posture without changing its resolver', () => {
+  const resolve = posture => {
+    const { App, content } = loadAppForCombat(() => 0);
+    content.preferences.posture = posture;
+    content.preferences.maxTier = posture === 'mature' ? 1 : 0;
+    const player = makeUnit('You', { id: `${posture}-play-player`, Fuck: 100, Flir: 100 });
+    const ally = makeUnit('Ally', { id: `${posture}-play-ally`, Fuck: 100, Flir: 100 });
+    const enemy = makeUnit('Enemy', { id: `${posture}-play-enemy`, disposition: App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 });
+    App.player = player;
+    App.party = [player, ally];
+    App.creatures = [enemy];
+    App.combatState = {
+      active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0,
+      turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: []
+    };
+    App.activeActor = player;
+    App.nextTurn = function() {};
+    App._resolveSyncAction({
+      type: 'sync_fuck', techniqueKey: 'fuck', participants: [player, ally],
+      target: enemy, targets: [enemy], resolved: false, round: 1
+    });
+    return { text: App.log[App.log.length - 1].text, disposition: enemy.disposition };
+  };
+
+  const sfw = resolve('sfw');
+  const mature = resolve('mature');
+  assertContains(sfw.text, 'play with Enemy', 'SFW group Play should retain its safe narration');
+  assertNotContains(sfw.text, 'fuck', 'SFW group Play should not expose the Mature label');
+  assertContains(mature.text, 'fuck together', 'Mature group Play should narrate the selected Fuck approach');
+  assertEqual(sfw.disposition, mature.disposition, 'SFW and Mature wording should preserve the same mechanical outcome');
+});
+
+test('Legacy group setup and stale techniques fail through Scene narration', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'narrated-sync-player' });
+  const ally = makeUnit('Ally', { id: 'narrated-sync-ally' });
+  const enemy = makeUnit('Enemy', { id: 'narrated-sync-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: enemy, initiative: 10 }], syncActions: []
+  };
+  App.activeActor = player;
+  assertEqual(App.showSyncMenu(), false, 'Legacy Sync should decline when no companion can join');
+  assertContains(App.log[App.log.length - 1].text, 'looks to the party for help', 'Missing group support should be narrated in-world');
+  assertEqual(App.latestSceneBeat?.resultKind, 'failure', 'Missing group support should publish a failed Scene beat');
+  assertNotContains(App.log.map(entry => entry.text).join('\n'), 'No allies available', 'Missing group support should not expose a procedural error');
+
+  App.party = [player, ally];
+  App.combatState.turnQueue.splice(1, 0, { unit: ally, initiative: 20 });
+  let advanced = 0;
+  App.nextTurn = () => { advanced++; };
+  const result = App._resolveSyncAction({
+    type: 'sync_fight', techniqueKey: 'missing:technique', participants: [player, ally],
+    target: enemy, targets: [enemy], resolved: false, round: 1
+  });
+  assertContains(String(result), 'lose the opening for Fight', 'Stale group techniques should narrate the lost opening');
+  assertEqual(App.latestSceneBeat?.resultKind, 'failure', 'Stale group techniques should publish a failed Scene beat');
+  assertNotContains(App.log.map(entry => entry.text).join('\n'), 'can no longer perform', 'Stale group techniques should not expose a procedural error');
+  assertEqual(advanced, 1, 'A stale prepared technique should still resolve its queued turn');
+});
+
+test('Stale exploration group techniques fail as narration instead of a technical result', () => {
+  const { App, content } = loadAppForCombat(() => 0);
+  content.locales.en['explore.narration.techniqueClosed'] = '{actors} move to {action}, but their prepared approach falls apart before anyone can land it.';
+  const player = makeUnit('You', { id: 'stale-explore-player' });
+  const ally = makeUnit('Ally', { id: 'stale-explore-ally' });
+  const enemy = makeUnit('Enemy', { id: 'stale-explore-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+
+  assertEqual(App.outsideGroupActionOnTarget('fight', enemy, [player, ally], { subAction: 'missing:technique' }), true, 'A stale exploration group technique should resolve as a failed attempt');
+  assertContains(App.log[App.log.length - 1].text, 'prepared approach falls apart', 'Stale exploration technique should narrate the lost opening');
+  assertNotContains(App.log[App.log.length - 1].text, 'can no longer perform', 'Stale exploration technique should not expose a technical availability error');
+  assertContains(App.latestStoryEvent?.summary || '', 'prepared approach falls apart', 'Stale exploration technique should publish its failure through the Scene Feed');
+});
+
 test('Group actor controls preserve an afraid companion\'s agency', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'fear-player', Fuck: 40, combatRow: 'front' });
@@ -20195,6 +20299,44 @@ test('Many-to-many combat Chew resolves progressively with one cost and one prac
   assertEqual(player.multiActionPractice.multi.chew.commands, 1, 'Group Chew lead should train once across all targets');
   assertEqual(ally.multiActionPractice.multi.chew.commands, 1, 'Group Chew helper should train once across all targets');
   assertEqual(advanced, 1, 'Group Chew should advance exactly once after resolving all targets');
+});
+
+test('Mixed-reach group Fight narrates the blocked actor with a singular capable outcome', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('ZX', { id: 'mixed-fight-zx', Figh: 30, hunger: 10, combatRow: 'front' });
+  const eaglefolk = makeUnit('Eaglefolk', { id: 'mixed-fight-eaglefolk', Figh: 30, hunger: 20, combatRow: 'back', flying: true, ranged: true });
+  const harpy = makeUnit('Harpy', {
+    id: 'mixed-fight-harpy', disposition: App.DISPOSITION.ENEMY,
+    CPun: 100, MPun: 100, con: 20, combatRow: 'back', flying: true
+  });
+  App.player = player;
+  App.party = [player, eaglefolk];
+  App.creatures = [harpy];
+  App.combatState = {
+    active: true, round: 6, currentTurn: 0, processing: false, xpEarned: 0,
+    turnQueue: [
+      { unit: player, initiative: 30 },
+      { unit: eaglefolk, initiative: 20 },
+      { unit: harpy, initiative: 10 }
+    ],
+    syncActions: []
+  };
+  [player, eaglefolk, harpy].forEach(unit => App._normalizeUnit(unit));
+  App.activeActor = player;
+  App._effectiveCon = target => target.con;
+  App._combatDamageVariance = () => 0;
+  App.nextTurn = function() {};
+
+  App._resolveSyncAction({
+    type: 'sync_fight', techniqueKey: 'basic', participants: [player, eaglefolk],
+    target: harpy, targets: [harpy], plan: { subAction: 'basic' }, resolved: false
+  });
+
+  const result = App.log[App.log.length - 1]?.text || '';
+  assertContains(result, 'ZX tries Fight on Harpy', 'The grounded actor should receive narrative reach feedback');
+  assertContains(result, 'Eaglefolk hits Harpy', 'The lone capable participant should use singular Fight narration');
+  assertNotContains(result, 'Eaglefolk gang up', 'A partial group should not use plural group grammar for one capable participant');
+  assert(harpy.CPun < harpy.MPun, 'The capable flying participant should still damage the airborne target');
 });
 
 test('Mixed-reach group Chew narrates the blocked actor while a capable actor still resolves', () => {
@@ -21265,7 +21407,8 @@ test('Marked Feed exposes its only actor-to-target whole-self option without leg
 });
 
 test('Marked mutual feed rejects non-heal sub-actions without tending', () => {
-  const { App } = loadAppForCombat(() => 0);
+  const { App, content } = loadAppForCombat(() => 0);
+  content.locales.en['explore.narration.variantClosed'] = '{actors} try {action} with {target}, but that opening is gone before they can begin.';
   const actorA = makeUnit('Actor A', { id: 'actor-a', CPun: 40, MPun: 100, Feed: 30, willingPrey: true });
   const actorB = makeUnit('Actor B', { id: 'actor-b', CPun: 50, MPun: 100, Feed: 30, willingPrey: true });
   App.player = actorA;
@@ -21280,7 +21423,9 @@ test('Marked mutual feed rejects non-heal sub-actions without tending', () => {
   assertEqual(actorB.stomach.length, 0, 'Invalid mutual sacrifice should not contain the second participant');
   assertEqual(App.explorationActorIds.join(','), 'actor-a,actor-b', 'Invalid mutual sacrifice should preserve selected actors for correction');
   assertEqual(App.explorationTargetIds.join(','), 'party:actor-a,party:actor-b', 'Invalid mutual sacrifice should preserve selected targets for correction');
-  assertContains(App.log[App.log.length - 1].text, 'No valid target for this feed action.', 'Invalid mutual sacrifice should report no valid feed target');
+  assertContains(App.log[App.log.length - 1].text, 'opening is gone', 'Invalid mutual sacrifice should narrate the lost opening');
+  assertEqual(App.latestSceneBeat?.resultKind, 'failure', 'Invalid mutual sacrifice should publish a failed Scene beat');
+  assertNotContains(App.log[App.log.length - 1].text, 'No valid target', 'Invalid mutual sacrifice should not expose a procedural target error');
 });
 
 test('Identical actor and target sets resolve as mutual group actions', () => {
@@ -21333,6 +21478,7 @@ test('Identical actor and target sets tend together and block mutual feast', () 
   assertContains(feed.App.log[feed.App.log.length - 1].text, 'se atienden entre si', 'Mutual feed summary should localize');
 
   const feast = loadAppForCombat(() => 0);
+  feast.content.locales.es['group.mutual.feastBlocked'] = '{actors} se rodean para Comer, pero nadie puede ser a la vez quien come y la comida.';
   const eaterA = makeUnit('Eater A', { id: 'eater-a', size: 8, appetite: 8, Feas: 60 });
   const eaterB = makeUnit('Eater B', { id: 'eater-b', size: 8, appetite: 8, Feas: 60 });
   feast.App.player = eaterA;
@@ -21346,7 +21492,8 @@ test('Identical actor and target sets tend together and block mutual feast', () 
   assertEqual(eaterB.stomach.length, 0, 'Mutual feast should not put second participant in any stomach');
   assertEqual(feast.App.party.includes(eaterA), true, 'Mutual feast should keep first participant in party');
   assertEqual(feast.App.party.includes(eaterB), true, 'Mutual feast should keep second participant in party');
-  assertContains(feast.App.log[feast.App.log.length - 1].text, 'no pueden comerse a si mismos como grupo mutuo', 'Mutual feast should localize a clear rejection');
+  assertContains(feast.App.log[feast.App.log.length - 1].text, 'nadie puede ser a la vez', 'Mutual feast should localize its negative outcome as narration');
+  assertNotContains(feast.App.log[feast.App.log.length - 1].text, 'Elige un objetivo', 'Mutual feast should not expose correction instructions in the Scene narration');
 });
 
 test('Exploration selection cleanup removes stale party and creature targets', () => {
@@ -25642,6 +25789,38 @@ test('Desktop combat planner keeps sentence edits and an explicit group cancel',
   assertEqual(App.combatTargetIds.length, 0, 'Explicit cancel should clear marked group targets');
 });
 
+test('Mobile combat group prompt separates action choice from target marking', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'mobile-group-prompt-player' });
+  const ally = makeUnit('Ally', { id: 'mobile-group-prompt-ally' });
+  const enemy = makeUnit('Enemy', { id: 'mobile-group-prompt-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.activeActor = player;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: player, initiative: 10 }, { unit: ally, initiative: 8 }, { unit: enemy, initiative: 5 }],
+    syncActions: []
+  };
+  App.combatPlanSelection = {
+    active: true,
+    source: 'combat-planner',
+    actorIds: [App._unitSelectionId(player), App._unitSelectionId(ally)],
+    pendingIntent: null,
+    explicitActors: true
+  };
+
+  assertEqual(App._mobileCombatPrompt(player), 'Choose a group action, then mark its targets.', 'Mobile group setup should ask for an action without interpolating the generic placeholder');
+  assertNotContains(App._mobileCombatPrompt(player), '..', 'Mobile group setup prompt should not produce doubled punctuation');
+
+  App.combatPlanSelection.pendingIntent = 'fight';
+  assertEqual(App._mobileCombatPrompt(player), 'Mark target(s) for Fight.', 'Mobile group targeting should name the selected action');
+});
+
 test('Combat creature target button localizes visible and accessible labels', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { Figh: 30 });
@@ -25962,7 +26141,7 @@ test('Combat ranged back-row traits outrank generic tags and emit an intro beat'
   App.startCombat([siren]);
 
   assertEqual(siren.combatRow, 'back', 'Ranged enemy should default to back row');
-  assertContains(App.latestStoryEvent?.summary || '', 'Siren 1 keep their distance', 'Combat intro beat should mention ranged back-row threat');
+  assertContains(App.latestStoryEvent?.summary || '', 'Siren 1 keeps their distance', 'Combat intro beat should use singular grammar for one ranged back-row threat');
   assertContains(App.latestStoryEvent?.summary || '', 'back row', 'Combat intro beat should name the row threat');
 
   const medium = App.renderTacticalCard(siren, 0, 'creature', { presentation: 'desktop', density: 'medium' });
@@ -32726,10 +32905,13 @@ test('Save slot destructive confirmations localize', async () => {
   approvedSave.App.activeSlot = 'slot1';
   approvedSave.App.persistWorldStateToMapStore = async () => {};
   const approvedPuts = [];
+  const approvedDeletes = [];
   approvedSave.App._dbPut = async (_store, key) => { approvedPuts.push(key); };
+  approvedSave.App._dbDelete = async (store, key) => { approvedDeletes.push(`${store}:${key}`); };
   await approvedSave.App.saveToSlot('slot3');
   await approvedSave.App.resolveConfirmDialog(true);
   assertEqual(approvedPuts.join(','), 'slot3', 'Approved manual overwrite should write the selected occupied slot');
+  assert(approvedDeletes.includes('saveManifests:slot3'), 'Approved manual save should retire an older sparse manifest so the full snapshot remains authoritative');
   assertEqual(approvedSave.App.activeSlot, 'slot3', 'Approved manual overwrite should make the target slot active');
 
   const deleteSlot = loadAppForCombat(() => 0.5, { confirm: false });

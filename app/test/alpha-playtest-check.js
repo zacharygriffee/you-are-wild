@@ -118,6 +118,8 @@ async function checkPublicLab(browser, origin) {
   const { context, page, failures } = await makePage(browser, { width: 390, height: 844 });
   try {
     await page.goto(`${origin}/dist/you-are-wild`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#screen-menu.active', { state: 'visible', timeout: 30000 });
+    await page.getByRole('button', { name: 'Open Alpha Lab' }).waitFor({ state: 'visible', timeout: 30000 });
     await page.getByRole('button', { name: 'Open Alpha Lab' }).click();
     await page.waitForSelector('#screen-alpha.active');
     assert.equal(await page.locator('.alpha-mission-card').count(), Object.keys(EXPECTED).length, 'public lab should list every mission');

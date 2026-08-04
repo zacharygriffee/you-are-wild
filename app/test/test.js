@@ -833,14 +833,14 @@ test('Native provider profiles expose bounded edit and destructive removal flows
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.18.1', 'Release manifest should identify the active candidate version');
-  assertEqual(releaseInfo.status, 'candidate', 'The exact version should remain a candidate until operator release approval');
-  assertEqual(releaseInfo.channel, 'alpha', 'The candidate should retain the select-group alpha channel');
-  assertEqual(releaseInfo.candidateFor, 'select-group-alpha', 'The candidate should not imply public-preview promotion');
-  assertEqual(releaseInfo.releasedAt, null, 'An unpublished candidate should not claim a release date');
+  assertEqual(releaseInfo.version, '0.18.1', 'Release manifest should identify the active patch version');
+  assertEqual(releaseInfo.status, 'released', 'The operator-approved version should be released');
+  assertEqual(releaseInfo.channel, 'alpha', 'The release should retain the select-group alpha channel');
+  assertEqual(Object.prototype.hasOwnProperty.call(releaseInfo, 'candidateFor'), false, 'A released alpha should not retain candidate-only metadata');
+  assertEqual(releaseInfo.releasedAt, '2026-08-03', 'The released alpha should carry its operator-assigned date');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Moddable Core V1')), 'Release notes should describe the new bounded mechanics contracts');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Grab, Pull, and Escape')), 'Release notes should describe the restraint action slice');
-  assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('select playtest group')), 'Release notes should disclose the alpha distribution boundary');
+  assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('publicly accessible') && note.includes('unadvertised')), 'Release notes should disclose public access without broader promotion');
   assert(releaseInfo.notes.es.added.some(note => note.includes('Moddable Core V1')), 'Spanish release notes should describe the same candidate boundary');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');

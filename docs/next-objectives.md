@@ -4,10 +4,11 @@ This file contains unfinished, approved, actionable work only. Completed work
 belongs in `changelog.md`; requirement evidence belongs in
 `backlog-completion-audit.md`; subsystem behavior belongs in focused doctrine.
 
-## Scope freeze for 0.18.1
+## Select-group alpha maintenance
 
-Version 0.18.1 is a select-group alpha patch candidate for the accepted Moddable Core
-V1 boundary. Until its readiness record is closed, do not add new module
+Version 0.18.1 is the active released select-group alpha for the accepted
+Moddable Core V1 boundary. Public access began on 2026-08-03 without a broader
+advertising campaign. During patch maintenance, do not add new module
 permissions, public UI slots, resolver effect types, saved schemas, media
 providers, biome-recipe modes, recovery profiles, population simulation,
 elemental semantics, crafting, commerce, or arbitrary module callbacks.
@@ -17,13 +18,13 @@ documentation corrections, localization and accessibility fixes, and narrow
 hardening. Core gameplay remains deterministic, offline-capable, and
 independent of LLM or remote-service availability.
 
-## Immediate — 0.18.1 patch candidate
+## Immediate — 0.18.1 alpha patch maintenance
 
 1. Keep release identity synchronized across the application package,
    package lock, first-party packages, Mod Author Kit, fixtures, and tests.
 2. Keep English and Spanish release copy aligned with the exact implemented
    Moddable Core V1 boundary and its deliberate exclusions.
-3. Retain exact-candidate evidence for:
+3. Retain exact-release evidence for:
    - the full local build, branding and whitespace checks;
    - representative older-save loading;
    - deterministic fixture install, enable, action resolution, runtime reload,
@@ -31,15 +32,14 @@ independent of LLM or remote-service availability.
    - core Grab, restraint, Pull, Escape, and Seduce flows;
    - short-mobile contributed-action disclosure;
    - offline single-file and hosted artifact identity;
-   - green GitHub CI on the candidate commit.
+   - green GitHub CI on each release-patch commit.
 4. Record any observational defect without expanding the frozen contracts.
-5. Keep the release at select-group alpha. Public-preview promotion, Sites
-   publication, a release date, and rollback selection require explicit
-   operator decisions.
+5. Keep the release at select-group alpha. Public-preview promotion, advertising,
+   and any access-policy change require explicit operator decisions.
 
 ## Evidence-led release smoke
 
-Exercise the exact candidate rather than a nearby development build:
+Exercise the exact released build rather than a nearby development build:
 
 - load the representative published 0.14 save and create a fresh world;
 - use ordinary movement, Talk, Fight, Feed or Feast, Flee, save, and reload;
@@ -87,6 +87,11 @@ The following remain valid backlog, but none blocks 0.18.1:
   common contract is needed;
 - crafting recipes, stations, costs, outputs, ownership, and item sinks;
 - companion loadouts and companion equipment management;
+- interaction approach semantics: either give Flirt and Dance distinct resolved
+  consequences or consolidate them, and keep Dominate and Submit hidden until
+  they own complete mechanics, narration, AI, save, and responsive contracts;
+- one Feast-family label across exploration and combat instead of the current
+  Eat/Feast surface-specific split;
 - party-member display names: let the player assign clear, unique party-facing
   names while retaining stable unit IDs, species identity, recruitment history,
   save compatibility, and mod references;
@@ -99,15 +104,15 @@ The following remain valid backlog, but none blocks 0.18.1:
 Commerce, paid mods, accounts, managed LLM entitlement, payment processors,
 public marketplace services, Pear seeding, mesh sidecars, and public-launch
 administration are separate tracks. They do not block this game release and
-must not be folded into the 0.18.1 candidate.
+must not be folded into 0.18.1 patch maintenance.
 
 ## Delivery boundary
 
-Agents may prepare the candidate, run verification, commit and push when the
-active goal explicitly authorizes it, and observe CI. Assigning the release
-date, changing candidate status to released, selecting a rollback Sites
-version, publishing Sites, creating public release assets, and promoting the
-channel remain operator-mediated.
+Agents may prepare patch candidates, run verification, commit and push when the
+active goal explicitly authorizes it, and observe CI. Changing release status,
+selecting rollback Sites versions, publishing Sites, creating public release
+assets, changing access, advertising, and promoting the channel remain
+operator-mediated.
 
 ## Authoritative references
 

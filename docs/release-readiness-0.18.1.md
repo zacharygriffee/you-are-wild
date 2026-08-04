@@ -1,10 +1,10 @@
 # Release Readiness — 0.18.1
 
-Status: **candidate in preparation — not published**
+Status: **published select-group alpha**
 
-This checklist applies to the 0.18.1 patch candidate. It retains the 0.18.0
-Moddable Core V1 boundary and requires exact-candidate evidence after the
-candidate revision is committed.
+This checklist records the release evidence for the 0.18.1 select-group alpha.
+It retains the 0.18.0 Moddable Core V1 boundary. The operator approved public
+access on 2026-08-03 while intentionally deferring broader promotion.
 
 ## Documentation and identity
 
@@ -31,12 +31,15 @@ candidate revision is committed.
   companion, enemy, queued-action, save/load, desktop, and mobile paths.
 - [x] Group cancellation remains in the command sentence and does not insert a
   layout-shifting row above the primary interaction belt.
-- [ ] Representative older-save load is rerun from the committed candidate.
-- [ ] Candidate changes are committed and pushed intentionally.
-- [ ] GitHub CI is observed green for that exact candidate commit.
+- [x] The published 0.14 representative save loads through the current slot
+  migration path in the complete core suite.
+- [x] Candidate changes were committed, pushed, and merged intentionally.
+- [x] GitHub CI passed for candidate commit `c4fb6e4` before merge.
 
 ## External/operator gates
 
-- [ ] Operator approves 0.18.1 for the select playtest group.
-- [ ] A rollback-ready Sites version is selected before any Sites update.
-- [ ] Sites publication or a downloadable artifact is explicitly authorized.
+- [x] Operator approves 0.18.1 for the select playtest group and assigns
+  2026-08-03 as its release date.
+- [x] Sites version 38 is retained as the rollback-ready pre-release version.
+- [x] Public Sites publication is explicitly authorized without an advertising
+  campaign.

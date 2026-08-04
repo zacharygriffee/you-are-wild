@@ -838,7 +838,7 @@ test('Release manifest is the authoritative public version and compatibility sou
   assertEqual(releaseInfo.status, 'released', 'The operator-approved version should be released');
   assertEqual(releaseInfo.channel, 'alpha', 'The release should retain the select-group alpha channel');
   assertEqual(Object.prototype.hasOwnProperty.call(releaseInfo, 'candidateFor'), false, 'A released alpha should not retain candidate-only metadata');
-  assertEqual(releaseInfo.releasedAt, '2026-08-03', 'The released alpha should carry its operator-assigned date');
+  assertEqual(releaseInfo.releasedAt, '2026-08-04', 'The released alpha should carry its operator-assigned date');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Moddable Core V1')), 'Release notes should describe the new bounded mechanics contracts');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Grab, Pull, and Escape')), 'Release notes should describe the restraint action slice');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('publicly accessible') && note.includes('unadvertised')), 'Release notes should disclose public access without broader promotion');

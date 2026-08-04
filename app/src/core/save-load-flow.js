@@ -147,6 +147,15 @@ const YAW_SAVE_LOAD_FLOW = {
                 const matchesSpecies = !refSpecies || String(unit.species || '') === refSpecies;
                 if (matchesName && matchesSpecies) unit.id = String(ref.id);
             }
+            const savedPartyEquipment = Array.isArray(loaded.questState?.partyEquipment) ? loaded.questState.partyEquipment : [];
+            const savedPartyEquipmentBaseStats = Array.isArray(loaded.questState?.partyEquipmentBaseStats) ? loaded.questState.partyEquipmentBaseStats : [];
+            for (let index = 0; index < app.party.length; index++) {
+                if (!savedPartyEquipment[index] || typeof savedPartyEquipment[index] !== 'object') continue;
+                const unit = app.party[index];
+                unit.equipment = YAW_ITEM_REGISTRY.normalizeEquipment(app, savedPartyEquipment[index]);
+                unit.equipmentBaseStats = savedPartyEquipmentBaseStats[index] || null;
+                app._recalculateEquipment(unit, { inferBase: !savedPartyEquipmentBaseStats[index] });
+            }
             const savedMultiActionPractice = Array.isArray(loaded.questState?.partyMultiActionPractice)
                 ? loaded.questState.partyMultiActionPractice
                 : [];

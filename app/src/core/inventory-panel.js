@@ -64,7 +64,7 @@ const YAW_HOLDINGS = {
         return 'player';
     },
 
-    ownerById(app, ownerId = null) {
+    ownerById(app, ownerId = null, { fallback = true } = {}) {
         const wanted = ownerId == null ? null : String(ownerId);
         const owners = this.partyOwners(app);
         if (wanted) {
@@ -76,7 +76,7 @@ const YAW_HOLDINGS = {
             ));
             if (match) return match;
         }
-        return app._syncPlayerPartyReference?.() || app.player || owners[0] || null;
+        return fallback ? (app._syncPlayerPartyReference?.() || app.player || owners[0] || null) : null;
     },
 
     selectedOwner(app) {
@@ -109,12 +109,11 @@ const YAW_HOLDINGS = {
     },
 
     ownerSelectableForTab(app, unit = app.player, tab = 'stats') {
-        return tab !== 'pack' || this.isPlayerOwner(app, unit);
+        return true;
     },
 
     ownerForTab(app, owner = app.player, tab = 'stats') {
-        if (tab !== 'pack') return owner || app.player;
-        return app._syncPlayerPartyReference?.() || app.player || owner;
+        return owner || app._syncPlayerPartyReference?.() || app.player;
     },
 
     setOwner(app, ownerId) {
@@ -148,9 +147,9 @@ const YAW_HOLDINGS = {
             const selectable = this.ownerSelectableForTab(app, unit, tab);
             const name = app._escapeHtml(this.ownerLabel(app, unit));
             const icon = app._escapeHtml(unit?.icon || '👤');
-            const title = selectable
-                ? app._escapeHtml(app._label('holdings.selectOwner', 'Show holdings for {name}', { name: this.ownerLabel(app, unit) }))
-                : app._escapeHtml(app._label('holdings.packPlayerOnly', 'Pack inventory is player-only for now. Containers remain available for {name}.', { name: this.ownerLabel(app, unit) }));
+            const title = app._escapeHtml(tab === 'pack'
+                ? app._label('holdings.selectPackOwner', 'Choose {name} as the equipment recipient', { name: this.ownerLabel(app, unit) })
+                : app._label('holdings.selectOwner', 'Show holdings for {name}', { name: this.ownerLabel(app, unit) }));
             const disabled = selectable ? '' : ' disabled aria-disabled="true"';
             const action = selectable ? ` onclick="App.setHoldingsOwner('${app._escapeJsString(id)}')"` : '';
             return `<button class="holdings-owner-chip${selected ? ' selected' : ''}${selectable ? '' : ' disabled'}" data-command-surface="holdings-window" data-command-mode="exploration" data-command-control="select-holdings-owner" data-command-slot="owner" data-owner-selectable="${selectable ? 'true' : 'false'}" aria-pressed="${selected ? 'true' : 'false'}" title="${title}" aria-label="${title}"${disabled}${action}><span aria-hidden="true">${icon}</span><span>${name}</span></button>`;
@@ -341,10 +340,17 @@ const YAW_HOLDINGS = {
         const quantitySuffix = quantity > 1 ? ` ×${quantity}` : '';
         const name = app._escapeHtml(`${item.name || app._label('ui.item', 'item')}${quantitySuffix}`);
         const useLabel = app._escapeHtml(app._label('inventory.use', 'Use'));
-        const equipLabel = app._escapeHtml(app._label('inventory.equip', 'Equip'));
+        const ownerName = this.ownerLabel(app, owner);
+        const ownerId = app._escapeJsString(this.ownerId(app, owner));
+        const playerOwner = this.isPlayerOwner(app, owner);
+        const equipLabel = app._escapeHtml(playerOwner
+            ? app._label('inventory.equip', 'Equip')
+            : app._label('holdings.equipToOwner', 'Equip to {name}', { name: ownerName }));
         const dropLabel = app._escapeHtml(app._label('inventory.drop', 'Drop'));
         const useTitle = app._escapeHtml(app._label('inventory.useItem', 'Use {name}', { name: item.name }));
-        const equipTitle = app._escapeHtml(app._label('inventory.equipItem', 'Equip {name}', { name: item.name }));
+        const equipTitle = app._escapeHtml(playerOwner
+            ? app._label('inventory.equipItem', 'Equip {name}', { name: item.name })
+            : app._label('holdings.equipItemToOwner', 'Equip {item} to {name}', { item: item.name, name: ownerName }));
         const dropTitle = app._escapeHtml(app._label('inventory.dropItem', 'Drop {name}', { name: item.name }));
         const questProtected = app._isQuestProtectedItem?.(item) === true;
         const protectedTitle = app._escapeHtml(app._label('inventory.questProtected', '{name} is needed for an active quest.', { name: item.name }));
@@ -373,7 +379,7 @@ const YAW_HOLDINGS = {
             const cancel = app._escapeHtml(app._label('inventory.cancelUse', 'Cancel'));
             html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="cancel-use-item" data-command-slot="exit" onclick="App.cancelUseItem()">${cancel}</button></div>`;
         }
-        if (!recoveryLocked && canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="equip-item" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${itemKey}')">${equipLabel}</button>`;
+        if (!recoveryLocked && canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-control="equip-item" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${itemKey}','${ownerId}')">${equipLabel}</button>`;
         if (!recoveryLocked) html += `<button class="nav-btn danger${questProtected ? ' disabled' : ''}" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="drop-item" title="${questProtected ? protectedTitle : dropTitle}" aria-label="${questProtected ? protectedTitle : dropTitle}"${questProtected ? ' disabled aria-disabled="true"' : ''} onclick="App.dropItem('${itemKey}')">${dropLabel}</button>`;
         html += `</div></div>`;
         return html;
@@ -382,7 +388,9 @@ const YAW_HOLDINGS = {
     renderPackSection(app, section, owner = app.player) {
         owner = this.ownerForTab(app, owner, 'pack');
         const packLabel = app._label('holdings.sharedPack', 'Shared Pack');
+        const recipient = app._escapeHtml(app._label('holdings.sharedPackRecipient', 'Items are shared. Equip actions currently target {name}.', { name: this.ownerLabel(app, owner) }));
         let html = `<section class="holdings-section" data-holding-section="pack"><div class="holdings-section-title"><span>${app._escapeHtml(packLabel)}</span><span>${section.count}/${section.max}</span></div>`;
+        html += `<p class="holding-entry-meta">${recipient}</p>`;
         html += app._itemListOptions('Inventory');
         const entries = app._filterAndSortItemEntries((app.inventory || []).map((item, index) => ({ item, index })), app.inventoryFilter, app.inventorySort);
         if ((app.inventory || []).length === 0) {
@@ -487,11 +495,19 @@ const YAW_HOLDINGS = {
             ? `${app._escapeHtml(app._label('character.size', 'Size'))}: ${app._escapeHtml(String(unit.size || 1))} · ${app._escapeHtml(app._label('character.appetite', 'Appetite'))}: ${app._escapeHtml(String(unit.appetite || 1))}<br>${app._escapeHtml(app._label('character.bodyParts', 'Body'))}: ${bodyParts}`
             : `${app._escapeHtml(app._label('character.size', 'Size'))}: ${app._escapeHtml(String(unit.size || 1))} · ${app._escapeHtml(app._label('character.appetite', 'Appetite'))}: ${app._escapeHtml(String(unit.appetite || 1))}<br>${app._escapeHtml(app._label('character.parts', 'Parts'))}: ${app._escapeHtml(bodyTypeLabel(unit.parts) || app._label('party.none', 'None'))} · ${app._escapeHtml(app._label('character.chest', 'Chest'))}: ${app._escapeHtml(bodyTypeLabel(unit.chest) || app._label('party.none', 'None'))}<br>${app._escapeHtml(app._label('character.bodyParts', 'Body'))}: ${bodyParts}`;
         const card = (label, body) => `<div class="holdings-stat-card"><strong>${app._escapeHtml(label)}</strong><span>${body}</span></div>`;
+        const renameForm = this.isPlayerOwner(app, unit) ? '' : (() => {
+            const ownerId = app._escapeJsString(this.ownerId(app, unit));
+            const label = app._escapeHtml(app._label('party.renameFor', 'Party name for {name}', { name: unit.name }));
+            const help = app._escapeHtml(app._label('party.renameHelp', 'This changes the party-facing name without changing species, history, or identity.'));
+            const save = app._escapeHtml(app._label('party.renameSave', 'Save Name'));
+            return `<form class="party-rename-form" data-command-surface="holdings-window" data-command-mode="${app.combatState?.active ? 'combat' : 'exploration'}" data-command-control="rename-party-member" onsubmit="App.renamePartyMember('${ownerId}',this.elements.partyName.value);return false;"><label><span>${label}</span><input class="settings-input" name="partyName" maxlength="32" value="${app._escapeHtml(unit.name || '')}" aria-describedby="party-rename-help"></label><button class="nav-btn" type="submit">${save}</button><small id="party-rename-help" class="holding-entry-meta">${help}</small></form>`;
+        })();
         return `<section class="holdings-section holdings-stats-section" data-holding-section="stats">
             <div class="holdings-character-summary">
                 <div class="holdings-character-avatar">${app._escapeHtml(unit.icon || '👤')}</div>
                 <div><div class="holding-entry-name">${app._escapeHtml(unit.name || app._label('party.you', 'You'))}</div><div class="holding-entry-meta">${levelText} · ${xpText}</div></div>
             </div>
+            ${renameForm}
             <div class="holdings-stat-grid">
                 ${card(app._label('party.punishment', 'Punishment'), `${stats.CPun}/${stats.MPun}`)}
                 ${card(app._label('party.pleasure', 'Spirit'), `${stats.CPle}/${stats.MPle}`)}
@@ -891,12 +907,21 @@ const YAW_INVENTORY_PANEL = {
 
     equip(app, itemId, ownerId = null) {
         if (!app._guardRecoveryCapability?.('inventory', { action: 'equip-item' })) return false;
-        // Pack UI is player-only for now. ownerId remains as a legacy/internal compatibility seam
-        // until companion equipment gets a deliberate management flow separate from Pack.
-        const owner = YAW_HOLDINGS.ownerById(app, ownerId || app.holdingsWindow?.ownerId);
-        if (!owner) return;
+        const requestedOwnerId = ownerId || app.holdingsWindow?.ownerId || YAW_HOLDINGS.ownerId(app, app.player);
+        const owner = YAW_HOLDINGS.ownerById(app, requestedOwnerId, { fallback: false });
+        if (!owner) {
+            const text = app._label('holdings.equipOwnerMissing', 'The intended companion is no longer available, so the item stays in the shared Pack.');
+            app.log.push({ text, type: 'discovery' });
+            app.renderLog?.();
+            return false;
+        }
         const item = app.inventory.find(i => String(i.id) === String(itemId));
-        if (!item || !app._isEquippable(item)) return;
+        if (!item || !app._isEquippable(item)) {
+            const text = app._label('holdings.equipItemUnavailable', '{name} finds nothing suitable to equip, so the shared Pack remains unchanged.', { name: YAW_HOLDINGS.ownerLabel(app, owner) });
+            app.log.push({ text, type: 'discovery' });
+            app.renderLog?.();
+            return false;
+        }
         const def = app._getItemDef(item);
         const slot = def.slot;
         owner.equipment = owner.equipment || {};
@@ -917,16 +942,32 @@ const YAW_INVENTORY_PANEL = {
         YAW_HOLDINGS.open(app, owner, { tab: app.holdingsWindow?.tab || 'pack' });
         app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'activityLog'], 'inventory-equip');
         app.autoSave();
+        return true;
     },
 
     unequip(app, slot, ownerId = null) {
         if (!app._guardRecoveryCapability?.('inventory', { action: 'unequip-item' })) return false;
-        const owner = YAW_HOLDINGS.ownerById(app, ownerId || app.holdingsWindow?.ownerId);
-        if (!owner?.equipment || !owner.equipment[slot]) return;
+        const requestedOwnerId = ownerId || app.holdingsWindow?.ownerId || YAW_HOLDINGS.ownerId(app, app.player);
+        const owner = YAW_HOLDINGS.ownerById(app, requestedOwnerId, { fallback: false });
+        if (!owner) {
+            const text = app._label('holdings.equipOwnerMissing', 'The intended companion is no longer available, so the item stays in the shared Pack.');
+            app.log.push({ text, type: 'discovery' });
+            app.renderLog?.();
+            return false;
+        }
+        if (!owner?.equipment || !owner.equipment[slot]) {
+            const text = app._label('holdings.unequipEmpty', '{name} has nothing equipped there, so their loadout remains unchanged.', { name: YAW_HOLDINGS.ownerLabel(app, owner) });
+            app.log.push({ text, type: 'discovery' });
+            app.renderLog?.();
+            return false;
+        }
         if (app.inventory.length >= app.MAX_INVENTORY) {
-            app.log.push({ text: app._label('inventory.full', 'Inventory is full.'), type: 'discovery' });
+            app.log.push({ text: app._label('holdings.unequipPackFull', '{name} keeps {item} equipped because the shared Pack has no room.', {
+                name: YAW_HOLDINGS.ownerLabel(app, owner),
+                item: owner.equipment[slot].name || app._label('ui.item', 'item')
+            }), type: 'discovery' });
             app.renderLog();
-            return;
+            return false;
         }
         const item = owner.equipment[slot];
         owner.equipment[slot] = null;
@@ -941,6 +982,7 @@ const YAW_INVENTORY_PANEL = {
         YAW_HOLDINGS.open(app, owner, { tab: app.holdingsWindow?.tab || 'equipment' });
         app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'activityLog'], 'inventory-unequip');
         app.autoSave();
+        return true;
     },
 
     drop(app, itemId) {

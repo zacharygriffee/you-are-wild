@@ -438,6 +438,8 @@ const YAW_SAVE_PERSISTENCE = {
             dayCount: app.dayCount || 0,
             playerEquipment: this.serializableClone(app.player?.equipment || {}, {}),
             playerEquipmentBaseStats: this.serializableClone(app.player?.equipmentBaseStats || null, null),
+            partyEquipment: (app.party || []).map(unit => this.serializableClone(unit?.equipment || {}, {})),
+            partyEquipmentBaseStats: (app.party || []).map(unit => this.serializableClone(unit?.equipmentBaseStats || null, null)),
             playerPerks: this.serializableClone(app.player?.perks || [], []),
             pendingPerkChoices: app.player?.pendingPerkChoices || 0,
             partyLeaderId: app.partyLeaderId || app.player?.id || app.player?.name || null,

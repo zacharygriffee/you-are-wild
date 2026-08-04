@@ -299,12 +299,14 @@ const YAW_COMBAT_SYNC = {
         const hasElapsedParticipantTurn = queueEntries.some(({ index }) => index < currentTurn);
         const resolveNextRound = hasElapsedParticipantTurn || slowestIdx <= currentTurn;
         const resolveRound = app.combatState.round + (resolveNextRound ? 1 : 0);
+        const baseAction = app._syncBaseAction(syncType);
+        const subAction = YAW_SUB_ACTIONS.normalizeSubAction(baseAction, command?.subAction || null);
         const plan = app._buildInteractionPlan({
             mode: 'combat',
             actors: participants,
             targets,
             action: syncType,
-            subAction: command?.subAction || null,
+            subAction,
             source: command?.source || 'sync-composer',
             targetType: targets.every(unit => app.party.includes(unit)) ? 'party' : 'enemy',
             shape: targets.length > 1 ? 'many-to-many' : 'many-to-one',
@@ -321,7 +323,7 @@ const YAW_COMBAT_SYNC = {
                 maxTargets: null
             },
             metadata: {
-                baseAction: app._syncBaseAction(syncType),
+                baseAction,
                 round: resolveRound,
                 queuedFromRound: app.combatState.round
             }
@@ -329,7 +331,7 @@ const YAW_COMBAT_SYNC = {
         app._syncCurrentTileCreatures();
         app.combatState.syncActions.push({
             type: syncType, participants: participants, target: targets[0], targets,
-            techniqueKey: command?.subAction || null,
+            techniqueKey: subAction,
             resolveAtIndex: slowestIdx, resolved: false, round: resolveRound,
             plan
         });
@@ -373,7 +375,9 @@ const YAW_COMBAT_SYNC = {
         }
         sync.participants = (sync.participants || []).filter(unit => app._isCombatQueueUnitValid(unit) && app.party.includes(unit));
         const baseAction = app._syncBaseAction(sync.type);
-        const queuedApproach = sync.techniqueKey || sync.plan?.subAction || null;
+        const queuedApproach = YAW_SUB_ACTIONS.normalizeSubAction(baseAction, sync.techniqueKey || sync.plan?.subAction || null);
+        sync.techniqueKey = queuedApproach;
+        if (sync.plan) sync.plan.subAction = queuedApproach;
         const selfFeast = baseAction === 'feast' && ['digest', 'release'].includes(queuedApproach);
         const queuedTargets = (sync.targets?.length ? sync.targets : [sync.target])
             .filter((unit, index, list) => {
@@ -501,9 +505,8 @@ const YAW_COMBAT_SYNC = {
                 break;
             }
             case 'sync_flirt': {
-                const approach = sync.techniqueKey || sync.plan?.subAction;
+                const approach = YAW_SUB_ACTIONS.normalizeSubAction('flirt', sync.techniqueKey || sync.plan?.subAction);
                 const isSeduce = approach === 'seduce';
-                const isDance = approach === 'dance';
                 let totalCharm = targetParticipants.reduce((sum, p) => sum
                     + (p.Flir || 0)
                     + (p.cha || 10) * 0.5
@@ -521,12 +524,10 @@ const YAW_COMBAT_SYNC = {
                     sync.target.willing = true;
                     app._awardCombatXP(isSeduce ? app.XP_REWARDS.seduceEnemy : app.XP_REWARDS.flirtEnemy);
                     result = app._label(
-                        isSeduce ? 'combat.sync.seduceConvinced' : (isDance ? 'combat.sync.danceConvinced' : 'combat.sync.talkConvinced'),
+                        isSeduce ? 'combat.sync.seduceConvinced' : 'combat.sync.talkConvinced',
                         isSeduce
                             ? '{participants} draw {target} into a charged exchange, and their resistance gives way.'
-                            : (isDance
-                                ? '{participants} draw {target} into a shared rhythm until they choose to stand down.'
-                                : '{participants} talk with {target} until they choose to stand down.'), {
+                            : '{participants} talk with {target} until they choose to stand down.', {
                         participants: participantNames,
                         target: sync.target.name
                     });
@@ -537,12 +538,10 @@ const YAW_COMBAT_SYNC = {
                     sync.target.charmed = (sync.target.charmed || 0) + 1;
                     sync.target.Figh = Math.max(1, (sync.target.Figh || 10) - 1);
                     result = app._label(
-                        isSeduce ? 'combat.sync.seduceSoftened' : (isDance ? 'combat.sync.danceSoftened' : 'combat.sync.talkSoftened'),
+                        isSeduce ? 'combat.sync.seduceSoftened' : 'combat.sync.talkSoftened',
                         isSeduce
                             ? '{participants} draw {target} closer, softening their guard. Spirit rises to {current}/{max}.'
-                            : (isDance
-                                ? '{participants} dance with {target}, softening their guard. Spirit rises to {current}/{max}.'
-                                : '{participants} talk with {target}, softening their guard. Spirit rises to {current}/{max}.'), {
+                            : '{participants} talk with {target}, softening their guard. Spirit rises to {current}/{max}.', {
                         participants: participantNames,
                         target: sync.target.name,
                         current: sync.target.CPle,
@@ -552,12 +551,10 @@ const YAW_COMBAT_SYNC = {
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
                     result = app._label(
-                        isSeduce ? 'combat.sync.seduceResisted' : (isDance ? 'combat.sync.danceResisted' : 'combat.sync.talkResisted'),
+                        isSeduce ? 'combat.sync.seduceResisted' : 'combat.sync.talkResisted',
                         isSeduce
                             ? '{target} pulls away from the group’s overture.'
-                            : (isDance
-                                ? '{target} declines the group’s invitation to dance.'
-                                : '{target} resists the group’s combined appeal.'),
+                            : '{target} resists the group’s combined appeal.',
                         { target: sync.target.name }
                     );
                 }

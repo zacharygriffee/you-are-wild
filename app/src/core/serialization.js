@@ -373,6 +373,8 @@
         dayCount: appState.dayCount || 0,
         playerEquipment: appState.player?.equipment || {},
         playerEquipmentBaseStats: appState.player?.equipmentBaseStats || null,
+        partyEquipment: (appState.party || []).map(unit => unit?.equipment || {}),
+        partyEquipmentBaseStats: (appState.party || []).map(unit => unit?.equipmentBaseStats || null),
         playerPerks: appState.player?.perks || [],
         pendingPerkChoices: appState.player?.pendingPerkChoices || 0,
         partyLeaderId: appState.partyLeaderId || appState.player?.id || appState.player?.name || null,

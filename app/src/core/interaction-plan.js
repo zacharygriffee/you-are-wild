@@ -99,9 +99,14 @@ const YAW_INTERACTION_PLAN = {
             ? context.resolveAt
             : (timing === 'slowest-participant' ? this.slowestParticipantIndex(app, actors) : null);
         const targetType = context.targetType || this.inferTargetType(app, targets);
+        const baseAction = context.metadata?.baseAction || context.action;
+        const requestedSubAction = context.metadata?.semanticApproach || context.subAction;
+        const subAction = typeof YAW_SUB_ACTIONS !== 'undefined'
+            ? YAW_SUB_ACTIONS.normalizeSubAction(baseAction, requestedSubAction)
+            : requestedSubAction;
         const interactionContext = context.metadata?.baseAction
-            ? { ...context, action: context.metadata.baseAction, approach: context.metadata.semanticApproach || context.subAction }
-            : context;
+            ? { ...context, action: context.metadata.baseAction, subAction, approach: subAction }
+            : { ...context, subAction, approach: context.approach ?? subAction };
         const interaction = typeof YAW_INTERACTION_FAMILIES !== 'undefined'
             ? YAW_INTERACTION_FAMILIES.normalize(app, interactionContext)
             : {
@@ -118,7 +123,7 @@ const YAW_INTERACTION_PLAN = {
             actorIds: this.unitIds(actors),
             targetIds: this.unitIds(targets),
             action: context.action || null,
-            subAction: context.subAction || null,
+            subAction: subAction || null,
             family: interaction.family,
             approach: interaction.approach,
             approachKind: interaction.approachKind,

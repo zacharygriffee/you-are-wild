@@ -39,7 +39,10 @@ const YAW_INTERACTION_FAMILIES = {
         const action = String(context.action || '');
         const family = this.family(action);
         const requested = context.approach ?? context.subAction ?? null;
-        const approach = requested === undefined || requested === '' ? null : String(requested);
+        const rawApproach = requested === undefined || requested === '' ? null : String(requested);
+        const approach = typeof YAW_SUB_ACTIONS !== 'undefined'
+            ? YAW_SUB_ACTIONS.normalizeSubAction(family || action, rawApproach)
+            : rawApproach;
         return {
             family,
             approach,

@@ -86,15 +86,6 @@ The following remain valid backlog, but none blocks 0.18.1:
 - shared elemental damage and resistance semantics, if real modules prove a
   common contract is needed;
 - crafting recipes, stations, costs, outputs, ownership, and item sinks;
-- companion loadouts and companion equipment management;
-- interaction approach semantics: either give Flirt and Dance distinct resolved
-  consequences or consolidate them, and keep Dominate and Submit hidden until
-  they own complete mechanics, narration, AI, save, and responsive contracts;
-- one Feast-family label across exploration and combat instead of the current
-  Eat/Feast surface-specific split;
-- party-member display names: let the player assign clear, unique party-facing
-  names while retaining stable unit IDs, species identity, recruitment history,
-  save compatibility, and mod references;
 - reviewed AI media generation, packaged-runtime media bridges, optional OPFS
   optimization, and AI or TTS audio;
 - long-form balance, progression, reward, and difficulty-profile evaluation.

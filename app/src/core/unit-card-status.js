@@ -80,7 +80,8 @@ const YAW_UNIT_CARD_STATUS = {
         if (status.bleed) add('bleeding', app._label('unit.trait.bleeding', 'Bleeding'), 'danger');
         if (status.stun) add('stunned', app._label('unit.trait.stunned', 'Stunned'), 'status');
         if (status.freeze) add('frozen', app._label('unit.trait.frozen', 'Frozen'), 'status');
-        if (status.fear) add('fear', app._label('unit.trait.fear', 'Fear'), 'status');
+        if (status.terror || status.frightened) add('terror', app._label('unit.trait.terror', 'Terrified'), 'danger');
+        else if (status.fear) add('fear', app._label('unit.trait.fear', 'Afraid'), 'status');
         if (status.restrained || status.enveloped || status.stuck) add('restrained', app._label('unit.trait.restrained', 'Restrained'), 'status');
         if (stats.MPun > 0 && stats.CPun <= stats.MPun * 0.35) add('wounded', app._label('unit.trait.wounded', 'Wounded'), 'danger');
         const hungerPressure = app._hungerCombatPressure?.(unit) || { band: 'ordinary' };

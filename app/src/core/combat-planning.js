@@ -12,6 +12,35 @@ const YAW_COMBAT_PLANNING = {
         return unit ? app._unitSelectionId(unit) : '';
     },
 
+    isQueuedParticipant(app, unit) {
+        if (!unit || !app.party.includes(unit) || unit.CPun <= 0) return false;
+        if (typeof app._isCombatQueueUnitValid === 'function' && !app._isCombatQueueUnitValid(unit)) return false;
+        const unitId = this.actorId(app, unit);
+        return (app.combatState?.turnQueue || []).some(entry => {
+            const queued = entry?.unit || entry;
+            return queued === unit || (unitId && this.actorId(app, queued) === unitId);
+        });
+    },
+
+    isSelectableParticipant(app, unit) {
+        return Boolean(unit && app.party.includes(unit));
+    },
+
+    unavailableParticipantReason(app, unit) {
+        if (!unit || !app.party.includes(unit)) return 'missing';
+        if (unit.CPun <= 0 || unit.knockedOut) return 'fallen';
+        if (unit.fledCombat) return 'fled';
+        const status = unit.status || {};
+        if (status.terror?.turns > 0 || status.frightened) return 'terror';
+        if (status.stun?.turns > 0) return 'stunned';
+        if (status.freeze?.skip) return 'frozen';
+        if (status.restrained?.turns > 0) return 'restrained';
+        if (status.stuck?.turns > 0) return 'stuck';
+        if (status.enveloped?.turns > 0) return 'enveloped';
+        if (!this.isQueuedParticipant(app, unit)) return 'not-in-turn-order';
+        return null;
+    },
+
     isActive(app) {
         return Boolean(app.combatPlanSelection?.active);
     },
@@ -19,6 +48,7 @@ const YAW_COMBAT_PLANNING = {
     ensure(app, options = {}) {
         if (!app.combatState?.active || app.feedSelection?.active) return false;
         if (app.syncSelection?.active) return false;
+        app._sanitizeCombatState?.({ preserveTurn: true });
         const current = this.currentActor(app);
         if (!current || !app.party.includes(current) || current.CPun <= 0) return false;
         if (!app.combatPlanSelection?.active) {
@@ -43,7 +73,7 @@ const YAW_COMBAT_PLANNING = {
         const validIds = [];
         for (const id of app.combatPlanSelection.actorIds || []) {
             const unit = app.party.find(candidate => this.actorId(app, candidate) === String(id) || String(candidate?.id || candidate?.name) === String(id));
-            if (unit && unit.CPun > 0) {
+            if (this.isSelectableParticipant(app, unit)) {
                 const unitId = this.actorId(app, unit);
                 if (!validIds.includes(unitId)) validIds.push(unitId);
             }
@@ -64,7 +94,7 @@ const YAW_COMBAT_PLANNING = {
         this.normalize(app);
         return (app.combatPlanSelection.actorIds || [])
             .map(id => app.party.find(unit => this.actorId(app, unit) === id || String(unit?.id || unit?.name) === id))
-            .filter(Boolean);
+            .filter(unit => this.isSelectableParticipant(app, unit));
     },
 
     isActorSelected(app, unit) {
@@ -82,7 +112,7 @@ const YAW_COMBAT_PLANNING = {
         app.combatCorrectionMessage = null;
         const key = String(id || '');
         const unit = app.party.find(candidate => this.actorId(app, candidate) === key || String(candidate?.id || candidate?.name) === key);
-        if (!unit || unit.CPun <= 0) return false;
+        if (!this.isSelectableParticipant(app, unit)) return false;
         const unitId = this.actorId(app, unit);
         const current = this.currentActor(app);
         const currentId = current ? this.actorId(app, current) : '';
@@ -103,6 +133,16 @@ const YAW_COMBAT_PLANNING = {
     setIntent(app, action) {
         if (!this.ensure(app)) return false;
         app.combatCorrectionMessage = null;
+        const actors = this.actors(app);
+        if (action === 'feast'
+            && this.markedTargets(app).length === 0
+            && YAW_COMBAT_FEED.hasAvailableSelfAction(app, action, actors)) {
+            return YAW_COMBAT_FEED.executeVariantAction(app, action, actors[0], null, {
+                actors,
+                scope: 'self',
+                forceChoose: true
+            });
+        }
         app.combatPlanSelection.pendingIntent = action || null;
         app.targetSelection = null;
         app._clearCenterActionsForCombat?.();
@@ -180,7 +220,7 @@ const YAW_COMBAT_PLANNING = {
         return map[action] || null;
     },
 
-    confirm(app) {
+    confirm(app, options = {}) {
         if (!app.combatPlanSelection?.active) return false;
         const intendedGroup = Boolean(app.combatPlanSelection.hadGroupActors);
         this.normalize(app);
@@ -228,10 +268,24 @@ const YAW_COMBAT_PLANNING = {
             app._reportInvalidCombatCommand?.(command, 'missing-actor');
             return false;
         }
+        const unavailable = actors.filter(unit => this.unavailableParticipantReason(app, unit));
+        if (unavailable.length) {
+            command.metadata.unavailableActorReasons = unavailable.map(unit => ({
+                id: this.actorId(app, unit),
+                reason: this.unavailableParticipantReason(app, unit)
+            }));
+            app._reportInvalidCombatCommand?.(command, 'actor-unavailable');
+            return false;
+        }
         if (actors.length === 1 && !intendedGroup) {
-            if (action === 'fight' && targets.length > 0) {
+            const opensApproachChooser = ['fight', 'flirt', 'fuck', 'feast', 'feed'].includes(action);
+            if (opensApproachChooser && targets.length > 0) {
                 app.combatPlanSelection = null;
-                return YAW_COMBAT_FEED.executeVariantAction(app, 'fight', actors[0], targets, { actors, targets });
+                return YAW_COMBAT_FEED.executeVariantAction(app, action, actors[0], targets, {
+                    actors,
+                    targets,
+                    forceChoose: options.forceChoose === true
+                });
             }
             const singleCommand = app._buildPanelInteractionCommand({
                 mode: 'combat',
@@ -275,9 +329,13 @@ const YAW_COMBAT_PLANNING = {
             app._reportInvalidCombatCommand?.(command, valid.reason);
             return false;
         }
-        if (action === 'fight' && targets.length > 0) {
+        if (['fight', 'flirt', 'fuck', 'feast', 'feed'].includes(action) && targets.length > 0) {
             app.combatPlanSelection = null;
-            return YAW_COMBAT_FEED.executeVariantAction(app, 'fight', actors[0], targets, { actors, targets });
+            return YAW_COMBAT_FEED.executeVariantAction(app, action, actors[0], targets, {
+                actors,
+                targets,
+                forceChoose: options.forceChoose === true
+            });
         }
         return app._dispatchInteractionCommand(command);
     },
@@ -292,7 +350,7 @@ const YAW_COMBAT_PLANNING = {
             : app._label('combat.action.commitIntent', 'Commit {intent}', { intent: intentLabel }));
         const cancelLabel = app._escapeHtml(app._label('combat.group.cancel', 'Cancel Group'));
         const confirm = pendingIntent
-            ? `<button class="action-btn primary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-combat-plan" data-command-slot="intent" data-command-intent="${app._escapeHtml(pendingIntent)}" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="event.stopPropagation();App.confirmCombatPlan()">${confirmLabel}</button>`
+            ? `<button class="action-btn primary" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-combat-plan" data-command-slot="intent" data-command-intent="${app._escapeHtml(pendingIntent)}" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="event.stopPropagation();App.confirmCombatPlan(true)">${confirmLabel}</button>`
             : '';
         const reset = options.includeReset === false
             ? ''
@@ -308,6 +366,16 @@ const YAW_COMBAT_PLANNING = {
         const target = app.creatures.find(c => String(c.id || c.name) === String(targetId) || app._unitSelectionId(c) === String(targetId));
         if (!target) return false;
         const actor = this.currentActor(app);
+        if (['fight', 'flirt', 'fuck', 'feast', 'feed'].includes(action)) {
+            app.targetSelection = null;
+            app._clearCombatMarkedTargets?.();
+            app.combatPlanSelection = null;
+            return YAW_COMBAT_FEED.executeVariantAction(app, action, actor, [target], {
+                actors: [actor].filter(Boolean),
+                targets: [target],
+                forceChoose: true
+            });
+        }
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',
             actors: [actor].filter(Boolean),

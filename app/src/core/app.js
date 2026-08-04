@@ -379,8 +379,8 @@
             clearCombatPlanIntent() {
                 return YAW_COMBAT_PLANNING.clearIntent(this);
             },
-            confirmCombatPlan() {
-                return YAW_COMBAT_PLANNING.confirm(this);
+            confirmCombatPlan(forceChoose = false) {
+                return YAW_COMBAT_PLANNING.confirm(this, { forceChoose });
             },
             clearCombatPlan(reason = 'cancel') {
                 return YAW_COMBAT_PLANNING.clear(this, reason);
@@ -412,8 +412,8 @@
             toggleCombatGroupParticipant(id) {
                 return YAW_COMBAT_SYNC.toggleSlotParticipant(this, id);
             },
-            queueCombatGroupIntent(action) {
-                return YAW_COMBAT_SYNC.queueSlotIntent(this, action);
+            queueCombatGroupIntent(action, options = {}) {
+                return YAW_COMBAT_SYNC.queueSlotIntent(this, action, options);
             },
             _isCurrentCombatActor(unit) {
                 return YAW_COMBAT_ACTOR_STATE.isCurrent(this, unit);
@@ -2160,6 +2160,7 @@
                 unit.stockLastRefreshDay = unit.stockLastRefreshDay ?? this.dayCount ?? 0;
                 unit.cum = unit.cum || 0;
                 unit.status = unit.status || {};
+                if (typeof YAW_COMBAT_STATUS !== 'undefined') YAW_COMBAT_STATUS.normalizeFearStatus(unit);
                 unit.lactating = unit.lactating || false;
                 unit.lactationCooldown = unit.lactationCooldown || 0;
                 YAW_RESOURCE_LEDGER.normalizeUnit(unit);
@@ -2932,6 +2933,15 @@
             _skipTurnFromStatus(unit) {
                 return YAW_COMBAT_STATUS.skipTurnFromStatus(this, unit);
             },
+            _fearState(unit) {
+                return YAW_COMBAT_STATUS.fearState(this, unit);
+            },
+            _resolveFearTurn(unit) {
+                return YAW_COMBAT_STATUS.resolveFearTurn(this, unit);
+            },
+            _applyFearStatus(unit, options = {}) {
+                return YAW_COMBAT_STATUS.applyFearStatus(this, unit, options);
+            },
 
             _applyAttackStatus(actor, target, dmg) {
                 return YAW_COMBAT_STATUS.applyAttackStatus(this, actor, target, dmg);
@@ -3056,8 +3066,14 @@
                 return YAW_COMBAT_TARGETING.clearMarkedTargets(this);
             },
 
-            confirmCombatTargets(actor = this.activeActor || this._currentCombatActor()) {
-                return YAW_COMBAT_TARGETING.confirmMarkedTargetSelection(this, actor);
+            confirmCombatTargets(forceChoose = false, actor = this.activeActor || this._currentCombatActor()) {
+                // Keep the historical actor-first API for scripts and tests;
+                // UI callers pass the explicit boolean to request the chooser.
+                if (forceChoose && typeof forceChoose === 'object') {
+                    actor = forceChoose;
+                    forceChoose = false;
+                }
+                return YAW_COMBAT_TARGETING.confirmMarkedTargetSelection(this, actor, { forceChoose });
             },
 
             _combatMarkedTarget() {
@@ -3072,8 +3088,8 @@
                 return YAW_COMBAT_TARGETING.isMarkedTarget(this, unit);
             },
 
-            _executeCombatIntentOnMarkedTarget(action, actor = this.activeActor || this._currentCombatActor()) {
-                return YAW_COMBAT_TARGETING.executeIntentOnMarkedTarget(this, action, actor);
+            _executeCombatIntentOnMarkedTarget(action, actor = this.activeActor || this._currentCombatActor(), options = {}) {
+                return YAW_COMBAT_TARGETING.executeIntentOnMarkedTarget(this, action, actor, options);
             },
 
             // ===== SYNCHRONIZED ACTIONS =====
@@ -3967,7 +3983,13 @@
 
             _groupActionRoleSummary(action, target, actors = [], options = {}) {
                 const livingActors = (actors || []).filter(actor => actor && this._isLivingCreature(actor));
-                const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
+                // Fight techniques are owned by YAW_COMBAT_TECHNIQUES rather
+                // than the legacy sub-action table.  Keep the selected
+                // approach intact so exploration and combat resolve the same
+                // named technique.
+                const selectedSubAction = options.subAction && (action === 'fight'
+                    ? typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+                    : this.SUB_ACTIONS[action]?.[options.subAction]) ? options.subAction : null;
                 let primaryActor = livingActors[0] || this.player || null;
                 let helpers = livingActors.filter(actor => actor && actor !== primaryActor);
                 let recipient = null;
@@ -4112,7 +4134,9 @@
             outsideMutualGroupAction(action, participants = [], options = {}) {
                 const living = [...new Set((participants || []).filter(unit => unit && this._isLivingCreature(unit)))];
                 if (living.length <= 1) return false;
-                const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
+                const selectedSubAction = options.subAction && (action === 'fight'
+                    ? typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+                    : this.SUB_ACTIONS[action]?.[options.subAction]) ? options.subAction : null;
                 const names = living.map(unit => unit.name).join(', ');
                 if (action === 'feed' && selectedSubAction && !['tend', 'heal'].includes(selectedSubAction)) {
                     this.log.push({ text: this._label('feed.noValidTarget', 'No valid target for this feed action.'), type: 'discovery' });
@@ -4317,7 +4341,13 @@
                     const resolved = this.outsideActionOnTarget(action, target, livingActors[0] || this.player, options);
                     return resolved !== false;
                 }
-                const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
+                // Fight approaches are owned by Combat Technique V1 rather
+                // than the legacy SUB_ACTIONS table. Preserve authored
+                // namespaced techniques, while accepting `attack` as the
+                // compatibility alias for the canonical Basic approach.
+                const selectedSubAction = action === 'fight'
+                    ? (options.subAction === 'attack' ? 'basic' : (options.subAction || null))
+                    : (options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null);
                 const names = livingActors.map(actor => actor.name).join(', ');
                 let result = '';
                 let startCombatAfter = false;
@@ -4332,8 +4362,18 @@
                             break;
                         }
                         const targetCount = Math.max(1, Number(options.multiTargetCount) || 1);
+                        const technique = typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+                            ? YAW_COMBAT_TECHNIQUES.selected(this, livingActors, selectedSubAction || 'basic', targetCount)
+                            : null;
+                        if (technique === false) {
+                            result = this._label('combat.technique.groupUnavailable', 'The group can no longer perform the prepared combat technique.');
+                            break;
+                        }
                         const totalFigh = livingActors.reduce((sum, actor) => {
-                            const contribution = actor.Figh || 10;
+                            const rawContribution = actor.Figh || 10;
+                            const contribution = typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+                                ? YAW_COMBAT_TECHNIQUES.damageValue(rawContribution, technique)
+                                : rawContribution;
                             const effect = targetCount > 1 ? this._multiInteractionEffect(actor, 'fight', targetCount) : null;
                             return sum + contribution * (effect?.scale ?? 1);
                         }, 0);
@@ -4357,16 +4397,32 @@
                             if (outcomes.length > 0) result += ` ${outcomes.join(' ')}`;
                             break;
                         }
-                        result = this._label('group.fight.playFight', '{actors} play-fight {target} for {amount} punishment.', {
-                            actors: names,
-                            target: target.name,
-                            amount: dmg
-                        });
+                        const techniqueStatus = !this.party.includes(target) && technique
+                            ? this._applyTechniqueStatus?.(livingActors[0], target, technique, dmg)
+                            : false;
+                        result = technique
+                            ? this._label('combat.sync.techniqueHit', '{participants} combine {technique} against {target}, dealing {amount} punishment!', {
+                                participants: names,
+                                technique: YAW_COMBAT_TECHNIQUES.label(this, technique),
+                                target: target.name,
+                                amount: dmg
+                            })
+                            : this._label('group.fight.playFight', '{actors} play-fight {target} for {amount} punishment.', {
+                                actors: names,
+                                target: target.name,
+                                amount: dmg
+                            });
                         if (this.party.includes(target)) {
                             const outcome = this._resolvePartyPlayFight(livingActors, target, dmg);
                             if (outcome) result += ` ${outcome}`;
                         } else {
                             target.CPun -= dmg;
+                        }
+                        if (techniqueStatus) {
+                            result += ` ${this._label('combat.action.techniqueStatus', '{target} is affected by {status}.', {
+                                target: target.name,
+                                status: YAW_COMBAT_TECHNIQUES.statusLabel(this, technique.status.effect)
+                            })}`;
                         }
                         if (!this.party.includes(target) && target.CPun <= 0) {
                             this._makeCorpse(target, 'fight', { actor: livingActors[0], source: 'group-fight' });
@@ -4456,7 +4512,12 @@
                     case 'flirt':
                     case 'fuck': {
                         const selfIncludedPartyTarget = this.party.includes(target) && livingActors.includes(target);
-                        const totalCharm = livingActors.reduce((sum, actor) => sum + (actor[action === 'fuck' ? 'Fuck' : 'Flir'] || 10) + (actor.cha || 10) * 0.5, 0);
+                        const isSeduce = action === 'flirt' && selectedSubAction === 'seduce';
+                        const isDance = action === 'flirt' && selectedSubAction === 'dance';
+                        const totalCharm = livingActors.reduce((sum, actor) => sum
+                            + (actor[action === 'fuck' ? 'Fuck' : 'Flir'] || 10)
+                            + (actor.cha || 10) * 0.5
+                            + (isSeduce ? (actor.Fuck || 0) : 0), 0);
                         const resist = (target.wis || 10) + (this._safeRatio(target.CPle, target.MPle) * 10);
                         if (totalCharm > resist) {
                             const gain = Math.floor(totalCharm * (action === 'fuck' ? 0.45 : 0.3));
@@ -4474,8 +4535,11 @@
                                     max: target.MPle
                                 });
                             } else {
-                                result = this._label('group.social.focus', '{actors} focus on {target}. Spirit rises to {current}/{max}.', {
+                                result = this._label(isSeduce ? 'combat.sync.seduceSoftened' : (isDance ? 'combat.sync.danceSoftened' : 'group.social.focus'), isSeduce
+                                    ? '{actors} draw {target} closer, softening their guard. Spirit rises to {current}/{max}.'
+                                    : (isDance ? '{actors} dance with {target}, softening their guard. Spirit rises to {current}/{max}.' : '{actors} focus on {target}. Spirit rises to {current}/{max}.'), {
                                     actors: names,
+                                    participants: names,
                                     target: target.name,
                                     current: target.CPle,
                                     max: target.MPle
@@ -4490,7 +4554,9 @@
                             const breakthrough = this._resolveSpiritThreshold?.(livingActors[0], target, action, { emitScene: false });
                             if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                         } else {
-                            result = this._label('group.social.resists', "{target} resists the group's attention.", { target: target.name });
+                            result = this._label(isSeduce ? 'combat.sync.seduceResisted' : (isDance ? 'combat.sync.danceResisted' : 'group.social.resists'), isSeduce
+                                ? '{target} pulls away from the group’s overture.'
+                                : (isDance ? '{target} declines the group’s invitation to dance.' : "{target} resists the group's attention."), { target: target.name });
                         }
                         break;
                     }
@@ -4536,7 +4602,13 @@
             outsideActionOnTarget(action, target, actor = this.player, options = {}) {
                 actor = actor || this.player;
                 const { actorName } = this._actorNameAndVerb(actor);
-                const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
+                // Fight approaches are owned by Combat Technique V1 rather
+                // than the legacy SUB_ACTIONS table. Preserve authored
+                // namespaced techniques, while accepting `attack` as the
+                // compatibility alias for the canonical Basic approach.
+                const selectedSubAction = action === 'fight'
+                    ? (options.subAction === 'attack' ? 'basic' : (options.subAction || null))
+                    : (options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null);
                 let result = '';
                 let affected = true;
                 let startCombatAfter = false;
@@ -4574,14 +4646,39 @@
                             startCombatAfter = combatTargets.length > 0;
                             break;
                         }
+                        const technique = typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+                            ? YAW_COMBAT_TECHNIQUES.selected(this, [actor], selectedSubAction || 'basic', 1)
+                            : null;
+                        if (technique === false) {
+                            result = this._label('combat.technique.unavailableAtResolution', '{actor} can no longer use that combat technique.', { actor: actorName });
+                            affected = false;
+                            break;
+                        }
                         const ar = this._explorationActionRating(actor.Figh, actor, target, 'single-fight');
                         const def = target.con || 10;
                         const unscaledDmg = Math.max(1, Math.floor(ar - def * 0.3 + this._explorationDamageVariance(actor, target, 'single-fight')));
-                        const dmg = options.multiEffect
-                            ? this._multiInteractionScaleValue(unscaledDmg, options.multiEffect)
+                        const techniqueDamage = typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
+                            ? YAW_COMBAT_TECHNIQUES.damageValue(unscaledDmg, technique)
                             : unscaledDmg;
+                        const dmg = options.multiEffect
+                            ? this._multiInteractionScaleValue(techniqueDamage, options.multiEffect)
+                            : techniqueDamage;
                         target.CPun -= dmg;
-                        result = this._label('explore.fight.hit', '{actor} hits {target} for {amount} punishment.', { actor: actorName, target: target.name, amount: dmg });
+                        const techniqueStatus = technique ? this._applyTechniqueStatus?.(actor, target, technique, dmg) : false;
+                        result = technique
+                            ? this._label('combat.action.techniqueHit', '{actor} uses {technique} on {target} for {amount} punishment!', {
+                                actor: actorName,
+                                technique: YAW_COMBAT_TECHNIQUES.label(this, technique),
+                                target: target.name,
+                                amount: dmg
+                            })
+                            : this._label('explore.fight.hit', '{actor} hits {target} for {amount} punishment.', { actor: actorName, target: target.name, amount: dmg });
+                        if (techniqueStatus) {
+                            result += ` ${this._label('combat.action.techniqueStatus', '{target} is affected by {status}.', {
+                                target: target.name,
+                                status: YAW_COMBAT_TECHNIQUES.statusLabel(this, technique.status.effect)
+                            })}`;
+                        }
                         if (target.CPun <= 0) {
                             target.CPun = 1;
                             result += ` ${this._label('explore.fight.subdued', '{target} is subdued.', { target: target.name })}`;
@@ -4668,6 +4765,7 @@
                         break;
                     }
                     case 'flirt': {
+                        const dancing = selectedSubAction === 'dance';
                         let charm = this._explorationActionRating(actor.Flir + (actor.cha || 10) * 0.5, actor, target, 'single-flirt');
                         if (this.settings.sameSpeciesBonus && target.species === actor.species) {
                             charm += 3;
@@ -4678,9 +4776,18 @@
                             target.charmed = (target.charmed || 0) + 1;
                             target.Figh = Math.max(1, (target.Figh || 10) - 1);
                             const playerActor = actor === this.player || actor.name === this.player?.name;
-                            result = this._mlabel(playerActor ? 'explore.flirt.successPlayer' : 'explore.flirt.success', playerActor
-                                ? '{actor} talk with {target}. Their guard lowers. Spirit rises to {current}/{max}.'
-                                : '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', {
+                            result = dancing
+                                ? this._label(playerActor ? 'explore.dance.successPlayer' : 'explore.dance.success', playerActor
+                                    ? '{actor} dance with {target}. Their guard lowers. Spirit rises to {current}/{max}.'
+                                    : '{actor} dances with {target}. Their guard lowers. Spirit rises to {current}/{max}.', {
+                                    actor: actorName,
+                                    target: target.name,
+                                    current: target.CPle,
+                                    max: target.MPle
+                                })
+                                : this._mlabel(playerActor ? 'explore.flirt.successPlayer' : 'explore.flirt.success', playerActor
+                                    ? '{actor} talk with {target}. Their guard lowers. Spirit rises to {current}/{max}.'
+                                    : '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', {
                                 actor: actorName,
                                 target: target.name,
                                 current: target.CPle,
@@ -4697,7 +4804,9 @@
                                 result += ` ${this._label('explore.recruit.possible', '{target} may be willing to join the party.', { target: target.name })}`;
                             }
                         } else {
-                            result = this._label('explore.flirt.rebuff', '{target} rejects the conversation!', { target: target.name });
+                            result = this._label(dancing ? 'explore.dance.rebuff' : 'explore.flirt.rebuff', dancing
+                                ? '{target} declines to dance.'
+                                : '{target} rejects the conversation!', { target: target.name });
                             affected = false;
                         }
                         break;

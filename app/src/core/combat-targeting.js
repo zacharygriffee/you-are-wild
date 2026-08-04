@@ -130,7 +130,7 @@ const YAW_COMBAT_TARGETING = {
         return true;
     },
 
-    confirmMarkedTargetSelection(app, actor = app.activeActor || app._currentCombatActor() || app.player) {
+    confirmMarkedTargetSelection(app, actor = app.activeActor || app._currentCombatActor() || app.player, options = {}) {
         if (app.targetSelection?.source !== 'combat') return false;
         const action = app.targetSelection.action;
         if (!action || action === 'scavenge') return false;
@@ -138,17 +138,31 @@ const YAW_COMBAT_TARGETING = {
             app._reportInvalidCombatCommand?.({ action, actors: [actor], targets: [] }, 'missing-target');
             return false;
         }
-        return this.executeIntentOnMarkedTarget(app, action, actor);
+        return this.executeIntentOnMarkedTarget(app, action, actor, options);
     },
 
-    executeIntentOnMarkedTarget(app, action, actor = app.activeActor || app._currentCombatActor() || app.player) {
+    executeIntentOnMarkedTarget(app, action, actor = app.activeActor || app._currentCombatActor() || app.player, options = {}) {
         const targets = this.markedTargets(app);
         if (!targets.length) return false;
-        if (action === 'fight') {
-            const actors = app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1
+        // Every primary family reaches the same approach resolver after a
+        // target has been chosen.  Feed used to skip this branch, which made
+        // a clicked target silently receive Tend and made its other valid
+        // approaches unreachable on combat surfaces.
+        const grouped = app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1;
+        // A family always reaches its common approach resolver. That resolver
+        // opens the same approach surface on desktop and mobile.
+        const opensApproachChooser = ['fight', 'flirt', 'fuck', 'feast', 'feed'].includes(action);
+        if (opensApproachChooser) {
+            const actors = grouped
                 ? app._syncSelectedParticipants()
                 : [actor];
-            return YAW_COMBAT_FEED.executeVariantAction(app, action, actor, targets, { actors, targets });
+            return YAW_COMBAT_FEED.executeVariantAction(app, action, actor, targets, {
+                actors,
+                targets,
+                // Combat chooses an approach after target marking, just like
+                // exploration.
+                forceChoose: options.forceChoose === true
+            });
         }
         if (typeof YAW_ACTION_PROFILES !== 'undefined' && YAW_ACTION_PROFILES.profile(action)) {
             if (targets.length !== 1) {
@@ -169,14 +183,6 @@ const YAW_COMBAT_TARGETING = {
         }
         if (app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
             return app.queueCombatGroupIntent(action);
-        }
-        if (['feed', 'feast'].includes(action)) {
-            if (targets.length !== 1) {
-                app._reportInvalidCombatCommand?.({ action, actors: [actor], targets }, 'single-target-required');
-                return false;
-            }
-            const target = targets[0];
-            return YAW_COMBAT_FEED.executeVariantAction(app, action, actor, target);
         }
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',
@@ -203,9 +209,11 @@ const YAW_COMBAT_TARGETING = {
 
     canSyncTarget(app, participants, target, syncType = 'sync_fight') {
         const livingParticipants = (participants || []).filter(unit => unit && unit.CPun > 0);
-        if (!target || target.CPun <= 0 || target.disposition !== app.DISPOSITION.ENEMY) return false;
-        if (livingParticipants.length < 2) return false;
         const action = this.syncBaseAction(syncType);
+        if (!target || target.CPun <= 0) return false;
+        if (action === 'feed' ? !app.party.includes(target) : target.disposition !== app.DISPOSITION.ENEMY) return false;
+        if (livingParticipants.length < 2) return false;
+        if (action === 'feed') return true;
         if (app._isReachSensitiveCombatAction?.(action)) {
             return livingParticipants.every(unit => app._combatReachResult?.(unit, target, action)?.canAttempt);
         }

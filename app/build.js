@@ -163,6 +163,7 @@ const SCRIPT_ORDER = [
   'src/core/status-effects.js',
   'src/core/restraints.js',
   'src/core/action-profiles.js',
+  'src/core/interaction-families.js',
   'src/core/body-mass.js',
   'src/core/autonomous-actors.js',
   'src/core/species-system.js',

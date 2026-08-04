@@ -4,9 +4,9 @@ This file contains unfinished, approved, actionable work only. Completed work
 belongs in `changelog.md`; requirement evidence belongs in
 `backlog-completion-audit.md`; subsystem behavior belongs in focused doctrine.
 
-## Scope freeze for 0.18.0
+## Scope freeze for 0.18.1
 
-Version 0.18.0 is a select-group alpha candidate for the accepted Moddable Core
+Version 0.18.1 is a select-group alpha patch candidate for the accepted Moddable Core
 V1 boundary. Until its readiness record is closed, do not add new module
 permissions, public UI slots, resolver effect types, saved schemas, media
 providers, biome-recipe modes, recovery profiles, population simulation,
@@ -17,7 +17,7 @@ documentation corrections, localization and accessibility fixes, and narrow
 hardening. Core gameplay remains deterministic, offline-capable, and
 independent of LLM or remote-service availability.
 
-## Immediate — 0.18.0 candidate
+## Immediate — 0.18.1 patch candidate
 
 1. Keep release identity synchronized across the application package,
    package lock, first-party packages, Mod Author Kit, fixtures, and tests.
@@ -70,7 +70,7 @@ demonstrated contradiction:
 
 ## Later gameplay and mod work
 
-The following remain valid backlog, but none blocks 0.18.0:
+The following remain valid backlog, but none blocks 0.18.1:
 
 - regional population aggregation and offscreen service simulation;
 - persistent merchant supply, unloading, and designed repopulation;
@@ -87,6 +87,9 @@ The following remain valid backlog, but none blocks 0.18.0:
   common contract is needed;
 - crafting recipes, stations, costs, outputs, ownership, and item sinks;
 - companion loadouts and companion equipment management;
+- party-member display names: let the player assign clear, unique party-facing
+  names while retaining stable unit IDs, species identity, recruitment history,
+  save compatibility, and mod references;
 - reviewed AI media generation, packaged-runtime media bridges, optional OPFS
   optimization, and AI or TTS audio;
 - long-form balance, progression, reward, and difficulty-profile evaluation.
@@ -96,7 +99,7 @@ The following remain valid backlog, but none blocks 0.18.0:
 Commerce, paid mods, accounts, managed LLM entitlement, payment processors,
 public marketplace services, Pear seeding, mesh sidecars, and public-launch
 administration are separate tracks. They do not block this game release and
-must not be folded into the 0.18.0 candidate.
+must not be folded into the 0.18.1 candidate.
 
 ## Delivery boundary
 
@@ -113,8 +116,8 @@ channel remain operator-mediated.
 - `biome-boundary-world-recipe-v1-decision.md`
 - `body-mass-pieces-v1-decision.md`
 - `autonomous-population-v1-decision.md`
-- `release-readiness-0.18.0.md`
-- `releases/0.18.0.md`
+- `release-readiness-0.18.1.md`
+- `releases/0.18.1.md`
 - `architecture.md`
 - `backlog-completion-audit.md`
 - `control-model.md`

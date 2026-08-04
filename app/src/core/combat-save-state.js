@@ -87,7 +87,10 @@ const YAW_COMBAT_SAVE_STATE = {
                 const resolveAtIndex = sync.resolveAtIndex || 0;
                 const round = sync.round || savedCombat.round || 1;
                 const techniqueKey = sync.techniqueKey || null;
-                const techniqueAvailable = !techniqueKey
+                const baseAction = app._syncBaseAction(sync.type);
+                const selfFeast = baseAction === 'feast' && ['digest', 'release'].includes(techniqueKey);
+                const techniqueAvailable = baseAction !== 'fight'
+                    || !techniqueKey
                     || techniqueKey === 'basic'
                     || (typeof YAW_COMBAT_TECHNIQUES !== 'undefined'
                         && YAW_COMBAT_TECHNIQUES.selected(app, participants, techniqueKey, Math.max(1, targets.length)) !== false);
@@ -108,21 +111,21 @@ const YAW_COMBAT_SAVE_STATE = {
                         action: sync.type,
                         subAction: techniqueKey,
                         source: 'sync-save',
-                        targetType: 'enemy',
+                        targetType: selfFeast ? 'party' : 'enemy',
                         shape: targets.length > 1 ? 'many-to-many' : 'many-to-one',
                         timing: 'slowest-participant',
                         resolveAt: resolveAtIndex,
                         distribution: targets.length > 1 ? 'all' : 'single',
                         constraints: {
                             requireCurrentTurn: true,
-                            hostileOnly: true,
-                            checkReach: true,
-                            checkRows: true,
+                            hostileOnly: !selfFeast,
+                            checkReach: !selfFeast,
+                            checkRows: !selfFeast,
                             minActors: 2,
                             minTargets: 1,
                             maxTargets: null
                         },
-                        metadata: { baseAction: app._syncBaseAction(sync.type), round }
+                        metadata: { baseAction, scope: selfFeast ? 'self' : undefined, round }
                     }) : null
                 };
             }).filter(sync => sync && sync.target && sync.participants.length >= 2 && !sync.resolved),

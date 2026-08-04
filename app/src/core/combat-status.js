@@ -5,7 +5,7 @@
 
 const YAW_COMBAT_STATUS = {
     combatOnlyStatusKeys: [
-        'restrained', 'enveloped', 'stuck', 'stun', 'freeze', 'charm', 'fear', 'frightened',
+        'restrained', 'enveloped', 'stuck', 'stun', 'freeze', 'charm', 'fear', 'terror', 'frightened',
         'restrainedSkip', 'snared', 'grabbed', 'stunned', 'frozen', 'asleep', 'recovering'
     ],
     persistentAilmentKeys: ['poisoned', 'bleed', 'burn'],
@@ -55,6 +55,122 @@ const YAW_COMBAT_STATUS = {
         }
     },
 
+    normalizeFearStatus(unit) {
+        if (!unit) return null;
+        unit.status = unit.status && typeof unit.status === 'object' && !Array.isArray(unit.status)
+            ? unit.status
+            : {};
+        const status = unit.status;
+        if (status.fear === true) status.fear = { turns: 1, source: 'legacy-fear' };
+        if (status.terror === true) status.terror = { turns: 1, source: 'legacy-terror' };
+        if (status.frightened) {
+            const legacy = status.frightened === true ? {} : status.frightened;
+            if (!status.terror) {
+                status.terror = {
+                    turns: Math.max(1, Number(legacy?.turns || 1)),
+                    by: legacy?.by || '',
+                    source: legacy?.source || 'legacy-frightened'
+                };
+            }
+            delete status.frightened;
+        }
+        return status;
+    },
+
+    fearState(app, unit) {
+        const status = this.normalizeFearStatus(unit) || {};
+        if (app?._hasPerkEffect?.('fearResist', unit) && (status.fear || status.terror)) return 'resisted';
+        if (status.terror?.turns > 0) return 'terrified';
+        if (status.fear?.turns > 0 && Number(unit?.MPun || 0) > 0 && Number(unit?.CPun || 0) < Number(unit.MPun) * 0.3) {
+            return 'terrified';
+        }
+        if (status.fear?.turns > 0) return 'afraid';
+        return 'steady';
+    },
+
+    applyFearStatus(app, target, options = {}) {
+        if (!target || target.CPun <= 0) return 'ignored';
+        const status = this.normalizeFearStatus(target);
+        const turns = Math.max(1, Number(options.turns || 2));
+        const by = options.by || '';
+        const source = options.source || 'combat-fear';
+        if (app?._hasPerkEffect?.('fearResist', target)) {
+            delete status.fear;
+            delete status.terror;
+            const summary = app._label('combat.status.fearResisted', '{name} holds steady and resists the fear.', { name: target.name });
+            app._pushLog?.(summary, 'combat', { actor: target, action: 'fear', phase: 'resisted' });
+            app.emitSceneBeat?.({
+                mode: 'combat', actors: [target], action: 'fear', tags: ['fear', 'resisted'], source
+            }, summary, {
+                mode: 'combat', resultKind: 'status', importance: 'notable', tags: ['fear', 'resisted'], source
+            });
+            return 'resisted';
+        }
+        if (options.terror) {
+            status.terror = { turns, by, source };
+            return 'terrified';
+        }
+        status.fear = { turns, by, source };
+        return 'afraid';
+    },
+
+    resolveFearTurn(app, unit) {
+        const status = this.normalizeFearStatus(unit) || {};
+        const state = this.fearState(app, unit);
+        if (state === 'steady' || state === 'afraid') {
+            return { kind: state, consumesTurn: false, summary: '' };
+        }
+        if (state === 'resisted') {
+            delete status.fear;
+            delete status.terror;
+            return {
+                kind: 'resisted',
+                consumesTurn: false,
+                summary: app._label('combat.status.fearResisted', '{name} holds steady and resists the fear.', { name: unit.name })
+            };
+        }
+        if (!status.terror) {
+            status.terror = {
+                turns: Math.max(1, Number(status.fear?.turns || 1)),
+                by: status.fear?.by || '',
+                source: status.fear?.source || 'fear-escalation'
+            };
+        }
+        const isParty = (app.party || []).includes(unit);
+        const destination = app._fleeDestination?.(unit, {
+            source: 'combat-terror',
+            safeOnly: isParty
+        }) || null;
+        if (!destination) {
+            status.terror.turns = Math.max(0, Number(status.terror.turns || 1) - 1);
+            if (status.terror.turns <= 0) delete status.terror;
+            return {
+                kind: 'cornered',
+                consumesTurn: true,
+                escaped: false,
+                summary: app._label('combat.status.terrorCornered', '{name} panics with nowhere safe to run and cowers through the turn.', { name: unit.name })
+            };
+        }
+        if (isParty) {
+            if (unit === app.player) {
+                unit.fledCombat = true;
+                app.combatState.pendingFleeOutcome = { actor: unit, destination, source: 'combat-terror' };
+            } else {
+                unit.fledCombat = true;
+                app._relocateFleeingPartyMember?.(unit, { source: 'combat-terror', destination });
+            }
+        } else {
+            unit.fledCombat = true;
+            app._relocateFleeingCreature?.(unit, { source: 'combat-terror', destination });
+        }
+        return {
+            kind: 'flee',
+            consumesTurn: true,
+            escaped: true,
+            summary: app._label('combat.status.terrorFlee', '{name} breaks in terror and flees!', { name: unit.name })
+        };
+    },
+
     skipTurnFromStatus(app, unit) {
         const status = unit?.status || {};
         const moduleStatusReason = typeof YAW_STATUS_EFFECTS !== 'undefined'
@@ -74,38 +190,6 @@ const YAW_COMBAT_STATUS = {
         if (app._sleepSystemEnabled?.() && status.sleep?.turns > 0) {
             return app._label('combat.status.asleep', '{name} is asleep and cannot act!', { name: unit.name });
         }
-        if (status.fear?.turns > 0) {
-            if (app._hasPerkEffect('fearResist', unit)) {
-                delete status.fear;
-                return null;
-            }
-            const lowHp = unit.CPun < unit.MPun * 0.3;
-            if (lowHp) {
-                if ((app.party || []).includes(unit)) {
-                    const destination = app._fleeDestination?.(unit, { source: 'combat-fear', safeOnly: true }) || null;
-                    if (!destination) {
-                        return app._label('combat.status.fearCornered', '{name} panics but cannot find a safe route away!', { name: unit.name });
-                    }
-                    if (unit === app.player) {
-                        unit.fledCombat = true;
-                        app.combatState.pendingFleeOutcome = { actor: unit, destination, source: 'combat-fear' };
-                    } else {
-                        app._relocateFleeingPartyMember?.(unit, { source: 'combat-fear', destination });
-                    }
-                } else {
-                    const destination = app._fleeDestination?.(unit, { source: 'combat-fear' }) || null;
-                    if (!destination) {
-                        return app._label('combat.status.fearCornered', '{name} panics but cannot find a safe route away!', { name: unit.name });
-                    }
-                    unit.fledCombat = true;
-                    app._relocateFleeingCreature?.(unit, { source: 'combat-fear', destination });
-                }
-                return app._label('combat.status.fearFlee', '{name} panics and flees from fear!', { name: unit.name });
-            }
-            if (app._combatStateRoll('combat-fear-freeze', unit, 'skip') < 0.5) {
-                return app._label('combat.status.fearFrozen', '{name} freezes in fear and loses their turn!', { name: unit.name });
-            }
-        }
         return null;
     },
 
@@ -124,7 +208,7 @@ const YAW_COMBAT_STATUS = {
         if (actor?.stunAttack) target.status.stun = { turns: 1, source: 'combat' };
         if (_app?._sleepSystemEnabled?.() && actor?.sleepAttack) target.status.sleep = { turns: 3, source: 'combat' };
         if (actor?.charmAttack) target.status.charm = { turns: 2, by: actor.name, source: 'combat' };
-        if (actor?.fearAttack || actor?.menacing) target.status.fear = { turns: 2, by: actor.name, source: 'combat' };
+        if (actor?.fearAttack) this.applyFearStatus(_app, target, { turns: 2, by: actor.name, source: 'combat-attack' });
     },
 
     applyTechniqueStatus(app, actor, target, profile, dmg = 0) {
@@ -153,7 +237,9 @@ const YAW_COMBAT_STATUS = {
         } else if (status.effect === 'charm') {
             target.status.charm = { turns: status.turns, by: actor?.name || '', source };
         } else if (status.effect === 'fear') {
-            target.status.fear = { turns: status.turns, by: actor?.name || '', source };
+            if (this.applyFearStatus(app, target, { turns: status.turns, by: actor?.name || '', source }) === 'resisted') {
+                return false;
+            }
         } else {
             return false;
         }

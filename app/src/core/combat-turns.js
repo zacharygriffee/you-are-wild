@@ -20,6 +20,23 @@ const YAW_COMBAT_TURNS = {
         });
     },
 
+    emitFearOutcome(app, unit, outcome) {
+        if (!outcome?.summary) return;
+        app.emitSceneBeat?.({
+            mode: 'combat',
+            actors: [unit].filter(Boolean),
+            action: outcome.kind === 'flee' ? 'flee' : 'fear',
+            tags: ['fear', outcome.kind, ...(outcome.consumesTurn ? ['turn-consumed'] : [])],
+            source: 'combat-fear'
+        }, outcome.summary, {
+            mode: 'combat',
+            resultKind: 'status',
+            importance: outcome.kind === 'flee' ? 'major' : 'notable',
+            tags: ['fear', outcome.kind, ...(outcome.consumesTurn ? ['turn-consumed'] : [])],
+            source: 'combat-fear'
+        });
+    },
+
     processTurn(app) {
         if (!app.combatState.active) return;
         app._sanitizeCombatState({ preserveTurn: true });
@@ -58,6 +75,39 @@ const YAW_COMBAT_TURNS = {
             app.nextTurn();
             return;
         }
+        const statusSkip = app._skipTurnFromStatus(currentUnit);
+        if (statusSkip) {
+            app._pushLog(statusSkip, 'combat', { actor: currentUnit, phase: 'status' });
+            this.emitSkippedTurn(app, currentUnit, statusSkip);
+            app.renderLog(); app.nextTurn(); return;
+        }
+        const fearOutcome = app._resolveFearTurn?.(currentUnit) || { kind: 'steady', consumesTurn: false, summary: '' };
+        if (fearOutcome.summary) {
+            app._pushLog(fearOutcome.summary, 'combat', { actor: currentUnit, action: 'fear', phase: fearOutcome.kind });
+            this.emitFearOutcome(app, currentUnit, fearOutcome);
+            app.renderLog();
+        }
+        if (fearOutcome.consumesTurn) {
+            const pendingFlee = app.combatState?.pendingFleeOutcome;
+            if (pendingFlee?.actor === currentUnit) {
+                app._retreatPartyFromCombat?.(currentUnit, {
+                    source: pendingFlee.source || 'combat-terror',
+                    destination: pendingFlee.destination
+                });
+                app.combatState.pendingFleeOutcome = null;
+                app.endCombat('flee');
+                return;
+            }
+            app.renderParty();
+            app.renderCreatures();
+            const livingEnemiesAfterFear = app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0);
+            if (livingEnemiesAfterFear.length === 0) {
+                app.endCombat('disengage');
+                return;
+            }
+            app.nextTurn();
+            return;
+        }
         const activeSync = app.combatState.syncActions.find(s =>
             !s.resolved &&
             s.round === app.combatState.round &&
@@ -88,23 +138,6 @@ const YAW_COMBAT_TURNS = {
             return;
         }
         if (entry.actedThisRound) { app.nextTurn(); return; }
-        const statusSkip = app._skipTurnFromStatus(currentUnit);
-        if (statusSkip) {
-            app._pushLog(statusSkip, 'combat', { actor: currentUnit, phase: 'status' });
-            this.emitSkippedTurn(app, currentUnit, statusSkip);
-            const pendingFlee = app.combatState?.pendingFleeOutcome;
-            if (pendingFlee?.actor === currentUnit) {
-                app.renderLog();
-                app._retreatPartyFromCombat?.(currentUnit, {
-                    source: pendingFlee.source || 'combat-fear',
-                    destination: pendingFlee.destination
-                });
-                app.combatState.pendingFleeOutcome = null;
-                app.endCombat('flee');
-                return;
-            }
-            app.renderLog(); app.nextTurn(); return;
-        }
         if (currentUnit.status?.restrained && currentUnit.status.restrained.turns > 0) {
             const summary = app._label('combat.status.restrainedSkip', '{name} is restrained and cannot act!', { name: currentUnit.name });
             app._pushLog(summary, 'combat', { actor: currentUnit, phase: 'status' });

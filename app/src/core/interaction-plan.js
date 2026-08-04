@@ -99,6 +99,17 @@ const YAW_INTERACTION_PLAN = {
             ? context.resolveAt
             : (timing === 'slowest-participant' ? this.slowestParticipantIndex(app, actors) : null);
         const targetType = context.targetType || this.inferTargetType(app, targets);
+        const interactionContext = context.metadata?.baseAction
+            ? { ...context, action: context.metadata.baseAction, approach: context.metadata.semanticApproach || context.subAction }
+            : context;
+        const interaction = typeof YAW_INTERACTION_FAMILIES !== 'undefined'
+            ? YAW_INTERACTION_FAMILIES.normalize(app, interactionContext)
+            : {
+                family: null,
+                approach: context.approach ?? context.subAction ?? null,
+                approachKind: null,
+                synchronized: String(context.action || '').startsWith('sync_') || timing === 'slowest-participant'
+            };
         const effectPreview = app._multiInteractionPreview?.(context.action, actors, targets) || null;
         const plan = {
             mode: planMode,
@@ -108,6 +119,9 @@ const YAW_INTERACTION_PLAN = {
             targetIds: this.unitIds(targets),
             action: context.action || null,
             subAction: context.subAction || null,
+            family: interaction.family,
+            approach: interaction.approach,
+            approachKind: interaction.approachKind,
             source: context.source || 'command-composer',
             targetType,
             shape,
@@ -116,7 +130,7 @@ const YAW_INTERACTION_PLAN = {
             constraints: this.defaultConstraints(planMode, { ...context, timing }),
             distribution: this.inferDistribution(shape, context.distribution || null),
             clearTargets: Boolean(context.clearTargets),
-            metadata: context.metadata || {},
+            metadata: { ...(context.metadata || {}), interaction },
             effectPreview
         };
         return {

@@ -154,11 +154,39 @@ const YAW_INTERACTION_DISPATCH = {
         return app._dispatchInteractionCommand(this.buildPanelCommand(app, context));
     },
 
+    actionProfile(app, command = {}) {
+        const routed = typeof YAW_SUB_ACTIONS !== 'undefined'
+            ? YAW_SUB_ACTIONS.actionProfile(command.action, command.subAction)
+            : null;
+        // Group Seduce resolves through the shared Talk resolver, which owns
+        // contribution and narration for both immediate exploration and
+        // delayed combat. The direct profile remains authoritative for one
+        // actor only.
+        if (routed?.key === 'core:seduce'
+            && command.action === 'flirt'
+            && command.subAction === 'seduce'
+            && (command.actors || []).length > 1) return null;
+        return routed || (typeof YAW_ACTION_PROFILES !== 'undefined'
+            ? YAW_ACTION_PROFILES.profile(command.action)
+            : null);
+    },
+
+    profileCommand(command, profile) {
+        if (!profile || profile.key === command.action) return command;
+        return {
+            ...command,
+            action: profile.key,
+            metadata: {
+                ...(command.metadata || {}),
+                baseAction: command.action,
+                subAction: command.subAction || null
+            }
+        };
+    },
+
     validate(app, command) {
         if (!command || !command.action) return { ok: false, reason: 'missing-action' };
-        const actionProfile = typeof YAW_ACTION_PROFILES !== 'undefined'
-            ? YAW_ACTION_PROFILES.profile(command.action)
-            : null;
+        const actionProfile = this.actionProfile(app, command);
         if (YAW_RECOVERY_MODES?.isJourney?.(app)
             && (YAW_RECOVERY_MODES.restricts(app, 'interactions') || YAW_RECOVERY_MODES.restricts(app, 'combat'))) {
             return { ok: false, reason: 'recovery-restricted' };
@@ -235,6 +263,8 @@ const YAW_INTERACTION_DISPATCH = {
         if (!valid.ok) {
             if (valid.reason === 'recovery-restricted') {
                 app._guardRecoveryCapability?.('interactions', { action: command?.action });
+            } else {
+                this.reportInvalidAdventure(app, command, valid.reason);
             }
             return false;
         }
@@ -251,8 +281,8 @@ const YAW_INTERACTION_DISPATCH = {
             distribution: command.distribution,
             planMode: command.planMode || command.plan?.mode || 'exploration'
         };
-        if (typeof YAW_ACTION_PROFILES !== 'undefined' && YAW_ACTION_PROFILES.profile(command.action)) {
-            return YAW_ACTION_PROFILES.dispatch(app, command);
+        if (valid.actionProfile) {
+            return YAW_ACTION_PROFILES.dispatch(app, this.profileCommand(command, valid.actionProfile));
         }
         return this.dispatchAdventure(app, command);
     },
@@ -279,12 +309,15 @@ const YAW_INTERACTION_DISPATCH = {
             resolveAt: command.resolveAt,
             planMode: command.planMode || command.plan?.mode || 'combat'
         };
-        if (typeof YAW_ACTION_PROFILES !== 'undefined' && YAW_ACTION_PROFILES.profile(command.action)) {
-            return YAW_ACTION_PROFILES.dispatch(app, command);
+        if (valid.actionProfile) {
+            return YAW_ACTION_PROFILES.dispatch(app, this.profileCommand(command, valid.actionProfile));
         }
         if (command.timing === 'queued' || command.timing === 'slowest-participant') return app.queueSyncAction(command.action, command.targets?.[0], command);
-        if (['feed', 'feast'].includes(command.action) && command.subAction) return app._resolveCombatFeedCommand(command);
+        if (['feed', 'feast', 'flirt', 'fuck'].includes(command.action) && command.subAction) return app._resolveCombatFeedCommand(command);
         if (['feed', 'feast'].includes(command.action) && !command.targets?.length) return app.executeActionVariant(command.action, command.actors[0]);
+        if (['flirt', 'fuck'].includes(command.action) && !command.subAction && command.targets?.length === 1) {
+            return app.executeActionVariant(command.action, command.actors[0], command.targets[0]);
+        }
         if (command.targets?.length) return app._resolveCombatAction(command);
         return app.executeCombatIntent(command.action, command.actors[0]);
     },
@@ -306,10 +339,16 @@ const YAW_INTERACTION_DISPATCH = {
     reportInvalidCombat(app, command, reason = 'invalid-combat-target') {
         const actor = command?.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
         const target = command?.targets?.[0] || null;
-        let text = app._label('combat.invalidCommand', 'That combat action is not valid right now.');
+        const actionLabel = app._uiLabel?.(command?.metadata?.baseAction || command?.action?.replace(/^sync_/, '') || 'action') || 'action';
+        const actorName = actor?.name || app._label('ui.ally', 'Someone');
+        let text = app._label('combat.narration.noOpening', '{name} pauses; there is no clear opening for {action} right now.', { name: actorName, action: actionLabel });
         if (reason === 'cannot-reach' && target) {
             text = this.combatReachCorrection(app, command, actor, target)
                 || app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actor?.name || 'Actor', target: target.name });
+        } else if (reason === 'not-in-combat') {
+            text = app._label('combat.narration.notInCombat', '{name} looks around, but there is no battle to continue.', { name: actorName });
+        } else if (reason === 'resolving') {
+            text = app._label('combat.narration.resolving', '{name} waits for the current exchange to finish.', { name: actorName });
         } else if (reason === 'too-many-targets' && ['combat-slot-composer', 'combat-planner'].includes(command?.source)) {
             text = app._label('combat.group.oneTargetOnly', 'Choose one target for a group action.');
         } else if (reason === 'missing-target' && ['combat-slot-composer', 'combat-planner'].includes(command?.source)) {
@@ -318,10 +357,57 @@ const YAW_INTERACTION_DISPATCH = {
             text = app._label('combat.group.needIntent', 'Choose an intent for the group action.');
         } else if (reason === 'missing-lead-actor' && command?.source === 'combat-planner') {
             text = app._label('combat.group.needLead', 'The current actor must lead this group action.');
+        } else if (reason === 'missing-target') {
+            text = app._label('combat.narration.needTarget', '{name} looks for an opening, but needs a target for {action}.', { name: actorName, action: actionLabel });
+        } else if (['too-many-targets', 'single-target-required'].includes(reason)) {
+            text = app._label('combat.narration.oneTarget', '{name} needs one clear focus for {action}.', { name: actorName, action: actionLabel });
+        } else if (reason === 'missing-actor') {
+            text = app._label('combat.narration.needActor', 'No one steps forward to carry out {action}.', { action: actionLabel });
+        } else if (reason === 'too-many-actors') {
+            text = app._label('combat.narration.tooManyActors', 'The group cannot coordinate that many actors for {action} at once.', { action: actionLabel });
+        } else if (reason === 'not-current-actor') {
+            const currentName = app._currentCombatActor?.()?.name || app._label('ui.ally', 'another combatant');
+            text = app._label('combat.narration.otherTurn', '{name} holds back; it is {current}’s turn.', { name: actorName, current: currentName });
+        } else if (reason === 'recovery-restricted') {
+            text = app._label('combat.narration.recovering', '{name} is recovering and cannot commit to {action} yet.', { name: actorName, action: actionLabel });
+        } else if (reason === 'resolution-interrupted') {
+            text = app._label('combat.narration.interrupted', '{name}\'s attempt is interrupted, and the battle regains its footing.', { name: actorName });
+        } else if (reason === 'actor-unavailable') {
+            const unavailable = (command?.actors || []).find(unit => {
+                if (!unit || unit.CPun <= 0 || unit.knockedOut || unit.fledCombat) return true;
+                const status = unit.status || {};
+                return Boolean(status.terror?.turns > 0 || status.frightened || status.stun?.turns > 0 || status.freeze?.skip
+                    || status.restrained?.turns > 0 || status.stuck?.turns > 0 || status.enveloped?.turns > 0);
+            }) || (command?.actors || []).find(unit => {
+                const id = app._unitSelectionId?.(unit) || String(unit?.id || unit?.name || '');
+                return !(app.combatState?.turnQueue || []).some(entry => {
+                    const queued = entry?.unit || entry;
+                    const queuedId = app._unitSelectionId?.(queued) || String(queued?.id || queued?.name || '');
+                    return queued === unit || (id && id === queuedId);
+                });
+            });
+            const name = unavailable?.name || app._label('ui.ally', 'That companion');
+            const action = actionLabel;
+            const status = unavailable?.status || {};
+            if (status.terror?.turns > 0 || status.frightened) {
+                text = app._label('combat.actorUnavailable.terror', '{name} is already breaking away in terror and cannot join the {action} action.', { name, action });
+            } else if (unavailable?.fledCombat) {
+                text = app._label('combat.actorUnavailable.fled', '{name} has fled and cannot join the {action} action.', { name, action });
+            } else if (unavailable?.CPun <= 0 || unavailable?.knockedOut) {
+                text = app._label('combat.actorUnavailable.fallen', '{name} is down and cannot join the {action} action.', { name, action });
+            } else if (status.restrained?.turns > 0 || status.stuck?.turns > 0 || status.enveloped?.turns > 0) {
+                text = app._label('combat.actorUnavailable.restrained', '{name} cannot comply with the {action} action while restrained.', { name, action });
+            } else if (status.stun?.turns > 0 || status.freeze?.skip) {
+                text = app._label('combat.actorUnavailable.disabled', '{name} cannot comply with the {action} action while incapacitated.', { name, action });
+            } else {
+                text = app._label('combat.actorUnavailable.turnOrder', '{name} is not in this battle\'s turn order yet, so they cannot join the {action} action.', { name, action });
+            }
         } else if (reason === 'invalid-combat-technique') {
             text = app._label('combat.technique.invalid', 'That combat technique is no longer available for the selected actors and targets.');
         }
-        app.combatCorrectionMessage = { text, reason, action: command?.action || '', targetId: target?.id || target?.name || '', time: Date.now() };
+        // A failed attempt is part of the encounter fiction, never a separate UI warning.
+        // Keep controls usable and let the Scene Feed carry the reason it did not resolve.
+        app.combatCorrectionMessage = null;
         app._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
         app.emitStoryResult?.({
             ...(command || {}),
@@ -340,6 +426,35 @@ const YAW_INTERACTION_DISPATCH = {
         });
         app.renderLog();
         app._renderInteractionState({ exploration: false, toolbelt: true });
+    },
+
+    reportInvalidAdventure(app, command, reason = 'invalid-target') {
+        const actor = command?.actors?.[0] || app._getExplorationActors?.()?.[0] || app.player;
+        const target = command?.targets?.[0] || null;
+        const action = app._uiLabel?.(command?.action || 'action') || 'action';
+        const name = actor?.name || app._label('ui.ally', 'Someone');
+        let text = app._label('explore.narration.noOpening', '{name} cannot find a way to {action} right now.', { name, action });
+        if (reason === 'missing-target') {
+            text = app._label('explore.narration.needTarget', '{name} looks for a clear target before trying to {action}.', { name, action });
+        } else if (reason === 'missing-actor') {
+            text = app._label('explore.narration.needActor', 'No one is ready to carry out {action}.', { action });
+        } else if (reason === 'ineligible-target') {
+            text = app._label('explore.narration.ineligibleTarget', '{name} cannot use {action} with that target.', { name, action });
+        } else if (reason === 'too-many-actors' || reason === 'too-many-targets') {
+            text = app._label('explore.narration.focus', '{name} needs a clearer focus for {action}.', { name, action });
+        }
+        app._pushLog?.(text, 'discovery', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
+        app.emitStoryResult?.({
+            ...(command || {}),
+            mode: 'adventure',
+            actors: command?.actors?.length ? command.actors : [actor].filter(Boolean),
+            targets: command?.targets?.length ? command.targets : [target].filter(Boolean),
+            action: command?.action || 'action',
+            tags: [reason],
+            source: 'adventure-validation'
+        }, text, { resultKind: 'failure', importance: 'hint', tags: [reason], source: 'adventure-validation' });
+        app.renderLog?.();
+        app._renderInteractionState?.({ exploration: true, toolbelt: false });
     },
 
     dispatchAdventure(app, command) {

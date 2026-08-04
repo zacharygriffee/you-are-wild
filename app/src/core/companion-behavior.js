@@ -64,6 +64,11 @@ const YAW_COMPANION_BEHAVIOR = {
         }
     },
 
+    hasProviderController(app) {
+        return Boolean(app?.companionDecisionProvider
+            && typeof app.companionDecisionProvider.chooseAction === 'function');
+    },
+
     PREFERRED_ROWS: {
         auto: {
             label: 'Auto',
@@ -265,7 +270,13 @@ const YAW_COMPANION_BEHAVIOR = {
             && unit.CPun > 0
             && !unit.knockedOut
             && !unit.fledCombat);
-        const allies = (app.party || []).filter(unit => unit && unit.CPun > 0 && !unit.knockedOut);
+        // Feed/Tend is restorative support, never a hostile tactic.  The
+        // party list can retain stale references while combat state repairs,
+        // so disposition is authoritative in addition to party membership.
+        const allies = (app.party || []).filter(unit => unit
+            && unit.CPun > 0
+            && !unit.knockedOut
+            && unit.disposition !== app.DISPOSITION?.ENEMY);
         const corpses = (app.creatures || []).filter(unit => app._canScavengeCorpse?.(unit));
         const candidates = [{ action: 'hold', target: null, subAction: null, command: null }];
         const canSwallow = target => typeof app._canFitPrey === 'function'
@@ -292,6 +303,7 @@ const YAW_COMPANION_BEHAVIOR = {
             return !reach || reach.canSucceed !== false;
         };
         const add = (action, target, subAction = null) => {
+            if (action === 'feed' && !allies.includes(target)) return;
             const command = this.command(app, ally, action, target, subAction);
             const valid = app._validateInteractionCommand?.(command) || { ok: true };
             if (valid.ok && canAutonomouslyReach(action, target, subAction)) {
@@ -310,8 +322,11 @@ const YAW_COMPANION_BEHAVIOR = {
         if (shouldAdvance) candidates.push({ action: 'advance', target: null, subAction: null, command: null });
         for (const target of enemies) {
             add('fight', target);
-            add('flirt', target);
-            add('fuck', target);
+            // Autonomous companions choose a concrete contextual action. The
+            // player-facing path may open a variant sheet, but AI turns must
+            // resolve the selected safe default rather than leave an open UI.
+            add('flirt', target, app._getDefaultSubAction?.('flirt') || 'flirt');
+            add('fuck', target, app._getDefaultSubAction?.('fuck') || 'fuck');
             if ((ally.hunger || 0) >= 45 && canSwallow(target)) add('feast', target, 'swallow');
         }
         // Hunger and stomach capacity are deliberately separate. A hungry

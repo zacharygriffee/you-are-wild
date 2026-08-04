@@ -3739,7 +3739,9 @@ async function checkViewport(browser, name, width, height) {
           dockTop: dockRect.top,
           beltScrollHeight: belt.scrollHeight,
           beltClientHeight: belt.clientHeight,
-          beltOverflowY: getComputedStyle(belt).overflowY
+          beltOverflowY: getComputedStyle(belt).overflowY,
+          phaseControlCount: belt.querySelectorAll('.mobile-combat-phase-controls').length,
+          actorExitLabel: belt.querySelector('[data-command-control="clear-actor-slot"]')?.getAttribute('aria-label') || ''
         };
       });
       const intentLabels = ['Fight', 'Talk', 'Feast', 'Play', 'Feed', 'Flee'];
@@ -3749,9 +3751,9 @@ async function checkViewport(browser, name, width, height) {
         assert(match.bottom <= groupIntentPhase.dockTop + 1, `${name}: ${label} should be fully reachable above the fixed dock`);
       }
       assert(!groupIntentPhase.buttonRects.some(button => button.text.includes('Commit Group')), `${name}: group intent phase should not show a group commit before an intent is pending`);
-      const cancelGroup = groupIntentPhase.buttonRects.find(button => button.text === 'Cancel Group');
-      assert(cancelGroup, `${name}: group intent phase should expose an explicit Cancel Group exit`);
-      assert(cancelGroup.bottom <= groupIntentPhase.dockTop + 1, `${name}: Cancel Group should remain reachable above the fixed dock`);
+      assert(!groupIntentPhase.buttonRects.some(button => button.text === 'Cancel Group'), `${name}: group intent phase should not insert a duplicate Cancel Group row`);
+      assert.strictEqual(groupIntentPhase.phaseControlCount, 0, `${name}: group intent phase should keep the primary interaction grid in its stable slot`);
+      assert.strictEqual(groupIntentPhase.actorExitLabel, 'Cancel group selection', `${name}: group intent phase should expose its canonical exit through the command sentence`);
       assert(groupIntentPhase.beltScrollHeight <= groupIntentPhase.beltClientHeight + 1, `${name}: group intent phase should not require internal belt scrolling at 412x915`);
       assert.strictEqual(groupIntentPhase.beltOverflowY, 'visible', `${name}: group intent phase should avoid a nested scroll belt`);
 
@@ -3776,13 +3778,17 @@ async function checkViewport(browser, name, width, height) {
           buttonRects,
           dockTop: dockRect.top,
           beltScrollHeight: belt.scrollHeight,
-          beltClientHeight: belt.clientHeight
+          beltClientHeight: belt.clientHeight,
+          actorExitLabel: belt.querySelector('[data-command-control="clear-actor-slot"]')?.getAttribute('aria-label') || '',
+          intentExitVisible: Boolean(belt.querySelector('[data-command-control="clear-intent-slot"]'))
         };
       });
       const confirm = groupConfirmPhase.buttonRects.find(button => button.text.includes('Commit Group Fight'));
-      const cancel = groupConfirmPhase.buttonRects.find(button => button.text === 'Cancel Group');
-      assert(confirm && cancel, `${name}: group confirm phase should expose intent-owned commit and Cancel Group controls`);
-      assert(confirm.bottom <= groupConfirmPhase.dockTop + 1 && cancel.bottom <= groupConfirmPhase.dockTop + 1, `${name}: group confirm controls should stay above the fixed dock`);
+      assert(confirm, `${name}: group confirm phase should expose the intent-owned commit control`);
+      assert(confirm.bottom <= groupConfirmPhase.dockTop + 1, `${name}: group confirm control should stay above the fixed dock`);
+      assert(!groupConfirmPhase.buttonRects.some(button => button.text === 'Cancel Group'), `${name}: group confirm phase should not duplicate its sentence-level group exit`);
+      assert.strictEqual(groupConfirmPhase.actorExitLabel, 'Cancel group selection', `${name}: group confirm phase should retain the canonical group exit`);
+      assert.strictEqual(groupConfirmPhase.intentExitVisible, true, `${name}: group confirm phase should retain a direct return to intent choice`);
       assert(!groupConfirmPhase.buttonRects.some(button => button.text.includes('Talk') || button.text.includes('Feast') || button.text.includes('Play')), `${name}: group confirm phase should not keep the full intent grid visible`);
       assert(groupConfirmPhase.beltScrollHeight <= groupConfirmPhase.beltClientHeight + 1, `${name}: group confirm phase should not require internal belt scrolling at 412x915`);
     }
@@ -4114,7 +4120,7 @@ async function checkViewport(browser, name, width, height) {
         latestExchange: read('#desktop-scene-feed-latest .scene-exchange-group.latest'),
         composer: read('#desktop-command-composer'),
         belt: read('#desktop-context-belt'),
-        actionButtons: Array.from(document.querySelectorAll('#desktop-context-belt button')).map(button => {
+        actionButtons: Array.from(document.querySelectorAll('#desktop-context-belt button')).filter(button => !button.closest('details:not([open])')).map(button => {
           const rect = button.getBoundingClientRect();
           return {
             text: button.textContent.trim(),

@@ -179,6 +179,18 @@ const YAW_PANEL_RENDERING = {
         const list = type === 'party' ? app.party : app.creatures;
         if (list[index]) { list[index].expanded = !list[index].expanded; }
         if (type === 'party') app.renderParty(); else app.renderCreatures();
+        // Expanding a roster card is presentational. It must not leave the
+        // current player's combat controls in the stale/hidden state left by
+        // a panel-only rerender.
+        if (app.combatState?.active) {
+            const actor = app._currentCombatActor?.() || app.activeActor;
+            if (actor && app.party.includes(actor)) {
+                app.activeActor = actor;
+                app.renderDesktopCombatComposer?.(actor);
+                app.renderMobileCombatToolbelt?.();
+                app.renderSelectionSentence?.();
+            }
+        }
     },
 
     expandAll(app, type) {

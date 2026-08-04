@@ -292,6 +292,7 @@ const YAW_STATUS_EFFECTS = {
     ['stun', { label: 'Stunned', domains: ['combat'], duration: { default: 1, max: 10 }, restriction: 'skip-turn' }],
     ['charm', { label: 'Charmed', domains: ['combat', 'social'], duration: { default: 2, max: 20 } }],
     ['fear', { label: 'Afraid', domains: ['combat', 'social'], duration: { default: 2, max: 20 } }],
+    ['terror', { label: 'Terrified', domains: ['combat', 'social'], duration: { default: 1, max: 20 } }],
     ['restrained', { label: 'Restrained', domains: ['combat', 'feast'], duration: { default: 2, max: 20 }, restriction: 'skip-turn' }],
     ['grabbed', { label: 'Grabbed', domains: ['combat', 'feast'], duration: { default: 2, max: 20 } }],
     ['snared', { label: 'Snared', domains: ['combat', 'feast'], duration: { default: 2, max: 20 } }],

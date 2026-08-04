@@ -2,7 +2,7 @@
   "packageType": "yaw-module",
   "packageVersion": 1,
   "packageId": "replace_me",
-  "gameVersion": "0.18.0",
+  "gameVersion": "0.18.1",
   "trustBoundary": "trusted-local",
   "module": {
     "manifest": {

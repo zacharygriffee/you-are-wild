@@ -6,7 +6,6 @@
 const YAW_MOBILE_COMBAT_TOOLBELT = {
     prompt(app, actor = app._currentCombatActor()) {
         if (!app.combatState?.active) return '';
-        if (app.combatCorrectionMessage?.text) return app.combatCorrectionMessage.text;
         if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             if (app.syncSelection.phase === 'choose') {
                 return app._label('combat.sync.chooseAction', 'Choose Sync Action');
@@ -55,19 +54,14 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const row = (label, surface, buttons) => `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="${app._escapeHtml(surface)}" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(label)}"><div class="unit-actions unit-combat-actions compact" data-command-surface="${app._escapeHtml(surface)}" data-command-mode="combat" data-command-grammar="actor-target-intent">${buttons}</div></div>`;
         const cancelLabel = app._label('ui.cancel', 'Cancel');
         if (app.combatPlanSelection?.active) {
-            const controls = app._combatPlanControls?.({ includeReset: true }) || '';
-            const intentLabel = app.combatPlanSelection.pendingIntent
-                ? app._uiLabel(app.combatPlanSelection.pendingIntent)
-                : app._label('ui.chooseAction', 'Choose');
-            const phaseLabel = app.combatPlanSelection.pendingIntent
-                ? app._label('combat.group.commitIntent', 'Commit Group {intent}', { intent: intentLabel })
-                : app._label('combat.group.cancel', 'Cancel Group');
-            const phaseClass = app.combatPlanSelection.pendingIntent ? '' : ' combat-plan-cancel-only';
-            return controls ? `<div class="mobile-combat-intents mobile-combat-phase-controls${phaseClass}" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(phaseLabel)}">${controls}</div>` : '';
+            if (!app.combatPlanSelection.pendingIntent) return '';
+            const controls = app._combatPlanControls?.({ includeReset: false }) || '';
+            const intentLabel = app._uiLabel(app.combatPlanSelection.pendingIntent);
+            const phaseLabel = app._label('combat.group.commitIntent', 'Commit Group {intent}', { intent: intentLabel });
+            return controls ? `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(phaseLabel)}">${controls}</div>` : '';
         }
         if (app._isCombatGroupCompose?.()) {
-            const clearGroup = app._label('combat.group.clear', 'Clear Group');
-            return row(clearGroup, 'combat-group-compose', button(clearGroup, 'event.stopPropagation();App.clearCombatGroupCompose()', 'action-btn', clearGroup, 'data-command-surface="combat-group-compose" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-group" data-command-slot="exit"'));
+            return '';
         }
         if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             const cancelSync = app._label('combat.sync.cancel', 'Cancel Sync');
@@ -107,7 +101,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
                 ? app._label('target.confirmAction.count', 'Use {action} on {count} selected targets', { action: actionLabel, count: markedTargets.length })
                 : app._label('target.confirmAction', 'Use {action} on selected target', { action: actionLabel });
             const confirm = markedTargets.length
-                ? button(confirmAction, 'event.stopPropagation();App.confirmCombatTargets()', 'action-btn primary', confirmAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent"')
+                ? button(confirmAction, 'event.stopPropagation();App.confirmCombatTargets(true)', 'action-btn primary', confirmAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent"')
                 : '';
             const cancel = button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn compact-secondary', cancelAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit"');
             return row(app._label('target.controls', 'Target controls'), 'combat-targeting', confirm + cancel);
@@ -159,9 +153,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const status = app._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', { round, turn, total });
         const title = app._label('mobile.combat.actor', '{name} to act', { name: actorName });
         const prompt = this.prompt(app, actor);
-        const promptClass = app.combatCorrectionMessage?.text
-            ? 'mobile-combat-prompt combat-correction-message'
-            : 'mobile-combat-prompt';
+        const promptClass = 'mobile-combat-prompt';
         const sentence = this.selectionSentence(app);
         const phaseControls = this.phaseControls(app, actor);
         const intents = this.intentButtons(app, actor);

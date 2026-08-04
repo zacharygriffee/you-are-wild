@@ -167,7 +167,12 @@ const YAW_COMBAT_LIFECYCLE = {
         const rangedBackRowEnemies = enemies.filter(unit => unit?.CPun > 0 && unit.ranged && unit.combatRow === 'back');
         if (rangedBackRowEnemies.length && typeof app.emitStoryResult === 'function') {
             const names = rangedBackRowEnemies.map(unit => unit.name || app._label('unit.generic', 'unit')).join(', ');
-            const summary = app._label('combat.intro.rangedBackRow', '{names} keep their distance, attacking from the back row.', { names });
+            const singular = rangedBackRowEnemies.length === 1;
+            const summary = app._label(
+                singular ? 'combat.intro.rangedBackRow.one' : 'combat.intro.rangedBackRow',
+                singular ? '{names} keeps their distance, attacking from the back row.' : '{names} keep their distance, attacking from the back row.',
+                { names }
+            );
             app.emitStoryResult({
                 mode: 'combat',
                 action: 'position',

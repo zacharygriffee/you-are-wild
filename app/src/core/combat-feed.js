@@ -167,12 +167,35 @@ const YAW_COMBAT_FEED = {
         return true;
     },
 
-    failSubAction(app, action, reason, fallback) {
-        app.log.push({ text: app._label(reason || 'variant.noValidTarget', fallback || 'No valid target for this action variant.'), type: 'combat' });
-        app.renderLog();
+    failSubAction(app, action, reason) {
+        const selection = app.feedSelection || {};
+        const actor = selection.actors?.[0] || app.activeActor || app._currentCombatActor?.() || app.player;
+        const targets = [...new Set((selection.targets || [selection.target]).filter(Boolean))];
+        const failureReason = reason === 'variant.noLongerAvailable' ? 'sub-action-unavailable' : 'missing-target';
+        const command = app._buildPanelInteractionCommand?.({
+            mode: 'combat',
+            actors: (selection.actors?.length ? selection.actors : [actor]).filter(Boolean),
+            targets,
+            action,
+            subAction: selection.subAction || null,
+            source: 'action-variant-options',
+            targetType: targets.every(unit => app.party.includes(unit)) ? 'party' : 'enemy',
+            shape: selection.actors?.length > 1 ? 'many-to-one' : 'one-to-one',
+            timing: selection.actors?.length > 1 ? 'slowest-participant' : 'current-turn',
+            distribution: targets.length > 1 ? 'all' : 'single',
+            metadata: { baseAction: action }
+        }) || { mode: 'combat', actors: [actor].filter(Boolean), targets, action, source: 'action-variant-options' };
         app.combatState.processing = false;
         app.feedSelection = null;
         app.selectTarget?.(action);
+        if (app._reportInvalidCombatCommand) return app._reportInvalidCombatCommand(command, failureReason);
+        const text = app._label('combat.narration.noOpening', '{name} pauses; there is no clear opening for {action} right now.', {
+            name: actor?.name || app._label('ui.ally', 'Someone'),
+            action: app._uiLabel?.(action) || action
+        });
+        app._pushLog?.(text, 'combat', { actor, action, phase: failureReason });
+        app.renderLog();
+        return text;
     },
 
     executeSubAction(app, subId, actor, target = app.feedSelection?.target || null, action = app.feedSelection?.action || 'feed', options = {}) {
@@ -186,7 +209,7 @@ const YAW_COMBAT_FEED = {
         const targets = [...new Set((options.targets || selection?.targets || [target]).filter(unit => unit && unit.CPun > 0))];
         if (!isFight) app.defaultSubActions[action] = subId;
         if (!targets.length) {
-            this.failSubAction(app, action, action === 'feed' ? 'feed.noValidTarget' : 'variant.noValidTarget', action === 'feed' ? 'No valid target for this feed action.' : 'Choose a living target for this action.');
+            this.failSubAction(app, action, action === 'feed' ? 'feed.noValidTarget' : 'variant.noValidTarget');
             return false;
         }
         const resolution = isFight
@@ -199,7 +222,7 @@ const YAW_COMBAT_FEED = {
                 mode: 'combat'
             });
         if (!resolution.variants.find(variant => variant.id === subId)?.available) {
-            this.failSubAction(app, action, 'variant.noLongerAvailable', 'That variant is no longer available. Choose another.');
+            this.failSubAction(app, action, 'variant.noLongerAvailable');
             return false;
         }
         const grouped = actors.length > 1;

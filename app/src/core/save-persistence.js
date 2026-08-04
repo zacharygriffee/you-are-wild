@@ -191,6 +191,12 @@ const YAW_SAVE_PERSISTENCE = {
         timings.binaryBuildMs = Math.round(this.nowMs() - binaryStart);
         const dbStart = this.nowMs();
         await app._dbPut('saves', slotName, saveData);
+        // A manual/full save is the authoritative snapshot for this slot.  If an
+        // older sparse manifest remains, the load path would otherwise prefer it
+        // and silently ignore the just-written full save.
+        await app._dbDelete('saveManifests', slotName).catch(error => {
+            console.warn('Stale sparse manifest cleanup failed after full save', error);
+        });
         timings.fullSaveWriteMs = Math.round(this.nowMs() - dbStart);
         app.activeSlot = slotName;
         const savedAt = Date.now().toString();

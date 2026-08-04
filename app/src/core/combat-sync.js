@@ -41,8 +41,11 @@ const YAW_COMBAT_SYNC = {
         app._sanitizeCombatState?.({ preserveTurn: true });
         const allies = app.party.filter(p => p.CPun > 0 && p.name !== app.player.name);
         if (allies.length === 0) {
-            app.log.push({ text: app._label('combat.sync.noAllies', 'No allies available for sync.'), type: 'combat' });
-            app.renderLog();
+            const actor = app.activeActor || app._currentCombatActor() || app.player;
+            app._reportInvalidCombatCommand?.({
+                mode: 'combat', actors: [actor].filter(Boolean), targets: [], action: 'sync_fight',
+                source: 'sync-composer', metadata: { baseAction: 'fight' }
+            }, 'too-few-participants');
             return false;
         }
         const actor = app.activeActor || app._currentCombatActor() || app.player;
@@ -235,8 +238,11 @@ const YAW_COMBAT_SYNC = {
         if (syncType && (!app.syncSelection?.active || app.syncSelection.type !== syncType)) app.selectSyncParticipants(syncType);
         const participants = app._syncSelectedParticipants();
         if (participants.length < 2) {
-            app.log.push({ text: app._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'), type: 'combat' });
-            app.renderLog();
+            const actor = app.activeActor || app._currentCombatActor() || app.player;
+            app._reportInvalidCombatCommand?.({
+                mode: 'combat', actors: participants.length ? participants : [actor].filter(Boolean), targets: [], action: syncType,
+                source: 'sync-composer', metadata: { baseAction: app._syncBaseAction(syncType) }
+            }, 'too-few-participants');
             app.renderParty();
             return false;
         }
@@ -256,8 +262,11 @@ const YAW_COMBAT_SYNC = {
         const selectedParticipants = command?.actors?.length ? command.actors : (app._syncParticipants || app._syncSelectedParticipants() || []);
         const participants = selectedParticipants.filter(Boolean);
         if (!participants || participants.length < 2) {
-            app.log.push({ text: app._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'), type: 'combat' });
-            app.renderLog();
+            const actor = app.activeActor || app._currentCombatActor() || app.player;
+            app._reportInvalidCombatCommand?.(command || {
+                mode: 'combat', actors: participants.length ? participants : [actor].filter(Boolean), targets, action: syncType,
+                source: 'sync-composer', metadata: { baseAction: app._syncBaseAction(syncType) }
+            }, 'too-few-participants');
             return false;
         }
         const unavailable = participants.find(unit => typeof YAW_COMBAT_PLANNING !== 'undefined'
@@ -404,9 +413,11 @@ const YAW_COMBAT_SYNC = {
             ? YAW_COMBAT_TECHNIQUES.selected(app, sync.participants || [], sync.techniqueKey || sync.plan?.subAction || 'basic', queuedTargets.length)
             : null;
         if (baseAction === 'fight' && technique === false) {
-            const result = app._label('combat.technique.groupUnavailable', 'The group can no longer perform the prepared combat technique.');
-            app.log.push({ text: result, type: 'combat' });
-            app.renderLog();
+            const result = app._reportInvalidCombatCommand?.({
+                mode: 'combat', actors: sync.participants || [], targets: queuedTargets, action: sync.type,
+                subAction: sync.techniqueKey || sync.plan?.subAction || null,
+                source: 'sync-resolution', metadata: { baseAction }
+            }, 'invalid-combat-technique');
             app.nextTurn();
             return result;
         }
@@ -473,7 +484,7 @@ const YAW_COMBAT_SYNC = {
                     sync.target.willing = true;
                     sync.target.orgasmed = true;
                     app._awardCombatXP(app.XP_REWARDS.seduceEnemy);
-                    result = app._label('combat.sync.playComplete', '{participants} play with {target}! They relax completely.', {
+                    result = app._mlabel('combat.sync.playComplete', '{participants} play with {target}! They relax completely.', {
                         participants: participantNames,
                         target: sync.target.name
                     });
@@ -488,7 +499,7 @@ const YAW_COMBAT_SYNC = {
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else if (totalCharm > resist) {
                     sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
-                    result = app._label('combat.sync.playPartial', '{participants} play with {target}! They are dazed but not fully relaxed.', {
+                    result = app._mlabel('combat.sync.playPartial', '{participants} play with {target}! They are dazed but not fully relaxed.', {
                         participants: participantNames,
                         target: sync.target.name
                     });
@@ -500,7 +511,7 @@ const YAW_COMBAT_SYNC = {
                     const breakthrough = app._resolveSpiritThreshold?.(targetParticipants[0], sync.target, sync.type, { emitScene: false });
                     if (breakthrough?.summary) result += ` ${breakthrough.summary}`;
                 } else {
-                    result = app._label('combat.sync.playRejected', '{target} does not want to play with the group!', { target: sync.target.name });
+                    result = app._mlabel('combat.sync.playRejected', '{target} does not want to play with the group!', { target: sync.target.name });
                 }
                 break;
             }
@@ -526,7 +537,7 @@ const YAW_COMBAT_SYNC = {
                     result = app._label(
                         isSeduce ? 'combat.sync.seduceConvinced' : 'combat.sync.talkConvinced',
                         isSeduce
-                            ? '{participants} draw {target} into a charged exchange, and their resistance gives way.'
+                            ? '{participants} invite {target} closer, and {target} willingly lowers their guard.'
                             : '{participants} talk with {target} until they choose to stand down.', {
                         participants: participantNames,
                         target: sync.target.name
@@ -573,18 +584,34 @@ const YAW_COMBAT_SYNC = {
                 const dmg = Math.max(1, Math.floor(totalStr - def * 0.5 + app._combatDamageVariance(targetParticipants[0], sync.target, `sync-fight:${targetParticipants.map(p => app._unitSelectionId(p)).join('|')}`, 10)));
                 sync.target.CPun -= dmg;
                 const techniqueStatus = technique ? app._applyTechniqueStatus?.(targetParticipants[0], sync.target, technique, dmg) : false;
+                const loneParticipant = targetParticipants.length === 1 ? targetParticipants[0] : null;
                 result = technique
-                    ? app._label('combat.sync.techniqueHit', '{participants} combine {technique} against {target}, dealing {amount} punishment!', {
+                    ? (loneParticipant
+                        ? app._label('combat.action.techniqueHit', '{actor} uses {technique} on {target} for {amount} punishment!', {
+                            actor: loneParticipant.name,
+                            technique: YAW_COMBAT_TECHNIQUES.label(app, technique),
+                            target: sync.target.name,
+                            amount: dmg
+                        })
+                        : app._label('combat.sync.techniqueHit', '{participants} combine {technique} against {target}, dealing {amount} punishment!', {
                         participants: participantNames,
                         technique: YAW_COMBAT_TECHNIQUES.label(app, technique),
                         target: sync.target.name,
                         amount: dmg
-                    })
-                    : app._label('combat.sync.fightHit', '{participants} gang up on {target}, dealing {amount} punishment!', {
+                    }))
+                    : (loneParticipant
+                        ? app._label(loneParticipant === app.player ? 'combat.action.fightHit.player' : 'combat.action.fightHit.named', loneParticipant === app.player
+                            ? '{actor} hit {target} for {amount} punishment!'
+                            : '{actor} hits {target} for {amount} punishment!', {
+                            actor: loneParticipant === app.player ? app._label('ui.you', 'You') : loneParticipant.name,
+                            target: sync.target.name,
+                            amount: dmg
+                        })
+                        : app._label('combat.sync.fightHit', '{participants} gang up on {target}, dealing {amount} punishment!', {
                         participants: participantNames,
                         target: sync.target.name,
                         amount: dmg
-                    });
+                    }));
                 if (techniqueStatus) {
                     result += ` ${app._label('combat.action.techniqueStatus', '{target} is affected by {status}.', {
                         target: sync.target.name,

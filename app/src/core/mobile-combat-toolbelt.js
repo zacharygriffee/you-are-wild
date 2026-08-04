@@ -19,7 +19,11 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
             return app._label('variant.optionsTitle', '{action} Options', { action: app._uiLabel(app.feedSelection.action || 'feed') });
         }
         if (app.combatPlanSelection?.active) {
-            return app._label('mobile.combat.markTargets', 'Mark target(s) for {action}.', { action: app._combatPendingIntent?.() ? app._uiLabel(app._combatPendingIntent()) : app._label('ui.chooseAction', 'Choose') });
+            const pendingIntent = app.combatPlanSelection.pendingIntent || null;
+            if (!pendingIntent) {
+                return app._label('mobile.combat.chooseGroupAction', 'Choose a group action, then mark its targets.');
+            }
+            return app._label('mobile.combat.markTargets', 'Mark target(s) for {action}.', { action: app._uiLabel(pendingIntent) });
         }
         if (app.targetSelection?.source === 'combat') {
             const action = app._combatActionLabel?.(app.targetSelection.action || 'action') || app._uiLabel(app.targetSelection.action || 'action');

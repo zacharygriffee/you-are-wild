@@ -402,8 +402,22 @@ const YAW_INTERACTION_DISPATCH = {
             } else {
                 text = app._label('combat.actorUnavailable.turnOrder', '{name} is not in this battle\'s turn order yet, so they cannot join the {action} action.', { name, action });
             }
+        } else if (reason === 'sub-action-unavailable') {
+            text = app._label('combat.narration.variantClosed', '{name} reaches for {action}, but the opening closes before the attempt can begin.', {
+                name: actorName,
+                action: actionLabel
+            });
+        } else if (reason === 'too-few-participants') {
+            text = app._label('combat.narration.needCompanion', '{name} looks to the party for help with {action}, but no one else is ready to join.', {
+                name: actorName,
+                action: actionLabel
+            });
         } else if (reason === 'invalid-combat-technique') {
-            text = app._label('combat.technique.invalid', 'That combat technique is no longer available for the selected actors and targets.');
+            const names = (command?.actors || []).map(unit => unit?.name).filter(Boolean).join(', ') || actorName;
+            text = app._label('combat.technique.invalid', '{names} lose the opening for {action}; their prepared technique falls apart before it can land.', {
+                names,
+                action: actionLabel
+            });
         }
         // A failed attempt is part of the encounter fiction, never a separate UI warning.
         // Keep controls usable and let the Scene Feed carry the reason it did not resolve.
@@ -426,6 +440,7 @@ const YAW_INTERACTION_DISPATCH = {
         });
         app.renderLog();
         app._renderInteractionState({ exploration: false, toolbelt: true });
+        return text;
     },
 
     reportInvalidAdventure(app, command, reason = 'invalid-target') {

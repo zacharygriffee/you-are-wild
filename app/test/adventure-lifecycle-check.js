@@ -92,7 +92,6 @@ async function seedOrdinaryAdventure(page) {
     App.alphaSession = null;
     App.SAVE_DB_NAME = 'YAW_Saves';
     App.WORLD_DB_NAME = 'YAW_Worlds';
-    App.LEGACY_SAVE_DB_NAME = 'FFF_Saves';
     App.activeSlot = 'slot1';
     App._autoSaveSuppressed = true;
     App.cancelAutoSave?.();

@@ -56,8 +56,8 @@ assertion failed against the old behavior before its implementation changed.
 ## Validation evidence
 
 - [x] `npm run full-build` — source tests, lint, exact artifact check, viewport,
-  interaction, Alpha, Mod Author Kit, hosted build, and map/tileset acceptance
-  all passed.
+  interaction, Alpha, ordinary lifecycle, Mod Author Kit, hosted build,
+  map/tileset acceptance, and branding audit all passed.
 - [x] `npm run test:interactions` — passed with targetless and vanished-target
   Scene narration assertions.
 - [x] `npm run test:alpha` — 10/10 cases passed.

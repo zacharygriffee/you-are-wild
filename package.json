@@ -22,6 +22,6 @@
     "clean": "npm --prefix app run clean",
     "audit:branding": "node scripts/branding-audit.js",
     "audit:map-assets": "npm --prefix app run build:hosted --silent && node scripts/map-tileset-acceptance.js",
-    "full-build": "npm --prefix app run full-build && npm run test:mod-tooling && npm run audit:map-assets"
+    "full-build": "npm --prefix app run full-build && npm run test:mod-tooling && npm run audit:map-assets && npm run audit:branding"
   }
 }

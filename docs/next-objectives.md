@@ -8,7 +8,11 @@ belongs in `changelog.md`; requirement evidence belongs in
 
 Version 0.18.2 is the active released public-access alpha for the accepted
 Moddable Core V1 boundary. Public access began on 2026-08-03 without a broader
-advertising campaign. During patch maintenance, do not add new module
+advertising campaign. Version 0.18.3 is the current unpublished development
+candidate. It carries the same frozen gameplay and module boundary while
+adding the versioned license cutoff and stabilization evidence.
+
+During candidate stabilization, do not add new module
 permissions, public UI slots, resolver effect types, saved schemas, media
 providers, biome-recipe modes, recovery profiles, population simulation,
 elemental semantics, crafting, commerce, or arbitrary module callbacks.
@@ -18,13 +22,24 @@ documentation corrections, localization and accessibility fixes, and narrow
 hardening. Core gameplay remains deterministic, offline-capable, and
 independent of LLM or remote-service availability.
 
-## Immediate — 0.18.2 alpha patch maintenance
+## Immediate — 0.18.3 stabilization
 
-1. Keep release identity synchronized across the application package,
-   package lock, first-party packages, Mod Author Kit, fixtures, and tests.
-2. Keep English and Spanish release copy aligned with the exact implemented
-   Moddable Core V1 boundary and its deliberate exclusions.
-3. Retain exact-release evidence for:
+1. Exercise the built candidate through deterministic Alpha missions and
+   ordinary adventures. Cover exploration and combat, single/group/self/mixed
+   interactions, SFW and Mature posture, companion control, containment,
+   save/reload, and desktop/mobile presentation. Keep the maintained
+   `test:lifecycle` ordinary-adventure path in the release gate alongside the
+   Alpha and interaction matrices.
+2. Treat a reported problem as actionable only after it has stable setup and
+   reproduction steps. Add the smallest deterministic regression fixture that
+   fails first, then fix the implementation and keep the fixture permanently.
+3. Continue agent-led testing while human testing remains ongoing. Human
+   observations inform narration quality, touch comfort, pacing, and balance;
+   they do not pause independent automated or agent exploration.
+4. Keep candidate identity synchronized across the application package,
+   package lock, first-party packages, Mod Author Kit, fixtures, tests, and
+   release copy.
+5. Retain exact-candidate evidence for:
    - the full local build, branding and whitespace checks;
    - representative older-save loading;
    - deterministic fixture install, enable, action resolution, runtime reload,
@@ -33,9 +48,23 @@ independent of LLM or remote-service availability.
    - short-mobile contributed-action disclosure;
    - offline single-file and hosted artifact identity;
    - green GitHub CI on each release-patch commit.
-4. Record any observational defect without expanding the frozen contracts.
-5. Keep the release at select-group alpha. Public-preview promotion, advertising,
-   and any access-policy change require explicit operator decisions.
+6. Record observational defects without expanding the frozen contracts.
+7. Keep 0.18.3 unpublished until the operator explicitly approves release and
+   Sites publication. Public-preview promotion, advertising, and any
+   access-policy change remain separate decisions.
+
+## Post-stabilization priority — layered map art
+
+After the 0.18.3 stabilization gate, improve the 3x3 traversal presentation
+through the staged [Layered Map Art Roadmap](map-art-layering-roadmap.md).
+The first priorities are directional cliff and mountain slopes, edge-to-edge
+bridge continuity, and decomposing baked terrain art into reusable ground,
+route, foliage, feature, durable-world-evidence, presence, and state layers.
+
+This presentation work should precede Terrain Tactics V1 and Crafting V1.
+Those systems need stable terrain, obstacle, resource, and persistent tile
+semantics so mechanics can consume world facts rather than infer rules from
+bitmap appearance.
 
 ## Evidence-led release smoke
 
@@ -70,7 +99,7 @@ demonstrated contradiction:
 
 ## Later gameplay and mod work
 
-The following remain valid backlog, but none blocks 0.18.2:
+The following remain valid backlog, but none blocks 0.18.3 stabilization:
 
 - regional population aggregation and offscreen service simulation;
 - persistent merchant supply, unloading, and designed repopulation;
@@ -82,10 +111,12 @@ The following remain valid backlog, but none blocks 0.18.2:
 - permanent body-piece stat consequences only after balance and migration
   acceptance;
 - Sleep or Rest V2 with explicit waking, risk, reward, and choice;
-- terrain tactics and reaction or interruption priority contracts;
+- terrain tactics and reaction or interruption priority contracts, after the
+  layered map-art semantic inventory is accepted;
 - shared elemental damage and resistance semantics, if real modules prove a
   common contract is needed;
-- crafting recipes, stations, costs, outputs, ownership, and item sinks;
+- crafting recipes, stations, costs, outputs, ownership, item sinks, and
+  terrain resource placement, after persistent resource semantics are accepted;
 - reviewed AI media generation, packaged-runtime media bridges, optional OPFS
   optimization, and AI or TTS audio;
 - long-form balance, progression, reward, and difficulty-profile evaluation.
@@ -95,7 +126,7 @@ The following remain valid backlog, but none blocks 0.18.2:
 Commerce, paid mods, accounts, managed LLM entitlement, payment processors,
 public marketplace services, Pear seeding, mesh sidecars, and public-launch
 administration are separate tracks. They do not block this game release and
-must not be folded into 0.18.2 patch maintenance.
+must not be folded into 0.18.3 stabilization.
 
 ## Delivery boundary
 
@@ -113,7 +144,10 @@ operator-mediated.
 - `body-mass-pieces-v1-decision.md`
 - `autonomous-population-v1-decision.md`
 - `release-readiness-0.18.2.md`
+- `release-readiness-0.18.3.md`
 - `releases/0.18.2.md`
+- `releases/0.18.3.md`
+- `map-art-layering-roadmap.md`
 - `architecture.md`
 - `backlog-completion-audit.md`
 - `control-model.md`

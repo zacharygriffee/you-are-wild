@@ -20363,6 +20363,45 @@ test('Mixed-reach group Fight narrates the blocked actor with a singular capable
   assert(harpy.CPun < harpy.MPun, 'The capable flying participant should still damage the airborne target');
 });
 
+test('Spanish mixed-reach group Fight localizes the player actor in the capable outcome', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.updateLanguage('es');
+  const player = makeUnit('ZX', { id: 'mixed-fight-es-zx', Figh: 30, hunger: 10, combatRow: 'back', flying: true, ranged: true });
+  const ally = makeUnit('Ally', { id: 'mixed-fight-es-ally', Figh: 30, hunger: 20, combatRow: 'front' });
+  const harpy = makeUnit('Harpy', {
+    id: 'mixed-fight-es-harpy', disposition: App.DISPOSITION.ENEMY,
+    CPun: 100, MPun: 100, con: 20, combatRow: 'back', flying: true
+  });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [harpy];
+  App.combatState = {
+    active: true, round: 6, currentTurn: 0, processing: false, xpEarned: 0,
+    turnQueue: [
+      { unit: player, initiative: 30 },
+      { unit: ally, initiative: 20 },
+      { unit: harpy, initiative: 10 }
+    ],
+    syncActions: []
+  };
+  [player, ally, harpy].forEach(unit => App._normalizeUnit(unit));
+  App.activeActor = player;
+  App._effectiveCon = target => target.con;
+  App._combatDamageVariance = () => 0;
+  App.nextTurn = function() {};
+
+  App._resolveSyncAction({
+    type: 'sync_fight', techniqueKey: 'basic', participants: [player, ally],
+    target: harpy, targets: [harpy], plan: { subAction: 'basic' }, resolved: false
+  });
+
+  const result = App.log[App.log.length - 1]?.text || '';
+  assertContains(result, 'Ally intenta Luchar', 'The grounded ally should receive localized reach narration');
+  assertContains(result, 'Tu golpeas a Harpy', 'The capable player outcome should use the localized player actor label');
+  assertNotContains(result, 'You', 'Spanish group Fight narration should not leak an English player label');
+  assert(harpy.CPun < harpy.MPun, 'The capable flying player should still damage the airborne target');
+});
+
 test('Mixed-reach group Chew narrates the blocked actor while a capable actor still resolves', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('ZX', { id: 'mixed-chew-zx', Feas: 30, hunger: 10, combatRow: 'front' });

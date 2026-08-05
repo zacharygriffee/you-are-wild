@@ -232,6 +232,7 @@ const YAW_COMBAT_LIFECYCLE = {
         app.activeActor = null;
         app._clearTransientInteractionState();
         app._clearCombatRefreshSnapshot(app.activeSlot);
+        app.updateCheatButtons?.();
         if (outcome === 'defeat' && !pendingPlayerDeath) {
             app._markDefeat(outcome);
             pendingPlayerDeath = Boolean(app.defeatState?.pending && app.defeatState?.terminal);

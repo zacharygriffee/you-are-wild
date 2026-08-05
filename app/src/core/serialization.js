@@ -275,6 +275,15 @@
   // Save/load helpers
   Binary.saveGame = (appState, options = {}) => {
     // Convert Map/Set to plain objects for serialization
+    const overpoweredSnapshot = appState.cheats?.overpowered && appState._overpoweredSnapshot
+      ? appState._overpoweredSnapshot
+      : null;
+    const playerForSave = overpoweredSnapshot
+      ? { ...appState.player, ...overpoweredSnapshot }
+      : appState.player;
+    const partyForSave = (appState.party || []).map(unit => unit === appState.player && playerForSave
+      ? playerForSave
+      : unit);
     const worldMapObj = {};
     if (!options.omitWorldMap && appState.worldMap) {
         for (const [key, tile] of appState.worldMap.entries()) {
@@ -345,15 +354,15 @@
 
     const saveData = {
       version: 10,
-      playerName: appState.player?.name || 'You',
-      playerSpecies: appState.player?.species || 'human',
+      playerName: playerForSave?.name || 'You',
+      playerSpecies: playerForSave?.species || 'human',
       locationX: appState.location?.x || 0,
       locationY: appState.location?.y || 0,
-      playerHp: appState.player?.CPun ?? 100,
-      playerMaxHp: appState.player?.MPun ?? 100,
-      playerStats: liveStats(appState.player),
-      playerLevel: appState.player?.level || 1,
-      party: appState.party || [],
+      playerHp: playerForSave?.CPun ?? 100,
+      playerMaxHp: playerForSave?.MPun ?? 100,
+      playerStats: liveStats(playerForSave),
+      playerLevel: playerForSave?.level || 1,
+      party: partyForSave,
       log: logEntries.map(entry => entry.text),
       currentBiome: appState.currentBiome || 'forest',
       worldMeta: appState.worldMeta || { worldId: 'world_default', seed: 'default', generatorVersion: 7, mapModsHash: 'core' },

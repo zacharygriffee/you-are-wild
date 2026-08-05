@@ -4,6 +4,14 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Cheat controls now follow their visible contracts: Instant Win resolves an
+  active encounter without requiring Overpowered, God Mode protects the player
+  from combat collapse and fatal containment, Never Hungry intercepts ordinary
+  party action/travel/round pressure, Eat Anything bypasses resistance without
+  bypassing capacity, and disabling Overpowered restores the original stats.
+  Save snapshots exclude temporary Overpowered values. Inapplicable Instant
+  Win is disabled accessibly and its defensive fallback is narrated instead of
+  reported as an error.
 - Settings now includes a toggleable No Enemies survey cheat. It prevents new
   hostile wild and structure encounters while retaining peaceful inhabitants,
   blocks combat admission from existing saved hostiles without deleting them,

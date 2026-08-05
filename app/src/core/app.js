@@ -6504,6 +6504,23 @@
                 return YAW_HOLDINGS.show(this, this.player, { tab: 'stats' });
             },
             cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false, noEnemies: false },
+            _overpoweredFields: ['Figh', 'Feas', 'Flir', 'Fuck', 'Flee', 'Feed', 'str', 'con', 'spd', 'int', 'wis', 'cha', 'MPun', 'CPun', 'MPle', 'CPle'],
+            _applyOverpoweredCheat(enabled) {
+                if (!this.player) return false;
+                if (enabled) {
+                    if (!this._overpoweredSnapshot) {
+                        this._overpoweredSnapshot = Object.fromEntries(this._overpoweredFields.map(field => [field, this.player[field]]));
+                    }
+                    for (const field of this._overpoweredFields) {
+                        this.player[field] = ['MPun', 'CPun', 'MPle', 'CPle'].includes(field) ? 999 : 99;
+                    }
+                } else if (this._overpoweredSnapshot) {
+                    for (const field of this._overpoweredFields) this.player[field] = this._overpoweredSnapshot[field];
+                    this._overpoweredSnapshot = null;
+                }
+                this.renderParty();
+                return true;
+            },
             toggleCheat(cheat) {
                 this.cheats[cheat] = !this.cheats[cheat];
                 const isOn = this.cheats[cheat];
@@ -6511,14 +6528,14 @@
                     name: this._label(`cheat.${cheat}`, cheat),
                     state: this._label(isOn ? 'cheat.state.on' : 'cheat.state.off', isOn ? 'ON' : 'OFF')
                 }), type: 'discovery' });
+                if (cheat === 'overpowered') {
+                    this._applyOverpoweredCheat(isOn);
+                }
                 if (cheat === 'overpowered' && isOn && this.player) {
-                    this.player.Figh = 99; this.player.Feas = 99; this.player.Flir = 99;
-                    this.player.Fuck = 99; this.player.Flee = 99; this.player.Feed = 99;
-                    this.player.str = 99; this.player.con = 99; this.player.spd = 99;
-                    this.player.int = 99; this.player.wis = 99; this.player.cha = 99;
-                    this.player.MPun = 999; this.player.CPun = 999;
-                    this.player.MPle = 999; this.player.CPle = 999;
                     this.log.push({ text: this._label('cheat.overpoweredMaxed', 'Overpowered! All stats maxed.'), type: 'discovery' });
+                }
+                if (cheat === 'neverHungry' && isOn) {
+                    for (const unit of this.party || []) unit.hunger = 0;
                     this.renderParty();
                 }
                 if (cheat === 'noEnemies' && isOn && this.combatState?.active) {
@@ -6545,29 +6562,35 @@
                 for (const [k, v] of Object.entries(this.cheats)) {
                     btnStyle(k, v);
                 }
+                const instantWin = document.getElementById('cheat-instantWin');
+                if (instantWin) {
+                    const available = Boolean(this.combatState?.active);
+                    instantWin.disabled = !available;
+                    instantWin.setAttribute('aria-disabled', String(!available));
+                }
             },
             instantWin() {
                 if (!this.combatState.active) {
-                    this.log.push({ text: this._label('combat.instantWinNotInCombat', 'Not in combat! Instant Win only works during combat.'), type: 'combat' });
+                    this.log.push({ text: this._label('combat.instantWinNotInCombat', 'There is no battle to end.'), type: 'discovery' });
                     this.renderLog();
-                    return;
+                    return false;
                 }
-                if (!this.cheats.overpowered) {
-                    this.log.push({ text: this._label('combat.instantWinRequiresOverpowered', 'Instant Win requires Overpowered mode.'), type: 'combat' });
-                    this.renderLog();
-                    return;
-                }
+                const successMessage = this._label('combat.instantWinSuccess', 'Instant Win! All enemies are defeated.');
                 this.log.push({ text: this._label('combat.instantWinDecorated', '⚡ {message}', {
-                    message: this._label('combat.instantWinSuccess', 'Instant Win! All enemies are defeated.')
+                    message: successMessage
                 }), type: 'combat' });
                 this.renderLog();
+                let defeated = 0;
                 this.creatures.forEach(c => {
                     if (c.disposition === this.DISPOSITION.ENEMY && this._isLivingCreature(c)) {
+                        this._awardCombatXP(this.XP_REWARDS.defeatEnemy);
                         this._makeCorpse(c, 'fight', { actor: this.player, source: 'instant-win' });
+                        defeated++;
                     }
                 });
-                this._emitCombatAction('instant_win', this.player, null, 'success');
+                this._emitCombatAction('instant_win', this.player, null, successMessage);
                 this.endCombat(true);
+                return defeated > 0;
             },
             clearAllData() {
                 return YAW_SETTINGS_DATA_FLOW.clearAllData(this);

@@ -39,6 +39,9 @@ const YAW_COMBAT_TURNS = {
 
     processTurn(app) {
         if (!app.combatState.active) return;
+        if (app.cheats?.godMode && app.player?.CPun <= 0) {
+            app._handlePlayerFall?.({ cause: 'combat-party-collapse', source: 'combat-turns' });
+        }
         app._sanitizeCombatState({ preserveTurn: true });
         const livingEnemiesNow = app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0);
         const livingPartyNow = app.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
@@ -207,11 +210,10 @@ const YAW_COMBAT_TURNS = {
         }
         app._pushLog(app._label('combat.roundDivider', '--- Round {round} ---', { round: app.combatState.round }), 'combat', { phase: 'round' });
         app.renderMobileCombatToolbelt();
-        for (const c of living) {
-            if (!app.cheats.neverHungry) {
-                c.hunger = Math.min(100, (c.hunger || 0) + 3);
-            }
-        }
+        for (const c of living) app._applyHungerPressure?.(c, 3, {
+            action: 'combat-round',
+            source: 'combat-round'
+        });
         if (typeof YAW_RESTRAINTS !== 'undefined') YAW_RESTRAINTS.tick(app);
         app._processStatusEffects();
         app._applyTerrainRoundEffects(living);

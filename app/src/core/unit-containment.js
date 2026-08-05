@@ -884,7 +884,8 @@ const YAW_UNIT_CONTAINMENT = {
         const playerRef = app?._unitSelectionId?.(app.player) || app?.player?.id || app?.player?.name;
         const preyRef = app?._unitSelectionId?.(prey) || prey?.id || prey?.name;
         const isPlayer = Boolean(app?.player && (prey === app.player || (playerRef && String(playerRef) === String(preyRef))));
-        const survivable = Boolean(app?.settings?.endoMode) && !app?.settings?.fatalVore;
+        const godModeRescue = Boolean(isPlayer && app?.cheats?.godMode);
+        const survivable = godModeRescue || (Boolean(app?.settings?.endoMode) && !app?.settings?.fatalVore);
         if (survivable) {
             prey.state = 'softened';
             prey.digestionState = 'softened';
@@ -904,7 +905,10 @@ const YAW_UNIT_CONTAINMENT = {
                     holder: holder.name || app._label('containment.holderFallback', 'their holder')
                 }), type: 'combat' });
             }
-            if (isPlayer) app?._resolvePlayerState?.({ status: 'captured', terminal: false, cause: 'survivable-containment', source: 'unit-containment' });
+            if (isPlayer) {
+                if (godModeRescue) app?._handlePlayerFall?.({ cause: 'fatal-digestion', source: 'unit-containment' });
+                else app?._resolvePlayerState?.({ status: 'captured', terminal: false, cause: 'survivable-containment', source: 'unit-containment' });
+            }
             return prey;
         }
         prey.state = 'terminal';

@@ -251,6 +251,12 @@ const YAW_DEFEAT_RECOVERY = {
             app.player.CPun = Math.max(1, app.player.CPun || 0);
             app.player.knockedOut = false;
             app.defeatState = null;
+            app.log?.push?.({
+                text: app._label('combat.godModeSaved', 'God Mode keeps {name} standing.', {
+                    name: app.player.name || app._label('party.you', 'You')
+                }),
+                type: 'combat'
+            });
             return { status: 'active', terminal: false, rescued: true };
         }
         const livingAllies = (app.party || []).filter(unit => unit && unit !== app.player && unit.CPun > 0 && !unit.knockedOut && !unit.fledCombat);

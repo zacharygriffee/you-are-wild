@@ -603,7 +603,7 @@ const YAW_COMBAT_SYNC = {
                         ? app._label(loneParticipant === app.player ? 'combat.action.fightHit.player' : 'combat.action.fightHit.named', loneParticipant === app.player
                             ? '{actor} hit {target} for {amount} punishment!'
                             : '{actor} hits {target} for {amount} punishment!', {
-                            actor: loneParticipant === app.player ? app._label('ui.you', 'You') : loneParticipant.name,
+                            actor: loneParticipant === app.player ? app._label('party.you', 'You') : loneParticipant.name,
                             target: sync.target.name,
                             amount: dmg
                         })

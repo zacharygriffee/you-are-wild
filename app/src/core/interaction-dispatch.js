@@ -341,6 +341,18 @@ const YAW_INTERACTION_DISPATCH = {
         const target = command?.targets?.[0] || null;
         const actionLabel = app._uiLabel?.(command?.metadata?.baseAction || command?.action?.replace(/^sync_/, '') || 'action') || 'action';
         const actorName = actor?.name || app._label('ui.ally', 'Someone');
+        const commandActorNames = (command?.actors || []).map(unit => unit?.name).filter(Boolean);
+        const groupActorNames = commandActorNames.length > 2
+            ? app._label('combat.narration.actorList', '{leading}, and {last}', {
+                leading: commandActorNames.slice(0, -1).join(', '),
+                last: commandActorNames[commandActorNames.length - 1]
+            })
+            : (commandActorNames.length === 2
+                ? app._label('combat.narration.actorPair', '{first} and {second}', {
+                    first: commandActorNames[0],
+                    second: commandActorNames[1]
+                })
+                : (commandActorNames[0] || actorName));
         let text = app._label('combat.narration.noOpening', '{name} pauses; there is no clear opening for {action} right now.', { name: actorName, action: actionLabel });
         if (reason === 'cannot-reach' && target) {
             text = this.combatReachCorrection(app, command, actor, target)
@@ -350,13 +362,23 @@ const YAW_INTERACTION_DISPATCH = {
         } else if (reason === 'resolving') {
             text = app._label('combat.narration.resolving', '{name} waits for the current exchange to finish.', { name: actorName });
         } else if (reason === 'too-many-targets' && ['combat-slot-composer', 'combat-planner'].includes(command?.source)) {
-            text = app._label('combat.group.oneTargetOnly', 'Choose one target for a group action.');
+            text = app._label('combat.narration.groupTooManyTargets', '{actors} try to coordinate {action}, but their attention splits between too many targets.', {
+                actors: groupActorNames,
+                action: actionLabel
+            });
         } else if (reason === 'missing-target' && ['combat-slot-composer', 'combat-planner'].includes(command?.source)) {
-            text = app._label('combat.group.needTarget', 'Choose one target for a group action.');
+            text = app._label('combat.narration.groupNoTarget', '{actors} gather for {action}, but find no target when the moment comes.', {
+                actors: groupActorNames,
+                action: actionLabel
+            });
         } else if (reason === 'missing-action' && command?.source === 'combat-planner') {
-            text = app._label('combat.group.needIntent', 'Choose an intent for the group action.');
+            text = app._label('combat.narration.groupNoIntent', '{actors} gather to act, but hesitation leaves the effort without direction.', {
+                actors: groupActorNames
+            });
         } else if (reason === 'missing-lead-actor' && command?.source === 'combat-planner') {
-            text = app._label('combat.group.needLead', 'The current actor must lead this group action.');
+            text = app._label('combat.narration.groupNoLead', '{actors} try to move together, but the effort loses its lead before it begins.', {
+                actors: groupActorNames
+            });
         } else if (reason === 'missing-target') {
             text = app._label('combat.narration.needTarget', '{name} looks for an opening, but needs a target for {action}.', { name: actorName, action: actionLabel });
         } else if (['too-many-targets', 'single-target-required'].includes(reason)) {

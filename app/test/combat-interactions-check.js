@@ -1704,7 +1704,8 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.strictEqual(state.queued, false, 'Slot group intent with no target should not queue');
   assert.strictEqual(state.syncCount, 0, 'Slot group missing target should not create a queued action');
   assert.strictEqual(state.planActive, true, 'Slot group missing target should preserve planner state for correction');
-  assert(state.lastLog.includes('Choose at least one target') || state.lastLog.includes('not valid') || state.lastLog.includes('valid'), 'Slot group missing target should report an invalid command');
+  assert(state.lastLog.includes('You and Ally gather for Fight, but find no target when the moment comes.'), `Slot group missing target should become narrative feedback naming the actors and lost opening. Actual: ${state.lastLog}`);
+  assert(!state.lastLog.includes('Choose '), 'Slot group missing target should not write a UI instruction into the Scene Feed');
 
   await prepare();
   await page.locator(`#enemies-content button[data-command-control="mark-combat-target"]`).first().click();
@@ -1852,7 +1853,8 @@ async function runCombatSlotGroupComposerFlow(page) {
       syncCount: App.combatState.syncActions.length,
       planActive: Boolean(App.combatPlanSelection?.active),
       participants: App._combatPlanActors().map(unit => unit.id || unit.name),
-      targetIds: App.combatTargetIds
+      targetIds: App.combatTargetIds,
+      lastLog: App.log[App.log.length - 1]?.text || ''
     };
   });
   assert.strictEqual(state.queued, false, 'Slot group with disappeared target should not queue');
@@ -1860,6 +1862,8 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.strictEqual(state.planActive, true, 'Disappeared target should leave actor planner state active for correction');
   assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Disappeared target should preserve selected actors');
   assert.deepStrictEqual(state.targetIds, [], 'Disappeared target should clear only target selection');
+  assert(state.lastLog.includes('You and Ally gather for Fight, but find no target when the moment comes.'), `Disappeared group target should become narrative feedback naming the actors and lost opening. Actual: ${state.lastLog}`);
+  assert(!state.lastLog.includes('Choose '), 'Disappeared group target should not write a UI instruction into the Scene Feed');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare();

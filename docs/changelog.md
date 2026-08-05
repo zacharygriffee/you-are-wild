@@ -4,6 +4,11 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Settings now includes a toggleable No Enemies survey cheat. It prevents new
+  hostile wild and structure encounters while retaining peaceful inhabitants,
+  blocks combat admission from existing saved hostiles without deleting them,
+  and peacefully disengages an active battle so terrain can be inspected
+  continuously.
 - Licensing is explicitly versioned: the annotated `v0.18.2` tag preserves
   the final MIT-licensed revision, while `v0.18.3` and later use PolyForm
   Noncommercial 1.0.0. Independently authored mods may choose their own terms

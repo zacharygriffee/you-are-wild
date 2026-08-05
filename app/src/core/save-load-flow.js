@@ -298,7 +298,7 @@ const YAW_SAVE_LOAD_FLOW = {
                 const encounter = app._ensureCurrentHostileEncounter?.({ source: 'save-load', announce: true });
                 if (!app.combatState?.active
                     && !app.defeatState?.pending
-                    && (!encounter || encounter.reason === 'no-hostiles')) {
+                    && (!encounter || ['no-hostiles', 'cheat-no-enemies'].includes(encounter.reason))) {
                     app.showExplorationActions();
                 }
             }

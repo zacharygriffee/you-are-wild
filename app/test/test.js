@@ -4775,7 +4775,7 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertEqual(layered.layers[1].atlasId, 'overlays', 'Routes should resolve from the transparent overlay atlas instead of replacing biome art');
   assertEqual(layered.layers[2].atlasId, 'overlays', 'Current-position state should resolve from the transparent overlay atlas');
   assertEqual(overlayBytes[25], 6, 'Bundled overlay PNG should retain an RGBA color type for transparent composition');
-  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_URL', 'Single-file builds should embed the default atlas for offline and file-origin play');
+  assertContains(buildContent, "{ key: 'YAW_BUNDLED_TILESET_URL'", 'Single-file builds should include the default atlas in the reviewed embedded asset set');
   assertContains(buildContent, "window.YAW_PREPARE_BUNDLED_TILESET = () => {", 'Atlas preparation should expose a retryable asynchronous factory so menu startup is never blocked by bitmap decoding');
   assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_READY = window.YAW_PREPARE_BUNDLED_TILESET()', 'Initial embedded atlas preparation should begin without blocking the menu shell');
   assertContains(buildContent, "window.YAW_GRAPHICS_MODE === 'emoji'", 'The shared runtime should support a lightweight graphics mode without registering bundled atlases');
@@ -8109,7 +8109,14 @@ test('Save/load system present', () => {
 test('Cheat system present', () => {
   assertContains(appContent, 'cheats:', 'cheats object missing');
   assertContains(appContent, 'godMode', 'godMode cheat missing');
+  assertContains(appContent, 'noEnemies: false', 'No Enemies survey cheat missing');
   assertContains(appContent, 'toggleCheat(', 'toggleCheat method missing');
+  assertContains(appContent, "cheat === 'noEnemies' && isOn && this.combatState?.active", 'No Enemies should disengage active combat when enabled');
+  assertContains(appContent, 'this.cheats?.noEnemies && creature.disposition === this.DISPOSITION.ENEMY', 'No Enemies should suppress hostile wild creatures without removing peaceful encounters');
+  assertContains(appContent, '!suppressHostileOccupants && this._worldChance', 'No Enemies should suppress hostile structure occupants');
+  assertContains(combatLifecycleContent, "reason: 'cheat-no-enemies'", 'No Enemies should block authoritative combat admission');
+  assertContains(combatSaveStateContent, 'app.cheats?.noEnemies || !savedCombat?.active', 'No Enemies should prevent a saved battle from resuming');
+  assertContains(saveLoadFlowContent, "['no-hostiles', 'cheat-no-enemies'].includes(encounter.reason)", 'No Enemies load should restore exploration actions');
   assertContains(appContent, 'triggerPlayerDeathCheat()', 'Player death test wrapper missing');
   assertContains(defeatRecoveryContent, 'triggerDebugDeath(app)', 'Player death test should be owned by the defeat resolver');
 });
@@ -8829,6 +8836,8 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'cheat.neverHungry': 'Nunca hambriento'", 'Spanish Never Hungry cheat label missing');
   assertContains(contentContent, "'cheat.canEatAnything': 'Comer cualquier cosa'", 'Spanish Eat Anything cheat label missing');
   assertContains(contentContent, "'cheat.overpowered': 'Sobrepotenciado'", 'Spanish Overpowered cheat label missing');
+  assertContains(contentContent, "'cheat.noEnemies': 'No Enemies'", 'English No Enemies cheat label missing');
+  assertContains(contentContent, "'cheat.noEnemies': 'Sin enemigos'", 'Spanish No Enemies cheat label missing');
   assertContains(contentContent, "'cheat.playerDeathConfirmHardcore': 'This will trigger real Hardcore death handling and permanently delete the active save slot. Continue?'", 'Hardcore player-death warning missing');
   assertContains(contentContent, "'combat.allyHolds': '{name} holds position.'", 'English ally hold log missing');
   assertContains(contentContent, "'combat.allyHolds': '{name} mantiene la posicion.'", 'Spanish ally hold log missing');
@@ -9662,6 +9671,8 @@ test('Persistent shell controls opt into localization', () => {
   assertContains(template, 'data-i18n="cheat.neverHungry"', 'Never Hungry cheat should opt into localization');
   assertContains(template, 'data-i18n="cheat.canEatAnything"', 'Eat Anything cheat should opt into localization');
   assertContains(template, 'data-i18n="cheat.overpowered"', 'Overpowered cheat should opt into localization');
+  assertContains(template, 'data-i18n="cheat.noEnemies"', 'No Enemies cheat should opt into localization');
+  assertContains(template, 'data-i18n-aria-label="cheat.noEnemiesAria"', 'No Enemies cheat should expose a localized accessible purpose');
   assertContains(appContent, "el.setAttribute('aria-pressed', on ? 'true' : 'false')", 'Cheat toggles should expose their current pressed state');
   assertContains(appContent, "name: this._label(`cheat.${cheat}`, cheat)", 'Cheat Activity Log feedback should use localized names');
   assertContains(template, 'id="party-detail-toggle"', 'Party drawer detail toggle missing');
@@ -11278,6 +11289,49 @@ test('Cheat toggle feedback localizes', () => {
   const logs = App.log.map(entry => entry.text).join('\n');
   assertContains(logs, 'Truco overpowered: ACTIVADO', 'Cheat toggle state should localize');
   assertContains(logs, 'Sobrepotenciado! Todas las estadisticas al maximo.', 'Overpowered max-stat feedback should localize');
+});
+
+test('No Enemies cheat keeps survey traversal free of hostile combat', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You');
+  const enemy = makeUnit('Wolfkin', { disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState.active = true;
+  let combatOutcome = null;
+  App.endCombat = outcome => {
+    combatOutcome = outcome;
+    App.combatState.active = false;
+  };
+
+  App.toggleCheat('noEnemies');
+
+  assertEqual(App.cheats.noEnemies, true, 'No Enemies should turn on through the ordinary cheat toggle');
+  assertEqual(combatOutcome, 'disengage', 'Enabling No Enemies should peacefully disengage active combat');
+  assertEqual(App.creatures[0], enemy, 'No Enemies should not delete an existing hostile from world state');
+  const logCount = App.log.length;
+  const admission = App._ensureCurrentHostileEncounter({ source: 'survey-test', announce: true });
+  assertEqual(admission.allowed, false, 'No Enemies should reject hostile encounter admission');
+  assertEqual(admission.reason, 'cheat-no-enemies', 'No Enemies should expose its bounded admission reason');
+  assertEqual(App.log.length, logCount, 'Survey suppression should not emit an error or warning narration');
+  App.player.level = 1;
+  App.worldMeta = App._normalizeWorldMeta({ worldId: 'survey-test', seed: 'survey-test', generatorVersion: 7, mapModsHash: 'core' });
+  const calculateDisposition = App._calculateEncounterDisposition;
+  App._calculateEncounterDisposition = () => App.DISPOSITION.ENEMY;
+  const spawned = App.spawnWildEncounter({ x: 5, y: 7, biome: 'forest', creatures: [], encounterPolicy: { hostileAllowed: true } }, false, true);
+  App._calculateEncounterDisposition = calculateDisposition;
+  assertEqual(spawned, false, 'No Enemies should suppress newly generated hostile creatures');
+  assertEqual(App.creatures[0], enemy, 'Suppressed generation should leave existing creature state unchanged');
+  const restored = App._restoreCombatState({
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    turnQueue: [{ unitId: App._unitSaveRef(player), initiative: 10 }]
+  });
+  assertEqual(restored, false, 'No Enemies should decline to restore an active combat save');
+  assertEqual(App.combatState.active, false, 'A suppressed combat save should resume in exploration');
+  assertEqual(App.creatures[0], enemy, 'Suppressing loaded combat should retain its existing hostile');
 });
 
 test('Player death cheat uses the authoritative resolver and deliberately bypasses God Mode', () => {

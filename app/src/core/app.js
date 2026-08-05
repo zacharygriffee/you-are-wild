@@ -2626,8 +2626,10 @@
                     this._applyTimeOfDayToCreature(creature);
                     // Calculate disposition based on temperament
                     creature.disposition = this._calculateEncounterDisposition(creature, this.player);
+                    if (this.cheats?.noEnemies && creature.disposition === this.DISPOSITION.ENEMY) continue;
                     creatures.push(creature);
                 }
+                if (creatures.length === 0) return false;
                 const openingHostiles = this._livingEnemies(creatures);
                 if (!this._openingEncounterAdmitted(openingHostiles, tile)) {
                     for (const creature of openingHostiles) {
@@ -2670,6 +2672,7 @@
                 const biome = this.biomes[tile.biome];
                 if (!tile.structure || !this.STRUCTURES[tile.structure]) return;
                 const struct = this.STRUCTURES[tile.structure];
+                const suppressHostileOccupants = Boolean(this.cheats?.noEnemies && struct.disposition === 'enemy');
                 if (tile.encounterPolicy?.allowHostileStructures === false
                     && (struct.disposition === 'enemy' || Number(struct.threat || 0) >= 2)) return false;
                 tile.structureSpawned = true;
@@ -2677,7 +2680,7 @@
                 const questGiver = this._maybeSpawnStructureQuestGiver(tile);
                 this.persistTileDelta(tile.x, tile.y, tile);
                 // Structure always has an encounter inside
-                if (this._worldChance('structure-encounter', tile.x, tile.y, struct.encounterChance || 0)) {
+                if (!suppressHostileOccupants && this._worldChance('structure-encounter', tile.x, tile.y, struct.encounterChance || 0)) {
                     // Pick from structure-appropriate pool or biome pool
                     const pool = YAW_QUEST_CONTRACT.boostWeightedTable(
                         this,
@@ -6500,7 +6503,7 @@
             showCharacterStats() {
                 return YAW_HOLDINGS.show(this, this.player, { tab: 'stats' });
             },
-            cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false },
+            cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false, noEnemies: false },
             toggleCheat(cheat) {
                 this.cheats[cheat] = !this.cheats[cheat];
                 const isOn = this.cheats[cheat];
@@ -6517,6 +6520,9 @@
                     this.player.MPle = 999; this.player.CPle = 999;
                     this.log.push({ text: this._label('cheat.overpoweredMaxed', 'Overpowered! All stats maxed.'), type: 'discovery' });
                     this.renderParty();
+                }
+                if (cheat === 'noEnemies' && isOn && this.combatState?.active) {
+                    this.endCombat('disengage');
                 }
                 this.renderLog();
                 this.updateCheatButtons();

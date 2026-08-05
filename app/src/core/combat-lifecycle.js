@@ -36,6 +36,7 @@ const YAW_COMBAT_LIFECYCLE = {
         const hostiles = app._livingEnemies(Array.isArray(enemies) ? enemies : app.creatures);
         if (app.combatState?.active) return { allowed: false, reason: 'already-active', enemies: hostiles };
         if (!hostiles.length) return { allowed: false, reason: 'no-hostiles', enemies: [] };
+        if (app.cheats?.noEnemies) return { allowed: false, reason: 'cheat-no-enemies', enemies: hostiles };
         if (YAW_RECOVERY_MODES?.isJourney?.(app) || app._recoveryRestricts?.('combat')) {
             return { allowed: false, reason: 'recovery-journey', enemies: hostiles };
         }

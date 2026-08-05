@@ -47,7 +47,7 @@ const YAW_COMBAT_SAVE_STATE = {
 
     restoreCombatState(app, savedCombat) {
         const livingEnemies = app._livingEnemies(app.creatures);
-        if (!savedCombat?.active || livingEnemies.length === 0) {
+        if (app.cheats?.noEnemies || !savedCombat?.active || livingEnemies.length === 0) {
             app.mode = app.GAME_MODE.NORMAL;
             app.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
             app.activeActor = null;

@@ -4,6 +4,11 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Settings now includes a toggleable No Enemies survey cheat. It prevents new
+  hostile wild and structure encounters while retaining peaceful inhabitants,
+  blocks combat admission from existing saved hostiles without deleting them,
+  and peacefully disengages an active battle so terrain can be inspected
+  continuously.
 - Generated overworld tiles now exercise Tile Composition V2 directly:
   deterministic biome cover carries explicit decorative/mechanical meaning,
   neighboring biomes create material transition layers, feature footprints

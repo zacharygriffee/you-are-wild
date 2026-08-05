@@ -51,6 +51,10 @@ the runtime retains their separate semantics.
 
 ## Phase A — topology and visual acceptance
 
+The internal snapshot decision and first deterministic mixed-stack fixture are
+recorded in [Tile Composition V2 — Phase A Decision](tile-composition-v2-decision.md).
+Tileset Pack V1 remains the public compatibility contract during this phase.
+
 - Ratify a focused Tile Composition V2 decision before changing public pack
   vocabulary. Define one bounded serializable map-scene snapshot and keep the
   existing flat tile and Tileset Pack V1 surfaces as compatibility adapters.

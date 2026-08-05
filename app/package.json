@@ -15,11 +15,12 @@
     "test:interactions": "node test/combat-interactions-check.js",
     "test:alpha": "node test/alpha-playtest-check.js",
     "test:lifecycle": "node test/adventure-lifecycle-check.js",
+    "test:tile-composition": "node test/tile-composition-v2-check.js",
     "lint": "node build.js --lint-only",
     "watch": "node build.js --watch",
     "dev": "node dev.js",
     "clean": "rm -f ../dist/you-are-wild.html",
-    "full-build": "npm run clean && npm run build && npm run test && npm run lint && npm run check && npm run test:viewport && npm run test:interactions && npm run test:alpha && npm run test:lifecycle"
+    "full-build": "npm run clean && npm run build && npm run test && npm run lint && npm run check && npm run test:viewport && npm run test:interactions && npm run test:alpha && npm run test:lifecycle && npm run test:tile-composition"
   },
   "keywords": [
     "game",

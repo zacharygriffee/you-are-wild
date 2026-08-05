@@ -107,6 +107,21 @@ produce material transition layers, and old opaque structure/POI crops have
 been replaced. Additional seasonal, regional, and damaged variants remain
 content expansion rather than prerequisites for the layer contract.
 
+The visual-quality slice now uses canonical shared-edge keys and one painted
+destination rather than two independently seeded fades. A biome-pair policy
+separates soft material blending, hard stone/interior edges, and specialized
+water/land shorelines. Eight-neighbor junctions trim mixed-source corner
+losers, decorative spill remains in the owning edge band, roads receive
+biome-aware shoulders, bridges receive landward approach pads, and route/POI
+clearance protects topology. Static jungle canopy, undergrowth, and floor
+light distinguish dense jungle from intentionally open plains without a new
+atlas. These remain records in the existing terrain, route, cover, and feature
+layers—not simulation state or a saved biome blend.
+
+Artifact acceptance caps the offline build, hosted shell, external atlas set,
+textured cold transfer, and the two directly relevant atlases. Animation and
+mod-supplied animated media remain a future composition-version topic.
+
 ## Phase D — persistent tile evidence (complete baseline)
 
 - Project existing saved ground items, remains, resource depletion, placed

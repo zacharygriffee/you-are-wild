@@ -220,6 +220,27 @@ const YAW_TILESET_RUNTIME = {
         return 'feature';
     },
 
+    _compositionSubRankForKey(key = '') {
+        const value = String(key || '');
+        if (/^ground-transition-/.test(value)) return 10;
+        if (/^shoreline-/.test(value)) return 20;
+        if (/^(terrain-transition-|terrain-elevation-)/.test(value)) return 30;
+        if (/^state-blocked/.test(value)) return 40;
+        if (/^(route-|interior-path-|interior-door-|interior-exit-)/.test(value)) return 20;
+        if (/^cover-/.test(value)) return 20;
+        if (/^(structure-|poi-)/.test(value)) return 20;
+        return 20;
+    },
+
+    _transitionMetadata(visual, semanticKey) {
+        const match = String(semanticKey || '').match(/^ground-transition-(.+)-(north|east|south|west)$/);
+        if (!match) return null;
+        const [, biome, direction] = match;
+        return (visual?.adjacencyBlend?.terrain || []).find(entry => (
+            String(entry?.biome || entry?.sourceBiome) === biome && String(entry?.direction) === direction
+        )) || null;
+    },
+
     _dynamicLayerRequests(visual = {}) {
         const composition = visual?.composition;
         if (!composition?.layers) return [];
@@ -227,15 +248,30 @@ const YAW_TILESET_RUNTIME = {
         const cover = composition.layers.cover?.records || [];
         cover.forEach((record, index) => {
             const family = String(record?.family || (record?.mechanical ? 'rock' : 'foliage'));
+            const kind = String(record?.kind || 'cover');
+            const scale = Number(record?.scale || 1);
+            const renderedScale = kind === 'adjacent-spill'
+                ? Math.max(0.24, Math.min(0.44, scale * 0.46))
+                : (kind === 'biome-identity' && record?.stratum === 'canopy'
+                    ? Math.max(0.46, Math.min(0.68, scale * 0.58))
+                    : Math.max(0.28, Math.min(0.58, scale * 0.5)));
             requests.push({
                 key: `cover-${family}`,
                 fallbackKey: record?.mechanical ? 'cover-obstacle' : 'cover-foliage',
                 compositionLayer: 'cover',
+                compositionSubLayer: Math.max(0, Math.min(99, Number(record?.subLayer ?? 20))),
                 placement: {
                     x: Number(record?.anchor?.x ?? 0.5),
                     y: Number(record?.anchor?.y ?? 0.5),
-                    scale: Math.max(0.28, Math.min(0.68, Number(record?.scale || 1) * (record?.mechanical ? 0.58 : 0.5)))
+                    scale: record?.mechanical ? Math.max(0.28, Math.min(0.68, scale * 0.58)) : renderedScale,
+                    rotate: Number(record?.rotation || 0),
+                    flipX: Boolean(record?.flipX)
                 },
+                opacity: Math.max(0, Math.min(1, Number(record?.opacity ?? 1))),
+                recordKind: kind,
+                stratum: String(record?.stratum || ''),
+                edgeBand: String(record?.edgeBand || ''),
+                sharedEdgeKey: String(record?.sharedEdgeKey || ''),
                 recordIndex: index
             });
         });
@@ -283,6 +319,8 @@ const YAW_TILESET_RUNTIME = {
                     ...layer,
                     semanticKey,
                     compositionLayer: this._compositionLayerForKey(semanticKey),
+                    compositionSubLayer: this._compositionSubRankForKey(semanticKey),
+                    transitionMetadata: this._transitionMetadata(visual, semanticKey),
                     url: atlas.url,
                     cssImage: atlas.cssImage,
                     atlasWidth: atlas.width,
@@ -301,8 +339,14 @@ const YAW_TILESET_RUNTIME = {
                     ...layer,
                     semanticKey: request.key,
                     compositionLayer: request.compositionLayer,
+                    compositionSubLayer: request.compositionSubLayer ?? 20,
                     placement: request.placement,
+                    opacity: Math.max(0, Math.min(1, Number(layer.opacity ?? 1) * Number(request.opacity ?? 1))),
                     recordIndex: request.recordIndex,
+                    recordKind: request.recordKind,
+                    stratum: request.stratum,
+                    edgeBand: request.edgeBand,
+                    sharedEdgeKey: request.sharedEdgeKey,
                     url: atlas.url,
                     cssImage: atlas.cssImage,
                     atlasWidth: atlas.width,
@@ -313,10 +357,11 @@ const YAW_TILESET_RUNTIME = {
         }
         const compositionOrder = ['ground', 'terrain', 'route', 'cover', 'feature', 'evidence', 'presence', 'state'];
         const compositionRank = layer => Math.max(0, compositionOrder.indexOf(layer.compositionLayer));
+        const compositionSubRank = layer => Math.max(0, Math.min(99, Number(layer.compositionSubLayer || 0)));
         const slotRank = slot => Math.max(0, YAW_TILESET_PACK_V1.LAYER_SLOTS.indexOf(slot));
         layers.sort((left, right) =>
-            (compositionRank(left) * 10000 + slotRank(left.slot) * 100 + left.z)
-            - (compositionRank(right) * 10000 + slotRank(right.slot) * 100 + right.z)
+            (compositionRank(left) * 100000 + compositionSubRank(left) * 1000 + slotRank(left.slot) * 100 + left.z)
+            - (compositionRank(right) * 100000 + compositionSubRank(right) * 1000 + slotRank(right.slot) * 100 + right.z)
         );
         return { layers, primaryRendered };
     },
@@ -331,7 +376,7 @@ const YAW_TILESET_RUNTIME = {
         const sizeY = (layer.atlasHeight / rect.height) * 100;
         const positionX = layer.atlasWidth === rect.width ? 0 : (rect.x / (layer.atlasWidth - rect.width)) * 100;
         const positionY = layer.atlasHeight === rect.height ? 0 : (rect.y / (layer.atlasHeight - rect.height)) * 100;
-        const scaleX = layer.transform.flipX ? -1 : 1;
+        const scaleX = Boolean(layer.transform.flipX) !== Boolean(layer.placement?.flipX) ? -1 : 1;
         const scaleY = layer.transform.flipY ? -1 : 1;
         const placement = layer.placement;
         const placementStyles = placement ? [
@@ -349,9 +394,9 @@ const YAW_TILESET_RUNTIME = {
             `image-rendering:${layer.scaling === 'pixelated' ? 'pixelated' : 'auto'}`,
             `opacity:${layer.opacity}`,
             `mix-blend-mode:${layer.blend}`,
-            `z-index:${Math.max(0, ['ground', 'terrain', 'route', 'cover', 'feature', 'evidence', 'presence', 'state'].indexOf(layer.compositionLayer)) * 100 + layer.z}`,
+            `z-index:${Math.max(0, ['ground', 'terrain', 'route', 'cover', 'feature', 'evidence', 'presence', 'state'].indexOf(layer.compositionLayer)) * 100 + Math.max(0, Math.min(99, Number(layer.compositionSubLayer || 0))) + layer.z}`,
             `transform-origin:${layer.anchor.x * 100}% ${layer.anchor.y * 100}%`,
-            `transform:rotate(${layer.transform.rotate}deg) scale(${scaleX},${scaleY})`
+            `transform:rotate(${Number(layer.transform.rotate || 0) + Number(placement?.rotate || 0)}deg) scale(${scaleX},${scaleY})`
         ].join(';');
     },
 
@@ -363,7 +408,15 @@ const YAW_TILESET_RUNTIME = {
             const slot = app._escapeHtml(layer.slot);
             const key = app._escapeHtml(layer.semanticKey);
             const compositionLayer = app._escapeHtml(layer.compositionLayer);
-            return `<span class="yaw-tile-art-layer" data-tileset-layer="${slot}" data-tile-composition-layer="${compositionLayer}" data-tileset-semantic-key="${key}" data-tileset-layer-index="${index}" style="${style}"></span>`;
+            const subLayer = app._escapeHtml(String(layer.compositionSubLayer ?? 0));
+            const transition = layer.transitionMetadata;
+            const edgeAttrs = transition
+                ? ` data-shared-edge-key="${app._escapeHtml(transition.sharedEdgeKey || '')}" data-edge-blend-style="${app._escapeHtml(transition.style || 'soft')}" data-edge-corners="${app._escapeHtml(Object.entries(transition.corners || {}).map(([corner, state]) => `${corner}:${state}`).join(' '))}"`
+                : '';
+            const coverAttrs = layer.recordKind
+                ? ` data-cover-kind="${app._escapeHtml(layer.recordKind)}" data-cover-stratum="${app._escapeHtml(layer.stratum || '')}" data-edge-band="${app._escapeHtml(layer.edgeBand || '')}"${layer.sharedEdgeKey ? ` data-shared-edge-key="${app._escapeHtml(layer.sharedEdgeKey)}"` : ''}`
+                : '';
+            return `<span class="yaw-tile-art-layer" data-tileset-layer="${slot}" data-tile-composition-layer="${compositionLayer}" data-composition-sub-layer="${subLayer}" data-tileset-semantic-key="${key}" data-tileset-layer-index="${index}"${edgeAttrs}${coverAttrs} style="${style}"></span>`;
         }).join('');
         const primaryClass = rendered.primaryRendered ? ' primary-rendered' : '';
         const packId = app._escapeHtml(this.activeCandidate()?.pack.id || '');

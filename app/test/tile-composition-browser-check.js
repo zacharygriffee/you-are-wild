@@ -139,7 +139,7 @@ async function seedCompositionLab(page) {
         biome: 'grove', derivedBiome: 'grove', resourceSearched: true,
         overlays: { poi: { id: 'lab-resource', category: 'resourceSite' } }
       }),
-      tileFor(1, 1, { biome: 'swamp', derivedBiome: 'swamp' })
+      tileFor(1, 1, { biome: 'jungle', derivedBiome: 'jungle' })
     ];
     tiles.forEach(tile => {
       App.worldMap.set(`${tile.x},${tile.y}`, tile);
@@ -172,18 +172,37 @@ async function readOverworldAcceptance(page) {
         bridgeSpanRole: element?.getAttribute('data-bridge-span-role') || '',
         bridgeSpanIndex: element?.getAttribute('data-bridge-span-index') || '',
         bridgeSpanLength: element?.getAttribute('data-bridge-span-length') || '',
+        bridgeApproaches: element?.getAttribute('data-bridge-approach-edges') || '',
+        visualRecipe: element?.getAttribute('data-visual-recipe') || '',
+        routeShoulder: element?.getAttribute('data-route-shoulder') || '',
+        adjacencyEdges: element?.getAttribute('data-adjacency-blend-edges') || '',
+        sharedEdgeKeys: element?.getAttribute('data-shared-edge-keys') || '',
+        junctions: element?.getAttribute('data-adjacency-junctions') || '',
+        shorelineEdges: element?.getAttribute('data-shoreline-edges') || '',
         bridgeBleedsAcrossGutter: bridgeStyle?.left === '-4px' && bridgeStyle?.right === '-4px'
       };
+    };
+    const routeFilter = root => {
+      const layer = document.querySelector(`${root} [data-route-shoulder="grass"] [data-tileset-semantic-key^="route-road-"]`);
+      return layer ? getComputedStyle(layer).filter : '';
     };
     const tile = App.worldMap.get('0,0');
     const snapshot = App._mapTileVisual(tile, {
       isCurrent: true,
       neighborResolver: (x, y) => App.worldMap.get(`${x},${y}`) || null
     }).composition;
+    const transitionTile = App.worldMap.get('0,-1');
+    const transitionVisual = App._mapTileVisual(transitionTile, {
+      neighborResolver: (x, y) => App.worldMap.get(`${x},${y}`) || null
+    });
+    const transitionSnapshot = transitionVisual.composition;
     const activeSurface = innerWidth <= 1024
       ? document.querySelector('.mobile-map-card')
       : document.querySelector('.desktop-play-surface');
     const rect = activeSurface?.getBoundingClientRect();
+    const shorelineLayer = document.querySelector('[data-tileset-semantic-key^="shoreline-water-"]');
+    const shorelineFoamContent = shorelineLayer ? getComputedStyle(shorelineLayer, '::after').content : '';
+    const duplicateWaterBlend = [...document.querySelectorAll('[data-shoreline-edges]')].some(element => String(element.getAttribute('data-ground-transitions') || '').includes(':water'));
     return {
       protocol: location.protocol,
       mobile: read('#mobile-mini-map [data-stage-cell="center"]'),
@@ -197,6 +216,23 @@ async function readOverworldAcceptance(page) {
       largeCliffCount: document.querySelectorAll('#large-map [data-elevation-kind="cliff"]').length,
       evidenceKinds: snapshot.layers.evidence.records.map(record => record.kind),
       presenceIds: snapshot.layers.presence.records.map(record => record.id),
+      routeKinds: snapshot.layers.route.records.map(record => record.kind),
+      bridgeApproachEdges: snapshot.layers.route.records.find(record => record.kind === 'bridge-approach')?.approachEdges || [],
+      sharedEdges: snapshot.facts.adjacency.sharedEdges,
+      coverSpills: transitionSnapshot.layers.cover.records.filter(record => record.kind === 'adjacent-spill'),
+      transitionEdges: transitionSnapshot.layers.terrain.records.find(record => record.kind === 'ground-transition')?.edges || [],
+      transitionJunctions: transitionSnapshot.facts.adjacency.junctions,
+      shorelineFoamContent,
+      duplicateWaterBlend,
+      jungleIdentityCounts: {
+        mobile: document.querySelectorAll('#mobile-mini-map [data-visual-recipe="jungle"] [data-cover-kind="biome-identity"]').length,
+        desktop: document.querySelectorAll('#desktop-neighborhood-grid [data-visual-recipe="jungle"] [data-cover-kind="biome-identity"]').length,
+        large: document.querySelectorAll('#large-map [data-visual-recipe="jungle"] [data-cover-kind="biome-identity"]').length
+      },
+      plainsIdentityCount: document.querySelectorAll('[data-visual-recipe="plains"] [data-cover-kind="biome-identity"]').length,
+      mobileRoadFilter: routeFilter('#mobile-mini-map'),
+      desktopRoadFilter: routeFilter('#desktop-neighborhood-grid'),
+      largeRoadFilter: routeFilter('#large-map'),
       restoredEvidenceKinds: (() => {
         const delta = App._tileDeltaFromEffectiveTile(tile);
         const restored = App.applyTileDelta(App.getBaseTile(0, 0), JSON.parse(JSON.stringify(delta)));
@@ -287,7 +323,7 @@ async function readGeneratedWorldAcceptance(page) {
     const coverTile = tiles.find(tile => tile.overlays?.cover?.length);
     const transitionTile = tiles.find(tile => {
       const visual = App._mapTileVisual(tile, { neighborResolver: (x, y) => App.getBaseTile(x, y) });
-      return visual.groundTransitions?.length;
+      return visual.groundTransitions?.length && visual.composition.layers.cover.records.some(record => record.kind === 'adjacent-spill');
     });
     const poiTile = tiles.find(tile => tile.overlays?.poi);
     const visualFor = tile => App._mapTileVisual(tile, {
@@ -298,6 +334,7 @@ async function readGeneratedWorldAcceptance(page) {
     const transitionVisual = visualFor(transitionTile);
     const poiVisual = visualFor(poiTile);
     const coverLayers = YAW_TILESET_RUNTIME.layersForVisual(coverVisual).layers;
+    const transitionLayers = YAW_TILESET_RUNTIME.layersForVisual(transitionVisual).layers;
     const poiLayers = YAW_TILESET_RUNTIME.layersForVisual(poiVisual).layers;
     const order = ['ground', 'terrain', 'route', 'cover', 'feature', 'evidence', 'presence', 'state'];
     const sorted = layers => layers.every((layer, index) => !index || order.indexOf(layers[index - 1].compositionLayer) <= order.indexOf(layer.compositionLayer));
@@ -309,9 +346,12 @@ async function readGeneratedWorldAcceptance(page) {
       coverRendered: coverLayers.filter(layer => layer.compositionLayer === 'cover').length,
       coverSorted: sorted(coverLayers),
       transitionRecords: transitionVisual.composition.layers.terrain.records.filter(record => record.kind === 'ground-transition'),
-      transitionArt: YAW_TILESET_RUNTIME.layersForVisual(transitionVisual).layers.some(layer => layer.semanticKey.startsWith('ground-transition-')),
+      transitionSpills: transitionVisual.composition.layers.cover.records.filter(record => record.kind === 'adjacent-spill'),
+      transitionSpillArt: transitionLayers.filter(layer => layer.compositionLayer === 'cover' && layer.recordIndex !== undefined).length,
+      transitionArt: transitionLayers.some(layer => layer.semanticKey.startsWith('ground-transition-')),
       poiGroundLayer: poiLayers.some(layer => layer.compositionLayer === 'ground'),
       poiFeatureLayer: poiLayers.some(layer => layer.compositionLayer === 'feature'),
+      poiGrounding: poiVisual.composition.layers.feature.records.some(record => record.kind === 'feature-grounding'),
       poiSorted: sorted(poiLayers)
     };
   });
@@ -385,11 +425,13 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     if (response.status() >= 400) failedResponses.push(`${response.status()} ${response.url()}`);
   });
   try {
-    await page.goto(url, { waitUntil: 'load' });
+    await page.goto(url, { waitUntil: 'load', timeout: 60000 });
     await page.waitForFunction(() => Boolean(window.App && window.YAW_TILE_COMPOSITION_V2), null, { timeout: 15000 });
     await seedCompositionLab(page);
     const overworld = await readOverworldAcceptance(page);
     const prefix = `${origin}/${viewport.name}`;
+    const activeLocal = viewport.width <= 1024 ? overworld.mobile : overworld.desktop;
+    const activeRoadFilter = viewport.width <= 1024 ? overworld.mobileRoadFilter : overworld.desktopRoadFilter;
     assertSurface(overworld.mobile, `${prefix} mobile 3x3`, 'overworld');
     assertSurface(overworld.desktop, `${prefix} desktop 3x3`, 'overworld');
     assertSurface(overworld.large, `${prefix} large map`, 'overworld');
@@ -405,6 +447,13 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert.strictEqual(overworld.mobile.bridgeSpanRole, overworld.desktop.bridgeSpanRole, `${prefix}: desktop bridge span role should match mobile`);
     assert.strictEqual(overworld.mobile.bridgeSpanRole, overworld.large.bridgeSpanRole, `${prefix}: large-map bridge span role should match local maps`);
     assert.strictEqual(`${overworld.mobile.bridgeSpanIndex}/${overworld.mobile.bridgeSpanLength}`, '0/1', `${prefix}: bridge span position should remain exact`);
+    assert.strictEqual(activeLocal.bridgeApproaches, 'east west', `${prefix}: active local bridge should expose both destination-owned land approaches`);
+    assert.strictEqual(activeLocal.bridgeApproaches, overworld.large.bridgeApproaches, `${prefix}: Review Map bridge approaches should match the active local map`);
+    assert.strictEqual(activeLocal.visualRecipe, 'water', `${prefix}: current bridge should expose its water presentation recipe`);
+    assert.strictEqual(activeLocal.routeShoulder, 'wet', `${prefix}: current bridge should expose its biome-aware shoulder treatment`);
+    assert(activeLocal.sharedEdgeKeys && activeLocal.sharedEdgeKeys === overworld.large.sharedEdgeKeys, `${prefix}: active local and Review Map surfaces should expose the same canonical shared-edge keys`);
+    assert.strictEqual(activeLocal.adjacencyEdges, '', `${prefix}: a water source tile must not repaint land through a duplicate generic transition`);
+    assert(overworld.sharedEdges.length >= 2 && overworld.sharedEdges.every(edge => edge.policy === 'shoreline' && !edge.destinationOwned), `${prefix}: water-side seam facts must retain specialized single-owner shoreline policy`);
     assert.strictEqual(overworld.mobileCount, 9, `${prefix}: mobile 3x3 should compose all nine cells`);
     assert.strictEqual(overworld.desktopCount, 9, `${prefix}: desktop 3x3 should compose all nine cells`);
     assert(overworld.largeCount >= 9, `${prefix}: large map should compose every known lab cell`);
@@ -412,6 +461,17 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert(overworld.evidenceKinds.includes('item') && overworld.evidenceKinds.includes('remains') && overworld.evidenceKinds.includes('recovery-bag') && overworld.evidenceKinds.includes('placed-object'), `${prefix}: durable evidence kinds should coexist`);
     assert.deepStrictEqual(overworld.restoredEvidenceKinds, overworld.evidenceKinds, `${prefix}: sparse tile-delta restoration should preserve every evidence kind`);
     assert(overworld.presenceIds.includes('composition-player') && overworld.presenceIds.includes('composition-fox'), `${prefix}: party and live creature presence should coexist`);
+    assert(overworld.routeKinds.includes('bridge') && overworld.routeKinds.includes('bridge-approach'), `${prefix}: bridge geometry and approach treatment should coexist in the route layer`);
+    assert.deepStrictEqual(overworld.bridgeApproachEdges, ['east', 'west'], `${prefix}: bridge snapshot should preserve exact approach topology`);
+    assert(overworld.coverSpills.length >= 1 && overworld.coverSpills.every(record => record.destinationOwned && !record.mechanical && record.edgeBand), `${prefix}: a soft dominant neighbor should contribute only edge-bounded destination-owned spill`);
+    assert(overworld.transitionEdges.length >= 1 && overworld.transitionEdges.every(edge => edge.sharedEdgeKey && edge.style), `${prefix}: rendered terrain transitions should retain canonical seam metadata`);
+    assert(overworld.transitionJunctions.length === 4, `${prefix}: the destination snapshot should publish all four eight-neighbor junction decisions`);
+    assert(['none', 'normal', ''].includes(overworld.shorelineFoamContent), `${prefix}: bundled shoreline paint must not restore the removed repeating scallop pseudo-element`);
+    assert.strictEqual(overworld.duplicateWaterBlend, false, `${prefix}: a shoreline cell must not also render a generic water transition`);
+    assert(overworld.jungleIdentityCounts.mobile >= 2 && overworld.jungleIdentityCounts.desktop >= 2 && overworld.jungleIdentityCounts.large >= 2, `${prefix}: jungle canopy and undergrowth strata must reach every map surface`);
+    assert.strictEqual(overworld.plainsIdentityCount, 0, `${prefix}: plains must remain visually open rather than inheriting jungle strata`);
+    assert(activeRoadFilter && activeRoadFilter !== 'none', `${prefix}: active local road should receive a visible biome-aware verge treatment`);
+    assert.strictEqual(activeRoadFilter, overworld.largeRoadFilter, `${prefix}: Review Map road verge treatment should match the active local map`);
     assert.strictEqual(overworld.activeSurfaceInsideViewport, true, `${prefix}: active map surface should remain inside the viewport`);
     assert.strictEqual(overworld.horizontalOverflow, false, `${prefix}: overworld composition should not create horizontal overflow`);
 
@@ -434,7 +494,9 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert.strictEqual(generated.coverRendered, generated.coverRecords.length, `${prefix}: each generated cover record should become an independently positioned art layer`);
     assert.strictEqual(generated.coverSorted, true, `${prefix}: generated art should follow the explicit eight-layer order`);
     assert(generated.transitionRecords.length > 0 && generated.transitionArt, `${prefix}: adjacent generated biomes should produce terrain transition records and art`);
-    assert(generated.poiGroundLayer && generated.poiFeatureLayer && generated.poiSorted, `${prefix}: generated POIs should retain ground beneath a later transparent feature layer`);
+    assert(generated.transitionSpills.length > 0 && generated.transitionSpills.every(record => record.destinationOwned && !record.mechanical), `${prefix}: generated adjacency should add only destination-owned decorative cover spill`);
+    assert(generated.transitionSpillArt >= generated.transitionSpills.length, `${prefix}: every generated adjacency spill should resolve through dynamic cover art`);
+    assert(generated.poiGroundLayer && generated.poiFeatureLayer && generated.poiGrounding && generated.poiSorted, `${prefix}: generated POIs should retain ground and biome grounding beneath a later transparent feature layer`);
 
     await seedInteriorLab(page);
     const interior = await readInteriorAcceptance(page);

@@ -51,14 +51,53 @@ first-party deck reaches the advertised tile edges. The renderer may bleed
 transparent bridge art across a visual gutter, but the cell remains the sole
 hit target and state owner.
 
-Cardinal neighbor biome changes produce bounded `ground-transition` terrain
-records. The bundled renderer reuses the neighboring ground material through
-an edge mask; neither the transition nor its bitmap changes the effective
-biome. Structures and POIs carry a bounded footprint plus passable approach
-edges. When several adjacent tiles share one feature identity, the renderer
-derives its local footprint part from those shared cardinal connections.
+Known neighbor biome changes first produce a canonical shared-edge descriptor.
+Both cells derive the same coordinate-pair key and phase, but only the lower-
+priority destination paints the dominant material. Soft pairs receive a
+bounded `ground-transition`; hard stone/interior boundaries receive a shallow
+hard edge; equal material groups receive no redundant paint. Neither the
+descriptor nor its bitmap changes the effective biome. Structures and POIs
+carry a bounded footprint plus passable approach edges. When several adjacent
+tiles share one feature identity, the renderer derives its local footprint
+part from those shared cardinal connections.
 
-Generator V7 emits deterministic cover families with normalized anchors,
+## Visual recipes and adjacency blending
+
+`app/src/core/tile-visual-recipes.js` Version 2 is the deterministic presentation policy
+for the generated overworld biomes. It is intentionally separate from Biome
+Recipe V1, which can change an unmaterialized tile's effective biome. Visual
+recipes only choose bounded edge depth, decorative spill family and scale,
+route shoulder treatment, and route/feature clearance radii.
+
+The **Adjacency Blend Pass** reads cardinal neighbors for seam ownership and
+diagonal neighbors for four-tile junction classification. It does not create a
+ninth layer. Instead, one destination tile owns and emits bounded records into
+the existing stack:
+
+- `terrain`: neighboring material transitions;
+- `route`: biome-aware verges or bridge approaches;
+- `cover`: transparent decorative foliage, reeds, grass, drift, or rock spill;
+- `feature`: biome grounding and negative-space clearance for a local POI.
+
+Water/land pairs use the existing `shoreline-water-*` semantics as their one
+specialized authority; they never also emit a generic water transition. The
+bundled skin no longer adds repeated scallop foam, while replacement packs can
+still author every existing edge and corner semantic. Mixed-source corners
+select one deterministic winner and trim the other edge rather than producing
+a circular hole or muddy overlap.
+
+An unknown neighbor contributes nothing, so Review Map and sight-limited local
+maps cannot reveal undiscovered terrain. Spill records are always decorative:
+they cannot block movement or sight and cannot imply resources. Cover anchors
+are deterministically moved outside authored route corridors and local feature
+clearance, but the input tile and sparse delta are never mutated. Bridge
+approach pads remain inside the owning cell and do not expand its hit target.
+
+Spill anchors stay in the shared-edge band. Hard boundaries and shoreline
+edges do not scatter unrelated foliage. Jungle additionally composes bounded
+static canopy and undergrowth records plus a dappled floor treatment from the
+existing atlas; plains intentionally receives no equivalent density. Generator
+V7 emits deterministic cover families with normalized anchors,
 scale, and an explicit `decorative` or `mechanical` role. Decorative foliage
 sets `mechanical: false`, `blocksMovement: false`, and `blocksSight: false`.
 Mechanical obstacle presentation is permitted only when it mirrors an
@@ -96,6 +135,19 @@ invalidating V1 packs. Cover and evidence records may expand into several
 independently positioned art layers while their V1 assets continue to use
 compatible `feature`, `marker`, or `presence` slots.
 
+Within those layers, the shared sub-order is ground material; terrain blend;
+shoreline; elevation/barrier; route underlay or approach; route deck; cover;
+feature grounding; feature art; evidence; presence; and state. All map
+surfaces use the same runtime sorter.
+
+## Static asset budget
+
+The acceptance audit enforces ceilings of 18 MiB for the embedded offline
+artifact, 4 MiB for the hosted shell, 10.5 MiB for the external atlas set, and
+11 MiB for estimated hosted textured cold transfer. The terrain-material and
+cover atlases are individually capped at 1.25 MiB and 1.75 MiB. Current V2
+identity and seam work reuses the existing atlases and adds no raster bytes.
+
 First-party generation prompts, alpha extraction, deterministic atlas
 post-processing, and asset paths are recorded in
 [Tile Composition V2 Art Provenance](tile-composition-v2-art-provenance.md).
@@ -127,13 +179,20 @@ post-processing, and asset paths are recorded in
 ## Acceptance gates
 
 `npm run test:tile-composition` checks deterministic serialization, topology,
-bounded evidence, V1 compatibility, and shared interior/overworld projection.
+bounded evidence, visual-recipe coverage, canonical mirrored seam keys,
+single-side ownership, hidden-neighbor isolation, water/land authority,
+mixed-source junctions, biome identity, record sub-order, route/feature
+clearance, bridge approaches, V1 fallback, non-mutation, and shared
+interior/overworld projection.
 
 `npm run test:tile-composition-browser` runs both the single-file `file:` build
 and hosted HTTP build at 313x670, 390x844, 412x915, and 1365x768. It checks all
 three map surfaces, interiors, viewport containment, resource failures,
 pixel-matched ground edges, transparent bridge/cover assets, bridge gutter
-continuity, sparse evidence restoration, and absence of horizontal overflow.
+continuity, canonical edge metadata, edge-bounded spill art, shoreline
+deduplication, absence of bundled scallop foam, jungle/plains readability,
+biome-aware route treatment, bridge approaches, sparse evidence restoration,
+and absence of horizontal overflow.
 
 The full core suite additionally proves sparse world-store round trips and
 preserves existing traversal, generator, save, module, and interaction rules.
@@ -144,3 +203,7 @@ Terrain Tactics and Crafting do not begin under this contract. They require
 separate reviewed gameplay facts, costs, persistence, narration, mod
 authority, and acceptance coverage. Tile art and the V2 snapshot alone never
 authorize those mechanics.
+
+Animated composition and mod-supplied animated media are also deferred to a
+future reviewed composition version. This static slice defines no playback,
+timing, reduced-motion, or animated pack contract.

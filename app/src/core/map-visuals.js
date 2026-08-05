@@ -56,8 +56,7 @@ const YAW_MAP_VISUALS = {
     },
 
     shorelineTopology(tile, resolver = null) {
-        const biomeId = tile?.derivedBiome || tile?.baseBiome || tile?.biome || '';
-        if (biomeId !== 'beach') return { edges: [], corners: [], mask: 0 };
+        if (this.isWaterTile(tile)) return { edges: [], corners: [], mask: 0 };
         const explicitEdges = tile?.overlays?.shoreline?.edges;
         const explicitCorners = tile?.overlays?.shoreline?.corners;
         const positions = this.shorelineNeighborPositions();
@@ -77,6 +76,7 @@ const YAW_MAP_VISUALS = {
             const bitByEdge = { north: 1, east: 4, south: 16, west: 64 };
             edges.forEach(edge => { mask |= bitByEdge[edge] || 0; });
         }
+        if (!edges.length && mask === 0 && !Array.isArray(explicitCorners)) return { edges: [], corners: [], mask: 0 };
         const corners = Array.isArray(explicitCorners)
             ? this.normalizedShorelineCorners(explicitCorners)
             : [
@@ -271,14 +271,24 @@ const YAW_MAP_VISUALS = {
         const shoreline = this.shorelineTopology(tile, options.neighborResolver);
         const shorelineEdges = shoreline.edges;
         const shorelineCorners = shoreline.corners;
-        const groundTransitions = this.groundTransitionTopology(tile, options.neighborResolver);
         const featureTopology = this.featureTopology(tile, options.neighborResolver);
+        let routeShape = tile.overlays?.bridge
+            ? (tile.overlays.bridge.direction || tile.overlays.road?.direction || 'east-west')
+            : (tile.overlays?.road ? this.routeVisualShape(app, tile, options.neighborResolver) : null);
+        const adjacencyBlend = typeof YAW_TILE_VISUAL_RECIPES !== 'undefined'
+            ? YAW_TILE_VISUAL_RECIPES.compose(tile, options.neighborResolver, {
+                routeShape,
+                featureApproachEdges: featureTopology.approachEdges
+            })
+            : null;
+        const groundTransitions = adjacencyBlend
+            ? adjacencyBlend.terrain
+            : this.groundTransitionTopology(tile, options.neighborResolver);
         const elevationTopology = tile.terrainTopology || tile.terrain?.topology || null;
         let icon = biome.icon || '□';
         let label = biome.name || biomeId;
         let tilesetKey = baseTilesetKey;
         let kind = 'biome';
-        let routeShape = null;
         let hasRoute = false;
         const classes = ['map-visual', `map-visual-${baseBiomeId}`];
         const semanticKeys = [baseTilesetKey];
@@ -313,6 +323,11 @@ const YAW_MAP_VISUALS = {
             const families = [...new Set(tile.overlays.cover.map(entry => String(entry?.family || 'foliage')))];
             families.forEach(family => semanticKeys.push(app.MAP_TILESET_KEYS.covers?.[family] || app.MAP_TILESET_KEYS.covers?.foliage || 'cover-foliage'));
             classes.push('map-visual-cover');
+        }
+        if (adjacencyBlend?.cover?.length) {
+            const families = [...new Set(adjacencyBlend.cover.map(entry => String(entry?.family || 'foliage')))];
+            families.forEach(family => semanticKeys.push(app.MAP_TILESET_KEYS.covers?.[family] || app.MAP_TILESET_KEYS.covers?.foliage || 'cover-foliage'));
+            classes.push('map-visual-adjacency-spill');
         }
         if (Array.isArray(tile.overlays?.obstacles) && tile.overlays.obstacles.length) {
             semanticKeys.push(app.MAP_TILESET_KEYS.covers?.obstacle || 'cover-obstacle');
@@ -408,6 +423,8 @@ const YAW_MAP_VISUALS = {
             immediateDanger,
             featureFootprint: featureTopology.footprint,
             featureApproachEdges: featureTopology.approachEdges,
+            adjacencyBlend,
+            visualRecipe: adjacencyBlend?.profile || null,
             semanticKeys: [...new Set(semanticKeys)],
             classes: classes.join(' '),
             label,
@@ -447,10 +464,24 @@ const YAW_MAP_VISUALS = {
             ? ` data-bridge-span-index="${visual.bridgeSpanIndex}" data-bridge-span-length="${visual.bridgeSpanLength}" data-bridge-span-role="${app._escapeHtml(visual.bridgeSpanRole || 'middle')}"`
             : '';
         const bridgeShoreEdges = visual?.bridgeShoreEdges?.length ? ` data-bridge-shore-edges="${app._escapeHtml(visual.bridgeShoreEdges.join(' '))}"` : '';
+        const bridgeApproachEdges = visual?.adjacencyBlend?.route?.find(entry => entry?.kind === 'bridge-approach')?.approachEdges || [];
+        const bridgeApproaches = bridgeApproachEdges.length ? ` data-bridge-approach-edges="${app._escapeHtml(bridgeApproachEdges.join(' '))}"` : '';
         const dangerInfluence = visual?.dangerInfluence ? ' data-danger-influence="true"' : '';
         const immediateDanger = visual?.immediateDanger ? ' data-immediate-danger="true"' : '';
         const groundTransitions = visual?.groundTransitions?.length
             ? ` data-ground-transitions="${app._escapeHtml(visual.groundTransitions.map(entry => `${entry.direction}:${entry.biome}`).join(' '))}"`
+            : '';
+        const visualRecipe = visual?.visualRecipe
+            ? ` data-visual-recipe="${app._escapeHtml(visual?.adjacencyBlend?.biome || 'unknown')}" data-route-shoulder="${app._escapeHtml(visual.visualRecipe.routeShoulder || 'earth')}" data-route-clearance="${Number(visual.visualRecipe.routeClearance) || 0}"`
+            : '';
+        const adjacencyBlend = visual?.adjacencyBlend?.terrain?.length
+            ? ` data-adjacency-blend-edges="${app._escapeHtml(visual.adjacencyBlend.terrain.map(entry => entry.direction).join(' '))}"`
+            : '';
+        const sharedEdges = visual?.adjacencyBlend?.sharedEdges?.length
+            ? ` data-shared-edge-keys="${app._escapeHtml(visual.adjacencyBlend.sharedEdges.map(entry => entry.sharedEdgeKey).join(' '))}"`
+            : '';
+        const junctions = visual?.adjacencyBlend?.junctions?.length
+            ? ` data-adjacency-junctions="${app._escapeHtml(visual.adjacencyBlend.junctions.map(entry => `${entry.corner}:${entry.kind}`).join(' '))}"`
             : '';
         const featureFootprint = visual?.featureFootprint
             ? ` data-feature-footprint="${app._escapeHtml(`${visual.featureFootprint.width}x${visual.featureFootprint.height}:${visual.featureFootprint.part}`)}" data-feature-approaches="${app._escapeHtml((visual.featureApproachEdges || []).join(' '))}"`
@@ -468,7 +499,7 @@ const YAW_MAP_VISUALS = {
         const assetAttrs = asset
             ? ` data-asset-id="${app._escapeHtml(asset.id)}" data-asset-fallback="${app._escapeHtml(asset.fallbackMode || 'emoji')}"${asset.src ? ` data-asset-src="${app._escapeHtml(asset.src)}"` : ''}`
             : '';
-        return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}${interiorShape}${interiorConnections}${interiorAdjacent}${interiorTheme}${interiorStructure}${interiorExitDirection}${blocked}${blockedReason}${shoreline}${shorelineCorners}${shorelineMask}${elevationKind}${elevationBand}${primaryUphill}${primaryDownhill}${cliffEdges}${bridgeSpan}${bridgeShoreEdges}${dangerInfluence}${immediateDanger}${groundTransitions}${featureFootprint}${compositionAttrs}${semantics}${assetAttrs}`;
+        return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}${interiorShape}${interiorConnections}${interiorAdjacent}${interiorTheme}${interiorStructure}${interiorExitDirection}${blocked}${blockedReason}${shoreline}${shorelineCorners}${shorelineMask}${elevationKind}${elevationBand}${primaryUphill}${primaryDownhill}${cliffEdges}${bridgeSpan}${bridgeShoreEdges}${bridgeApproaches}${dangerInfluence}${immediateDanger}${groundTransitions}${visualRecipe}${adjacencyBlend}${sharedEdges}${junctions}${featureFootprint}${compositionAttrs}${semantics}${assetAttrs}`;
     },
 
     interiorTileVisual(app, room = null, options = {}) {

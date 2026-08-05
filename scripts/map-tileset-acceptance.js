@@ -5,6 +5,15 @@ const path = require('path');
 const zlib = require('zlib');
 
 const ROOT = path.resolve(__dirname, '..');
+const MIB = 1024 * 1024;
+const BUDGETS = Object.freeze({
+  offlineBytes: 18 * MIB,
+  hostedBytes: 4 * MIB,
+  atlasTotalBytes: 10.5 * MIB,
+  texturedColdBytes: 11 * MIB,
+  terrainMaterialsBytes: 1.25 * MIB,
+  coverOverlaysBytes: 1.75 * MIB
+});
 const paths = {
   offline: path.join(ROOT, 'dist', 'you-are-wild.html'),
   hosted: path.join(ROOT, 'dist', 'you-are-wild.hosted.html'),
@@ -57,6 +66,15 @@ function measure() {
   const hasCacheBustingQuery = expectedAssetPaths.some(assetPath => new RegExp(`${assetPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?`).test(hostedSource));
   const lightweightTransferBytes = hosted.gzipBytes;
   const texturedColdTransferBytes = hosted.gzipBytes + atlasBytes;
+  const atlasByName = Object.fromEntries(atlases.map(entry => [path.basename(entry.file), entry]));
+  const budgetChecks = {
+    offline: offline.bytes <= BUDGETS.offlineBytes,
+    hosted: hosted.bytes <= BUDGETS.hostedBytes,
+    atlasTotal: atlasBytes <= BUDGETS.atlasTotalBytes,
+    texturedCold: texturedColdTransferBytes <= BUDGETS.texturedColdBytes,
+    terrainMaterials: atlasByName['terrain-materials-v2.png'].bytes <= BUDGETS.terrainMaterialsBytes,
+    coverOverlays: atlasByName['cover-overlays-v3.png'].bytes <= BUDGETS.coverOverlaysBytes
+  };
 
   return {
     schemaVersion: 1,
@@ -84,12 +102,17 @@ function measure() {
       embedsAtlasData,
       hasCacheBustingQuery,
       reusable: externalPathsStable && !embedsAtlasData && !hasCacheBustingQuery
+    },
+    budgetContract: {
+      limits: Object.fromEntries(Object.entries(BUDGETS).map(([key, value]) => [key, { bytes: value, mib: mib(value) }])),
+      checks: budgetChecks,
+      withinBudget: Object.values(budgetChecks).every(Boolean)
     }
   };
 }
 
 function printHuman(report) {
-  const { artifacts, hostedTransfer, cacheContract } = report;
+  const { artifacts, hostedTransfer, cacheContract, budgetContract } = report;
   console.log('Map/Tileset artifact acceptance');
   console.log(`  Offline single-file: ${artifacts.offline.mib} MiB (${artifacts.offline.gzipMib} MiB gzip)`);
   console.log(`  Hosted runtime:      ${artifacts.hosted.mib} MiB (${artifacts.hosted.gzipMib} MiB gzip)`);
@@ -98,6 +121,7 @@ function printHuman(report) {
   console.log(`  Textured cold transfer estimate: ${hostedTransfer.texturedColdMib} MiB`);
   console.log(`  Theoretical 1.5 Mbps: Lightweight ${hostedTransfer.theoreticalSecondsAt1_5Mbps.lightweight}s; Textured cold ${hostedTransfer.theoreticalSecondsAt1_5Mbps.texturedCold}s`);
   console.log(`  Stable external cache contract: ${cacheContract.reusable ? 'yes' : 'no'}`);
+  console.log(`  Static tileset size budget: ${budgetContract.withinBudget ? 'within budget' : 'FAILED'} (${Object.entries(budgetContract.checks).filter(([, passed]) => !passed).map(([name]) => name).join(', ') || 'all gates'})`);
 }
 
 if (require.main === module) {
@@ -108,7 +132,7 @@ if (require.main === module) {
     } else {
       printHuman(report);
     }
-    if (!report.cacheContract.reusable) process.exitCode = 1;
+    if (!report.cacheContract.reusable || !report.budgetContract.withinBudget) process.exitCode = 1;
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

@@ -360,7 +360,13 @@ function assertRestored(state, viewport) {
 
 async function exerciseMobileContainment(page) {
   await page.setViewportSize(PHONE);
-  const before = await page.evaluate(() => {
+  const before = await page.evaluate(async () => {
+    // This phase proves the explicit full-save contract. Suppress the ordinary
+    // action autosave before rendering or committing either containment action
+    // so no sparse write can race the full snapshot used by the reload checks.
+    const pendingSave = YAW_SAVE_PERSISTENCE.autoSaveState(App).running;
+    if (pendingSave) await pendingSave;
+    App.cancelAutoSave?.({ suppress: true });
     App.renderMobileCombatToolbelt();
     App.showInventory();
     App.setHoldingsTab('containers');
@@ -492,7 +498,10 @@ async function main() {
     assert.ok(finalMobile.mobileIntentCount >= 5, 'mobile combat intents should restore after reload');
     assert.equal(finalMobile.horizontalOverflow, false, 'final phone lifecycle should not overflow horizontally');
     const digested = finalMobile.containment.find(entry => entry.id === 'lifecycle-digest-prey');
-    assert.ok(digested && ['terminal', 'digested'].includes(digested.state), 'digested containment state should survive reload');
+    assert.ok(
+      digested && ['terminal', 'digested'].includes(digested.state),
+      `digested containment state should survive reload: ${JSON.stringify(finalMobile.containment)}`
+    );
     assert.ok(!finalMobile.containment.some(entry => entry.id === 'lifecycle-release-prey'), 'released creature should stay outside containment after reload');
     assert.match(finalMobile.logText, /digests Morsel/i, 'Digest narration should survive reload');
     assert.match(finalMobile.logText, /Sprig is released/i, 'Release narration should survive reload');

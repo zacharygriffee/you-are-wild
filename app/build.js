@@ -150,6 +150,7 @@ const SCRIPT_ORDER = [
   'src/core/audio-pack-v1.js',
   'src/core/audio-runtime.js',
   'src/core/biome-recipes.js',
+  'src/core/tile-visual-recipes.js',
   'src/core/world-scaling.js',
   'src/core/world-state.js',
   'src/core/world-store.js',

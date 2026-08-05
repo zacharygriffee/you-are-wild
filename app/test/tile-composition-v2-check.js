@@ -6,8 +6,10 @@ const path = require('path');
 const sourcePath = path.join(__dirname, '..', 'src', 'core', 'tile-composition-v2.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const composition = new Function(`${source}\nreturn YAW_TILE_COMPOSITION_V2;`)();
+const visualRecipesSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'tile-visual-recipes.js'), 'utf8');
+const visualRecipes = new Function(`${visualRecipesSource}\nreturn YAW_TILE_VISUAL_RECIPES;`)();
 const visualsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'map-visuals.js'), 'utf8');
-const visuals = new Function('YAW_TILE_COMPOSITION_V2', `${visualsSource}\nreturn YAW_MAP_VISUALS;`)(composition);
+const visuals = new Function('YAW_TILE_COMPOSITION_V2', 'YAW_TILE_VISUAL_RECIPES', `${visualsSource}\nreturn YAW_MAP_VISUALS;`)(composition, visualRecipes);
 const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'tileset-runtime.js'), 'utf8');
 const runtime = new Function('YAW_TILESET_PACK_V1', `${runtimeSource}\nreturn YAW_TILESET_RUNTIME;`)({ LAYER_SLOTS: ['base', 'route', 'feature', 'marker', 'presence'] });
 const worldGenerationSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'world-generation.js'), 'utf8');
@@ -107,6 +109,8 @@ check(crowded.layers.evidence.omitted === 6, 'Crowded evidence must report omitt
 const longLabel = composition.snapshot(null, { items: [{ id: 'long', name: 'x'.repeat(1000) }] });
 check(longLabel.layers.evidence.records[0].label.length === 160, 'Snapshot scalar text must be bounded');
 check(!JSON.stringify(first).includes('function'), 'Snapshot must contain data, never executable rendering callbacks');
+check(visualRecipes.VERSION === 2 && ['grove', 'forest', 'swamp', 'plains', 'jungle', 'beach', 'cliff', 'water'].every(biome => visualRecipes.PROFILES[biome]), 'Visual recipes must cover every generated overworld biome');
+check(JSON.stringify(visualRecipes.compose(tile, () => null, { routeShape: 'horizontal' })) === JSON.stringify(visualRecipes.compose(JSON.parse(JSON.stringify(tile)), () => null, { routeShape: 'horizontal' })), 'Visual recipe composition must be deterministic for equivalent input');
 
 const app = {
   party: [{ id: 'player-1', name: 'ZX' }],
@@ -143,11 +147,104 @@ check(runtime._compositionLayerForKey('terrain-jungle') === 'ground'
   && runtime._compositionLayerForKey('cover-jungle') === 'cover'
   && runtime._compositionLayerForKey('evidence-remains') === 'evidence'
   && runtime._compositionLayerForKey('state-current') === 'state', 'V1 semantic keys must receive explicit eight-layer render ranks');
-const adjacentVisual = visuals.mapTileVisual(app, { ...tile, biome: 'jungle', derivedBiome: 'jungle', overlays: {} }, {
-  neighborResolver: (x, y) => x === 8 && y === -3 ? { x, y, biome: 'plains', derivedBiome: 'plains', traversal: { passable: true } } : null
+check(runtime._compositionSubRankForKey('ground-transition-jungle-east') < runtime._compositionSubRankForKey('shoreline-water-east')
+  && runtime._compositionSubRankForKey('route-road-horizontal') === 20, 'Shared runtime ordering must place terrain blend before shoreline and route decks at their canonical sub-rank');
+const plainsTile = { ...tile, biome: 'plains', derivedBiome: 'plains', overlays: {} };
+const jungleTile = { ...tile, x: 8, y: -3, biome: 'jungle', derivedBiome: 'jungle', overlays: {}, traversal: { passable: true } };
+const adjacentVisual = visuals.mapTileVisual(app, plainsTile, {
+  neighborResolver: (x, y) => x === 8 && y === -3 ? jungleTile : null
 });
-check(adjacentVisual.groundTransitions.some(entry => entry.direction === 'east' && entry.biome === 'plains'), 'Cardinal neighbor biomes must produce deterministic ground-transition topology');
+const mirroredVisual = visuals.mapTileVisual(app, jungleTile, {
+  neighborResolver: (x, y) => x === 7 && y === -3 ? plainsTile : null
+});
+check(adjacentVisual.groundTransitions.some(entry => entry.direction === 'east' && entry.biome === 'jungle'), 'The lower-priority destination must paint one deterministic cardinal ground transition');
 check(adjacentVisual.composition.layers.terrain.records.some(record => record.kind === 'ground-transition'), 'Ground-transition topology must enter the shared terrain layer');
+const adjacentSpill = adjacentVisual.composition.layers.cover.records.find(record => record.kind === 'adjacent-spill');
+check(adjacentSpill?.sourceBiome === 'jungle' && adjacentSpill.sourceDirection === 'east' && adjacentSpill.edgeBand === 'east' && adjacentSpill.destinationOwned, 'Cardinal cover spill must stay in the shared edge band owned by the destination tile');
+const destinationEdge = adjacentVisual.adjacencyBlend.sharedEdges[0];
+const sourceEdge = mirroredVisual.adjacencyBlend.sharedEdges[0];
+check(destinationEdge.sharedEdgeKey === sourceEdge.sharedEdgeKey && destinationEdge.direction === sourceEdge.mirrorDirection && destinationEdge.phase === sourceEdge.phase, 'Both sides of a shared edge must observe one canonical key, mirrored direction, and phase');
+check(destinationEdge.destinationOwned && !sourceEdge.destinationOwned && mirroredVisual.groundTransitions.length === 0, 'Exactly one side of a shared seam may paint the dominant material');
+check(adjacentVisual.composition.facts.presentationRecipeVersion === 2, 'Composition facts must advertise the applied visual recipe version without changing save schema');
+check(adjacentVisual.composition.facts.adjacency.sharedEdges[0].key === destinationEdge.sharedEdgeKey, 'The serializable snapshot must expose bounded canonical seam evidence');
+check(visuals.mapTileAttrs(app, adjacentVisual).includes('data-shared-edge-keys="edge:7,-3&gt;8,-3"') || visuals.mapTileAttrs(app, adjacentVisual).includes('data-shared-edge-keys="edge:7,-3>8,-3"'), 'Rendered cells must expose canonical shared-edge identity');
+const hiddenNeighborVisual = visuals.mapTileVisual(app, { ...tile, biome: 'jungle', derivedBiome: 'jungle', overlays: {} }, { neighborResolver: () => null });
+check(!hiddenNeighborVisual.composition.layers.cover.records.some(record => record.kind === 'adjacent-spill'), 'Unknown neighbors must not leak cover or biome details into a visible destination');
+
+const shoreLand = { ...tile, x: 0, y: 0, biome: 'beach', derivedBiome: 'beach', overlays: {} };
+const shoreWater = { ...tile, x: 1, y: 0, biome: 'water', derivedBiome: 'water', water: true, overlays: {} };
+const shoreVisual = visuals.mapTileVisual(app, shoreLand, { neighborResolver: (x, y) => x === 1 && y === 0 ? shoreWater : null });
+check(shoreVisual.shorelineEdges.join(',') === 'east' && shoreVisual.semanticKeys.includes('shoreline-water-east'), 'Visible water must resolve through the specialized shoreline authority');
+check(!shoreVisual.semanticKeys.includes('ground-transition-water-east') && shoreVisual.groundTransitions.length === 0, 'Water and land must never receive duplicate generic adjacency paint');
+check(shoreVisual.adjacencyBlend.sharedEdges[0].policy === 'shoreline' && shoreVisual.adjacencyBlend.sharedEdges[0].destinationOwned, 'The land cell must own the canonical water shoreline seam');
+
+const hardVisual = visuals.mapTileVisual(app, { ...plainsTile, x: 0, y: 0 }, {
+  neighborResolver: (x, y) => x === 1 && y === 0 ? { x, y, biome: 'cliff', derivedBiome: 'cliff', overlays: {} } : null
+});
+check(hardVisual.groundTransitions[0]?.style === 'hard', 'Stone and open terrain must use the hard shared-edge policy');
+check(!hardVisual.composition.layers.cover.records.some(record => record.kind === 'adjacent-spill'), 'Hard material boundaries must not scatter unrelated decorative foliage onto the destination');
+
+const junctionVisual = visuals.mapTileVisual(app, { ...plainsTile, x: 0, y: 0 }, {
+  neighborResolver: (x, y) => {
+    if (x === 0 && y === -1) return { x, y, biome: 'jungle', derivedBiome: 'jungle', overlays: {} };
+    if (x === 1 && y === 0) return { x, y, biome: 'cliff', derivedBiome: 'cliff', overlays: {} };
+    if (x === 1 && y === -1) return { x, y, biome: 'jungle', derivedBiome: 'jungle', overlays: {} };
+    return null;
+  }
+});
+const northJunctionEdge = junctionVisual.groundTransitions.find(entry => entry.direction === 'north');
+const eastJunctionEdge = junctionVisual.groundTransitions.find(entry => entry.direction === 'east');
+check(junctionVisual.adjacencyBlend.junctions.find(entry => entry.corner === 'ne')?.kind === 'split', 'Eight-neighbor junctions must classify a mixed-source four-tile corner');
+check(northJunctionEdge?.corners.ne === 'trim' && eastJunctionEdge?.corners.ne === 'extend', 'A mixed corner must trim the losing material and extend the deterministic winner');
+
+const jungleIdentity = visualRecipes.compose({ ...jungleTile, overlays: {} }, () => null);
+const plainsIdentity = visualRecipes.compose({ ...plainsTile, overlays: {} }, () => null);
+check(jungleIdentity.cover.filter(record => record.kind === 'biome-identity').map(record => record.stratum).join(',') === 'canopy,undergrowth', 'Jungle must compose static canopy and undergrowth strata without new raster assets');
+check(!plainsIdentity.cover.some(record => record.kind === 'biome-identity'), 'Plains must retain open visual space instead of inheriting jungle density');
+
+const clearanceTile = {
+  ...tile,
+  biome: 'jungle', derivedBiome: 'jungle', structure: null, hasLandmark: false,
+  items: [], creatures: [], deathBags: [], placedObjects: [], resourceSearched: false,
+  overlays: {
+    road: { id: 'clearance-road', direction: 'east-west', connections: ['east', 'west'] },
+    cover: [{ id: 'center-cover', family: 'jungle', anchor: { x: 0.5, y: 0.5 }, scale: 1 }]
+  }
+};
+const clearanceBefore = JSON.stringify(clearanceTile);
+const clearanceVisual = visuals.mapTileVisual(app, clearanceTile, { neighborResolver: () => null });
+const routeVerge = clearanceVisual.composition.layers.route.records.find(record => record.kind === 'route-verge');
+const clearedCover = clearanceVisual.composition.layers.cover.records.find(record => record.id === 'center-cover');
+check(routeVerge?.shoulder === 'leaf-litter' && routeVerge.connections.join(',') === 'east,west', 'Road records must receive the biome recipe verge treatment and exact topology');
+check(clearanceVisual.composition.layers.route.records[0].kind === 'route-verge' && clearanceVisual.composition.layers.route.records.at(-1).kind === 'road', 'Route underlay records must sort before the authored route deck');
+check(clearedCover?.clearanceAdjusted && Math.abs(clearedCover.anchor.y - 0.5) >= routeVerge.clearanceRadius, 'Route clearance must move decorative cover outside the rendered centerline corridor');
+check(JSON.stringify(clearanceTile) === clearanceBefore, 'Visual clearance must not mutate simulation or persistence input');
+check(visuals.mapTileAttrs(app, clearanceVisual).includes('data-route-shoulder="leaf-litter"'), 'Rendered cells must expose their biome-aware route treatment');
+
+const featureTile = {
+  ...clearanceTile,
+  overlays: { cover: [{ id: 'feature-cover', family: 'jungle', anchor: { x: 0.5, y: 0.5 } }], poi: { id: 'feature-poi', category: 'landmark' } }
+};
+const featureVisual = visuals.mapTileVisual(app, featureTile, { neighborResolver: () => null });
+const featureGrounding = featureVisual.composition.layers.feature.records.find(record => record.kind === 'feature-grounding');
+const featureCover = featureVisual.composition.layers.cover.records.find(record => record.id === 'feature-cover');
+check(featureGrounding?.biome === 'jungle' && featureGrounding.destinationOwned, 'Features must receive destination-owned biome grounding records');
+check(featureVisual.composition.layers.feature.records[0].kind === 'feature-grounding', 'Feature grounding must sort before transparent structure and POI art');
+check(featureCover?.clearanceAdjusted && Math.hypot(featureCover.anchor.x - 0.5, featureCover.anchor.y - 0.5) >= featureGrounding.clearanceRadius, 'Feature clearance must preserve readable negative space around POIs');
+
+const bridgeTile = {
+  ...clearanceTile,
+  water: true,
+  overlays: { bridge: { id: 'bridge', direction: 'east-west', connections: ['east', 'west'], spanIndex: 0, spanLength: 1, spanRole: 'single' } }
+};
+const bridgeVisual = visuals.mapTileVisual(app, bridgeTile, {
+  neighborResolver: (x, y) => ({ x, y, biome: 'plains', derivedBiome: 'plains', overlays: { road: { direction: 'east-west' } }, traversal: { passable: true } })
+});
+const bridgeApproach = bridgeVisual.composition.layers.route.records.find(record => record.kind === 'bridge-approach');
+check(bridgeApproach?.approachEdges.join(',') === 'east,west', 'Bridge approach records must identify landward cardinal ends without changing span topology');
+check(visuals.mapTileAttrs(app, bridgeVisual).includes('data-bridge-approach-edges="east west"'), 'Bridge cells must expose approach edges to the shared renderer');
+const spillRequest = runtime._dynamicLayerRequests(adjacentVisual).find(request => request.compositionLayer === 'cover');
+check(spillRequest?.fallbackKey === 'cover-foliage' && spillRequest.opacity > 0 && spillRequest.opacity <= 1 && spillRequest.edgeBand === 'east', 'Adjacent spill art must retain bounded partial-pack fallback, opacity, and edge-band metadata');
 const generatedWorld = { seed: 'composition-world', generatorVersion: 7 };
 const generatedBiomes = ['forest', 'grove', 'jungle', 'swamp', 'plains', 'beach', 'sand', 'cliff'];
 const generatedA = worldGeneration.generateBaseTile(generatedWorld, 31, -12, generatedBiomes);

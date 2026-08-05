@@ -659,6 +659,18 @@
             --yaw-cliff-south: linear-gradient(transparent, transparent);
             --yaw-cliff-west: linear-gradient(transparent, transparent);
             --yaw-slope-light: linear-gradient(transparent, transparent);
+            --yaw-biome-floor-light: linear-gradient(transparent, transparent);
+        }
+
+        [data-tile-composition-space="overworld"][data-visual-recipe="jungle"] {
+            --yaw-biome-floor-light:
+                radial-gradient(circle at 18% 22%, rgba(220, 255, 178, 0.13) 0 3%, transparent 11%),
+                radial-gradient(circle at 72% 16%, rgba(206, 247, 160, 0.1) 0 4%, transparent 13%),
+                radial-gradient(circle at 54% 72%, rgba(5, 18, 9, 0.22) 0 9%, transparent 24%);
+        }
+
+        [data-tile-composition-space="overworld"][data-visual-recipe="jungle"] .yaw-tile-art > [data-tile-composition-layer="ground"] {
+            filter: saturate(1.16) brightness(0.88) contrast(1.05);
         }
 
         [data-tile-composition-space="overworld"][data-cliff-edges~="north"] {
@@ -699,28 +711,56 @@
             inset: 0;
             z-index: 2;
             pointer-events: none;
-            background: var(--yaw-cliff-north), var(--yaw-cliff-east), var(--yaw-cliff-south), var(--yaw-cliff-west), var(--yaw-slope-light);
+            background: var(--yaw-cliff-north), var(--yaw-cliff-east), var(--yaw-cliff-south), var(--yaw-cliff-west), var(--yaw-slope-light), var(--yaw-biome-floor-light);
         }
 
         /* Neighbor-derived ground transitions reuse the adjacent material and
            fade only its shared edge. They remain terrain presentation layers;
            the effective tile keeps its own biome and traversal authority. */
+        [data-tile-composition-space="overworld"] {
+            --yaw-adjacent-fade-end: 34%;
+        }
+        :is([data-visual-recipe="forest"], [data-visual-recipe="swamp"], [data-visual-recipe="jungle"]) {
+            --yaw-adjacent-fade-end: 38%;
+        }
+        :is([data-visual-recipe="plains"], [data-visual-recipe="beach"], [data-visual-recipe="sand"]) {
+            --yaw-adjacent-fade-end: 28%;
+        }
+        .yaw-tile-art > [data-edge-blend-style="hard"] {
+            --yaw-adjacent-fade-end: 22%;
+        }
         .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-north"] {
-            -webkit-mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
-            mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+            -webkit-mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
+            mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
         }
         .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-east"] {
-            -webkit-mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
-            mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+            -webkit-mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
+            mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
         }
         .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-south"] {
-            -webkit-mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
-            mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+            -webkit-mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
+            mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
         }
         .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-west"] {
-            -webkit-mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
-            mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+            -webkit-mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
+            mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
         }
+
+        /* A four-cell junction selects one winning edge before paint. The
+           losing material is clipped away from that corner instead of two
+           unrelated fades producing a circular hole or muddy overlap. */
+        .yaw-tile-art > [data-tileset-semantic-key$="-north"][data-edge-corners~="wn:trim"] { clip-path: polygon(22% 0, 100% 0, 100% 100%, 34% 100%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-north"][data-edge-corners~="ne:trim"] { clip-path: polygon(0 0, 78% 0, 66% 100%, 0 100%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-north"][data-edge-corners~="wn:trim"][data-edge-corners~="ne:trim"] { clip-path: polygon(22% 0, 78% 0, 66% 100%, 34% 100%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-east"][data-edge-corners~="ne:trim"] { clip-path: polygon(0 34%, 100% 22%, 100% 100%, 0 100%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-east"][data-edge-corners~="es:trim"] { clip-path: polygon(0 0, 100% 0, 100% 78%, 0 66%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-east"][data-edge-corners~="ne:trim"][data-edge-corners~="es:trim"] { clip-path: polygon(0 34%, 100% 22%, 100% 78%, 0 66%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-south"][data-edge-corners~="es:trim"] { clip-path: polygon(0 0, 66% 0, 78% 100%, 0 100%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-south"][data-edge-corners~="sw:trim"] { clip-path: polygon(34% 0, 100% 0, 100% 100%, 22% 100%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-south"][data-edge-corners~="es:trim"][data-edge-corners~="sw:trim"] { clip-path: polygon(34% 0, 66% 0, 78% 100%, 22% 100%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-west"][data-edge-corners~="sw:trim"] { clip-path: polygon(0 0, 100% 0, 100% 66%, 0 78%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-west"][data-edge-corners~="wn:trim"] { clip-path: polygon(0 22%, 100% 34%, 100% 100%, 0 100%); }
+        .yaw-tile-art > [data-tileset-semantic-key$="-west"][data-edge-corners~="sw:trim"][data-edge-corners~="wn:trim"] { clip-path: polygon(0 22%, 100% 34%, 100% 66%, 0 78%); }
 
         /* Full-span bridge art deliberately bleeds through the presentation
            gutter. Its transparent deck still belongs to one tile, while the
@@ -742,6 +782,28 @@
         .map-visual-bridge .yaw-tile-art > [data-tileset-semantic-key="route-bridge-vertical"] {
             top: -4px;
             bottom: -4px;
+        }
+
+        /* A bridge approach belongs to the destination cell. The soft earth
+           pad sits below the full-span deck and never expands the cell hit
+           target or changes the authored route topology. */
+        .map-visual-bridge {
+            --yaw-bridge-approach-north: linear-gradient(transparent, transparent);
+            --yaw-bridge-approach-east: linear-gradient(transparent, transparent);
+            --yaw-bridge-approach-south: linear-gradient(transparent, transparent);
+            --yaw-bridge-approach-west: linear-gradient(transparent, transparent);
+        }
+        .map-visual-bridge[data-bridge-approach-edges~="north"] { --yaw-bridge-approach-north: linear-gradient(to bottom, rgba(114, 82, 48, 0.78) 0 10%, transparent 34%); }
+        .map-visual-bridge[data-bridge-approach-edges~="east"] { --yaw-bridge-approach-east: linear-gradient(to left, rgba(114, 82, 48, 0.78) 0 10%, transparent 34%); }
+        .map-visual-bridge[data-bridge-approach-edges~="south"] { --yaw-bridge-approach-south: linear-gradient(to top, rgba(114, 82, 48, 0.78) 0 10%, transparent 34%); }
+        .map-visual-bridge[data-bridge-approach-edges~="west"] { --yaw-bridge-approach-west: linear-gradient(to right, rgba(114, 82, 48, 0.78) 0 10%, transparent 34%); }
+        .map-visual-bridge[data-bridge-approach-edges] .yaw-tile-art::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 150;
+            pointer-events: none;
+            background: var(--yaw-bridge-approach-north), var(--yaw-bridge-approach-east), var(--yaw-bridge-approach-south), var(--yaw-bridge-approach-west);
         }
 
         [data-danger-influence="true"] .yaw-tile-art::before {
@@ -858,6 +920,13 @@
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-inner-es"]::after { width: 68%; height: 68%; right: -34%; bottom: -34%; }
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-inner-sw"]::after { width: 68%; height: 68%; left: -34%; bottom: -34%; }
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-inner-wn"]::after { width: 68%; height: 68%; left: -34%; top: -34%; }
+
+        /* The old repeated white scallops were a bundled-skin decoration,
+           not shoreline topology. V2 keeps the continuous water mask and
+           authored semantic keys, but leaves foam to replacement art packs. */
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="shoreline-water-"]::after {
+            content: none;
+        }
 
         /* Interior topology is one continuous plan. Removing the overworld
            card gutters lets reciprocal path sprites meet at shared edges. */
@@ -1081,7 +1150,7 @@
             opacity: 0 !important;
         }
 
-        /* Road Geometry V1. The source road crops do not share a common
+        /* Road Geometry V2. The source road crops do not share a common
            centerline: corner and junction art exits close to a cell edge and
            bleeds into neighboring atlas cells. The bundled skin therefore
            uses exact 50% vector geometry with one 44% outer width and one 32%
@@ -1121,6 +1190,30 @@
 
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="route-road-intersection"] {
             background-image: var(--yaw-road-cross) !important;
+        }
+
+        /* Recipe-selected verge treatments tint only the bundled vector road.
+           Replacement packs retain their authored colors and geometry. */
+        [data-route-shoulder="leaf-litter"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
+            filter: sepia(0.35) hue-rotate(46deg) saturate(0.82) brightness(0.82) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.42));
+        }
+        [data-route-shoulder="needles"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
+            filter: sepia(0.38) hue-rotate(28deg) saturate(0.72) brightness(0.76) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.44));
+        }
+        [data-route-shoulder="mud"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
+            filter: sepia(0.52) saturate(0.7) brightness(0.62) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.48));
+        }
+        [data-route-shoulder="grass"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
+            filter: sepia(0.3) hue-rotate(55deg) saturate(0.78) brightness(0.9) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.36));
+        }
+        [data-route-shoulder="sand"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
+            filter: sepia(0.22) saturate(0.82) brightness(1.08) drop-shadow(0 1px 2px rgba(79, 55, 28, 0.32));
+        }
+        [data-route-shoulder="stone"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
+            filter: grayscale(0.68) brightness(0.82) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.48));
+        }
+        [data-route-shoulder="wet"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
+            filter: sepia(0.16) hue-rotate(150deg) saturate(0.72) brightness(0.78) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
         }
 
         /* The first-party tower cell was painted against opaque terrain. Keep

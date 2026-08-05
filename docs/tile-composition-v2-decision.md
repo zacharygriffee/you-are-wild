@@ -28,11 +28,11 @@ the maintained compatibility adapters.
 
 | Snapshot layer | Current authoritative inputs | Phase A coverage | Known gap before art replacement |
 | --- | --- | --- | --- |
-| Ground | Generator and effective tile `biome`, `baseBiome`, `derivedBiome`, and water facts | Deterministic material record | Several first-party sprites still bake foliage into ground |
+| Ground | Generator and effective tile `biome`, `baseBiome`, `derivedBiome`, and water facts | Deterministic material record plus neighbor-derived material transitions | Regional and seasonal material variants remain future art |
 | Terrain | Generator numeric elevation plus effective shoreline topology and barrier edges | Elevation, shoreline, and barrier records | No authored slope/ledge direction or cliff-face topology |
 | Route | Generator road and bridge overlays plus their connections | Road/bridge kind, direction, and cardinal connections | Bridge span roles and full-bleed seam measurements are not authored |
-| Cover | Explicit `overlays.cover` and `overlays.obstacles` only | Bounded independent records | Generator does not yet author reusable foliage/obstacle instances broadly |
-| Feature | Generated structures/POIs plus sparse tile-delta landmark, loot, and resource-search state | Independent structure/resource/POI records | Resource-node quantity and replenishment need a later gameplay contract |
+| Cover | Deterministic generated `overlays.cover` plus authoritative-barrier `overlays.obstacles` | Bounded independent records with family, anchor, scale, and explicit decorative/mechanical role | More variants may be added without changing the contract |
+| Feature | Generated structures/POIs plus sparse tile-delta landmark, loot, and resource-search state | Independent structure/resource/POI records with footprint and approach topology | Resource-node quantity and replenishment need a later gameplay contract |
 | Evidence | Sparse tile-delta ground items, materialized creature remains, recovery bags, placed objects, and resource-search state | Bounded item/remains/bag/object/resource-change records with overflow count | Generalized altered-terrain evidence is not yet authored |
 | Presence | Materialized encounter creatures plus renderer-supplied party occupants | Stable identity references only | Renderer integration must supply the same occupants to every map surface |
 | State | Current, quest, selection, reachability, danger, blocked edges | Independent top-layer records | Focus and hit-target geometry remains renderer-owned by design |

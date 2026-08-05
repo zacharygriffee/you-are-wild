@@ -21,6 +21,10 @@ const BUNDLED_TILESET_MATERIALS = path.join(ROOT_DIR, 'media', 'terrain-sand-sea
 const BUNDLED_TILESET_MATERIALS_V2 = path.join(ROOT_DIR, 'media', 'terrain-materials-v2.png');
 const BUNDLED_TILESET_BRIDGE_V2 = path.join(ROOT_DIR, 'media', 'bridge-span-v2.png');
 const BUNDLED_TILESET_COVER_V2 = path.join(ROOT_DIR, 'media', 'foliage-cover-v2.png');
+const BUNDLED_TILESET_COVER_V3 = path.join(ROOT_DIR, 'media', 'cover-overlays-v3.png');
+const BUNDLED_TILESET_STRUCTURE_V3 = path.join(ROOT_DIR, 'media', 'structure-overlays-v3.png');
+const BUNDLED_TILESET_POI_V3 = path.join(ROOT_DIR, 'media', 'poi-overlays-v3.png');
+const BUNDLED_TILESET_EVIDENCE_V3 = path.join(ROOT_DIR, 'media', 'evidence-overlays-v3.png');
 const PLACEHOLDER = '<!-- SCRIPTS_PLACEHOLDER -->';
 const GENERATED_BANNER = '<!-- GENERATED FILE. Do not edit directly. Edit app/src and run npm run build. -->';
 const FIRST_PARTY_PACKAGE_MIRRORS = [
@@ -333,7 +337,11 @@ function tilesetBootstrap(release, mode = 'embedded', buildId = 'unknown') {
     { key: 'YAW_BUNDLED_TILESET_MATERIAL_URL', file: BUNDLED_TILESET_MATERIALS, url: './assets/terrain-sand-seamless-v1.png' },
     { key: 'YAW_BUNDLED_TILESET_MATERIAL_V2_URL', file: BUNDLED_TILESET_MATERIALS_V2, url: './assets/terrain-materials-v2.png' },
     { key: 'YAW_BUNDLED_TILESET_BRIDGE_V2_URL', file: BUNDLED_TILESET_BRIDGE_V2, url: './assets/bridge-span-v2.png' },
-    { key: 'YAW_BUNDLED_TILESET_COVER_V2_URL', file: BUNDLED_TILESET_COVER_V2, url: './assets/foliage-cover-v2.png' }
+    { key: 'YAW_BUNDLED_TILESET_COVER_V2_URL', file: BUNDLED_TILESET_COVER_V2, url: './assets/foliage-cover-v2.png' },
+    { key: 'YAW_BUNDLED_TILESET_COVER_V3_URL', file: BUNDLED_TILESET_COVER_V3, url: './assets/cover-overlays-v3.png' },
+    { key: 'YAW_BUNDLED_TILESET_STRUCTURE_V3_URL', file: BUNDLED_TILESET_STRUCTURE_V3, url: './assets/structure-overlays-v3.png' },
+    { key: 'YAW_BUNDLED_TILESET_POI_V3_URL', file: BUNDLED_TILESET_POI_V3, url: './assets/poi-overlays-v3.png' },
+    { key: 'YAW_BUNDLED_TILESET_EVIDENCE_V3_URL', file: BUNDLED_TILESET_EVIDENCE_V3, url: './assets/evidence-overlays-v3.png' }
   ];
   const graphicsMode = "new URLSearchParams(window.location.search).get('graphics') === 'emoji' ? 'emoji' : 'tileset'";
   const initializers = assets.map(asset => `window.${asset.key} = '';`).join('\n');
@@ -372,7 +380,11 @@ function renderHtml(options = {}) {
     BUNDLED_TILESET_MATERIALS,
     BUNDLED_TILESET_MATERIALS_V2,
     BUNDLED_TILESET_BRIDGE_V2,
-    BUNDLED_TILESET_COVER_V2
+    BUNDLED_TILESET_COVER_V2,
+    BUNDLED_TILESET_COVER_V3,
+    BUNDLED_TILESET_STRUCTURE_V3,
+    BUNDLED_TILESET_POI_V3,
+    BUNDLED_TILESET_EVIDENCE_V3
   ];
   if (tilesetFiles.some(file => !fs.existsSync(file))) throw new Error('Bundled Tileset Pack atlas is missing');
   const scripts = [tilesetBootstrap(release, options.tilesetMode, loadBuildId())];
@@ -436,6 +448,10 @@ function watch() {
     BUNDLED_TILESET_MATERIALS_V2,
     BUNDLED_TILESET_BRIDGE_V2,
     BUNDLED_TILESET_COVER_V2,
+    BUNDLED_TILESET_COVER_V3,
+    BUNDLED_TILESET_STRUCTURE_V3,
+    BUNDLED_TILESET_POI_V3,
+    BUNDLED_TILESET_EVIDENCE_V3,
     ...SCRIPT_ORDER.map(p => path.join(__dirname, p))
   ];
 

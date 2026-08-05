@@ -16,7 +16,7 @@
     "test:alpha": "node test/alpha-playtest-check.js",
     "test:lifecycle": "node test/adventure-lifecycle-check.js",
     "test:tile-composition": "node test/tile-composition-v2-check.js",
-    "test:tile-composition-browser": "npm run build:hosted --silent && node test/tile-composition-browser-check.js",
+    "test:tile-composition-browser": "npm run build --silent && npm run build:hosted --silent && node test/tile-composition-browser-check.js",
     "lint": "node build.js --lint-only",
     "watch": "node build.js --watch",
     "dev": "node dev.js",

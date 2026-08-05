@@ -4739,7 +4739,11 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   const materialV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'terrain-materials-v2.png'));
   const bridgeV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'bridge-span-v2.png'));
   const coverV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'foliage-cover-v2.png'));
-  const reviewedBytes = [atlasBytes, overlayBytes, materialBytes, materialV2Bytes, bridgeV2Bytes, coverV2Bytes];
+  const coverV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'cover-overlays-v3.png'));
+  const structureV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'structure-overlays-v3.png'));
+  const poiV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'poi-overlays-v3.png'));
+  const evidenceV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'evidence-overlays-v3.png'));
+  const reviewedBytes = [atlasBytes, overlayBytes, materialBytes, materialV2Bytes, bridgeV2Bytes, coverV2Bytes, coverV3Bytes, structureV3Bytes, poiV3Bytes, evidenceV3Bytes];
   reviewedBytes.forEach((bytes, index) => {
     const descriptor = bundled.resources[index];
     const hash = require('crypto').createHash('sha256').update(bytes).digest('hex');
@@ -4775,7 +4779,7 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertEqual(layered.layers[1].atlasId, 'overlays', 'Routes should resolve from the transparent overlay atlas instead of replacing biome art');
   assertEqual(layered.layers[2].atlasId, 'overlays', 'Current-position state should resolve from the transparent overlay atlas');
   assertEqual(overlayBytes[25], 6, 'Bundled overlay PNG should retain an RGBA color type for transparent composition');
-  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_URL', 'Single-file builds should embed the default atlas for offline and file-origin play');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_URL'", 'Single-file builds should register the default atlas for offline and file-origin play');
   assertContains(buildContent, "window.YAW_PREPARE_BUNDLED_TILESET = () => {", 'Atlas preparation should expose a retryable asynchronous factory so menu startup is never blocked by bitmap decoding');
   assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_READY = window.YAW_PREPARE_BUNDLED_TILESET()', 'Initial embedded atlas preparation should begin without blocking the menu shell');
   assertContains(buildContent, "window.YAW_GRAPHICS_MODE === 'emoji'", 'The shared runtime should support a lightweight graphics mode without registering bundled atlases');
@@ -4784,12 +4788,24 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertContains(buildContent, "'./assets/terrain-materials-v2.png'", 'Hosted builds should reference the cacheable V2 material atlas');
   assertContains(buildContent, "'./assets/bridge-span-v2.png'", 'Hosted builds should reference the cacheable V2 bridge atlas');
   assertContains(buildContent, "'./assets/foliage-cover-v2.png'", 'Hosted builds should reference the cacheable transparent cover atlas');
+  assertContains(buildContent, "'./assets/cover-overlays-v3.png'", 'Hosted builds should reference generated biome cover overlays');
+  assertContains(buildContent, "'./assets/structure-overlays-v3.png'", 'Hosted builds should reference transparent structure overlays');
+  assertContains(buildContent, "'./assets/poi-overlays-v3.png'", 'Hosted builds should reference transparent POI overlays');
+  assertContains(buildContent, "'./assets/evidence-overlays-v3.png'", 'Hosted builds should reference transparent evidence overlays');
   assertContains(buildContent, '.then(response => response.blob())', 'Embedded atlas bytes should decode asynchronously before becoming a short session object URL');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_MATERIAL_V2_URL'", 'V2 material object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_BRIDGE_V2_URL'", 'V2 bridge object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_COVER_V2_URL'", 'V2 cover object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_COVER_V3_URL'", 'Generated cover object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_STRUCTURE_V3_URL'", 'Structure overlay object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_POI_V3_URL'", 'POI overlay object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_EVIDENCE_V3_URL'", 'Evidence overlay object URLs should be published for bundled pack activation');
   assertContains(buildContent, 'URL.revokeObjectURL(window.${asset.key})', 'Every embedded atlas object URL should be revoked when the page closes');
-  assertContains(buildContent, 'BUNDLED_TILESET_COVER_V2,', 'All bundled V2 atlas files should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_COVER_V2,', 'Legacy bundled V2 cover should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_COVER_V3,', 'Generated cover overlays should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_STRUCTURE_V3,', 'Structure overlays should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_POI_V3,', 'POI overlays should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_EVIDENCE_V3,', 'Evidence overlays should participate in development watch rebuilds');
 });
 
 test('Gameplay map semantics remain registered in bundled tileset coverage', () => {
@@ -8740,6 +8756,9 @@ test('Asset manifest supports tileset provenance and fallback metadata', () => {
   assert(painted.sheets.some(sheet => sheet.src === 'terrain-materials-v2.png' && sheet.columns === 3), 'Basic tileset should include the compositional V2 ground atlas');
   assert(painted.sheets.some(sheet => sheet.src === 'bridge-span-v2.png' && sheet.alpha), 'Basic tileset should include transparent cardinal bridge spans');
   assert(painted.sheets.some(sheet => sheet.src === 'foliage-cover-v2.png' && sheet.alpha), 'Basic tileset should include transparent reusable cover');
+  assert(painted.sheets.some(sheet => sheet.src === 'structure-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent structures without baked terrain');
+  assert(painted.sheets.some(sheet => sheet.src === 'poi-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent POI markers');
+  assert(painted.sheets.some(sheet => sheet.src === 'evidence-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent durable evidence');
   assertEqual(painted.aiMetadata.aiMade, true, 'Basic tileset should expose AI-made metadata for future asset-pack policy');
   assert(painted.allowedUse.includes('future-mod-pack'), 'Tileset metadata should allow future mod-pack use');
   const forestAsset = manifest.getTileAsset('terrain-forest');
@@ -8748,7 +8767,9 @@ test('Asset manifest supports tileset provenance and fallback metadata', () => {
   assertEqual(forestAsset.sprite.col, 2, 'Default terrain lookup should expose V2 material-grid metadata');
   assertEqual(manifest.getTileAsset('terrain-sand').src, '../media/terrain-materials-v2.png', 'Neutral sand should resolve through the shared seamless V2 materials rather than a coast crop');
   assertEqual(manifest.getTileAsset('route-bridge-horizontal').src, '../media/bridge-span-v2.png', 'Bridge lookup should resolve through the transparent full-span atlas');
-  assertEqual(manifest.getTileAsset('cover-foliage').src, '../media/foliage-cover-v2.png', 'Cover lookup should resolve independently from ground terrain');
+  assertEqual(manifest.getTileAsset('cover-foliage').src, '../media/cover-overlays-v3.png', 'Cover lookup should resolve through the varied transparent atlas independently from ground terrain');
+  assertEqual(manifest.getTileAsset('structure-camp').src, '../media/structure-overlays-v3.png', 'Structure lookup should preserve inherited ground through transparent feature art');
+  assertEqual(manifest.getTileAsset('poi-rest-site').src, '../media/poi-overlays-v3.png', 'POI lookup should preserve inherited ground through transparent marker art');
   const roadEnd = manifest.getTileAsset('route-road-end');
   assertEqual(roadEnd.tilesetId, 'default-basic-tileset', 'Every core route semantic should resolve through bundled art');
   assertEqual(roadEnd.src, '../media/basic-tileset-overlays-v1.png', 'Route semantics should use the transparent bundled overlay atlas');
@@ -22815,11 +22836,11 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   App.renderLargeMap();
   assertContains(elements.get('mobile-mini-map').innerHTML, 'data-tileset-key="route-road-end-east"', 'Mobile minimap should infer a directional road end from known connections');
   assertContains(elements.get('mobile-mini-map').innerHTML, 'data-base-tileset-key="terrain-forest"', 'Mobile minimap should render base terrain tileset keys');
-  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-tileset-semantic-keys="terrain-forest route-road-end-east', 'Mobile minimap should expose its ordered base and directional-route semantic stack');
+  assert(/data-tileset-semantic-keys="[^"]*terrain-forest[^"]*route-road-end-east/.test(elements.get('mobile-mini-map').innerHTML), 'Mobile minimap should expose its ordered base, transition, cover, and directional-route semantic stack');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-bridge-horizontal"', 'Large map should render bridge tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="structure-camp"', 'Large map should render structure tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-asset-id="default-basic-tileset:structure-camp"', 'Large map should expose bundled basic structure asset ids');
-  assertContains(elements.get('large-map').innerHTML, 'data-asset-src="../media/basic-tileset-v1.png"', 'Large map should expose the relative sidecar bitmap path');
+  assertContains(elements.get('large-map').innerHTML, 'data-asset-src="../media/structure-overlays-v3.png"', 'Large map should expose the relative transparent structure sidecar path');
 });
 
 test('Map route visuals infer corners and intersections from known neighbors', () => {
@@ -23230,7 +23251,7 @@ test('Resource sites compose a transparent marker over terrain and routes', () =
   const manifest = loadAssetManifestForTest();
   const bundled = manifest.bundledTilesetPack();
   const resourcePresentation = bundled.presentation.tiles['poi-resource-site'];
-  assertEqual(resourcePresentation.layers[0].atlasId, 'overlays', 'Bundled resource markers should use the transparent overlay atlas');
+  assertEqual(resourcePresentation.layers[0].atlasId, 'poi-v3', 'Bundled resource markers should use the dedicated transparent POI atlas');
   assertEqual(resourcePresentation.layers[0].slot, 'marker', 'Bundled resource markers should remain above terrain and route layers');
   const { App } = loadAppForCombat();
   const tile = {

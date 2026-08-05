@@ -10,6 +10,8 @@ const visualsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 
 const visuals = new Function('YAW_TILE_COMPOSITION_V2', `${visualsSource}\nreturn YAW_MAP_VISUALS;`)(composition);
 const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'tileset-runtime.js'), 'utf8');
 const runtime = new Function('YAW_TILESET_PACK_V1', `${runtimeSource}\nreturn YAW_TILESET_RUNTIME;`)({ LAYER_SLOTS: ['base', 'route', 'feature', 'marker', 'presence'] });
+const worldGenerationSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'world-generation.js'), 'utf8');
+const worldGeneration = new Function(`${worldGenerationSource}\nreturn WorldGen;`)();
 
 let passed = 0;
 const check = (condition, message) => {
@@ -137,6 +139,28 @@ check(mapVisual.composition.layers.presence.records.some(record => record.id ===
 check(mapVisual.composition.compatibility.semanticKeys.includes('cover-foliage'), 'Cover records must receive a transparent V1-compatible presentation key');
 check(visuals.mapTileAttrs(app, mapVisual).includes('data-tile-composition-version="2"'), 'Rendered map cells must expose their composition contract');
 check(runtime._semanticKeys(mapVisual).join(',') === mapVisual.composition.compatibility.semanticKeys.join(','), 'Tileset Pack V1 must resolve through snapshot compatibility keys');
+check(runtime._compositionLayerForKey('terrain-jungle') === 'ground'
+  && runtime._compositionLayerForKey('cover-jungle') === 'cover'
+  && runtime._compositionLayerForKey('evidence-remains') === 'evidence'
+  && runtime._compositionLayerForKey('state-current') === 'state', 'V1 semantic keys must receive explicit eight-layer render ranks');
+const adjacentVisual = visuals.mapTileVisual(app, { ...tile, biome: 'jungle', derivedBiome: 'jungle', overlays: {} }, {
+  neighborResolver: (x, y) => x === 8 && y === -3 ? { x, y, biome: 'plains', derivedBiome: 'plains', traversal: { passable: true } } : null
+});
+check(adjacentVisual.groundTransitions.some(entry => entry.direction === 'east' && entry.biome === 'plains'), 'Cardinal neighbor biomes must produce deterministic ground-transition topology');
+check(adjacentVisual.composition.layers.terrain.records.some(record => record.kind === 'ground-transition'), 'Ground-transition topology must enter the shared terrain layer');
+const generatedWorld = { seed: 'composition-world', generatorVersion: 7 };
+const generatedBiomes = ['forest', 'grove', 'jungle', 'swamp', 'plains', 'beach', 'sand', 'cliff'];
+const generatedA = worldGeneration.generateBaseTile(generatedWorld, 31, -12, generatedBiomes);
+const generatedB = worldGeneration.generateBaseTile(generatedWorld, 31, -12, generatedBiomes);
+check(JSON.stringify(generatedA.overlays.cover) === JSON.stringify(generatedB.overlays.cover), 'Generated cover must be deterministic for a pinned world coordinate');
+const generatedCoverSample = Array.from({ length: 400 }, (_, index) => worldGeneration.generateBaseTile(generatedWorld, index % 20, Math.floor(index / 20), generatedBiomes))
+  .find(entry => entry.overlays.cover.length);
+check(Boolean(generatedCoverSample), 'Ordinary generated worlds must author cover records without a handcrafted fixture');
+check(generatedCoverSample.overlays.cover.every(record => record.role === 'decorative' && record.mechanical === false && !record.blocksMovement), 'Decorative generated cover must not imply mechanics');
+const barrierWorld = { seed: 'composition-barriers', generatorVersion: 7 };
+const generatedBarrierSample = Array.from({ length: 2500 }, (_, index) => worldGeneration.generateBaseTile(barrierWorld, index % 50, Math.floor(index / 50), generatedBiomes))
+  .find(entry => entry.overlays.obstacles.some(record => record.mechanical));
+check(!generatedBarrierSample || generatedBarrierSample.overlays.obstacles.every(record => record.mechanic === 'edge-barrier' && record.edges.every(edge => generatedBarrierSample.overlays.barriers.includes(edge))), 'Mechanical obstacle art may only mirror authoritative barrier edges');
 const unknownVisual = visuals.mapTileVisual(app, null);
 check(unknownVisual.composition.compatibility.semanticKeys[0] === 'unknown', 'Unknown cells must retain their V1 fallback semantic through composition');
 
@@ -152,4 +176,4 @@ check(interiorVisual.composition?.space === 'interior', 'Interior visuals must c
 check(interiorVisual.composition.layers.route.records[0]?.kind === 'path', 'Interior topology must project into the shared route layer');
 check(interiorVisual.composition.layers.evidence.records[0]?.id === 'coin', 'Interior durable evidence must use the shared evidence layer');
 
-console.log(`Tile Composition V2 convergence: ${passed}/34 checks passed`);
+console.log(`Tile Composition V2 convergence: ${passed} checks passed`);

@@ -60,7 +60,11 @@ async function startHostedTilesetCacheServer() {
     'terrain-sand-seamless-v1.png',
     'terrain-materials-v2.png',
     'bridge-span-v2.png',
-    'foliage-cover-v2.png'
+    'foliage-cover-v2.png',
+    'cover-overlays-v3.png',
+    'structure-overlays-v3.png',
+    'poi-overlays-v3.png',
+    'evidence-overlays-v3.png'
   ];
   const counts = new Map(assetNames.map(name => [name, 0]));
   const server = http.createServer((request, response) => {

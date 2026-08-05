@@ -4,6 +4,14 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Generated overworld tiles now exercise Tile Composition V2 directly:
+  deterministic biome cover carries explicit decorative/mechanical meaning,
+  neighboring biomes create material transition layers, feature footprints
+  expose adjacent approaches, and independently positioned cover/evidence
+  records follow the canonical eight-layer render order. Transparent cover,
+  structure, POI, evidence, and presence atlases preserve the underlying biome
+  instead of replacing it with legacy baked terrain.
+
 - Licensing is explicitly versioned: the annotated `v0.18.2` tag preserves
   the final MIT-licensed revision, while `v0.18.3` and later use PolyForm
   Noncommercial 1.0.0. Independently authored mods may choose their own terms

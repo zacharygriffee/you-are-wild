@@ -51,6 +51,19 @@ first-party deck reaches the advertised tile edges. The renderer may bleed
 transparent bridge art across a visual gutter, but the cell remains the sole
 hit target and state owner.
 
+Cardinal neighbor biome changes produce bounded `ground-transition` terrain
+records. The bundled renderer reuses the neighboring ground material through
+an edge mask; neither the transition nor its bitmap changes the effective
+biome. Structures and POIs carry a bounded footprint plus passable approach
+edges. When several adjacent tiles share one feature identity, the renderer
+derives its local footprint part from those shared cardinal connections.
+
+Generator V7 emits deterministic cover families with normalized anchors,
+scale, and an explicit `decorative` or `mechanical` role. Decorative foliage
+sets `mechanical: false`, `blocksMovement: false`, and `blocksSight: false`.
+Mechanical obstacle presentation is permitted only when it mirrors an
+existing authoritative barrier edge.
+
 ## Persistence
 
 Save Schema remains **11**. Existing sparse tile deltas remain authoritative.
@@ -75,6 +88,13 @@ The first-party pack adds optional `cover-foliage` and `cover-obstacle` keys.
 V1 packs may omit them; omission is a presentation fallback, not a validation
 or gameplay failure. Until a future reviewed pack version adds a public cover
 slot, core maps V2 cover art into V1's compatible `feature` slot.
+
+The bundled runtime assigns every resolved V1 semantic key an internal V2
+render rank (`ground`, `terrain`, `route`, `cover`, `feature`, `evidence`,
+`presence`, or `state`). This establishes the eight-layer visual order without
+invalidating V1 packs. Cover and evidence records may expand into several
+independently positioned art layers while their V1 assets continue to use
+compatible `feature`, `marker`, or `presence` slots.
 
 First-party generation prompts, alpha extraction, deterministic atlas
 post-processing, and asset paths are recorded in

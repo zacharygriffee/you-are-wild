@@ -38,6 +38,24 @@ const YAW_TILE_COMPOSITION_V2 = {
         };
     },
 
+    _anchor(value) {
+        const source = value && typeof value === 'object' ? value : {};
+        return {
+            x: Math.max(0, Math.min(1, this._number(source.x, 0.5))),
+            y: Math.max(0, Math.min(1, this._number(source.y, 0.5)))
+        };
+    },
+
+    _footprint(value) {
+        const source = value && typeof value === 'object' ? value : {};
+        return {
+            width: Math.max(1, Math.min(8, Math.trunc(this._number(source.width, 1)))),
+            height: Math.max(1, Math.min(8, Math.trunc(this._number(source.height, 1)))),
+            part: this._text(source.part, 'single', 40),
+            anchor: this._anchor(source.anchor)
+        };
+    },
+
     _bounded(records = []) {
         const list = Array.isArray(records) ? records : [];
         return {
@@ -95,6 +113,16 @@ const YAW_TILE_COMPOSITION_V2 = {
             terrain.push({ kind: 'shoreline', edges: shorelineEdges, corners: shorelineCorners });
         }
         if (barrierEdges.length) terrain.push({ kind: 'barrier', edges: barrierEdges });
+        const groundTransitions = Array.isArray(visual.groundTransitions) ? visual.groundTransitions : [];
+        if (groundTransitions.length) {
+            terrain.push({
+                kind: 'ground-transition',
+                edges: groundTransitions.slice(0, 8).map(entry => ({
+                    direction: this._text(entry?.direction, '', 16),
+                    biome: this._text(entry?.biome, 'unknown', 40)
+                })).filter(entry => entry.direction)
+            });
+        }
 
         const route = routeValue ? [{
             kind: routeKind,
@@ -111,14 +139,28 @@ const YAW_TILE_COMPOSITION_V2 = {
             ...(Array.isArray(overlays.cover) ? overlays.cover : []),
             ...(Array.isArray(overlays.obstacles) ? overlays.obstacles : [])
         ];
-        const cover = coverValues.map((value, index) => this._ref(value, 'cover', index));
+        const cover = coverValues.map((value, index) => ({
+            ...this._ref(value, this._text(value?.kind, 'cover'), index),
+            family: this._text(value?.family, 'foliage', 40),
+            variant: Math.max(0, Math.trunc(this._number(value?.variant, 0))),
+            anchor: this._anchor(value?.anchor),
+            scale: Math.max(0.25, Math.min(2, this._number(value?.scale, 1))),
+            role: value?.mechanical ? 'mechanical' : this._text(value?.role, 'decorative', 24),
+            mechanical: Boolean(value?.mechanical),
+            mechanic: this._text(value?.mechanic, '', 40),
+            edges: this._directions(value?.edges),
+            blocksMovement: Boolean(value?.blocksMovement),
+            blocksSight: Boolean(value?.blocksSight)
+        }));
 
         const feature = [];
         if (tile.structure) {
             feature.push({
                 kind: 'structure',
                 id: this._text(tile.structure),
-                depleted: Boolean(tile.structureLooted)
+                depleted: Boolean(tile.structureLooted),
+                footprint: this._footprint(visual.featureFootprint || tile.featureFootprint),
+                approachEdges: this._directions(visual.featureApproachEdges)
             });
         }
         if (tile.hasLandmark) {
@@ -129,7 +171,9 @@ const YAW_TILE_COMPOSITION_V2 = {
                 kind: overlays.poi.category === 'resourceSite' ? 'resource' : 'poi',
                 id: this._text(overlays.poi.id, overlays.poi.category || 'poi'),
                 category: this._text(overlays.poi.category, 'landmark'),
-                depleted: overlays.poi.category === 'resourceSite' ? Boolean(tile.resourceSearched) : false
+                depleted: overlays.poi.category === 'resourceSite' ? Boolean(tile.resourceSearched) : false,
+                footprint: this._footprint(visual.featureFootprint || overlays.poi.footprint),
+                approachEdges: this._directions(visual.featureApproachEdges)
             });
         }
 

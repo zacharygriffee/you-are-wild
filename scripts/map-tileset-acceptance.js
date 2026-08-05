@@ -14,7 +14,11 @@ const paths = {
     path.join(ROOT, 'media', 'terrain-sand-seamless-v1.png'),
     path.join(ROOT, 'media', 'terrain-materials-v2.png'),
     path.join(ROOT, 'media', 'bridge-span-v2.png'),
-    path.join(ROOT, 'media', 'foliage-cover-v2.png')
+    path.join(ROOT, 'media', 'foliage-cover-v2.png'),
+    path.join(ROOT, 'media', 'cover-overlays-v3.png'),
+    path.join(ROOT, 'media', 'structure-overlays-v3.png'),
+    path.join(ROOT, 'media', 'poi-overlays-v3.png'),
+    path.join(ROOT, 'media', 'evidence-overlays-v3.png')
   ]
 };
 

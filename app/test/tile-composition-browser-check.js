@@ -233,6 +233,10 @@ async function readArtAssetAcceptance(page) {
     const material = await loadPixels('materials-v2');
     const bridge = await loadPixels('bridge-v2');
     const cover = await loadPixels('cover-v2');
+    const coverV3 = await loadPixels('cover-v3');
+    const structuresV3 = await loadPixels('structures-v3');
+    const poiV3 = await loadPixels('poi-v3');
+    const evidenceV3 = await loadPixels('evidence-v3');
     const samePixel = (pixels, left, right) => {
       const offset = value => (value.y * pixels.width + value.x) * 4;
       const a = offset(left);
@@ -264,7 +268,51 @@ async function readArtAssetAcceptance(page) {
       bridgeTransparentCorners: alphaAt(bridge, 0, 0) === 0 && alphaAt(bridge, 1023, 511) === 0,
       coverDimensions: `${cover.width}x${cover.height}`,
       coverTransparentCorners: alphaAt(cover, 0, 0) === 0 && alphaAt(cover, 511, 511) === 0,
-      coverSlot: foliage.slot
+      coverSlot: foliage.slot,
+      v3Dimensions: [`${coverV3.width}x${coverV3.height}`, `${structuresV3.width}x${structuresV3.height}`, `${poiV3.width}x${poiV3.height}`, `${evidenceV3.width}x${evidenceV3.height}`],
+      v3TransparentCorners: [coverV3, structuresV3, poiV3, evidenceV3].every(pixels =>
+        alphaAt(pixels, 0, 0) === 0 && alphaAt(pixels, pixels.width - 1, pixels.height - 1) === 0
+      )
+    };
+  });
+}
+
+async function readGeneratedWorldAcceptance(page) {
+  return page.evaluate(() => {
+    App.worldMeta = App._normalizeWorldMeta({ worldId: 'generated-composition', seed: 'generated-composition', generatorVersion: 7, mapModsHash: 'core' });
+    const tiles = [];
+    for (let y = -24; y <= 24; y += 1) {
+      for (let x = -24; x <= 24; x += 1) tiles.push(App.getBaseTile(x, y));
+    }
+    const coverTile = tiles.find(tile => tile.overlays?.cover?.length);
+    const transitionTile = tiles.find(tile => {
+      const visual = App._mapTileVisual(tile, { neighborResolver: (x, y) => App.getBaseTile(x, y) });
+      return visual.groundTransitions?.length;
+    });
+    const poiTile = tiles.find(tile => tile.overlays?.poi);
+    const visualFor = tile => App._mapTileVisual(tile, {
+      isCurrent: false,
+      neighborResolver: (x, y) => App.getBaseTile(x, y)
+    });
+    const coverVisual = visualFor(coverTile);
+    const transitionVisual = visualFor(transitionTile);
+    const poiVisual = visualFor(poiTile);
+    const coverLayers = YAW_TILESET_RUNTIME.layersForVisual(coverVisual).layers;
+    const poiLayers = YAW_TILESET_RUNTIME.layersForVisual(poiVisual).layers;
+    const order = ['ground', 'terrain', 'route', 'cover', 'feature', 'evidence', 'presence', 'state'];
+    const sorted = layers => layers.every((layer, index) => !index || order.indexOf(layers[index - 1].compositionLayer) <= order.indexOf(layer.compositionLayer));
+    return {
+      generatedTileCount: tiles.length,
+      generatedCoverCount: tiles.filter(tile => tile.overlays?.cover?.length).length,
+      generatedFamilies: [...new Set(tiles.flatMap(tile => (tile.overlays?.cover || []).map(record => record.family)))].sort(),
+      coverRecords: coverVisual.composition.layers.cover.records,
+      coverRendered: coverLayers.filter(layer => layer.compositionLayer === 'cover').length,
+      coverSorted: sorted(coverLayers),
+      transitionRecords: transitionVisual.composition.layers.terrain.records.filter(record => record.kind === 'ground-transition'),
+      transitionArt: YAW_TILESET_RUNTIME.layersForVisual(transitionVisual).layers.some(layer => layer.semanticKey.startsWith('ground-transition-')),
+      poiGroundLayer: poiLayers.some(layer => layer.compositionLayer === 'ground'),
+      poiFeatureLayer: poiLayers.some(layer => layer.compositionLayer === 'feature'),
+      poiSorted: sorted(poiLayers)
     };
   });
 }
@@ -376,6 +424,17 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert.strictEqual(art.coverDimensions, '512x512', `${prefix}: cover sprite should retain its reviewed bounds`);
     assert.strictEqual(art.coverTransparentCorners, true, `${prefix}: cover presentation should remain independent from ground`);
     assert.strictEqual(art.coverSlot, 'feature', `${prefix}: Tileset Pack V1 should receive cover through its compatible feature slot`);
+    assert.deepStrictEqual(art.v3Dimensions, ['1774x887', '1254x1254', '1536x1024', '1774x887'], `${prefix}: compositional overlay atlases should retain their reviewed grids`);
+    assert.strictEqual(art.v3TransparentCorners, true, `${prefix}: structures, POIs, cover, and evidence must not carry baked terrain corners`);
+
+    const generated = await readGeneratedWorldAcceptance(page);
+    assert.strictEqual(generated.generatedTileCount, 2401, `${prefix}: generated-world audit should inspect the full deterministic sample`);
+    assert(generated.generatedCoverCount > 0 && generated.generatedFamilies.length >= 4, `${prefix}: ordinary generation should populate varied cover families`);
+    assert(generated.coverRecords.length > 0 && generated.coverRecords.every(record => record.role === 'decorative' || record.mechanical), `${prefix}: generated cover should expose explicit decorative/mechanical roles`);
+    assert.strictEqual(generated.coverRendered, generated.coverRecords.length, `${prefix}: each generated cover record should become an independently positioned art layer`);
+    assert.strictEqual(generated.coverSorted, true, `${prefix}: generated art should follow the explicit eight-layer order`);
+    assert(generated.transitionRecords.length > 0 && generated.transitionArt, `${prefix}: adjacent generated biomes should produce terrain transition records and art`);
+    assert(generated.poiGroundLayer && generated.poiFeatureLayer && generated.poiSorted, `${prefix}: generated POIs should retain ground beneath a later transparent feature layer`);
 
     await seedInteriorLab(page);
     const interior = await readInteriorAcceptance(page);

@@ -702,6 +702,26 @@
             background: var(--yaw-cliff-north), var(--yaw-cliff-east), var(--yaw-cliff-south), var(--yaw-cliff-west), var(--yaw-slope-light);
         }
 
+        /* Neighbor-derived ground transitions reuse the adjacent material and
+           fade only its shared edge. They remain terrain presentation layers;
+           the effective tile keeps its own biome and traversal authority. */
+        .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-north"] {
+            -webkit-mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+            mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+        }
+        .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-east"] {
+            -webkit-mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+            mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+        }
+        .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-south"] {
+            -webkit-mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+            mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+        }
+        .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-west"] {
+            -webkit-mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+            mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent 34%);
+        }
+
         /* Full-span bridge art deliberately bleeds through the presentation
            gutter. Its transparent deck still belongs to one tile, while the
            shared edge profile closes visual seams across consecutive spans. */

@@ -9,6 +9,22 @@ This is a compact history of completed foundations. Git remains the authoritativ
   blocks combat admission from existing saved hostiles without deleting them,
   and peacefully disengages an active battle so terrain can be inspected
   continuously.
+- Generated overworld tiles now exercise Tile Composition V2 directly:
+  deterministic biome cover carries explicit decorative/mechanical meaning,
+  neighboring biomes create material transition layers, feature footprints
+  expose adjacent approaches, and independently positioned cover/evidence
+  records follow the canonical eight-layer render order. Transparent cover,
+  structure, POI, evidence, and presence atlases preserve the underlying biome
+  instead of replacing it with legacy baked terrain.
+- Per-biome visual recipes now derive canonical shared-edge keys, one painted
+  destination, and eight-neighbor junction decisions without changing the
+  resolved biome or save schema. Water/land uses one shoreline authority and
+  the bundled repeating scallop foam is removed; hard boundaries suppress
+  unrelated foliage, soft spill remains edge-bounded, and static jungle
+  canopy/undergrowth reads distinctly from open plains. One sub-layer order
+  reaches local and Review Map surfaces, while enforced artifact ceilings keep
+  the richer static composition inside the existing atlas budget.
+
 - Licensing is explicitly versioned: the annotated `v0.18.2` tag preserves
   the final MIT-licensed revision, while `v0.18.3` and later use PolyForm
   Noncommercial 1.0.0. Independently authored mods may choose their own terms

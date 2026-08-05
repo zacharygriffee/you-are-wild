@@ -59,6 +59,14 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         setOrRemove('data-bridge-span-length', Number.isInteger(visual.bridgeSpanLength) ? String(visual.bridgeSpanLength) : '');
         setOrRemove('data-bridge-span-role', visual.bridgeSpanRole || '');
         setOrRemove('data-bridge-shore-edges', Array.isArray(visual.bridgeShoreEdges) ? visual.bridgeShoreEdges.join(' ') : '');
+        const bridgeApproachEdges = visual?.adjacencyBlend?.route?.find(entry => entry?.kind === 'bridge-approach')?.approachEdges || [];
+        setOrRemove('data-bridge-approach-edges', bridgeApproachEdges.join(' '));
+        setOrRemove('data-visual-recipe', visual?.adjacencyBlend?.biome || '');
+        setOrRemove('data-route-shoulder', visual?.visualRecipe?.routeShoulder || '');
+        setOrRemove('data-route-clearance', visual?.visualRecipe?.routeClearance ? String(visual.visualRecipe.routeClearance) : '');
+        setOrRemove('data-adjacency-blend-edges', Array.isArray(visual?.adjacencyBlend?.terrain) ? visual.adjacencyBlend.terrain.map(entry => entry.direction).join(' ') : '');
+        setOrRemove('data-shared-edge-keys', Array.isArray(visual?.adjacencyBlend?.sharedEdges) ? visual.adjacencyBlend.sharedEdges.map(entry => entry.sharedEdgeKey).join(' ') : '');
+        setOrRemove('data-adjacency-junctions', Array.isArray(visual?.adjacencyBlend?.junctions) ? visual.adjacencyBlend.junctions.map(entry => `${entry.corner}:${entry.kind}`).join(' ') : '');
         setOrRemove('data-danger-influence', visual.dangerInfluence ? 'true' : '');
         setOrRemove('data-immediate-danger', visual.immediateDanger ? 'true' : '');
     },

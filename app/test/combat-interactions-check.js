@@ -60,7 +60,11 @@ async function startHostedTilesetCacheServer() {
     'terrain-sand-seamless-v1.png',
     'terrain-materials-v2.png',
     'bridge-span-v2.png',
-    'foliage-cover-v2.png'
+    'foliage-cover-v2.png',
+    'cover-overlays-v3.png',
+    'structure-overlays-v3.png',
+    'poi-overlays-v3.png',
+    'evidence-overlays-v3.png'
   ];
   const counts = new Map(assetNames.map(name => [name, 0]));
   const server = http.createServer((request, response) => {
@@ -4956,7 +4960,7 @@ async function runTilesetCrossSurfaceFlow(page) {
         immediate: root?.getAttribute('data-immediate-danger') || '',
         sandImage: root ? getComputedStyle(root.querySelector('[data-tileset-semantic-key="terrain-sand"]')).backgroundImage : '',
         northMask: root ? getComputedStyle(root.querySelector('[data-tileset-semantic-key="shoreline-water-north"]')).maskImage : '',
-        northFoam: root ? getComputedStyle(root.querySelector('[data-tileset-semantic-key="shoreline-water-north"]'), '::after').backgroundImage : ''
+        northFoamContent: root ? getComputedStyle(root.querySelector('[data-tileset-semantic-key="shoreline-water-north"]'), '::after').content : ''
       };
     };
     return {
@@ -4982,7 +4986,7 @@ async function runTilesetCrossSurfaceFlow(page) {
     assert.strictEqual(value.immediate, '', `${surface} should not confuse regional pressure with immediate danger`);
     assert(value.sandImage && value.sandImage !== 'none', `${surface} should resolve the neutral sand material atlas; got ${value.sandImage}`);
     assert(value.northMask.includes('linear-gradient'), `${surface} should mask the reusable water material to its north edge`);
-    assert(value.northFoam.includes('radial-gradient'), `${surface} should paint a softened foam boundary over the transition`);
+    assert(['none', 'normal', ''].includes(value.northFoamContent), `${surface} should omit the retired repeating scallop foam while retaining the shoreline mask`);
   }
   assert.deepStrictEqual([state.mobileAnchors, state.desktopAnchors, state.largeAnchors], [1, 1, 1], 'Every map surface should render one danger-site anchor instead of a skull carpet');
   assert.deepStrictEqual([state.mobileInfluence, state.desktopInfluence, state.largeInfluence], [9, 9, 9], 'Every map surface should retain the bounded 3x3 danger influence footprint');

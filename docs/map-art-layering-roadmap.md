@@ -7,7 +7,8 @@ acceptance order; it does not authorize gameplay-contract changes during the
 
 ## Existing foundation
 
-The map is already partly layered. Tileset Pack V1 supports ordered `base`,
+The map has a layered runtime, but the original Phase A showcase overstated
+ordinary-world coverage. Tileset Pack V1 supports ordered `base`,
 `route`, `feature`, `marker`, and `presence` slots with bounded z-order,
 transforms, opacity, blending, partial-pack fallback, and shared resolution
 across desktop, mobile, large-map, and interior cells. Roads, bridges,
@@ -16,11 +17,13 @@ layers instead of changing the underlying terrain identity.
 
 Tile Composition V2 now supplies the common vocabulary. The first-party pack
 uses pixel-edge-matched ground materials, simulation-directed elevation
-shading, a full-span transparent bridge atlas, and transparent foliage cover.
+shading, a full-span transparent bridge atlas, and transparent cover,
+structure, POI, evidence, and presence atlases.
 Dropped items, remains, recovery bags, resource depletion, and placed objects
-project as bounded evidence and survive sparse world storage. Broader foliage
-variation and altered-terrain evidence remain art/content backlog rather than
-contract gaps.
+project as bounded evidence and survive sparse world storage. Generator V7
+now authors deterministic biome cover instead of relying on a handcrafted
+fixture. Decorative cover explicitly carries no mechanic; obstacle art may
+only mirror an existing authoritative barrier.
 
 ## Target semantic stack
 
@@ -86,7 +89,7 @@ Tileset Pack V1 remains the public compatibility contract during this phase.
 - Verify straight, end, and shore-transition cases in both axes and across all
   supported render sizes.
 
-## Phase C — compositional first-party terrain (complete baseline)
+## Phase C — compositional first-party terrain (generated baseline complete)
 
 - Split grass, dirt, sand, stone, and water into reusable ground materials.
 - Move trees, brush, rocks, reeds, and other cover into transparent obstacle or
@@ -97,6 +100,27 @@ Tileset Pack V1 remains the public compatibility contract during this phase.
   the same seed and tile state must remain reproducible.
 - Keep partial third-party tilesets viable through semantic fallback rather
   than requiring an all-or-nothing atlas replacement.
+
+The completion claim applies to the generated baseline, not to final art
+variety. Cover families are generated in ordinary worlds, neighboring biomes
+produce material transition layers, and old opaque structure/POI crops have
+been replaced. Additional seasonal, regional, and damaged variants remain
+content expansion rather than prerequisites for the layer contract.
+
+The visual-quality slice now uses canonical shared-edge keys and one painted
+destination rather than two independently seeded fades. A biome-pair policy
+separates soft material blending, hard stone/interior edges, and specialized
+water/land shorelines. Eight-neighbor junctions trim mixed-source corner
+losers, decorative spill remains in the owning edge band, roads receive
+biome-aware shoulders, bridges receive landward approach pads, and route/POI
+clearance protects topology. Static jungle canopy, undergrowth, and floor
+light distinguish dense jungle from intentionally open plains without a new
+atlas. These remain records in the existing terrain, route, cover, and feature
+layers—not simulation state or a saved biome blend.
+
+Artifact acceptance caps the offline build, hosted shell, external atlas set,
+textured cold transfer, and the two directly relevant atlases. Animation and
+mod-supplied animated media remain a future composition-version topic.
 
 ## Phase D — persistent tile evidence (complete baseline)
 

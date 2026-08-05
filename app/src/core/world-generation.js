@@ -1079,6 +1079,60 @@ const WorldGen = (() => {
         };
     }
 
+    const COVER_FAMILIES = Object.freeze({
+        forest: { family: 'conifer', density: 0.9 },
+        grove: { family: 'broadleaf', density: 0.82 },
+        jungle: { family: 'jungle', density: 0.94 },
+        swamp: { family: 'reeds', density: 0.78 },
+        plains: { family: 'grass', density: 0.42 },
+        beach: { family: 'drift', density: 0.32 },
+        sand: { family: 'scrub', density: 0.24 },
+        cliff: { family: 'rock', density: 0.72 }
+    });
+
+    function getGeneratedCover(seed, version, x, y, fields, biome, options = {}) {
+        const profile = COVER_FAMILIES[biome];
+        if (!profile || fields?.water) return { cover: [], obstacles: [] };
+        const road = options.road || null;
+        const barriers = Array.isArray(options.barriers) ? options.barriers : [];
+        const densityRoll = hash01(seed, version, 'cover-density', x, y);
+        const coverCount = densityRoll > profile.density
+            ? 0
+            : (densityRoll < profile.density * 0.28 ? 2 : 1);
+        const cover = Array.from({ length: coverCount }, (_, index) => {
+            let anchorX = 0.18 + hash01(seed, version, `cover-x:${index}`, x, y) * 0.64;
+            let anchorY = 0.18 + hash01(seed, version, `cover-y:${index}`, x, y) * 0.64;
+            if (road?.direction === 'north-south') anchorX = anchorX < 0.5 ? 0.17 : 0.83;
+            if (road?.direction === 'east-west') anchorY = anchorY < 0.5 ? 0.17 : 0.83;
+            return {
+                id: `cover_${x}_${y}_${index}`,
+                kind: 'foliage',
+                family: profile.family,
+                variant: Math.floor(hash01(seed, version, `cover-variant:${index}`, x, y) * 4),
+                anchor: { x: Number(anchorX.toFixed(3)), y: Number(anchorY.toFixed(3)) },
+                scale: Number((0.72 + hash01(seed, version, `cover-scale:${index}`, x, y) * 0.24).toFixed(3)),
+                role: 'decorative',
+                mechanical: false,
+                blocksMovement: false,
+                blocksSight: false
+            };
+        });
+        const obstacles = barriers.length ? [{
+            id: `barrier_${x}_${y}`,
+            kind: biome === 'cliff' ? 'rock-face' : 'terrain-barrier',
+            family: biome === 'cliff' ? 'rock' : profile.family,
+            variant: Math.floor(hash01(seed, version, 'obstacle-variant', x, y) * 4),
+            anchor: { x: 0.5, y: 0.5 },
+            role: 'mechanical',
+            mechanical: true,
+            mechanic: 'edge-barrier',
+            edges: barriers.slice(),
+            blocksMovement: true,
+            blocksSight: false
+        }] : [];
+        return { cover, obstacles };
+    }
+
     function cellularFeaturePoint(seed, version, purpose, cellX, cellY, cellSize = 36) {
         const safeSize = Math.max(4, cellSize);
         const jitterX = hash01(seed, version, `${purpose}:jx`, cellX, cellY);
@@ -1192,6 +1246,7 @@ const WorldGen = (() => {
         const road = fields.water && !bridge ? null : roadCandidate;
         const barriers = getBarrierEdges(seed, version, x, y, fields, road);
         const elevationTopology = getElevationTopology(seed, version, x, y, fields, { biome: derivedBiome, barrierEdges: barriers });
+        const generatedCover = getGeneratedCover(seed, version, x, y, fields, derivedBiome, { road, barriers });
         const poiContext = getPoiContextForTile(seed, version, x, y, regionCell);
         const poi = !encounterPolicy.allowHostileStructures && poiContext.poi?.category === 'dangerSite'
             ? null
@@ -1205,6 +1260,8 @@ const WorldGen = (() => {
             road,
             bridge,
             barriers,
+            cover: generatedCover.cover,
+            obstacles: generatedCover.obstacles,
             poi,
             shoreline,
             dangerInfluence,
@@ -1308,6 +1365,7 @@ const WorldGen = (() => {
         getBridgeOverlay,
         getBarrierEdges,
         getElevationTopology,
+        getGeneratedCover,
         cellularFeaturePoint,
         getCavePortalsForCell,
         getCavePortalForTile,

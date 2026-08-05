@@ -1,6 +1,6 @@
 # Tile Composition V2 Art Provenance
 
-The three V2 first-party assets were generated with the built-in ChatGPT image
+The initial three V2 first-party assets were generated with the built-in ChatGPT image
 generation tool on 2026-08-04, reviewed locally, and post-processed with
 Pillow. They use the repository's `owner-supplied-ai-generated` asset policy.
 
@@ -57,3 +57,26 @@ The chroma key was removed with the maintained imagegen helper and the result
 was downsized to a 512px RGBA sprite. It is presented through optional
 `cover-foliage` and `cover-obstacle` semantics while remaining compatible with
 the Tileset Pack V1 feature slot.
+
+## Generated-world overlay atlases
+
+The generated-layer pass on 2026-08-05 added four reviewed chroma-key sources
+under `art/tile-composition/` and four RGBA runtime atlases:
+
+- `media/cover-overlays-v3.png` — 4x2 conifer, broadleaf, jungle, reeds,
+  grass, drift, scrub, and rock cover families.
+- `media/structure-overlays-v3.png` — 4x4 camp, hut, ruins, spring, shrine,
+  farm, village, cave, web, cabin, pond, great-tree, burrow, nest, cave-mouth,
+  and waystone sprites.
+- `media/poi-overlays-v3.png` — 3x2 settlement, rest, danger, resource,
+  landmark, and structure markers.
+- `media/evidence-overlays-v3.png` — 4x2 item, provisions, remains, recovery
+  bag, depletion, placed-object, trail-marker, and occupant-trace sprites.
+
+Each prompt required an exact grid, isolated consistently scaled subjects, a
+uniform `#ff00ff` background, no baked terrain or cast shadows, and no text or
+watermark. The built-in ChatGPT image-generation workflow produced the source
+PNGs. The maintained imagegen chroma-key helper removed the backgrounds with a
+soft matte and despill. Browser acceptance verifies transparent atlas corners,
+pack loading through file and hosted origins, and inherited ground beneath
+generated POIs and structures.

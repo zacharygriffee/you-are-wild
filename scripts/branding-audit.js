@@ -69,6 +69,10 @@ const allowed = [
   { file: 'dist/you-are-wild.html', text: "LEGACY_STORAGE_KEY: 'fff-content-prefs'" }
 ];
 
+function stripOpaqueDataPayloads(content) {
+  return content.replace(/data:[^,\s"'`]+;base64,[A-Za-z0-9+/=]+/gi, 'data:application/octet-stream;base64,[omitted]');
+}
+
 function walk(entry, files = []) {
   const full = path.join(root, entry);
   if (!fs.existsSync(full)) return files;
@@ -97,7 +101,7 @@ for (const removedPath of ['legacy', 'archive']) {
 for (const target of targets) {
   for (const file of walk(target)) {
     const full = path.join(root, file);
-    const content = fs.readFileSync(full, 'utf8');
+    const content = stripOpaqueDataPayloads(fs.readFileSync(full, 'utf8'));
     const lines = content.split(/\r?\n/);
     lines.forEach((line, index) => {
       if (patterns.some(pattern => pattern.test(line))) {

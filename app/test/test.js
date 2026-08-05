@@ -4736,21 +4736,22 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   const atlasBytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'basic-tileset-v1.png'));
   const overlayBytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'basic-tileset-overlays-v1.png'));
   const materialBytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'terrain-sand-seamless-v1.png'));
-  const atlasHash = require('crypto').createHash('sha256').update(atlasBytes).digest('hex');
-  const overlayHash = require('crypto').createHash('sha256').update(overlayBytes).digest('hex');
-  const materialHash = require('crypto').createHash('sha256').update(materialBytes).digest('hex');
-  assertEqual(atlasBytes.byteLength, bundled.resources[0].byteLength, 'Bundled atlas byte length should match its reviewed descriptor');
-  assertEqual(atlasHash, bundled.resources[0].hash, 'Bundled atlas SHA-256 should match its reviewed descriptor');
-  assertEqual(atlasBytes.readUInt32BE(16), bundled.resources[0].width, 'Bundled PNG header width should match its descriptor');
-  assertEqual(atlasBytes.readUInt32BE(20), bundled.resources[0].height, 'Bundled PNG header height should match its descriptor');
-  assertEqual(overlayBytes.byteLength, bundled.resources[1].byteLength, 'Bundled overlay atlas byte length should match its reviewed descriptor');
-  assertEqual(overlayHash, bundled.resources[1].hash, 'Bundled overlay atlas SHA-256 should match its reviewed descriptor');
-  assertEqual(overlayBytes.readUInt32BE(16), bundled.resources[1].width, 'Bundled overlay PNG header width should match its descriptor');
-  assertEqual(overlayBytes.readUInt32BE(20), bundled.resources[1].height, 'Bundled overlay PNG header height should match its descriptor');
-  assertEqual(materialBytes.byteLength, bundled.resources[2].byteLength, 'Bundled material atlas byte length should match its reviewed descriptor');
-  assertEqual(materialHash, bundled.resources[2].hash, 'Bundled material atlas SHA-256 should match its reviewed descriptor');
-  assertEqual(materialBytes.readUInt32BE(16), bundled.resources[2].width, 'Bundled material PNG header width should match its descriptor');
-  assertEqual(materialBytes.readUInt32BE(20), bundled.resources[2].height, 'Bundled material PNG header height should match its descriptor');
+  const materialV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'terrain-materials-v2.png'));
+  const bridgeV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'bridge-span-v2.png'));
+  const coverV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'foliage-cover-v2.png'));
+  const coverV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'cover-overlays-v3.png'));
+  const structureV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'structure-overlays-v3.png'));
+  const poiV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'poi-overlays-v3.png'));
+  const evidenceV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'evidence-overlays-v3.png'));
+  const reviewedBytes = [atlasBytes, overlayBytes, materialBytes, materialV2Bytes, bridgeV2Bytes, coverV2Bytes, coverV3Bytes, structureV3Bytes, poiV3Bytes, evidenceV3Bytes];
+  reviewedBytes.forEach((bytes, index) => {
+    const descriptor = bundled.resources[index];
+    const hash = require('crypto').createHash('sha256').update(bytes).digest('hex');
+    assertEqual(bytes.byteLength, descriptor.byteLength, `Bundled atlas ${descriptor.id} byte length should match its reviewed descriptor`);
+    assertEqual(hash, descriptor.hash, `Bundled atlas ${descriptor.id} SHA-256 should match its reviewed descriptor`);
+    assertEqual(bytes.readUInt32BE(16), descriptor.width, `Bundled atlas ${descriptor.id} PNG width should match its descriptor`);
+    assertEqual(bytes.readUInt32BE(20), descriptor.height, `Bundled atlas ${descriptor.id} PNG height should match its descriptor`);
+  });
   const { YAW_TILESET_PACK_V1, YAW_TILESET_RUNTIME } = loadMediaSystemForTest();
   const pack = YAW_TILESET_PACK_V1.normalizePresentation(bundled.presentation, {
     resources: bundled.resources,
@@ -4774,24 +4775,37 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
     classes: 'map-visual map-visual-road map-visual-current'
   });
   assertEqual(layered.layers.map(layer => layer.slot).join(','), 'base,route,presence', 'Bundled map presentation should compose terrain, route, and current-position layers in order');
-  assertEqual(layered.layers[0].atlasId, 'main', 'Base terrain should remain on the opaque terrain atlas');
+  assertEqual(layered.layers[0].atlasId, 'materials-v2', 'Base terrain should use the seamless V2 material atlas');
   assertEqual(layered.layers[1].atlasId, 'overlays', 'Routes should resolve from the transparent overlay atlas instead of replacing biome art');
   assertEqual(layered.layers[2].atlasId, 'overlays', 'Current-position state should resolve from the transparent overlay atlas');
   assertEqual(overlayBytes[25], 6, 'Bundled overlay PNG should retain an RGBA color type for transparent composition');
-  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_URL', 'Single-file builds should embed the default atlas for offline and file-origin play');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_URL'", 'Single-file builds should register the default atlas for offline and file-origin play');
   assertContains(buildContent, "window.YAW_PREPARE_BUNDLED_TILESET = () => {", 'Atlas preparation should expose a retryable asynchronous factory so menu startup is never blocked by bitmap decoding');
   assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_READY = window.YAW_PREPARE_BUNDLED_TILESET()', 'Initial embedded atlas preparation should begin without blocking the menu shell');
   assertContains(buildContent, "window.YAW_GRAPHICS_MODE === 'emoji'", 'The shared runtime should support a lightweight graphics mode without registering bundled atlases');
   assertContains(buildContent, "mode === 'external'", 'The build should support a hosted external-atlas mode without duplicating the game runtime');
   assertContains(buildContent, "'./assets/basic-tileset-v1.png'", 'Hosted builds should reference the cacheable first-party terrain atlas');
+  assertContains(buildContent, "'./assets/terrain-materials-v2.png'", 'Hosted builds should reference the cacheable V2 material atlas');
+  assertContains(buildContent, "'./assets/bridge-span-v2.png'", 'Hosted builds should reference the cacheable V2 bridge atlas');
+  assertContains(buildContent, "'./assets/foliage-cover-v2.png'", 'Hosted builds should reference the cacheable transparent cover atlas');
+  assertContains(buildContent, "'./assets/cover-overlays-v3.png'", 'Hosted builds should reference generated biome cover overlays');
+  assertContains(buildContent, "'./assets/structure-overlays-v3.png'", 'Hosted builds should reference transparent structure overlays');
+  assertContains(buildContent, "'./assets/poi-overlays-v3.png'", 'Hosted builds should reference transparent POI overlays');
+  assertContains(buildContent, "'./assets/evidence-overlays-v3.png'", 'Hosted builds should reference transparent evidence overlays');
   assertContains(buildContent, '.then(response => response.blob())', 'Embedded atlas bytes should decode asynchronously before becoming a short session object URL');
-  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_URL = terrainUrl', 'Resolved terrain atlas object URLs should be published for bundled pack activation');
-  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_OVERLAY_URL = overlayUrl', 'Resolved overlay atlas object URLs should be published for bundled pack activation');
-  assertContains(buildContent, 'window.YAW_BUNDLED_TILESET_MATERIAL_URL = materialUrl', 'Resolved material atlas object URLs should be published for bundled pack activation');
-  assertContains(buildContent, 'URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_URL)', 'Embedded atlas object URLs should be revoked when the page closes');
-  assertContains(buildContent, 'URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_OVERLAY_URL)', 'Embedded overlay atlas object URLs should be revoked when the page closes');
-  assertContains(buildContent, 'URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_MATERIAL_URL)', 'Embedded material atlas object URLs should be revoked when the page closes');
-  assertContains(buildContent, 'BUNDLED_TILESET, BUNDLED_TILESET_OVERLAYS, BUNDLED_TILESET_MATERIALS, ...SCRIPT_ORDER', 'All bundled atlas files should participate in development watch rebuilds');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_MATERIAL_V2_URL'", 'V2 material object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_BRIDGE_V2_URL'", 'V2 bridge object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_COVER_V2_URL'", 'V2 cover object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_COVER_V3_URL'", 'Generated cover object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_STRUCTURE_V3_URL'", 'Structure overlay object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_POI_V3_URL'", 'POI overlay object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_EVIDENCE_V3_URL'", 'Evidence overlay object URLs should be published for bundled pack activation');
+  assertContains(buildContent, 'URL.revokeObjectURL(window.${asset.key})', 'Every embedded atlas object URL should be revoked when the page closes');
+  assertContains(buildContent, 'BUNDLED_TILESET_COVER_V2,', 'Legacy bundled V2 cover should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_COVER_V3,', 'Generated cover overlays should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_STRUCTURE_V3,', 'Structure overlays should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_POI_V3,', 'POI overlays should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_EVIDENCE_V3,', 'Evidence overlays should participate in development watch rebuilds');
 });
 
 test('Gameplay map semantics remain registered in bundled tileset coverage', () => {
@@ -8739,13 +8753,23 @@ test('Asset manifest supports tileset provenance and fallback metadata', () => {
   assertEqual(painted.relativeBasePath, '../media/', 'Basic tileset should use relative sidecar media paths');
   assertEqual(painted.sheet.src, 'basic-tileset-v1.png', 'Basic tileset should point at the normalized bitmap atlas');
   assert(painted.sheets.some(sheet => sheet.src === 'terrain-sand-seamless-v1.png'), 'Basic tileset should include the neutral sand material sheet');
+  assert(painted.sheets.some(sheet => sheet.src === 'terrain-materials-v2.png' && sheet.columns === 3), 'Basic tileset should include the compositional V2 ground atlas');
+  assert(painted.sheets.some(sheet => sheet.src === 'bridge-span-v2.png' && sheet.alpha), 'Basic tileset should include transparent cardinal bridge spans');
+  assert(painted.sheets.some(sheet => sheet.src === 'foliage-cover-v2.png' && sheet.alpha), 'Basic tileset should include transparent reusable cover');
+  assert(painted.sheets.some(sheet => sheet.src === 'structure-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent structures without baked terrain');
+  assert(painted.sheets.some(sheet => sheet.src === 'poi-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent POI markers');
+  assert(painted.sheets.some(sheet => sheet.src === 'evidence-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent durable evidence');
   assertEqual(painted.aiMetadata.aiMade, true, 'Basic tileset should expose AI-made metadata for future asset-pack policy');
   assert(painted.allowedUse.includes('future-mod-pack'), 'Tileset metadata should allow future mod-pack use');
   const forestAsset = manifest.getTileAsset('terrain-forest');
   assertEqual(forestAsset.tilesetId, 'default-basic-tileset', 'Default tile lookup should resolve through the basic tileset');
-  assertEqual(forestAsset.src, '../media/basic-tileset-v1.png', 'Default tile lookup should expose the relative bitmap path');
-  assertEqual(forestAsset.sprite.col, 0, 'Default tile lookup should expose sprite metadata');
-  assertEqual(manifest.getTileAsset('terrain-sand').src, '../media/terrain-sand-seamless-v1.png', 'Neutral sand should resolve through its dedicated seamless material rather than a coast crop');
+  assertEqual(forestAsset.src, '../media/terrain-materials-v2.png', 'Default terrain lookup should expose the compositional material atlas');
+  assertEqual(forestAsset.sprite.col, 2, 'Default terrain lookup should expose V2 material-grid metadata');
+  assertEqual(manifest.getTileAsset('terrain-sand').src, '../media/terrain-materials-v2.png', 'Neutral sand should resolve through the shared seamless V2 materials rather than a coast crop');
+  assertEqual(manifest.getTileAsset('route-bridge-horizontal').src, '../media/bridge-span-v2.png', 'Bridge lookup should resolve through the transparent full-span atlas');
+  assertEqual(manifest.getTileAsset('cover-foliage').src, '../media/cover-overlays-v3.png', 'Cover lookup should resolve through the varied transparent atlas independently from ground terrain');
+  assertEqual(manifest.getTileAsset('structure-camp').src, '../media/structure-overlays-v3.png', 'Structure lookup should preserve inherited ground through transparent feature art');
+  assertEqual(manifest.getTileAsset('poi-rest-site').src, '../media/poi-overlays-v3.png', 'POI lookup should preserve inherited ground through transparent marker art');
   const roadEnd = manifest.getTileAsset('route-road-end');
   assertEqual(roadEnd.tilesetId, 'default-basic-tileset', 'Every core route semantic should resolve through bundled art');
   assertEqual(roadEnd.src, '../media/basic-tileset-overlays-v1.png', 'Route semantics should use the transparent bundled overlay atlas');
@@ -22812,11 +22836,11 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   App.renderLargeMap();
   assertContains(elements.get('mobile-mini-map').innerHTML, 'data-tileset-key="route-road-end-east"', 'Mobile minimap should infer a directional road end from known connections');
   assertContains(elements.get('mobile-mini-map').innerHTML, 'data-base-tileset-key="terrain-forest"', 'Mobile minimap should render base terrain tileset keys');
-  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-tileset-semantic-keys="terrain-forest route-road-end-east', 'Mobile minimap should expose its ordered base and directional-route semantic stack');
+  assert(/data-tileset-semantic-keys="[^"]*terrain-forest[^"]*route-road-end-east/.test(elements.get('mobile-mini-map').innerHTML), 'Mobile minimap should expose its ordered base, transition, cover, and directional-route semantic stack');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-bridge-horizontal"', 'Large map should render bridge tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="structure-camp"', 'Large map should render structure tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-asset-id="default-basic-tileset:structure-camp"', 'Large map should expose bundled basic structure asset ids');
-  assertContains(elements.get('large-map').innerHTML, 'data-asset-src="../media/basic-tileset-v1.png"', 'Large map should expose the relative sidecar bitmap path');
+  assertContains(elements.get('large-map').innerHTML, 'data-asset-src="../media/structure-overlays-v3.png"', 'Large map should expose the relative transparent structure sidecar path');
 });
 
 test('Map route visuals infer corners and intersections from known neighbors', () => {
@@ -23128,6 +23152,9 @@ test('Noise biome generation is stable by seed and coordinate', () => {
   assertEqual(typeof first.moisture, 'number', 'Base tile should include deterministic moisture');
   assertEqual(typeof first.heat, 'number', 'Base tile should include deterministic heat');
   assertEqual(typeof first.dangerPressure, 'number', 'Base tile should include deterministic danger pressure');
+  assert(first.terrainTopology && ['level', 'slope', 'ledge', 'cliff'].includes(first.terrainTopology.kind), 'Base tile should include deterministic elevation topology');
+  assertEqual(Object.keys(first.terrainTopology.grades).sort().join(','), 'east,north,south,west', 'Elevation topology should retain signed grades for every cardinal edge');
+  assertEqual(JSON.stringify(first.terrainTopology), JSON.stringify(second.terrainTopology), 'Elevation topology should be stable for the same seed and coordinate');
   assert(first.regionCell?.id, 'Base tile should include cellular macro-region metadata');
   assert(Array.isArray(first.terrainTags), 'Base tile should include terrain tags');
 });
@@ -23213,8 +23240,8 @@ test('Beach biome is derived only near deterministic water', () => {
   const bundledPack = loadAssetManifestForTest().bundledTilesetPack();
   const bundledSand = bundledPack.presentation.tiles['terrain-sand'];
   const bundledShore = bundledPack.presentation.tiles['shoreline-water-north'];
-  assertEqual(bundledSand.layers[0].atlasId, 'materials', 'Default sand should use the dedicated seamless material atlas');
-  assertEqual(bundledShore.layers[0].atlasId, 'main', 'Default shoreline semantics should reuse the matching water material');
+  assertEqual(bundledSand.layers[0].atlasId, 'materials-v2', 'Default sand should use the compositional seamless material atlas');
+  assertEqual(bundledShore.layers[0].atlasId, 'materials-v2', 'Default shoreline semantics should reuse the matching V2 water material');
   assertEqual(bundledShore.layers[0].slot, 'feature', 'Default shoreline water should layer over neutral sand without replacing it');
   assert(inland, 'Test seed should produce a far-inland land tile in the sampled area');
   assert(inland.biome !== 'beach', 'Far-inland land should not classify as beach');
@@ -23224,7 +23251,7 @@ test('Resource sites compose a transparent marker over terrain and routes', () =
   const manifest = loadAssetManifestForTest();
   const bundled = manifest.bundledTilesetPack();
   const resourcePresentation = bundled.presentation.tiles['poi-resource-site'];
-  assertEqual(resourcePresentation.layers[0].atlasId, 'overlays', 'Bundled resource markers should use the transparent overlay atlas');
+  assertEqual(resourcePresentation.layers[0].atlasId, 'poi-v3', 'Bundled resource markers should use the dedicated transparent POI atlas');
   assertEqual(resourcePresentation.layers[0].slot, 'marker', 'Bundled resource markers should remain above terrain and route layers');
   const { App } = loadAppForCombat();
   const tile = {
@@ -23319,6 +23346,18 @@ test('Road and bridge overlays are deterministic constrained features', () => {
   assertEqual(bridgeTile.water, true, 'Bridge requires a water crossing tile');
   assert(['east-west', 'north-south'].includes(bridgeTile.overlays.bridge.direction), 'Bridge direction should be coherent');
   assertEqual(bridgeTile.overlays.bridge.roadId, bridgeTile.overlays.road.id, 'Bridge should reference its road overlay');
+  assert(bridgeTile.overlays.bridge.spanIndex >= 0 && bridgeTile.overlays.bridge.spanIndex < bridgeTile.overlays.bridge.spanLength, 'Bridge span index should identify the tile within its complete crossing');
+  const bridgeNegativeEdge = bridgeTile.overlays.bridge.direction === 'north-south' ? 'north' : 'west';
+  const bridgePositiveEdge = bridgeTile.overlays.bridge.direction === 'north-south' ? 'south' : 'east';
+  const expectedBridgeRole = bridgeTile.overlays.bridge.spanLength === 1
+    ? 'single'
+    : (bridgeTile.overlays.bridge.spanIndex === 0
+        ? `shore-${bridgeNegativeEdge}`
+        : (bridgeTile.overlays.bridge.spanIndex === bridgeTile.overlays.bridge.spanLength - 1 ? `shore-${bridgePositiveEdge}` : 'middle'));
+  assertEqual(bridgeTile.overlays.bridge.spanRole, expectedBridgeRole, 'Bridge role should distinguish shore transitions from middle pieces');
+  assertEqual(bridgeTile.overlays.bridge.shoreEdges.join(','), bridgeTile.overlays.bridge.spanLength === 1
+    ? `${bridgeNegativeEdge},${bridgePositiveEdge}`
+    : (bridgeTile.overlays.bridge.spanIndex === 0 ? bridgeNegativeEdge : (bridgeTile.overlays.bridge.spanIndex === bridgeTile.overlays.bridge.spanLength - 1 ? bridgePositiveEdge : '')), 'Bridge shore edges should identify exact adjacent land transitions');
   assertEqual(bridgeTile.biome === 'bridge', false, 'Bridge should be an overlay, not a base biome replacement');
   assert(waterWithoutRoad, 'Test seed should produce a water tile without road overlay');
   assertEqual(Boolean(waterWithoutRoad.overlays?.bridge), false, 'Bridge should not appear without a road overlay');
@@ -24429,6 +24468,34 @@ test('Death bags round-trip through deterministic tile deltas', () => {
   assertEqual(restored.deathBags[0].resolutionId, 'resolution-round-trip', 'Recovery resolution identity should survive sparse storage');
   assertEqual(restored.deathBags[0].items[0].id, 'round-trip-item', 'Recovery bag items should survive sparse storage');
   assertEqual(restored.deathBags[0].gold, 12, 'Recovery bag gold should survive sparse storage');
+});
+
+test('Tile Composition V2 evidence round-trips through sparse world storage', () => {
+  const { App } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-composition-evidence', seed: 'composition-evidence-seed', generatorVersion: 7, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  const tile = App.getTile(6, -5);
+  tile.explored = true;
+  tile.items = [{ id: 'evidence-item', name: 'Dropped compass', quantity: 1 }];
+  tile.creatures = [{ id: 'evidence-remains', name: 'Old remains', corpse: true, dead: true, disposition: 'remains' }];
+  tile.deathBags = [{ id: 'evidence-bag', resolutionId: 'evidence-resolution', items: [], gold: 2 }];
+  tile.placedObjects = [{ id: 'evidence-marker', name: 'Trail marker', state: 'placed' }];
+  tile.resourceSearched = true;
+  const delta = App.persistTileDelta(6, -5, tile);
+  const record = App._tileDeltaRecordFromEntry('6,-5', delta);
+
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App._applyTileDeltaRecords([JSON.parse(JSON.stringify(record))]);
+  const restored = App.getTile(6, -5);
+  assertEqual(restored.items[0].id, 'evidence-item', 'Dropped-item evidence should survive sparse storage');
+  assertEqual(restored.creatures[0].id, 'evidence-remains', 'Remains evidence should survive sparse storage');
+  assertEqual(restored.deathBags[0].id, 'evidence-bag', 'Recovery-bag evidence should survive sparse storage');
+  assertEqual(restored.placedObjects[0].id, 'evidence-marker', 'Placed-object evidence should survive sparse storage');
+  assertEqual(restored.resourceSearched, true, 'Depleted-resource evidence state should survive sparse storage');
 });
 
 test('Sparse map store skips malformed tile delta records', () => {

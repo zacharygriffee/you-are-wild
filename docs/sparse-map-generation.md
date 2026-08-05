@@ -150,7 +150,11 @@ Higher LOD chunks can refine lower LOD chunks:
 - local chunk says: river corridor crosses this region
 - tile-level feature says: bridge where road intersects river
 
-Biome blending is explicitly deferred. Initial resolution should choose clear winners by layer priority and deterministic rules.
+Simulation biome blending remains explicitly deferred. Resolution chooses one
+effective biome by deterministic layer priority. Tile Composition V2 may paint
+one presentation-only owner for a canonical shared edge after resolution and
+may read known diagonals to classify its corner. It never changes or persists
+the winning biome, and unknown neighbors contribute no presentation facts.
 
 ## Deterministic Generation Rules
 
@@ -380,7 +384,9 @@ Expose resolved semantic map data to optional renderers and generated-art provid
 
 ## Non-Goals For The First Implementation
 
-- No biome blending.
+- No simulation or persistence-level biome blending. A bounded visual-only
+  adjacency pass may soften known shared edges and classify known junctions
+  after resolution.
 - No realistic hydrology.
 - No high-resolution rendered terrain.
 - No full arbitrary-depth quadtree engine.

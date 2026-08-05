@@ -57,6 +57,25 @@
       vertical: 'route-bridge-vertical',
       horizontal: 'route-bridge-horizontal'
     },
+    covers: {
+      foliage: 'cover-foliage',
+      obstacle: 'cover-obstacle',
+      conifer: 'cover-conifer',
+      broadleaf: 'cover-broadleaf',
+      jungle: 'cover-jungle',
+      reeds: 'cover-reeds',
+      grass: 'cover-grass',
+      drift: 'cover-drift',
+      scrub: 'cover-scrub',
+      rock: 'cover-rock'
+    },
+    groundTransitions: Object.fromEntries(
+      ['grove', 'forest', 'plains', 'swamp', 'cave', 'jungle', 'beach', 'cliff', 'water', 'sand']
+        .flatMap(biome => ['north', 'east', 'south', 'west'].map(direction => [
+          `${biome}-${direction}`,
+          `ground-transition-${biome}-${direction}`
+        ]))
+    ),
     poi: {
       settlement: 'poi-settlement',
       restSite: 'poi-rest-site',
@@ -81,6 +100,18 @@
       burrow: 'structure-burrow',
       nest: 'structure-nest',
       caveMouth: 'structure-cave-mouth'
+    },
+    evidence: {
+      item: 'evidence-item',
+      provisions: 'evidence-provisions',
+      remains: 'evidence-remains',
+      recoveryBag: 'evidence-recovery-bag',
+      depleted: 'evidence-depleted',
+      placedObject: 'evidence-placed-object',
+      trailMarker: 'evidence-trail-marker'
+    },
+    presence: {
+      occupants: 'presence-occupants'
     },
     interior: {
       room: 'interior-room',
@@ -160,8 +191,12 @@
   const fallbackTiles = Object.values(TILE_KEYS.biomes)
     .concat(Object.values(TILE_KEYS.roads))
     .concat(Object.values(TILE_KEYS.bridges))
+    .concat(Object.values(TILE_KEYS.covers))
+    .concat(Object.values(TILE_KEYS.groundTransitions))
     .concat(Object.values(TILE_KEYS.poi))
     .concat(Object.values(TILE_KEYS.structures))
+    .concat(Object.values(TILE_KEYS.evidence))
+    .concat(Object.values(TILE_KEYS.presence))
     .concat(Object.values(TILE_KEYS.interior))
     .concat(Object.values(TILE_KEYS.interiorPaths))
     .concat(Object.values(TILE_KEYS.interiorDoors))
@@ -190,6 +225,44 @@
   const BASIC_TILESET_MATERIAL_SRC = 'terrain-sand-seamless-v1.png';
   const BASIC_TILESET_MATERIAL_WIDTH = 512;
   const BASIC_TILESET_MATERIAL_HEIGHT = 512;
+  const TILESET_MATERIAL_V2_SRC = 'terrain-materials-v2.png';
+  const TILESET_MATERIAL_V2_WIDTH = 768;
+  const TILESET_MATERIAL_V2_HEIGHT = 768;
+  const TILESET_MATERIAL_V2_COLUMNS = 3;
+  const TILESET_MATERIAL_V2_ROWS = 3;
+  const TILESET_BRIDGE_V2_SRC = 'bridge-span-v2.png';
+  const TILESET_BRIDGE_V2_WIDTH = 1024;
+  const TILESET_BRIDGE_V2_HEIGHT = 512;
+  const TILESET_BRIDGE_V2_CELL_SIZE = 512;
+  const TILESET_COVER_V2_SRC = 'foliage-cover-v2.png';
+  const TILESET_COVER_V2_SIZE = 512;
+  const TILESET_COVER_V3_SRC = 'cover-overlays-v3.png';
+  const TILESET_COVER_V3_WIDTH = 1774;
+  const TILESET_COVER_V3_HEIGHT = 887;
+  const TILESET_COVER_V3_COLUMNS = 4;
+  const TILESET_COVER_V3_ROWS = 2;
+  const TILESET_STRUCTURE_V3_SRC = 'structure-overlays-v3.png';
+  const TILESET_STRUCTURE_V3_WIDTH = 1254;
+  const TILESET_STRUCTURE_V3_HEIGHT = 1254;
+  const TILESET_STRUCTURE_V3_COLUMNS = 4;
+  const TILESET_STRUCTURE_V3_ROWS = 4;
+  const TILESET_POI_V3_SRC = 'poi-overlays-v3.png';
+  const TILESET_POI_V3_WIDTH = 1536;
+  const TILESET_POI_V3_HEIGHT = 1024;
+  const TILESET_POI_V3_COLUMNS = 3;
+  const TILESET_POI_V3_ROWS = 2;
+  const TILESET_EVIDENCE_V3_SRC = 'evidence-overlays-v3.png';
+  const TILESET_EVIDENCE_V3_WIDTH = 1774;
+  const TILESET_EVIDENCE_V3_HEIGHT = 887;
+  const TILESET_EVIDENCE_V3_COLUMNS = 4;
+  const TILESET_EVIDENCE_V3_ROWS = 2;
+  const gridRect = (width, height, columns, rows, col, row) => {
+    const x = Math.floor((col * width) / columns);
+    const y = Math.floor((row * height) / rows);
+    const right = Math.floor(((col + 1) * width) / columns);
+    const bottom = Math.floor(((row + 1) * height) / rows);
+    return { x, y, width: right - x, height: bottom - y };
+  };
   const basicTileRect = (col, row) => {
     const x = Math.floor((col * BASIC_TILESET_WIDTH) / BASIC_TILESET_COLUMNS);
     const y = Math.floor((row * BASIC_TILESET_HEIGHT) / BASIC_TILESET_ROWS);
@@ -232,6 +305,57 @@
     fallback: 'sprite-sheet',
     ...extra
   });
+  const materialV2Rect = (col, row) => ({
+    x: col * (TILESET_MATERIAL_V2_WIDTH / TILESET_MATERIAL_V2_COLUMNS),
+    y: row * (TILESET_MATERIAL_V2_HEIGHT / TILESET_MATERIAL_V2_ROWS),
+    width: TILESET_MATERIAL_V2_WIDTH / TILESET_MATERIAL_V2_COLUMNS,
+    height: TILESET_MATERIAL_V2_HEIGHT / TILESET_MATERIAL_V2_ROWS
+  });
+  const materialV2Tile = (col, row, label, extra = {}) => ({
+    src: TILESET_MATERIAL_V2_SRC,
+    sprite: {
+      col,
+      row,
+      label,
+      sheet: TILESET_MATERIAL_V2_SRC,
+      rect: materialV2Rect(col, row)
+    },
+    renderMode: 'sprite-sheet',
+    fallback: 'sprite-sheet',
+    ...extra
+  });
+  const fullV2Tile = (src, size, label, extra = {}) => ({
+    src,
+    sprite: { label, sheet: src, rect: { x: 0, y: 0, width: size, height: size } },
+    renderMode: 'sprite-sheet-overlay',
+    fallback: 'sprite-sheet',
+    ...extra
+  });
+  const transparentGridTile = (src, width, height, columns, rows, col, row, label, extra = {}) => ({
+    src,
+    sprite: {
+      col,
+      row,
+      label,
+      sheet: src,
+      rect: gridRect(width, height, columns, rows, col, row)
+    },
+    renderMode: 'sprite-sheet-overlay',
+    fallback: 'sprite-sheet',
+    ...extra
+  });
+  const bridgeV2Tile = (col, label) => ({
+    src: TILESET_BRIDGE_V2_SRC,
+    sprite: {
+      col,
+      row: 0,
+      label,
+      sheet: TILESET_BRIDGE_V2_SRC,
+      rect: { x: col * TILESET_BRIDGE_V2_CELL_SIZE, y: 0, width: TILESET_BRIDGE_V2_CELL_SIZE, height: TILESET_BRIDGE_V2_CELL_SIZE }
+    },
+    renderMode: 'sprite-sheet-overlay',
+    fallback: 'sprite-sheet'
+  });
   const overlayTileRect = (col, row) => {
     const x = Math.floor((col * BASIC_TILESET_OVERLAY_WIDTH) / BASIC_TILESET_OVERLAY_COLUMNS);
     const y = Math.floor((row * BASIC_TILESET_OVERLAY_HEIGHT) / BASIC_TILESET_OVERLAY_ROWS);
@@ -254,19 +378,19 @@
   });
 
   const basicTiles = {
-    [TILE_KEYS.biomes.forest]: basicTile(0, 0, 'dense conifer forest'),
-    [TILE_KEYS.biomes.grove]: basicTile(1, 0, 'leafy grove'),
-    [TILE_KEYS.biomes.plains]: basicTile(2, 0, 'open grassland'),
-    [TILE_KEYS.biomes.swamp]: basicTile(3, 0, 'wet swamp'),
-    [TILE_KEYS.biomes.jungle]: basicTile(4, 0, 'tropical jungle'),
-    [TILE_KEYS.biomes.cliff]: basicTile(5, 0, 'rock cliff'),
-    [TILE_KEYS.biomes.water]: basicTile(6, 0, 'deep water'),
-    [TILE_KEYS.biomes.sand]: basicMaterialTile('seamless neutral sand'),
-    [TILE_KEYS.biomes.beach]: basicMaterialTile('seamless neutral beach sand'),
-    [TILE_KEYS.biomes.cave]: basicTile(0, 1, 'dark cave floor'),
-    [TILE_KEYS.biomes.dungeon]: basicTile(1, 1, 'stone dungeon'),
-    [TILE_KEYS.biomes.manor]: basicTile(1, 1, 'stone manor interior'),
-    [TILE_KEYS.biomes.farm]: basicTile(2, 0, 'open farm terrain'),
+    [TILE_KEYS.biomes.forest]: materialV2Tile(2, 0, 'seamless pine forest floor'),
+    [TILE_KEYS.biomes.grove]: materialV2Tile(1, 0, 'seamless leafy grove floor'),
+    [TILE_KEYS.biomes.plains]: materialV2Tile(0, 0, 'seamless grass meadow'),
+    [TILE_KEYS.biomes.swamp]: materialV2Tile(0, 1, 'seamless swamp mud'),
+    [TILE_KEYS.biomes.jungle]: materialV2Tile(1, 1, 'seamless jungle floor'),
+    [TILE_KEYS.biomes.cliff]: materialV2Tile(1, 2, 'seamless mountain rock'),
+    [TILE_KEYS.biomes.water]: materialV2Tile(0, 2, 'seamless deep water'),
+    [TILE_KEYS.biomes.sand]: materialV2Tile(2, 1, 'seamless neutral sand'),
+    [TILE_KEYS.biomes.beach]: materialV2Tile(2, 1, 'seamless neutral beach sand'),
+    [TILE_KEYS.biomes.cave]: materialV2Tile(2, 2, 'seamless dark cave floor'),
+    [TILE_KEYS.biomes.dungeon]: materialV2Tile(2, 2, 'seamless stone dungeon'),
+    [TILE_KEYS.biomes.manor]: materialV2Tile(2, 2, 'seamless stone manor interior'),
+    [TILE_KEYS.biomes.farm]: materialV2Tile(0, 0, 'seamless open farm terrain'),
     [TILE_KEYS.biomes.indoors]: basicTile(1, 1, 'indoor floor'),
     [TILE_KEYS.biomes.entrance]: basicTile(1, 1, 'structure entrance floor'),
     [TILE_KEYS.roads.vertical]: overlayTile(0, 0, 'vertical dirt road overlay'),
@@ -286,29 +410,47 @@
     [TILE_KEYS.roads['t-north']]: overlayTile(2, 0, 'north road T overlay', { rotate: 180 }),
     [TILE_KEYS.roads['t-east']]: overlayTile(2, 0, 'east road T overlay', { rotate: 270 }),
     [TILE_KEYS.roads.intersection]: overlayTile(3, 0, 'road intersection overlay'),
-    [TILE_KEYS.bridges.vertical]: overlayTile(1, 1, 'vertical bridge overlay'),
-    [TILE_KEYS.bridges.horizontal]: overlayTile(1, 1, 'horizontal bridge overlay', { rotate: 90 }),
-    [TILE_KEYS.structures.camp]: basicTile(0, 2, 'camp'),
-    [TILE_KEYS.structures.spring]: basicTile(1, 2, 'spring'),
-    [TILE_KEYS.structures.shrine]: basicTile(2, 2, 'shrine'),
-    [TILE_KEYS.structures.hut]: basicTile(3, 2, 'hut'),
-    [TILE_KEYS.structures.farm]: basicTile(4, 2, 'farm'),
-    [TILE_KEYS.structures.village]: basicTile(5, 2, 'village'),
-    [TILE_KEYS.structures.cave]: basicTile(6, 2, 'cave entrance'),
-    [TILE_KEYS.structures.web]: basicTile(7, 2, 'web landmark'),
-    [TILE_KEYS.structures.ruins]: basicTile(2, 2, 'ruins'),
-    [TILE_KEYS.structures.cabin]: basicTile(3, 2, 'cabin'),
-    [TILE_KEYS.structures.pond]: basicTile(1, 2, 'pond'),
-    [TILE_KEYS.structures.tree]: basicTile(1, 0, 'great tree'),
-    [TILE_KEYS.structures.burrow]: basicTile(6, 2, 'burrow entrance'),
-    [TILE_KEYS.structures.nest]: basicTile(0, 2, 'nest'),
-    [TILE_KEYS.structures.caveMouth]: basicTile(6, 2, 'cave mouth'),
-    [TILE_KEYS.poi.landmark]: basicTile(1, 3, 'map marker'),
-    [TILE_KEYS.poi.dangerSite]: basicTile(3, 3, 'danger marker'),
-    [TILE_KEYS.poi.resourceSite]: overlayTile(2, 3, 'resource marker overlay'),
-    [TILE_KEYS.poi.restSite]: basicTile(5, 3, 'rest marker'),
-    [TILE_KEYS.poi.settlement]: basicTile(6, 3, 'settlement marker'),
-    [TILE_KEYS.poi.structure]: basicTile(6, 3, 'structure marker'),
+    [TILE_KEYS.bridges.vertical]: bridgeV2Tile(0, 'seamless vertical bridge overlay'),
+    [TILE_KEYS.bridges.horizontal]: bridgeV2Tile(1, 'seamless horizontal bridge overlay'),
+    [TILE_KEYS.covers.foliage]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 1, 0, 'transparent broadleaf cover'),
+    [TILE_KEYS.covers.obstacle]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 3, 1, 'transparent rock obstacle'),
+    [TILE_KEYS.covers.conifer]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 0, 0, 'transparent conifer cover'),
+    [TILE_KEYS.covers.broadleaf]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 1, 0, 'transparent broadleaf cover'),
+    [TILE_KEYS.covers.jungle]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 2, 0, 'transparent jungle cover'),
+    [TILE_KEYS.covers.reeds]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 3, 0, 'transparent reeds cover'),
+    [TILE_KEYS.covers.grass]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 0, 1, 'transparent grass cover'),
+    [TILE_KEYS.covers.drift]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 1, 1, 'transparent drift cover'),
+    [TILE_KEYS.covers.scrub]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 2, 1, 'transparent scrub cover'),
+    [TILE_KEYS.covers.rock]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 3, 1, 'transparent rock cover'),
+    [TILE_KEYS.structures.camp]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 0, 0, 'camp overlay'),
+    [TILE_KEYS.structures.hut]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 1, 0, 'hut overlay'),
+    [TILE_KEYS.structures.ruins]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 2, 0, 'ruins overlay'),
+    [TILE_KEYS.structures.spring]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 3, 0, 'spring overlay'),
+    [TILE_KEYS.structures.shrine]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 0, 1, 'shrine overlay'),
+    [TILE_KEYS.structures.farm]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 1, 1, 'farm overlay'),
+    [TILE_KEYS.structures.village]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 2, 1, 'village overlay'),
+    [TILE_KEYS.structures.cave]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 3, 1, 'cave overlay'),
+    [TILE_KEYS.structures.web]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 0, 2, 'web overlay'),
+    [TILE_KEYS.structures.cabin]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 1, 2, 'cabin overlay'),
+    [TILE_KEYS.structures.pond]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 2, 2, 'pond overlay'),
+    [TILE_KEYS.structures.tree]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 3, 2, 'great tree overlay'),
+    [TILE_KEYS.structures.burrow]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 0, 3, 'burrow overlay'),
+    [TILE_KEYS.structures.nest]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 1, 3, 'nest overlay'),
+    [TILE_KEYS.structures.caveMouth]: transparentGridTile(TILESET_STRUCTURE_V3_SRC, TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 2, 3, 'cave mouth overlay'),
+    [TILE_KEYS.poi.settlement]: transparentGridTile(TILESET_POI_V3_SRC, TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 0, 0, 'settlement marker overlay'),
+    [TILE_KEYS.poi.restSite]: transparentGridTile(TILESET_POI_V3_SRC, TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 1, 0, 'rest marker overlay'),
+    [TILE_KEYS.poi.dangerSite]: transparentGridTile(TILESET_POI_V3_SRC, TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 2, 0, 'danger marker overlay'),
+    [TILE_KEYS.poi.resourceSite]: transparentGridTile(TILESET_POI_V3_SRC, TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 0, 1, 'resource marker overlay'),
+    [TILE_KEYS.poi.landmark]: transparentGridTile(TILESET_POI_V3_SRC, TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 1, 1, 'landmark marker overlay'),
+    [TILE_KEYS.poi.structure]: transparentGridTile(TILESET_POI_V3_SRC, TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 2, 1, 'structure marker overlay'),
+    [TILE_KEYS.evidence.item]: transparentGridTile(TILESET_EVIDENCE_V3_SRC, TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 0, 0, 'dropped item overlay'),
+    [TILE_KEYS.evidence.provisions]: transparentGridTile(TILESET_EVIDENCE_V3_SRC, TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 1, 0, 'provisions overlay'),
+    [TILE_KEYS.evidence.remains]: transparentGridTile(TILESET_EVIDENCE_V3_SRC, TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 2, 0, 'remains overlay'),
+    [TILE_KEYS.evidence.recoveryBag]: transparentGridTile(TILESET_EVIDENCE_V3_SRC, TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 3, 0, 'recovery bag overlay'),
+    [TILE_KEYS.evidence.depleted]: transparentGridTile(TILESET_EVIDENCE_V3_SRC, TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 0, 1, 'depleted resource overlay'),
+    [TILE_KEYS.evidence.placedObject]: transparentGridTile(TILESET_EVIDENCE_V3_SRC, TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 1, 1, 'placed object overlay'),
+    [TILE_KEYS.evidence.trailMarker]: transparentGridTile(TILESET_EVIDENCE_V3_SRC, TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 2, 1, 'trail marker overlay'),
+    [TILE_KEYS.presence.occupants]: transparentGridTile(TILESET_EVIDENCE_V3_SRC, TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 3, 1, 'occupants overlay'),
     [TILE_KEYS.interior.cave]: basicTile(0, 1, 'interior cave room'),
     [TILE_KEYS.interior.room]: basicTile(1, 1, 'interior room'),
     [TILE_KEYS.interior.exit]: overlayTile(3, 1, 'interior exit marker'),
@@ -353,6 +495,16 @@
     [TILE_KEYS.states['blocked-west']]: overlayTile(0, 3, 'west blocked edge', { rotate: 270 })
   };
 
+  const materialV2Cells = {
+    plains: [0, 0], grove: [1, 0], forest: [2, 0], swamp: [0, 1], jungle: [1, 1],
+    sand: [2, 1], beach: [2, 1], water: [0, 2], cliff: [1, 2], cave: [2, 2]
+  };
+  for (const [transitionId, key] of Object.entries(TILE_KEYS.groundTransitions)) {
+    const biome = transitionId.slice(0, transitionId.lastIndexOf('-'));
+    const [col, row] = materialV2Cells[biome] || materialV2Cells.plains;
+    basicTiles[key] = materialV2Tile(col, row, `${biome} ground transition overlay`);
+  }
+
   const bundledLayer = (col, row, slot = 'base', transform = {}) => ({
     atlasId: 'main',
     rect: basicTileRect(col, row),
@@ -374,6 +526,41 @@
   const bundledTile = (col, row, slot = 'base', transform = {}) => ({ layers: [bundledLayer(col, row, slot, transform)] });
   const bundledRectTile = (rect, slot = 'base', transform = {}) => ({ layers: [bundledRectLayer(rect, slot, transform)] });
   const bundledMaterialTile = (slot = 'base', transform = {}) => ({ layers: [bundledMaterialLayer(slot, transform)] });
+  const bundledMaterialV2Layer = (col, row, slot = 'base', transform = {}) => ({
+    atlasId: 'materials-v2',
+    rect: materialV2Rect(col, row),
+    slot,
+    transform: { rotate: 0, flipX: false, flipY: false, ...transform }
+  });
+  const bundledMaterialV2Tile = (col, row, slot = 'base', transform = {}) => ({
+    layers: [bundledMaterialV2Layer(col, row, slot, transform)]
+  });
+  const bundledFullV2Layer = (atlasId, size, slot, transform = {}) => ({
+    atlasId,
+    rect: { x: 0, y: 0, width: size, height: size },
+    slot,
+    transform: { rotate: 0, flipX: false, flipY: false, ...transform }
+  });
+  const bundledFullV2Tile = (atlasId, size, slot, transform = {}) => ({
+    layers: [bundledFullV2Layer(atlasId, size, slot, transform)]
+  });
+  const bundledGridLayer = (atlasId, width, height, columns, rows, col, row, slot, transform = {}) => ({
+    atlasId,
+    rect: gridRect(width, height, columns, rows, col, row),
+    slot,
+    transform: { rotate: 0, flipX: false, flipY: false, ...transform }
+  });
+  const bundledGridTile = (atlasId, width, height, columns, rows, col, row, slot, transform = {}) => ({
+    layers: [bundledGridLayer(atlasId, width, height, columns, rows, col, row, slot, transform)]
+  });
+  const bundledBridgeV2Tile = col => ({
+    layers: [{
+      atlasId: 'bridge-v2',
+      rect: { x: col * TILESET_BRIDGE_V2_CELL_SIZE, y: 0, width: TILESET_BRIDGE_V2_CELL_SIZE, height: TILESET_BRIDGE_V2_CELL_SIZE },
+      slot: 'route',
+      transform: { rotate: 0, flipX: false, flipY: false }
+    }]
+  });
   const bundledOverlayLayer = (col, row, slot = 'feature', transform = {}) => ({
     atlasId: 'overlays',
     rect: overlayTileRect(col, row),
@@ -395,36 +582,43 @@
     atlases: [
       { id: 'main', resourceId: 'atlas.main', density: 1 },
       { id: 'overlays', resourceId: 'atlas.overlays', density: 1 },
-      { id: 'materials', resourceId: 'atlas.materials', density: 1 }
+      { id: 'materials', resourceId: 'atlas.materials', density: 1 },
+      { id: 'materials-v2', resourceId: 'atlas.materials-v2', density: 1 },
+      { id: 'bridge-v2', resourceId: 'atlas.bridge-v2', density: 1 },
+      { id: 'cover-v2', resourceId: 'atlas.cover-v2', density: 1 },
+      { id: 'cover-v3', resourceId: 'atlas.cover-v3', density: 1 },
+      { id: 'structures-v3', resourceId: 'atlas.structures-v3', density: 1 },
+      { id: 'poi-v3', resourceId: 'atlas.poi-v3', density: 1 },
+      { id: 'evidence-v3', resourceId: 'atlas.evidence-v3', density: 1 }
     ],
     tiles: {
       [TILE_KEYS.unknown]: bundledTile(0, 3, 'base'),
-      [TILE_KEYS.biomes.forest]: bundledTile(0, 0, 'base'),
-      [TILE_KEYS.biomes.grove]: bundledTile(1, 0, 'base'),
-      [TILE_KEYS.biomes.plains]: bundledTile(2, 0, 'base'),
-      [TILE_KEYS.biomes.swamp]: bundledTile(3, 0, 'base'),
-      [TILE_KEYS.biomes.jungle]: bundledTile(4, 0, 'base'),
-      [TILE_KEYS.biomes.cliff]: bundledTile(5, 0, 'base'),
-      [TILE_KEYS.biomes.water]: bundledTile(6, 0, 'base'),
-      [TILE_KEYS.biomes.sand]: bundledMaterialTile('base'),
+      [TILE_KEYS.biomes.forest]: bundledMaterialV2Tile(2, 0, 'base'),
+      [TILE_KEYS.biomes.grove]: bundledMaterialV2Tile(1, 0, 'base'),
+      [TILE_KEYS.biomes.plains]: bundledMaterialV2Tile(0, 0, 'base'),
+      [TILE_KEYS.biomes.swamp]: bundledMaterialV2Tile(0, 1, 'base'),
+      [TILE_KEYS.biomes.jungle]: bundledMaterialV2Tile(1, 1, 'base'),
+      [TILE_KEYS.biomes.cliff]: bundledMaterialV2Tile(1, 2, 'base'),
+      [TILE_KEYS.biomes.water]: bundledMaterialV2Tile(0, 2, 'base'),
+      [TILE_KEYS.biomes.sand]: bundledMaterialV2Tile(2, 1, 'base'),
       [TILE_KEYS.biomes.beach]: bundledAlias(TILE_KEYS.biomes.sand),
       // Terrain Transition V1 reuses the water material through pack-scoped
       // CSS masks. Semantics remain ordinary layers so replacement packs can
       // supply authored edge and corner artwork without core clipping it.
-      [TILE_KEYS.shorelines.north]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelines.east]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelines.south]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelines.west]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelineCorners['outer-ne']]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelineCorners['outer-es']]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelineCorners['outer-sw']]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelineCorners['outer-wn']]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelineCorners['inner-ne']]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelineCorners['inner-es']]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelineCorners['inner-sw']]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.shorelineCorners['inner-wn']]: bundledTile(6, 0, 'feature'),
-      [TILE_KEYS.biomes.cave]: bundledTile(0, 1, 'base'),
-      [TILE_KEYS.biomes.dungeon]: bundledTile(1, 1, 'base'),
+      [TILE_KEYS.shorelines.north]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelines.east]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelines.south]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelines.west]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelineCorners['outer-ne']]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelineCorners['outer-es']]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelineCorners['outer-sw']]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelineCorners['outer-wn']]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelineCorners['inner-ne']]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelineCorners['inner-es']]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelineCorners['inner-sw']]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.shorelineCorners['inner-wn']]: bundledMaterialV2Tile(0, 2, 'feature'),
+      [TILE_KEYS.biomes.cave]: bundledMaterialV2Tile(2, 2, 'base'),
+      [TILE_KEYS.biomes.dungeon]: bundledMaterialV2Tile(2, 2, 'base'),
       [TILE_KEYS.biomes.manor]: bundledAlias(TILE_KEYS.biomes.dungeon),
       [TILE_KEYS.biomes.farm]: bundledAlias(TILE_KEYS.biomes.plains),
       [TILE_KEYS.biomes.indoors]: bundledAlias(TILE_KEYS.interior.room),
@@ -446,29 +640,47 @@
       [TILE_KEYS.roads['t-north']]: bundledOverlayTile(2, 0, 'route', { rotate: 180 }),
       [TILE_KEYS.roads['t-east']]: bundledOverlayTile(2, 0, 'route', { rotate: 270 }),
       [TILE_KEYS.roads.intersection]: bundledOverlayTile(3, 0, 'route'),
-      [TILE_KEYS.bridges.vertical]: bundledOverlayTile(1, 1, 'route'),
-      [TILE_KEYS.bridges.horizontal]: bundledOverlayTile(1, 1, 'route', { rotate: 90 }),
-      [TILE_KEYS.structures.camp]: bundledTile(0, 2, 'feature'),
-      [TILE_KEYS.structures.spring]: bundledTile(1, 2, 'feature'),
-      [TILE_KEYS.structures.shrine]: bundledTile(2, 2, 'feature'),
-      [TILE_KEYS.structures.hut]: bundledTile(3, 2, 'feature'),
-      [TILE_KEYS.structures.farm]: bundledTile(4, 2, 'feature'),
-      [TILE_KEYS.structures.village]: bundledTile(5, 2, 'feature'),
-      [TILE_KEYS.structures.cave]: bundledTile(6, 2, 'feature'),
-      [TILE_KEYS.structures.web]: bundledTile(7, 2, 'feature'),
-      [TILE_KEYS.structures.ruins]: bundledAlias(TILE_KEYS.structures.shrine),
-      [TILE_KEYS.structures.cabin]: bundledAlias(TILE_KEYS.structures.hut),
-      [TILE_KEYS.structures.pond]: bundledAlias(TILE_KEYS.structures.spring),
-      [TILE_KEYS.structures.tree]: bundledAlias(TILE_KEYS.biomes.grove),
-      [TILE_KEYS.structures.burrow]: bundledAlias(TILE_KEYS.structures.cave),
-      [TILE_KEYS.structures.nest]: bundledAlias(TILE_KEYS.structures.camp),
-      [TILE_KEYS.structures.caveMouth]: bundledAlias(TILE_KEYS.structures.cave),
-      [TILE_KEYS.poi.landmark]: bundledTile(6, 3, 'marker'),
-      [TILE_KEYS.poi.settlement]: bundledTile(6, 3, 'marker'),
-      [TILE_KEYS.poi.structure]: bundledTile(6, 3, 'marker'),
-      [TILE_KEYS.poi.dangerSite]: bundledTile(3, 3, 'marker'),
-      [TILE_KEYS.poi.resourceSite]: bundledOverlayTile(2, 3, 'marker'),
-      [TILE_KEYS.poi.restSite]: bundledTile(5, 3, 'marker'),
+      [TILE_KEYS.bridges.vertical]: bundledBridgeV2Tile(0),
+      [TILE_KEYS.bridges.horizontal]: bundledBridgeV2Tile(1),
+      [TILE_KEYS.covers.foliage]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 1, 0, 'feature'),
+      [TILE_KEYS.covers.obstacle]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 3, 1, 'feature'),
+      [TILE_KEYS.covers.conifer]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 0, 0, 'feature'),
+      [TILE_KEYS.covers.broadleaf]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 1, 0, 'feature'),
+      [TILE_KEYS.covers.jungle]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 2, 0, 'feature'),
+      [TILE_KEYS.covers.reeds]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 3, 0, 'feature'),
+      [TILE_KEYS.covers.grass]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 0, 1, 'feature'),
+      [TILE_KEYS.covers.drift]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 1, 1, 'feature'),
+      [TILE_KEYS.covers.scrub]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 2, 1, 'feature'),
+      [TILE_KEYS.covers.rock]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 3, 1, 'feature'),
+      [TILE_KEYS.structures.camp]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 0, 0, 'feature'),
+      [TILE_KEYS.structures.hut]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 1, 0, 'feature'),
+      [TILE_KEYS.structures.ruins]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 2, 0, 'feature'),
+      [TILE_KEYS.structures.spring]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 3, 0, 'feature'),
+      [TILE_KEYS.structures.shrine]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 0, 1, 'feature'),
+      [TILE_KEYS.structures.farm]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 1, 1, 'feature'),
+      [TILE_KEYS.structures.village]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 2, 1, 'feature'),
+      [TILE_KEYS.structures.cave]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 3, 1, 'feature'),
+      [TILE_KEYS.structures.web]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 0, 2, 'feature'),
+      [TILE_KEYS.structures.cabin]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 1, 2, 'feature'),
+      [TILE_KEYS.structures.pond]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 2, 2, 'feature'),
+      [TILE_KEYS.structures.tree]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 3, 2, 'feature'),
+      [TILE_KEYS.structures.burrow]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 0, 3, 'feature'),
+      [TILE_KEYS.structures.nest]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 1, 3, 'feature'),
+      [TILE_KEYS.structures.caveMouth]: bundledGridTile('structures-v3', TILESET_STRUCTURE_V3_WIDTH, TILESET_STRUCTURE_V3_HEIGHT, 4, 4, 2, 3, 'feature'),
+      [TILE_KEYS.poi.settlement]: bundledGridTile('poi-v3', TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 0, 0, 'marker'),
+      [TILE_KEYS.poi.restSite]: bundledGridTile('poi-v3', TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 1, 0, 'marker'),
+      [TILE_KEYS.poi.dangerSite]: bundledGridTile('poi-v3', TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 2, 0, 'marker'),
+      [TILE_KEYS.poi.resourceSite]: bundledGridTile('poi-v3', TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 0, 1, 'marker'),
+      [TILE_KEYS.poi.landmark]: bundledGridTile('poi-v3', TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 1, 1, 'marker'),
+      [TILE_KEYS.poi.structure]: bundledGridTile('poi-v3', TILESET_POI_V3_WIDTH, TILESET_POI_V3_HEIGHT, 3, 2, 2, 1, 'marker'),
+      [TILE_KEYS.evidence.item]: bundledGridTile('evidence-v3', TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 0, 0, 'marker'),
+      [TILE_KEYS.evidence.provisions]: bundledGridTile('evidence-v3', TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 1, 0, 'marker'),
+      [TILE_KEYS.evidence.remains]: bundledGridTile('evidence-v3', TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 2, 0, 'marker'),
+      [TILE_KEYS.evidence.recoveryBag]: bundledGridTile('evidence-v3', TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 3, 0, 'marker'),
+      [TILE_KEYS.evidence.depleted]: bundledGridTile('evidence-v3', TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 0, 1, 'marker'),
+      [TILE_KEYS.evidence.placedObject]: bundledGridTile('evidence-v3', TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 1, 1, 'marker'),
+      [TILE_KEYS.evidence.trailMarker]: bundledGridTile('evidence-v3', TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 2, 1, 'marker'),
+      [TILE_KEYS.presence.occupants]: bundledGridTile('evidence-v3', TILESET_EVIDENCE_V3_WIDTH, TILESET_EVIDENCE_V3_HEIGHT, 4, 2, 3, 1, 'presence'),
       [TILE_KEYS.interior.cave]: bundledTile(0, 1, 'base'),
       [TILE_KEYS.interior.room]: bundledTile(7, 3, 'base'),
       [TILE_KEYS.interior.wall]: bundledAlias(TILE_KEYS.interior.cave),
@@ -514,6 +726,11 @@
       [TILE_KEYS.effects.dangerInfluence]: bundledTransparentTile()
     }
   };
+  for (const [transitionId, key] of Object.entries(TILE_KEYS.groundTransitions)) {
+    const biome = transitionId.slice(0, transitionId.lastIndexOf('-'));
+    const [col, row] = materialV2Cells[biome] || materialV2Cells.plains;
+    BUNDLED_TILESET_PRESENTATION.tiles[key] = bundledMaterialV2Tile(col, row, 'feature');
+  }
   const BUNDLED_TILESET_RESOURCE = {
     id: 'atlas.main',
     hash: '6ae193e46a3cce413bb4316e88a1c86debf4281f819ddc877e89fef645e6df78',
@@ -552,6 +769,81 @@
     provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/terrain-sand-seamless-v1.png' },
     fallback: null,
     source: { kind: 'bundled' }
+  };
+  const BUNDLED_TILESET_MATERIAL_V2_RESOURCE = {
+    id: 'atlas.materials-v2',
+    hash: '3c7a4ed11b00645f656b419c37b754e286f85b19a6bfb0cb52ea9a52e822a146',
+    mimeType: 'image/png',
+    byteLength: 1112463,
+    width: TILESET_MATERIAL_V2_WIDTH,
+    height: TILESET_MATERIAL_V2_HEIGHT,
+    role: 'tileset-atlas',
+    license: 'owner-supplied-ai-generated',
+    provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/terrain-materials-v2.png' },
+    fallback: null,
+    source: { kind: 'bundled' }
+  };
+  const BUNDLED_TILESET_BRIDGE_V2_RESOURCE = {
+    id: 'atlas.bridge-v2',
+    hash: '9063675c61e691efc1cd3a3a868dc4bab2eff1053446e398f4659e212e8575f4',
+    mimeType: 'image/png',
+    byteLength: 281159,
+    width: TILESET_BRIDGE_V2_WIDTH,
+    height: TILESET_BRIDGE_V2_HEIGHT,
+    role: 'tileset-atlas',
+    license: 'owner-supplied-ai-generated',
+    provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/bridge-span-v2.png' },
+    fallback: null,
+    source: { kind: 'bundled' }
+  };
+  const BUNDLED_TILESET_COVER_V2_RESOURCE = {
+    id: 'atlas.cover-v2',
+    hash: 'c21e703f85b01762f9000b3d420eaa4070d0ff3be5410508cfcceeecfb919304',
+    mimeType: 'image/png',
+    byteLength: 233292,
+    width: TILESET_COVER_V2_SIZE,
+    height: TILESET_COVER_V2_SIZE,
+    role: 'tileset-atlas',
+    license: 'owner-supplied-ai-generated',
+    provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/foliage-cover-v2.png' },
+    fallback: null,
+    source: { kind: 'bundled' }
+  };
+  const BUNDLED_TILESET_COVER_V3_RESOURCE = {
+    id: 'atlas.cover-v3',
+    hash: '601cb0c7d0bca29f5e6e6fc8efc3ce5cd7518a1f6a372ccc313814ddedb7c8dd',
+    mimeType: 'image/png', byteLength: 1616068,
+    width: TILESET_COVER_V3_WIDTH, height: TILESET_COVER_V3_HEIGHT,
+    role: 'tileset-atlas', license: 'owner-supplied-ai-generated',
+    provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/cover-overlays-v3.png' },
+    fallback: null, source: { kind: 'bundled' }
+  };
+  const BUNDLED_TILESET_STRUCTURE_V3_RESOURCE = {
+    id: 'atlas.structures-v3',
+    hash: '489a7fcb10dff9497a4b138e32c19aae1459ff2c2bdc1ef7f8aa969e4b13af7a',
+    mimeType: 'image/png', byteLength: 1457236,
+    width: TILESET_STRUCTURE_V3_WIDTH, height: TILESET_STRUCTURE_V3_HEIGHT,
+    role: 'tileset-atlas', license: 'owner-supplied-ai-generated',
+    provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/structure-overlays-v3.png' },
+    fallback: null, source: { kind: 'bundled' }
+  };
+  const BUNDLED_TILESET_POI_V3_RESOURCE = {
+    id: 'atlas.poi-v3',
+    hash: '72eac35d5ffe6bead867e85a543a92b4624bbb11798619ffc1f281e273b48951',
+    mimeType: 'image/png', byteLength: 907542,
+    width: TILESET_POI_V3_WIDTH, height: TILESET_POI_V3_HEIGHT,
+    role: 'tileset-atlas', license: 'owner-supplied-ai-generated',
+    provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/poi-overlays-v3.png' },
+    fallback: null, source: { kind: 'bundled' }
+  };
+  const BUNDLED_TILESET_EVIDENCE_V3_RESOURCE = {
+    id: 'atlas.evidence-v3',
+    hash: '3acc21325fbe5bc18be62f1ab9bdd548d0524564b01d66f9caed07354cd9d5d8',
+    mimeType: 'image/png', byteLength: 550866,
+    width: TILESET_EVIDENCE_V3_WIDTH, height: TILESET_EVIDENCE_V3_HEIGHT,
+    role: 'tileset-atlas', license: 'owner-supplied-ai-generated',
+    provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/evidence-overlays-v3.png' },
+    fallback: null, source: { kind: 'bundled' }
   };
 
   const ASSET_MANIFEST = {
@@ -592,8 +884,19 @@
           generatedBy: 'project-owner',
           generatedAt: null,
           source: 'media/basic-tileset-v1.png',
-          sources: ['media/basic-tileset-v1.png', 'media/basic-tileset-overlays-v1.png', 'media/terrain-sand-seamless-v1.png'],
-          notes: 'Owner-directed AI-generated opaque terrain atlas, transparent topology/state overlay atlas, and seamless neutral material sheet.'
+          sources: [
+            'media/basic-tileset-v1.png',
+            'media/basic-tileset-overlays-v1.png',
+            'media/terrain-sand-seamless-v1.png',
+            'media/terrain-materials-v2.png',
+            'media/bridge-span-v2.png',
+            'media/foliage-cover-v2.png',
+            'media/cover-overlays-v3.png',
+            'media/structure-overlays-v3.png',
+            'media/poi-overlays-v3.png',
+            'media/evidence-overlays-v3.png'
+          ],
+          notes: 'Owner-directed AI-generated fallback atlas plus Tile Composition V2 seamless ground, continuous bridge, transparent cover, and topology/state layers.'
         },
         aiMetadata: {
           aiMade: true,
@@ -614,7 +917,14 @@
         sheets: [
           { src: BASIC_TILESET_SRC, width: BASIC_TILESET_WIDTH, height: BASIC_TILESET_HEIGHT, columns: BASIC_TILESET_COLUMNS, rows: BASIC_TILESET_ROWS, alpha: false },
           { src: BASIC_TILESET_OVERLAY_SRC, width: BASIC_TILESET_OVERLAY_WIDTH, height: BASIC_TILESET_OVERLAY_HEIGHT, columns: BASIC_TILESET_OVERLAY_COLUMNS, rows: BASIC_TILESET_OVERLAY_ROWS, alpha: true },
-          { src: BASIC_TILESET_MATERIAL_SRC, width: BASIC_TILESET_MATERIAL_WIDTH, height: BASIC_TILESET_MATERIAL_HEIGHT, columns: 1, rows: 1, alpha: false }
+          { src: BASIC_TILESET_MATERIAL_SRC, width: BASIC_TILESET_MATERIAL_WIDTH, height: BASIC_TILESET_MATERIAL_HEIGHT, columns: 1, rows: 1, alpha: false },
+          { src: TILESET_MATERIAL_V2_SRC, width: TILESET_MATERIAL_V2_WIDTH, height: TILESET_MATERIAL_V2_HEIGHT, columns: TILESET_MATERIAL_V2_COLUMNS, rows: TILESET_MATERIAL_V2_ROWS, alpha: false },
+          { src: TILESET_BRIDGE_V2_SRC, width: TILESET_BRIDGE_V2_WIDTH, height: TILESET_BRIDGE_V2_HEIGHT, columns: 2, rows: 1, alpha: true },
+          { src: TILESET_COVER_V2_SRC, width: TILESET_COVER_V2_SIZE, height: TILESET_COVER_V2_SIZE, columns: 1, rows: 1, alpha: true },
+          { src: TILESET_COVER_V3_SRC, width: TILESET_COVER_V3_WIDTH, height: TILESET_COVER_V3_HEIGHT, columns: TILESET_COVER_V3_COLUMNS, rows: TILESET_COVER_V3_ROWS, alpha: true },
+          { src: TILESET_STRUCTURE_V3_SRC, width: TILESET_STRUCTURE_V3_WIDTH, height: TILESET_STRUCTURE_V3_HEIGHT, columns: TILESET_STRUCTURE_V3_COLUMNS, rows: TILESET_STRUCTURE_V3_ROWS, alpha: true },
+          { src: TILESET_POI_V3_SRC, width: TILESET_POI_V3_WIDTH, height: TILESET_POI_V3_HEIGHT, columns: TILESET_POI_V3_COLUMNS, rows: TILESET_POI_V3_ROWS, alpha: true },
+          { src: TILESET_EVIDENCE_V3_SRC, width: TILESET_EVIDENCE_V3_WIDTH, height: TILESET_EVIDENCE_V3_HEIGHT, columns: TILESET_EVIDENCE_V3_COLUMNS, rows: TILESET_EVIDENCE_V3_ROWS, alpha: true }
         ],
         fallback: { mode: 'tileset-key', tilesetId: 'core-emoji-fallback' },
         tiles: basicTiles
@@ -632,13 +942,38 @@
       const embedded = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_URL || '') : '';
       const embeddedOverlays = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_OVERLAY_URL || '') : '';
       const embeddedMaterials = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_MATERIAL_URL || '') : '';
+      const embeddedMaterialsV2 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_MATERIAL_V2_URL || '') : '';
+      const embeddedBridgeV2 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_BRIDGE_V2_URL || '') : '';
+      const embeddedCoverV2 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_COVER_V2_URL || '') : '';
+      const embeddedCoverV3 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_COVER_V3_URL || '') : '';
+      const embeddedStructuresV3 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_STRUCTURE_V3_URL || '') : '';
+      const embeddedPoiV3 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_POI_V3_URL || '') : '';
+      const embeddedEvidenceV3 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_EVIDENCE_V3_URL || '') : '';
       return {
         presentation: JSON.parse(JSON.stringify(BUNDLED_TILESET_PRESENTATION)),
-        resources: [BUNDLED_TILESET_RESOURCE, BUNDLED_TILESET_OVERLAY_RESOURCE, BUNDLED_TILESET_MATERIAL_RESOURCE].map(resource => JSON.parse(JSON.stringify(resource))),
+        resources: [
+          BUNDLED_TILESET_RESOURCE,
+          BUNDLED_TILESET_OVERLAY_RESOURCE,
+          BUNDLED_TILESET_MATERIAL_RESOURCE,
+          BUNDLED_TILESET_MATERIAL_V2_RESOURCE,
+          BUNDLED_TILESET_BRIDGE_V2_RESOURCE,
+          BUNDLED_TILESET_COVER_V2_RESOURCE,
+          BUNDLED_TILESET_COVER_V3_RESOURCE,
+          BUNDLED_TILESET_STRUCTURE_V3_RESOURCE,
+          BUNDLED_TILESET_POI_V3_RESOURCE,
+          BUNDLED_TILESET_EVIDENCE_V3_RESOURCE
+        ].map(resource => JSON.parse(JSON.stringify(resource))),
         atlasUrls: {
           'atlas.main': embedded || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${BASIC_TILESET_SRC}`,
           'atlas.overlays': embeddedOverlays || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${BASIC_TILESET_OVERLAY_SRC}`,
-          'atlas.materials': embeddedMaterials || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${BASIC_TILESET_MATERIAL_SRC}`
+          'atlas.materials': embeddedMaterials || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${BASIC_TILESET_MATERIAL_SRC}`,
+          'atlas.materials-v2': embeddedMaterialsV2 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_MATERIAL_V2_SRC}`,
+          'atlas.bridge-v2': embeddedBridgeV2 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_BRIDGE_V2_SRC}`,
+          'atlas.cover-v2': embeddedCoverV2 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_COVER_V2_SRC}`,
+          'atlas.cover-v3': embeddedCoverV3 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_COVER_V3_SRC}`,
+          'atlas.structures-v3': embeddedStructuresV3 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_STRUCTURE_V3_SRC}`,
+          'atlas.poi-v3': embeddedPoiV3 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_POI_V3_SRC}`,
+          'atlas.evidence-v3': embeddedEvidenceV3 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_EVIDENCE_V3_SRC}`
         }
       };
     },

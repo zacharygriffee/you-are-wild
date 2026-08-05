@@ -18,6 +18,13 @@ const HOSTED_OUTPUT = path.join(DIST_DIR, 'you-are-wild.hosted.html');
 const BUNDLED_TILESET = path.join(ROOT_DIR, 'media', 'basic-tileset-v1.png');
 const BUNDLED_TILESET_OVERLAYS = path.join(ROOT_DIR, 'media', 'basic-tileset-overlays-v1.png');
 const BUNDLED_TILESET_MATERIALS = path.join(ROOT_DIR, 'media', 'terrain-sand-seamless-v1.png');
+const BUNDLED_TILESET_MATERIALS_V2 = path.join(ROOT_DIR, 'media', 'terrain-materials-v2.png');
+const BUNDLED_TILESET_BRIDGE_V2 = path.join(ROOT_DIR, 'media', 'bridge-span-v2.png');
+const BUNDLED_TILESET_COVER_V2 = path.join(ROOT_DIR, 'media', 'foliage-cover-v2.png');
+const BUNDLED_TILESET_COVER_V3 = path.join(ROOT_DIR, 'media', 'cover-overlays-v3.png');
+const BUNDLED_TILESET_STRUCTURE_V3 = path.join(ROOT_DIR, 'media', 'structure-overlays-v3.png');
+const BUNDLED_TILESET_POI_V3 = path.join(ROOT_DIR, 'media', 'poi-overlays-v3.png');
+const BUNDLED_TILESET_EVIDENCE_V3 = path.join(ROOT_DIR, 'media', 'evidence-overlays-v3.png');
 const PLACEHOLDER = '<!-- SCRIPTS_PLACEHOLDER -->';
 const GENERATED_BANNER = '<!-- GENERATED FILE. Do not edit directly. Edit app/src and run npm run build. -->';
 const FIRST_PARTY_PACKAGE_MIRRORS = [
@@ -143,12 +150,14 @@ const SCRIPT_ORDER = [
   'src/core/audio-pack-v1.js',
   'src/core/audio-runtime.js',
   'src/core/biome-recipes.js',
+  'src/core/tile-visual-recipes.js',
   'src/core/world-scaling.js',
   'src/core/world-state.js',
   'src/core/world-store.js',
   'src/core/world-random.js',
   'src/core/encounter-preferences.js',
   'src/core/create-flow.js',
+  'src/core/tile-composition-v2.js',
   'src/core/map-visuals.js',
   'src/core/large-map.js',
   'src/core/desktop-play-surface.js',
@@ -323,23 +332,32 @@ function lint() {
 }
 
 function tilesetBootstrap(release, mode = 'embedded', buildId = 'unknown') {
+  const assets = [
+    { key: 'YAW_BUNDLED_TILESET_URL', file: BUNDLED_TILESET, url: './assets/basic-tileset-v1.png' },
+    { key: 'YAW_BUNDLED_TILESET_OVERLAY_URL', file: BUNDLED_TILESET_OVERLAYS, url: './assets/basic-tileset-overlays-v1.png' },
+    { key: 'YAW_BUNDLED_TILESET_MATERIAL_URL', file: BUNDLED_TILESET_MATERIALS, url: './assets/terrain-sand-seamless-v1.png' },
+    { key: 'YAW_BUNDLED_TILESET_MATERIAL_V2_URL', file: BUNDLED_TILESET_MATERIALS_V2, url: './assets/terrain-materials-v2.png' },
+    { key: 'YAW_BUNDLED_TILESET_BRIDGE_V2_URL', file: BUNDLED_TILESET_BRIDGE_V2, url: './assets/bridge-span-v2.png' },
+    { key: 'YAW_BUNDLED_TILESET_COVER_V2_URL', file: BUNDLED_TILESET_COVER_V2, url: './assets/foliage-cover-v2.png' },
+    { key: 'YAW_BUNDLED_TILESET_COVER_V3_URL', file: BUNDLED_TILESET_COVER_V3, url: './assets/cover-overlays-v3.png' },
+    { key: 'YAW_BUNDLED_TILESET_STRUCTURE_V3_URL', file: BUNDLED_TILESET_STRUCTURE_V3, url: './assets/structure-overlays-v3.png' },
+    { key: 'YAW_BUNDLED_TILESET_POI_V3_URL', file: BUNDLED_TILESET_POI_V3, url: './assets/poi-overlays-v3.png' },
+    { key: 'YAW_BUNDLED_TILESET_EVIDENCE_V3_URL', file: BUNDLED_TILESET_EVIDENCE_V3, url: './assets/evidence-overlays-v3.png' }
+  ];
   const graphicsMode = "new URLSearchParams(window.location.search).get('graphics') === 'emoji' ? 'emoji' : 'tileset'";
-  const commonStart = `window.YAW_RELEASE = Object.freeze(${JSON.stringify(release)});\nwindow.YAW_BUILD_ID = ${JSON.stringify(buildId)};\nwindow.YAW_GRAPHICS_MODE = ${graphicsMode};\nwindow.YAW_BUNDLED_TILESET_URL = '';\nwindow.YAW_BUNDLED_TILESET_OVERLAY_URL = '';\nwindow.YAW_BUNDLED_TILESET_MATERIAL_URL = '';`;
+  const initializers = assets.map(asset => `window.${asset.key} = '';`).join('\n');
+  const assignments = assets.map((asset, index) => `window.${asset.key} = urls[${index}];`).join('\n      ');
+  const cleanup = assets.map(asset => `if (window.${asset.key}) URL.revokeObjectURL(window.${asset.key});`).join('\n  ');
+  const commonStart = `window.YAW_RELEASE = Object.freeze(${JSON.stringify(release)});\nwindow.YAW_BUILD_ID = ${JSON.stringify(buildId)};\nwindow.YAW_GRAPHICS_MODE = ${graphicsMode};\n${initializers}`;
   const disabledResult = `if (window.YAW_GRAPHICS_MODE === 'emoji') return Promise.resolve({ disabled: true, mode: 'emoji' });`;
 
   if (mode === 'external') {
-    const urls = [
-      './assets/basic-tileset-v1.png',
-      './assets/basic-tileset-overlays-v1.png',
-      './assets/terrain-sand-seamless-v1.png'
-    ];
-    return `<script>\n${commonStart}\nwindow.YAW_PREPARE_BUNDLED_TILESET = () => {\n  ${disabledResult}\n  const urls = ${JSON.stringify(urls)};\n  return Promise.all(urls.map(url => fetch(url, { credentials: 'same-origin' }).then(async response => {\n    if (!response.ok) throw new Error(\`Bundled tileset request failed with HTTP \${response.status}\`);\n    await response.blob();\n    return url;\n  })))\n    .then(([terrainUrl, overlayUrl, materialUrl]) => {\n      window.YAW_BUNDLED_TILESET_URL = terrainUrl;\n      window.YAW_BUNDLED_TILESET_OVERLAY_URL = overlayUrl;\n      window.YAW_BUNDLED_TILESET_MATERIAL_URL = materialUrl;\n      return { terrainUrl, overlayUrl, materialUrl, mode: 'external' };\n    })\n    .catch(error => {\n      console.warn('Hosted Tileset Pack atlases could not be prepared; emoji fallback remains active.', error);\n      return null;\n    });\n};\nwindow.YAW_BUNDLED_TILESET_READY = window.YAW_PREPARE_BUNDLED_TILESET();\n</script>`;
+    const urls = assets.map(asset => asset.url);
+    return `<script>\n${commonStart}\nwindow.YAW_PREPARE_BUNDLED_TILESET = () => {\n  ${disabledResult}\n  const sourceUrls = ${JSON.stringify(urls)};\n  return Promise.all(sourceUrls.map(url => fetch(url, { credentials: 'same-origin' }).then(async response => {\n    if (!response.ok) throw new Error(\`Bundled tileset request failed with HTTP \${response.status}\`);\n    await response.blob();\n    return url;\n  })))\n    .then(urls => {\n      ${assignments}\n      return { urls, mode: 'external' };\n    })\n    .catch(error => {\n      console.warn('Hosted Tileset Pack atlases could not be prepared; emoji fallback remains active.', error);\n      return null;\n    });\n};\nwindow.YAW_BUNDLED_TILESET_READY = window.YAW_PREPARE_BUNDLED_TILESET();\n</script>`;
   }
 
-  const bundledTilesetBase64 = fs.readFileSync(BUNDLED_TILESET).toString('base64');
-  const bundledTilesetOverlayBase64 = fs.readFileSync(BUNDLED_TILESET_OVERLAYS).toString('base64');
-  const bundledTilesetMaterialBase64 = fs.readFileSync(BUNDLED_TILESET_MATERIALS).toString('base64');
-  return `<script>\n${commonStart}\nwindow.YAW_PREPARE_BUNDLED_TILESET = () => {\n  ${disabledResult}\n  return Promise.all([\n    fetch(${JSON.stringify(`data:image/png;base64,${bundledTilesetBase64}`)}).then(response => response.blob()).then(blob => URL.createObjectURL(blob)),\n    fetch(${JSON.stringify(`data:image/png;base64,${bundledTilesetOverlayBase64}`)}).then(response => response.blob()).then(blob => URL.createObjectURL(blob)),\n    fetch(${JSON.stringify(`data:image/png;base64,${bundledTilesetMaterialBase64}`)}).then(response => response.blob()).then(blob => URL.createObjectURL(blob))\n  ])\n    .then(([terrainUrl, overlayUrl, materialUrl]) => {\n      if (window.YAW_BUNDLED_TILESET_URL) URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_URL);\n      if (window.YAW_BUNDLED_TILESET_OVERLAY_URL) URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_OVERLAY_URL);\n      if (window.YAW_BUNDLED_TILESET_MATERIAL_URL) URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_MATERIAL_URL);\n      window.YAW_BUNDLED_TILESET_URL = terrainUrl;\n      window.YAW_BUNDLED_TILESET_OVERLAY_URL = overlayUrl;\n      window.YAW_BUNDLED_TILESET_MATERIAL_URL = materialUrl;\n      return { terrainUrl, overlayUrl, materialUrl, mode: 'embedded' };\n    })\n    .catch(error => {\n      console.warn('Bundled Tileset Pack atlases could not be prepared; emoji fallback remains active.', error);\n      return null;\n    });\n};\nwindow.YAW_BUNDLED_TILESET_READY = window.YAW_PREPARE_BUNDLED_TILESET();\nwindow.addEventListener('beforeunload', () => {\n  if (window.YAW_BUNDLED_TILESET_URL) URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_URL);\n  if (window.YAW_BUNDLED_TILESET_OVERLAY_URL) URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_OVERLAY_URL);\n  if (window.YAW_BUNDLED_TILESET_MATERIAL_URL) URL.revokeObjectURL(window.YAW_BUNDLED_TILESET_MATERIAL_URL);\n}, { once: true });\n</script>`;
+  const dataUrls = assets.map(asset => `data:image/png;base64,${fs.readFileSync(asset.file).toString('base64')}`);
+  return `<script>\n${commonStart}\nwindow.YAW_PREPARE_BUNDLED_TILESET = () => {\n  ${disabledResult}\n  const sourceUrls = ${JSON.stringify(dataUrls)};\n  return Promise.all(sourceUrls.map(url => fetch(url).then(response => response.blob()).then(blob => URL.createObjectURL(blob))))\n    .then(urls => {\n      ${cleanup}\n      ${assignments}\n      return { urls, mode: 'embedded' };\n    })\n    .catch(error => {\n      console.warn('Bundled Tileset Pack atlases could not be prepared; emoji fallback remains active.', error);\n      return null;\n    });\n};\nwindow.YAW_BUNDLED_TILESET_READY = window.YAW_PREPARE_BUNDLED_TILESET();\nwindow.addEventListener('beforeunload', () => {\n  ${cleanup}\n}, { once: true });\n</script>`;
 }
 
 function renderHtml(options = {}) {
@@ -357,7 +375,19 @@ function renderHtml(options = {}) {
   }
 
   const release = loadRelease();
-  if (!fs.existsSync(BUNDLED_TILESET) || !fs.existsSync(BUNDLED_TILESET_OVERLAYS) || !fs.existsSync(BUNDLED_TILESET_MATERIALS)) throw new Error('Bundled Tileset Pack atlas is missing');
+  const tilesetFiles = [
+    BUNDLED_TILESET,
+    BUNDLED_TILESET_OVERLAYS,
+    BUNDLED_TILESET_MATERIALS,
+    BUNDLED_TILESET_MATERIALS_V2,
+    BUNDLED_TILESET_BRIDGE_V2,
+    BUNDLED_TILESET_COVER_V2,
+    BUNDLED_TILESET_COVER_V3,
+    BUNDLED_TILESET_STRUCTURE_V3,
+    BUNDLED_TILESET_POI_V3,
+    BUNDLED_TILESET_EVIDENCE_V3
+  ];
+  if (tilesetFiles.some(file => !fs.existsSync(file))) throw new Error('Bundled Tileset Pack atlas is missing');
   const scripts = [tilesetBootstrap(release, options.tilesetMode, loadBuildId())];
   let totalLines = 0;
 
@@ -410,7 +440,21 @@ function check() {
 
 function watch() {
   console.log('Watching for changes... (Ctrl+C to stop)\n');
-  const watchedFiles = [TEMPLATE, RELEASE_FILE, BUNDLED_TILESET, BUNDLED_TILESET_OVERLAYS, BUNDLED_TILESET_MATERIALS, ...SCRIPT_ORDER.map(p => path.join(__dirname, p))];
+  const watchedFiles = [
+    TEMPLATE,
+    RELEASE_FILE,
+    BUNDLED_TILESET,
+    BUNDLED_TILESET_OVERLAYS,
+    BUNDLED_TILESET_MATERIALS,
+    BUNDLED_TILESET_MATERIALS_V2,
+    BUNDLED_TILESET_BRIDGE_V2,
+    BUNDLED_TILESET_COVER_V2,
+    BUNDLED_TILESET_COVER_V3,
+    BUNDLED_TILESET_STRUCTURE_V3,
+    BUNDLED_TILESET_POI_V3,
+    BUNDLED_TILESET_EVIDENCE_V3,
+    ...SCRIPT_ORDER.map(p => path.join(__dirname, p))
+  ];
 
   let building = false;
 

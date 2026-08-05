@@ -74,6 +74,12 @@ and [docs/examples/moddable-core-v1.yawmod.json](docs/examples/moddable-core-v1.
 is the conformance fixture that composes the public world, equipment, body,
 resource, status, restraint, action, technique, and recovery contracts.
 
+## Map presentation
+
+The shared layered map model, V1 tileset migration guidance, persistence
+boundary, and cross-surface acceptance gates are documented in the
+[Tile Composition V2 Presentation Contract](docs/tile-composition-v2.md).
+
 ## License
 
 The license is versioned. Releases `v0.18.2` and earlier remain available

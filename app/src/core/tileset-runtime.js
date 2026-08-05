@@ -195,7 +195,9 @@ const YAW_TILESET_RUNTIME = {
             const normalized = String(key || '');
             if (normalized && !keys.includes(normalized)) keys.push(normalized);
         };
-        if (Array.isArray(visual.semanticKeys)) visual.semanticKeys.forEach(push);
+        const compositionKeys = visual?.composition?.compatibility?.semanticKeys;
+        if (Array.isArray(compositionKeys)) compositionKeys.forEach(push);
+        else if (Array.isArray(visual.semanticKeys)) visual.semanticKeys.forEach(push);
         else {
             push(visual.baseTilesetKey);
             push(visual.tilesetKey);

@@ -1005,19 +1005,27 @@ const WorldGen = (() => {
         const landA = !isWater(seed, version, x + axis[0][0] * (left + 1), y + axis[0][1] * (left + 1));
         const landB = !isWater(seed, version, x + axis[1][0] * (right + 1), y + axis[1][1] * (right + 1));
         const spanLength = left + right + 1;
-        return { valid: landA && landB && spanLength <= 7, spanLength };
+        return { valid: landA && landB && spanLength <= 7, spanLength, negativeWater: left, positiveWater: right };
     }
 
     function getBridgeOverlay(seed, version, x, y, fields, road) {
         if (!road || !fields.water) return null;
         const span = bridgeSpan(seed, version, x, y, road.direction);
         if (!span.valid) return null;
+        const negativeEdge = road.direction === 'north-south' ? 'north' : 'west';
+        const positiveEdge = road.direction === 'north-south' ? 'south' : 'east';
+        const shoreEdges = [
+            ...(span.negativeWater === 0 ? [negativeEdge] : []),
+            ...(span.positiveWater === 0 ? [positiveEdge] : [])
+        ];
         return {
             id: `bridge_${road.id}_${x}_${y}`,
             direction: road.direction,
             roadId: road.id,
-            spanIndex: 0,
+            spanIndex: span.negativeWater,
             spanLength: span.spanLength,
+            spanRole: span.spanLength === 1 ? 'single' : (shoreEdges.length ? `shore-${shoreEdges.join('-')}` : 'middle'),
+            shoreEdges,
             connections: road.direction === 'north-south' ? ['north', 'south'] : ['east', 'west']
         };
     }
@@ -1034,6 +1042,41 @@ const WorldGen = (() => {
             if (elevationStep > 0.075 && ruggedness > 0.72) barriers.push(direction);
         }
         return barriers;
+    }
+
+    function getElevationTopology(seed, version, x, y, fields = null, options = {}) {
+        const current = fields || getTerrainFields(seed, version, x, y);
+        const directions = [
+            ['north', 0, -1],
+            ['east', 1, 0],
+            ['south', 0, 1],
+            ['west', -1, 0]
+        ];
+        const grades = directions.map(([direction, dx, dy]) => ({
+            direction,
+            grade: Number((getTerrainFields(seed, version, x + dx, y + dy).elevation - current.elevation).toFixed(4))
+        }));
+        const byRise = grades.slice().sort((left, right) => right.grade - left.grade || left.direction.localeCompare(right.direction));
+        const byDrop = grades.slice().sort((left, right) => left.grade - right.grade || left.direction.localeCompare(right.direction));
+        const maxGrade = Math.max(0, ...grades.map(entry => Math.abs(entry.grade)));
+        const barrierEdges = directions.map(([direction]) => direction).filter(direction => (options.barrierEdges || []).includes(direction));
+        const kind = barrierEdges.length || (options.biome === 'cliff' && maxGrade >= 0.035)
+            ? 'cliff'
+            : (maxGrade >= 0.075 ? 'ledge' : (maxGrade >= 0.035 ? 'slope' : 'level'));
+        const slopeThreshold = kind === 'level' ? Infinity : 0.025;
+        return {
+            kind,
+            elevation: Number(current.elevation.toFixed(4)),
+            band: current.elevation >= 0.72 ? 'high' : (current.elevation <= 0.28 ? 'low' : 'mid'),
+            primaryUphill: byRise[0]?.grade > 0 ? byRise[0].direction : null,
+            primaryDownhill: byDrop[0]?.grade < 0 ? byDrop[0].direction : null,
+            uphillEdges: grades.filter(entry => entry.grade >= slopeThreshold).map(entry => entry.direction),
+            downhillEdges: grades.filter(entry => entry.grade <= -slopeThreshold).map(entry => entry.direction),
+            cliffEdges: barrierEdges.length
+                ? barrierEdges
+                : (kind === 'cliff' && byDrop[0]?.grade < 0 ? [byDrop[0].direction] : []),
+            grades: Object.fromEntries(grades.map(entry => [entry.direction, entry.grade]))
+        };
     }
 
     function cellularFeaturePoint(seed, version, purpose, cellX, cellY, cellSize = 36) {
@@ -1148,6 +1191,7 @@ const WorldGen = (() => {
         // water terrain and discard the decorative/cost-reducing road layer.
         const road = fields.water && !bridge ? null : roadCandidate;
         const barriers = getBarrierEdges(seed, version, x, y, fields, road);
+        const elevationTopology = getElevationTopology(seed, version, x, y, fields, { biome: derivedBiome, barrierEdges: barriers });
         const poiContext = getPoiContextForTile(seed, version, x, y, regionCell);
         const poi = !encounterPolicy.allowHostileStructures && poiContext.poi?.category === 'dangerSite'
             ? null
@@ -1198,6 +1242,7 @@ const WorldGen = (() => {
                 water: Boolean(fields.water),
                 waterPressure: Number(fields.waterPressure.toFixed(4)),
                 dangerPressure: Number(fields.dangerPressure.toFixed(4)),
+                topology: elevationTopology,
                 traversal: {
                     passable: traversal.passable,
                     traversalCost: traversal.traversalCost,
@@ -1211,6 +1256,7 @@ const WorldGen = (() => {
                 requiredCapability: traversal.requiredCapability,
                 routeModifier: traversal.routeModifier
             },
+            terrainTopology: elevationTopology,
             encounterPolicy,
             encounterPressure,
             mapSummary: getTileMapSummary({
@@ -1261,6 +1307,7 @@ const WorldGen = (() => {
         getRoadOverlay,
         getBridgeOverlay,
         getBarrierEdges,
+        getElevationTopology,
         cellularFeaturePoint,
         getCavePortalsForCell,
         getCavePortalForTile,

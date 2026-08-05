@@ -11,7 +11,10 @@ const paths = {
   atlases: [
     path.join(ROOT, 'media', 'basic-tileset-v1.png'),
     path.join(ROOT, 'media', 'basic-tileset-overlays-v1.png'),
-    path.join(ROOT, 'media', 'terrain-sand-seamless-v1.png')
+    path.join(ROOT, 'media', 'terrain-sand-seamless-v1.png'),
+    path.join(ROOT, 'media', 'terrain-materials-v2.png'),
+    path.join(ROOT, 'media', 'bridge-span-v2.png'),
+    path.join(ROOT, 'media', 'foliage-cover-v2.png')
   ]
 };
 

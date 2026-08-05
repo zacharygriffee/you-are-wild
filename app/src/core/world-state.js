@@ -128,7 +128,7 @@ const YAW_WORLD_STATE = {
         const generated = typeof WorldGen !== 'undefined'
             ? WorldGen.generateBaseTile(app.worldMeta, x, y, app._regionBiomeKeys())
             : { biome: 'plains', baseBiome: 'plains', macroBiome: 'plains', elevation: 0.5, moisture: 0.5, heat: 0.5, fertility: 0.5, dangerPressure: 0.3, regionCell: null, terrainTags: [] };
-        return { x, y, ...generated, explored: false, seen: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], items: [], deathBags: [], structure: generated.structure || null, structureSpawned: false };
+        return { x, y, ...generated, explored: false, seen: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], items: [], deathBags: [], placedObjects: [], structure: generated.structure || null, structureSpawned: false };
     },
 
     encounterPressureForTile(app, tile, biomeDef = null) {
@@ -168,6 +168,7 @@ const YAW_WORLD_STATE = {
         if (!Array.isArray(tile.creatures)) tile.creatures = [];
         if (!Array.isArray(tile.items)) tile.items = [];
         if (!Array.isArray(tile.deathBags)) tile.deathBags = [];
+        if (!Array.isArray(tile.placedObjects)) tile.placedObjects = [];
         return tile;
     },
 
@@ -175,7 +176,7 @@ const YAW_WORLD_STATE = {
         if (!tile) return null;
         const base = app.getBaseTile(tile.x, tile.y);
         const delta = {};
-        const fields = ['biome', 'explored', 'seen', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'deathBags', 'structure', 'structureSpawned', 'structureLooted', 'resourceSearched', 'interior', 'site', 'tag', 'name', 'color'];
+        const fields = ['biome', 'explored', 'seen', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'deathBags', 'placedObjects', 'structure', 'structureSpawned', 'structureLooted', 'resourceSearched', 'interior', 'site', 'tag', 'name', 'color'];
         for (const field of fields) {
             const value = tile[field];
             const baseValue = base[field];

@@ -4,6 +4,21 @@
  */
 
 const YAW_MAP_VISUALS = {
+    withComposition(app, tile, visual, options = {}) {
+        if (typeof YAW_TILE_COMPOSITION_V2 === 'undefined') return visual;
+        const presence = Array.isArray(options.presence)
+            ? options.presence
+            : (options.isCurrent ? (app.party || []) : []);
+        return {
+            ...visual,
+            composition: YAW_TILE_COMPOSITION_V2.snapshot(app, tile, {
+                ...options,
+                presence,
+                visual
+            })
+        };
+    },
+
     directions() {
         return [
             { id: 'north', opposite: 'south', dx: 0, dy: -1 },
@@ -172,17 +187,18 @@ const YAW_MAP_VISUALS = {
         const known = Boolean(tile);
         if (!known) {
             const asset = this.tilesetAssetForKey('unknown');
-            return {
+            return this.withComposition(app, null, {
                 icon: '·',
                 tilesetKey: 'unknown',
                 baseTilesetKey: 'unknown',
                 kind: 'unknown',
+                semanticKeys: ['unknown'],
                 classes: 'map-visual-unknown',
                 label: options.label || app._label('ui.largeMap.unknownTile', 'Unknown'),
                 marker: null,
                 hasPaintedAsset: Boolean(asset?.src),
                 asset
-            };
+            }, options);
         }
         const biomeId = tile.displayBiome || tile.derivedBiome || tile.biome || 'plains';
         const baseBiomeId = tile.derivedBiome || tile.baseBiome || tile.biome || biomeId;
@@ -193,6 +209,7 @@ const YAW_MAP_VISUALS = {
         const shoreline = this.shorelineTopology(tile, options.neighborResolver);
         const shorelineEdges = shoreline.edges;
         const shorelineCorners = shoreline.corners;
+        const elevationTopology = tile.terrainTopology || tile.terrain?.topology || null;
         let icon = biome.icon || '□';
         let label = biome.name || biomeId;
         let tilesetKey = baseTilesetKey;
@@ -225,6 +242,14 @@ const YAW_MAP_VISUALS = {
             classes.push('map-visual-road', `map-visual-route-${routeShape}`);
         }
         if (hasRoute && !semanticKeys.includes(tilesetKey)) semanticKeys.push(tilesetKey);
+        if (Array.isArray(tile.overlays?.cover) && tile.overlays.cover.length) {
+            semanticKeys.push(app.MAP_TILESET_KEYS.covers?.foliage || 'cover-foliage');
+            classes.push('map-visual-cover');
+        }
+        if (Array.isArray(tile.overlays?.obstacles) && tile.overlays.obstacles.length) {
+            semanticKeys.push(app.MAP_TILESET_KEYS.covers?.obstacle || 'cover-obstacle');
+            classes.push('map-visual-obstacle');
+        }
         if (tile.overlays?.poi) {
             const category = tile.overlays.poi.category || 'landmark';
             const poiKey = app.MAP_TILESET_KEYS.poi[category] || 'poi-landmark';
@@ -284,7 +309,7 @@ const YAW_MAP_VISUALS = {
             semanticKeys.push(app.MAP_TILESET_KEYS.states.current);
         }
         const asset = this.tilesetAssetForKey(tilesetKey);
-        return {
+        return this.withComposition(app, tile, {
             icon,
             tilesetKey,
             baseTilesetKey,
@@ -293,6 +318,17 @@ const YAW_MAP_VISUALS = {
             shorelineEdges,
             shorelineCorners,
             shorelineMask: shoreline.mask,
+            elevationKind: elevationTopology?.kind || 'level',
+            elevationBand: elevationTopology?.band || 'mid',
+            primaryUphill: elevationTopology?.primaryUphill || null,
+            primaryDownhill: elevationTopology?.primaryDownhill || null,
+            uphillEdges: this.normalizedDirections(elevationTopology?.uphillEdges || []),
+            downhillEdges: this.normalizedDirections(elevationTopology?.downhillEdges || []),
+            cliffEdges: this.normalizedDirections(elevationTopology?.cliffEdges || []),
+            bridgeSpanIndex: Number.isInteger(tile.overlays?.bridge?.spanIndex) ? tile.overlays.bridge.spanIndex : null,
+            bridgeSpanLength: Number.isInteger(tile.overlays?.bridge?.spanLength) ? tile.overlays.bridge.spanLength : null,
+            bridgeSpanRole: tile.overlays?.bridge?.spanRole || null,
+            bridgeShoreEdges: this.normalizedDirections(tile.overlays?.bridge?.shoreEdges || []),
             blockedEdges,
             blockedReason,
             dangerInfluence,
@@ -303,7 +339,7 @@ const YAW_MAP_VISUALS = {
             marker: options.questMarker || options.poi || null,
             hasPaintedAsset: Boolean(asset?.src),
             asset
-        };
+        }, options);
     },
 
     tilesetAssetForKey(key) {
@@ -327,14 +363,31 @@ const YAW_MAP_VISUALS = {
         const shoreline = visual?.shorelineEdges?.length ? ` data-shoreline-edges="${app._escapeHtml(visual.shorelineEdges.join(' '))}"` : '';
         const shorelineCorners = visual?.shorelineCorners?.length ? ` data-shoreline-corners="${app._escapeHtml(visual.shorelineCorners.join(' '))}"` : '';
         const shorelineMask = Number.isInteger(visual?.shorelineMask) && visual.shorelineMask > 0 ? ` data-shoreline-mask="${visual.shorelineMask}"` : '';
+        const elevationKind = visual?.elevationKind ? ` data-elevation-kind="${app._escapeHtml(visual.elevationKind)}"` : '';
+        const elevationBand = visual?.elevationBand ? ` data-elevation-band="${app._escapeHtml(visual.elevationBand)}"` : '';
+        const primaryUphill = visual?.primaryUphill ? ` data-elevation-uphill="${app._escapeHtml(visual.primaryUphill)}"` : '';
+        const primaryDownhill = visual?.primaryDownhill ? ` data-elevation-downhill="${app._escapeHtml(visual.primaryDownhill)}"` : '';
+        const cliffEdges = visual?.cliffEdges?.length ? ` data-cliff-edges="${app._escapeHtml(visual.cliffEdges.join(' '))}"` : '';
+        const bridgeSpan = Number.isInteger(visual?.bridgeSpanIndex) && Number.isInteger(visual?.bridgeSpanLength)
+            ? ` data-bridge-span-index="${visual.bridgeSpanIndex}" data-bridge-span-length="${visual.bridgeSpanLength}" data-bridge-span-role="${app._escapeHtml(visual.bridgeSpanRole || 'middle')}"`
+            : '';
+        const bridgeShoreEdges = visual?.bridgeShoreEdges?.length ? ` data-bridge-shore-edges="${app._escapeHtml(visual.bridgeShoreEdges.join(' '))}"` : '';
         const dangerInfluence = visual?.dangerInfluence ? ' data-danger-influence="true"' : '';
         const immediateDanger = visual?.immediateDanger ? ' data-immediate-danger="true"' : '';
-        const semantics = visual?.semanticKeys?.length ? ` data-tileset-semantic-keys="${app._escapeHtml(visual.semanticKeys.join(' '))}"` : '';
+        const composition = visual?.composition;
+        const compositionLayers = composition?.layers
+            ? Object.entries(composition.layers).filter(([, layer]) => layer?.records?.length).map(([name]) => name)
+            : [];
+        const compositionAttrs = composition
+            ? ` data-tile-composition="${app._escapeHtml(composition.schema)}" data-tile-composition-version="${Number(composition.version) || 0}" data-tile-composition-space="${app._escapeHtml(composition.space)}" data-tile-composition-layers="${app._escapeHtml(compositionLayers.join(' '))}"`
+            : '';
+        const semanticKeys = composition?.compatibility?.semanticKeys || visual?.semanticKeys || [];
+        const semantics = semanticKeys.length ? ` data-tileset-semantic-keys="${app._escapeHtml(semanticKeys.join(' '))}"` : '';
         const asset = visual?.asset;
         const assetAttrs = asset
             ? ` data-asset-id="${app._escapeHtml(asset.id)}" data-asset-fallback="${app._escapeHtml(asset.fallbackMode || 'emoji')}"${asset.src ? ` data-asset-src="${app._escapeHtml(asset.src)}"` : ''}`
             : '';
-        return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}${interiorShape}${interiorConnections}${interiorAdjacent}${interiorTheme}${interiorStructure}${interiorExitDirection}${blocked}${blockedReason}${shoreline}${shorelineCorners}${shorelineMask}${dangerInfluence}${immediateDanger}${semantics}${assetAttrs}`;
+        return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}${interiorShape}${interiorConnections}${interiorAdjacent}${interiorTheme}${interiorStructure}${interiorExitDirection}${blocked}${blockedReason}${shoreline}${shorelineCorners}${shorelineMask}${elevationKind}${elevationBand}${primaryUphill}${primaryDownhill}${cliffEdges}${bridgeSpan}${bridgeShoreEdges}${dangerInfluence}${immediateDanger}${compositionAttrs}${semantics}${assetAttrs}`;
     },
 
     interiorTileVisual(app, room = null, options = {}) {
@@ -350,7 +403,18 @@ const YAW_MAP_VISUALS = {
             const wallKeys = adjacent.length
                 ? adjacent.map(direction => app.MAP_TILESET_KEYS.interiorWalls?.[direction] || app.MAP_TILESET_KEYS.interior.wall)
                 : [wallKey];
-            return {
+            const wallTile = {
+                x: options.x,
+                y: options.y,
+                biome: 'interior-wall',
+                derivedBiome: 'interior-wall',
+                traversal: { passable: false, traversalCost: 0, requiredCapability: 'interior-route' },
+                overlays: { barriers: this.normalizedDirections([...adjacent, ...(options.blockedEdges || [])]) },
+                creatures: [],
+                items: [],
+                deathBags: []
+            };
+            return this.withComposition(app, wallTile, {
                 icon: '■',
                 tilesetKey: app.MAP_TILESET_KEYS.interior.wall,
                 baseTilesetKey: app.MAP_TILESET_KEYS.interior.wall,
@@ -367,7 +431,7 @@ const YAW_MAP_VISUALS = {
                 marker: null,
                 hasPaintedAsset: Boolean(asset?.src),
                 asset
-            };
+            }, { ...options, space: 'interior' });
         }
         const biomeId = room.biome || 'indoors';
         const baseTilesetKey = app.MAP_TILESET_KEYS.biomes[biomeId] || (biomeId === 'cave' ? app.MAP_TILESET_KEYS.interior.cave : app.MAP_TILESET_KEYS.interior.room);
@@ -407,7 +471,20 @@ const YAW_MAP_VISUALS = {
         }
         const biome = app.biomes[biomeId] || app.biomes.indoors || {};
         const asset = this.tilesetAssetForKey(tilesetKey);
-        return {
+        const interiorTile = {
+            ...room,
+            x: Number.isFinite(Number(options.x)) ? Number(options.x) : room.x,
+            y: Number.isFinite(Number(options.y)) ? Number(options.y) : room.y,
+            biome: biomeId,
+            derivedBiome: biomeId,
+            traversal: room.traversal || { passable: true, traversalCost: 1, requiredCapability: null, routeModifier: 0 },
+            overlays: room.overlays || {},
+            creatures: Array.isArray(room.creatures) ? room.creatures : [],
+            items: Array.isArray(room.items) ? room.items : [],
+            deathBags: Array.isArray(room.deathBags) ? room.deathBags : [],
+            placedObjects: Array.isArray(room.placedObjects) ? room.placedObjects : []
+        };
+        return this.withComposition(app, interiorTile, {
             icon,
             tilesetKey,
             baseTilesetKey,
@@ -426,7 +503,16 @@ const YAW_MAP_VISUALS = {
             marker: null,
             hasPaintedAsset: Boolean(asset?.src),
             asset
-        };
+        }, {
+            ...options,
+            space: 'interior',
+            route: hasTopology ? {
+                kind: room.exit ? 'threshold' : 'path',
+                id: room.exit ? 'interior-exit' : 'interior-path',
+                direction: interiorShape,
+                connections: interiorConnections
+            } : null
+        });
     },
 
     dangerPressureLabel(app, value = 0) {

@@ -14,13 +14,13 @@ across desktop, mobile, large-map, and interior cells. Roads, bridges,
 shorelines, POIs, barriers, and state markers already resolve as semantic
 layers instead of changing the underlying terrain identity.
 
-The remaining limitation is primarily composition vocabulary and first-party
-art. Several built-in biome cells bake ground and foliage together. Cliff art
-does not say which way a slope faces. Bridge art is transparent but does not
-yet guarantee an edge-to-edge deck and railing seam across neighboring cells.
-Dropped items, remains, resource changes, and other durable tile history are
-available to gameplay surfaces but are not a complete first-class map-art
-stack.
+Tile Composition V2 now supplies the common vocabulary. The first-party pack
+uses pixel-edge-matched ground materials, simulation-directed elevation
+shading, a full-span transparent bridge atlas, and transparent foliage cover.
+Dropped items, remains, recovery bags, resource depletion, and placed objects
+project as bounded evidence and survive sparse world storage. Broader foliage
+variation and altered-terrain evidence remain art/content backlog rather than
+contract gaps.
 
 ## Target semantic stack
 
@@ -49,7 +49,7 @@ This ordering is presentation doctrine, not a requirement that every cell
 uses eight images. A tileset may collapse visually compatible layers while
 the runtime retains their separate semantics.
 
-## Phase A — topology and visual acceptance
+## Phase A — topology and visual acceptance (complete)
 
 The internal snapshot decision and first deterministic mixed-stack fixture are
 recorded in [Tile Composition V2 — Phase A Decision](tile-composition-v2-decision.md).
@@ -68,7 +68,7 @@ Tileset Pack V1 remains the public compatibility contract during this phase.
   exact cell-edge contact, no transparent inset on a connected route, and no
   layer that silently changes traversal identity.
 
-## Phase B — cliffs, mountains, and bridges
+## Phase B — cliffs, mountains, and bridges (complete for V2 contract)
 
 - Introduce cardinal and corner slope or ledge semantics based on real
   signed neighbor elevation/topology data. Do not discard uphill/downhill
@@ -86,7 +86,7 @@ Tileset Pack V1 remains the public compatibility contract during this phase.
 - Verify straight, end, and shore-transition cases in both axes and across all
   supported render sizes.
 
-## Phase C — compositional first-party terrain
+## Phase C — compositional first-party terrain (complete baseline)
 
 - Split grass, dirt, sand, stone, and water into reusable ground materials.
 - Move trees, brush, rocks, reeds, and other cover into transparent obstacle or
@@ -98,7 +98,7 @@ Tileset Pack V1 remains the public compatibility contract during this phase.
 - Keep partial third-party tilesets viable through semantic fallback rather
   than requiring an all-or-nothing atlas replacement.
 
-## Phase D — persistent tile evidence
+## Phase D — persistent tile evidence (complete baseline)
 
 - Project existing saved ground items, remains, resource depletion, placed
   objects, and relevant tile deltas into bounded semantic overlays.

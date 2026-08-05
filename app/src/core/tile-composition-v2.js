@@ -60,8 +60,9 @@ const YAW_TILE_COMPOSITION_V2 = {
             .map(value => this._text(value).toLowerCase())
             .filter(Boolean)
             .slice(0, 8);
-        const routeValue = overlays.bridge || overlays.road || null;
-        const routeKind = overlays.bridge ? 'bridge' : (overlays.road ? 'road' : '');
+        const suppliedRoute = options.route && typeof options.route === 'object' ? options.route : null;
+        const routeValue = suppliedRoute || overlays.bridge || overlays.road || null;
+        const routeKind = this._text(suppliedRoute?.kind || (overlays.bridge ? 'bridge' : (overlays.road ? 'road' : '')));
         const routeConnections = this._directions(routeValue?.connections || []);
         const routeDirection = this._text(routeValue?.direction || visual.routeShape);
         const barrierEdges = this._directions([...(overlays.barriers || []), ...(options.blockedEdges || visual.blockedEdges || [])]);
@@ -77,6 +78,19 @@ const YAW_TILE_COMPOSITION_V2 = {
             kind: 'elevation',
             value: this._number(tile.elevation ?? tile.terrain?.elevation, 0.5)
         }];
+        const topology = tile.terrainTopology || tile.terrain?.topology;
+        if (topology && typeof topology === 'object') {
+            terrain.push({
+                kind: 'elevation-transition',
+                type: this._text(topology.kind, 'level'),
+                band: this._text(topology.band, 'mid'),
+                primaryUphill: this._text(topology.primaryUphill),
+                primaryDownhill: this._text(topology.primaryDownhill),
+                uphillEdges: this._directions(topology.uphillEdges),
+                downhillEdges: this._directions(topology.downhillEdges),
+                cliffEdges: this._directions(topology.cliffEdges)
+            });
+        }
         if (shorelineEdges.length || shorelineCorners.length) {
             terrain.push({ kind: 'shoreline', edges: shorelineEdges, corners: shorelineCorners });
         }
@@ -86,7 +100,11 @@ const YAW_TILE_COMPOSITION_V2 = {
             kind: routeKind,
             id: this._text(routeValue.id, routeKind),
             direction: routeDirection,
-            connections: routeConnections
+            connections: routeConnections,
+            spanIndex: Math.max(0, Math.trunc(this._number(routeValue.spanIndex, 0))),
+            spanLength: Math.max(0, Math.trunc(this._number(routeValue.spanLength, 0))),
+            spanRole: this._text(routeValue.spanRole),
+            shoreEdges: this._directions(routeValue.shoreEdges)
         }] : [];
 
         const coverValues = [
@@ -138,7 +156,19 @@ const YAW_TILE_COMPOSITION_V2 = {
             itemCount: Array.isArray(bag?.items) ? bag.items.length : 0,
             gold: Math.max(0, this._number(bag?.gold, 0))
         }));
-        const evidenceBounded = this._bounded([...itemEvidence, ...remainsEvidence, ...bagEvidence]);
+        const placedEvidence = (Array.isArray(tile.placedObjects) ? tile.placedObjects : []).map((object, index) => ({
+            ...this._ref(object, 'placed-object', index),
+            state: this._text(object?.state, 'placed')
+        }));
+        const resourceEvidence = overlays.poi?.category === 'resourceSite' && tile.resourceSearched
+            ? [{
+                kind: 'resource-change',
+                id: this._text(overlays.poi.id, 'resource-site'),
+                label: this._text(overlays.poi.name || overlays.poi.id, 'Resource site'),
+                state: 'depleted'
+            }]
+            : [];
+        const evidenceBounded = this._bounded([...itemEvidence, ...remainsEvidence, ...bagEvidence, ...placedEvidence, ...resourceEvidence]);
 
         const optionPresence = Array.isArray(options.presence) ? options.presence : [];
         const presenceBounded = this._bounded([

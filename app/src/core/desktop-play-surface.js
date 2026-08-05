@@ -29,7 +29,16 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             if (value) target.setAttribute(name, value);
             else target.removeAttribute?.(name);
         };
-        setOrRemove('data-tileset-semantic-keys', Array.isArray(visual.semanticKeys) ? visual.semanticKeys.join(' ') : '');
+        const composition = visual?.composition;
+        const semanticKeys = composition?.compatibility?.semanticKeys || visual.semanticKeys || [];
+        const compositionLayers = composition?.layers
+            ? Object.entries(composition.layers).filter(([, layer]) => layer?.records?.length).map(([name]) => name)
+            : [];
+        setOrRemove('data-tileset-semantic-keys', Array.isArray(semanticKeys) ? semanticKeys.join(' ') : '');
+        setOrRemove('data-tile-composition', composition?.schema || '');
+        setOrRemove('data-tile-composition-version', composition?.version ? String(composition.version) : '');
+        setOrRemove('data-tile-composition-space', composition?.space || '');
+        setOrRemove('data-tile-composition-layers', compositionLayers.join(' '));
         setOrRemove('data-blocked-edges', Array.isArray(visual.blockedEdges) ? visual.blockedEdges.join(' ') : '');
         setOrRemove('data-blocked-reason', visual.blockedReason || '');
         setOrRemove('data-interior-shape', visual.interiorShape || '');
@@ -41,6 +50,15 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         setOrRemove('data-shoreline-edges', Array.isArray(visual.shorelineEdges) ? visual.shorelineEdges.join(' ') : '');
         setOrRemove('data-shoreline-corners', Array.isArray(visual.shorelineCorners) ? visual.shorelineCorners.join(' ') : '');
         setOrRemove('data-shoreline-mask', Number.isInteger(visual.shorelineMask) && visual.shorelineMask > 0 ? visual.shorelineMask : '');
+        setOrRemove('data-elevation-kind', visual.elevationKind || '');
+        setOrRemove('data-elevation-band', visual.elevationBand || '');
+        setOrRemove('data-elevation-uphill', visual.primaryUphill || '');
+        setOrRemove('data-elevation-downhill', visual.primaryDownhill || '');
+        setOrRemove('data-cliff-edges', Array.isArray(visual.cliffEdges) ? visual.cliffEdges.join(' ') : '');
+        setOrRemove('data-bridge-span-index', Number.isInteger(visual.bridgeSpanIndex) ? String(visual.bridgeSpanIndex) : '');
+        setOrRemove('data-bridge-span-length', Number.isInteger(visual.bridgeSpanLength) ? String(visual.bridgeSpanLength) : '');
+        setOrRemove('data-bridge-span-role', visual.bridgeSpanRole || '');
+        setOrRemove('data-bridge-shore-edges', Array.isArray(visual.bridgeShoreEdges) ? visual.bridgeShoreEdges.join(' ') : '');
         setOrRemove('data-danger-influence', visual.dangerInfluence ? 'true' : '');
         setOrRemove('data-immediate-danger', visual.immediateDanger ? 'true' : '');
     },

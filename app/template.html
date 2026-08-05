@@ -650,6 +650,80 @@
             pointer-events: none;
         }
 
+        /* Tile Composition V2 directional terrain presentation. Simulation
+           owns the topology attributes; the first-party skin only paints
+           them. Multiple cliff edges compose without changing traversal. */
+        [data-tile-composition-space="overworld"] {
+            --yaw-cliff-north: linear-gradient(transparent, transparent);
+            --yaw-cliff-east: linear-gradient(transparent, transparent);
+            --yaw-cliff-south: linear-gradient(transparent, transparent);
+            --yaw-cliff-west: linear-gradient(transparent, transparent);
+            --yaw-slope-light: linear-gradient(transparent, transparent);
+        }
+
+        [data-tile-composition-space="overworld"][data-cliff-edges~="north"] {
+            --yaw-cliff-north: linear-gradient(to bottom, rgba(10, 12, 16, 0.82) 0 5%, rgba(33, 38, 46, 0.52) 10%, transparent 34%);
+        }
+
+        [data-tile-composition-space="overworld"][data-cliff-edges~="east"] {
+            --yaw-cliff-east: linear-gradient(to left, rgba(10, 12, 16, 0.82) 0 5%, rgba(33, 38, 46, 0.52) 10%, transparent 34%);
+        }
+
+        [data-tile-composition-space="overworld"][data-cliff-edges~="south"] {
+            --yaw-cliff-south: linear-gradient(to top, rgba(10, 12, 16, 0.82) 0 5%, rgba(33, 38, 46, 0.52) 10%, transparent 34%);
+        }
+
+        [data-tile-composition-space="overworld"][data-cliff-edges~="west"] {
+            --yaw-cliff-west: linear-gradient(to right, rgba(10, 12, 16, 0.82) 0 5%, rgba(33, 38, 46, 0.52) 10%, transparent 34%);
+        }
+
+        [data-tile-composition-space="overworld"][data-elevation-kind="slope"][data-elevation-uphill="north"] {
+            --yaw-slope-light: linear-gradient(to bottom, rgba(255, 255, 255, 0.18), transparent 42%, rgba(5, 8, 12, 0.18));
+        }
+
+        [data-tile-composition-space="overworld"][data-elevation-kind="slope"][data-elevation-uphill="east"] {
+            --yaw-slope-light: linear-gradient(to left, rgba(255, 255, 255, 0.18), transparent 42%, rgba(5, 8, 12, 0.18));
+        }
+
+        [data-tile-composition-space="overworld"][data-elevation-kind="slope"][data-elevation-uphill="south"] {
+            --yaw-slope-light: linear-gradient(to top, rgba(255, 255, 255, 0.18), transparent 42%, rgba(5, 8, 12, 0.18));
+        }
+
+        [data-tile-composition-space="overworld"][data-elevation-kind="slope"][data-elevation-uphill="west"] {
+            --yaw-slope-light: linear-gradient(to right, rgba(255, 255, 255, 0.18), transparent 42%, rgba(5, 8, 12, 0.18));
+        }
+
+        [data-tile-composition-space="overworld"] .yaw-tile-art::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            background: var(--yaw-cliff-north), var(--yaw-cliff-east), var(--yaw-cliff-south), var(--yaw-cliff-west), var(--yaw-slope-light);
+        }
+
+        /* Full-span bridge art deliberately bleeds through the presentation
+           gutter. Its transparent deck still belongs to one tile, while the
+           shared edge profile closes visual seams across consecutive spans. */
+        :is(.map-tile, .desktop-play-cell, .large-map-tile).map-visual-bridge,
+        .map-visual-bridge > .yaw-tile-art {
+            overflow: visible;
+        }
+
+        :is(.map-tile, .desktop-play-cell, .large-map-tile).map-visual-bridge {
+            z-index: 1;
+        }
+
+        .map-visual-bridge .yaw-tile-art > [data-tileset-semantic-key="route-bridge-horizontal"] {
+            left: -4px;
+            right: -4px;
+        }
+
+        .map-visual-bridge .yaw-tile-art > [data-tileset-semantic-key="route-bridge-vertical"] {
+            top: -4px;
+            bottom: -4px;
+        }
+
         [data-danger-influence="true"] .yaw-tile-art::before {
             content: '';
             position: absolute;

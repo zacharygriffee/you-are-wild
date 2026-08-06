@@ -212,7 +212,7 @@ const YAW_TILE_VISUAL_RECIPES = {
             beach: { family: 'beach-identity', label: 'beach drift', stratum: 'shore', subLayer: 16, scale: 0.82, opacity: 0.72 }
         }[biome];
         if (identity) {
-            return [{
+            const records = [{
                 kind: 'biome-identity', id: `${biome}-identity-${x}-${y}`, label: identity.label, family: identity.family,
                 stratum: identity.stratum, subLayer: identity.subLayer,
                 anchor: {
@@ -226,6 +226,43 @@ const YAW_TILE_VISUAL_RECIPES = {
                 flipX: this._hash01(x, y, `${biome}-identity-flip`) >= 0.5,
                 role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
             }];
+            const detailFamilies = {
+                grove: ['broadleaf', 'grass'],
+                forest: ['conifer', 'rock'],
+                plains: ['grass', 'scrub'],
+                swamp: ['reeds', 'rock'],
+                cave: ['rock', 'cave-identity'],
+                beach: ['drift', 'scrub']
+            }[biome] || [];
+            const detailFamily = detailFamilies[variant % detailFamilies.length];
+            const includeDetail = biome !== 'plains' || variant % 2 === 0;
+            if (detailFamily && includeDetail) {
+                records.push({
+                    kind: 'biome-detail', id: `${biome}-detail-${x}-${y}`, label: `${identity.label} detail`, family: detailFamily,
+                    stratum: biome === 'cave' ? 'floor' : (biome === 'swamp' ? 'wetland' : 'undergrowth'),
+                    subLayer: Math.max(11, identity.subLayer - 5),
+                    anchor: {
+                        x: Number((0.72 - phase * 0.3).toFixed(3)),
+                        y: Number((0.7 - phaseY * 0.26).toFixed(3))
+                    },
+                    variant: (variant + 1) % 4,
+                    scale: Number((0.56 + scalePhase * 0.18).toFixed(3)),
+                    opacity: Number((0.68 + (1 - scalePhase) * 0.14).toFixed(3)),
+                    rotation: Math.round(18 - rotationPhase * 36),
+                    flipX: this._hash01(x, y, `${biome}-detail-flip`) >= 0.5,
+                    role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
+                });
+            }
+            if (['grove', 'forest', 'swamp'].includes(biome) && variant === 3) {
+                records.push({
+                    kind: 'biome-detail', id: `${biome}-dense-${x}-${y}`, label: `${identity.label} dense detail`, family: detailFamilies[(variant + 1) % detailFamilies.length],
+                    stratum: 'undergrowth', subLayer: Math.max(10, identity.subLayer - 7),
+                    anchor: { x: Number((0.22 + phaseY * 0.18).toFixed(3)), y: Number((0.7 - phase * 0.2).toFixed(3)) },
+                    variant: 0, scale: 0.48, opacity: 0.62, rotation: Math.round(phase * 20 - 10), flipX: phase < 0.5,
+                    role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
+                });
+            }
+            return records;
         }
         if (biome !== 'jungle') return [];
         const anchors = [
@@ -278,11 +315,12 @@ const YAW_TILE_VISUAL_RECIPES = {
                 const destinationOwned = policy.destinationBiome === currentBiome;
                 const sourceProfile = this.profile(policy.sourceBiome);
                 const destinationProfile = this.profile(policy.destinationBiome);
+                const requestedDepth = Math.max(sourceProfile.edgeDepth, destinationProfile.edgeDepth);
                 const depth = policy.kind === 'shoreline'
-                    ? Math.max(0.3, Math.min(0.4, destinationProfile.edgeDepth + 0.08))
+                    ? Math.max(0.28, Math.min(0.34, destinationProfile.edgeDepth + 0.06))
                     : (policy.style === 'hard'
-                        ? Math.min(0.22, Math.max(sourceProfile.edgeDepth, destinationProfile.edgeDepth))
-                        : Math.max(sourceProfile.edgeDepth, destinationProfile.edgeDepth));
+                        ? Math.max(0.15, Math.min(0.19, requestedDepth * 0.82))
+                        : Math.max(0.17, Math.min(0.26, requestedDepth * 0.76)));
                 const descriptor = {
                     sharedEdgeKey,
                     direction: direction.id,
@@ -350,7 +388,7 @@ const YAW_TILE_VISUAL_RECIPES = {
                 const neighborX = x + direction.dx;
                 const neighborY = y + direction.dy;
                 const sharedEdgeKey = this._sharedEdgeKey(x, y, neighborX, neighborY);
-                const depth = Math.max(0.3, Math.min(0.4, currentProfile.edgeDepth + 0.08));
+                const depth = Math.max(0.28, Math.min(0.34, currentProfile.edgeDepth + 0.06));
                 sharedEdges.push({
                     sharedEdgeKey,
                     direction: direction.id,

@@ -4,6 +4,21 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Desktop, phone, and Review Map terrain now paint as continuous surfaces with
+  zero inter-cell artwork gap. The nine controls remain independent and
+  accessible; a compact movement dot plus hover/focus/current rings replace
+  resting full-cell outlines, card gutters, whole-cell blocked dimming, and the
+  oversized bundled current-position compass. Pointer-transparent canopy and
+  edge-spill art may cross internal 3x3 boundaries without enlarging a control;
+  bundled material crops use a fractional atlas gutter and shared-edge paint
+  overscans its owning boundary to prevent raster hairlines.
+- Categorized POIs no longer duplicate the generic landmark or outline their
+  whole tile, bundled POI art is bounded, and one corner-aware runtime
+  compositor now tapers isolated seams,
+  assigns mixed corners to one material, and caps soft/hard transition depth.
+  Existing biome strata provide visibly different secondary-family/density
+  variants, while first-party night materials receive a readability lift that
+  does not alter scouting mechanics or third-party pack grading.
 - Cheat controls now follow their visible contracts: Instant Win resolves an
   active encounter without requiring Overpowered, God Mode protects the player
   from combat collapse and fatal containment, Never Hungry intercepts ordinary

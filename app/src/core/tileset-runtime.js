@@ -261,10 +261,17 @@ const YAW_TILESET_RUNTIME = {
             north: ['wn', 'ne'], east: ['ne', 'es'], south: ['sw', 'es'], west: ['wn', 'sw']
         }[direction];
         const cornerState = endpointCorners.map(corner => String(metadata?.corners?.[corner] || ''));
-        const edgeStart = cornerState[0] === 'trim' ? 0.18 : 0;
-        const edgeEnd = cornerState[1] === 'trim' ? 0.82 : 1;
-        const contourStart = cornerState[0] === 'trim' ? 0.3 : 0;
-        const contourEnd = cornerState[1] === 'trim' ? 0.7 : 1;
+        const isTrimmed = state => state === 'trim';
+        const isCapped = state => state === 'cap';
+        const edgeStart = isTrimmed(cornerState[0]) ? 0.26 : 0;
+        const edgeEnd = isTrimmed(cornerState[1]) ? 0.74 : 1;
+        // A cap must still meet the source material at the shared boundary,
+        // but it tapers before entering the four-cell corner. A split trims
+        // the losing edge more aggressively, leaving exactly one material to
+        // own the junction. Joined or extended same-material edges remain
+        // full width so their identical paint can meet without a hole.
+        const contourStart = isTrimmed(cornerState[0]) ? 0.38 : (isCapped(cornerState[0]) ? 0.18 : 0);
+        const contourEnd = isTrimmed(cornerState[1]) ? 0.62 : (isCapped(cornerState[1]) ? 0.82 : 1);
         const adjustedDepth = contour.map((value, index) => {
             const state = index === 0 ? cornerState[0] : (index === 4 ? cornerState[1] : '');
             const extension = state === 'extend' ? 0.045 : (state === 'join' ? 0.025 : 0);
@@ -319,6 +326,7 @@ const YAW_TILESET_RUNTIME = {
                 },
                 opacity: Math.max(0, Math.min(1, Number(record?.opacity ?? 1))),
                 recordKind: kind,
+                variant: Math.max(0, Math.min(3, Math.trunc(Number(record?.variant || 0)))),
                 stratum: String(record?.stratum || ''),
                 edgeBand: String(record?.edgeBand || ''),
                 sharedEdgeKey: String(record?.sharedEdgeKey || ''),
@@ -365,12 +373,16 @@ const YAW_TILESET_RUNTIME = {
             for (const layer of resolved.tile.layers) {
                 const atlas = resolved.atlases.get(layer.atlasId);
                 if (!atlas?.url) continue;
+                const bundledPoiPlacement = resolved.pack.id === 'yaw.default-basic-v1' && semanticKey.startsWith('poi-')
+                    ? { x: 0.5, y: 0.5, scale: 0.54 }
+                    : null;
                 layers.push({
                     ...layer,
                     semanticKey,
                     compositionLayer: this._compositionLayerForKey(semanticKey),
                     compositionSubLayer: this._compositionSubRankForKey(semanticKey),
                     transitionMetadata: this._transitionMetadata(visual, semanticKey),
+                    ...(bundledPoiPlacement ? { placement: bundledPoiPlacement } : {}),
                     packId: resolved.pack.id,
                     url: atlas.url,
                     cssImage: atlas.cssImage,
@@ -395,6 +407,7 @@ const YAW_TILESET_RUNTIME = {
                     opacity: Math.max(0, Math.min(1, Number(layer.opacity ?? 1) * Number(request.opacity ?? 1))),
                     recordIndex: request.recordIndex,
                     recordKind: request.recordKind,
+                    variant: request.variant,
                     stratum: request.stratum,
                     edgeBand: request.edgeBand,
                     sharedEdgeKey: request.sharedEdgeKey,
@@ -424,10 +437,25 @@ const YAW_TILESET_RUNTIME = {
 
     _layerStyle(layer) {
         const rect = layer.rect;
-        const sizeX = (layer.atlasWidth / rect.width) * 100;
-        const sizeY = (layer.atlasHeight / rect.height) * 100;
-        const positionX = layer.atlasWidth === rect.width ? 0 : (rect.x / (layer.atlasWidth - rect.width)) * 100;
-        const positionY = layer.atlasHeight === rect.height ? 0 : (rect.y / (layer.atlasHeight - rect.height)) * 100;
+        // Smoothly scaled atlas crops can borrow a fractional pixel from the
+        // neighboring sprite at a grid boundary. Inset only the bundled
+        // material planes inside their atlas rectangles; authored packs keep
+        // their exact crop contract and full-atlas images need no gutter.
+        const atlasInset = layer.packId === 'yaw.default-basic-v1'
+            && ['ground', 'terrain'].includes(layer.compositionLayer)
+            && (rect.width < layer.atlasWidth || rect.height < layer.atlasHeight)
+            ? Math.min(0.75, rect.width / 16, rect.height / 16)
+            : 0;
+        const sampleRect = {
+            x: rect.x + atlasInset,
+            y: rect.y + atlasInset,
+            width: rect.width - atlasInset * 2,
+            height: rect.height - atlasInset * 2
+        };
+        const sizeX = (layer.atlasWidth / sampleRect.width) * 100;
+        const sizeY = (layer.atlasHeight / sampleRect.height) * 100;
+        const positionX = layer.atlasWidth === sampleRect.width ? 0 : (sampleRect.x / (layer.atlasWidth - sampleRect.width)) * 100;
+        const positionY = layer.atlasHeight === sampleRect.height ? 0 : (sampleRect.y / (layer.atlasHeight - sampleRect.height)) * 100;
         const scaleX = Boolean(layer.transform.flipX) !== Boolean(layer.placement?.flipX) ? -1 : 1;
         const scaleY = layer.transform.flipY ? -1 : 1;
         const placement = layer.placement;
@@ -473,7 +501,7 @@ const YAW_TILESET_RUNTIME = {
                 ? ` data-shared-edge-key="${app._escapeHtml(transition.sharedEdgeKey || '')}" data-edge-profile="${app._escapeHtml(transition.kind || 'ground-transition')}" data-edge-blend-style="${app._escapeHtml(transition.style || 'soft')}" data-edge-phase="${Number(transition.phase || 0).toFixed(6)}" data-edge-contour="${app._escapeHtml((transition.contour || []).join(' '))}" data-edge-corners="${app._escapeHtml(Object.entries(transition.corners || {}).map(([corner, state]) => `${corner}:${state}`).join(' '))}"`
                 : '';
             const coverAttrs = layer.recordKind
-                ? ` data-cover-kind="${app._escapeHtml(layer.recordKind)}" data-cover-stratum="${app._escapeHtml(layer.stratum || '')}" data-edge-band="${app._escapeHtml(layer.edgeBand || '')}"${layer.sharedEdgeKey ? ` data-shared-edge-key="${app._escapeHtml(layer.sharedEdgeKey)}"` : ''}`
+                ? ` data-cover-kind="${app._escapeHtml(layer.recordKind)}" data-cover-variant="${app._escapeHtml(String(layer.variant || 0))}" data-cover-stratum="${app._escapeHtml(layer.stratum || '')}" data-edge-band="${app._escapeHtml(layer.edgeBand || '')}"${layer.sharedEdgeKey ? ` data-shared-edge-key="${app._escapeHtml(layer.sharedEdgeKey)}"` : ''}`
                 : '';
             return `<span class="yaw-tile-art-layer" data-tileset-layer="${slot}" data-tile-composition-layer="${compositionLayer}" data-composition-sub-layer="${subLayer}" data-tileset-semantic-key="${key}" data-tileset-layer-index="${index}"${edgeAttrs}${coverAttrs} style="${style}"></span>`;
         }).join('');

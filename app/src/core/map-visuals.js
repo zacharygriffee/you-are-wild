@@ -376,7 +376,7 @@ const YAW_MAP_VISUALS = {
             icon = structure?.icon || icon;
             kind = 'structure';
             classes.push('map-visual-structure');
-        } else if (tile.hasLandmark) {
+        } else if (tile.hasLandmark && !tile.overlays?.poi) {
             tilesetKey = 'poi-landmark';
             kind = 'landmark';
             classes.push('map-visual-landmark');

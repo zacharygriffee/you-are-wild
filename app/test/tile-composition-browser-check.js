@@ -260,6 +260,35 @@ async function readOverworldAcceptance(page) {
   });
 }
 
+async function exerciseComposedTraversal(page) {
+  const moved = await page.evaluate(() => {
+    App.cheats.noEnemies = true;
+    return App.move(1, 0);
+  });
+  await page.waitForTimeout(50);
+  const state = await page.evaluate(() => {
+    const activeGrid = innerWidth <= 1024
+      ? document.querySelector('#mobile-mini-map')
+      : document.querySelector('#desktop-neighborhood-grid');
+    const current = innerWidth <= 1024
+      ? document.querySelector('#mobile-mini-map [data-stage-cell="center"]')
+      : document.querySelector('#desktop-map-cell-center');
+    return {
+      location: `${App.location.x},${App.location.y}`,
+      gap: activeGrid ? getComputedStyle(activeGrid).gap : '',
+      cells: activeGrid?.querySelectorAll('[data-tile-composition-version="2"]').length || 0,
+      currentOpacity: current?.querySelector('[data-tileset-semantic-key="state-current"]')
+        ? getComputedStyle(current.querySelector('[data-tileset-semantic-key="state-current"]')).opacity
+        : '',
+      currentRing: current ? getComputedStyle(current).boxShadow : '',
+      reviewCurrent: document.querySelectorAll('#large-map .large-map-tile.current').length
+    };
+  });
+  const returned = await page.evaluate(() => App.move(-1, 0));
+  await page.waitForTimeout(50);
+  return { moved, returned, state };
+}
+
 async function readArtAssetAcceptance(page) {
   return page.evaluate(async () => {
     const candidate = YAW_TILESET_RUNTIME.builtinCandidate;
@@ -584,6 +613,17 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert(interior.evidenceIds.includes('interior-key'), `${prefix}: interior items should project as durable evidence`);
     assert(interior.presenceIds.includes('composition-player') && interior.presenceIds.includes('interior-moth'), `${prefix}: interior party and creature presence should coexist`);
     assert.strictEqual(interior.horizontalOverflow, false, `${prefix}: interior composition should not create horizontal overflow`);
+
+    await seedCompositionLab(page);
+    const traversed = await exerciseComposedTraversal(page);
+    assert.strictEqual(traversed.moved, true, `${prefix}: ordinary movement should enter the neighboring composed tile`);
+    assert.strictEqual(traversed.returned, true, `${prefix}: ordinary movement should return across the composed edge`);
+    assert.strictEqual(traversed.state.location, '1,0', `${prefix}: traversal should update the authoritative location`);
+    assert.strictEqual(traversed.state.gap, '0px', `${prefix}: rerendered traversal art should remain continuous after movement`);
+    assert.strictEqual(traversed.state.cells, 9, `${prefix}: traversal rerender should retain all nine independent cells`);
+    assert.strictEqual(traversed.state.currentOpacity, '0', `${prefix}: movement should retain the unobstructed bundled current semantic`);
+    assert.notStrictEqual(traversed.state.currentRing, 'none', `${prefix}: movement should retain the bounded current-cell ring`);
+    assert.strictEqual(traversed.state.reviewCurrent, 1, `${prefix}: Review Map should follow traversal with one current tile`);
 
     assert.deepStrictEqual(pageErrors, [], `${prefix}: browser should not throw page errors`);
     assert.deepStrictEqual(failedResponses, [], `${prefix}: browser should not receive failed resources`);

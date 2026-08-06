@@ -84,6 +84,22 @@ async function inspectScenario(page) {
       const activeCenter = innerWidth <= 1024
         ? document.querySelector('#mobile-mini-map [data-stage-cell="center"]')
         : document.querySelector('#desktop-map-cell-center');
+      const activeGrid = innerWidth <= 1024
+        ? document.querySelector('#mobile-mini-map')
+        : document.querySelector('#desktop-neighborhood-grid');
+      const inactiveTraversalCell = activeGrid?.querySelector('[data-stage-surface="traversal-cell"]:not(.moveable)');
+      const moveableTraversalCell = activeGrid?.querySelector('.moveable:not(.center)');
+      const restingPoiCell = activeGrid?.querySelector('.map-visual-poi:not(.center), .map-visual-landmark:not(.center), .map-visual-structure:not(.center)');
+      const overflowCoverLayer = activeGrid?.querySelector('[data-tile-composition-layer="cover"]');
+      const overflowCoverCell = overflowCoverLayer?.closest('[data-tile-composition-space="overworld"]');
+      const overflowCoverArt = overflowCoverCell?.querySelector('.yaw-tile-art');
+      const coverRect = overflowCoverLayer?.getBoundingClientRect();
+      const coverCellRect = overflowCoverCell?.getBoundingClientRect();
+      const sharedEdgeLayer = activeGrid?.querySelector('[data-shared-edge-key][data-tileset-semantic-key^="ground-transition-"]');
+      const sharedEdgeDirection = sharedEdgeLayer?.dataset.tilesetSemanticKey?.match(/-(north|east|south|west)$/)?.[1] || '';
+      const sharedEdgeOverscan = sharedEdgeLayer && sharedEdgeDirection
+        ? Number.parseFloat(getComputedStyle(sharedEdgeLayer)[sharedEdgeDirection === 'north' ? 'top' : sharedEdgeDirection === 'east' ? 'right' : sharedEdgeDirection === 'south' ? 'bottom' : 'left'])
+        : 0;
       const stateLayer = activeCenter?.querySelector('[data-tileset-semantic-key="state-current"]');
       const stateZ = stateLayer ? Number(getComputedStyle(stateLayer).zIndex || 0) : 0;
       const lowerZ = Math.max(0, ...[...(activeCenter?.querySelectorAll('[data-tileset-semantic-key]:not([data-tileset-semantic-key="state-current"])') || [])]
@@ -135,6 +151,21 @@ async function inspectScenario(page) {
         desktopCells: document.querySelectorAll('#desktop-neighborhood-grid [data-tile-composition-version="2"]').length,
         mobileCells: document.querySelectorAll('#mobile-mini-map [data-tile-composition-version="2"]').length,
         visibleJungleStrata: document.querySelectorAll('[data-tileset-semantic-key="cover-jungle-canopy"], [data-tileset-semantic-key="cover-jungle-undergrowth"], [data-tileset-semantic-key="cover-jungle-litter"]').length,
+        visibleBiomeDetails: document.querySelectorAll('[data-cover-kind="biome-detail"]').length,
+        activeGridGap: activeGrid ? getComputedStyle(activeGrid).gap : '',
+        activeCellBorder: activeCenter ? getComputedStyle(activeCenter).borderTopWidth : '',
+        inactiveTerrainOpacity: inactiveTraversalCell ? getComputedStyle(inactiveTraversalCell).opacity : '',
+        moveableRestingRing: moveableTraversalCell ? getComputedStyle(moveableTraversalCell).boxShadow : '',
+        moveableCueContent: moveableTraversalCell ? getComputedStyle(moveableTraversalCell, '::before').content : '',
+        restingPoiRing: restingPoiCell ? getComputedStyle(restingPoiCell).boxShadow : '',
+        overflowCoverArt: overflowCoverArt ? getComputedStyle(overflowCoverArt).overflow : '',
+        overflowCoverEscapes: Boolean(coverRect && coverCellRect && (
+          coverRect.left < coverCellRect.left || coverRect.right > coverCellRect.right
+          || coverRect.top < coverCellRect.top || coverRect.bottom > coverCellRect.bottom
+        )),
+        sharedEdgeOverscan,
+        currentStateOpacity: stateLayer ? getComputedStyle(stateLayer).opacity : '',
+        currentCellRing: activeCenter ? getComputedStyle(activeCenter).boxShadow : '',
         accessibleTraversalGroup: Boolean(traversalGroup),
         unnamedTraversalButtons: [...(traversalGroup?.querySelectorAll('button') || [])]
           .filter(button => !(button.getAttribute('aria-label') || button.textContent || '').trim()).length,
@@ -215,6 +246,18 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
       assert.equal(actual.terrainSurvey.desktopCells, 9, 'terrain survey desktop 3x3 composition');
       assert.equal(actual.terrainSurvey.mobileCells, 9, 'terrain survey mobile 3x3 composition');
       assert(actual.terrainSurvey.visibleJungleStrata >= 3, 'terrain survey should render separate jungle canopy, undergrowth, and litter strata');
+      assert(actual.terrainSurvey.visibleBiomeDetails >= 1, 'terrain survey should render a coordinate-selected secondary biome detail');
+      assert.equal(actual.terrainSurvey.activeGridGap, '0px', 'active terrain artwork should meet across all nine traversal cells');
+      assert.equal(actual.terrainSurvey.activeCellBorder, '0px', 'active traversal cells should keep hit targets without artwork-breaking borders');
+      assert.equal(actual.terrainSurvey.inactiveTerrainOpacity, '1', 'movement availability must not dim a whole terrain cell and fracture the composed surface');
+      assert.equal(actual.terrainSurvey.moveableRestingRing, 'none', 'traversable neighbors should not divide continuous artwork with resting full-cell outlines');
+      assert.notEqual(actual.terrainSurvey.moveableCueContent, 'none', 'traversable neighbors should retain a bounded non-text movement cue');
+      assert.equal(actual.terrainSurvey.restingPoiRing, 'none', 'POI and structure ownership should remain on their bounded art instead of outlining the whole cell');
+      assert.equal(actual.terrainSurvey.overflowCoverArt, 'visible', 'overworld decorative cover should cross internal cell boundaries without changing the owning control');
+      assert.equal(actual.terrainSurvey.overflowCoverEscapes, true, 'terrain survey should exercise at least one canopy or edge-spill layer beyond its owning cell');
+      assert(actual.terrainSurvey.sharedEdgeOverscan < 0, 'bundled shared-edge paint should overscan its owning boundary to hide fractional raster seams');
+      assert.equal(actual.terrainSurvey.currentStateOpacity, '0', 'bundled current-position atlas art should not obstruct terrain');
+      assert.notEqual(actual.terrainSurvey.currentCellRing, 'none', 'current position should remain legible as a bounded owning-cell ring');
       assert.equal(actual.terrainSurvey.accessibleTraversalGroup, true, 'terrain survey traversal surface should expose a group label');
       assert.equal(actual.terrainSurvey.unnamedTraversalButtons, 0, 'terrain survey traversal controls should retain accessible names');
       assert.equal(actual.terrainSurvey.currentStateAboveWorld, true, 'terrain survey current-position cue should remain above world art');

@@ -158,6 +158,32 @@ authored transition art. Coordinate-derived anchor, scale, rotation, flip, and
 variant signatures reduce repeated identity placement without rotating the
 seam-matched ground plane or changing any tile fact.
 
+The Pass 3 correction keeps the nine controls but removes their visual card
+gutters and per-cell dimming, so desktop, phone, and Review Map paint one
+continuous surface. Moveability, focus, selection, and current position use
+a compact resting dot plus bounded hover/focus/selection/current rings instead.
+The `state-current` semantic remains in the pack stack for compatibility, while
+the bundled oversized compass is suppressed; categorized POIs no longer also
+receive a generic landmark or a full-cell outline, and bundled POI art is
+scaled to a compact marker.
+
+Traversal artwork now treats those controls as interaction geometry rather
+than visual clipping masks. Pointer-transparent canopy, undergrowth, and
+adjacent-spill records can cross an internal desktop or phone cell boundary,
+while the outer 3x3 frame remains clipped. The bundled skin insets smooth
+ground/terrain atlas samples by a fractional source pixel and extends canonical
+shared-edge paint one CSS pixel across its owned boundary, preventing atlas
+bleed and subpixel hairlines without changing replacement-pack crop geometry.
+
+One runtime contour compositor now owns all bundled soft/hard corner geometry.
+Isolated edges taper at four-cell junctions, mixed-source corners select one
+winner and aggressively trim the loser, soft paint is capped at 26% depth, and
+hard paint at 19%. Specialized shorelines retain their own authority. Existing
+biome strata now choose deterministic secondary families and densities, making
+coordinate variants visibly different without another atlas. Night exposes a
+presentation-only phase that lifts first-party material readability without
+changing visibility mechanics or grading replacement packs.
+
 ## Phase D — persistent tile evidence (complete baseline)
 
 - Project existing saved ground items, remains, resource depletion, placed

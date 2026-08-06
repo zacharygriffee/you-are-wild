@@ -166,6 +166,7 @@ const destinationEdge = adjacentVisual.adjacencyBlend.sharedEdges[0];
 const sourceEdge = mirroredVisual.adjacencyBlend.sharedEdges[0];
 check(destinationEdge.sharedEdgeKey === sourceEdge.sharedEdgeKey && destinationEdge.direction === sourceEdge.mirrorDirection && destinationEdge.phase === sourceEdge.phase, 'Both sides of a shared edge must observe one canonical key, mirrored direction, and phase');
 check(destinationEdge.contour.length === 5 && destinationEdge.contour.every(value => value >= 0.12 && value <= 0.46), 'Canonical soft seams must publish a bounded five-point contour');
+check(destinationEdge.depth >= 0.17 && destinationEdge.depth <= 0.26, 'Soft material paint must stay within a restrained shared-edge band');
 check(destinationEdge.contour.join(',') === sourceEdge.contour.join(','), 'Both sides of a shared edge must observe the same deterministic contour');
 check(destinationEdge.destinationOwned && !sourceEdge.destinationOwned && mirroredVisual.groundTransitions.length === 0, 'Exactly one side of a shared seam may paint the dominant material');
 check(adjacentVisual.composition.facts.presentationRecipeVersion === 3, 'Composition facts must advertise the applied visual recipe version without changing save schema');
@@ -173,6 +174,7 @@ check(adjacentVisual.composition.facts.adjacency.sharedEdges[0].key === destinat
 check(adjacentVisual.composition.facts.adjacency.sharedEdges[0].contour.join(',') === destinationEdge.contour.join(','), 'The serializable snapshot must retain the canonical seam contour');
 check(adjacentVisual.composition.layers.terrain.records.find(record => record.kind === 'ground-transition')?.edges[0].contour.length === 5, 'Ground-transition records must carry the same bounded contour to render adapters');
 check(runtime._edgeClipPath(destinationEdge).startsWith('polygon(') && runtime._edgeClipPath(destinationEdge).split(',').length === 7, 'The bundled runtime must convert a five-point seam into a direction-aware contour polygon');
+check(destinationEdge.corners.ne === 'cap' && destinationEdge.corners.es === 'cap', 'An isolated material edge must taper both four-cell endpoints instead of painting square corner blocks');
 const contourLayer = {
   rect: { x: 0, y: 0, width: 256, height: 256 }, atlasWidth: 256, atlasHeight: 256,
   cssImage: 'none', scaling: 'smooth', opacity: 1, blend: 'normal', z: 0,
@@ -181,6 +183,15 @@ const contourLayer = {
 };
 check(runtime._layerStyle({ ...contourLayer, packId: 'yaw.default-basic-v1' }).includes('clip-path:polygon(')
   && !runtime._layerStyle({ ...contourLayer, packId: 'mod.authored-transitions' }).includes('clip-path:'), 'Canonical contour clipping must apply only to the bundled skin and leave replacement-pack artwork untouched');
+const atlasCropLayer = {
+  ...contourLayer,
+  rect: { x: 64, y: 64, width: 64, height: 64 },
+  atlasWidth: 256,
+  atlasHeight: 256,
+  compositionLayer: 'ground',
+  transitionMetadata: null
+};
+check(runtime._layerStyle({ ...atlasCropLayer, packId: 'yaw.default-basic-v1' }) !== runtime._layerStyle({ ...atlasCropLayer, packId: 'mod.authored-ground' }), 'Bundled material crops must inset their atlas sample to prevent adjacent-sprite hairlines without changing authored replacement packs');
 check(!templateSource.includes('.yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"]'), 'Bundled material masks must not use an unscoped selector that clips authored replacement-pack transitions');
 check(visuals.mapTileAttrs(app, adjacentVisual).includes('data-shared-edge-keys="edge:7,-3&gt;8,-3"') || visuals.mapTileAttrs(app, adjacentVisual).includes('data-shared-edge-keys="edge:7,-3>8,-3"'), 'Rendered cells must expose canonical shared-edge identity');
 const hiddenNeighborVisual = visuals.mapTileVisual(app, { ...tile, biome: 'jungle', derivedBiome: 'jungle', overlays: {} }, { neighborResolver: () => null });
@@ -219,6 +230,7 @@ const northJunctionEdge = junctionVisual.groundTransitions.find(entry => entry.d
 const eastJunctionEdge = junctionVisual.groundTransitions.find(entry => entry.direction === 'east');
 check(junctionVisual.adjacencyBlend.junctions.find(entry => entry.corner === 'ne')?.kind === 'split', 'Eight-neighbor junctions must classify a mixed-source four-tile corner');
 check(northJunctionEdge?.corners.ne === 'trim' && eastJunctionEdge?.corners.ne === 'extend', 'A mixed corner must trim the losing material and extend the deterministic winner');
+check(runtime._edgeClipPath(northJunctionEdge).includes('74% 0%') && runtime._edgeClipPath(eastJunctionEdge).startsWith('polygon(100% 0%'), 'The bundled compositor must reserve the mixed corner for one winner while clipping the losing edge away');
 
 const jungleIdentity = visualRecipes.compose({ ...jungleTile, overlays: {} }, () => null);
 const plainsIdentity = visualRecipes.compose({ ...plainsTile, overlays: {} }, () => null);
@@ -238,6 +250,16 @@ const variationSignatures = new Set(plainsVariation.map(record => [
   record.anchor.x, record.anchor.y, record.scale, record.rotation, record.flipX, record.variant
 ].join(':')));
 check(variationSignatures.size >= 6, 'Repeated biome identity art must receive broad deterministic placement, scale, rotation, flip, and variant signatures');
+for (const biome of ['grove', 'forest', 'plains', 'swamp', 'cave', 'beach']) {
+  const variants = Array.from({ length: 20 }, (_, index) => visualRecipes.compose({
+    ...plainsTile, biome, derivedBiome: biome, x: index - 7, y: index * 3 - 11, overlays: {}
+  }, () => null).cover.filter(record => record.kind === 'biome-identity' || record.kind === 'biome-detail'));
+  const detailFamilies = new Set(variants.flatMap(records => records.filter(record => record.kind === 'biome-detail').map(record => record.family)));
+  const recordCounts = new Set(variants.map(records => records.length));
+  check(detailFamilies.size >= 2 || (biome === 'plains' && recordCounts.size >= 2), `${biome} coordinate variants must visibly change secondary art family or density`);
+}
+const variantLayer = runtime._dynamicLayerRequests({ composition: { layers: { cover: { records: [{ kind: 'biome-detail', family: 'reeds', variant: 3, anchor: { x: 0.4, y: 0.6 }, scale: 0.6 }] } } } })[0];
+check(variantLayer?.variant === 3, 'Visible biome variant identity must survive into the shared renderer request');
 
 const clearanceTile = {
   ...tile,

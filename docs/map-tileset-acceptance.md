@@ -165,3 +165,31 @@ Automated acceptance repeats the file and hosted paths at all four maintained
 viewports and asserts computed polygon clipping, feathered masks, contour
 serialization, non-repeating generated samples, and bundled-pack-only mask
 ownership.
+
+### Pass 3 correction acceptance — 2026-08-06
+
+The cross-surface browser fixtures now additionally require:
+
+- zero artwork gap and zero cell-layout border on the active desktop and phone
+  3x3 surfaces, with nine independent composition-bearing cells retained;
+- visible overflow for pointer-transparent cover art so at least one reviewed
+  canopy/edge-spill record crosses its owning internal cell, plus a first-party
+  atlas sample gutter and one-pixel canonical edge overscan to suppress raster
+  crop hairlines while authored replacement-pack crops remain exact;
+- full terrain opacity regardless of whether a direction is currently
+  traversable, with a compact resting movement dot and bounded
+  hover/focus/selection/current affordances instead of full-cell move rings;
+- one categorized POI marker without a duplicate generic landmark, a 54%
+  bounded bundled POI scale, and a semantically retained but visually
+  suppressed bundled `state-current` atlas layer, with no full-cell POI or
+  structure outline;
+- a single runtime-owned mixed-corner polygon, isolated-edge caps, and bounded
+  17–26% soft / 15–19% hard transition depth;
+- rendered secondary biome-detail records with deterministic family/density
+  variation, plus first-party night material lifting; and
+- real east/west movement across the composition fixture, followed by a
+  nine-cell rerender and exactly one synchronized Review Map current tile.
+
+These checks run for offline and hosted builds at all four maintained
+viewports. The final subjective visual sign-off remains a separate human gate;
+automated geometry acceptance is not treated as proof of taste.

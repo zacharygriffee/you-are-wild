@@ -560,6 +560,37 @@
             padding: 8px;
         }
 
+        /* The traversal neighborhood is always a single composed surface,
+           including while its mobile presentation is off-screen at a desktop
+           breakpoint. Breakpoint rules only resize it; they do not change its
+           nine-cell topology. */
+        #mobile-mini-map {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-rows: repeat(3, minmax(0, 1fr));
+            gap: 0;
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: var(--bg-primary);
+        }
+
+        #mobile-mini-map .map-tile {
+            border: 0;
+            border-radius: 0;
+            transform: none;
+        }
+
+        #mobile-mini-map .map-tile.moveable {
+            border: 0;
+            box-shadow: none;
+        }
+
+        #mobile-mini-map .map-tile.center {
+            background: var(--bg-elevated);
+            box-shadow: inset 0 0 0 2px var(--accent-primary);
+        }
+
         .map-tile {
             background: var(--bg-tertiary);
             border: 1px solid var(--border-default);
@@ -604,7 +635,7 @@
 
         .map-tile.blocked:not(.center) {
             cursor: not-allowed;
-            opacity: 0.72;
+            opacity: 1;
             border-style: solid;
         }
 
@@ -650,6 +681,22 @@
             pointer-events: none;
         }
 
+        /* Overworld art is composed across the neighborhood, while the nine
+           controls remain separate hit targets. Let decorative cover escape
+           its owning art box so tree canopies and edge spill are not guillotined
+           at an internal cell boundary. The outer grid still clips the complete
+           3x3 surface, and every art node remains pointer-transparent. */
+        #mobile-mini-map[data-map-mode="overworld"] > .map-tile[data-tile-composition-space="overworld"],
+        .desktop-neighborhood-grid > .desktop-play-cell[data-tile-composition-space="overworld"] {
+            overflow: visible;
+        }
+
+        #mobile-mini-map[data-map-mode="overworld"] > .map-tile[data-tile-composition-space="overworld"] > .yaw-tile-art,
+        .desktop-neighborhood-grid > .desktop-play-cell[data-tile-composition-space="overworld"] > .yaw-tile-art {
+            overflow: visible;
+            z-index: auto;
+        }
+
         /* Tile Composition V2 directional terrain presentation. Simulation
            owns the topology attributes; the first-party skin only paints
            them. Multiple cliff edges compose without changing traversal. */
@@ -671,6 +718,21 @@
 
         [data-tile-composition-space="overworld"][data-visual-recipe="jungle"] .yaw-tile-art > [data-tile-composition-layer="ground"] {
             filter: saturate(1.16) brightness(0.88) contrast(1.05);
+        }
+
+        /* Darkness changes scouting mechanics, but the artwork must remain
+           readable. Lift only the first-party material/terrain planes at
+           night; markers and authored replacement-pack color grading keep
+           their own presentation. */
+        body[data-day-phase="night"] [data-tile-composition-space="overworld"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > :is(
+            [data-tile-composition-layer="ground"],
+            [data-tile-composition-layer="terrain"]
+        ) {
+            filter: brightness(1.1) saturate(1.06) contrast(1.03);
+        }
+
+        body[data-day-phase="night"] [data-tile-composition-space="overworld"][data-visual-recipe="jungle"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tile-composition-layer="ground"] {
+            filter: brightness(1.02) saturate(1.2) contrast(1.06);
         }
 
         [data-tile-composition-space="overworld"][data-cliff-edges~="north"] {
@@ -730,37 +792,25 @@
             --yaw-adjacent-fade-end: 22%;
         }
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-north"] {
+            top: -1px;
             -webkit-mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
             mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
         }
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-east"] {
+            right: -1px;
             -webkit-mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
             mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
         }
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-south"] {
+            bottom: -1px;
             -webkit-mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
             mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
         }
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-west"] {
+            left: -1px;
             -webkit-mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
             mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
         }
-
-        /* A four-cell junction selects one winning edge before paint. The
-           losing material is clipped away from that corner instead of two
-           unrelated fades producing a circular hole or muddy overlap. */
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-north"][data-edge-corners~="wn:trim"] { clip-path: polygon(22% 0, 100% 0, 100% 100%, 34% 100%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-north"][data-edge-corners~="ne:trim"] { clip-path: polygon(0 0, 78% 0, 66% 100%, 0 100%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-north"][data-edge-corners~="wn:trim"][data-edge-corners~="ne:trim"] { clip-path: polygon(22% 0, 78% 0, 66% 100%, 34% 100%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-east"][data-edge-corners~="ne:trim"] { clip-path: polygon(0 34%, 100% 22%, 100% 100%, 0 100%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-east"][data-edge-corners~="es:trim"] { clip-path: polygon(0 0, 100% 0, 100% 78%, 0 66%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-east"][data-edge-corners~="ne:trim"][data-edge-corners~="es:trim"] { clip-path: polygon(0 34%, 100% 22%, 100% 78%, 0 66%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-south"][data-edge-corners~="es:trim"] { clip-path: polygon(0 0, 66% 0, 78% 100%, 0 100%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-south"][data-edge-corners~="sw:trim"] { clip-path: polygon(34% 0, 100% 0, 100% 100%, 22% 100%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-south"][data-edge-corners~="es:trim"][data-edge-corners~="sw:trim"] { clip-path: polygon(34% 0, 66% 0, 78% 100%, 22% 100%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-west"][data-edge-corners~="sw:trim"] { clip-path: polygon(0 0, 100% 0, 100% 66%, 0 78%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-west"][data-edge-corners~="wn:trim"] { clip-path: polygon(0 22%, 100% 34%, 100% 100%, 0 100%); }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-west"][data-edge-corners~="sw:trim"][data-edge-corners~="wn:trim"] { clip-path: polygon(0 22%, 100% 34%, 100% 66%, 0 78%); }
 
         /* Full-span bridge art deliberately bleeds through the presentation
            gutter. Its transparent deck still belongs to one tile, while the
@@ -821,21 +871,25 @@
            base. The selectors are pack-scoped so authored transition art is
            never clipped by the core skin. */
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-north"] {
+            top: -1px;
             -webkit-mask-image: linear-gradient(to bottom, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
             mask-image: linear-gradient(to bottom, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
         }
 
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-east"] {
+            right: -1px;
             -webkit-mask-image: linear-gradient(to left, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
             mask-image: linear-gradient(to left, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
         }
 
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-south"] {
+            bottom: -1px;
             -webkit-mask-image: linear-gradient(to top, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
             mask-image: linear-gradient(to top, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
         }
 
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-west"] {
+            left: -1px;
             -webkit-mask-image: linear-gradient(to right, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
             mask-image: linear-gradient(to right, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
         }
@@ -1173,8 +1227,16 @@
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 4 96 50 50 96 4 50Z' fill='%2313264a' stroke='%234b84ff' stroke-width='5'/%3E%3Cpath d='M38 72h24v8H32v-8h6Zm5-38h14l5 38H38l5-38Zm-6-9h26v9H37Z' fill='%23dce9ff'/%3E%3Cpath d='M46 41h8v23h-8Z' fill='%237fb2ff'/%3E%3C/svg%3E") !important;
             background-position: center !important;
             background-repeat: no-repeat !important;
-            background-size: 62% 62% !important;
+            background-size: 58% 58% !important;
             filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.58));
+        }
+
+        /* State and POI semantics remain in the public render stack for mod
+           packs, but the bundled pack treats them as bounded map markers.
+           Current position is drawn by the owning cell ring below; hiding the
+           large atlas compass keeps the underlying material readable. */
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="state-current"] {
+            opacity: 0 !important;
         }
 
         [data-interior-theme="building"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > :is(
@@ -1190,7 +1252,7 @@
 
         :is(.mobile-play-tile-icon, .desktop-play-cell-icon, .large-map-tile-icon, .mobile-play-presence, .desktop-play-cell-label) {
             position: relative;
-            z-index: 2;
+            z-index: 850;
         }
 
         .map-visual-road,
@@ -1201,7 +1263,34 @@
         .map-visual-poi,
         .map-visual-structure,
         .map-visual-landmark {
-            box-shadow: inset 0 0 0 1px rgba(255, 184, 0, 0.25);
+            box-shadow: none;
+        }
+
+        /* Traversable neighbors keep a small, bounded cue instead of a
+           resting full-cell outline. The artwork therefore reads as one
+           surface; hover and keyboard focus still claim the whole hit target. */
+        #mobile-mini-map .map-tile.moveable:not(.center)::before,
+        .desktop-neighborhood-grid .desktop-play-cell.moveable:not(.center)::before {
+            content: "";
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(9, 9, 20, 0.68);
+            pointer-events: none;
+            z-index: 900;
+        }
+
+        #mobile-mini-map[data-map-mode="overworld"] .map-tile.center::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            box-shadow: inset 0 0 0 2px var(--accent-primary);
+            pointer-events: none;
+            z-index: 900;
         }
 
         .map-tile.has-enemy::after {
@@ -1264,6 +1353,7 @@
             background: var(--bg-tertiary);
             color: var(--text-secondary);
             font-size: 11px;
+            z-index: 900;
         }
 
         .large-map-tracked label {
@@ -1308,7 +1398,7 @@
         .large-map {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 0;
             align-items: center;
             overflow: auto;
             max-width: 100%;
@@ -1320,14 +1410,14 @@
 
         .large-map-row {
             display: flex;
-            gap: 2px;
+            gap: 0;
         }
 
         .large-map-tile {
             width: 18px;
             height: 18px;
-            border-radius: 3px;
-            border: 1px solid var(--border-subtle);
+            border-radius: 0;
+            border: 0;
             background: var(--bg-primary);
             color: var(--text-muted);
             font-size: 10px;
@@ -1345,12 +1435,12 @@
 
         button.large-map-tile:not(:disabled):focus-visible {
             outline: 2px solid var(--accent-primary);
-            outline-offset: 1px;
+            outline-offset: -2px;
             z-index: 3;
         }
 
         .large-map-tile.selected {
-            box-shadow: 0 0 0 2px var(--accent-secondary);
+            box-shadow: inset 0 0 0 2px var(--accent-secondary);
             z-index: 2;
         }
 
@@ -1371,10 +1461,17 @@
         }
 
         .large-map-tile.current {
-            background: var(--accent-primary);
-            color: var(--bg-primary);
-            border-color: var(--accent-primary);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            box-shadow: inset 0 0 0 2px var(--accent-primary);
             font-weight: 700;
+            z-index: 1;
+        }
+
+        .large-map-tile.selected.current {
+            box-shadow:
+                inset 0 0 0 2px var(--accent-primary),
+                inset 0 0 0 4px var(--accent-secondary);
         }
 
         .large-map-tile.poi::after {
@@ -1520,16 +1617,20 @@
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             grid-template-rows: repeat(3, minmax(0, 1fr));
-            gap: 6px;
+            gap: 0;
             min-width: 0;
             min-height: 0;
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: var(--bg-primary);
         }
 
         .desktop-play-cell {
             min-width: 0;
             min-height: 0;
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
+            border: 0;
+            border-radius: 0;
             background: var(--bg-tertiary);
             color: var(--text-secondary);
             display: flex;
@@ -1541,20 +1642,21 @@
 
         .desktop-play-cell.moveable {
             cursor: pointer;
-            border: 2px dashed var(--accent-primary);
+            border: 0;
             color: var(--accent-primary);
             background: var(--bg-elevated);
+            box-shadow: none;
         }
 
         .desktop-play-cell.moveable:hover {
-            background: var(--accent-primary);
-            color: var(--bg-primary);
-            box-shadow: 0 0 12px rgba(0, 212, 170, 0.3);
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            box-shadow: inset 0 0 0 3px var(--accent-primary);
         }
 
         .desktop-play-cell[data-stage-surface="traversal-cell"]:not(.moveable) {
             cursor: not-allowed;
-            opacity: 0.72;
+            opacity: 1;
         }
 
         .desktop-play-surface.combat-active .desktop-play-cell:not(.center) {
@@ -1846,26 +1948,29 @@
 
         .desktop-neighborhood-grid .desktop-play-cell.center {
             padding: 0;
-            overflow: hidden;
+            overflow: visible;
             align-items: center;
             justify-content: center;
             scroll-padding-block: 0;
-            border-color: var(--accent-primary);
             background: var(--bg-elevated);
+            box-shadow: inset 0 0 0 2px var(--accent-primary);
+            z-index: auto;
         }
 
         .desktop-neighborhood-grid .desktop-play-cell.center::after {
             content: "";
             position: absolute;
-            inset: 5px;
-            border: 1px solid rgba(0, 212, 170, 0.32);
-            border-radius: calc(var(--radius-sm) - 2px);
+            inset: 3px;
+            border: 1px solid rgba(0, 212, 170, 0.28);
+            border-radius: 0;
             pointer-events: none;
+            z-index: 900;
         }
 
         .desktop-play-cell:focus-visible {
             outline: 2px solid var(--accent-primary);
-            outline-offset: 2px;
+            outline-offset: -2px;
+            z-index: 4;
         }
 
         .desktop-play-cell-content {
@@ -7193,12 +7298,16 @@
                 display: grid;
                 grid-template-columns: repeat(3, minmax(0, 1fr));
                 grid-template-rows: repeat(3, minmax(0, 1fr));
-                gap: 4px;
+                gap: 0;
                 align-items: stretch;
                 justify-content: center;
                 align-content: stretch;
                 align-self: center;
                 padding: 0;
+                overflow: hidden;
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius-sm);
+                background: var(--bg-primary);
             }
 
             .mobile-tile-info {
@@ -7256,6 +7365,34 @@
                 min-width: 0;
                 min-height: 0;
                 font-size: 20px;
+                border: 0;
+                border-radius: 0;
+                transform: none;
+            }
+
+            .mobile-map-card .map-tile:hover {
+                border: 0;
+                transform: none;
+                box-shadow: inset 0 0 0 3px var(--accent-primary);
+            }
+
+            .mobile-map-card .map-tile.moveable {
+                border: 0;
+                background: var(--bg-elevated);
+                box-shadow: none;
+            }
+
+            .mobile-map-card .map-tile.moveable:hover {
+                background: var(--bg-elevated);
+                color: var(--text-primary);
+                box-shadow: inset 0 0 0 3px var(--accent-primary);
+            }
+
+            .mobile-map-card .map-tile:focus-visible {
+                outline: 2px solid var(--accent-primary);
+                outline-offset: -2px;
+                box-shadow: inset 0 0 0 2px var(--bg-primary);
+                z-index: 4;
             }
 
             .mobile-map-card .map-tile.center {
@@ -7263,6 +7400,8 @@
                 flex-direction: column;
                 gap: 6px;
                 overflow: hidden;
+                background: var(--bg-elevated);
+                box-shadow: inset 0 0 0 2px var(--accent-primary);
             }
 
             .mobile-play-tile-icon {
@@ -7303,18 +7442,33 @@
                 height: 44px;
                 min-width: 44px;
                 min-height: 44px;
-                border: 1px solid rgba(255, 255, 255, 0.42);
-                border-radius: 10px;
-                background: rgba(20, 20, 40, 0.72);
+                border: 0;
+                border-radius: 0;
+                background: transparent;
                 color: var(--text-primary);
                 font-size: 20px;
                 flex: 0 0 auto;
                 padding: 0;
                 line-height: 1;
-                box-shadow:
-                    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
-                    0 6px 14px rgba(0, 0, 0, 0.16);
+                box-shadow: none;
                 touch-action: manipulation;
+                position: relative;
+                --presence-border: rgba(255, 255, 255, 0.42);
+                --presence-fill: rgba(20, 20, 40, 0.72);
+            }
+
+            .mobile-play-presence-dot::before,
+            .mobile-play-presence-more::before {
+                content: "";
+                position: absolute;
+                inset: 7px;
+                border: 1px solid var(--presence-border);
+                border-radius: 8px;
+                background: var(--presence-fill);
+                box-shadow:
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+                    0 4px 10px rgba(0, 0, 0, 0.18);
+                pointer-events: none;
             }
 
             .mobile-play-presence-dot,
@@ -7326,31 +7480,31 @@
             .mobile-play-presence-dot:focus-visible,
             .mobile-play-presence-more:hover,
             .mobile-play-presence-more:focus-visible {
-                border-color: var(--accent-primary);
-                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.28);
+                --presence-border: var(--accent-primary);
+                box-shadow: none;
             }
 
             .mobile-play-presence-dot.selected {
-                border-color: var(--accent-primary);
-                background: rgba(0, 212, 170, 0.26);
-                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.36);
+                --presence-border: var(--accent-primary);
+                --presence-fill: rgba(0, 212, 170, 0.26);
+                box-shadow: none;
             }
 
             .mobile-play-presence-dot.party,
             .mobile-play-presence-dot.player {
-                border-color: rgba(0, 212, 170, 0.52);
+                --presence-border: rgba(0, 212, 170, 0.52);
             }
 
             .mobile-play-presence-dot.item {
-                border-color: rgba(255, 214, 102, 0.62);
+                --presence-border: rgba(255, 214, 102, 0.62);
             }
 
             .mobile-play-presence-dot.place {
-                border-color: rgba(147, 197, 253, 0.68);
+                --presence-border: rgba(147, 197, 253, 0.68);
             }
 
             .mobile-play-presence-dot.enemy {
-                border-color: rgba(255, 107, 157, 0.62);
+                --presence-border: rgba(255, 107, 157, 0.62);
             }
 
             @media (max-width: 380px) and (max-height: 820px) {

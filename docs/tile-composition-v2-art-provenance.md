@@ -183,3 +183,10 @@ tileset packs are not clipped and may continue to supply authored edge and
 corner artwork. Wider coordinate-derived transform signatures vary the
 placement of existing transparent identity sprites, while the seamless ground
 atlas remains untransformed so shared material edges stay pixel-compatible.
+
+The Pass 3 correction also adds no generated image or runtime atlas. It
+recomposes the existing material, relief, jungle, biome-strata, cover, and POI
+media: zero-gap surfaces, bounded state/POI presentation, shallower
+single-compositor edge polygons, deterministic secondary-family selection, and
+a first-party-only night readability filter. Replacement packs keep their
+authored current-state, POI, transition, and color-grading ownership.

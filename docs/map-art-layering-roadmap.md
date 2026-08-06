@@ -147,6 +147,17 @@ existing reviewed V3 cover sheet. Its water boundary remains a specialized
 shoreline layer rather than a generic ground spill, keeping coastal seams
 single-owned and free of repeating scallop decoration.
 
+Terrain Art Quality Pass 3 replaces the bundled skin's uniform transition
+cutoff with a deterministic five-point contour derived from the canonical
+shared-edge key. Soft biome seams retain a feathered material blend, hard
+edges remain shallow, and shoreline water follows its specialized contour
+without restoring synthetic foam. Mixed-corner trim and extend decisions now
+shape the rendered polygon as well as the serialized metadata. The contour
+mask is scoped to the bundled pack, so replacement packs keep full control of
+authored transition art. Coordinate-derived anchor, scale, rotation, flip, and
+variant signatures reduce repeated identity placement without rotating the
+seam-matched ground plane or changing any tile fact.
+
 ## Phase D — persistent tile evidence (complete baseline)
 
 - Project existing saved ground items, remains, resource depletion, placed

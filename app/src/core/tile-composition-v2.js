@@ -177,6 +177,8 @@ const YAW_TILE_COMPOSITION_V2 = {
                     mirrorDirection: this._text(entry?.mirrorDirection, '', 16),
                     style: this._text(entry?.style, 'soft', 20),
                     phase: Math.max(0, Math.min(1, this._number(entry?.phase, 0))),
+                    contour: (Array.isArray(entry?.contour) ? entry.contour : []).slice(0, 5)
+                        .map(value => Math.max(0, Math.min(1, this._number(value, 0)))),
                     corners: Object.fromEntries(Object.entries(entry?.corners || {})
                         .filter(([corner, state]) => ['ne', 'es', 'sw', 'wn'].includes(corner) && ['cap', 'extend', 'join', 'trim'].includes(state))
                         .slice(0, 4)),
@@ -373,6 +375,10 @@ const YAW_TILE_COMPOSITION_V2 = {
                         mirrorDirection: this._text(entry?.mirrorDirection, '', 16),
                         policy: this._text(entry?.policy, '', 24),
                         style: this._text(entry?.style, '', 20),
+                        phase: Math.max(0, Math.min(1, this._number(entry?.phase, 0))),
+                        depth: Math.max(0, Math.min(1, this._number(entry?.depth, 0))),
+                        contour: (Array.isArray(entry?.contour) ? entry.contour : []).slice(0, 5)
+                            .map(value => Math.max(0, Math.min(1, this._number(value, 0)))),
                         sourceBiome: this._text(entry?.sourceBiome, '', 40),
                         destinationBiome: this._text(entry?.destinationBiome, '', 40),
                         destinationOwned: Boolean(entry?.destinationOwned)

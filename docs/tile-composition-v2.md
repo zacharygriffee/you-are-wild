@@ -52,18 +52,19 @@ transparent bridge art across a visual gutter, but the cell remains the sole
 hit target and state owner.
 
 Known neighbor biome changes first produce a canonical shared-edge descriptor.
-Both cells derive the same coordinate-pair key and phase, but only the lower-
-priority destination paints the dominant material. Soft pairs receive a
-bounded `ground-transition`; hard stone/interior boundaries receive a shallow
-hard edge; equal material groups receive no redundant paint. Neither the
-descriptor nor its bitmap changes the effective biome. Structures and POIs
+Both cells derive the same coordinate-pair key, phase, depth, and bounded
+five-point contour, but only the lower-priority destination paints the dominant
+material. Soft pairs receive a bounded `ground-transition`; hard stone/interior
+boundaries receive a shallow hard edge; equal material groups receive no
+redundant paint. Neither the descriptor nor its bitmap changes the effective
+biome. Structures and POIs
 carry a bounded footprint plus passable approach edges. When several adjacent
 tiles share one feature identity, the renderer derives its local footprint
 part from those shared cardinal connections.
 
 ## Visual recipes and adjacency blending
 
-`app/src/core/tile-visual-recipes.js` Version 2 is the deterministic presentation policy
+`app/src/core/tile-visual-recipes.js` Version 3 is the deterministic presentation policy
 for the generated overworld biomes. It is intentionally separate from Biome
 Recipe V1, which can change an unmaterialized tile's effective biome. Visual
 recipes only choose bounded edge depth, decorative spill family and scale,
@@ -81,10 +82,16 @@ the existing stack:
 
 Water/land pairs use the existing `shoreline-water-*` semantics as their one
 specialized authority; they never also emit a generic water transition. The
-bundled skin no longer adds repeated scallop foam, while replacement packs can
-still author every existing edge and corner semantic. Mixed-source corners
-select one deterministic winner and trim the other edge rather than producing
-a circular hole or muddy overlap.
+bundled skin no longer adds repeated scallop foam. Instead, its water material
+and biome-transition materials follow the canonical edge contour through a
+direction-aware polygon and feathered mask. Those masks are bundled-pack-only,
+so replacement packs can still author every existing edge and corner semantic
+without core clipping. An explicitly authored shoreline edge receives the
+same coordinate-derived contour even when its neighboring tile is unavailable;
+that uses only the already-declared local overlay and reveals no hidden biome.
+Mixed-source corners select one deterministic winner
+and trim the other rendered polygon rather than producing a circular hole or
+muddy overlap.
 
 An unknown neighbor contributes nothing, so Review Map and sight-limited local
 maps cannot reveal undiscovered terrain. Spill records are always decorative:
@@ -192,7 +199,8 @@ and hosted HTTP build at 313x670, 390x844, 412x915, and 1365x768. It checks all
 three map surfaces, interiors, viewport containment, resource failures,
 pixel-matched ground edges, transparent bridge/cover/relief/jungle assets, bridge gutter
 continuity, canonical edge metadata, edge-bounded spill art, shoreline
-deduplication, absence of bundled scallop foam, jungle/plains readability,
+deduplication, bounded non-repeating contours, bundled-pack mask scoping,
+absence of bundled scallop foam, jungle/plains readability,
 biome-aware route treatment, bridge approaches, sparse evidence restoration,
 and absence of horizontal overflow.
 

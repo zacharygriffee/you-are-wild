@@ -172,3 +172,14 @@ in `cover-overlays-v3-source.png`. Water adjacency remains exclusively owned
 by the shoreline semantics, so this restrained shore detail does not restore
 the removed repeating foam/scallop treatment and does not add another embedded
 atlas.
+
+## Terrain Art Quality Pass 3 contour policy
+
+Pass 3 adds no generated image and no runtime atlas. It derives a bounded
+five-sample contour from each canonical shared-edge key and uses that contour
+to clip the existing biome or water material inside the bundled first-party
+skin. The same deterministic inputs always produce the same contour; other
+tileset packs are not clipped and may continue to supply authored edge and
+corner artwork. Wider coordinate-derived transform signatures vary the
+placement of existing transparent identity sprites, while the seamless ground
+atlas remains untransformed so shared material edges stay pixel-compatible.

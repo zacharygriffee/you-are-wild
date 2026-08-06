@@ -8,7 +8,7 @@
  */
 
 const YAW_TILE_VISUAL_RECIPES = {
-    VERSION: 2,
+    VERSION: 3,
     DIRECTIONS: Object.freeze([
         Object.freeze({ id: 'north', opposite: 'south', dx: 0, dy: -1 }),
         Object.freeze({ id: 'east', opposite: 'west', dx: 1, dy: 0 }),
@@ -140,6 +140,21 @@ const YAW_TILE_VISUAL_RECIPES = {
         return { x: inset, y: cross };
     },
 
+    _edgeContour(edgeKey, style, depth) {
+        const boundedDepth = Math.max(0.14, Math.min(0.42, Number(depth) || 0.28));
+        const amplitude = style === 'hard' ? 0.026 : (style === 'shoreline' ? 0.06 : 0.045);
+        const salts = ['bank', 'reach', 'shoal', 'notch', 'fan'];
+        const raw = Array.from({ length: 5 }, (_, index) => (
+            boundedDepth + (this._hash01(edgeKey, style, 'contour', salts[index]) - 0.5) * amplitude * 2
+        ));
+        return raw.map((value, index) => {
+            const previous = raw[Math.max(0, index - 1)];
+            const next = raw[Math.min(raw.length - 1, index + 1)];
+            const smoothed = previous * 0.2 + value * 0.6 + next * 0.2;
+            return Number(Math.max(0.12, Math.min(0.46, smoothed)).toFixed(3));
+        });
+    },
+
     _cornerJunctions(tile, resolver, paintedEdges) {
         const x = Number(tile?.x);
         const y = Number(tile?.y);
@@ -184,6 +199,10 @@ const YAW_TILE_VISUAL_RECIPES = {
         const x = Number(tile?.x);
         const y = Number(tile?.y);
         const phase = this._hash01(x, y, `${biome}-identity`);
+        const phaseY = this._hash01(x, y, `${biome}-identity-y`);
+        const scalePhase = this._hash01(x, y, `${biome}-identity-scale`);
+        const rotationPhase = this._hash01(x, y, `${biome}-identity-rotation`);
+        const variant = Math.floor(this._hash01(x, y, `${biome}-identity-variant`) * 4);
         const identity = {
             grove: { family: 'grove-identity', label: 'grove canopy', stratum: 'canopy', subLayer: 24, scale: 1.02, opacity: 0.9 },
             forest: { family: 'forest-identity', label: 'forest canopy', stratum: 'canopy', subLayer: 25, scale: 1.06, opacity: 0.92 },
@@ -197,11 +216,14 @@ const YAW_TILE_VISUAL_RECIPES = {
                 kind: 'biome-identity', id: `${biome}-identity-${x}-${y}`, label: identity.label, family: identity.family,
                 stratum: identity.stratum, subLayer: identity.subLayer,
                 anchor: {
-                    x: Number((0.42 + phase * 0.16).toFixed(3)),
-                    y: Number((0.44 + (1 - phase) * 0.12).toFixed(3))
+                    x: Number((0.34 + phase * 0.32).toFixed(3)),
+                    y: Number((0.36 + phaseY * 0.28).toFixed(3))
                 },
-                scale: identity.scale, opacity: identity.opacity,
-                rotation: Math.round(phase * 14 - 7), flipX: phase >= 0.5,
+                variant,
+                scale: Number((identity.scale * (0.9 + scalePhase * 0.2)).toFixed(3)),
+                opacity: Number((identity.opacity * (0.92 + (1 - scalePhase) * 0.08)).toFixed(3)),
+                rotation: Math.round(rotationPhase * 24 - 12),
+                flipX: this._hash01(x, y, `${biome}-identity-flip`) >= 0.5,
                 role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
             }];
         }
@@ -212,19 +234,19 @@ const YAW_TILE_VISUAL_RECIPES = {
         ];
         return [
             {
-                kind: 'biome-identity', id: `jungle-canopy-${x}-${y}`, label: 'jungle canopy', family: 'jungle-canopy',
+                kind: 'biome-identity', id: `jungle-canopy-${x}-${y}`, label: 'jungle canopy', family: 'jungle-canopy', variant,
                 stratum: 'canopy', subLayer: 30, anchor: anchors[0], scale: 1.04, opacity: 0.94,
                 rotation: Math.round(phase * 10 - 5), flipX: phase >= 0.5,
                 role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
             },
             {
-                kind: 'biome-identity', id: `jungle-undergrowth-${x}-${y}`, label: 'jungle undergrowth', family: 'jungle-undergrowth',
+                kind: 'biome-identity', id: `jungle-undergrowth-${x}-${y}`, label: 'jungle undergrowth', family: 'jungle-undergrowth', variant: (variant + 1) % 4,
                 stratum: 'undergrowth', subLayer: 20, anchor: anchors[1], scale: 0.78, opacity: 0.86,
                 rotation: Math.round((1 - phase) * 8 - 4), flipX: phase < 0.5,
                 role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
             },
             {
-                kind: 'biome-identity', id: `jungle-litter-${x}-${y}`, label: 'jungle floor', family: 'jungle-litter',
+                kind: 'biome-identity', id: `jungle-litter-${x}-${y}`, label: 'jungle floor', family: 'jungle-litter', variant: (variant + 2) % 4,
                 stratum: 'floor', subLayer: 10, anchor: { x: 0.5, y: 0.54 }, scale: 0.72, opacity: 0.68,
                 rotation: Math.round(phase * 6 - 3), flipX: phase < 0.38,
                 role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
@@ -254,6 +276,13 @@ const YAW_TILE_VISUAL_RECIPES = {
                 if (policy.style === 'none') continue;
                 const phase = Number(this._hash01(sharedEdgeKey, policy.sourceBiome, 'phase').toFixed(6));
                 const destinationOwned = policy.destinationBiome === currentBiome;
+                const sourceProfile = this.profile(policy.sourceBiome);
+                const destinationProfile = this.profile(policy.destinationBiome);
+                const depth = policy.kind === 'shoreline'
+                    ? Math.max(0.3, Math.min(0.4, destinationProfile.edgeDepth + 0.08))
+                    : (policy.style === 'hard'
+                        ? Math.min(0.22, Math.max(sourceProfile.edgeDepth, destinationProfile.edgeDepth))
+                        : Math.max(sourceProfile.edgeDepth, destinationProfile.edgeDepth));
                 const descriptor = {
                     sharedEdgeKey,
                     direction: direction.id,
@@ -264,19 +293,16 @@ const YAW_TILE_VISUAL_RECIPES = {
                     policy: policy.kind,
                     style: policy.style,
                     phase,
+                    depth: Number(depth.toFixed(3)),
+                    contour: this._edgeContour(sharedEdgeKey, policy.style, depth),
                     destinationOwned,
                     corners: {}
                 };
                 sharedEdges.push(descriptor);
                 if (!destinationOwned || policy.kind !== 'ground-transition') continue;
-                const sourceProfile = this.profile(policy.sourceBiome);
-                const destinationProfile = this.profile(policy.destinationBiome);
                 const transition = {
                     ...descriptor,
                     biome: policy.sourceBiome,
-                    depth: policy.style === 'hard'
-                        ? Math.min(0.22, Math.max(sourceProfile.edgeDepth, destinationProfile.edgeDepth))
-                        : Math.max(sourceProfile.edgeDepth, destinationProfile.edgeDepth),
                     opacity: policy.style === 'hard'
                         ? 0.94
                         : Number(((sourceProfile.spillOpacity + destinationProfile.spillOpacity) / 2).toFixed(3))
@@ -308,6 +334,37 @@ const YAW_TILE_VISUAL_RECIPES = {
                     sourceBiome: policy.sourceBiome,
                     sourceDirection: direction.id,
                     destinationOwned: true
+                });
+            }
+        }
+        const explicitShorelineEdges = Array.isArray(tile?.overlays?.shoreline?.edges)
+            ? new Set(tile.overlays.shoreline.edges.map(String))
+            : new Set();
+        if (currentBiome !== 'water' && Number.isFinite(x) && Number.isFinite(y)) {
+            for (const direction of this.DIRECTIONS) {
+                if (!explicitShorelineEdges.has(direction.id)
+                    || sharedEdges.some(edge => edge.direction === direction.id && edge.policy === 'shoreline')) continue;
+                // Explicit shoreline topology already declares water at this edge. Give
+                // that authored fact the same contour authority without resolving or
+                // exposing any otherwise unknown neighboring tile.
+                const neighborX = x + direction.dx;
+                const neighborY = y + direction.dy;
+                const sharedEdgeKey = this._sharedEdgeKey(x, y, neighborX, neighborY);
+                const depth = Math.max(0.3, Math.min(0.4, currentProfile.edgeDepth + 0.08));
+                sharedEdges.push({
+                    sharedEdgeKey,
+                    direction: direction.id,
+                    mirrorDirection: direction.opposite,
+                    neighborBiome: 'water',
+                    sourceBiome: 'water',
+                    destinationBiome: currentBiome,
+                    policy: 'shoreline',
+                    style: 'shoreline',
+                    phase: Number(this._hash01(sharedEdgeKey, 'water', 'phase').toFixed(6)),
+                    depth: Number(depth.toFixed(3)),
+                    contour: this._edgeContour(sharedEdgeKey, 'shoreline', depth),
+                    destinationOwned: true,
+                    corners: {}
                 });
             }
         }

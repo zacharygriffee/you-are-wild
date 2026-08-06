@@ -200,7 +200,10 @@ async function readOverworldAcceptance(page) {
       ? document.querySelector('.mobile-map-card')
       : document.querySelector('.desktop-play-surface');
     const rect = activeSurface?.getBoundingClientRect();
-    const shorelineLayer = document.querySelector('[data-tileset-semantic-key^="shoreline-water-"]');
+    const transitionLayer = document.querySelector('[data-edge-profile="ground-transition"]');
+    const shorelineLayer = document.querySelector('[data-edge-profile="shoreline"]');
+    const transitionStyle = transitionLayer ? getComputedStyle(transitionLayer) : null;
+    const shorelineStyle = shorelineLayer ? getComputedStyle(shorelineLayer) : null;
     const shorelineFoamContent = shorelineLayer ? getComputedStyle(shorelineLayer, '::after').content : '';
     const duplicateWaterBlend = [...document.querySelectorAll('[data-shoreline-edges]')].some(element => String(element.getAttribute('data-ground-transitions') || '').includes(':water'));
     return {
@@ -227,6 +230,13 @@ async function readOverworldAcceptance(page) {
       coverSpills: transitionSnapshot.layers.cover.records.filter(record => record.kind === 'adjacent-spill'),
       transitionEdges: transitionSnapshot.layers.terrain.records.find(record => record.kind === 'ground-transition')?.edges || [],
       transitionJunctions: transitionSnapshot.facts.adjacency.junctions,
+      transitionRecipeVersion: transitionSnapshot.facts.presentationRecipeVersion,
+      transitionContour: transitionLayer?.getAttribute('data-edge-contour') || '',
+      transitionClipPath: transitionStyle?.clipPath || '',
+      transitionMaskImage: transitionStyle?.maskImage || transitionStyle?.webkitMaskImage || '',
+      shorelineContour: shorelineLayer?.getAttribute('data-edge-contour') || '',
+      shorelineClipPath: shorelineStyle?.clipPath || '',
+      shorelineMaskImage: shorelineStyle?.maskImage || shorelineStyle?.webkitMaskImage || '',
       shorelineFoamContent,
       duplicateWaterBlend,
       jungleIdentityCounts: {
@@ -375,6 +385,14 @@ async function readGeneratedWorldAcceptance(page) {
     const poiLayers = YAW_TILESET_RUNTIME.layersForVisual(poiVisual).layers;
     const order = ['ground', 'terrain', 'route', 'cover', 'feature', 'evidence', 'presence', 'state'];
     const sorted = layers => layers.every((layer, index) => !index || order.indexOf(layers[index - 1].compositionLayer) <= order.indexOf(layer.compositionLayer));
+    const identitySignatures = new Set(tiles.filter(tile => tile.derivedBiome === 'plains').slice(0, 24).map(tile => {
+      const identity = YAW_TILE_VISUAL_RECIPES.compose(tile, () => null).cover.find(record => record.kind === 'biome-identity');
+      return identity ? [identity.anchor.x, identity.anchor.y, identity.scale, identity.rotation, identity.flipX, identity.variant].join(':') : '';
+    }).filter(Boolean));
+    const contourSignatures = new Set(tiles.slice(0, 160).flatMap(tile => {
+      const visual = visualFor(tile);
+      return visual.adjacencyBlend.sharedEdges.filter(edge => edge.destinationOwned).map(edge => edge.contour.join(','));
+    }));
     return {
       generatedTileCount: tiles.length,
       generatedCoverCount: tiles.filter(tile => tile.overlays?.cover?.length).length,
@@ -386,6 +404,8 @@ async function readGeneratedWorldAcceptance(page) {
       transitionSpills: transitionVisual.composition.layers.cover.records.filter(record => record.kind === 'adjacent-spill'),
       transitionSpillArt: transitionLayers.filter(layer => layer.compositionLayer === 'cover' && layer.recordIndex !== undefined).length,
       transitionArt: transitionLayers.some(layer => layer.semanticKey.startsWith('ground-transition-')),
+      identitySignatureCount: identitySignatures.size,
+      contourSignatureCount: contourSignatures.size,
       poiGroundLayer: poiLayers.some(layer => layer.compositionLayer === 'ground'),
       poiFeatureLayer: poiLayers.some(layer => layer.compositionLayer === 'feature'),
       poiGrounding: poiVisual.composition.layers.feature.records.some(record => record.kind === 'feature-grounding'),
@@ -504,6 +524,11 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert(overworld.coverSpills.length >= 1 && overworld.coverSpills.every(record => record.destinationOwned && !record.mechanical && record.edgeBand), `${prefix}: a soft dominant neighbor should contribute only edge-bounded destination-owned spill`);
     assert(overworld.transitionEdges.length >= 1 && overworld.transitionEdges.every(edge => edge.sharedEdgeKey && edge.style), `${prefix}: rendered terrain transitions should retain canonical seam metadata`);
     assert(overworld.transitionJunctions.length === 4, `${prefix}: the destination snapshot should publish all four eight-neighbor junction decisions`);
+    assert.strictEqual(overworld.transitionRecipeVersion, 3, `${prefix}: map-scene snapshots should advertise visual recipe Version 3`);
+    assert.strictEqual(overworld.transitionContour.split(' ').length, 5, `${prefix}: rendered soft transitions should expose their five-point deterministic contour`);
+    assert(overworld.transitionClipPath.startsWith('polygon(') && overworld.transitionMaskImage !== 'none', `${prefix}: bundled soft transitions should combine a contour polygon with a feathered material mask`);
+    assert.strictEqual(overworld.shorelineContour.split(' ').length, 5, `${prefix}: specialized water-land seams should expose their canonical contour`);
+    assert(overworld.shorelineClipPath.startsWith('polygon(') && overworld.shorelineMaskImage !== 'none', `${prefix}: bundled shoreline water should follow the canonical contour through its specialized mask`);
     assert(['none', 'normal', ''].includes(overworld.shorelineFoamContent), `${prefix}: bundled shoreline paint must not restore the removed repeating scallop pseudo-element`);
     assert.strictEqual(overworld.duplicateWaterBlend, false, `${prefix}: a shoreline cell must not also render a generic water transition`);
     assert(overworld.jungleIdentityCounts.mobile >= 3 && overworld.jungleIdentityCounts.desktop >= 3 && overworld.jungleIdentityCounts.large >= 3, `${prefix}: jungle canopy, undergrowth, and litter strata must reach every map surface`);
@@ -543,6 +568,8 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert(generated.transitionRecords.length > 0 && generated.transitionArt, `${prefix}: adjacent generated biomes should produce terrain transition records and art`);
     assert(generated.transitionSpills.length > 0 && generated.transitionSpills.every(record => record.destinationOwned && !record.mechanical), `${prefix}: generated adjacency should add only destination-owned decorative cover spill`);
     assert(generated.transitionSpillArt >= generated.transitionSpills.length, `${prefix}: every generated adjacency spill should resolve through dynamic cover art`);
+    assert(generated.identitySignatureCount >= 8, `${prefix}: generated plains identity art should receive broad deterministic coordinate variation`);
+    assert(generated.contourSignatureCount >= 8, `${prefix}: generated shared edges should not repeat one transition contour`);
     assert(generated.poiGroundLayer && generated.poiFeatureLayer && generated.poiGrounding && generated.poiSorted, `${prefix}: generated POIs should retain ground and biome grounding beneath a later transparent feature layer`);
 
     await seedInteriorLab(page);

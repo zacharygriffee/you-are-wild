@@ -138,3 +138,30 @@ The maintained Alpha matrix additionally proves all nine route cells retain a
 route deck plus biome-aware underlay, all nine structure cells and all nine POI
 cells retain destination ground plus grounding records, and the reviewed coast
 does not receive duplicate generic water-transition paint.
+
+### Terrain Art Quality Pass 3 review — 2026-08-06
+
+The rebuilt `terrain-composition` mission was inspected again in the in-app
+browser at the default 1280x720 desktop viewport and at 390x844 mobile. The
+review covered the centered 3x3 surface and the full 17x17 Review Map.
+
+- Canonical material seams render as bounded direction-aware polygons with a
+  feathered material mask; mixed-corner trim and extend decisions visibly
+  affect the polygon instead of remaining metadata-only.
+- The desktop gallery rendered 80 soft/hard transition layers and 28
+  specialized shoreline layers. After correcting correlated contour salts, 56
+  transition layers and 20 shoreline layers showed at least 0.025 normalized
+  depth variation; maximum observed spreads were 0.074 and 0.095.
+- Water/land boundaries retain one shoreline owner, omit synthetic foam, and
+  do not also receive generic water-transition paint.
+- The 390x844 3x3 surface contained all visible five-point contours without
+  horizontal overflow. The mobile Review Map contained 289 V2 cells and 90
+  contour layers inside its 332px map width without overflow.
+- Existing identity sprites show coordinate-derived placement, scale,
+  rotation, flip, and variant signatures. The seam-matched ground plane remains
+  untransformed, preserving material continuity.
+
+Automated acceptance repeats the file and hosted paths at all four maintained
+viewports and asserts computed polygon clipping, feathered masks, contour
+serialization, non-repeating generated samples, and bundled-pack-only mask
+ownership.

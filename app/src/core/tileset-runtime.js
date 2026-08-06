@@ -233,12 +233,60 @@ const YAW_TILESET_RUNTIME = {
     },
 
     _transitionMetadata(visual, semanticKey) {
-        const match = String(semanticKey || '').match(/^ground-transition-(.+)-(north|east|south|west)$/);
-        if (!match) return null;
-        const [, biome, direction] = match;
-        return (visual?.adjacencyBlend?.terrain || []).find(entry => (
-            String(entry?.biome || entry?.sourceBiome) === biome && String(entry?.direction) === direction
-        )) || null;
+        const value = String(semanticKey || '');
+        const groundMatch = value.match(/^ground-transition-(.+)-(north|east|south|west)$/);
+        if (groundMatch) {
+            const [, biome, direction] = groundMatch;
+            const metadata = (visual?.adjacencyBlend?.terrain || []).find(entry => (
+                String(entry?.biome || entry?.sourceBiome) === biome && String(entry?.direction) === direction
+            ));
+            return metadata ? { ...metadata, kind: 'ground-transition' } : null;
+        }
+        const shorelineMatch = value.match(/^shoreline-water-(north|east|south|west)$/);
+        if (!shorelineMatch) return null;
+        const direction = shorelineMatch[1];
+        const metadata = (visual?.adjacencyBlend?.sharedEdges || []).find(entry => (
+            entry?.policy === 'shoreline' && entry?.destinationOwned && String(entry?.direction) === direction
+        ));
+        return metadata ? { ...metadata, kind: 'shoreline' } : null;
+    },
+
+    _edgeClipPath(metadata = {}) {
+        const direction = String(metadata?.direction || '');
+        const contour = (Array.isArray(metadata?.contour) ? metadata.contour : [])
+            .slice(0, 5)
+            .map(value => Math.max(0.12, Math.min(0.46, Number(value) || 0)));
+        if (!['north', 'east', 'south', 'west'].includes(direction) || contour.length !== 5) return '';
+        const endpointCorners = {
+            north: ['wn', 'ne'], east: ['ne', 'es'], south: ['sw', 'es'], west: ['wn', 'sw']
+        }[direction];
+        const cornerState = endpointCorners.map(corner => String(metadata?.corners?.[corner] || ''));
+        const edgeStart = cornerState[0] === 'trim' ? 0.18 : 0;
+        const edgeEnd = cornerState[1] === 'trim' ? 0.82 : 1;
+        const contourStart = cornerState[0] === 'trim' ? 0.3 : 0;
+        const contourEnd = cornerState[1] === 'trim' ? 0.7 : 1;
+        const adjustedDepth = contour.map((value, index) => {
+            const state = index === 0 ? cornerState[0] : (index === 4 ? cornerState[1] : '');
+            const extension = state === 'extend' ? 0.045 : (state === 'join' ? 0.025 : 0);
+            return Math.max(0.12, Math.min(0.48, value + extension));
+        });
+        const crossValues = Array.from({ length: 5 }, (_, index) => contourStart + (contourEnd - contourStart) * index / 4);
+        const percent = value => Number((value * 100).toFixed(1));
+        const edgePoint = cross => {
+            if (direction === 'north') return `${percent(cross)}% 0%`;
+            if (direction === 'east') return `100% ${percent(cross)}%`;
+            if (direction === 'south') return `${percent(cross)}% 100%`;
+            return `0% ${percent(cross)}%`;
+        };
+        const contourPoint = (cross, depth) => {
+            if (direction === 'north') return `${percent(cross)}% ${percent(depth)}%`;
+            if (direction === 'east') return `${percent(1 - depth)}% ${percent(cross)}%`;
+            if (direction === 'south') return `${percent(cross)}% ${percent(1 - depth)}%`;
+            return `${percent(depth)}% ${percent(cross)}%`;
+        };
+        const points = [edgePoint(edgeStart), edgePoint(edgeEnd)];
+        for (let index = 4; index >= 0; index--) points.push(contourPoint(crossValues[index], adjustedDepth[index]));
+        return `polygon(${points.join(', ')})`;
     },
 
     _dynamicLayerRequests(visual = {}) {
@@ -323,6 +371,7 @@ const YAW_TILESET_RUNTIME = {
                     compositionLayer: this._compositionLayerForKey(semanticKey),
                     compositionSubLayer: this._compositionSubRankForKey(semanticKey),
                     transitionMetadata: this._transitionMetadata(visual, semanticKey),
+                    packId: resolved.pack.id,
                     url: atlas.url,
                     cssImage: atlas.cssImage,
                     atlasWidth: atlas.width,
@@ -349,6 +398,7 @@ const YAW_TILESET_RUNTIME = {
                     stratum: request.stratum,
                     edgeBand: request.edgeBand,
                     sharedEdgeKey: request.sharedEdgeKey,
+                    packId: resolved.pack.id,
                     url: atlas.url,
                     cssImage: atlas.cssImage,
                     atlasWidth: atlas.width,
@@ -381,6 +431,12 @@ const YAW_TILESET_RUNTIME = {
         const scaleX = Boolean(layer.transform.flipX) !== Boolean(layer.placement?.flipX) ? -1 : 1;
         const scaleY = layer.transform.flipY ? -1 : 1;
         const placement = layer.placement;
+        const contour = Array.isArray(layer.transitionMetadata?.contour) ? layer.transitionMetadata.contour : [];
+        const contourClip = layer.packId === 'yaw.default-basic-v1' ? this._edgeClipPath(layer.transitionMetadata) : '';
+        const contourStyles = contourClip ? [
+            `--yaw-edge-fade-end:${Math.max(...contour.map(value => Number(value) || 0), 0.28) * 100}%`,
+            `clip-path:${contourClip}`
+        ] : [];
         const placementStyles = placement ? [
             'inset:auto',
             `left:${(placement.x - placement.scale / 2) * 100}%`,
@@ -390,6 +446,7 @@ const YAW_TILESET_RUNTIME = {
         ] : [];
         return [
             ...placementStyles,
+            ...contourStyles,
             `background-image:${layer.cssImage || `url("${this._styleUrl(layer.url)}")`}`,
             `background-size:${sizeX}% ${sizeY}%`,
             `background-position:${positionX}% ${positionY}%`,
@@ -413,7 +470,7 @@ const YAW_TILESET_RUNTIME = {
             const subLayer = app._escapeHtml(String(layer.compositionSubLayer ?? 0));
             const transition = layer.transitionMetadata;
             const edgeAttrs = transition
-                ? ` data-shared-edge-key="${app._escapeHtml(transition.sharedEdgeKey || '')}" data-edge-blend-style="${app._escapeHtml(transition.style || 'soft')}" data-edge-corners="${app._escapeHtml(Object.entries(transition.corners || {}).map(([corner, state]) => `${corner}:${state}`).join(' '))}"`
+                ? ` data-shared-edge-key="${app._escapeHtml(transition.sharedEdgeKey || '')}" data-edge-profile="${app._escapeHtml(transition.kind || 'ground-transition')}" data-edge-blend-style="${app._escapeHtml(transition.style || 'soft')}" data-edge-phase="${Number(transition.phase || 0).toFixed(6)}" data-edge-contour="${app._escapeHtml((transition.contour || []).join(' '))}" data-edge-corners="${app._escapeHtml(Object.entries(transition.corners || {}).map(([corner, state]) => `${corner}:${state}`).join(' '))}"`
                 : '';
             const coverAttrs = layer.recordKind
                 ? ` data-cover-kind="${app._escapeHtml(layer.recordKind)}" data-cover-stratum="${app._escapeHtml(layer.stratum || '')}" data-edge-band="${app._escapeHtml(layer.edgeBand || '')}"${layer.sharedEdgeKey ? ` data-shared-edge-key="${app._escapeHtml(layer.sharedEdgeKey)}"` : ''}`

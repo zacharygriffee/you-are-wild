@@ -27,11 +27,15 @@ This is a compact history of completed foundations. Git remains the authoritativ
 - Per-biome visual recipes now derive canonical shared-edge keys, one painted
   destination, and eight-neighbor junction decisions without changing the
   resolved biome or save schema. Water/land uses one shoreline authority and
-  the bundled repeating scallop foam is removed; hard boundaries suppress
+  the bundled repeating scallop foam is removed. Deterministic five-point
+  contours now shape soft, hard, shoreline, and mixed-corner pixels while
+  remaining scoped away from replacement-pack art; hard boundaries suppress
   unrelated foliage, soft spill remains edge-bounded, and static jungle
-  canopy/undergrowth reads distinctly from open plains. One sub-layer order
-  reaches local and Review Map surfaces, while enforced artifact ceilings keep
-  the richer static composition inside the existing atlas budget.
+  canopy/undergrowth reads distinctly from open plains. Broader deterministic
+  identity transforms reduce obvious repetition without rotating the seamless
+  ground plane. One sub-layer order reaches local and Review Map surfaces,
+  while enforced artifact ceilings keep the richer static composition inside
+  the existing atlas budget.
 
 - Licensing is explicitly versioned: the annotated `v0.18.2` tag preserves
   the final MIT-licensed revision, while `v0.18.3` and later use PolyForm

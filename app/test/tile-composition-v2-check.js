@@ -14,6 +14,7 @@ const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 
 const runtime = new Function('YAW_TILESET_PACK_V1', `${runtimeSource}\nreturn YAW_TILESET_RUNTIME;`)({ LAYER_SLOTS: ['base', 'route', 'feature', 'marker', 'presence'] });
 const worldGenerationSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'world-generation.js'), 'utf8');
 const worldGeneration = new Function(`${worldGenerationSource}\nreturn WorldGen;`)();
+const templateSource = fs.readFileSync(path.join(__dirname, '..', 'template.html'), 'utf8');
 
 let passed = 0;
 const check = (condition, message) => {
@@ -109,7 +110,7 @@ check(crowded.layers.evidence.omitted === 6, 'Crowded evidence must report omitt
 const longLabel = composition.snapshot(null, { items: [{ id: 'long', name: 'x'.repeat(1000) }] });
 check(longLabel.layers.evidence.records[0].label.length === 160, 'Snapshot scalar text must be bounded');
 check(!JSON.stringify(first).includes('function'), 'Snapshot must contain data, never executable rendering callbacks');
-check(visualRecipes.VERSION === 2 && ['grove', 'forest', 'swamp', 'plains', 'jungle', 'beach', 'cliff', 'water'].every(biome => visualRecipes.PROFILES[biome]), 'Visual recipes must cover every generated overworld biome');
+check(visualRecipes.VERSION === 3 && ['grove', 'forest', 'swamp', 'plains', 'jungle', 'beach', 'cliff', 'water'].every(biome => visualRecipes.PROFILES[biome]), 'Visual recipes must cover every generated overworld biome');
 check(JSON.stringify(visualRecipes.compose(tile, () => null, { routeShape: 'horizontal' })) === JSON.stringify(visualRecipes.compose(JSON.parse(JSON.stringify(tile)), () => null, { routeShape: 'horizontal' })), 'Visual recipe composition must be deterministic for equivalent input');
 
 const app = {
@@ -164,9 +165,23 @@ check(adjacentSpill?.sourceBiome === 'jungle' && adjacentSpill.sourceDirection =
 const destinationEdge = adjacentVisual.adjacencyBlend.sharedEdges[0];
 const sourceEdge = mirroredVisual.adjacencyBlend.sharedEdges[0];
 check(destinationEdge.sharedEdgeKey === sourceEdge.sharedEdgeKey && destinationEdge.direction === sourceEdge.mirrorDirection && destinationEdge.phase === sourceEdge.phase, 'Both sides of a shared edge must observe one canonical key, mirrored direction, and phase');
+check(destinationEdge.contour.length === 5 && destinationEdge.contour.every(value => value >= 0.12 && value <= 0.46), 'Canonical soft seams must publish a bounded five-point contour');
+check(destinationEdge.contour.join(',') === sourceEdge.contour.join(','), 'Both sides of a shared edge must observe the same deterministic contour');
 check(destinationEdge.destinationOwned && !sourceEdge.destinationOwned && mirroredVisual.groundTransitions.length === 0, 'Exactly one side of a shared seam may paint the dominant material');
-check(adjacentVisual.composition.facts.presentationRecipeVersion === 2, 'Composition facts must advertise the applied visual recipe version without changing save schema');
+check(adjacentVisual.composition.facts.presentationRecipeVersion === 3, 'Composition facts must advertise the applied visual recipe version without changing save schema');
 check(adjacentVisual.composition.facts.adjacency.sharedEdges[0].key === destinationEdge.sharedEdgeKey, 'The serializable snapshot must expose bounded canonical seam evidence');
+check(adjacentVisual.composition.facts.adjacency.sharedEdges[0].contour.join(',') === destinationEdge.contour.join(','), 'The serializable snapshot must retain the canonical seam contour');
+check(adjacentVisual.composition.layers.terrain.records.find(record => record.kind === 'ground-transition')?.edges[0].contour.length === 5, 'Ground-transition records must carry the same bounded contour to render adapters');
+check(runtime._edgeClipPath(destinationEdge).startsWith('polygon(') && runtime._edgeClipPath(destinationEdge).split(',').length === 7, 'The bundled runtime must convert a five-point seam into a direction-aware contour polygon');
+const contourLayer = {
+  rect: { x: 0, y: 0, width: 256, height: 256 }, atlasWidth: 256, atlasHeight: 256,
+  cssImage: 'none', scaling: 'smooth', opacity: 1, blend: 'normal', z: 0,
+  anchor: { x: 0.5, y: 0.5 }, transform: { rotate: 0, flipX: false, flipY: false },
+  compositionLayer: 'terrain', compositionSubLayer: 10, transitionMetadata: destinationEdge
+};
+check(runtime._layerStyle({ ...contourLayer, packId: 'yaw.default-basic-v1' }).includes('clip-path:polygon(')
+  && !runtime._layerStyle({ ...contourLayer, packId: 'mod.authored-transitions' }).includes('clip-path:'), 'Canonical contour clipping must apply only to the bundled skin and leave replacement-pack artwork untouched');
+check(!templateSource.includes('.yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"]'), 'Bundled material masks must not use an unscoped selector that clips authored replacement-pack transitions');
 check(visuals.mapTileAttrs(app, adjacentVisual).includes('data-shared-edge-keys="edge:7,-3&gt;8,-3"') || visuals.mapTileAttrs(app, adjacentVisual).includes('data-shared-edge-keys="edge:7,-3>8,-3"'), 'Rendered cells must expose canonical shared-edge identity');
 const hiddenNeighborVisual = visuals.mapTileVisual(app, { ...tile, biome: 'jungle', derivedBiome: 'jungle', overlays: {} }, { neighborResolver: () => null });
 check(!hiddenNeighborVisual.composition.layers.cover.records.some(record => record.kind === 'adjacent-spill'), 'Unknown neighbors must not leak cover or biome details into a visible destination');
@@ -177,6 +192,14 @@ const shoreVisual = visuals.mapTileVisual(app, shoreLand, { neighborResolver: (x
 check(shoreVisual.shorelineEdges.join(',') === 'east' && shoreVisual.semanticKeys.includes('shoreline-water-east'), 'Visible water must resolve through the specialized shoreline authority');
 check(!shoreVisual.semanticKeys.includes('ground-transition-water-east') && shoreVisual.groundTransitions.length === 0, 'Water and land must never receive duplicate generic adjacency paint');
 check(shoreVisual.adjacencyBlend.sharedEdges[0].policy === 'shoreline' && shoreVisual.adjacencyBlend.sharedEdges[0].destinationOwned, 'The land cell must own the canonical water shoreline seam');
+const shorelineMetadata = runtime._transitionMetadata(shoreVisual, 'shoreline-water-east');
+check(shorelineMetadata?.kind === 'shoreline' && shorelineMetadata.contour.length === 5 && runtime._edgeClipPath(shorelineMetadata).startsWith('polygon('), 'Specialized shoreline semantics must use their canonical contour instead of generic transition paint');
+const explicitShoreVisual = visuals.mapTileVisual(app, {
+  ...shoreLand,
+  overlays: { shoreline: { edges: ['north'] } }
+}, { neighborResolver: () => null });
+const explicitShoreMetadata = runtime._transitionMetadata(explicitShoreVisual, 'shoreline-water-north');
+check(explicitShoreMetadata?.contour.length === 5 && explicitShoreMetadata.destinationOwned, 'Authored shoreline topology must retain canonical contour authority when the neighboring tile is unavailable');
 
 const hardVisual = visuals.mapTileVisual(app, { ...plainsTile, x: 0, y: 0 }, {
   neighborResolver: (x, y) => x === 1 && y === 0 ? { x, y, biome: 'cliff', derivedBiome: 'cliff', overlays: {} } : null
@@ -208,6 +231,13 @@ check(jungleIdentity.cover.filter(record => record.kind === 'biome-identity').ma
 check(jungleIdentity.cover.filter(record => record.kind === 'biome-identity').map(record => record.family).join(',') === 'jungle-canopy,jungle-undergrowth,jungle-litter', 'Jungle strata must resolve independently replaceable first-party overlay semantics');
 check(plainsIdentity.cover.filter(record => record.kind === 'biome-identity').length === 1, 'Plains must receive one restrained identity overlay instead of inheriting jungle density');
 check(identityFamilies.every(([biome, identity]) => identity?.family === `${biome}-identity` && !identity.mechanical && !identity.blocksMovement && !identity.blocksSight), 'Remaining biome identity art must use independently replaceable, presentation-only semantics');
+const plainsVariation = Array.from({ length: 8 }, (_, index) => visualRecipes.compose({
+  ...plainsTile, x: index, y: index * -2, overlays: {}
+}, () => null).cover.find(record => record.kind === 'biome-identity'));
+const variationSignatures = new Set(plainsVariation.map(record => [
+  record.anchor.x, record.anchor.y, record.scale, record.rotation, record.flipX, record.variant
+].join(':')));
+check(variationSignatures.size >= 6, 'Repeated biome identity art must receive broad deterministic placement, scale, rotation, flip, and variant signatures');
 
 const clearanceTile = {
   ...tile,

@@ -726,41 +726,41 @@
         :is([data-visual-recipe="plains"], [data-visual-recipe="beach"], [data-visual-recipe="sand"]) {
             --yaw-adjacent-fade-end: 28%;
         }
-        .yaw-tile-art > [data-edge-blend-style="hard"] {
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-edge-blend-style="hard"] {
             --yaw-adjacent-fade-end: 22%;
         }
-        .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-north"] {
-            -webkit-mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
-            mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-north"] {
+            -webkit-mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
+            mask-image: linear-gradient(to bottom, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
         }
-        .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-east"] {
-            -webkit-mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
-            mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-east"] {
+            -webkit-mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
+            mask-image: linear-gradient(to left, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
         }
-        .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-south"] {
-            -webkit-mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
-            mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-south"] {
+            -webkit-mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
+            mask-image: linear-gradient(to top, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
         }
-        .yaw-tile-art > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-west"] {
-            -webkit-mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
-            mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-adjacent-fade-end));
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="ground-transition-"][data-tileset-semantic-key$="-west"] {
+            -webkit-mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
+            mask-image: linear-gradient(to right, #000 0 8%, rgba(0, 0, 0, 0.72) 18%, transparent var(--yaw-edge-fade-end, var(--yaw-adjacent-fade-end)));
         }
 
         /* A four-cell junction selects one winning edge before paint. The
            losing material is clipped away from that corner instead of two
            unrelated fades producing a circular hole or muddy overlap. */
-        .yaw-tile-art > [data-tileset-semantic-key$="-north"][data-edge-corners~="wn:trim"] { clip-path: polygon(22% 0, 100% 0, 100% 100%, 34% 100%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-north"][data-edge-corners~="ne:trim"] { clip-path: polygon(0 0, 78% 0, 66% 100%, 0 100%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-north"][data-edge-corners~="wn:trim"][data-edge-corners~="ne:trim"] { clip-path: polygon(22% 0, 78% 0, 66% 100%, 34% 100%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-east"][data-edge-corners~="ne:trim"] { clip-path: polygon(0 34%, 100% 22%, 100% 100%, 0 100%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-east"][data-edge-corners~="es:trim"] { clip-path: polygon(0 0, 100% 0, 100% 78%, 0 66%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-east"][data-edge-corners~="ne:trim"][data-edge-corners~="es:trim"] { clip-path: polygon(0 34%, 100% 22%, 100% 78%, 0 66%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-south"][data-edge-corners~="es:trim"] { clip-path: polygon(0 0, 66% 0, 78% 100%, 0 100%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-south"][data-edge-corners~="sw:trim"] { clip-path: polygon(34% 0, 100% 0, 100% 100%, 22% 100%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-south"][data-edge-corners~="es:trim"][data-edge-corners~="sw:trim"] { clip-path: polygon(34% 0, 66% 0, 78% 100%, 22% 100%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-west"][data-edge-corners~="sw:trim"] { clip-path: polygon(0 0, 100% 0, 100% 66%, 0 78%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-west"][data-edge-corners~="wn:trim"] { clip-path: polygon(0 22%, 100% 34%, 100% 100%, 0 100%); }
-        .yaw-tile-art > [data-tileset-semantic-key$="-west"][data-edge-corners~="sw:trim"][data-edge-corners~="wn:trim"] { clip-path: polygon(0 22%, 100% 34%, 100% 66%, 0 78%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-north"][data-edge-corners~="wn:trim"] { clip-path: polygon(22% 0, 100% 0, 100% 100%, 34% 100%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-north"][data-edge-corners~="ne:trim"] { clip-path: polygon(0 0, 78% 0, 66% 100%, 0 100%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-north"][data-edge-corners~="wn:trim"][data-edge-corners~="ne:trim"] { clip-path: polygon(22% 0, 78% 0, 66% 100%, 34% 100%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-east"][data-edge-corners~="ne:trim"] { clip-path: polygon(0 34%, 100% 22%, 100% 100%, 0 100%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-east"][data-edge-corners~="es:trim"] { clip-path: polygon(0 0, 100% 0, 100% 78%, 0 66%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-east"][data-edge-corners~="ne:trim"][data-edge-corners~="es:trim"] { clip-path: polygon(0 34%, 100% 22%, 100% 78%, 0 66%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-south"][data-edge-corners~="es:trim"] { clip-path: polygon(0 0, 66% 0, 78% 100%, 0 100%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-south"][data-edge-corners~="sw:trim"] { clip-path: polygon(34% 0, 100% 0, 100% 100%, 22% 100%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-south"][data-edge-corners~="es:trim"][data-edge-corners~="sw:trim"] { clip-path: polygon(34% 0, 66% 0, 78% 100%, 22% 100%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-west"][data-edge-corners~="sw:trim"] { clip-path: polygon(0 0, 100% 0, 100% 66%, 0 78%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-west"][data-edge-corners~="wn:trim"] { clip-path: polygon(0 22%, 100% 34%, 100% 100%, 0 100%); }
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key$="-west"][data-edge-corners~="sw:trim"][data-edge-corners~="wn:trim"] { clip-path: polygon(0 22%, 100% 34%, 100% 66%, 0 78%); }
 
         /* Full-span bridge art deliberately bleeds through the presentation
            gutter. Its transparent deck still belongs to one tile, while the
@@ -821,54 +821,24 @@
            base. The selectors are pack-scoped so authored transition art is
            never clipped by the core skin. */
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-north"] {
-            -webkit-mask-image: linear-gradient(to bottom, #000 0 24%, rgba(0, 0, 0, 0.92) 30%, rgba(0, 0, 0, 0.24) 42%, transparent 51%);
-            mask-image: linear-gradient(to bottom, #000 0 24%, rgba(0, 0, 0, 0.92) 30%, rgba(0, 0, 0, 0.24) 42%, transparent 51%);
+            -webkit-mask-image: linear-gradient(to bottom, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
+            mask-image: linear-gradient(to bottom, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
         }
 
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-east"] {
-            -webkit-mask-image: linear-gradient(to left, #000 0 24%, rgba(0, 0, 0, 0.92) 30%, rgba(0, 0, 0, 0.24) 42%, transparent 51%);
-            mask-image: linear-gradient(to left, #000 0 24%, rgba(0, 0, 0, 0.92) 30%, rgba(0, 0, 0, 0.24) 42%, transparent 51%);
+            -webkit-mask-image: linear-gradient(to left, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
+            mask-image: linear-gradient(to left, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
         }
 
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-south"] {
-            -webkit-mask-image: linear-gradient(to top, #000 0 24%, rgba(0, 0, 0, 0.92) 30%, rgba(0, 0, 0, 0.24) 42%, transparent 51%);
-            mask-image: linear-gradient(to top, #000 0 24%, rgba(0, 0, 0, 0.92) 30%, rgba(0, 0, 0, 0.24) 42%, transparent 51%);
+            -webkit-mask-image: linear-gradient(to top, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
+            mask-image: linear-gradient(to top, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
         }
 
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-west"] {
-            -webkit-mask-image: linear-gradient(to right, #000 0 24%, rgba(0, 0, 0, 0.92) 30%, rgba(0, 0, 0, 0.24) 42%, transparent 51%);
-            mask-image: linear-gradient(to right, #000 0 24%, rgba(0, 0, 0, 0.92) 30%, rgba(0, 0, 0, 0.24) 42%, transparent 51%);
+            -webkit-mask-image: linear-gradient(to right, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
+            mask-image: linear-gradient(to right, #000 0 12%, rgba(0, 0, 0, 0.88) 18%, rgba(0, 0, 0, 0.22) calc(var(--yaw-edge-fade-end, 42%) - 8%), transparent var(--yaw-edge-fade-end, 42%));
         }
-
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="shoreline-water-"]::after {
-            content: '';
-            position: absolute;
-            pointer-events: none;
-            opacity: 0.9;
-            filter: drop-shadow(0 1px 0 rgba(21, 92, 120, 0.5));
-        }
-
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-north"]::after,
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-south"]::after {
-            left: -3%;
-            right: -3%;
-            height: 13%;
-            background: radial-gradient(ellipse at 50% 100%, transparent 0 54%, rgba(247, 250, 235, 0.92) 57% 63%, rgba(190, 224, 214, 0.52) 65% 70%, transparent 73%) 0 0 / 24px 100% repeat-x;
-        }
-
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-north"]::after { top: 28%; }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-south"]::after { bottom: 28%; transform: rotate(180deg); }
-
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-east"]::after,
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-west"]::after {
-            top: -3%;
-            bottom: -3%;
-            width: 13%;
-            background: radial-gradient(ellipse at 100% 50%, transparent 0 54%, rgba(247, 250, 235, 0.92) 57% 63%, rgba(190, 224, 214, 0.52) 65% 70%, transparent 73%) 0 0 / 100% 24px repeat-y;
-        }
-
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-east"]::after { right: 28%; }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-west"]::after { left: 28%; transform: rotate(180deg); }
 
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-outer-ne"] {
             -webkit-mask-image: radial-gradient(circle at 0 100%, transparent 0 54%, rgba(0, 0, 0, 0.2) 62%, #000 72%);
@@ -904,29 +874,9 @@
             mask-image: radial-gradient(circle at 0 0, #000 0 22%, rgba(0, 0, 0, 0.38) 32%, transparent 43%);
         }
 
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key*="shoreline-water-outer-"]::after,
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key*="shoreline-water-inner-"]::after {
-            box-sizing: border-box;
-            border: clamp(2px, 3%, 4px) solid rgba(247, 250, 235, 0.84);
-            border-radius: 50%;
-            background: transparent;
-        }
-
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-outer-ne"]::after { width: 144%; height: 144%; left: -72%; bottom: -72%; }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-outer-es"]::after { width: 144%; height: 144%; left: -72%; top: -72%; }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-outer-sw"]::after { width: 144%; height: 144%; right: -72%; top: -72%; }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-outer-wn"]::after { width: 144%; height: 144%; right: -72%; bottom: -72%; }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-inner-ne"]::after { width: 68%; height: 68%; right: -34%; top: -34%; }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-inner-es"]::after { width: 68%; height: 68%; right: -34%; bottom: -34%; }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-inner-sw"]::after { width: 68%; height: 68%; left: -34%; bottom: -34%; }
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key="shoreline-water-inner-wn"]::after { width: 68%; height: 68%; left: -34%; top: -34%; }
-
-        /* The old repeated white scallops were a bundled-skin decoration,
-           not shoreline topology. V2 keeps the continuous water mask and
-           authored semantic keys, but leaves foam to replacement art packs. */
-        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="shoreline-water-"]::after {
-            content: none;
-        }
+        /* Shorelines deliberately omit synthetic foam. The bundled water
+           material follows the deterministic shared-edge contour instead;
+           replacement packs remain free to provide authored shoreline art. */
 
         /* Interior topology is one continuous plan. Removing the overworld
            card gutters lets reciprocal path sprites meet at shared edges. */

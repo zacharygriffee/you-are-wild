@@ -24,30 +24,30 @@ blocked edges, structures, and exits may not.
 
 | Path | Asset behavior | Gameplay contract |
 | --- | --- | --- |
-| Offline Textured | Three atlases embedded as data and decoded asynchronously | Full semantic keys; emoji remains fallback if decoding fails. |
+| Offline Textured | First-party atlases embedded as data and decoded asynchronously | Full semantic keys; emoji remains fallback if decoding fails. |
 | Hosted Textured | Same atlases fetched as separate same-origin cacheable files | Same runtime, saves, topology, and mod layers. |
 | Lightweight | `?graphics=emoji` skips bundled atlas registration | Same semantic map and controls through emoji/text. |
 | Partial mod pack | Locally leased overrides compose above lower-priority packs | Missing base/route/state keys inherit; disabling restores the prior candidate. |
 
-Measured development artifacts for the 0.15.0 development head on 2026-07-25
+Measured development artifacts for the 0.18.3 development head on 2026-08-05
 (`npm run audit:map-assets`):
 
-- offline single-file build: 7.79 MiB (4.28 MiB gzip);
-- hosted runtime HTML: 2.75 MiB (0.50 MiB gzip);
-- external first-party atlases: 3.78 MiB combined (3.77 MiB gzip);
-- estimated hosted Lightweight transfer: 0.50 MiB;
-- estimated hosted Textured cold transfer: 4.28 MiB.
+- offline single-file build: 17.12 MiB (10.75 MiB gzip);
+- hosted runtime HTML: 3.69 MiB (0.69 MiB gzip);
+- external first-party atlases: 10.06 MiB combined (10.02 MiB gzip);
+- estimated hosted Lightweight transfer: 0.69 MiB;
+- estimated hosted Textured cold transfer: 10.76 MiB.
 
 Hosted Lightweight avoids the atlas transfer. Hosted Textured pays it once and
 can reuse normal browser cache; installed mod assets remain content-addressed in
 the Media Repository. At a theoretical 1.5 Mbps before latency and decode, the
-measured transfers take about 2.8 seconds and 24 seconds respectively. This is
+measured transfers take about 3.9 seconds and 60.2 seconds respectively. This is
 an artifact comparison, not a promise about real network timing.
 
 The audit rejects a hosted artifact that embeds atlas data, adds cache-busting
-queries to the stable first-party asset paths, or stops referencing all three
-external assets. Browser acceptance independently proves that a cold hosted
-Textured load requests each atlas exactly once, a reload reuses immutable cache,
+queries to the stable first-party asset paths, or stops referencing any
+required external asset. Browser acceptance independently proves that a cold hosted
+Textured load requests each atlas, while normal cache behavior can reuse it,
 and a fresh Lightweight context requests none. Low-bandwidth or failed atlas
 acquisition must leave the map actionable through semantic emoji fallback and
 must write diagnostics to the Activity Log rather than block startup.

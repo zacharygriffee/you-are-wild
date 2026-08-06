@@ -28,7 +28,8 @@ The maintained fixture set covers:
 5. narrated failed attempts;
 6. companion naming and shared-Pack loadouts;
 7. SFW and Mature vocabulary;
-8. desktop and mobile interaction layout.
+8. desktop and mobile interaction layout;
+9. deterministic terrain composition and adjacency review.
 
 Every mission has a stable URL:
 
@@ -37,6 +38,20 @@ dist/you-are-wild?alphaScenario=<mission-id>
 ```
 
 This URL is the canonical launch contract for browser agents and reproducible human bug reports.
+
+The terrain mission is available at:
+
+```text
+dist/you-are-wild?alphaScenario=terrain-composition
+```
+
+It prepares an explored 9x9 visual survey with no encounters. Read the rows
+from north to south as biome identity, explicit cover families, continuous
+road and bridge geometry, structures, POIs, evidence and presence,
+directional elevation, and two mixed-adjacency junction rows. The columns
+cover grove, forest, plains, swamp, jungle, beach, water, cliff, and cave.
+This fixture is for repeatable visual inspection; its overlays do not grant
+terrain mechanics or alter ordinary adventure saves.
 
 ## Automated agent matrix
 
@@ -47,7 +62,7 @@ npm run build
 npm run test:alpha
 ```
 
-The Playwright matrix opens the public Alpha Lab at a phone viewport, launches every deterministic fixture directly at desktop size, repeats the responsive fixture at phone size, and asserts:
+The Playwright matrix opens the public Alpha Lab at a phone viewport, launches every deterministic fixture directly at desktop size, and repeats both the responsive and terrain-composition fixtures at phone size. It asserts:
 
 - scenario identity and expected fixture counts;
 - isolated save and world databases;
@@ -56,7 +71,16 @@ The Playwright matrix opens the public Alpha Lab at a phone viewport, launches e
 - no horizontal page overflow;
 - no uncaught page or console errors.
 
+Interaction-only missions use the Lightweight renderer so the matrix can focus
+on fixture and control behavior without repeatedly decoding the embedded atlas
+set. The terrain-composition mission deliberately uses the Textured renderer at
+both sizes; the separate composition browser gate also covers hosted and file
+origins at every maintained viewport.
+
+The terrain fixture additionally checks its exact biome, road, bridge,
+structure, POI, evidence, directional-relief, jungle-strata, and water-fact
+coverage, including junction narration after biome rebasing.
+
 The command prints a JSON result summary suitable for CI logs. It is also part of `npm run full-build`.
 
 Agents provide broad, repeatable state and layout coverage. Human testers remain important for narration quality, whether an action tree feels natural, touch comfort, and surprising combinations that deterministic fixtures do not yet encode. A human report should become a new fixture whenever the reproduction can be made stable.
-

@@ -95,8 +95,9 @@ approach pads remain inside the owning cell and do not expand its hit target.
 
 Spill anchors stay in the shared-edge band. Hard boundaries and shoreline
 edges do not scatter unrelated foliage. Jungle additionally composes bounded
-static canopy and undergrowth records plus a dappled floor treatment from the
-existing atlas; plains intentionally receives no equivalent density. Generator
+canopy, undergrowth, litter, and cardinal spill records from independently
+addressable transparent artwork; plains intentionally receives no equivalent
+density. Generator
 V7 emits deterministic cover families with normalized anchors,
 scale, and an explicit `decorative` or `mechanical` role. Decorative foliage
 sets `mechanical: false`, `blocksMovement: false`, and `blocksSight: false`.
@@ -145,8 +146,8 @@ surfaces use the same runtime sorter.
 The acceptance audit enforces ceilings of 18 MiB for the embedded offline
 artifact, 4 MiB for the hosted shell, 10.5 MiB for the external atlas set, and
 11 MiB for estimated hosted textured cold transfer. The terrain-material and
-cover atlases are individually capped at 1.25 MiB and 1.75 MiB. Current V2
-identity and seam work reuses the existing atlases and adds no raster bytes.
+cover atlases are individually capped at 1.25 MiB and 1.75 MiB. The directional
+relief and jungle-strata atlases are capped at 0.3 MiB and 0.4 MiB respectively.
 
 First-party generation prompts, alpha extraction, deterministic atlas
 post-processing, and asset paths are recorded in
@@ -188,7 +189,7 @@ interior/overworld projection.
 `npm run test:tile-composition-browser` runs both the single-file `file:` build
 and hosted HTTP build at 313x670, 390x844, 412x915, and 1365x768. It checks all
 three map surfaces, interiors, viewport containment, resource failures,
-pixel-matched ground edges, transparent bridge/cover assets, bridge gutter
+pixel-matched ground edges, transparent bridge/cover/relief/jungle assets, bridge gutter
 continuity, canonical edge metadata, edge-bounded spill art, shoreline
 deduplication, absence of bundled scallop foam, jungle/plains readability,
 biome-aware route treatment, bridge approaches, sparse evidence restoration,

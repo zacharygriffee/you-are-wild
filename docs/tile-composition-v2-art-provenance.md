@@ -80,3 +80,59 @@ PNGs. The maintained imagegen chroma-key helper removed the backgrounds with a
 soft matte and despill. Browser acceptance verifies transparent atlas corners,
 pack loading through file and hosted origins, and inherited ground beneath
 generated POIs and structures.
+
+## Terrain Art Quality Pass 1 overlays
+
+The 2026-08-05 quality pass added two reviewed source images and two bounded
+runtime atlases. Both were generated with the built-in ChatGPT image-generation
+tool on a uniform `#ff00ff` chroma background. The maintained chroma-key helper
+removed the background and despilled edges; Pillow then palette-quantized the
+runtime PNGs without changing their dimensions or semantic crop rectangles.
+
+### Directional terrain relief
+
+Source: `art/tile-composition/terrain-relief-v1-source.png`
+
+Runtime output: `media/terrain-relief-v1.png`
+
+Prompt:
+
+> Create a perfectly top-down hand-painted dark-fantasy terrain overlay sheet
+> with three isolated columns: a rocky cliff face entering from the north edge,
+> a lower eroded ledge entering from the north edge, and a gentler earthen slope
+> entering from the north edge. Use transparent-ready silhouettes on a perfectly
+> uniform #ff00ff background, generous separation, no ground plane, water,
+> foliage, road, structure, text, frame, perspective, or cast shadow. Each form
+> must meet the north edge cleanly and remain readable when rotated to every
+> cardinal direction.
+
+The 1995x788 runtime atlas is 161,601 bytes with SHA-256
+`a722c1ad84a4a638447ab749dfa8e053169f6299e989c91c2d28a78afaccb40b`.
+Manifest rotation maps the three authored north-facing crops to all twelve
+`terrain-elevation-{slope|ledge|cliff}-{north|east|south|west}` semantics.
+
+### Layered jungle identity
+
+Source: `art/tile-composition/jungle-strata-v1-source.png`
+
+Runtime output: `media/jungle-strata-v1.png`
+
+Prompt:
+
+> Create a perfectly top-down hand-painted dark-fantasy jungle overlay sheet
+> with four isolated columns: dense upper canopy, tangled undergrowth, leaf
+> litter and small floor debris, and a vine-and-frond strip entering from the
+> north edge for adjacent-biome spill. Use transparent-ready silhouettes on a
+> perfectly uniform #ff00ff background, consistent scale, generous separation,
+> no baked ground, road, building, creature, text, frame, perspective, or cast
+> shadow. Keep each stratum legible alone and composable with the others.
+
+The 1774x887 runtime atlas is 266,504 bytes with SHA-256
+`ed78657cf0f0c966c78d40f37db869a4dc903b61011e7168ad9ab18b3a72d785`.
+Its crops resolve `cover-jungle-canopy`, `cover-jungle-undergrowth`,
+`cover-jungle-litter`, and cardinally rotated `cover-jungle-spill` semantics.
+
+Browser acceptance verifies transparent outer corners, bounded non-empty alpha,
+exact atlas ownership for every new semantic, file and hosted loading, and
+resolution on mobile, desktop, and Review Map surfaces. Static art alone grants
+no elevation, cover, movement, resource, or persistence rule.

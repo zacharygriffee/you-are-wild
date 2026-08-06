@@ -199,7 +199,8 @@ check(northJunctionEdge?.corners.ne === 'trim' && eastJunctionEdge?.corners.ne =
 
 const jungleIdentity = visualRecipes.compose({ ...jungleTile, overlays: {} }, () => null);
 const plainsIdentity = visualRecipes.compose({ ...plainsTile, overlays: {} }, () => null);
-check(jungleIdentity.cover.filter(record => record.kind === 'biome-identity').map(record => record.stratum).join(',') === 'canopy,undergrowth', 'Jungle must compose static canopy and undergrowth strata without new raster assets');
+check(jungleIdentity.cover.filter(record => record.kind === 'biome-identity').map(record => record.stratum).join(',') === 'canopy,undergrowth,floor', 'Jungle must compose distinct canopy, undergrowth, and forest-floor strata');
+check(jungleIdentity.cover.filter(record => record.kind === 'biome-identity').map(record => record.family).join(',') === 'jungle-canopy,jungle-undergrowth,jungle-litter', 'Jungle strata must resolve independently replaceable first-party overlay semantics');
 check(!plainsIdentity.cover.some(record => record.kind === 'biome-identity'), 'Plains must retain open visual space instead of inheriting jungle density');
 
 const clearanceTile = {

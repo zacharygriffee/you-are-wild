@@ -113,13 +113,24 @@ separates soft material blending, hard stone/interior edges, and specialized
 water/land shorelines. Eight-neighbor junctions trim mixed-source corner
 losers, decorative spill remains in the owning edge band, roads receive
 biome-aware shoulders, bridges receive landward approach pads, and route/POI
-clearance protects topology. Static jungle canopy, undergrowth, and floor
-light distinguish dense jungle from intentionally open plains without a new
-atlas. These remain records in the existing terrain, route, cover, and feature
-layers—not simulation state or a saved biome blend.
+clearance protects topology. Terrain Art Quality Pass 1 adds a transparent
+directional relief atlas for north/east/south/west slopes, ledges, and cliffs,
+plus a transparent jungle atlas with independently replaceable canopy,
+undergrowth, litter, and edge-spill artwork. Dense jungle now remains visibly
+distinct from intentionally open plains without baking either identity into
+the ground material. These remain records in the existing terrain, route,
+cover, and feature layers—not simulation state or a saved biome blend.
+
+A maintained `terrain-composition` Alpha mission presents the same deterministic
+9x9 survey on desktop, phone, and Review Map surfaces. Its rows cover biome
+identity, cover families, road/bridge continuity, inherited-ground structures,
+inherited-ground POIs, evidence/presence, directional relief, and mixed
+four-tile junctions. It is the visual-review entry point for this phase rather
+than a handcrafted replacement for ordinary world generation.
 
 Artifact acceptance caps the offline build, hosted shell, external atlas set,
-textured cold transfer, and the two directly relevant atlases. Animation and
+textured cold transfer, and the directly relevant ground, cover, relief, and
+jungle atlases. Animation and
 mod-supplied animated media remain a future composition-version topic.
 
 ## Phase D — persistent tile evidence (complete baseline)

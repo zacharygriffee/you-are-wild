@@ -251,7 +251,9 @@ const YAW_TILESET_RUNTIME = {
             const kind = String(record?.kind || 'cover');
             const scale = Number(record?.scale || 1);
             const renderedScale = kind === 'adjacent-spill'
-                ? Math.max(0.24, Math.min(0.44, scale * 0.46))
+                ? (family === 'jungle-spill'
+                    ? Math.max(0.52, Math.min(0.74, scale * 0.86))
+                    : Math.max(0.24, Math.min(0.44, scale * 0.46)))
                 : (kind === 'biome-identity' && record?.stratum === 'canopy'
                     ? Math.max(0.46, Math.min(0.68, scale * 0.58))
                     : Math.max(0.28, Math.min(0.58, scale * 0.5)));

@@ -63,12 +63,24 @@
       conifer: 'cover-conifer',
       broadleaf: 'cover-broadleaf',
       jungle: 'cover-jungle',
+      jungleCanopy: 'cover-jungle-canopy',
+      jungleUndergrowth: 'cover-jungle-undergrowth',
+      jungleLitter: 'cover-jungle-litter',
+      jungleSpill: 'cover-jungle-spill',
       reeds: 'cover-reeds',
       grass: 'cover-grass',
       drift: 'cover-drift',
       scrub: 'cover-scrub',
       rock: 'cover-rock'
     },
+    elevation: Object.fromEntries(
+      ['slope', 'ledge', 'cliff'].flatMap(kind =>
+        ['north', 'east', 'south', 'west'].map(direction => [
+          `${kind}-${direction}`,
+          `terrain-elevation-${kind}-${direction}`
+        ])
+      )
+    ),
     groundTransitions: Object.fromEntries(
       ['grove', 'forest', 'plains', 'swamp', 'cave', 'jungle', 'beach', 'cliff', 'water', 'sand']
         .flatMap(biome => ['north', 'east', 'south', 'west'].map(direction => [
@@ -192,6 +204,7 @@
     .concat(Object.values(TILE_KEYS.roads))
     .concat(Object.values(TILE_KEYS.bridges))
     .concat(Object.values(TILE_KEYS.covers))
+    .concat(Object.values(TILE_KEYS.elevation))
     .concat(Object.values(TILE_KEYS.groundTransitions))
     .concat(Object.values(TILE_KEYS.poi))
     .concat(Object.values(TILE_KEYS.structures))
@@ -241,6 +254,12 @@
   const TILESET_COVER_V3_HEIGHT = 887;
   const TILESET_COVER_V3_COLUMNS = 4;
   const TILESET_COVER_V3_ROWS = 2;
+  const TILESET_RELIEF_V1_SRC = 'terrain-relief-v1.png';
+  const TILESET_RELIEF_V1_WIDTH = 1995;
+  const TILESET_RELIEF_V1_HEIGHT = 788;
+  const TILESET_JUNGLE_STRATA_V1_SRC = 'jungle-strata-v1.png';
+  const TILESET_JUNGLE_STRATA_V1_WIDTH = 1774;
+  const TILESET_JUNGLE_STRATA_V1_HEIGHT = 887;
   const TILESET_STRUCTURE_V3_SRC = 'structure-overlays-v3.png';
   const TILESET_STRUCTURE_V3_WIDTH = 1254;
   const TILESET_STRUCTURE_V3_HEIGHT = 1254;
@@ -344,6 +363,17 @@
     fallback: 'sprite-sheet',
     ...extra
   });
+  const transparentRectTile = (src, rect, label, transform = {}) => ({
+    src,
+    sprite: {
+      label,
+      sheet: src,
+      rect: { ...rect },
+      transform: { rotate: 0, flipX: false, flipY: false, ...transform }
+    },
+    renderMode: 'sprite-sheet-overlay',
+    fallback: 'sprite-sheet'
+  });
   const bridgeV2Tile = (col, label) => ({
     src: TILESET_BRIDGE_V2_SRC,
     sprite: {
@@ -417,6 +447,10 @@
     [TILE_KEYS.covers.conifer]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 0, 0, 'transparent conifer cover'),
     [TILE_KEYS.covers.broadleaf]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 1, 0, 'transparent broadleaf cover'),
     [TILE_KEYS.covers.jungle]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 2, 0, 'transparent jungle cover'),
+    [TILE_KEYS.covers.jungleCanopy]: transparentRectTile(TILESET_JUNGLE_STRATA_V1_SRC, { x: 44, y: 241, width: 398, height: 406 }, 'transparent jungle canopy'),
+    [TILE_KEYS.covers.jungleUndergrowth]: transparentRectTile(TILESET_JUNGLE_STRATA_V1_SRC, { x: 483, y: 252, width: 384, height: 377 }, 'transparent jungle undergrowth'),
+    [TILE_KEYS.covers.jungleLitter]: transparentRectTile(TILESET_JUNGLE_STRATA_V1_SRC, { x: 923, y: 253, width: 407, height: 382 }, 'transparent jungle floor detail'),
+    [TILE_KEYS.covers.jungleSpill]: transparentRectTile(TILESET_JUNGLE_STRATA_V1_SRC, { x: 1330, y: 245, width: 408, height: 362 }, 'transparent jungle edge spill'),
     [TILE_KEYS.covers.reeds]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 3, 0, 'transparent reeds cover'),
     [TILE_KEYS.covers.grass]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 0, 1, 'transparent grass cover'),
     [TILE_KEYS.covers.drift]: transparentGridTile(TILESET_COVER_V3_SRC, TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 1, 1, 'transparent drift cover'),
@@ -495,6 +529,23 @@
     [TILE_KEYS.states['blocked-west']]: overlayTile(0, 3, 'west blocked edge', { rotate: 270 })
   };
 
+  const basicElevationDirections = { north: 0, east: 90, south: 180, west: 270 };
+  const basicReliefRects = {
+    cliff: { x: 57, y: 175, width: 554, height: 309 },
+    ledge: { x: 712, y: 258, width: 555, height: 219 },
+    slope: { x: 1356, y: 232, width: 568, height: 244 }
+  };
+  for (const [kind, rect] of Object.entries(basicReliefRects)) {
+    for (const [direction, rotate] of Object.entries(basicElevationDirections)) {
+      basicTiles[TILE_KEYS.elevation[`${kind}-${direction}`]] = transparentRectTile(
+        TILESET_RELIEF_V1_SRC,
+        rect,
+        `${direction} ${kind} relief overlay`,
+        { rotate }
+      );
+    }
+  }
+
   const materialV2Cells = {
     plains: [0, 0], grove: [1, 0], forest: [2, 0], swamp: [0, 1], jungle: [1, 1],
     sand: [2, 1], beach: [2, 1], water: [0, 2], cliff: [1, 2], cave: [2, 2]
@@ -553,6 +604,14 @@
   const bundledGridTile = (atlasId, width, height, columns, rows, col, row, slot, transform = {}) => ({
     layers: [bundledGridLayer(atlasId, width, height, columns, rows, col, row, slot, transform)]
   });
+  const bundledAtlasRectTile = (atlasId, rect, slot, transform = {}) => ({
+    layers: [{
+      atlasId,
+      rect: { ...rect },
+      slot,
+      transform: { rotate: 0, flipX: false, flipY: false, ...transform }
+    }]
+  });
   const bundledBridgeV2Tile = col => ({
     layers: [{
       atlasId: 'bridge-v2',
@@ -587,6 +646,8 @@
       { id: 'bridge-v2', resourceId: 'atlas.bridge-v2', density: 1 },
       { id: 'cover-v2', resourceId: 'atlas.cover-v2', density: 1 },
       { id: 'cover-v3', resourceId: 'atlas.cover-v3', density: 1 },
+      { id: 'relief-v1', resourceId: 'atlas.relief-v1', density: 1 },
+      { id: 'jungle-strata-v1', resourceId: 'atlas.jungle-strata-v1', density: 1 },
       { id: 'structures-v3', resourceId: 'atlas.structures-v3', density: 1 },
       { id: 'poi-v3', resourceId: 'atlas.poi-v3', density: 1 },
       { id: 'evidence-v3', resourceId: 'atlas.evidence-v3', density: 1 }
@@ -647,6 +708,10 @@
       [TILE_KEYS.covers.conifer]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 0, 0, 'feature'),
       [TILE_KEYS.covers.broadleaf]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 1, 0, 'feature'),
       [TILE_KEYS.covers.jungle]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 2, 0, 'feature'),
+      [TILE_KEYS.covers.jungleCanopy]: bundledAtlasRectTile('jungle-strata-v1', { x: 44, y: 241, width: 398, height: 406 }, 'feature'),
+      [TILE_KEYS.covers.jungleUndergrowth]: bundledAtlasRectTile('jungle-strata-v1', { x: 483, y: 252, width: 384, height: 377 }, 'feature'),
+      [TILE_KEYS.covers.jungleLitter]: bundledAtlasRectTile('jungle-strata-v1', { x: 923, y: 253, width: 407, height: 382 }, 'feature'),
+      [TILE_KEYS.covers.jungleSpill]: bundledAtlasRectTile('jungle-strata-v1', { x: 1330, y: 245, width: 408, height: 362 }, 'feature'),
       [TILE_KEYS.covers.reeds]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 3, 0, 'feature'),
       [TILE_KEYS.covers.grass]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 0, 1, 'feature'),
       [TILE_KEYS.covers.drift]: bundledGridTile('cover-v3', TILESET_COVER_V3_WIDTH, TILESET_COVER_V3_HEIGHT, 4, 2, 1, 1, 'feature'),
@@ -726,6 +791,17 @@
       [TILE_KEYS.effects.dangerInfluence]: bundledTransparentTile()
     }
   };
+  const elevationDirections = { north: 0, east: 90, south: 180, west: 270 };
+  const reliefRects = {
+    cliff: { x: 57, y: 175, width: 554, height: 309 },
+    ledge: { x: 712, y: 258, width: 555, height: 219 },
+    slope: { x: 1356, y: 232, width: 568, height: 244 }
+  };
+  for (const [kind, rect] of Object.entries(reliefRects)) {
+    for (const [direction, rotate] of Object.entries(elevationDirections)) {
+      BUNDLED_TILESET_PRESENTATION.tiles[TILE_KEYS.elevation[`${kind}-${direction}`]] = bundledAtlasRectTile('relief-v1', rect, 'feature', { rotate });
+    }
+  }
   for (const [transitionId, key] of Object.entries(TILE_KEYS.groundTransitions)) {
     const biome = transitionId.slice(0, transitionId.lastIndexOf('-'));
     const [col, row] = materialV2Cells[biome] || materialV2Cells.plains;
@@ -818,6 +894,24 @@
     provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/cover-overlays-v3.png' },
     fallback: null, source: { kind: 'bundled' }
   };
+  const BUNDLED_TILESET_RELIEF_V1_RESOURCE = {
+    id: 'atlas.relief-v1',
+    hash: 'a722c1ad84a4a638447ab749dfa8e053169f6299e989c91c2d28a78afaccb40b',
+    mimeType: 'image/png', byteLength: 161601,
+    width: TILESET_RELIEF_V1_WIDTH, height: TILESET_RELIEF_V1_HEIGHT,
+    role: 'tileset-atlas', license: 'owner-supplied-ai-generated',
+    provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/terrain-relief-v1.png' },
+    fallback: null, source: { kind: 'bundled' }
+  };
+  const BUNDLED_TILESET_JUNGLE_STRATA_V1_RESOURCE = {
+    id: 'atlas.jungle-strata-v1',
+    hash: 'ed78657cf0f0c966c78d40f37db869a4dc903b61011e7168ad9ab18b3a72d785',
+    mimeType: 'image/png', byteLength: 266504,
+    width: TILESET_JUNGLE_STRATA_V1_WIDTH, height: TILESET_JUNGLE_STRATA_V1_HEIGHT,
+    role: 'tileset-atlas', license: 'owner-supplied-ai-generated',
+    provenance: { kind: 'ai_generated', tool: 'ChatGPT Image', source: 'media/jungle-strata-v1.png' },
+    fallback: null, source: { kind: 'bundled' }
+  };
   const BUNDLED_TILESET_STRUCTURE_V3_RESOURCE = {
     id: 'atlas.structures-v3',
     hash: '489a7fcb10dff9497a4b138e32c19aae1459ff2c2bdc1ef7f8aa969e4b13af7a',
@@ -892,6 +986,8 @@
             'media/bridge-span-v2.png',
             'media/foliage-cover-v2.png',
             'media/cover-overlays-v3.png',
+            'media/terrain-relief-v1.png',
+            'media/jungle-strata-v1.png',
             'media/structure-overlays-v3.png',
             'media/poi-overlays-v3.png',
             'media/evidence-overlays-v3.png'
@@ -922,6 +1018,8 @@
           { src: TILESET_BRIDGE_V2_SRC, width: TILESET_BRIDGE_V2_WIDTH, height: TILESET_BRIDGE_V2_HEIGHT, columns: 2, rows: 1, alpha: true },
           { src: TILESET_COVER_V2_SRC, width: TILESET_COVER_V2_SIZE, height: TILESET_COVER_V2_SIZE, columns: 1, rows: 1, alpha: true },
           { src: TILESET_COVER_V3_SRC, width: TILESET_COVER_V3_WIDTH, height: TILESET_COVER_V3_HEIGHT, columns: TILESET_COVER_V3_COLUMNS, rows: TILESET_COVER_V3_ROWS, alpha: true },
+          { src: TILESET_RELIEF_V1_SRC, width: TILESET_RELIEF_V1_WIDTH, height: TILESET_RELIEF_V1_HEIGHT, columns: 3, rows: 1, alpha: true },
+          { src: TILESET_JUNGLE_STRATA_V1_SRC, width: TILESET_JUNGLE_STRATA_V1_WIDTH, height: TILESET_JUNGLE_STRATA_V1_HEIGHT, columns: 4, rows: 1, alpha: true },
           { src: TILESET_STRUCTURE_V3_SRC, width: TILESET_STRUCTURE_V3_WIDTH, height: TILESET_STRUCTURE_V3_HEIGHT, columns: TILESET_STRUCTURE_V3_COLUMNS, rows: TILESET_STRUCTURE_V3_ROWS, alpha: true },
           { src: TILESET_POI_V3_SRC, width: TILESET_POI_V3_WIDTH, height: TILESET_POI_V3_HEIGHT, columns: TILESET_POI_V3_COLUMNS, rows: TILESET_POI_V3_ROWS, alpha: true },
           { src: TILESET_EVIDENCE_V3_SRC, width: TILESET_EVIDENCE_V3_WIDTH, height: TILESET_EVIDENCE_V3_HEIGHT, columns: TILESET_EVIDENCE_V3_COLUMNS, rows: TILESET_EVIDENCE_V3_ROWS, alpha: true }
@@ -946,6 +1044,8 @@
       const embeddedBridgeV2 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_BRIDGE_V2_URL || '') : '';
       const embeddedCoverV2 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_COVER_V2_URL || '') : '';
       const embeddedCoverV3 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_COVER_V3_URL || '') : '';
+      const embeddedReliefV1 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_RELIEF_V1_URL || '') : '';
+      const embeddedJungleStrataV1 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_JUNGLE_STRATA_V1_URL || '') : '';
       const embeddedStructuresV3 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_STRUCTURE_V3_URL || '') : '';
       const embeddedPoiV3 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_POI_V3_URL || '') : '';
       const embeddedEvidenceV3 = typeof window !== 'undefined' ? String(window.YAW_BUNDLED_TILESET_EVIDENCE_V3_URL || '') : '';
@@ -959,6 +1059,8 @@
           BUNDLED_TILESET_BRIDGE_V2_RESOURCE,
           BUNDLED_TILESET_COVER_V2_RESOURCE,
           BUNDLED_TILESET_COVER_V3_RESOURCE,
+          BUNDLED_TILESET_RELIEF_V1_RESOURCE,
+          BUNDLED_TILESET_JUNGLE_STRATA_V1_RESOURCE,
           BUNDLED_TILESET_STRUCTURE_V3_RESOURCE,
           BUNDLED_TILESET_POI_V3_RESOURCE,
           BUNDLED_TILESET_EVIDENCE_V3_RESOURCE
@@ -971,6 +1073,8 @@
           'atlas.bridge-v2': embeddedBridgeV2 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_BRIDGE_V2_SRC}`,
           'atlas.cover-v2': embeddedCoverV2 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_COVER_V2_SRC}`,
           'atlas.cover-v3': embeddedCoverV3 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_COVER_V3_SRC}`,
+          'atlas.relief-v1': embeddedReliefV1 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_RELIEF_V1_SRC}`,
+          'atlas.jungle-strata-v1': embeddedJungleStrataV1 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_JUNGLE_STRATA_V1_SRC}`,
           'atlas.structures-v3': embeddedStructuresV3 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_STRUCTURE_V3_SRC}`,
           'atlas.poi-v3': embeddedPoiV3 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_POI_V3_SRC}`,
           'atlas.evidence-v3': embeddedEvidenceV3 || `${ASSET_MANIFEST.tilesets['default-basic-tileset'].relativeBasePath}${TILESET_EVIDENCE_V3_SRC}`

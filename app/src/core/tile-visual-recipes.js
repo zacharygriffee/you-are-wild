@@ -190,15 +190,21 @@ const YAW_TILE_VISUAL_RECIPES = {
         ];
         return [
             {
-                kind: 'biome-identity', id: `jungle-canopy-${x}-${y}`, label: 'jungle canopy', family: 'jungle',
-                stratum: 'canopy', subLayer: 30, anchor: anchors[0], scale: 1.12, opacity: 0.96,
+                kind: 'biome-identity', id: `jungle-canopy-${x}-${y}`, label: 'jungle canopy', family: 'jungle-canopy',
+                stratum: 'canopy', subLayer: 30, anchor: anchors[0], scale: 1.04, opacity: 0.94,
                 rotation: Math.round(phase * 10 - 5), flipX: phase >= 0.5,
                 role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
             },
             {
-                kind: 'biome-identity', id: `jungle-undergrowth-${x}-${y}`, label: 'jungle undergrowth', family: 'jungle',
-                stratum: 'undergrowth', subLayer: 20, anchor: anchors[1], scale: 0.76, opacity: 0.82,
+                kind: 'biome-identity', id: `jungle-undergrowth-${x}-${y}`, label: 'jungle undergrowth', family: 'jungle-undergrowth',
+                stratum: 'undergrowth', subLayer: 20, anchor: anchors[1], scale: 0.78, opacity: 0.86,
                 rotation: Math.round((1 - phase) * 8 - 4), flipX: phase < 0.5,
+                role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
+            },
+            {
+                kind: 'biome-identity', id: `jungle-litter-${x}-${y}`, label: 'jungle floor', family: 'jungle-litter',
+                stratum: 'floor', subLayer: 10, anchor: { x: 0.5, y: 0.54 }, scale: 0.72, opacity: 0.68,
+                rotation: Math.round(phase * 6 - 3), flipX: phase < 0.38,
                 role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
             }
         ];
@@ -260,12 +266,14 @@ const YAW_TILE_VISUAL_RECIPES = {
                     kind: 'adjacent-spill',
                     id: `blend-${sharedEdgeKey.replace(/[^a-z0-9]+/gi, '-')}`,
                     label: policy.sourceBiome,
-                    family: sourceProfile.coverFamily,
+                    family: policy.sourceBiome === 'jungle' ? 'jungle-spill' : sourceProfile.coverFamily,
                     variant: Math.floor(this._hash01(sharedEdgeKey, 'spill-variant') * 4),
                     anchor,
                     scale: Number((sourceProfile.spillScale * (0.82 + phase * 0.18)).toFixed(3)),
                     opacity: sourceProfile.spillOpacity,
-                    rotation: Math.round(phase * 12 - 6),
+                    rotation: policy.sourceBiome === 'jungle'
+                        ? ({ north: 0, east: 90, south: 180, west: 270 }[direction.id] || 0)
+                        : Math.round(phase * 12 - 6),
                     flipX: phase >= 0.5,
                     edgeBand: direction.id,
                     sharedEdgeKey,

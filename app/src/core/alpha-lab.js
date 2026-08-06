@@ -122,6 +122,20 @@ const YAW_ALPHA_LAB = {
                 ['alpha.check.responsive.noOverflow', 'The page and option sheets do not overflow horizontally.'],
                 ['alpha.check.responsive.stable', 'Group cancel and option-sheet controls do not push the action belt out of reach.']
             ]
+        },
+        {
+            id: 'terrain-composition',
+            icon: '🗺️',
+            category: 'presentation',
+            titleKey: 'alpha.mission.terrainComposition.title',
+            title: 'Terrain composition survey',
+            descriptionKey: 'alpha.mission.terrainComposition.description',
+            description: 'Traverse a deterministic 9x9 gallery of biomes, seams, elevation, routes, features, evidence, and state overlays.',
+            checklist: [
+                ['alpha.check.terrain.identity', 'Every biome remains recognizable beneath cover, routes, features, and state.'],
+                ['alpha.check.terrain.seams', 'Soft blends, hard elevation edges, shorelines, roads, and bridges meet without square gaps or doubled seams.'],
+                ['alpha.check.terrain.layers', 'Structures, POIs, evidence, presence, danger, and selection remain legible on desktop, mobile, and Review Map.']
+            ]
         }
     ],
 
@@ -294,6 +308,8 @@ const YAW_ALPHA_LAB = {
         app.transactionWindow = null;
         app.defeatState = null;
         app.strandedCompanions = [];
+        app.cheats = { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false, noEnemies: false };
+        app._overpoweredSnapshot = null;
         return player;
     },
 
@@ -366,10 +382,198 @@ const YAW_ALPHA_LAB = {
                     spd: 8
                 });
             }
+        } else if (mission.id === 'terrain-composition') {
+            app.cheats.noEnemies = true;
         }
     },
 
+    terrainSurveyTile(app, x, y, biome, overrides = {}) {
+        const base = app.getBaseTile(x, y);
+        const overlays = {
+            barriers: [],
+            obstacles: [],
+            cover: [],
+            ...(overrides.overlays || {})
+        };
+        const terrainTopology = { elevation: 0.5, kind: 'level', band: 'mid', uphillEdges: [], downhillEdges: [], cliffEdges: [] };
+        return {
+            ...base,
+            x,
+            y,
+            biome,
+            baseBiome: biome,
+            derivedBiome: biome,
+            displayBiome: biome,
+            macroBiome: biome,
+            water: biome === 'water',
+            elevation: 0.5,
+            terrainTopology,
+            terrain: {
+                ...(base.terrain || {}),
+                water: biome === 'water',
+                elevation: 0.5,
+                topology: terrainTopology
+            },
+            explored: true,
+            seen: true,
+            description: `Terrain survey ${biome} at ${x}, ${y}.`,
+            hostile: false,
+            danger: 0,
+            dangerPressure: Number(overrides.dangerPressure || 0.08),
+            creatures: [],
+            items: [],
+            deathBags: [],
+            placedObjects: [],
+            structure: null,
+            hasLandmark: false,
+            landmarkName: '',
+            traversal: {
+                ...(base.traversal || {}),
+                passable: true,
+                blocked: false,
+                barrierEdges: []
+            },
+            overlays,
+            ...overrides,
+            overlays
+        };
+    },
+
+    configureTerrainSurvey(app) {
+        const biomes = ['grove', 'forest', 'plains', 'swamp', 'jungle', 'beach', 'water', 'cliff', 'cave'];
+        const coverFamilies = ['broadleaf', 'conifer', 'grass', 'reeds', 'jungle', 'drift', '', 'rock', 'rock'];
+        const structures = ['camp', 'hut', 'farm', 'spring', 'tree', 'cabin', 'pond', 'ruins', 'cave'];
+        const poiCategories = ['restSite', 'structure', 'resourceSite', 'landmark', 'settlement', 'dangerSite', 'resourceSite', 'landmark', 'structure'];
+        const elevationKinds = [
+            { kind: 'level', band: 'low' },
+            { kind: 'slope', band: 'low', primaryUphill: 'north', primaryDownhill: 'south', uphillEdges: ['north'], downhillEdges: ['south'] },
+            { kind: 'slope', band: 'mid', primaryUphill: 'east', primaryDownhill: 'west', uphillEdges: ['east'], downhillEdges: ['west'] },
+            { kind: 'slope', band: 'mid', primaryUphill: 'south', primaryDownhill: 'north', uphillEdges: ['south'], downhillEdges: ['north'] },
+            { kind: 'slope', band: 'high', primaryUphill: 'west', primaryDownhill: 'east', uphillEdges: ['west'], downhillEdges: ['east'] },
+            { kind: 'ledge', band: 'high', primaryDownhill: 'south', downhillEdges: ['south'] },
+            { kind: 'cliff', band: 'high', primaryDownhill: 'east', downhillEdges: ['east'], cliffEdges: ['east'] },
+            { kind: 'cliff', band: 'high', primaryDownhill: 'south', downhillEdges: ['south'], cliffEdges: ['south'] },
+            { kind: 'cliff', band: 'high', primaryDownhill: 'west', downhillEdges: ['west'], cliffEdges: ['west'] }
+        ];
+        const tileAt = (x, y) => app.worldMap.get(`${x},${y}`);
+
+        for (let y = -4; y <= 4; y++) {
+            for (let x = -4; x <= 4; x++) {
+                const column = x + 4;
+                const biome = biomes[column];
+                app.worldMap.set(`${x},${y}`, this.terrainSurveyTile(app, x, y, biome));
+                app.exploredTiles.add(`${x},${y}`);
+            }
+        }
+
+        // Row -3: explicit reusable cover families over their inherited ground.
+        biomes.forEach((biome, index) => {
+            const x = index - 4;
+            const tile = tileAt(x, -3);
+            const family = coverFamilies[index];
+            tile.overlays.cover = family ? [
+                { id: `survey-cover-${index}-a`, family, anchor: { x: 0.26, y: 0.3 }, scale: 0.66, role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false },
+                { id: `survey-cover-${index}-b`, family, anchor: { x: 0.72, y: 0.7 }, scale: 0.52, role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false }
+            ] : [];
+        });
+
+        // Row -2: one edge-to-edge road, with the water cell promoted to a bridge span.
+        biomes.forEach((_biome, index) => {
+            const x = index - 4;
+            const tile = tileAt(x, -2);
+            const connections = [
+                ...(x > -4 ? ['west'] : []),
+                ...(x < 4 ? ['east'] : [])
+            ];
+            if (tile.biome === 'water') {
+                tile.overlays.bridge = {
+                    id: 'survey-bridge', direction: 'east-west', connections,
+                    spanIndex: 0, spanLength: 1, spanRole: 'single', shoreEdges: ['east', 'west']
+                };
+                tile.traversal.route = 'bridge';
+            } else {
+                tile.overlays.road = { id: `survey-road-${x}`, direction: 'east-west', connections };
+                tile.traversal.route = 'road';
+            }
+        });
+
+        // Row -1: transparent structures on nine different inherited materials.
+        structures.forEach((structure, index) => {
+            const tile = tileAt(index - 4, -1);
+            tile.structure = structure;
+            tile.featureFootprint = { width: 1, height: 1, part: 'single', anchor: { x: 0.5, y: 0.5 } };
+        });
+
+        // Row 0: POI grounding plus one shared multi-cell settlement footprint.
+        poiCategories.forEach((category, index) => {
+            const tile = tileAt(index - 4, 0);
+            tile.overlays.poi = { id: `survey-poi-${index}`, category, footprint: { width: 1, height: 1, part: 'single' } };
+            tile.hasLandmark = true;
+            tile.landmarkName = `Survey ${category}`;
+        });
+        for (const x of [-1, 0]) {
+            const tile = tileAt(x, 0);
+            tile.overlays.poi = { id: 'survey-settlement-footprint', category: 'settlement', footprint: { width: 2, height: 1 } };
+            tile.landmarkName = 'Shared survey settlement';
+        }
+
+        // Row 1: durable evidence and a non-hostile occupant without changing terrain identity.
+        biomes.forEach((_biome, index) => {
+            const x = index - 4;
+            const tile = tileAt(x, 1);
+            if (index % 4 === 0) tile.items = [{ id: `survey-item-${index}`, name: 'Survey item', quantity: index + 1 }];
+            if (index % 4 === 1) tile.deathBags = [{ id: `survey-bag-${index}`, gold: index + 2, items: [] }];
+            if (index % 4 === 2) tile.placedObjects = [{ id: `survey-object-${index}`, name: 'Trail marker', kind: 'trail-marker' }];
+            if (index % 4 === 3) tile.resourceSearched = true;
+        });
+        tileAt(0, 1).creatures = [this.unit(app, 'survey-occupant', 'Surveyor', 'fox', {
+            disposition: app.DISPOSITION.NEUTRAL,
+            willing: true,
+            obedient: false
+        })];
+
+        // Row 2: authored directional elevation and cliff facts for the presentation layer.
+        elevationKinds.forEach((topology, index) => {
+            const tile = tileAt(index - 4, 2);
+            const elevation = 0.18 + index * 0.09;
+            tile.elevation = Number(elevation.toFixed(3));
+            tile.terrainTopology = { elevation: tile.elevation, ...topology };
+            tile.terrain = { ...(tile.terrain || {}), elevation: tile.elevation, topology: tile.terrainTopology };
+            tile.overlays.barriers = topology.cliffEdges || [];
+            tile.traversal.barrierEdges = topology.cliffEdges || [];
+        });
+
+        // Rows 3-4 deliberately alternate materials to expose cardinal seams and four-tile junctions.
+        const junctionBiomes = ['jungle', 'plains', 'cliff', 'beach', 'water', 'swamp', 'forest', 'sand', 'grove'];
+        junctionBiomes.forEach((biome, index) => {
+            const x = index - 4;
+            for (const y of [3, 4]) {
+                const tile = tileAt(x, y);
+                const surveyBiome = y === 3 ? biome : junctionBiomes[(index + 1) % junctionBiomes.length];
+                const displayBiome = surveyBiome === 'sand' ? 'beach' : surveyBiome;
+                tile.biome = surveyBiome;
+                tile.baseBiome = surveyBiome;
+                tile.derivedBiome = surveyBiome;
+                tile.displayBiome = displayBiome;
+                tile.macroBiome = surveyBiome;
+                tile.water = surveyBiome === 'water';
+                tile.terrain = { ...(tile.terrain || {}), water: tile.water };
+                tile.description = `Terrain survey ${displayBiome} at ${x}, ${y}.`;
+            }
+        });
+
+        app.location = { x: 0, y: 0 };
+        app.currentBiome = tileAt(0, 0).biome;
+        app.creatures = tileAt(0, 0).creatures || [];
+        app.largeMapOffset = { x: 0, y: 0 };
+        app.largeMapSelected = { x: 0, y: 0 };
+    },
+
     tileFor(app) {
+        if (app.alphaSession?.scenarioId === 'terrain-composition') {
+            this.configureTerrainSurvey(app);
+            return app.worldMap.get('0,0');
+        }
         const base = app.getBaseTile(0, 0);
         const tile = {
             ...base,
@@ -411,7 +615,6 @@ const YAW_ALPHA_LAB = {
         if (options.preserveSandbox !== true) await this.clearSandboxStorage();
         const player = this.resetState(app, mission);
         this.configureMission(app, mission, player);
-        this.tileFor(app);
         app.alphaSession = {
             version: this.VERSION,
             scenarioId: mission.id,
@@ -419,14 +622,17 @@ const YAW_ALPHA_LAB = {
             outcome: 'unreviewed',
             checklist: this.checklistText(app, mission).map(text => ({ text, checked: false }))
         };
+        this.tileFor(app);
         this.renderGame(app, mission);
         if (mission.id === 'combat-group' || mission.id === 'failure-narration') {
             app.startCombat([...app.creatures], { source: 'alpha-lab', announce: false });
             this.renderSessionBanner(app);
         }
         app._autoSaveSuppressed = false;
-        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'alpha-scenario');
-        app.autoSave?.({ immediate: true, reason: 'alpha-scenario' });
+        if (mission.id !== 'terrain-composition') {
+            app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'alpha-scenario');
+            app.autoSave?.({ immediate: true, reason: 'alpha-scenario' });
+        }
         if (options.updateUrl !== false && typeof history !== 'undefined' && typeof location !== 'undefined') {
             const url = new URL(location.href);
             url.searchParams.set('alphaScenario', mission.id);

@@ -214,6 +214,11 @@ async function readOverworldAcceptance(page) {
       mobileCliffCount: document.querySelectorAll('#mobile-mini-map [data-elevation-kind="cliff"]').length,
       desktopCliffCount: document.querySelectorAll('#desktop-neighborhood-grid [data-elevation-kind="cliff"]').length,
       largeCliffCount: document.querySelectorAll('#large-map [data-elevation-kind="cliff"]').length,
+      elevationArtCounts: {
+        mobile: document.querySelectorAll('#mobile-mini-map [data-tileset-semantic-key^="terrain-elevation-"]').length,
+        desktop: document.querySelectorAll('#desktop-neighborhood-grid [data-tileset-semantic-key^="terrain-elevation-"]').length,
+        large: document.querySelectorAll('#large-map [data-tileset-semantic-key^="terrain-elevation-"]').length
+      },
       evidenceKinds: snapshot.layers.evidence.records.map(record => record.kind),
       presenceIds: snapshot.layers.presence.records.map(record => record.id),
       routeKinds: snapshot.layers.route.records.map(record => record.kind),
@@ -273,6 +278,8 @@ async function readArtAssetAcceptance(page) {
     const structuresV3 = await loadPixels('structures-v3');
     const poiV3 = await loadPixels('poi-v3');
     const evidenceV3 = await loadPixels('evidence-v3');
+    const reliefV1 = await loadPixels('relief-v1');
+    const jungleStrataV1 = await loadPixels('jungle-strata-v1');
     const samePixel = (pixels, left, right) => {
       const offset = value => (value.y * pixels.width + value.x) * 4;
       const a = offset(left);
@@ -296,6 +303,21 @@ async function readArtAssetAcceptance(page) {
     const vertical = candidate.pack.tiles['route-bridge-vertical'].layers[0];
     const horizontal = candidate.pack.tiles['route-bridge-horizontal'].layers[0];
     const foliage = candidate.pack.tiles['cover-foliage'].layers[0];
+    const alphaRatio = pixels => {
+      let visible = 0;
+      for (let index = 3; index < pixels.data.length; index += 4) {
+        if (pixels.data[index] > 0) visible += 1;
+      }
+      return visible / (pixels.width * pixels.height);
+    };
+    const transparentCorners = pixels => [
+      [0, 0], [pixels.width - 1, 0], [0, pixels.height - 1], [pixels.width - 1, pixels.height - 1]
+    ].every(([x, y]) => alphaAt(pixels, x, y) === 0);
+    const reliefAtlasIds = [...new Set(Object.entries(candidate.pack.tiles)
+      .filter(([key]) => key.startsWith('terrain-elevation-'))
+      .flatMap(([, tile]) => tile.layers.map(layer => layer.atlasId)))];
+    const jungleAtlasIds = [...new Set(['cover-jungle-canopy', 'cover-jungle-undergrowth', 'cover-jungle-litter', 'cover-jungle-spill']
+      .flatMap(key => candidate.pack.tiles[key].layers.map(layer => layer.atlasId)))];
     return {
       materialDimensions: `${material.width}x${material.height}`,
       materialEdgesMatch,
@@ -308,7 +330,12 @@ async function readArtAssetAcceptance(page) {
       v3Dimensions: [`${coverV3.width}x${coverV3.height}`, `${structuresV3.width}x${structuresV3.height}`, `${poiV3.width}x${poiV3.height}`, `${evidenceV3.width}x${evidenceV3.height}`],
       v3TransparentCorners: [coverV3, structuresV3, poiV3, evidenceV3].every(pixels =>
         alphaAt(pixels, 0, 0) === 0 && alphaAt(pixels, pixels.width - 1, pixels.height - 1) === 0
-      )
+      ),
+      qualityPassDimensions: [`${reliefV1.width}x${reliefV1.height}`, `${jungleStrataV1.width}x${jungleStrataV1.height}`],
+      qualityPassTransparentCorners: transparentCorners(reliefV1) && transparentCorners(jungleStrataV1),
+      qualityPassAlphaRatios: [alphaRatio(reliefV1), alphaRatio(jungleStrataV1)],
+      reliefAtlasIds,
+      jungleAtlasIds
     };
   });
 }
@@ -458,6 +485,7 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert.strictEqual(overworld.desktopCount, 9, `${prefix}: desktop 3x3 should compose all nine cells`);
     assert(overworld.largeCount >= 9, `${prefix}: large map should compose every known lab cell`);
     assert(overworld.mobileCliffCount >= 1 && overworld.desktopCliffCount >= 1 && overworld.largeCliffCount >= 1, `${prefix}: directional cliff topology should reach every overworld surface`);
+    assert(overworld.elevationArtCounts.mobile >= 1 && overworld.elevationArtCounts.desktop >= 1 && overworld.elevationArtCounts.large >= 1, `${prefix}: directional relief artwork should resolve on every overworld surface`);
     assert(overworld.evidenceKinds.includes('item') && overworld.evidenceKinds.includes('remains') && overworld.evidenceKinds.includes('recovery-bag') && overworld.evidenceKinds.includes('placed-object'), `${prefix}: durable evidence kinds should coexist`);
     assert.deepStrictEqual(overworld.restoredEvidenceKinds, overworld.evidenceKinds, `${prefix}: sparse tile-delta restoration should preserve every evidence kind`);
     assert(overworld.presenceIds.includes('composition-player') && overworld.presenceIds.includes('composition-fox'), `${prefix}: party and live creature presence should coexist`);
@@ -468,7 +496,7 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert(overworld.transitionJunctions.length === 4, `${prefix}: the destination snapshot should publish all four eight-neighbor junction decisions`);
     assert(['none', 'normal', ''].includes(overworld.shorelineFoamContent), `${prefix}: bundled shoreline paint must not restore the removed repeating scallop pseudo-element`);
     assert.strictEqual(overworld.duplicateWaterBlend, false, `${prefix}: a shoreline cell must not also render a generic water transition`);
-    assert(overworld.jungleIdentityCounts.mobile >= 2 && overworld.jungleIdentityCounts.desktop >= 2 && overworld.jungleIdentityCounts.large >= 2, `${prefix}: jungle canopy and undergrowth strata must reach every map surface`);
+    assert(overworld.jungleIdentityCounts.mobile >= 3 && overworld.jungleIdentityCounts.desktop >= 3 && overworld.jungleIdentityCounts.large >= 3, `${prefix}: jungle canopy, undergrowth, and litter strata must reach every map surface`);
     assert.strictEqual(overworld.plainsIdentityCount, 0, `${prefix}: plains must remain visually open rather than inheriting jungle strata`);
     assert(activeRoadFilter && activeRoadFilter !== 'none', `${prefix}: active local road should receive a visible biome-aware verge treatment`);
     assert.strictEqual(activeRoadFilter, overworld.largeRoadFilter, `${prefix}: Review Map road verge treatment should match the active local map`);
@@ -486,6 +514,11 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert.strictEqual(art.coverSlot, 'feature', `${prefix}: Tileset Pack V1 should receive cover through its compatible feature slot`);
     assert.deepStrictEqual(art.v3Dimensions, ['1774x887', '1254x1254', '1536x1024', '1774x887'], `${prefix}: compositional overlay atlases should retain their reviewed grids`);
     assert.strictEqual(art.v3TransparentCorners, true, `${prefix}: structures, POIs, cover, and evidence must not carry baked terrain corners`);
+    assert.deepStrictEqual(art.qualityPassDimensions, ['1995x788', '1774x887'], `${prefix}: quality-pass relief and jungle atlases should retain their reviewed bounds`);
+    assert.strictEqual(art.qualityPassTransparentCorners, true, `${prefix}: relief and jungle strata must retain transparent outer corners`);
+    assert(art.qualityPassAlphaRatios.every(ratio => ratio > 0.05 && ratio < 0.5), `${prefix}: quality-pass overlays should contain visible art without reintroducing baked ground`);
+    assert.deepStrictEqual(art.reliefAtlasIds, ['relief-v1'], `${prefix}: all directional elevation semantics should resolve through the relief atlas`);
+    assert.deepStrictEqual(art.jungleAtlasIds, ['jungle-strata-v1'], `${prefix}: every jungle stratum and spill semantic should resolve through the jungle atlas`);
 
     const generated = await readGeneratedWorldAcceptance(page);
     assert.strictEqual(generated.generatedTileCount, 2401, `${prefix}: generated-world audit should inspect the full deterministic sample`);

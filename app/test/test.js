@@ -4740,10 +4740,12 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   const bridgeV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'bridge-span-v2.png'));
   const coverV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'foliage-cover-v2.png'));
   const coverV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'cover-overlays-v3.png'));
+  const reliefV1Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'terrain-relief-v1.png'));
+  const jungleStrataV1Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'jungle-strata-v1.png'));
   const structureV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'structure-overlays-v3.png'));
   const poiV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'poi-overlays-v3.png'));
   const evidenceV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'evidence-overlays-v3.png'));
-  const reviewedBytes = [atlasBytes, overlayBytes, materialBytes, materialV2Bytes, bridgeV2Bytes, coverV2Bytes, coverV3Bytes, structureV3Bytes, poiV3Bytes, evidenceV3Bytes];
+  const reviewedBytes = [atlasBytes, overlayBytes, materialBytes, materialV2Bytes, bridgeV2Bytes, coverV2Bytes, coverV3Bytes, reliefV1Bytes, jungleStrataV1Bytes, structureV3Bytes, poiV3Bytes, evidenceV3Bytes];
   reviewedBytes.forEach((bytes, index) => {
     const descriptor = bundled.resources[index];
     const hash = require('crypto').createHash('sha256').update(bytes).digest('hex');
@@ -4789,6 +4791,8 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertContains(buildContent, "'./assets/bridge-span-v2.png'", 'Hosted builds should reference the cacheable V2 bridge atlas');
   assertContains(buildContent, "'./assets/foliage-cover-v2.png'", 'Hosted builds should reference the cacheable transparent cover atlas');
   assertContains(buildContent, "'./assets/cover-overlays-v3.png'", 'Hosted builds should reference generated biome cover overlays');
+  assertContains(buildContent, "'./assets/terrain-relief-v1.png'", 'Hosted builds should reference directional terrain relief overlays');
+  assertContains(buildContent, "'./assets/jungle-strata-v1.png'", 'Hosted builds should reference layered jungle identity overlays');
   assertContains(buildContent, "'./assets/structure-overlays-v3.png'", 'Hosted builds should reference transparent structure overlays');
   assertContains(buildContent, "'./assets/poi-overlays-v3.png'", 'Hosted builds should reference transparent POI overlays');
   assertContains(buildContent, "'./assets/evidence-overlays-v3.png'", 'Hosted builds should reference transparent evidence overlays');
@@ -4797,12 +4801,16 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_BRIDGE_V2_URL'", 'V2 bridge object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_COVER_V2_URL'", 'V2 cover object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_COVER_V3_URL'", 'Generated cover object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_RELIEF_V1_URL'", 'Terrain relief object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_JUNGLE_STRATA_V1_URL'", 'Jungle strata object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_STRUCTURE_V3_URL'", 'Structure overlay object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_POI_V3_URL'", 'POI overlay object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_EVIDENCE_V3_URL'", 'Evidence overlay object URLs should be published for bundled pack activation');
   assertContains(buildContent, 'URL.revokeObjectURL(window.${asset.key})', 'Every embedded atlas object URL should be revoked when the page closes');
   assertContains(buildContent, 'BUNDLED_TILESET_COVER_V2,', 'Legacy bundled V2 cover should participate in development watch rebuilds');
   assertContains(buildContent, 'BUNDLED_TILESET_COVER_V3,', 'Generated cover overlays should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_RELIEF_V1,', 'Terrain relief overlays should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_JUNGLE_STRATA_V1,', 'Jungle strata overlays should participate in development watch rebuilds');
   assertContains(buildContent, 'BUNDLED_TILESET_STRUCTURE_V3,', 'Structure overlays should participate in development watch rebuilds');
   assertContains(buildContent, 'BUNDLED_TILESET_POI_V3,', 'POI overlays should participate in development watch rebuilds');
   assertContains(buildContent, 'BUNDLED_TILESET_EVIDENCE_V3,', 'Evidence overlays should participate in development watch rebuilds');
@@ -8789,6 +8797,8 @@ test('Asset manifest supports tileset provenance and fallback metadata', () => {
   assert(painted.sheets.some(sheet => sheet.src === 'structure-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent structures without baked terrain');
   assert(painted.sheets.some(sheet => sheet.src === 'poi-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent POI markers');
   assert(painted.sheets.some(sheet => sheet.src === 'evidence-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent durable evidence');
+  assert(painted.sheets.some(sheet => sheet.src === 'terrain-relief-v1.png' && sheet.alpha), 'Basic tileset should include transparent directional elevation relief');
+  assert(painted.sheets.some(sheet => sheet.src === 'jungle-strata-v1.png' && sheet.alpha), 'Basic tileset should include independently replaceable jungle strata');
   assertEqual(painted.aiMetadata.aiMade, true, 'Basic tileset should expose AI-made metadata for future asset-pack policy');
   assert(painted.allowedUse.includes('future-mod-pack'), 'Tileset metadata should allow future mod-pack use');
   const forestAsset = manifest.getTileAsset('terrain-forest');
@@ -9260,7 +9270,10 @@ test('Alpha Lab exposes isolated public missions and deterministic agent launch 
   assertContains(alphaLabContent, "SAVE_DB_NAME: 'YAW_Alpha_Saves'", 'Alpha missions should not write the ordinary save database');
   assertContains(alphaLabContent, "WORLD_DB_NAME: 'YAW_Alpha_Worlds'", 'Alpha missions should not write the ordinary world database');
   assertContains(alphaLabContent, "new URLSearchParams(location.search).get('alphaScenario')", 'Agent scenarios should have a stable direct URL contract');
-  assertEqual((alphaLabContent.match(/id: '[a-z-]+'/g) || []).filter(entry => entry.includes('interaction') || entry.includes('containment') || entry.includes('combat') || entry.includes('narration') || entry.includes('companion') || entry.includes('content') || entry.includes('responsive')).length, 8, 'Alpha Lab should retain the maintained eight-mission fixture set');
+  assertEqual((alphaLabContent.match(/id: '[a-z-]+'/g) || []).filter(entry => entry.includes('interaction') || entry.includes('containment') || entry.includes('combat') || entry.includes('narration') || entry.includes('companion') || entry.includes('content') || entry.includes('responsive') || entry.includes('terrain')).length, 9, 'Alpha Lab should retain the maintained nine-mission fixture set');
+  assertContains(alphaLabContent, "id: 'terrain-composition'", 'Alpha Lab should expose the deterministic terrain-composition survey');
+  assertContains(alphaLabContent, 'for (let y = -4; y <= 4; y++)', 'Terrain survey should materialize a bounded 9x9 review world');
+  assertContains(alphaLabContent, "app.cheats.noEnemies = true", 'Terrain survey should suppress hostile encounters during visual review');
   assertContains(alphaLabContent, 'share it only when you are comfortable with its contents', 'Reports should be review-before-share');
   assertNotContains(alphaLabContent, "fetch(this.ISSUE_URL", 'Alpha reports should never submit automatically');
 });

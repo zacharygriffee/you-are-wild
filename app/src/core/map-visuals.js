@@ -302,6 +302,23 @@ const YAW_MAP_VISUALS = {
         for (const corner of shorelineCorners) {
             semanticKeys.push(app.MAP_TILESET_KEYS.shorelineCorners?.[corner] || `shoreline-water-${corner}`);
         }
+        if (elevationTopology?.kind === 'slope' && elevationTopology.primaryUphill) {
+            semanticKeys.push(app.MAP_TILESET_KEYS.elevation?.[`slope-${elevationTopology.primaryUphill}`] || `terrain-elevation-slope-${elevationTopology.primaryUphill}`);
+        }
+        if (elevationTopology?.kind === 'ledge' && (elevationTopology.primaryDownhill || elevationTopology.downhillEdges?.[0])) {
+            const direction = elevationTopology.primaryDownhill || elevationTopology.downhillEdges[0];
+            semanticKeys.push(app.MAP_TILESET_KEYS.elevation?.[`ledge-${direction}`] || `terrain-elevation-ledge-${direction}`);
+        }
+        if (elevationTopology?.kind === 'cliff') {
+            const directions = this.normalizedDirections(
+                elevationTopology.cliffEdges?.length
+                    ? elevationTopology.cliffEdges
+                    : [elevationTopology.primaryDownhill]
+            );
+            directions.forEach(direction => {
+                semanticKeys.push(app.MAP_TILESET_KEYS.elevation?.[`cliff-${direction}`] || `terrain-elevation-cliff-${direction}`);
+            });
+        }
         if (tile.overlays?.bridge) {
             const direction = tile.overlays.bridge.direction || tile.overlays.road?.direction || 'east-west';
             tilesetKey = app.MAP_TILESET_KEYS.bridges[direction] || 'route-bridge-horizontal';

@@ -133,6 +133,20 @@ textured cold transfer, and the directly relevant ground, cover, relief, and
 jungle atlases. Animation and
 mod-supplied animated media remain a future composition-version topic.
 
+Terrain Art Quality Pass 2 extends that visual baseline without widening the
+contract. Grove, forest, plains, swamp, and cave now have separately
+replaceable identity art; soft-biome adjacency uses matching directional spill
+strips instead of reusing the older generic cover crops. Deterministic
+transform and anchor variation keeps repeated tiles from becoming identical,
+while the existing route and feature clearance pass protects readable paths,
+structures, and POIs. Plains deliberately emits one restrained identity record
+per tile; jungle remains the only dense three-stratum baseline.
+
+Beach uses one restrained `cover-beach-identity` drift overlay from the
+existing reviewed V3 cover sheet. Its water boundary remains a specialized
+shoreline layer rather than a generic ground spill, keeping coastal seams
+single-owned and free of repeating scallop decoration.
+
 ## Phase D — persistent tile evidence (complete baseline)
 
 - Project existing saved ground items, remains, resource depletion, placed

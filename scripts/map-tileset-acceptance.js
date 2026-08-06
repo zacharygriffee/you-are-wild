@@ -14,7 +14,8 @@ const BUDGETS = Object.freeze({
   terrainMaterialsBytes: 1.25 * MIB,
   coverOverlaysBytes: 1.75 * MIB,
   terrainReliefBytes: 0.3 * MIB,
-  jungleStrataBytes: 0.4 * MIB
+  jungleStrataBytes: 0.4 * MIB,
+  biomeStrataBytes: 0.25 * MIB
 });
 const paths = {
   offline: path.join(ROOT, 'dist', 'you-are-wild.html'),
@@ -29,6 +30,7 @@ const paths = {
     path.join(ROOT, 'media', 'cover-overlays-v3.png'),
     path.join(ROOT, 'media', 'terrain-relief-v1.png'),
     path.join(ROOT, 'media', 'jungle-strata-v1.png'),
+    path.join(ROOT, 'media', 'biome-strata-v2.png'),
     path.join(ROOT, 'media', 'structure-overlays-v3.png'),
     path.join(ROOT, 'media', 'poi-overlays-v3.png'),
     path.join(ROOT, 'media', 'evidence-overlays-v3.png')
@@ -79,7 +81,8 @@ function measure() {
     terrainMaterials: atlasByName['terrain-materials-v2.png'].bytes <= BUDGETS.terrainMaterialsBytes,
     coverOverlays: atlasByName['cover-overlays-v3.png'].bytes <= BUDGETS.coverOverlaysBytes,
     terrainRelief: atlasByName['terrain-relief-v1.png'].bytes <= BUDGETS.terrainReliefBytes,
-    jungleStrata: atlasByName['jungle-strata-v1.png'].bytes <= BUDGETS.jungleStrataBytes
+    jungleStrata: atlasByName['jungle-strata-v1.png'].bytes <= BUDGETS.jungleStrataBytes,
+    biomeStrata: atlasByName['biome-strata-v2.png'].bytes <= BUDGETS.biomeStrataBytes
   };
 
   return {

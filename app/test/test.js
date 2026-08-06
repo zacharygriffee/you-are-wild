@@ -4742,10 +4742,11 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   const coverV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'cover-overlays-v3.png'));
   const reliefV1Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'terrain-relief-v1.png'));
   const jungleStrataV1Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'jungle-strata-v1.png'));
+  const biomeStrataV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'biome-strata-v2.png'));
   const structureV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'structure-overlays-v3.png'));
   const poiV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'poi-overlays-v3.png'));
   const evidenceV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'evidence-overlays-v3.png'));
-  const reviewedBytes = [atlasBytes, overlayBytes, materialBytes, materialV2Bytes, bridgeV2Bytes, coverV2Bytes, coverV3Bytes, reliefV1Bytes, jungleStrataV1Bytes, structureV3Bytes, poiV3Bytes, evidenceV3Bytes];
+  const reviewedBytes = [atlasBytes, overlayBytes, materialBytes, materialV2Bytes, bridgeV2Bytes, coverV2Bytes, coverV3Bytes, reliefV1Bytes, jungleStrataV1Bytes, biomeStrataV2Bytes, structureV3Bytes, poiV3Bytes, evidenceV3Bytes];
   reviewedBytes.forEach((bytes, index) => {
     const descriptor = bundled.resources[index];
     const hash = require('crypto').createHash('sha256').update(bytes).digest('hex');
@@ -4793,6 +4794,7 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertContains(buildContent, "'./assets/cover-overlays-v3.png'", 'Hosted builds should reference generated biome cover overlays');
   assertContains(buildContent, "'./assets/terrain-relief-v1.png'", 'Hosted builds should reference directional terrain relief overlays');
   assertContains(buildContent, "'./assets/jungle-strata-v1.png'", 'Hosted builds should reference layered jungle identity overlays');
+  assertContains(buildContent, "'./assets/biome-strata-v2.png'", 'Hosted builds should reference layered grove, forest, plains, swamp, and cave identity overlays');
   assertContains(buildContent, "'./assets/structure-overlays-v3.png'", 'Hosted builds should reference transparent structure overlays');
   assertContains(buildContent, "'./assets/poi-overlays-v3.png'", 'Hosted builds should reference transparent POI overlays');
   assertContains(buildContent, "'./assets/evidence-overlays-v3.png'", 'Hosted builds should reference transparent evidence overlays');
@@ -4803,6 +4805,7 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_COVER_V3_URL'", 'Generated cover object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_RELIEF_V1_URL'", 'Terrain relief object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_JUNGLE_STRATA_V1_URL'", 'Jungle strata object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_BIOME_STRATA_V2_URL'", 'Biome strata object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_STRUCTURE_V3_URL'", 'Structure overlay object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_POI_V3_URL'", 'POI overlay object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_EVIDENCE_V3_URL'", 'Evidence overlay object URLs should be published for bundled pack activation');
@@ -8276,8 +8279,8 @@ test('Binary save uses live top-level stats when nested stats are stale', () => 
 
 test('Binary saves exclude temporary Overpowered stat mutations', () => {
   const Binary = loadBinaryForTest();
-  const player = makeUnit('You', { Figh: 99, MPun: 999, CPun: 999 });
-  const snapshot = { Figh: 14, MPun: 120, CPun: 87 };
+  const player = makeUnit('You', { Figh: 99, str: 99, MPun: 999, CPun: 999 });
+  const snapshot = { Figh: 14, str: 14, MPun: 120, CPun: 87 };
   const buffer = Binary.saveGame({
     player,
     party: [player],
@@ -8289,10 +8292,10 @@ test('Binary saves exclude temporary Overpowered stat mutations', () => {
   });
   const loaded = Binary.loadGame(buffer);
 
-  assertEqual(loaded.playerStats.Figh, 14, 'Save metadata should use the pre-cheat Fight stat');
+  assertEqual(loaded.playerStats.str, 14, 'Save metadata should use the pre-cheat Strength stat');
   assertEqual(loaded.playerMaxHp, 120, 'Save metadata should use the pre-cheat maximum condition');
   assertEqual(loaded.playerHp, 87, 'Save metadata should use the pre-cheat current condition');
-  assertEqual(loaded.party[0].Figh, 14, 'The serialized player unit should use the pre-cheat Fight stat');
+  assertEqual(loaded.party[0].stats.str, 14, 'The serialized player unit should use the pre-cheat Strength stat');
   assertEqual(loaded.party[0].MPun, 120, 'The serialized player unit should use the pre-cheat maximum condition');
   assertEqual(loaded.party[0].CPun, 87, 'The serialized player unit should use the pre-cheat current condition');
 });
@@ -8799,6 +8802,7 @@ test('Asset manifest supports tileset provenance and fallback metadata', () => {
   assert(painted.sheets.some(sheet => sheet.src === 'evidence-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent durable evidence');
   assert(painted.sheets.some(sheet => sheet.src === 'terrain-relief-v1.png' && sheet.alpha), 'Basic tileset should include transparent directional elevation relief');
   assert(painted.sheets.some(sheet => sheet.src === 'jungle-strata-v1.png' && sheet.alpha), 'Basic tileset should include independently replaceable jungle strata');
+  assert(painted.sheets.some(sheet => sheet.src === 'biome-strata-v2.png' && sheet.alpha), 'Basic tileset should include independently replaceable grove, forest, plains, swamp, and cave strata');
   assertEqual(painted.aiMetadata.aiMade, true, 'Basic tileset should expose AI-made metadata for future asset-pack policy');
   assert(painted.allowedUse.includes('future-mod-pack'), 'Tileset metadata should allow future mod-pack use');
   const forestAsset = manifest.getTileAsset('terrain-forest');

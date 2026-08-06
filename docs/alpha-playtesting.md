@@ -78,8 +78,13 @@ both sizes; the separate composition browser gate also covers hosted and file
 origins at every maintained viewport.
 
 The terrain fixture additionally checks its exact biome, road, bridge,
-structure, POI, evidence, directional-relief, jungle-strata, and water-fact
-coverage, including junction narration after biome rebasing.
+structure, POI, evidence, directional-relief, water-fact, and layered identity
+coverage. Grove, forest, plains, swamp, and cave each expose an independently
+replaceable identity semantic, beach exposes a restrained drift identity, and
+jungle retains separate canopy, undergrowth, and litter records. The matrix
+also checks all nine route underlays/decks, destination-grounded structure and
+POI rows, single-owned beach/water shoreline paint, and junction narration
+after biome rebasing.
 
 The command prints a JSON result summary suitable for CI logs. It is also part of `npm run full-build`.
 

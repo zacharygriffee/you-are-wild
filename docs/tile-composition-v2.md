@@ -147,7 +147,8 @@ The acceptance audit enforces ceilings of 18 MiB for the embedded offline
 artifact, 4 MiB for the hosted shell, 10.5 MiB for the external atlas set, and
 11 MiB for estimated hosted textured cold transfer. The terrain-material and
 cover atlases are individually capped at 1.25 MiB and 1.75 MiB. The directional
-relief and jungle-strata atlases are capped at 0.3 MiB and 0.4 MiB respectively.
+relief, jungle-strata, and remaining-biome-strata atlases are capped at 0.3
+MiB, 0.4 MiB, and 0.25 MiB respectively.
 
 First-party generation prompts, alpha extraction, deterministic atlas
 post-processing, and asset paths are recorded in

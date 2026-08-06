@@ -179,11 +179,33 @@ const YAW_TILE_VISUAL_RECIPES = {
         });
     },
 
-    _jungleIdentityCover(tile) {
-        if (this.biome(tile) !== 'jungle') return [];
+    _biomeIdentityCover(tile) {
+        const biome = this.biome(tile);
         const x = Number(tile?.x);
         const y = Number(tile?.y);
-        const phase = this._hash01(x, y, 'jungle-identity');
+        const phase = this._hash01(x, y, `${biome}-identity`);
+        const identity = {
+            grove: { family: 'grove-identity', label: 'grove canopy', stratum: 'canopy', subLayer: 24, scale: 1.02, opacity: 0.9 },
+            forest: { family: 'forest-identity', label: 'forest canopy', stratum: 'canopy', subLayer: 25, scale: 1.06, opacity: 0.92 },
+            plains: { family: 'plains-identity', label: 'plains grasses', stratum: 'field', subLayer: 18, scale: 1.0, opacity: 0.84 },
+            swamp: { family: 'swamp-identity', label: 'swamp wetland', stratum: 'wetland', subLayer: 19, scale: 1.02, opacity: 0.88 },
+            cave: { family: 'cave-identity', label: 'cave rubble', stratum: 'floor', subLayer: 17, scale: 0.92, opacity: 0.8 },
+            beach: { family: 'beach-identity', label: 'beach drift', stratum: 'shore', subLayer: 16, scale: 0.82, opacity: 0.72 }
+        }[biome];
+        if (identity) {
+            return [{
+                kind: 'biome-identity', id: `${biome}-identity-${x}-${y}`, label: identity.label, family: identity.family,
+                stratum: identity.stratum, subLayer: identity.subLayer,
+                anchor: {
+                    x: Number((0.42 + phase * 0.16).toFixed(3)),
+                    y: Number((0.44 + (1 - phase) * 0.12).toFixed(3))
+                },
+                scale: identity.scale, opacity: identity.opacity,
+                rotation: Math.round(phase * 14 - 7), flipX: phase >= 0.5,
+                role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false, destinationOwned: true
+            }];
+        }
+        if (biome !== 'jungle') return [];
         const anchors = [
             { x: Number((0.22 + phase * 0.16).toFixed(3)), y: Number((0.22 + (1 - phase) * 0.12).toFixed(3)) },
             { x: Number((0.68 + (1 - phase) * 0.1).toFixed(3)), y: Number((0.68 + phase * 0.1).toFixed(3)) }
@@ -218,7 +240,7 @@ const YAW_TILE_VISUAL_RECIPES = {
         const canResolve = typeof resolver === 'function' && Number.isFinite(x) && Number.isFinite(y);
         const sharedEdges = [];
         const transitions = [];
-        const cover = this._jungleIdentityCover(tile);
+        const cover = this._biomeIdentityCover(tile);
         if (canResolve) {
             for (const direction of this.DIRECTIONS) {
                 const neighborX = x + direction.dx;
@@ -266,12 +288,14 @@ const YAW_TILE_VISUAL_RECIPES = {
                     kind: 'adjacent-spill',
                     id: `blend-${sharedEdgeKey.replace(/[^a-z0-9]+/gi, '-')}`,
                     label: policy.sourceBiome,
-                    family: policy.sourceBiome === 'jungle' ? 'jungle-spill' : sourceProfile.coverFamily,
+                    family: ['grove', 'forest', 'plains', 'swamp', 'jungle'].includes(policy.sourceBiome)
+                        ? `${policy.sourceBiome}-spill`
+                        : sourceProfile.coverFamily,
                     variant: Math.floor(this._hash01(sharedEdgeKey, 'spill-variant') * 4),
                     anchor,
                     scale: Number((sourceProfile.spillScale * (0.82 + phase * 0.18)).toFixed(3)),
                     opacity: sourceProfile.spillOpacity,
-                    rotation: policy.sourceBiome === 'jungle'
+                    rotation: ['grove', 'forest', 'plains', 'swamp', 'jungle'].includes(policy.sourceBiome)
                         ? ({ north: 0, east: 90, south: 180, west: 270 }[direction.id] || 0)
                         : Math.round(phase * 12 - 6),
                     flipX: phase >= 0.5,

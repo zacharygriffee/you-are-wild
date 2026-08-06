@@ -91,6 +91,19 @@ async function inspectScenario(page) {
       const semanticKeys = elevationRow.flatMap(tile => App._mapTileVisual(tile, {
         neighborResolver: (x, y) => App.worldMap.get(`${x},${y}`) || null
       }).semanticKeys || []);
+      const visualFor = tile => App._mapTileVisual(tile, {
+        neighborResolver: (x, y) => App.worldMap.get(`${x},${y}`) || null
+      });
+      const routeVisuals = routeRow.map(visualFor);
+      const structureVisuals = structureRow.map(visualFor);
+      const poiVisuals = poiRow.map(visualFor);
+      const beachCoastVisual = visualFor(row(-4).find(tile => tile.biome === 'beach'));
+      const identityFamilies = row(-4).flatMap(tile => App._mapTileVisual(tile, {
+        neighborResolver: (x, y) => App.worldMap.get(`${x},${y}`) || null
+      }).composition?.layers?.cover?.records || [])
+        .filter(record => record.kind === 'biome-identity')
+        .map(record => record.family)
+        .sort();
       return {
         biomes: [...new Set(row(-4).map(tile => tile.displayBiome || tile.biome))].sort(),
         roadCount: routeRow.filter(tile => tile.overlays?.road).length,
@@ -99,6 +112,24 @@ async function inspectScenario(page) {
         poiCount: poiRow.filter(tile => tile.overlays?.poi).length,
         evidenceCount: evidenceRow.filter(tile => tile.items?.length || tile.deathBags?.length || tile.placedObjects?.length || tile.resourceSearched).length,
         elevationSemantics: [...new Set(semanticKeys.filter(key => key.startsWith('terrain-elevation-')))].sort(),
+        identityFamilies,
+        routeLayersComplete: routeVisuals.every(visual =>
+          visual.composition.layers.route.records.some(record => record.kind === 'road' || record.kind === 'bridge')
+          && visual.composition.layers.route.records.some(record => record.kind === 'route-verge' || record.kind === 'bridge-approach')
+        ),
+        structureGroundingCount: structureVisuals.filter((visual, index) =>
+          visual.composition.layers.ground.records[0]?.biome === structureRow[index].biome
+          && visual.composition.layers.feature.records.some(record => record.kind === 'feature-grounding')
+          && visual.composition.layers.feature.records.some(record => record.kind === 'structure')
+        ).length,
+        poiGroundingCount: poiVisuals.filter((visual, index) =>
+          visual.composition.layers.ground.records[0]?.biome === poiRow[index].biome
+          && visual.composition.layers.feature.records.some(record => record.kind === 'feature-grounding')
+          && visual.composition.layers.feature.records.some(record => record.kind === 'poi' || record.kind === 'resource')
+        ).length,
+        coastSingleOwned: beachCoastVisual.semanticKeys.includes('shoreline-water-east')
+          && !beachCoastVisual.semanticKeys.includes('ground-transition-water-east')
+          && beachCoastVisual.composition.layers.cover.records.some(record => record.family === 'beach-identity'),
         junctionDescriptionsMatch: junctionRows.every(tile => tile.description === `Terrain survey ${tile.displayBiome || tile.biome} at ${tile.x}, ${tile.y}.`),
         waterFlagsMatch: tiles.every(tile => Boolean(tile.water) === (tile.biome === 'water') && Boolean(tile.terrain?.water) === (tile.biome === 'water')),
         desktopCells: document.querySelectorAll('#desktop-neighborhood-grid [data-tile-composition-version="2"]').length,
@@ -164,6 +195,21 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
         'terrain-elevation-slope-south',
         'terrain-elevation-slope-west'
       ], 'terrain survey directional elevation semantics');
+      assert.deepEqual(actual.terrainSurvey.identityFamilies, [
+        'beach-identity',
+        'cave-identity',
+        'forest-identity',
+        'grove-identity',
+        'jungle-canopy',
+        'jungle-litter',
+        'jungle-undergrowth',
+        'plains-identity',
+        'swamp-identity'
+      ], 'terrain survey layered biome identity semantics');
+      assert.equal(actual.terrainSurvey.routeLayersComplete, true, 'every surveyed road and bridge should retain its route deck and biome-aware underlay');
+      assert.equal(actual.terrainSurvey.structureGroundingCount, 9, 'every surveyed structure should inherit its destination ground and grounding layer');
+      assert.equal(actual.terrainSurvey.poiGroundingCount, 9, 'every surveyed POI should inherit its destination ground and grounding layer');
+      assert.equal(actual.terrainSurvey.coastSingleOwned, true, 'beach identity and water shoreline should coexist without duplicate generic transition paint');
       assert.equal(actual.terrainSurvey.junctionDescriptionsMatch, true, 'terrain survey junction narration should match rebased biome identity');
       assert.equal(actual.terrainSurvey.waterFlagsMatch, true, 'terrain survey biome and water facts should agree');
       assert.equal(actual.terrainSurvey.desktopCells, 9, 'terrain survey desktop 3x3 composition');

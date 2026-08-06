@@ -199,9 +199,15 @@ check(northJunctionEdge?.corners.ne === 'trim' && eastJunctionEdge?.corners.ne =
 
 const jungleIdentity = visualRecipes.compose({ ...jungleTile, overlays: {} }, () => null);
 const plainsIdentity = visualRecipes.compose({ ...plainsTile, overlays: {} }, () => null);
+const identityFamilies = ['grove', 'forest', 'plains', 'swamp', 'cave', 'beach'].map(biome => {
+  const identity = visualRecipes.compose({ ...plainsTile, biome, derivedBiome: biome, overlays: {} }, () => null)
+    .cover.find(record => record.kind === 'biome-identity');
+  return [biome, identity];
+});
 check(jungleIdentity.cover.filter(record => record.kind === 'biome-identity').map(record => record.stratum).join(',') === 'canopy,undergrowth,floor', 'Jungle must compose distinct canopy, undergrowth, and forest-floor strata');
 check(jungleIdentity.cover.filter(record => record.kind === 'biome-identity').map(record => record.family).join(',') === 'jungle-canopy,jungle-undergrowth,jungle-litter', 'Jungle strata must resolve independently replaceable first-party overlay semantics');
-check(!plainsIdentity.cover.some(record => record.kind === 'biome-identity'), 'Plains must retain open visual space instead of inheriting jungle density');
+check(plainsIdentity.cover.filter(record => record.kind === 'biome-identity').length === 1, 'Plains must receive one restrained identity overlay instead of inheriting jungle density');
+check(identityFamilies.every(([biome, identity]) => identity?.family === `${biome}-identity` && !identity.mechanical && !identity.blocksMovement && !identity.blocksSight), 'Remaining biome identity art must use independently replaceable, presentation-only semantics');
 
 const clearanceTile = {
   ...tile,
@@ -244,7 +250,7 @@ const bridgeVisual = visuals.mapTileVisual(app, bridgeTile, {
 const bridgeApproach = bridgeVisual.composition.layers.route.records.find(record => record.kind === 'bridge-approach');
 check(bridgeApproach?.approachEdges.join(',') === 'east,west', 'Bridge approach records must identify landward cardinal ends without changing span topology');
 check(visuals.mapTileAttrs(app, bridgeVisual).includes('data-bridge-approach-edges="east west"'), 'Bridge cells must expose approach edges to the shared renderer');
-const spillRequest = runtime._dynamicLayerRequests(adjacentVisual).find(request => request.compositionLayer === 'cover');
+const spillRequest = runtime._dynamicLayerRequests(adjacentVisual).find(request => request.recordKind === 'adjacent-spill');
 check(spillRequest?.fallbackKey === 'cover-foliage' && spillRequest.opacity > 0 && spillRequest.opacity <= 1 && spillRequest.edgeBand === 'east', 'Adjacent spill art must retain bounded partial-pack fallback, opacity, and edge-band metadata');
 const generatedWorld = { seed: 'composition-world', generatorVersion: 7 };
 const generatedBiomes = ['forest', 'grove', 'jungle', 'swamp', 'plains', 'beach', 'sand', 'cliff'];

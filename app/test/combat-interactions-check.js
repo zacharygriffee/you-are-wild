@@ -62,6 +62,9 @@ async function startHostedTilesetCacheServer() {
     'bridge-span-v2.png',
     'foliage-cover-v2.png',
     'cover-overlays-v3.png',
+    'terrain-relief-v1.png',
+    'jungle-strata-v1.png',
+    'biome-strata-v2.png',
     'structure-overlays-v3.png',
     'poi-overlays-v3.png',
     'evidence-overlays-v3.png'

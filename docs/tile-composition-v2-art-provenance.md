@@ -136,3 +136,39 @@ Browser acceptance verifies transparent outer corners, bounded non-empty alpha,
 exact atlas ownership for every new semantic, file and hosted loading, and
 resolution on mobile, desktop, and Review Map surfaces. Static art alone grants
 no elevation, cover, movement, resource, or persistence rule.
+
+## Terrain Art Quality Pass 2 biome strata
+
+Source: `art/tile-composition/biome-strata-v2-source.png`
+
+Runtime output: `media/biome-strata-v2.png`
+
+The built-in ChatGPT image-generation tool produced a five-column by two-row
+chroma-key sheet. The top row contains grove, forest, plains, swamp, and cave
+identity clusters. The bottom row contains matching north-edge spill strips.
+The prompt required a strictly top-down hand-painted dark-fantasy style,
+consistent scale, isolated subjects on uniform `#ff00ff`, and no baked routes,
+structures, characters, text, shadows, or perspective. Each spill strip was
+required to remain readable when rotated to every cardinal direction.
+
+The maintained chroma-key helper removed the background with a soft matte and
+despill. The reviewed 1983x793 source was cropped to a regular 1980x792 grid,
+resampled to 1500x600, and palette-quantized to 128 colors without changing
+semantic cell ownership. The 161,425-byte runtime atlas has SHA-256
+`786672f78ddf2e89be4f9d5863ac87f5b8dece464494e3292630925cf19a6b45`.
+The preserved source has SHA-256
+`f6e18452308db4e4446bb4889e24510414476b9e839fa634e446a6bae27d4a30`.
+
+The atlas owns `cover-{grove|forest|plains|swamp|cave}-identity` plus the
+matching `cover-*-spill` semantics. Ordinary biome identity emits one bounded
+decorative record for these biomes, while jungle remains the intentionally
+denser three-stratum case. Soft adjacency can use the matching edge strip;
+hard cave boundaries retain their existing topology policy and do not gain a
+mechanic from the available cave-spill artwork.
+
+Beach completes the same identity contract through `cover-beach-identity`, a
+dedicated semantic key backed by the already-reviewed transparent drift cell
+in `cover-overlays-v3-source.png`. Water adjacency remains exclusively owned
+by the shoreline semantics, so this restrained shore detail does not restore
+the removed repeating foam/scallop treatment and does not add another embedded
+atlas.

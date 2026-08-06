@@ -29,19 +29,19 @@ blocked edges, structures, and exits may not.
 | Lightweight | `?graphics=emoji` skips bundled atlas registration | Same semantic map and controls through emoji/text. |
 | Partial mod pack | Locally leased overrides compose above lower-priority packs | Missing base/route/state keys inherit; disabling restores the prior candidate. |
 
-Measured development artifacts for the 0.18.3 development head on 2026-08-05
+Measured development artifacts for the 0.18.3 development head on 2026-08-06
 (`npm run audit:map-assets`):
 
-- offline single-file build: 17.12 MiB (10.75 MiB gzip);
-- hosted runtime HTML: 3.69 MiB (0.69 MiB gzip);
-- external first-party atlases: 10.06 MiB combined (10.02 MiB gzip);
+- offline single-file build: 17.33 MiB (10.91 MiB gzip);
+- hosted runtime HTML: 3.7 MiB (0.69 MiB gzip);
+- external first-party atlases: 10.22 MiB combined (10.17 MiB gzip);
 - estimated hosted Lightweight transfer: 0.69 MiB;
-- estimated hosted Textured cold transfer: 10.76 MiB.
+- estimated hosted Textured cold transfer: 10.91 MiB.
 
 Hosted Lightweight avoids the atlas transfer. Hosted Textured pays it once and
 can reuse normal browser cache; installed mod assets remain content-addressed in
 the Media Repository. At a theoretical 1.5 Mbps before latency and decode, the
-measured transfers take about 3.9 seconds and 60.2 seconds respectively. This is
+measured transfers take about 3.9 seconds and 61 seconds respectively. This is
 an artifact comparison, not a promise about real network timing.
 
 The audit rejects a hosted artifact that embeds atlas data, adds cache-busting
@@ -115,3 +115,26 @@ the current-position marker, and the 17×17 review map.
 This sample closes the responsive route/POI legibility check. It does not
 replace the existing representative coast, cave, and building-interior review
 or authorize a new art direction.
+
+### Terrain Art Quality Pass 2 review — 2026-08-06
+
+The rebuilt `terrain-composition` Alpha mission was traversed in the in-app
+browser and inspected at the normal desktop viewport and at 390x844 mobile.
+The review covered the biome-identity row plus the centered structure, POI,
+evidence, beach, swamp, and jungle neighborhood.
+
+- Grove, forest, plains, swamp, jungle, beach, and cave retain visually
+  distinct ground/cover identities; jungle remains intentionally denser than
+  the restrained single-overlay biomes.
+- Beach now carries sparse drift detail without restoring the removed
+  repeating foam/scallop line. Water/land transitions remain a single-owned
+  shoreline layer, and adjacent vegetation stays in its edge band.
+- Structures and POIs remain transparent overlays on the destination biome;
+  route and feature clearance preserve their readable negative space.
+- The nine-cell grid, current marker, POI marker, presence overflow, and Alpha
+  banner remain contained and usable at 390x844 without horizontal overflow.
+
+The maintained Alpha matrix additionally proves all nine route cells retain a
+route deck plus biome-aware underlay, all nine structure cells and all nine POI
+cells retain destination ground plus grounding records, and the reviewed coast
+does not receive duplicate generic water-transition paint.

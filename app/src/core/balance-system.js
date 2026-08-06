@@ -142,6 +142,26 @@ const YAW_BALANCE_SYSTEM = {
         if (!unit || !Number.isFinite(Number(amount)) || Number(amount) === 0) return null;
         const cfg = this.ensure(app);
         const before = this.hunger(unit);
+        const protectedByCheat = Boolean(
+            Number(amount) > 0
+            && app?.cheats?.neverHungry
+            && (unit === app.player || app.party?.includes?.(unit))
+        );
+        if (protectedByCheat) {
+            unit.hunger = 0;
+            return {
+                unit,
+                amount: -before,
+                before,
+                after: 0,
+                action: context.action || '',
+                source: 'cheat-never-hungry',
+                crossedWarning: false,
+                crossedHungry: false,
+                crossedStarving: false,
+                prevented: true
+            };
+        }
         const after = this.clampHunger(app, before + Number(amount));
         unit.hunger = after;
         const result = {

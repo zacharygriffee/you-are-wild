@@ -174,14 +174,15 @@ const YAW_COMBAT_ENEMIES = {
         if (target.CPun <= 0) {
             result += ` ${app._label('combat.targetFalls', '{name} falls!', { name: target.name })}`;
             if (target.name === app.player.name) {
-                if (app.cheats.godMode) {
-                    target.CPun = Math.max(1, target.CPun);
-                    app.log.push({ text: app._label('combat.godModeSaved', 'God Mode saved you from death!'), type: 'combat' });
-                    app.renderLog(); app.nextTurn(); return;
-                }
                 app.log.push({ text: result, type: 'combat' });
                 app._emitCombatAction('enemy_fight', enemy, target, result);
                 const state = app._handlePlayerFall({ cause: 'combat-damage', source: 'enemy-fight' });
+                if (state?.rescued) {
+                    app.renderLog();
+                    app.renderParty();
+                    app.nextTurn();
+                    return;
+                }
                 if (state?.terminal && !state?.awaitingEncounterSettlement) {
                     // Defeat recovery is rendered synchronously by handlePlayerFall/endCombat.
                     // Do not run legacy post-defeat rendering over the recovery command surface.

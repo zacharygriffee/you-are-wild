@@ -5912,6 +5912,25 @@
                 return YAW_LARGE_MAP.render(this);
             },
 
+            focusMapTarget(target = {}, options = {}) {
+                const x = Number(target.x);
+                const y = Number(target.y);
+                if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+                this.largeMapOffset = {
+                    x: x - Number(this.location?.x || 0),
+                    y: y - Number(this.location?.y || 0)
+                };
+                this.largeMapSelected = { x, y };
+                const focused = typeof YAW_TERRAIN_CANVAS_ALPHA !== 'undefined'
+                    && YAW_TERRAIN_CANVAS_ALPHA.focusSurvey?.(this, { ...target, x, y }, options);
+                if (focused) this.closePanelDetails?.('party');
+                else {
+                    this.openPanel?.('map');
+                    this.renderLargeMap();
+                }
+                return true;
+            },
+
             _dangerPressureLabel(value = 0) {
                 return YAW_MAP_VISUALS.dangerPressureLabel(this, value);
             },

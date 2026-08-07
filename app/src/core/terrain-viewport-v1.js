@@ -42,9 +42,17 @@ const YAW_TERRAIN_VIEWPORT_V1 = (() => {
         return camera.baseTilePixels * camera.zoom;
     }
 
+    function localFitTilePixels(camera) {
+        return Math.min(camera.viewport.width, camera.viewport.height) / 3;
+    }
+
+    function isLocalFit(camera, epsilon = 0.01) {
+        return Math.abs(tilePixels(camera) - localFitTilePixels(camera)) <= Math.max(0.000001, finite(epsilon, 0.01));
+    }
+
     function mode(camera) {
         const pixels = tilePixels(camera);
-        if (pixels >= 44) return 'local';
+        if (isLocalFit(camera)) return 'local';
         if (pixels >= 14) return 'regional';
         return 'survey';
     }
@@ -149,7 +157,7 @@ const YAW_TERRAIN_VIEWPORT_V1 = (() => {
 
     return {
         VERSION, DEFAULT_BASE_TILE_PIXELS, DEFAULT_MIN_ZOOM, DEFAULT_MAX_ZOOM,
-        create, tilePixels, mode, worldToScreen, screenToWorld, visibleBounds,
+        create, tilePixels, localFitTilePixels, isLocalFit, mode, worldToScreen, screenToWorld, visibleBounds,
         visibleChunks, resize, recenter, panPixels, zoomAt, fitTiles, local,
         survey, pinchFactor
     };

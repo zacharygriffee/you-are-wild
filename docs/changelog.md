@@ -8,12 +8,18 @@ This is a compact history of completed foundations. Git remains the authoritativ
   traversal and Survey navigation, with deterministic fixed chunks, semantic
   overlays, offline atlas art, bounded caching, and an explicit legacy
   rollback. Water/land coastlines interpolate through a shared scalar field,
+  and soft land biomes resolve through one world-space ownership raster rather
+  than independently painted tile edges. Canonical shared height vertices feed
+  fixed-north plateau faces and restrained hillshade,
   cached chunks sample into identical aprons at fractional zoom, and
   rectangular per-tile elevation washes are suppressed so tile and chunk
   ownership do not show through the landscape. First-party ground materials
   now use world-aligned mirrored fields, and local semantic labels no longer
   lay a separate gradient panel over each tile, reducing the faint grid most
-  visible across dense grove and forest ground. Non-water contours use one
+  visible across dense grove and forest ground. Static chunks exclude live
+  party markers, mobile uses bounded eight-tile chunks plus decorative LOD,
+  and local numeric/noise fields keep cold movement inside the mobile latency
+  gate. Non-water contours use one
   ecological surface priority in every direction, so beach/plains and similar
   joins cannot reverse ownership according to paint order. Same-material joins
   use a feathered interior-texture bridge, and mixed four-tile junctions use a

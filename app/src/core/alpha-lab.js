@@ -469,29 +469,100 @@ const YAW_ALPHA_LAB = {
         };
     },
 
+    terrainSurveyHeightAt(x, y) {
+        const elevation = 0.48
+            + x * 0.055
+            + Math.sin(y * 0.82) * 0.07
+            + Math.cos((x - y) * 0.48) * 0.035;
+        return Math.max(0.08, Math.min(0.92, elevation));
+    },
+
+    terrainSurveyTopologyAt(x, y) {
+        const directions = [
+            ['north', 0, -1], ['east', 1, 0], ['south', 0, 1], ['west', -1, 0]
+        ];
+        const elevation = this.terrainSurveyHeightAt(x, y);
+        const cornerElevations = {
+            nw: this.terrainSurveyHeightAt(x - 0.5, y - 0.5),
+            ne: this.terrainSurveyHeightAt(x + 0.5, y - 0.5),
+            se: this.terrainSurveyHeightAt(x + 0.5, y + 0.5),
+            sw: this.terrainSurveyHeightAt(x - 0.5, y + 0.5)
+        };
+        Object.keys(cornerElevations).forEach(corner => {
+            cornerElevations[corner] = Number(cornerElevations[corner].toFixed(4));
+        });
+        const terraceCount = 6;
+        const levelFor = value => Math.max(0, Math.min(terraceCount - 1, Math.floor(value * terraceCount)));
+        const terraceLevel = levelFor(elevation);
+        const grades = Object.fromEntries(directions.map(([direction, dx, dy]) => [
+            direction,
+            Number((this.terrainSurveyHeightAt(x + dx, y + dy) - elevation).toFixed(4))
+        ]));
+        const terraceEdges = Object.fromEntries(directions.map(([direction, dx, dy]) => [
+            direction,
+            levelFor(this.terrainSurveyHeightAt(x + dx, y + dy)) - terraceLevel
+        ]));
+        const wallEdges = directions.map(([direction]) => direction).filter(direction => terraceEdges[direction] < 0);
+        const riseEdges = directions.map(([direction]) => direction).filter(direction => terraceEdges[direction] > 0);
+        const gradientX = ((cornerElevations.ne + cornerElevations.se) - (cornerElevations.nw + cornerElevations.sw)) / 2;
+        const gradientY = ((cornerElevations.sw + cornerElevations.se) - (cornerElevations.nw + cornerElevations.ne)) / 2;
+        const magnitude = Math.hypot(gradientX, gradientY);
+        const aspect = Math.abs(gradientX) >= Math.abs(gradientY)
+            ? (gradientX >= 0 ? 'east' : 'west')
+            : (gradientY >= 0 ? 'south' : 'north');
+        const byRise = Object.entries(grades).sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+        const byDrop = Object.entries(grades).sort((left, right) => left[1] - right[1] || left[0].localeCompare(right[0]));
+        const maximumGrade = Math.max(...Object.values(grades).map(value => Math.abs(value)));
+        const kind = maximumGrade >= 0.075 ? 'ledge' : (maximumGrade >= 0.035 ? 'slope' : 'level');
+        return {
+            elevation: Number(elevation.toFixed(4)),
+            kind,
+            band: elevation >= 0.72 ? 'high' : (elevation <= 0.28 ? 'low' : 'mid'),
+            terraceLevel,
+            terraceCount,
+            cornerElevations,
+            gradient: {
+                x: Number(gradientX.toFixed(4)),
+                y: Number(gradientY.toFixed(4)),
+                magnitude: Number(magnitude.toFixed(4)),
+                aspect: magnitude >= 0.0001 ? aspect : null
+            },
+            terraceEdges,
+            wallEdges,
+            riseEdges,
+            contours: typeof WorldGen !== 'undefined' && typeof WorldGen.getElevationContours === 'function'
+                ? WorldGen.getElevationContours(cornerElevations)
+                : [],
+            primaryUphill: byRise[0]?.[1] > 0 ? byRise[0][0] : null,
+            primaryDownhill: byDrop[0]?.[1] < 0 ? byDrop[0][0] : null,
+            uphillEdges: directions.map(([direction]) => direction).filter(direction => grades[direction] >= 0.025),
+            downhillEdges: directions.map(([direction]) => direction).filter(direction => grades[direction] <= -0.025),
+            cliffEdges: [],
+            grades
+        };
+    },
+
     configureTerrainSurvey(app) {
         const biomes = ['grove', 'forest', 'plains', 'swamp', 'jungle', 'beach', 'water', 'cliff', 'cave'];
         const coverFamilies = ['broadleaf', 'conifer', 'grass', 'reeds', 'jungle', 'drift', '', 'rock', 'rock'];
         const structures = ['camp', 'hut', 'farm', 'spring', 'tree', 'cabin', 'pond', 'ruins', 'cave'];
         const poiCategories = ['restSite', 'structure', 'resourceSite', 'landmark', 'settlement', 'dangerSite', 'resourceSite', 'landmark', 'structure'];
-        const elevationKinds = [
-            { kind: 'level', band: 'low' },
-            { kind: 'slope', band: 'low', primaryUphill: 'north', primaryDownhill: 'south', uphillEdges: ['north'], downhillEdges: ['south'] },
-            { kind: 'slope', band: 'mid', primaryUphill: 'east', primaryDownhill: 'west', uphillEdges: ['east'], downhillEdges: ['west'] },
-            { kind: 'slope', band: 'mid', primaryUphill: 'south', primaryDownhill: 'north', uphillEdges: ['south'], downhillEdges: ['north'] },
-            { kind: 'slope', band: 'high', primaryUphill: 'west', primaryDownhill: 'east', uphillEdges: ['west'], downhillEdges: ['east'] },
-            { kind: 'ledge', band: 'high', primaryDownhill: 'south', downhillEdges: ['south'] },
-            { kind: 'cliff', band: 'high', primaryDownhill: 'east', downhillEdges: ['east'], cliffEdges: ['east'] },
-            { kind: 'cliff', band: 'high', primaryDownhill: 'south', downhillEdges: ['south'], cliffEdges: ['south'] },
-            { kind: 'cliff', band: 'high', primaryDownhill: 'west', downhillEdges: ['west'], cliffEdges: ['west'] }
-        ];
         const tileAt = (x, y) => app.worldMap.get(`${x},${y}`);
 
         for (let y = -4; y <= 4; y++) {
             for (let x = -4; x <= 4; x++) {
                 const column = x + 4;
                 const biome = biomes[column];
-                app.worldMap.set(`${x},${y}`, this.terrainSurveyTile(app, x, y, biome));
+                const terrainTopology = this.terrainSurveyTopologyAt(x, y);
+                app.worldMap.set(`${x},${y}`, this.terrainSurveyTile(app, x, y, biome, {
+                    elevation: terrainTopology.elevation,
+                    terrainTopology,
+                    terrain: {
+                        water: biome === 'water',
+                        elevation: terrainTopology.elevation,
+                        topology: terrainTopology
+                    }
+                }));
                 app.exploredTiles.add(`${x},${y}`);
             }
         }
@@ -562,15 +633,15 @@ const YAW_ALPHA_LAB = {
             obedient: false
         })];
 
-        // Row 2: authored directional elevation and cliff facts for the presentation layer.
-        elevationKinds.forEach((topology, index) => {
+        // Row 2: continuous computed elevation samples. Mechanical cliff facts
+        // follow the same topology instead of overriding its grades or contours.
+        biomes.forEach((_biome, index) => {
             const tile = tileAt(index - 4, 2);
-            const elevation = 0.18 + index * 0.09;
-            tile.elevation = Number(elevation.toFixed(3));
-            tile.terrainTopology = { elevation: tile.elevation, ...topology };
+            const cliffEdges = tile.biome === 'cliff' ? [...(tile.terrainTopology.wallEdges || [])] : [];
+            tile.terrainTopology = { ...tile.terrainTopology, cliffEdges };
             tile.terrain = { ...(tile.terrain || {}), elevation: tile.elevation, topology: tile.terrainTopology };
-            tile.overlays.barriers = topology.cliffEdges || [];
-            tile.traversal.barrierEdges = topology.cliffEdges || [];
+            tile.overlays.barriers = cliffEdges;
+            tile.traversal.barrierEdges = cliffEdges;
         });
 
         // Rows 3-4 deliberately alternate materials to expose cardinal seams and four-tile junctions.

@@ -61,7 +61,29 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         dungeon: 7,
         unknown: 99
     });
+    const SOFT_BIOMES = new Set([
+        'beach', 'sand', 'swamp', 'plains', 'farm', 'grove', 'forest', 'jungle'
+    ]);
+    const RELIEF_PROFILE = Object.freeze({
+        water: { shade: 0, plateau: 0, walls: false, wallDepth: 0 },
+        unknown: { shade: 0, plateau: 0, walls: false, wallDepth: 0 },
+        beach: { shade: 0.24, plateau: 0.012, walls: false, wallDepth: 0 },
+        sand: { shade: 0.24, plateau: 0.012, walls: false, wallDepth: 0 },
+        plains: { shade: 0.32, plateau: 0.014, walls: false, wallDepth: 0 },
+        farm: { shade: 0.28, plateau: 0.012, walls: false, wallDepth: 0 },
+        swamp: { shade: 0.24, plateau: 0.01, walls: false, wallDepth: 0 },
+        grove: { shade: 0.2, plateau: 0.008, walls: false, wallDepth: 0 },
+        forest: { shade: 0.18, plateau: 0.007, walls: false, wallDepth: 0 },
+        jungle: { shade: 0.16, plateau: 0.006, walls: false, wallDepth: 0 },
+        cliff: { shade: 0.72, plateau: 0.034, walls: true, wallDepth: 0.17 },
+        cave: { shade: 0.62, plateau: 0.03, walls: true, wallDepth: 0.145 },
+        dungeon: { shade: 0.5, plateau: 0.024, walls: true, wallDepth: 0.12 },
+        indoors: { shade: 0.12, plateau: 0, walls: false, wallDepth: 0 }
+    });
     const assets = { key: '', promise: null, images: new Map() };
+    const materialFieldCanvases = new Map();
+    const noiseSamples = new Map();
+    const MAX_NOISE_SAMPLES = 8192;
 
     function asset(id) {
         const image = assets.images.get(id);
@@ -75,6 +97,7 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         if (assets.promise && assets.key === key) return assets.promise;
         assets.key = key;
         assets.images.clear();
+        materialFieldCanvases.clear();
         assets.promise = Promise.all(entries.map(([id, url]) => new Promise(resolve => {
             const image = new Image();
             image.decoding = 'async';
@@ -100,6 +123,19 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
 
     function unitPoint(seed, salt) {
         return YAW_TERRAIN_SCENE_V1.hash32(seed, salt) / 0xffffffff;
+    }
+
+    function cachedUnitPoint(seed, column, row) {
+        const key = `${seed}:${column},${row}`;
+        const cached = noiseSamples.get(key);
+        if (cached !== undefined) return cached;
+        const value = unitPoint(seed, `${column},${row}`);
+        if (noiseSamples.size >= MAX_NOISE_SAMPLES) {
+            const oldest = noiseSamples.keys().next().value;
+            noiseSamples.delete(oldest);
+        }
+        noiseSamples.set(key, value);
+        return value;
     }
 
     function tileBox(record, tilePixels) {
@@ -209,27 +245,33 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         if (!image || !source || typeof context.createPattern !== 'function'
             || !ownerDocument?.createElement) return false;
         const tileSize = Math.max(1, Math.round(tilePixels));
-        const field = ownerDocument.createElement('canvas');
-        field.width = tileSize * 2;
-        field.height = tileSize * 2;
-        const fieldContext = field.getContext?.('2d');
-        if (!fieldContext) return false;
-        fieldContext.imageSmoothingEnabled = true;
-        for (let row = 0; row < 2; row += 1) {
-            for (let column = 0; column < 2; column += 1) {
-                drawAtlasRect(fieldContext, 'atlas.materials-v2', source, {
-                    x: column * tileSize,
-                    y: row * tileSize,
-                    width: tileSize,
-                    height: tileSize
-                }, {
-                    // Mirroring makes both sides of every repeat boundary share
-                    // the same source pixels. The render-bound origin preserves
-                    // the phase when this field is rebuilt in another chunk.
-                    flipX: Math.abs(Math.trunc(originX + column)) % 2 === 1,
-                    flipY: Math.abs(Math.trunc(originY + row)) % 2 === 1
-                });
+        const parity = value => ((Math.trunc(Number(value) || 0) % 2) + 2) % 2;
+        const fieldKey = `${assets.key}:${biome}:${tileSize}:${parity(originX)},${parity(originY)}`;
+        let field = materialFieldCanvases.get(fieldKey);
+        if (!field) {
+            field = ownerDocument.createElement('canvas');
+            field.width = tileSize * 2;
+            field.height = tileSize * 2;
+            const fieldContext = field.getContext?.('2d');
+            if (!fieldContext) return false;
+            fieldContext.imageSmoothingEnabled = true;
+            for (let row = 0; row < 2; row += 1) {
+                for (let column = 0; column < 2; column += 1) {
+                    drawAtlasRect(fieldContext, 'atlas.materials-v2', source, {
+                        x: column * tileSize,
+                        y: row * tileSize,
+                        width: tileSize,
+                        height: tileSize
+                    }, {
+                        // Mirroring makes both sides of every repeat boundary share
+                        // the same source pixels. The render-bound origin preserves
+                        // the phase when this field is rebuilt in another chunk.
+                        flipX: Math.abs(Math.trunc(originX + column)) % 2 === 1,
+                        flipY: Math.abs(Math.trunc(originY + row)) % 2 === 1
+                    });
+                }
             }
+            materialFieldCanvases.set(fieldKey, field);
         }
         return context.createPattern(field, 'repeat') || false;
     }
@@ -242,6 +284,379 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         const seedPair = [record.seed, neighbor.seed].sort().join(':');
         const wave = Math.sin((sample / 6) * Math.PI * 2 + unitPoint('terrain-boundary-phase-v2', seedPair) * Math.PI);
         return 0.11 + value * 0.13 + (wave + 1) * 0.025;
+    }
+
+    function smoothstep(value) {
+        const amount = Math.max(0, Math.min(1, Number(value) || 0));
+        return amount * amount * (3 - 2 * amount);
+    }
+
+    function valueNoise(seed, x, y) {
+        const left = Math.floor(x);
+        const top = Math.floor(y);
+        const u = smoothstep(x - left);
+        const v = smoothstep(y - top);
+        const northwest = cachedUnitPoint(seed, left, top);
+        const northeast = cachedUnitPoint(seed, left + 1, top);
+        const southwest = cachedUnitPoint(seed, left, top + 1);
+        const southeast = cachedUnitPoint(seed, left + 1, top + 1);
+        const north = northwest + (northeast - northwest) * u;
+        const south = southwest + (southeast - southwest) * u;
+        return north + (south - north) * v;
+    }
+
+    function noisePlane(seed, minX, maxX, minY, maxY) {
+        const left = Math.floor(Math.min(minX, maxX)) - 1;
+        const top = Math.floor(Math.min(minY, maxY)) - 1;
+        const right = Math.ceil(Math.max(minX, maxX)) + 1;
+        const bottom = Math.ceil(Math.max(minY, maxY)) + 1;
+        const width = right - left + 1;
+        const height = bottom - top + 1;
+        const values = new Float32Array(width * height);
+        for (let row = 0; row < height; row += 1) {
+            for (let column = 0; column < width; column += 1) {
+                values[row * width + column] = unitPoint(seed, `${left + column},${top + row}`);
+            }
+        }
+        return (x, y) => {
+            const cellX = Math.floor(x);
+            const cellY = Math.floor(y);
+            const column = cellX - left;
+            const row = cellY - top;
+            if (column < 0 || row < 0 || column + 1 >= width || row + 1 >= height) {
+                return valueNoise(seed, x, y);
+            }
+            const u = smoothstep(x - cellX);
+            const v = smoothstep(y - cellY);
+            const index = row * width + column;
+            const northwest = values[index];
+            const northeast = values[index + 1];
+            const southwest = values[index + width];
+            const southeast = values[index + width + 1];
+            const north = northwest + (northeast - northwest) * u;
+            const south = southwest + (southeast - southwest) * u;
+            return north + (south - north) * v;
+        };
+    }
+
+    function recordGrid(records = []) {
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        for (const record of records) {
+            const x = Number(record?.x);
+            const y = Number(record?.y);
+            if (!Number.isInteger(x) || !Number.isInteger(y)) continue;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        }
+        if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+            return { minX: 0, minY: 0, width: 0, height: 0, records: [], at: () => null };
+        }
+        const width = maxX - minX + 1;
+        const height = maxY - minY + 1;
+        const indexed = new Array(width * height);
+        for (const record of records) {
+            const x = Number(record?.x);
+            const y = Number(record?.y);
+            if (!Number.isInteger(x) || !Number.isInteger(y)) continue;
+            indexed[(y - minY) * width + (x - minX)] = record;
+        }
+        const at = (x, y) => {
+            const column = x - minX;
+            const row = y - minY;
+            if (!Number.isInteger(column) || !Number.isInteger(row)
+                || column < 0 || row < 0 || column >= width || row >= height) return null;
+            return indexed[row * width + column] || null;
+        };
+        return { minX, minY, width, height, records: indexed, at };
+    }
+
+    function prepareSoftBiomeSeeds(records = []) {
+        return new Map(records.filter(record => record?.known && SOFT_BIOMES.has(record.biome)).map(record => [
+            `${record.x},${record.y}`,
+            {
+                record,
+                centerX: record.x + 0.5
+                    + (unitPoint('soft-biome-seed-x-v1', record.seed) - 0.5) * 0.24,
+                centerY: record.y + 0.5
+                    + (unitPoint('soft-biome-seed-y-v1', record.seed) - 0.5) * 0.24,
+                bias: (SURFACE_PRIORITY[record.biome] ?? 50) * 0.018
+                    + Math.max(0, Math.min(1, Number(record.elevation) || 0)) * 0.045
+            }
+        ]));
+    }
+
+    function softBiomeOwner(recordsByWorldPosition, worldX, worldY, preparedSeeds = null, indexed = null, warp = null) {
+        const tileX = Math.floor(worldX);
+        const tileY = Math.floor(worldY);
+        const base = indexed?.recordAt?.(tileX, tileY)
+            || recordsByWorldPosition.get(`${tileX},${tileY}`);
+        if (!base?.known || base.biome === 'unknown') return null;
+        if (!SOFT_BIOMES.has(base.biome) && !isWater(base)) return base;
+
+        // Distort one shared world-space sampling plane instead of perturbing
+        // individual tile edges. Every chunk therefore asks the same question
+        // at the same world coordinate, including corners and negative space.
+        const frequency = 0.61;
+        const noiseX = warp?.x
+            ? warp.x(worldX * frequency, worldY * frequency)
+            : valueNoise('soft-biome-warp-x-v1', worldX * frequency, worldY * frequency);
+        const noiseY = warp?.y
+            ? warp.y(worldX * frequency, worldY * frequency)
+            : valueNoise('soft-biome-warp-y-v1', worldX * frequency, worldY * frequency);
+        const warpedX = worldX + (noiseX - 0.5) * 0.76;
+        const warpedY = worldY + (noiseY - 0.5) * 0.76;
+        const originX = Math.floor(warpedX);
+        const originY = Math.floor(warpedY);
+        const seeds = preparedSeeds || prepareSoftBiomeSeeds([...recordsByWorldPosition.values()]);
+        let owner = null;
+        let bestScore = Infinity;
+        for (let dy = -1; dy <= 1; dy += 1) {
+            for (let dx = -1; dx <= 1; dx += 1) {
+                const seed = indexed?.seedAt?.(originX + dx, originY + dy)
+                    || seeds.get(`${originX + dx},${originY + dy}`);
+                if (!seed) continue;
+                const candidate = seed.record;
+                const distanceX = warpedX - seed.centerX;
+                const distanceY = warpedY - seed.centerY;
+                // Lower ecological surfaces expand modestly into higher ones;
+                // distance remains dominant so every authored tile keeps a
+                // readable core and the renderer never changes simulation facts.
+                const score = distanceX * distanceX + distanceY * distanceY + seed.bias;
+                if (score < bestScore - 0.0000001
+                    || (Math.abs(score - bestScore) <= 0.0000001
+                        && owner && transitionOwner(owner, candidate) === candidate)) {
+                    owner = candidate;
+                    bestScore = score;
+                }
+            }
+        }
+        if (owner) return owner;
+        return SOFT_BIOMES.has(base.biome) ? base : null;
+    }
+
+    function softBiomeField(records, bounds, samplesPerTile = 12) {
+        const samples = Math.max(6, Math.min(32, Math.round(Number(samplesPerTile) || 12)));
+        const width = Math.max(1, Math.round(bounds.width * samples));
+        const height = Math.max(1, Math.round(bounds.height * samples));
+        const byWorldPosition = new Map(records.map(record => [`${record.x},${record.y}`, record]));
+        const preparedSeeds = prepareSoftBiomeSeeds(records);
+        const grid = recordGrid(records);
+        const seedRecords = new Array(grid.records.length);
+        for (let index = 0; index < grid.records.length; index += 1) {
+            const record = grid.records[index];
+            if (!record) continue;
+            seedRecords[index] = preparedSeeds.get(`${record.x},${record.y}`) || null;
+        }
+        const gridIndex = (x, y) => {
+            const column = x - grid.minX;
+            const row = y - grid.minY;
+            if (!Number.isInteger(column) || !Number.isInteger(row)
+                || column < 0 || row < 0 || column >= grid.width || row >= grid.height) return -1;
+            return row * grid.width + column;
+        };
+        const indexed = {
+            recordAt: grid.at,
+            seedAt: (x, y) => {
+                const index = gridIndex(x, y);
+                return index < 0 ? null : (seedRecords[index] || null);
+            }
+        };
+        const frequency = 0.61;
+        const warp = {
+            x: noisePlane('soft-biome-warp-x-v1', bounds.minX * frequency,
+                (bounds.minX + bounds.width) * frequency, bounds.minY * frequency,
+                (bounds.minY + bounds.height) * frequency),
+            y: noisePlane('soft-biome-warp-y-v1', bounds.minX * frequency,
+                (bounds.minX + bounds.width) * frequency, bounds.minY * frequency,
+                (bounds.minY + bounds.height) * frequency)
+        };
+        const owners = new Array(width * height);
+        for (let row = 0; row < height; row += 1) {
+            const worldY = bounds.minY + (row + 0.5) / samples;
+            for (let column = 0; column < width; column += 1) {
+                const worldX = bounds.minX + (column + 0.5) / samples;
+                owners[row * width + column] = softBiomeOwner(
+                    byWorldPosition, worldX, worldY, preparedSeeds, indexed, warp
+                )?.biome || null;
+            }
+        }
+        return { width, height, samplesPerTile: samples, owners };
+    }
+
+    function drawContinuousSoftBiomeField(context, scene, tilePixels) {
+        const ownerDocument = context.canvas?.ownerDocument
+            || (typeof document !== 'undefined' ? document : null);
+        if (!asset('atlas.materials-v2') || !ownerDocument?.createElement
+            || typeof context.drawImage !== 'function') return false;
+        const authoredSoftBiomes = new Set(scene.layers.ground
+            .filter(record => record?.known && SOFT_BIOMES.has(record.biome))
+            .map(record => record.biome));
+        // The base material pass is already continuous for a homogeneous soft
+        // surface. Avoid constructing an ownership raster for the overwhelmingly
+        // common survey-map case where it could not change a single pixel.
+        if (authoredSoftBiomes.size <= 1) return true;
+        // A ten-to-twelve sample mask is smooth once Canvas scales it with
+        // interpolation, while remaining cheap enough for synchronous mount.
+        // DPR changes the final texture raster, not semantic ownership.
+        const samplesPerTile = 18;
+        const field = softBiomeField(scene.layers.ground, scene.renderBounds, samplesPerTile);
+        const materialBiomes = [...new Set(field.owners.filter(Boolean).filter(biome => SOFT_BIOMES.has(biome)))];
+        if (!materialBiomes.length) return false;
+        // The base paint is already one world-aligned mirrored field. There is
+        // no boundary mask to composite when a chunk contains one soft biome.
+        if (materialBiomes.length === 1) return true;
+        const width = scene.renderBounds.width * tilePixels;
+        const height = scene.renderBounds.height * tilePixels;
+        const mask = ownerDocument.createElement('canvas');
+        mask.width = field.width;
+        mask.height = field.height;
+        const maskContext = mask.getContext?.('2d');
+        const layer = ownerDocument.createElement('canvas');
+        layer.width = Math.max(1, Math.round(width));
+        layer.height = Math.max(1, Math.round(height));
+        const layerContext = layer.getContext?.('2d');
+        if (!maskContext?.createImageData || !maskContext?.putImageData || !layerContext) return false;
+        for (const biome of materialBiomes) {
+            const image = maskContext.createImageData(field.width, field.height);
+            for (let index = 0; index < field.owners.length; index += 1) {
+                if (field.owners[index] !== biome) continue;
+                const offset = index * 4;
+                image.data[offset] = 255;
+                image.data[offset + 1] = 255;
+                image.data[offset + 2] = 255;
+                image.data[offset + 3] = 255;
+            }
+            maskContext.clearRect(0, 0, field.width, field.height);
+            maskContext.putImageData(image, 0, 0);
+            layerContext.clearRect(0, 0, layer.width, layer.height);
+            const pattern = materialFieldPattern(layerContext, biome, tilePixels,
+                scene.renderBounds.minX, scene.renderBounds.minY);
+            if (!pattern) return false;
+            layerContext.fillStyle = pattern;
+            layerContext.fillRect(0, 0, layer.width, layer.height);
+            layerContext.save();
+            layerContext.globalCompositeOperation = 'destination-in';
+            layerContext.imageSmoothingEnabled = true;
+            layerContext.drawImage(mask, 0, 0, field.width, field.height,
+                0, 0, layer.width, layer.height);
+            layerContext.restore();
+            context.drawImage(layer, 0, 0, layer.width, layer.height,
+                0, 0, width, height);
+        }
+        return true;
+    }
+
+    function waterField(records, bounds, samplesPerTile = 18) {
+        const samples = Math.max(8, Math.min(32, Math.round(Number(samplesPerTile) || 18)));
+        const width = Math.max(1, Math.round(bounds.width * samples));
+        const height = Math.max(1, Math.round(bounds.height * samples));
+        const grid = recordGrid(records);
+        const seededValues = new Float32Array(grid.records.length);
+        const seedValue = record => {
+            if (!record?.known || record.biome === 'unknown') return 0;
+            const variation = (unitPoint('water-center-value-v1', record.seed) - 0.5) * 0.16;
+            return Math.max(0, Math.min(1, (isWater(record) ? 0.84 : 0.16) + variation));
+        };
+        for (let index = 0; index < grid.records.length; index += 1) {
+            seededValues[index] = seedValue(grid.records[index]);
+        }
+        const valueAt = (x, y) => {
+            const column = x - grid.minX;
+            const row = y - grid.minY;
+            if (!Number.isInteger(column) || !Number.isInteger(row)
+                || column < 0 || row < 0 || column >= grid.width || row >= grid.height) return 0;
+            return seededValues[row * grid.width + column];
+        };
+        const values = new Float32Array(width * height);
+        const frequency = 1.08;
+        const warpXNoise = noisePlane('water-field-warp-x-v1', bounds.minX * frequency,
+            (bounds.minX + bounds.width) * frequency, bounds.minY * frequency,
+            (bounds.minY + bounds.height) * frequency);
+        const warpYNoise = noisePlane('water-field-warp-y-v1', bounds.minX * frequency,
+            (bounds.minX + bounds.width) * frequency, bounds.minY * frequency,
+            (bounds.minY + bounds.height) * frequency);
+        for (let row = 0; row < height; row += 1) {
+            const worldY = bounds.minY + (row + 0.5) / samples;
+            for (let column = 0; column < width; column += 1) {
+                const worldX = bounds.minX + (column + 0.5) / samples;
+                const warpedX = worldX
+                    + (warpXNoise(worldX * frequency, worldY * frequency) - 0.5) * 0.92
+                    + Math.sin(worldY * 2.05 + 1.37) * 0.18
+                    + Math.sin(worldY * 0.71 - 0.82) * 0.11;
+                const warpedY = worldY
+                    + (warpYNoise(worldX * frequency, worldY * frequency) - 0.5) * 0.68
+                    + Math.sin(worldX * 2.17 - 0.43) * 0.18
+                    + Math.sin(worldX * 0.67 + 1.12) * 0.11;
+                const gridX = warpedX - 0.5;
+                const gridY = warpedY - 0.5;
+                const left = Math.floor(gridX);
+                const top = Math.floor(gridY);
+                const u = smoothstep(gridX - left);
+                const v = smoothstep(gridY - top);
+                const northwest = valueAt(left, top);
+                const northeast = valueAt(left + 1, top);
+                const southwest = valueAt(left, top + 1);
+                const southeast = valueAt(left + 1, top + 1);
+                const north = northwest + (northeast - northwest) * u;
+                const south = southwest + (southeast - southwest) * u;
+                values[row * width + column] = north + (south - north) * v;
+            }
+        }
+        return { width, height, samplesPerTile: samples, values };
+    }
+
+    function drawContinuousWaterField(context, scene, tilePixels) {
+        const waterCount = scene.layers.ground.filter(isWater).length;
+        if (!waterCount) return false;
+        // A uniform water chunk already received the continuous base pattern.
+        if (waterCount === scene.layers.ground.length) return true;
+        const ownerDocument = context.canvas?.ownerDocument
+            || (typeof document !== 'undefined' ? document : null);
+        if (!asset('atlas.materials-v2') || !ownerDocument?.createElement
+            || typeof context.drawImage !== 'function') return false;
+        const field = waterField(scene.layers.ground, scene.renderBounds, 18);
+        const mask = ownerDocument.createElement('canvas');
+        mask.width = field.width;
+        mask.height = field.height;
+        const maskContext = mask.getContext?.('2d');
+        const width = scene.renderBounds.width * tilePixels;
+        const height = scene.renderBounds.height * tilePixels;
+        const layer = ownerDocument.createElement('canvas');
+        layer.width = Math.max(1, Math.round(width));
+        layer.height = Math.max(1, Math.round(height));
+        const layerContext = layer.getContext?.('2d');
+        if (!maskContext?.createImageData || !maskContext?.putImageData || !layerContext) return false;
+        const image = maskContext.createImageData(field.width, field.height);
+        for (let index = 0; index < field.values.length; index += 1) {
+            // A narrow interpolated threshold gives the coast an anti-aliased
+            // lip without introducing a second shoreline stroke.
+            const alpha = Math.max(0, Math.min(1, (field.values[index] - 0.47) / 0.06));
+            const offset = index * 4;
+            image.data[offset] = 255;
+            image.data[offset + 1] = 255;
+            image.data[offset + 2] = 255;
+            image.data[offset + 3] = Math.round(alpha * 255);
+        }
+        maskContext.putImageData(image, 0, 0);
+        const pattern = materialFieldPattern(layerContext, 'water', tilePixels,
+            scene.renderBounds.minX, scene.renderBounds.minY);
+        if (!pattern) return false;
+        layerContext.fillStyle = pattern;
+        layerContext.fillRect(0, 0, layer.width, layer.height);
+        layerContext.save();
+        layerContext.globalCompositeOperation = 'destination-in';
+        layerContext.imageSmoothingEnabled = true;
+        layerContext.drawImage(mask, 0, 0, field.width, field.height,
+            0, 0, layer.width, layer.height);
+        layerContext.restore();
+        context.drawImage(layer, 0, 0, layer.width, layer.height,
+            0, 0, width, height);
+        return true;
     }
 
     function transitionOwner(record, neighbor) {
@@ -360,6 +775,387 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         return output;
     }
 
+    function reliefProfile(biome) {
+        return RELIEF_PROFILE[biome] || RELIEF_PROFILE.plains;
+    }
+
+    function bilinearHeight(corners, x, y) {
+        const u = Math.max(0, Math.min(1, Number(x) || 0));
+        const v = Math.max(0, Math.min(1, Number(y) || 0));
+        if (!corners || ['nw', 'ne', 'se', 'sw'].some(corner => corners[corner] === null || corners[corner] === undefined)) return null;
+        const nw = Number(corners?.nw);
+        const ne = Number(corners?.ne);
+        const se = Number(corners?.se);
+        const sw = Number(corners?.sw);
+        if (![nw, ne, se, sw].every(Number.isFinite)) return null;
+        const north = nw + (ne - nw) * u;
+        const south = sw + (se - sw) * u;
+        return north + (south - north) * v;
+    }
+
+    function elevationFieldCorners(field, record) {
+        if (!field || !record || !Number.isInteger(field.width) || !Number.isInteger(field.height)) return null;
+        const column = Math.round(Number(record.localX));
+        const row = Math.round(Number(record.localY));
+        if (column < 0 || row < 0 || column + 1 >= field.width || row + 1 >= field.height) return null;
+        const sample = (x, y) => {
+            const index = y * field.width + x;
+            return field.validity?.[index] ? Number(field.values?.[index]) : null;
+        };
+        const corners = {
+            nw: sample(column, row),
+            ne: sample(column + 1, row),
+            se: sample(column + 1, row + 1),
+            sw: sample(column, row + 1)
+        };
+        return Object.values(corners).every(Number.isFinite) ? corners : null;
+    }
+
+    function contourEdgePoint(corners, threshold, edge) {
+        const endpoints = {
+            north: ['nw', 'ne', [0, 0], [1, 0]],
+            east: ['ne', 'se', [1, 0], [1, 1]],
+            south: ['sw', 'se', [0, 1], [1, 1]],
+            west: ['nw', 'sw', [0, 0], [0, 1]]
+        }[edge];
+        if (!endpoints) return null;
+        const [firstKey, secondKey, firstPoint, secondPoint] = endpoints;
+        const first = Number(corners[firstKey]);
+        const second = Number(corners[secondKey]);
+        const span = second - first;
+        const amount = Math.abs(span) < 0.000001 ? 0.5 : Math.max(0, Math.min(1, (threshold - first) / span));
+        return {
+            edge,
+            x: firstPoint[0] + (secondPoint[0] - firstPoint[0]) * amount,
+            y: firstPoint[1] + (secondPoint[1] - firstPoint[1]) * amount
+        };
+    }
+
+    function contourEdgePairs(mask, centerHigh) {
+        const fixed = {
+            1: [['west', 'north']], 2: [['north', 'east']], 3: [['west', 'east']],
+            4: [['east', 'south']], 6: [['north', 'south']], 7: [['west', 'south']],
+            8: [['south', 'west']], 9: [['north', 'south']], 11: [['east', 'south']],
+            12: [['west', 'east']], 13: [['north', 'east']], 14: [['west', 'north']]
+        };
+        if (mask === 5) return centerHigh
+            ? [['west', 'south'], ['north', 'east']]
+            : [['west', 'north'], ['east', 'south']];
+        if (mask === 10) return centerHigh
+            ? [['west', 'north'], ['east', 'south']]
+            : [['north', 'east'], ['south', 'west']];
+        return fixed[mask] || [];
+    }
+
+    function contoursForCorners(corners, terraceCount = 6) {
+        const cornerKeys = ['nw', 'ne', 'se', 'sw'];
+        const values = cornerKeys.map(corner => Number(corners[corner]));
+        const minimum = Math.min(...values);
+        const maximum = Math.max(...values);
+        const center = values.reduce((sum, value) => sum + value, 0) / values.length;
+        const contours = [];
+        for (let level = 1; level < terraceCount; level += 1) {
+            const threshold = level / terraceCount;
+            if (threshold <= minimum || threshold >= maximum) continue;
+            const mask = cornerKeys.reduce((value, corner, index) => (
+                value | (Number(corners[corner]) >= threshold ? (1 << index) : 0)
+            ), 0);
+            if (mask === 0 || mask === 15) continue;
+            contours.push({
+                level,
+                threshold,
+                mask,
+                segments: contourEdgePairs(mask, center >= threshold).map(([firstEdge, secondEdge]) => ({
+                    from: contourEdgePoint(corners, threshold, firstEdge),
+                    to: contourEdgePoint(corners, threshold, secondEdge)
+                }))
+            });
+        }
+        return contours;
+    }
+
+    function reliefGeometry(records, tilePixels = 1, elevationField = null) {
+        const plateaus = [];
+        const contours = [];
+        for (const sourceRecord of records || []) {
+            const canonicalCorners = elevationFieldCorners(elevationField, sourceRecord);
+            const terraceCount = Math.max(1, Math.min(8, Math.trunc(Number(sourceRecord?.terraceCount) || 6)));
+            const record = canonicalCorners
+                ? { ...sourceRecord, corners: canonicalCorners, contours: contoursForCorners(canonicalCorners, terraceCount) }
+                : sourceRecord;
+            if (!record?.known || !record.corners) continue;
+            const profile = reliefProfile(record.biome);
+            if (!profile.shade && !profile.plateau && !profile.walls) continue;
+            const box = tileBox(record, tilePixels);
+            const corners = [
+                { x: box.x, y: box.y, value: Number(record.corners.nw) },
+                { x: box.x + box.size, y: box.y, value: Number(record.corners.ne) },
+                { x: box.x + box.size, y: box.y + box.size, value: Number(record.corners.se) },
+                { x: box.x, y: box.y + box.size, value: Number(record.corners.sw) }
+            ];
+            if (!corners.every(corner => Number.isFinite(corner.value))) continue;
+            const minimumCorner = Math.min(...corners.map(corner => corner.value));
+            const maximumCorner = Math.max(...corners.map(corner => corner.value));
+            const center = {
+                x: box.cx,
+                y: box.cy,
+                value: corners.reduce((sum, corner) => sum + corner.value, 0) / corners.length
+            };
+            if (maximumCorner - minimumCorner > 0.001) {
+                for (let level = 1; level < terraceCount; level += 1) {
+                    const threshold = level / terraceCount;
+                    const triangles = [
+                        [corners[0], corners[1], center],
+                        [corners[1], corners[2], center],
+                        [corners[2], corners[3], center],
+                        [corners[3], corners[0], center]
+                    ];
+                    for (const triangle of triangles) {
+                        const points = clippedTriangle(triangle, threshold);
+                        if (points.length >= 3) plateaus.push({ record, profile, level, threshold, points });
+                    }
+                }
+            }
+            for (const contour of record.contours || []) {
+                for (const segment of contour.segments || []) {
+                    if (![segment?.from?.x, segment?.from?.y, segment?.to?.x, segment?.to?.y].every(value => Number.isFinite(Number(value)))) continue;
+                    contours.push({
+                        record,
+                        profile,
+                        level: Number(contour.level) || 0,
+                        threshold: Number(contour.threshold) || 0,
+                        from: { x: box.x + Number(segment.from.x) * box.size, y: box.y + Number(segment.from.y) * box.size },
+                        to: { x: box.x + Number(segment.to.x) * box.size, y: box.y + Number(segment.to.y) * box.size },
+                        localFrom: { x: Number(segment.from.x), y: Number(segment.from.y) },
+                        localTo: { x: Number(segment.to.x), y: Number(segment.to.y) }
+                    });
+                }
+            }
+        }
+        return { plateaus, contours };
+    }
+
+    function lowSideNormal(segment) {
+        const dx = segment.localTo.x - segment.localFrom.x;
+        const dy = segment.localTo.y - segment.localFrom.y;
+        const length = Math.hypot(dx, dy) || 1;
+        const first = { x: -dy / length, y: dx / length };
+        const second = { x: -first.x, y: -first.y };
+        const middle = {
+            x: (segment.localFrom.x + segment.localTo.x) / 2,
+            y: (segment.localFrom.y + segment.localTo.y) / 2
+        };
+        const epsilon = 0.035;
+        const firstHeight = bilinearHeight(segment.record.corners, middle.x + first.x * epsilon, middle.y + first.y * epsilon);
+        const secondHeight = bilinearHeight(segment.record.corners, middle.x + second.x * epsilon, middle.y + second.y * epsilon);
+        if (firstHeight === null || secondHeight === null || Math.abs(firstHeight - secondHeight) < 0.000001) {
+            return first.x + first.y >= second.x + second.y ? first : second;
+        }
+        return firstHeight < secondHeight ? first : second;
+    }
+
+    function drawHillshadeField(context, scene, tilePixels, pixelRatio = 1) {
+        const field = scene?.elevationField;
+        const ownerDocument = context.canvas?.ownerDocument
+            || (typeof document !== 'undefined' ? document : null);
+        if (!field || !ownerDocument?.createElement || typeof context.drawImage !== 'function') return false;
+        let minimum = Infinity;
+        let maximum = -Infinity;
+        for (let index = 0; index < field.values.length; index += 1) {
+            if (!field.validity[index]) continue;
+            const value = Number(field.values[index]);
+            if (!Number.isFinite(value)) continue;
+            minimum = Math.min(minimum, value);
+            maximum = Math.max(maximum, value);
+        }
+        if (!Number.isFinite(minimum) || maximum - minimum <= 0.001) return true;
+        const samplesPerTile = Math.max(5, Math.min(12, Math.round(5 * Math.max(1, pixelRatio))));
+        const raster = ownerDocument.createElement('canvas');
+        raster.width = Math.max(1, (field.width - 1) * samplesPerTile);
+        raster.height = Math.max(1, (field.height - 1) * samplesPerTile);
+        const rasterContext = raster.getContext?.('2d');
+        if (!rasterContext?.createImageData || !rasterContext?.putImageData) return false;
+        const image = rasterContext.createImageData(raster.width, raster.height);
+        const groundByLocal = new Map((scene.layers.ground || []).map(record => [`${record.localX},${record.localY}`, record]));
+        const vertex = (column, row) => {
+            const index = row * field.width + column;
+            return field.validity[index] ? Number(field.values[index]) : null;
+        };
+        const light = { x: -0.48, y: -0.62, z: 0.62 };
+        const lightLength = Math.hypot(light.x, light.y, light.z);
+        light.x /= lightLength;
+        light.y /= lightLength;
+        light.z /= lightLength;
+        for (let py = 0; py < raster.height; py += 1) {
+            const row = Math.min(field.height - 2, Math.floor(py / samplesPerTile));
+            const v = (py % samplesPerTile + 0.5) / samplesPerTile;
+            for (let px = 0; px < raster.width; px += 1) {
+                const column = Math.min(field.width - 2, Math.floor(px / samplesPerTile));
+                const u = (px % samplesPerTile + 0.5) / samplesPerTile;
+                const nw = vertex(column, row);
+                const ne = vertex(column + 1, row);
+                const se = vertex(column + 1, row + 1);
+                const sw = vertex(column, row + 1);
+                if (![nw, ne, se, sw].every(Number.isFinite)) continue;
+                const ground = groundByLocal.get(`${column},${row}`);
+                const profile = reliefProfile(ground?.biome);
+                if (!ground?.known || !profile.shade) continue;
+                const gradientX = (ne - nw) * (1 - v) + (se - sw) * v;
+                const gradientY = (sw - nw) * (1 - u) + (se - ne) * u;
+                const reliefScale = profile.walls ? 8.5 : 5.5;
+                let nx = -gradientX * reliefScale;
+                let ny = -gradientY * reliefScale;
+                let nz = 1;
+                const normalLength = Math.hypot(nx, ny, nz) || 1;
+                nx /= normalLength;
+                ny /= normalLength;
+                nz /= normalLength;
+                const intensity = Math.max(-1, Math.min(1, nx * light.x + ny * light.y + nz * light.z - 0.64));
+                const offset = (py * raster.width + px) * 4;
+                const lightPixel = intensity >= 0;
+                image.data[offset] = lightPixel ? 255 : 18;
+                image.data[offset + 1] = lightPixel ? 250 : 20;
+                image.data[offset + 2] = lightPixel ? 235 : 24;
+                image.data[offset + 3] = Math.round(Math.min(0.72, Math.abs(intensity) * profile.shade) * 255);
+            }
+        }
+        rasterContext.putImageData(image, 0, 0);
+        if (typeof context.save === 'function') context.save();
+        if ('globalCompositeOperation' in context) context.globalCompositeOperation = 'soft-light';
+        context.drawImage(raster, 0, 0, raster.width, raster.height, 0, 0,
+            (field.width - 1) * tilePixels, (field.height - 1) * tilePixels);
+        if (typeof context.restore === 'function') context.restore();
+        return true;
+    }
+
+    function drawElevationRelief(context, records, tilePixels, elevationField = null) {
+        const geometry = reliefGeometry(records, tilePixels, elevationField);
+        const supportsPaths = typeof context.save === 'function' && typeof context.restore === 'function'
+            && typeof context.closePath === 'function' && typeof context.fill === 'function';
+        if (supportsPaths) {
+            const plateauGroups = new Map();
+            for (const plateau of geometry.plateaus) {
+                if (!plateau.profile.plateau) continue;
+                const key = `${plateau.profile.plateau}:${plateau.level}`;
+                if (!plateauGroups.has(key)) plateauGroups.set(key, { ...plateau, polygons: [] });
+                plateauGroups.get(key).polygons.push(plateau.points);
+            }
+            context.save();
+            if ('globalCompositeOperation' in context) context.globalCompositeOperation = 'soft-light';
+            for (const group of plateauGroups.values()) {
+                context.fillStyle = `rgba(255,246,220,${Math.min(0.09, group.profile.plateau + group.level * 0.002)})`;
+                context.beginPath();
+                for (const polygon of group.polygons) {
+                    context.moveTo(polygon[0].x, polygon[0].y);
+                    for (let index = 1; index < polygon.length; index += 1) context.lineTo(polygon[index].x, polygon[index].y);
+                    context.closePath();
+                }
+                context.fill();
+            }
+            context.restore();
+
+            for (const segment of geometry.contours.filter(entry => entry.profile.walls)) {
+                const normal = lowSideNormal(segment);
+                // Canvas uses one fixed-north reading of relief. South-facing
+                // drops open toward the viewer, east/west faces remain narrow,
+                // and north-facing drops reduce to a rear lip. Giving every
+                // orientation equal depth makes a plateau read like a road.
+                const towardViewer = Math.max(0, normal.y);
+                const sideFacing = 1 - Math.abs(normal.y);
+                const faceVisibility = Math.max(0.02, towardViewer + sideFacing * 0.055);
+                const baseDepth = tilePixels * Math.min(0.19,
+                    segment.profile.wallDepth * (0.72 + Math.min(6, segment.level) * 0.055));
+                const depth = baseDepth * faceVisibility;
+                const facePoint = amount => {
+                    const localX = segment.localFrom.x
+                        + (segment.localTo.x - segment.localFrom.x) * amount;
+                    const localY = segment.localFrom.y
+                        + (segment.localTo.y - segment.localFrom.y) * amount;
+                    const worldX = segment.record.x + localX;
+                    const worldY = segment.record.y + localY;
+                    const variation = 0.76 + unitPoint('cliff-face-depth-v1',
+                        `${Math.round(worldX * 48)},${Math.round(worldY * 48)}:${segment.level}`) * 0.42;
+                    const topX = segment.from.x + (segment.to.x - segment.from.x) * amount;
+                    const topY = segment.from.y + (segment.to.y - segment.from.y) * amount;
+                    return {
+                        topX, topY,
+                        x: topX + normal.x * depth * variation,
+                        y: topY + normal.y * depth * variation,
+                        variation
+                    };
+                };
+                const bottom = Array.from({ length: 7 }, (_, index) => facePoint(1 - index / 6));
+                context.save();
+                const faceAlpha = 0.28 + faceVisibility * 0.5;
+                context.fillStyle = segment.record.biome === 'cliff'
+                    ? `rgba(48,43,40,${faceAlpha})`
+                    : `rgba(24,23,25,${Math.min(0.78, faceAlpha + 0.02)})`;
+                context.beginPath();
+                context.moveTo(segment.from.x, segment.from.y);
+                context.lineTo(segment.to.x, segment.to.y);
+                for (const point of bottom) context.lineTo(point.x, point.y);
+                context.closePath();
+                context.fill();
+                context.strokeStyle = `rgba(226,218,196,${0.2 + faceVisibility * 0.28})`;
+                context.lineWidth = Math.max(0.7, tilePixels * (0.009 + faceVisibility * 0.007));
+                context.beginPath();
+                context.moveTo(segment.from.x, segment.from.y);
+                context.lineTo(segment.to.x, segment.to.y);
+                context.stroke();
+                context.strokeStyle = `rgba(224,205,180,${0.08 + faceVisibility * 0.12})`;
+                context.lineWidth = Math.max(0.65, tilePixels * 0.008);
+                for (const amount of [0.28, 0.58, 0.81]) {
+                    const point = facePoint(amount);
+                    const fracture = depth * (0.22 + unitPoint('cliff-face-fracture-v1',
+                        `${segment.record.x},${segment.record.y}:${segment.level}:${amount}`) * 0.38);
+                    context.beginPath();
+                    context.moveTo(point.topX + normal.x * depth * 0.18, point.topY + normal.y * depth * 0.18);
+                    context.lineTo(point.topX + normal.x * fracture, point.topY + normal.y * fracture);
+                    context.stroke();
+                }
+                context.strokeStyle = `rgba(17,13,14,${0.18 + faceVisibility * 0.32})`;
+                context.lineWidth = Math.max(0.8, tilePixels * (0.012 + faceVisibility * 0.022));
+                context.beginPath();
+                context.moveTo(bottom[0].x + normal.x * depth * 0.12, bottom[0].y + normal.y * depth * 0.12);
+                for (const point of bottom.slice(1)) {
+                    context.lineTo(point.x + normal.x * depth * 0.12, point.y + normal.y * depth * 0.12);
+                }
+                context.stroke();
+                context.restore();
+            }
+        }
+
+        // Mechanical cliff edges remain authoritative even when an authored or
+        // legacy tile does not provide marching-contour segments. Draw each
+        // downhill edge once and keep the fallback strictly presentational.
+        // A canonical height field already describes the face inside any tile
+        // that owns a contour. Painting its old cardinal barrier as well would
+        // lay a straight, road-like cross over the continuous plateau.
+        if (elevationField) return geometry;
+        const contouredRecords = new Set(geometry.contours.map(segment => segment.record.key));
+        const paintedEdges = new Set();
+        for (const record of records || []) {
+            if (!record?.known || !record.cliffs?.length || contouredRecords.has(record.key)) continue;
+            const box = tileBox(record, tilePixels);
+            for (const direction of record.cliffs) {
+                const canonical = direction === 'east' ? `${record.x + 1},${record.y}:vertical`
+                    : direction === 'west' ? `${record.x},${record.y}:vertical`
+                        : direction === 'south' ? `${record.x},${record.y + 1}:horizontal`
+                            : `${record.x},${record.y}:horizontal`;
+                if (paintedEdges.has(canonical)) continue;
+                const delta = Number(record.terraceEdges?.[direction]) || 0;
+                if (delta > 0) continue;
+                paintedEdges.add(canonical);
+                context.strokeStyle = 'rgba(37,31,29,0.78)';
+                context.lineWidth = Math.max(1, tilePixels * (delta < 0 ? 0.07 : 0.035));
+                context.beginPath();
+                edgeLine(context, box, direction);
+                context.stroke();
+            }
+        }
+        return geometry;
+    }
+
     function drawWaterContinuum(context, records, tilePixels) {
         if (typeof context.save !== 'function' || typeof context.restore !== 'function'
             || typeof context.clip !== 'function' || typeof context.closePath !== 'function') return false;
@@ -427,7 +1223,12 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
 
     function drawBiomeStrata(context, record, tilePixels) {
         if (!asset('atlas.biome-strata-v2') && !asset('atlas.jungle-strata-v1')) return false;
-        const density = { plains: 0.34, grove: 0.78, forest: 0.92, swamp: 0.67, jungle: 0.9, cliff: 0.32, cave: 0.26 }[record.biome] || 0;
+        const baseDensity = { plains: 0.34, grove: 0.78, forest: 0.92, swamp: 0.67, jungle: 0.9, cliff: 0.32, cave: 0.26 }[record.biome] || 0;
+        // Chunk rasters are a level-of-detail boundary. At survey resolution,
+        // material texture carries biome identity and dense full-atlas canopy
+        // draws are both visually noisy and disproportionately expensive.
+        const detailDensity = tilePixels <= 36 ? 0.26 : (tilePixels <= 52 ? 0.58 : 1);
+        const density = baseDensity * detailDensity;
         if (!density || unitPoint(record.seed, 'biome-strata-density') > density) return false;
         const box = tileBox(record, tilePixels);
         const scaleBase = { plains: 0.62, grove: 0.92, forest: 1.04, swamp: 0.74, jungle: 1.12, cliff: 0.62, cave: 0.62 }[record.biome] || 0.75;
@@ -710,9 +1511,18 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
                 }
             }
             drawSharedMaterialSeams(context, scene.layers.ground, tilePixels, fieldBackedBiomes);
-            drawGroundTransitions(context, scene.layers.ground, tilePixels);
-            drawGroundCorners(context, scene.layers.ground, tilePixels);
-            drawWaterContinuum(context, scene.layers.ground, tilePixels);
+            const continuousSoftField = drawContinuousSoftBiomeField(context, scene, tilePixels);
+            // The old edge/corner path remains a procedural fallback for a
+            // minimal Canvas implementation or an art pack without materials.
+            if (!continuousSoftField) {
+                drawGroundTransitions(context, scene.layers.ground, tilePixels);
+                drawGroundCorners(context, scene.layers.ground, tilePixels);
+            }
+            if (!drawContinuousWaterField(context, scene, tilePixels)) {
+                drawWaterContinuum(context, scene.layers.ground, tilePixels);
+            }
+            drawHillshadeField(context, scene, tilePixels, pixelRatio);
+            drawElevationRelief(context, scene.layers.elevation, tilePixels, scene.elevationField);
             for (const ground of scene.layers.ground) {
                 if (!asset('atlas.materials-v2')) drawGroundTexture(context, ground, tilePixels);
                 drawBiomeStrata(context, ground, tilePixels);
@@ -727,15 +1537,6 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
                 context.lineWidth = Math.max(1, tilePixels * 0.055);
                 context.beginPath();
                 for (const direction of record.edges) edgeLine(context, box, direction);
-                context.stroke();
-            }
-            for (const record of scene.layers.elevation) {
-                if (!record.cliffs.length && !record.uphill.length) continue;
-                const box = tileBox(record, tilePixels);
-                context.strokeStyle = record.cliffs.length ? 'rgba(37,31,29,0.78)' : 'rgba(255,255,255,0.12)';
-                context.lineWidth = Math.max(1, tilePixels * (record.cliffs.length ? 0.08 : 0.025));
-                context.beginPath();
-                for (const direction of (record.cliffs.length ? record.cliffs : record.uphill)) edgeLine(context, box, direction);
                 context.stroke();
             }
             for (const route of scene.layers.routes) {
@@ -906,7 +1707,10 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
     };
 
     if (typeof YAW_TERRAIN_RENDERERS !== 'undefined') YAW_TERRAIN_RENDERERS.register(descriptor);
-    return { ID, PALETTE, MATERIAL_CELLS, prepareAssets, assetStatus, create, descriptor };
+    return {
+        ID, PALETTE, MATERIAL_CELLS, RELIEF_PROFILE,
+        prepareAssets, assetStatus, bilinearHeight, reliefGeometry, softBiomeField, waterField, create, descriptor
+    };
 })();
 
 if (typeof window !== 'undefined') window.YAW_TERRAIN_CANVAS_V1 = YAW_TERRAIN_CANVAS_V1;

@@ -39,6 +39,49 @@ const YAW_TERRAIN_SCENE_V1 = (() => {
         return DIRECTIONS.filter(direction => source.has(direction));
     }
 
+    function clamp(value, minimum, maximum, fallback = minimum) {
+        return Math.max(minimum, Math.min(maximum, number(value, fallback)));
+    }
+
+    function direction(value) {
+        const normalized = text(value).toLowerCase();
+        return DIRECTIONS.includes(normalized) ? normalized : null;
+    }
+
+    function elevationCorners(topology, fallback) {
+        return Object.fromEntries(['nw', 'ne', 'se', 'sw'].map(corner => [
+            corner,
+            clamp(topology?.cornerElevations?.[corner], 0, 1, fallback)
+        ]));
+    }
+
+    function elevationEdgeValues(values = {}, minimum = -8, maximum = 8) {
+        return Object.fromEntries(DIRECTIONS.map(edge => [
+            edge,
+            Math.trunc(clamp(values?.[edge], minimum, maximum, 0))
+        ]));
+    }
+
+    function elevationContours(values = []) {
+        return (Array.isArray(values) ? values : []).slice(0, 8).map(contour => ({
+            level: Math.trunc(clamp(contour?.level, 0, 8, 0)),
+            threshold: clamp(contour?.threshold, 0, 1, 0.5),
+            mask: Math.trunc(clamp(contour?.mask, 0, 15, 0)),
+            segments: (Array.isArray(contour?.segments) ? contour.segments : []).slice(0, 2).map(segment => ({
+                from: {
+                    edge: direction(segment?.from?.edge),
+                    x: clamp(segment?.from?.x, 0, 1, 0.5),
+                    y: clamp(segment?.from?.y, 0, 1, 0.5)
+                },
+                to: {
+                    edge: direction(segment?.to?.edge),
+                    x: clamp(segment?.to?.x, 0, 1, 0.5),
+                    y: clamp(segment?.to?.y, 0, 1, 0.5)
+                }
+            }))
+        }));
+    }
+
     function hash32(...parts) {
         const input = parts.map(part => String(part ?? '')).join('|');
         let hash = 2166136261;
@@ -158,6 +201,7 @@ const YAW_TERRAIN_SCENE_V1 = (() => {
         const topology = tile.terrainTopology || tile.terrain?.topology || {};
         const biome = text(tile.derivedBiome || tile.baseBiome || tile.biome, 'unknown', 80);
         const elevation = number(tile.elevation ?? tile.terrain?.elevation, 0);
+        const boundedElevation = clamp(elevation, 0, 1, 0);
         const ground = {
             ...identity,
             kind: 'ground',
@@ -181,17 +225,32 @@ const YAW_TERRAIN_SCENE_V1 = (() => {
         const elevationLayer = [{
             ...identity,
             kind: 'height-sample',
-            value: elevation,
+            biome,
+            value: boundedElevation,
             type: text(topology.kind, 'level', 40),
+            band: text(topology.band, 'mid', 20),
+            terraceLevel: Math.trunc(clamp(topology.terraceLevel, 0, 8, 0)),
+            terraceCount: Math.trunc(clamp(topology.terraceCount, 1, 8, 6)),
             uphill: directions(topology.uphillEdges),
             downhill: directions(topology.downhillEdges),
             cliffs: directions(topology.cliffEdges),
-            corners: {
-                nw: number(topology.cornerElevations?.nw, elevation),
-                ne: number(topology.cornerElevations?.ne, elevation),
-                se: number(topology.cornerElevations?.se, elevation),
-                sw: number(topology.cornerElevations?.sw, elevation)
-            }
+            primaryUphill: direction(topology.primaryUphill),
+            primaryDownhill: direction(topology.primaryDownhill),
+            corners: elevationCorners(topology, boundedElevation),
+            gradient: {
+                x: clamp(topology.gradient?.x, -1, 1, 0),
+                y: clamp(topology.gradient?.y, -1, 1, 0),
+                magnitude: clamp(topology.gradient?.magnitude, 0, 2, 0),
+                aspect: direction(topology.gradient?.aspect)
+            },
+            terraceEdges: elevationEdgeValues(topology.terraceEdges),
+            wallEdges: directions(topology.wallEdges),
+            riseEdges: directions(topology.riseEdges),
+            grades: Object.fromEntries(DIRECTIONS.map(edge => [
+                edge,
+                clamp(topology.grades?.[edge], -2, 2, 0)
+            ])),
+            contours: elevationContours(topology.contours)
         }];
         const route = normalizeRoute(tile, identity);
         const cover = [
@@ -241,13 +300,67 @@ const YAW_TERRAIN_SCENE_V1 = (() => {
         };
     }
 
+    function compileElevationField(bounds, normalizedTiles) {
+        const width = bounds.render.width + 1;
+        const height = bounds.render.height + 1;
+        const origin = { x: bounds.render.minX - 0.5, y: bounds.render.minY - 0.5 };
+        const values = [];
+        const validity = [];
+        const owners = [];
+        const disagreements = [];
+        const cornerFor = (tileX, tileY, vertexX, vertexY) => {
+            const vertical = vertexY < tileY ? 'n' : 's';
+            const horizontal = vertexX < tileX ? 'w' : 'e';
+            return `${vertical}${horizontal}`;
+        };
+
+        for (let row = 0; row < height; row += 1) {
+            const vertexY = origin.y + row;
+            for (let column = 0; column < width; column += 1) {
+                const vertexX = origin.x + column;
+                const candidates = [];
+                for (const tileY of [Math.floor(vertexY), Math.ceil(vertexY)]) {
+                    for (const tileX of [Math.floor(vertexX), Math.ceil(vertexX)]) {
+                        const normalized = normalizedTiles.get(`${tileX},${tileY}`);
+                        const sample = normalized?.elevation?.[0];
+                        if (!normalized?.identity?.known || !sample) continue;
+                        const corner = cornerFor(tileX, tileY, vertexX, vertexY);
+                        candidates.push({ tileX, tileY, corner, value: sample.corners[corner] });
+                    }
+                }
+                candidates.sort((left, right) => left.tileY - right.tileY || left.tileX - right.tileX || left.corner.localeCompare(right.corner));
+                const owner = candidates[0] || null;
+                const valid = Boolean(owner);
+                values.push(valid ? owner.value : null);
+                validity.push(valid ? 1 : 0);
+                owners.push(valid ? { tileX: owner.tileX, tileY: owner.tileY, corner: owner.corner } : null);
+                disagreements.push(valid && candidates.some(candidate => Math.abs(candidate.value - owner.value) > 0.000001) ? 1 : 0);
+            }
+        }
+
+        return {
+            kind: 'height-vertex-grid',
+            coordinateSpace: 'world-tile-corners',
+            origin,
+            spacing: 1,
+            width,
+            height,
+            values,
+            validity,
+            owners,
+            disagreements
+        };
+    }
+
     function compileChunk(options = {}) {
         if (typeof options.resolveTile !== 'function') throw new TypeError('Terrain scene compilation requires resolveTile(x, y)');
         const bounds = chunkBounds(options.chunkX, options.chunkY, options);
         const layers = Object.fromEntries(LAYERS.map(layer => [layer, []]));
+        const normalizedTiles = new Map();
         for (let y = bounds.render.minY; y <= bounds.render.maxY; y += 1) {
             for (let x = bounds.render.minX; x <= bounds.render.maxX; x += 1) {
                 const normalized = normalizeTile(options.resolveTile(x, y), x, y);
+                normalizedTiles.set(`${x},${y}`, normalized);
                 const place = record => ({
                     ...record,
                     localX: record.x - bounds.render.minX,
@@ -272,6 +385,7 @@ const YAW_TERRAIN_SCENE_V1 = (() => {
                 width: bounds.interior.width,
                 height: bounds.interior.height
             },
+            elevationField: compileElevationField(bounds, normalizedTiles),
             cache: {
                 worldRevision: revision,
                 sceneKey: `${SCHEMA}:v${VERSION}:${bounds.chunk.size}:${bounds.chunk.x},${bounds.chunk.y}:${revision}`
@@ -282,7 +396,7 @@ const YAW_TERRAIN_SCENE_V1 = (() => {
 
     return {
         SCHEMA, VERSION, DEFAULT_CHUNK_SIZE, DEFAULT_APRON, DIRECTIONS, LAYERS,
-        hash32, chunkAddress, chunkBounds, normalizeTile, compileChunk
+        hash32, chunkAddress, chunkBounds, normalizeTile, compileElevationField, compileChunk
     };
 })();
 

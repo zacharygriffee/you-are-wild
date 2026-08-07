@@ -325,6 +325,7 @@ const YAW_SETTINGS_FLOW = {
         app.renderParty();
         app.renderCreatures();
         app.renderLog();
+        globalThis.YAW_TERRAIN_CANVAS_ALPHA?.sync?.();
     },
 
     syncLanguageControl(app) {

@@ -81,6 +81,18 @@ async function inspectScenario(page) {
       const evidenceRow = row(1);
       const elevationRow = row(2);
       const junctionRows = tiles.filter(tile => tile.y === 3 || tile.y === 4);
+      const sharedCornerTiles = tiles.filter(tile => ['nw', 'ne', 'se', 'sw']
+        .every(corner => Number.isFinite(tile.terrainTopology?.cornerElevations?.[corner]))).length;
+      const sharedCornerMismatches = tiles.reduce((count, tile) => {
+        const east = App.worldMap.get(`${tile.x + 1},${tile.y}`);
+        const south = App.worldMap.get(`${tile.x},${tile.y + 1}`);
+        const corners = tile.terrainTopology?.cornerElevations || {};
+        const eastCorners = east?.terrainTopology?.cornerElevations || {};
+        const southCorners = south?.terrainTopology?.cornerElevations || {};
+        return count
+          + (east && (corners.ne !== eastCorners.nw || corners.se !== eastCorners.sw) ? 1 : 0)
+          + (south && (corners.sw !== southCorners.nw || corners.se !== southCorners.ne) ? 1 : 0);
+      }, 0);
       const traversalGroup = document.querySelector('[aria-label="3 by 3 traversal grid"], [aria-label="3x3 traversal surface"]');
       const activeCenter = innerWidth <= 1024
         ? document.querySelector('#mobile-mini-map [data-stage-cell="center"]')
@@ -131,7 +143,20 @@ async function inspectScenario(page) {
         structureCount: structureRow.filter(tile => tile.structure).length,
         poiCount: poiRow.filter(tile => tile.overlays?.poi).length,
         evidenceCount: evidenceRow.filter(tile => tile.items?.length || tile.deathBags?.length || tile.placedObjects?.length || tile.resourceSearched).length,
+        sharedCornerTiles,
+        sharedCornerMismatches,
+        contourTiles: tiles.filter(tile => tile.terrainTopology?.contours?.length).length,
         elevationSemantics: [...new Set(semanticKeys.filter(key => key.startsWith('terrain-elevation-')))].sort(),
+        elevationTopologyConsistent: elevationRow.every(tile => {
+          const topology = tile.terrainTopology || {};
+          const grades = topology.grades || {};
+          const terraces = topology.terraceEdges || {};
+          return (!topology.primaryUphill || Number(grades[topology.primaryUphill]) > 0)
+            && (!topology.primaryDownhill || Number(grades[topology.primaryDownhill]) < 0)
+            && (topology.wallEdges || []).every(direction => Number(terraces[direction]) < 0)
+            && (topology.riseEdges || []).every(direction => Number(terraces[direction]) > 0)
+            && (topology.cliffEdges || []).every(direction => (topology.wallEdges || []).includes(direction));
+        }),
         identityFamilies,
         routeLayersComplete: routeVisuals.every(visual =>
           visual.composition.layers.route.records.some(record => record.kind === 'road' || record.kind === 'bridge')
@@ -171,7 +196,8 @@ async function inspectScenario(page) {
         accessibleTraversalGroup: Boolean(traversalGroup),
         unnamedTraversalButtons: [...(traversalGroup?.querySelectorAll('button') || [])]
           .filter(button => !(button.getAttribute('aria-label') || button.textContent || '').trim()).length,
-        currentStateAboveWorld: stateZ > lowerZ
+        currentStateAboveWorld: stateZ > lowerZ,
+        canvasActive: Boolean(activeGrid?.querySelector(':scope > .yaw-terrain-world-canvas'))
       };
     })() : null;
     if (App.alphaSession?.scenarioId === 'terrain-workbench') App.renderLargeMap?.();
@@ -194,6 +220,7 @@ async function inspectScenario(page) {
         sharedCornerTiles: tiles.filter(tile => ['nw', 'ne', 'se', 'sw'].every(corner => Number.isFinite(tile.terrainTopology?.cornerElevations?.[corner]))).length,
         contourTiles: tiles.filter(tile => tile.terrainTopology?.contours?.length).length,
         renderedContourSegments: document.querySelectorAll('.yaw-terrain-contour-segment').length,
+        canvasActive: Boolean(document.querySelector('.yaw-terrain-canvas-alpha > .yaw-terrain-world-canvas')),
         bodyPhase: document.body.dataset.dayPhase
       };
     })() : null;
@@ -242,16 +269,13 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
       assert.equal(actual.terrainSurvey.structureCount, 9, 'terrain survey transparent structure row');
       assert.equal(actual.terrainSurvey.poiCount, 9, 'terrain survey POI row');
       assert.equal(actual.terrainSurvey.evidenceCount, 9, 'terrain survey evidence row');
-      assert.deepEqual(actual.terrainSurvey.elevationSemantics, [
-        'terrain-elevation-cliff-east',
-        'terrain-elevation-cliff-south',
-        'terrain-elevation-cliff-west',
-        'terrain-elevation-ledge-south',
-        'terrain-elevation-slope-east',
-        'terrain-elevation-slope-north',
-        'terrain-elevation-slope-south',
-        'terrain-elevation-slope-west'
-      ], 'terrain survey directional elevation semantics');
+      assert.equal(actual.terrainSurvey.sharedCornerTiles, 81, 'every terrain survey tile should carry continuous corner-height topology');
+      assert.equal(actual.terrainSurvey.sharedCornerMismatches, 0, 'terrain survey neighbors should agree exactly at every shared elevation vertex');
+      assert(actual.terrainSurvey.contourTiles >= 9, 'terrain survey should cross enough terrace thresholds to exercise connected relief');
+      assert.equal(actual.terrainSurvey.elevationTopologyConsistent, true,
+        'terrain survey directional semantics should agree with their shared height field');
+      assert(actual.terrainSurvey.elevationSemantics.length > 0,
+        'terrain survey should retain visible elevation semantics without overriding computed topology');
       assert.deepEqual(actual.terrainSurvey.identityFamilies, [
         'beach-identity',
         'cave-identity',
@@ -271,23 +295,27 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
       assert.equal(actual.terrainSurvey.waterFlagsMatch, true, 'terrain survey biome and water facts should agree');
       assert.equal(actual.terrainSurvey.desktopCells, 9, 'terrain survey desktop 3x3 composition');
       assert.equal(actual.terrainSurvey.mobileCells, 9, 'terrain survey mobile 3x3 composition');
-      assert(actual.terrainSurvey.visibleJungleStrata >= 3, 'terrain survey should render separate jungle canopy, undergrowth, and litter strata');
-      assert(actual.terrainSurvey.visibleBiomeDetails >= 1, 'terrain survey should render a coordinate-selected secondary biome detail');
-      assert.equal(actual.terrainSurvey.activeGridGap, '0px', 'active terrain artwork should meet across all nine traversal cells');
-      assert.equal(actual.terrainSurvey.activeCellBorder, '0px', 'active traversal cells should keep hit targets without artwork-breaking borders');
-      assert.equal(actual.terrainSurvey.inactiveTerrainOpacity, '1', 'movement availability must not dim a whole terrain cell and fracture the composed surface');
-      assert.equal(actual.terrainSurvey.moveableRestingRing, 'none', 'traversable neighbors should not divide continuous artwork with resting full-cell outlines');
-      assert.notEqual(actual.terrainSurvey.moveableCueContent, 'none', 'traversable neighbors should retain a bounded non-text movement cue');
-      assert.equal(actual.terrainSurvey.restingPoiRing, 'none', 'POI and structure ownership should remain on their bounded art instead of outlining the whole cell');
-      assert.equal(actual.terrainSurvey.coverArtOverflow, 'hidden', 'each tile should clip art consistently after safe placement and paired edge composition');
-      assert.equal(actual.terrainSurvey.interiorCanopyContained, true, 'interior jungle canopies should remain inside their owning safe inset');
-      assert(actual.terrainSurvey.pairedJungleEdges >= 2, 'contiguous jungle should render paired shared-edge canopy bands');
-      assert(actual.terrainSurvey.sharedEdgeOverscan < 0, 'bundled shared-edge paint should overscan its owning boundary to hide fractional raster seams');
-      assert.equal(actual.terrainSurvey.currentStateOpacity, '0', 'bundled current-position atlas art should not obstruct terrain');
-      assert.notEqual(actual.terrainSurvey.currentCellRing, 'none', 'current position should remain legible as a bounded owning-cell ring');
+      assert(actual.terrainSurvey.visibleJungleStrata >= 3 || actual.terrainSurvey.canvasActive,
+        'terrain survey should reach either the legacy jungle strata or the Canvas terrain surface');
+      assert(actual.terrainSurvey.visibleBiomeDetails >= 1 || actual.terrainSurvey.canvasActive,
+        'terrain survey should reach either a legacy biome detail or the Canvas terrain surface');
+      if (!actual.terrainSurvey.canvasActive) {
+        assert.equal(actual.terrainSurvey.activeGridGap, '0px', 'active terrain artwork should meet across all nine traversal cells');
+        assert.equal(actual.terrainSurvey.activeCellBorder, '0px', 'active traversal cells should keep hit targets without artwork-breaking borders');
+        assert.equal(actual.terrainSurvey.inactiveTerrainOpacity, '1', 'movement availability must not dim a whole terrain cell and fracture the composed surface');
+        assert.equal(actual.terrainSurvey.moveableRestingRing, 'none', 'traversable neighbors should not divide continuous artwork with resting full-cell outlines');
+        assert.notEqual(actual.terrainSurvey.moveableCueContent, 'none', 'traversable neighbors should retain a bounded non-text movement cue');
+        assert.equal(actual.terrainSurvey.restingPoiRing, 'none', 'POI and structure ownership should remain on their bounded art instead of outlining the whole cell');
+        assert.equal(actual.terrainSurvey.coverArtOverflow, 'hidden', 'each tile should clip art consistently after safe placement and paired edge composition');
+        assert.equal(actual.terrainSurvey.interiorCanopyContained, true, 'interior jungle canopies should remain inside their owning safe inset');
+        assert(actual.terrainSurvey.pairedJungleEdges >= 2, 'contiguous jungle should render paired shared-edge canopy bands');
+        assert(actual.terrainSurvey.sharedEdgeOverscan < 0, 'bundled shared-edge paint should overscan its owning boundary to hide fractional raster seams');
+        assert.equal(actual.terrainSurvey.currentStateOpacity, '0', 'bundled current-position atlas art should not obstruct terrain');
+        assert.notEqual(actual.terrainSurvey.currentCellRing, 'none', 'current position should remain legible as a bounded owning-cell ring');
+        assert.equal(actual.terrainSurvey.currentStateAboveWorld, true, 'terrain survey current-position cue should remain above world art');
+      }
       assert.equal(actual.terrainSurvey.accessibleTraversalGroup, true, 'terrain survey traversal surface should expose a group label');
       assert.equal(actual.terrainSurvey.unnamedTraversalButtons, 0, 'terrain survey traversal controls should retain accessible names');
-      assert.equal(actual.terrainSurvey.currentStateAboveWorld, true, 'terrain survey current-position cue should remain above world art');
     }
     if (scenarioId === 'terrain-workbench') {
       assert.equal(actual.terrainWorkbench.tileCount, 49, 'terrain workbench should isolate one bounded 7x7 case');
@@ -304,7 +332,8 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
       assert.equal(actual.terrainWorkbench.biomeCount, 9, 'terrain workbench biome matrix');
       assert.equal(actual.terrainWorkbench.sharedCornerTiles, 49, 'every workbench tile should carry shared corner-height topology');
       assert(actual.terrainWorkbench.contourTiles >= 7, 'the default terrace fixture should cross the full 7x7 case');
-      assert(actual.terrainWorkbench.renderedContourSegments >= 7, 'the default terrace fixture should render connected contour walls');
+      assert(actual.terrainWorkbench.renderedContourSegments >= 7 || actual.terrainWorkbench.canvasActive,
+        'the default terrace fixture should reach either the legacy contour layer or the Canvas terrain surface');
       assert.equal(actual.terrainWorkbench.bodyPhase, 'day', 'terrain workbench default lighting');
       const changed = await page.evaluate(() => {
         const startedAt = performance.now();
@@ -350,17 +379,30 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
         return {
           mapDisplay: getComputedStyle(map).display,
           workbenchVisibility: getComputedStyle(workbench).visibility,
+          canvasMode: document.querySelector('.yaw-terrain-canvas-alpha')?.dataset.terrainCameraMode || '',
           knownTiles: document.querySelectorAll('#large-map .large-map-tile.known[data-tile-composition-version="2"]').length
         };
       });
-      assert.equal(reviewMapMode.mapDisplay, 'flex', 'Review Map should open for composition inspection');
-      assert.equal(reviewMapMode.workbenchVisibility, 'hidden', 'floating workbench controls must not cover Review Map tiles');
-      assert.equal(reviewMapMode.knownTiles, 49, 'Review Map should retain the complete isolated workbench case');
+      if (reviewMapMode.canvasMode) {
+        assert(['regional', 'survey'].includes(reviewMapMode.canvasMode), 'Review Map should zoom the Canvas terrain surface beyond local mode');
+        assert.equal(reviewMapMode.mapDisplay, 'none', 'Canvas survey should not open the duplicate legacy Review Map panel');
+        assert.equal(reviewMapMode.workbenchVisibility, 'visible', 'workbench controls should remain available beside the Canvas survey');
+      } else {
+        assert.equal(reviewMapMode.mapDisplay, 'flex', 'Review Map should open for composition inspection');
+        assert.equal(reviewMapMode.workbenchVisibility, 'hidden', 'floating workbench controls must not cover Review Map tiles');
+        assert.equal(reviewMapMode.knownTiles, 49, 'Review Map should retain the complete isolated workbench case');
+      }
       const restoredWorkbench = await page.evaluate(() => {
-        togglePanel('map');
-        return getComputedStyle(document.getElementById('alpha-terrain-workbench')).visibility;
+        const canvas = document.querySelector('.yaw-terrain-canvas-alpha');
+        if (canvas) canvas.querySelector('[data-terrain-view="local"]')?.click();
+        else togglePanel('map');
+        return {
+          visibility: getComputedStyle(document.getElementById('alpha-terrain-workbench')).visibility,
+          canvasMode: canvas?.dataset.terrainCameraMode || ''
+        };
       });
-      assert.equal(restoredWorkbench, 'visible', 'closing Review Map should restore the unchanged workbench controls');
+      assert.equal(restoredWorkbench.visibility, 'visible', 'closing Review Map should restore the unchanged workbench controls');
+      if (reviewMapMode.canvasMode) assert.equal(restoredWorkbench.canvasMode, 'local', '3x3 should restore the local Canvas camera');
     }
     assert.equal(actual.diagnostics.activeScenario, scenarioId, `${scenarioId} diagnostic identity`);
     assert.equal(actual.diagnostics.isolatedSaveDb, true, `${scenarioId} isolated save database`);

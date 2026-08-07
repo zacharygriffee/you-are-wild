@@ -45,6 +45,11 @@ const localCamera = viewport.local(camera);
 const surveyCamera = viewport.survey(camera, { x: 0, y: 0 }, 17);
 check(Math.abs(viewport.tilePixels(localCamera) - 320 / 3) < 0.0001, 'Local camera must fit three tiles across the limiting viewport axis');
 check(viewport.mode(localCamera) === 'local' && viewport.mode(surveyCamera) === 'regional', 'Local and survey presets must share one continuous zoom model');
+const intermediateCamera = viewport.zoomAt(localCamera, 0.8, 160, 160);
+check(viewport.isLocalFit(localCamera) && viewport.mode(intermediateCamera) === 'regional',
+  'Only the canonical three-tile fit may expose the fixed local semantic plane');
+check(input.intentForTile(viewport.mode(intermediateCamera), { x: 0, y: 0 }, { x: 1, y: 0 }).kind === 'inspect',
+  'Intermediate zoom must inspect terrain rather than dispatch movement through misaligned local cells');
 const anchorBefore = viewport.screenToWorld(camera, 80, 120);
 const zoomed = viewport.zoomAt(camera, 1.8, 80, 120);
 const anchorAfter = viewport.screenToWorld(zoomed, 80, 120);
@@ -76,7 +81,20 @@ const resolveTile = (x, y) => {
     elevation: (x + y + 20) / 100,
     water: x < 0,
     traversal: { passable: x >= 0, traversalCost: x >= 0 ? 1 : 3 },
-    terrainTopology: { kind: 'slope', uphillEdges: ['north'], downhillEdges: ['south'] },
+    terrainTopology: {
+      kind: 'slope', band: 'mid', terraceLevel: 3, terraceCount: 6,
+      primaryUphill: 'north', primaryDownhill: 'south',
+      uphillEdges: ['north'], downhillEdges: ['south'], cliffEdges: ['west'],
+      cornerElevations: { nw: 0.42, ne: 0.48, se: 0.36, sw: 0.31 },
+      gradient: { x: 0.055, y: -0.115, magnitude: 0.1275, aspect: 'north' },
+      terraceEdges: { north: 1, east: 0, south: -1, west: -2 },
+      wallEdges: ['south', 'west'], riseEdges: ['north'],
+      grades: { north: 0.08, east: 0.01, south: -0.09, west: -0.12 },
+      contours: [{
+        level: 3, threshold: 0.5, mask: 3,
+        segments: [{ from: { edge: 'west', x: 0, y: 0.4 }, to: { edge: 'east', x: 1, y: 0.6 } }]
+      }]
+    },
     overlays: {
       road: y === 0 ? { id: `road-${x}`, connections: ['east', 'west'] } : null,
       shoreline: x < 0 ? { edges: ['east'] } : null,
@@ -106,6 +124,120 @@ check(first.layers.hydrology.some(record => record.kind === 'water' && record.ed
 check(first.layers.cover.some(record => record.family === 'conifer' && record.anchor.x === 0.2 && record.scale === 1.25), 'Cover semantics must retain deterministic family, anchor, and scale facts');
 check(first.layers.evidence.some(record => record.kind === 'item') && first.layers.evidence.some(record => record.kind === 'recovery-bag'), 'Durable evidence types must survive scene compilation');
 check(first.layers.presence.some(record => record.label === 'Fox'), 'Known live presence must survive scene compilation');
+const elevationRecord = first.layers.elevation[0];
+check(elevationRecord.terraceLevel === 3 && elevationRecord.terraceCount === 6
+  && elevationRecord.gradient.aspect === 'north' && elevationRecord.gradient.x === 0.055,
+  'Terrain Scene must preserve bounded terrace and gradient topology');
+check(elevationRecord.terraceEdges.west === -2 && elevationRecord.wallEdges.join(',') === 'south,west'
+  && elevationRecord.riseEdges.join(',') === 'north' && elevationRecord.grades.south === -0.09,
+  'Terrain Scene must preserve signed edge, wall, rise, and grade topology');
+check(elevationRecord.contours[0].mask === 3 && elevationRecord.contours[0].segments[0].to.edge === 'east'
+  && elevationRecord.corners.se === 0.36 && elevationRecord.primaryDownhill === 'south',
+  'Terrain Scene must preserve bounded shared corners, contours, and primary directions');
+check(first.elevationField.width === first.renderBounds.width + 1
+  && first.elevationField.height === first.renderBounds.height + 1
+  && first.elevationField.values.length === first.elevationField.validity.length,
+  'Terrain Scene must compile one bounded vertex grid and parallel validity mask');
+
+function fieldSample(field, x, y) {
+  const column = Math.round(x - field.origin.x);
+  const row = Math.round(y - field.origin.y);
+  const index = row * field.width + column;
+  return {
+    value: field.values[index],
+    valid: field.validity[index],
+    owner: field.owners[index],
+    disagreement: field.disagreements[index]
+  };
+}
+
+function continuousTile(x, y) {
+  const height = (vertexX, vertexY) => Number((0.5 + vertexX * 0.01 + vertexY * 0.02).toFixed(4));
+  return {
+    x, y, biome: 'plains', elevation: height(x, y), traversal: { passable: true, traversalCost: 1 },
+    terrainTopology: {
+      kind: 'slope',
+      cornerElevations: {
+        nw: height(x - 0.5, y - 0.5), ne: height(x + 0.5, y - 0.5),
+        se: height(x + 0.5, y + 0.5), sw: height(x - 0.5, y + 0.5)
+      }
+    }
+  };
+}
+
+const negativeChunk = scene.compileChunk({ chunkX: -1, chunkY: 0, chunkSize: 2, apron: 1, worldRevision: 'height-grid', resolveTile: continuousTile });
+const positiveChunk = scene.compileChunk({ chunkX: 0, chunkY: 0, chunkSize: 2, apron: 1, worldRevision: 'height-grid', resolveTile: continuousTile });
+const sharedNegative = fieldSample(negativeChunk.elevationField, -0.5, 0.5);
+const sharedPositive = fieldSample(positiveChunk.elevationField, -0.5, 0.5);
+check(sharedNegative.valid === 1 && sharedNegative.value === sharedPositive.value
+  && JSON.stringify(sharedNegative.owner) === JSON.stringify(sharedPositive.owner),
+  'Adjacent negative and positive chunks must publish the same global shared vertex and owner');
+check(sharedNegative.owner.tileX === -1 && sharedNegative.owner.tileY === 0 && sharedNegative.owner.corner === 'se',
+  'Shared vertex ownership must use stable world-coordinate tile ordering across the zero boundary');
+
+const disagreementScene = scene.compileChunk({
+  chunkX: 0, chunkY: 0, chunkSize: 1, apron: 1, worldRevision: 'authored-disagreement',
+  resolveTile: (x, y) => {
+    const corners = { nw: 0.44, ne: 0.33, se: 0.11, sw: 0.22 };
+    return { x, y, biome: 'cliff', elevation: 0.5, terrainTopology: { kind: 'cliff', cornerElevations: corners } };
+  }
+});
+const disputed = fieldSample(disagreementScene.elevationField, 0.5, 0.5);
+check(disputed.value === 0.11 && disputed.disagreement === 1
+  && disputed.owner.tileX === 0 && disputed.owner.tileY === 0 && disputed.owner.corner === 'se',
+  'Authored corner disagreements must resolve to the stable northwest tile owner and remain observable as scene data');
+const disputedRelief = canvas.reliefGeometry(disagreementScene.layers.elevation, 32, disagreementScene.elevationField);
+const tileLocalDispute = canvas.reliefGeometry(disagreementScene.layers.elevation, 32);
+check(tileLocalDispute.plateaus.some(entry => entry.record.x === 0 && entry.record.y === 0)
+  && !disputedRelief.plateaus.some(entry => entry.record.x === 0 && entry.record.y === 0)
+  && !disputedRelief.contours.some(entry => entry.record.x === 0 && entry.record.y === 0),
+  'Plateau and wall geometry must consume canonical field owners rather than disputed tile-local corners');
+
+const maskedScene = scene.compileChunk({
+  chunkX: 0, chunkY: 0, chunkSize: 1, apron: 1, worldRevision: 'unknown-mask',
+  resolveTile: (x, y) => x === 0 && y === 0 ? continuousTile(x, y) : null
+});
+const knownVertex = fieldSample(maskedScene.elevationField, -0.5, -0.5);
+const unknownVertex = fieldSample(maskedScene.elevationField, -1.5, -1.5);
+check(knownVertex.valid === 1 && knownVertex.value !== null,
+  'Known tile corners must remain valid when adjacent terrain is unknown');
+check(unknownVertex.valid === 0 && unknownVertex.value === null && unknownVertex.owner === null,
+  'Unknown-only vertices must remain explicitly masked without a synthetic height value');
+
+check(Math.abs(canvas.bilinearHeight({ nw: 0, ne: 1, se: 1, sw: 0 }, 0.25, 0.75) - 0.25) < 1e-9,
+  'Canvas relief interpolation must preserve a linear shared-corner height plane');
+check(canvas.bilinearHeight({ nw: 0, ne: null, se: 1, sw: 0 }, 0.5, 0.5) === null,
+  'Canvas relief interpolation must refuse incomplete or unknown corner data');
+
+const connectedReliefScene = scene.compileChunk({
+  chunkX: 0, chunkY: 0, chunkSize: 2, apron: 0, worldRevision: 'connected-relief',
+  resolveTile: (x, y) => ({
+    x, y, biome: 'cliff', elevation: 0.5, traversal: { passable: true, traversalCost: 2 },
+    terrainTopology: {
+      kind: 'cliff', terraceCount: 6, terraceLevel: 3,
+      cornerElevations: { nw: 0.35, ne: 0.65, se: 0.65, sw: 0.35 },
+      gradient: { x: 0.3, y: 0, magnitude: 0.3, aspect: 'east' },
+      terraceEdges: { north: 0, east: -1, south: 0, west: 1 },
+      wallEdges: ['east'], riseEdges: ['west'], cliffEdges: ['east'],
+      contours: [{
+        level: 3, threshold: 0.5, mask: 6,
+        segments: [{ from: { edge: 'north', x: 0.5, y: 0 }, to: { edge: 'south', x: 0.5, y: 1 } }]
+      }]
+    }
+  })
+});
+const relief = canvas.reliefGeometry(connectedReliefScene.layers.elevation, 32);
+check(relief.plateaus.length > 0 && relief.contours.length === connectedReliefScene.layers.elevation.length,
+  'Canvas relief geometry must derive plateau fills and one semantic contour segment per authored cliff sample');
+const leftRelief = relief.contours.find(segment => segment.record.localX === 0 && segment.record.localY === 0);
+const rightRelief = relief.contours.find(segment => segment.record.localX === 1 && segment.record.localY === 0);
+check(leftRelief?.to.y === rightRelief?.to.y && leftRelief?.from.y === rightRelief?.from.y
+  && rightRelief.from.x - leftRelief.from.x === 32,
+  'Adjacent relief segments must retain one continuous world-aligned contour phase without tile-local drift');
+check(relief.contours.every(segment => segment.profile.walls),
+  'Cliff and cave relief records must opt into plateau wall faces while ordinary biomes remain hillshade-only');
+check(relief.contours.every(segment => segment.profile.wallDepth >= 0.12),
+  'Full-relief profiles must reserve enough world-relative depth for a readable plateau face');
 
 const calls = [];
 const context = {
@@ -164,6 +296,104 @@ check(transitionFills[transitionScene.layers.ground.length + 4]?.style === canva
   'Four-tile mixed corners must receive one shared cap owned by the lower ecological surface');
 transitionRenderer.destroy();
 
+const fieldBiome = (x, y) => (y < 0
+  ? (x < 0 ? 'beach' : 'plains')
+  : (x < 0 ? 'grove' : 'forest'));
+const fieldTile = (x, y) => ({
+  x, y, biome: fieldBiome(x, y), derivedBiome: fieldBiome(x, y),
+  elevation: fieldBiome(x, y) === 'beach' ? 0.1 : 0.55,
+  traversal: { passable: true, traversalCost: 1 }
+});
+const westFieldScene = scene.compileChunk({
+  chunkX: -1, chunkY: 0, chunkSize: 2, apron: 2,
+  worldRevision: 'continuous-soft-field', resolveTile: fieldTile
+});
+const eastFieldScene = scene.compileChunk({
+  chunkX: 0, chunkY: 0, chunkSize: 2, apron: 2,
+  worldRevision: 'continuous-soft-field', resolveTile: fieldTile
+});
+const westField = canvas.softBiomeField(westFieldScene.layers.ground, westFieldScene.renderBounds, 16);
+const repeatedWestField = canvas.softBiomeField(westFieldScene.layers.ground, westFieldScene.renderBounds, 16);
+const eastField = canvas.softBiomeField(eastFieldScene.layers.ground, eastFieldScene.renderBounds, 16);
+check(JSON.stringify(westField) === JSON.stringify(repeatedWestField),
+  'Continuous soft-biome ownership must be byte-stable for the same world field');
+const fieldAt = (field, bounds, x, y) => {
+  const column = Math.floor((x - bounds.minX) * field.samplesPerTile);
+  const row = Math.floor((y - bounds.minY) * field.samplesPerTile);
+  return field.owners[row * field.width + column];
+};
+let sharedFieldSamples = 0;
+for (let y = -1.75; y < 1.75; y += 0.25) {
+  for (let x = -1.75; x < 1.75; x += 0.25) {
+    check(fieldAt(westField, westFieldScene.renderBounds, x, y)
+      === fieldAt(eastField, eastFieldScene.renderBounds, x, y),
+    'Overlapping chunk aprons must publish identical soft-biome ownership at every shared world sample');
+    sharedFieldSamples += 1;
+  }
+}
+check(sharedFieldSamples > 100, 'The soft-biome seam proof must compare a material area, not one boundary point');
+check(['beach', 'plains', 'grove', 'forest'].every(biome => westField.owners.includes(biome)),
+  'A four-biome junction must retain every authored ecological material');
+let interiorSpill = 0;
+for (let row = 0; row < westField.height; row += 1) {
+  for (let column = 0; column < westField.width; column += 1) {
+    const worldX = westFieldScene.renderBounds.minX + (column + 0.5) / westField.samplesPerTile;
+    const worldY = westFieldScene.renderBounds.minY + (row + 0.5) / westField.samplesPerTile;
+    const fractionX = worldX - Math.floor(worldX);
+    const fractionY = worldY - Math.floor(worldY);
+    const owner = westField.owners[row * westField.width + column];
+    if (owner !== fieldBiome(Math.floor(worldX), Math.floor(worldY))
+      && fractionX > 0.12 && fractionX < 0.88 && fractionY > 0.12 && fractionY < 0.88) interiorSpill += 1;
+  }
+}
+check(interiorSpill > 0,
+  'World-space material ownership must cross authored tile interiors instead of decorating only their edges and corners');
+
+const waterTile = (x, y) => ({
+  x, y, biome: x >= 0 ? 'water' : 'beach', derivedBiome: x >= 0 ? 'water' : 'beach',
+  water: x >= 0, elevation: 0.08, traversal: { passable: x < 0, traversalCost: x < 0 ? 1 : 3 }
+});
+const westWaterScene = scene.compileChunk({
+  chunkX: -1, chunkY: 0, chunkSize: 2, apron: 2,
+  worldRevision: 'continuous-water-field', resolveTile: waterTile
+});
+const eastWaterScene = scene.compileChunk({
+  chunkX: 0, chunkY: 0, chunkSize: 2, apron: 2,
+  worldRevision: 'continuous-water-field', resolveTile: waterTile
+});
+const westWaterField = canvas.waterField(westWaterScene.layers.ground, westWaterScene.renderBounds, 18);
+const repeatedWaterField = canvas.waterField(westWaterScene.layers.ground, westWaterScene.renderBounds, 18);
+const eastWaterField = canvas.waterField(eastWaterScene.layers.ground, eastWaterScene.renderBounds, 18);
+check(Buffer.from(westWaterField.values.buffer).equals(Buffer.from(repeatedWaterField.values.buffer)),
+  'Continuous water ownership must be byte-stable for the same world field');
+const waterAt = (field, bounds, x, y) => {
+  const column = Math.floor((x - bounds.minX) * field.samplesPerTile);
+  const row = Math.floor((y - bounds.minY) * field.samplesPerTile);
+  return field.values[row * field.width + column];
+};
+for (let y = -0.7; y <= 0.7; y += 0.1) {
+  for (let x = -0.7; x <= 0.7; x += 0.1) {
+    check(waterAt(westWaterField, westWaterScene.renderBounds, x, y)
+      === waterAt(eastWaterField, eastWaterScene.renderBounds, x, y),
+    'Overlapping chunk aprons must publish identical water levels at shared world samples');
+  }
+}
+const coastlineColumns = new Set();
+for (let row = 0; row < eastWaterField.height; row += 1) {
+  const worldY = eastWaterScene.renderBounds.minY + (row + 0.5) / eastWaterField.samplesPerTile;
+  if (worldY < -1.5 || worldY > 1.5) continue;
+  for (let column = 1; column < eastWaterField.width; column += 1) {
+    const previous = eastWaterField.values[row * eastWaterField.width + column - 1];
+    const current = eastWaterField.values[row * eastWaterField.width + column];
+    if (previous < 0.5 && current >= 0.5) {
+      coastlineColumns.add(column);
+      break;
+    }
+  }
+}
+check(coastlineColumns.size >= 5,
+  'A straight authored land-water boundary must render as a continuous curved coast rather than one tile-axis line');
+
 function fakeCanvas() {
   const drawCalls = [];
   const fakeContext = {
@@ -197,12 +427,26 @@ const surface = canvasSurface.create(displayCanvas, {
   apron: 1,
   cacheTilePixels: 16,
   resolveTile,
+  resolvePresence: () => [{ id: 'player-1', role: 'player', x: 0, y: 0 }],
   createCanvas: fakeCanvas
 });
 surface.setLocal({ x: 0, y: 0 });
 const localFrame = surface.render();
 const localCacheCount = localFrame.cacheEntries;
 check(localFrame.mode === 'local' && localFrame.renderedChunks.length > 0, 'One canvas surface must render the local traversal camera');
+check(localFrame.renderStats.cacheMisses === localFrame.renderedChunks.length
+  && localFrame.renderStats.dynamicPresenceCount === 1,
+  'The first local frame must report chunk misses and paint renderer-neutral live party presence');
+const cachedLocalFrame = surface.render();
+check(cachedLocalFrame.renderStats.cacheMisses === 0
+  && cachedLocalFrame.renderStats.cacheHits === cachedLocalFrame.renderedChunks.length,
+  'An unchanged movement frame must reuse every fixed chunk without recompiling terrain fields');
+check(surface.invalidateTiles(['999,999'], 'same-world') === 0
+  && surface.render().renderStats.cacheMisses === 0,
+  'Selective invalidation must preserve cached chunks outside the changed tile');
+check(surface.invalidateTiles(['0,0'], 'same-world', { includeApron: false }) > 0
+  && surface.render().renderStats.cacheMisses > 0,
+  'Selective local invalidation must rebuild the owning chunk when visible tile semantics change');
 check(surface.tileAt(160, 160).x === 0 && surface.tileAt(160, 160).y === 0, 'Canvas hit translation must resolve the centered tile without granting movement authority');
 surface.resize(480, 240);
 const resizedFrame = surface.render();

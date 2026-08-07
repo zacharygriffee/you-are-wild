@@ -4,6 +4,12 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Automatic combat now has an authoritative liveness guard. When the player
+  and every manual companion are unavailable, passive autonomy can abandon
+  Hold during a crisis; repeated no-progress or cyclic rounds end through a
+  narrated disengagement instead of looping, overflowing Instant pacing, or
+  granting a false victory. Save/load, temporary statuses, multi-actor battles,
+  and knocked-out or fled target filtering are covered by regression tests.
 - Cheat controls now follow their visible contracts: Instant Win resolves an
   active encounter without requiring Overpowered, God Mode protects the player
   from combat collapse and fatal containment, Never Hungry intercepts ordinary

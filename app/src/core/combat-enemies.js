@@ -64,7 +64,7 @@ const YAW_COMBAT_ENEMIES = {
 
     takeTurn(app, enemy) {
         const charmedTargets = app._charmedTargetsFor(enemy);
-        const targets = charmedTargets || app.party.filter(p => p.CPun > 0);
+        const targets = charmedTargets || app.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
         if (targets.length === 0) {
             const summary = app._label('combat.enemyNoTarget', '{name} hesitates with no valid target and loses their turn.', { name: enemy.name });
             app._pushLog(summary, 'combat', { actor: enemy, phase: 'skip' });

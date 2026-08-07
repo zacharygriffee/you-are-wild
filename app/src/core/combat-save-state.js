@@ -136,6 +136,9 @@ const YAW_COMBAT_SAVE_STATE = {
         app.targetSelection = null;
         app._normalizeExplorationSelections({ resetTargets: true });
         app._sanitizeCombatState({ preserveTurn: true });
+        if (typeof YAW_COMBAT_ACTOR_STATE !== 'undefined') {
+            YAW_COMBAT_ACTOR_STATE.resetLiveness(app, 'combat-restored');
+        }
         return true;
     },
 

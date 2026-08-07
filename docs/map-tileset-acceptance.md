@@ -172,14 +172,15 @@ The cross-surface browser fixtures now additionally require:
 
 - zero artwork gap and zero cell-layout border on the active desktop and phone
   3x3 surfaces, with nine independent composition-bearing cells retained;
-- visible overflow for pointer-transparent cover art so at least one reviewed
-  canopy/edge-spill record crosses its owning internal cell, plus a first-party
-  atlas sample gutter and one-pixel canonical edge overscan to suppress raster
-  crop hairlines while authored replacement-pack crops remain exact;
+- bounded per-cell art viewports, scale-aware safe placement for interior
+  canopies, and paired shared-edge vegetation records that meet intentionally
+  without leaving a clipped half-tree; plus a first-party atlas sample gutter
+  and one-pixel canonical edge overscan to suppress raster crop hairlines while
+  authored replacement-pack crops remain exact;
 - full terrain opacity regardless of whether a direction is currently
   traversable, with a compact resting movement dot and bounded
   hover/focus/selection/current affordances instead of full-cell move rings;
-- one categorized POI marker without a duplicate generic landmark, a 54%
+- one categorized POI marker without a duplicate generic landmark, a 42%
   bounded bundled POI scale, and a semantically retained but visually
   suppressed bundled `state-current` atlas layer, with no full-cell POI or
   structure outline;
@@ -193,3 +194,34 @@ The cross-surface browser fixtures now additionally require:
 These checks run for offline and hosted builds at all four maintained
 viewports. The final subjective visual sign-off remains a separate human gate;
 automated geometry acceptance is not treated as proof of taste.
+
+### Tile Composition Workbench acceptance — 2026-08-06
+
+The `terrain-workbench` Alpha mission provides an isolated 7x7 case generator
+for all maintained biome pairs, four orientations, six boundary geometries,
+five relief fixtures, nine overlay states, day/night, and four enumerated art seeds. Its 699,840
+cases have stable forward/reverse indexing and URL parameters. Automated
+desktop and 390x844 checks require the controls, case stepping, Review Map
+projection, selection/mixed overlays, and horizontal containment to remain
+operable.
+
+Visual Recipe Version 6 keeps each art viewport owned, emits paired source/
+destination edge records with one shared key, and permits explicit decorative
+identity art to meet that edge only when neighbor-aware continuity completes
+the seam. Contiguous forest adds two same-material canopy pairs; contiguous
+jungle adds three. Forest distributes three canopy clusters plus understory,
+while an unobstructed jungle tile emits three or four canopy, two undergrowth,
+and two litter records before adjacency decoration. Plains distributes grass
+and optional scrub, and swamp combines shallow wetland identity with two reed
+groups. Roads, structures, POIs, evidence, presence, and state remain above or
+clear of that density according to the canonical layer order. Version 6 also
+joins shoreline endpoints through
+the same shared-edge contour policy, reserves the visible shore bank from
+decorative cover, and projects shared-corner terrace walls without replacing
+authored tileset relief. Plains, swamp, beach, sand, and farm retain slope
+lighting without repeated plateau walls or ledge/cliff sprites; forest, grove, and jungle use at most
+restrained relief; cliff and cave retain the full terrace treatment. The
+bundled road deck uses a 22% travel surface within a 30% edge and preserves
+one surface material across different biome shoulders. Diagonal-only water is
+retained as junction metadata without painting a land-corner wedge, and natural
+water keeps blocked semantics while suppressing literal wall props.

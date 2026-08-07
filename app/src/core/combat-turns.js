@@ -220,6 +220,10 @@ const YAW_COMBAT_TURNS = {
         app._processDigestion();
         app._processCorpseDecay();
         app._sanitizeCombatState({ preserveTurn: false });
+        const liveness = typeof YAW_COMBAT_ACTOR_STATE !== 'undefined'
+            ? YAW_COMBAT_ACTOR_STATE.observeAutomaticRound(app)
+            : null;
+        if (liveness?.resolved) return;
         app.processTurn();
     }
 };

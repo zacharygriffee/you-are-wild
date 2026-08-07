@@ -4750,6 +4750,177 @@ async function runCombatProgressInvariantFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
 }
 
+async function runAutonomousStalemateBrowserFlow(browser) {
+  const viewports = [
+    { name: 'desktop', width: 1365, height: 768, feed: '#desktop-scene-feed-latest' },
+    { name: 'mobile', width: 390, height: 844, feed: '#mobile-story-latest' }
+  ];
+
+  for (const viewport of viewports) {
+    const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
+    const pageErrors = [];
+    page.on('pageerror', error => pageErrors.push(error.message));
+    try {
+      await page.goto(distUrl, { waitUntil: 'load' });
+      await page.waitForFunction(() => Boolean(window.App && window.YAW_COMBAT_ACTOR_STATE), null, { timeout: 5000 });
+      await clearBrowserStorage(page);
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForFunction(() => Boolean(window.App && window.YAW_COMBAT_ACTOR_STATE), null, { timeout: 5000 });
+
+      await page.evaluate(() => {
+        const makeUnit = (name, id, overrides = {}) => ({
+          id,
+          name,
+          species: 'human',
+          icon: 'X',
+          level: 1,
+          CPun: 100,
+          MPun: 100,
+          CPle: 0,
+          MPle: 100,
+          Figh: 10,
+          Feas: 10,
+          Flir: 10,
+          Fuck: 10,
+          Flee: 10,
+          Feed: 10,
+          str: 10,
+          con: 10,
+          spd: 10,
+          int: 10,
+          wis: 10,
+          cha: 10,
+          size: 4,
+          appetite: 4,
+          stomach: [],
+          womb: [],
+          balls: [],
+          bodyParts: [],
+          tags: ['Person'],
+          status: {},
+          disposition: 'party',
+          combatRow: 'front',
+          ...overrides
+        });
+        const tutorialOverlay = document.getElementById('tutorial-overlay');
+        if (tutorialOverlay) tutorialOverlay.style.display = 'none';
+        App.showScreen('game');
+        App.log = [];
+        App.storyEvents = [];
+        App.sceneEvents = App.storyEvents;
+        App.latestStoryEvent = null;
+        App.latestSceneBeat = null;
+        App.worldMeta = {
+          worldId: 'browser-stalemate-world',
+          seed: 'browser-stalemate-seed',
+          generatorVersion: 2,
+          mapModsHash: 'core'
+        };
+        App.location = { x: 0, y: 0 };
+        App.currentBiome = 'plains';
+        App.settings.combatPacing = 'instant';
+
+        const player = makeUnit('You', 'browser-stalemate-player', {
+          CPun: 1,
+          knockedOut: true
+        });
+        const ally = makeUnit('Passive Flyer', 'browser-stalemate-ally', {
+          flying: true,
+          companionBehavior: {
+            version: 2,
+            duty: 'scout',
+            stance: 'passive',
+            control: 'deterministic',
+            preferredRow: 'front',
+            recruitmentContinuity: null
+          }
+        });
+        const enemy = makeUnit('Huge Ground Enemy', 'browser-stalemate-enemy', {
+          disposition: App.DISPOSITION.ENEMY,
+          size: 100,
+          reinforcementBlocked: true
+        });
+        App.player = player;
+        App.party = [player, ally];
+        App.creatures = [enemy];
+        App.worldMap = new Map([['0,0', {
+          ...App.getBaseTile(0, 0),
+          x: 0,
+          y: 0,
+          biome: 'plains',
+          explored: true,
+          creatures: [enemy],
+          items: []
+        }]]);
+        App.tileDeltas = new Map();
+        App.exploredTiles = new Set(['0,0']);
+        App.combatState = {
+          active: true,
+          round: 1,
+          currentTurn: 0,
+          processing: false,
+          xpEarned: 0,
+          turnQueue: [
+            { unit: ally, initiative: 20 },
+            { unit: enemy, initiative: 10 }
+          ],
+          syncActions: [],
+          sceneExchangeId: 'browser-stalemate-exchange',
+          presentationAutomatic: false
+        };
+        App.activeActor = ally;
+        App._validateInteractionCommand = () => ({ ok: false, reason: 'browser-stalemate-fixture' });
+        YAW_COMBAT_ACTOR_STATE.resetLiveness(App, 'browser-stalemate-fixture');
+        App.processTurn();
+      });
+
+      const state = await page.evaluate(feedSelector => {
+        const desktopComposer = document.getElementById('desktop-command-composer');
+        const mobileToolbelt = document.getElementById('mobile-combat-toolbelt');
+        const feed = document.querySelector(feedSelector);
+        const visible = element => {
+          if (!element) return false;
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+        };
+        return {
+          active: App.combatState.active,
+          round: App.combatState.round,
+          progress: App._combatProgressState(),
+          latestSummary: App.latestSceneBeat?.summary || '',
+          latestTags: App.latestSceneBeat?.tags || [],
+          feedText: feed?.textContent || '',
+          sceneTitle: document.getElementById('scene-title')?.textContent || '',
+          sceneDescription: document.getElementById('scene-description')?.textContent || '',
+          logText: App.log.map(entry => entry.text || '').join('\n'),
+          desktopComposerMode: desktopComposer?.getAttribute('data-command-mode') || '',
+          desktopCombatControls: Array.from(desktopComposer?.querySelectorAll('[data-command-mode="combat"], [data-command-surface^="combat"]') || [])
+            .filter(visible).length,
+          mobileToolbeltActive: mobileToolbelt?.classList.contains('active') || false,
+          technicalCorrection: App.combatCorrectionMessage || null
+        };
+      }, viewport.feed);
+
+      assert.strictEqual(pageErrors.length, 0, `${viewport.name}: autonomous stalemate should not throw browser errors (${pageErrors.join('; ')})`);
+      assert.strictEqual(state.active, false, `${viewport.name}: autonomous stalemate should close combat`);
+      assert(state.round <= 5, `${viewport.name}: autonomous stalemate should resolve within the bounded round window`);
+      assert.strictEqual(state.progress.kind, 'inactive', `${viewport.name}: resolved stalemate should leave inactive combat diagnostics`);
+      assert(state.latestSummary.includes('Neither side can force the encounter forward.'), `${viewport.name}: latest Scene beat should narrate the stalemate`);
+      assert(state.latestTags.includes('stalemate') && state.latestTags.includes('no-progress'), `${viewport.name}: Scene beat should retain semantic stalemate tags`);
+      assert(state.feedText.includes('Neither side can force the encounter forward.'), `${viewport.name}: rendered Scene Feed should display the stalemate narration`);
+      assert(state.logText.includes('Neither side can force the encounter forward.'), `${viewport.name}: activity history should retain the narrated resolution`);
+      assert(!state.logText.includes('Victory!'), `${viewport.name}: stalemate should not render a false victory`);
+      assert.strictEqual(state.technicalCorrection, null, `${viewport.name}: stalemate should not become a technical correction banner`);
+      assert.notStrictEqual(state.desktopComposerMode, 'combat', `${viewport.name}: resolved combat should restore the desktop composer to exploration mode`);
+      assert.strictEqual(state.desktopCombatControls, 0, `${viewport.name}: resolved combat should not leave combat controls in the desktop composer`);
+      assert.strictEqual(state.mobileToolbeltActive, false, `${viewport.name}: resolved combat should not leave the mobile combat toolbelt active`);
+    } finally {
+      await page.close();
+    }
+  }
+}
+
 async function runFearTerrorConsistencyFlow(page) {
   const viewports = [
     { name: 'desktop', width: 1365, height: 768 },
@@ -4990,7 +5161,7 @@ async function runTilesetCrossSurfaceFlow(page) {
   for (const [surface, value] of [['mobile coast', state.mobile], ['desktop coast', state.desktop], ['large-map coast', state.large]]) {
     assert(value.semantics.includes('terrain-sand') && value.semantics.includes('terrain-beach'), `${surface} should retain reusable sand and beach identity semantics`);
     assert(value.semantics.includes('shoreline-water-north') && value.semantics.includes('shoreline-water-east'), `${surface} should compose every adjacent cardinal shoreline`);
-    assert(value.semantics.includes('shoreline-water-outer-ne'), `${surface} should compose the outer corner joining adjacent north and east water`);
+    assert(!value.semantics.includes('shoreline-water-outer-ne'), `${surface} should join adjacent north and east shoreline masks without an overlapping outer-corner sticker`);
     assert.strictEqual(value.shoreline, 'north east', `${surface} should expose authoritative shoreline metadata`);
     assert.strictEqual(value.shorelineCorners, 'outer-ne', `${surface} should expose authoritative shoreline corner metadata`);
     assert.strictEqual(value.shorelineMask, '5', `${surface} should expose its eight-neighbor transition mask`);
@@ -5006,7 +5177,7 @@ async function runTilesetCrossSurfaceFlow(page) {
   assert.deepStrictEqual([state.mobileGap, state.desktopGap, state.largeRowGap], ['0px', '0px', '0px'], 'Map artwork should meet across cell boundaries on mobile, desktop, and Review Map');
   assert.deepStrictEqual([state.mobileBorder, state.desktopBorder], ['0px', '0px'], 'Interactive traversal cells should use inset affordances instead of artwork-breaking borders');
   assert.strictEqual(state.currentOpacity, '0', 'The bundled current-position semantic should defer to the bounded cell ring without hiding terrain');
-  assert.strictEqual(state.poiWidth, '54%', 'The bundled POI semantic should remain a centered, bounded marker even when its surface is off-screen');
+  assert.strictEqual(state.poiWidth, '42%', 'The bundled POI semantic should remain a centered, scale-consistent marker even when its surface is off-screen');
   const nightReadability = await page.evaluate(() => {
     App.timeHour = 23;
     App._renderTime();
@@ -5023,7 +5194,7 @@ async function runTilesetCrossSurfaceFlow(page) {
     opacity: getComputedStyle(layer).opacity,
     mask: getComputedStyle(layer).maskImage
   })));
-  assert(shorelineLayers.length >= 3, 'Cross-surface coast fixture should resolve edge and outer-corner shoreline semantics');
+  assert(shorelineLayers.length >= 2, 'Cross-surface coast fixture should resolve both joined cardinal shoreline masks');
   assert(shorelineLayers.every(layer => layer.opacity === '1' && layer.mask !== 'none'), `Bundled shoreline semantics should paint reusable water only through directional masks: ${JSON.stringify(shorelineLayers)}`);
 
   const naturalWaterWalls = await page.evaluate(() => {
@@ -5663,6 +5834,7 @@ async function runUriFrenchLocaleLifecycleFlow(browser) {
     const texturedSnapshot = await runTilesetCrossSurfaceFlow(page);
     await runCombatTargetFirstComposerFlow(page);
     await runCombatProgressInvariantFlow(page);
+    await runAutonomousStalemateBrowserFlow(browser);
     await runFearTerrorConsistencyFlow(page);
     await runActionMatrix(page);
     await runContextualVariantComposerFlow(page);

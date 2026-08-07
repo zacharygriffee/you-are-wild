@@ -426,7 +426,10 @@ async function main() {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') {
+      const source = message.location()?.url || '';
+      failures.push(`console${source ? ` (${source})` : ''}: ${message.text()}`);
+    }
   });
   page.on('dialog', async dialog => {
     failures.push(`dialog: ${dialog.type()}: ${dialog.message()}`);

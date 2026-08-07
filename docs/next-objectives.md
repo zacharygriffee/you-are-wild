@@ -119,6 +119,9 @@ The following remain valid backlog, but none blocks 0.18.3 stabilization:
   terrain resource placement, after persistent resource semantics are accepted;
 - reviewed AI media generation, packaged-runtime media bridges, optional OPFS
   optimization, and AI or TTS audio;
+- clarify toast lifetime ownership after narration-only blocked actions: existing
+  unrelated notifications currently remain visible, while the legacy regression
+  expects the toast stack to clear;
 - long-form balance, progression, reward, and difficulty-profile evaluation.
 
 ## Explicit non-release tracks

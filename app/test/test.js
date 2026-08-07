@@ -9274,8 +9274,11 @@ test('Alpha Lab exposes isolated public missions and deterministic agent launch 
   assertContains(alphaLabContent, "SAVE_DB_NAME: 'YAW_Alpha_Saves'", 'Alpha missions should not write the ordinary save database');
   assertContains(alphaLabContent, "WORLD_DB_NAME: 'YAW_Alpha_Worlds'", 'Alpha missions should not write the ordinary world database');
   assertContains(alphaLabContent, "new URLSearchParams(location.search).get('alphaScenario')", 'Agent scenarios should have a stable direct URL contract');
-  assertEqual((alphaLabContent.match(/id: '[a-z-]+'/g) || []).filter(entry => entry.includes('interaction') || entry.includes('containment') || entry.includes('combat') || entry.includes('narration') || entry.includes('companion') || entry.includes('content') || entry.includes('responsive') || entry.includes('terrain')).length, 9, 'Alpha Lab should retain the maintained nine-mission fixture set');
+  assertEqual((alphaLabContent.match(/id: '[a-z-]+'/g) || []).filter(entry => entry.includes('interaction') || entry.includes('containment') || entry.includes('combat') || entry.includes('narration') || entry.includes('companion') || entry.includes('content') || entry.includes('responsive') || entry.includes('terrain')).length, 10, 'Alpha Lab should retain the maintained ten-mission fixture set');
   assertContains(alphaLabContent, "id: 'terrain-composition'", 'Alpha Lab should expose the deterministic terrain-composition survey');
+  assertContains(alphaLabContent, "id: 'terrain-workbench'", 'Alpha Lab should expose the isolated tile-composition workbench');
+  assertContains(alphaLabContent, 'terrainWorkbenchCaseCount()', 'Tile Composition Workbench should publish a bounded exhaustive case matrix');
+  assertContains(template, 'id="alpha-terrain-workbench"', 'The game surface should expose the responsive terrain workbench controls');
   assertContains(alphaLabContent, 'for (let y = -4; y <= 4; y++)', 'Terrain survey should materialize a bounded 9x9 review world');
   assertContains(alphaLabContent, "app.cheats.noEnemies = true", 'Terrain survey should suppress hostile encounters during visual review');
   assertContains(alphaLabContent, 'share it only when you are comfortable with its contents', 'Reports should be review-before-share');
@@ -23135,9 +23138,10 @@ test('Bundled roads share an exact midpoint and edge width across every topology
   assertContains(templateContent, "d='M50 0V50H100'", 'Corner roads should turn through the exact tile center');
   assertContains(templateContent, "d='M0 50H100M50 50V100'", 'T-junction roads should meet at the exact tile center');
   assertContains(templateContent, "d='M50 0V100M0 50H100'", 'Intersections should cross on exact horizontal and vertical midpoints');
-  assertContains(templateContent, "stroke-width='44'", 'Every road topology should share the same outer edge width');
-  assertContains(templateContent, "stroke-width='32'", 'Every road topology should share the same travel-surface width');
+  assertContains(templateContent, "stroke-width='30'", 'Every road topology should share the same scaled outer edge width');
+  assertContains(templateContent, "stroke-width='22'", 'Every road topology should share the same scaled travel-surface width');
   assertContains(templateContent, '.yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"]', 'Road correction should remain scoped to the bundled pack');
+  assertNotContains(templateContent, '[data-route-shoulder="', 'Biome shoulder metadata must not recolor any connected bundled road deck');
 });
 
 test('Map route visuals use canonical directional T-junction tileset keys', () => {
@@ -23351,7 +23355,15 @@ test('Noise biome generation is stable by seed and coordinate', () => {
   assertEqual(typeof first.dangerPressure, 'number', 'Base tile should include deterministic danger pressure');
   assert(first.terrainTopology && ['level', 'slope', 'ledge', 'cliff'].includes(first.terrainTopology.kind), 'Base tile should include deterministic elevation topology');
   assertEqual(Object.keys(first.terrainTopology.grades).sort().join(','), 'east,north,south,west', 'Elevation topology should retain signed grades for every cardinal edge');
+  assertEqual(Object.keys(first.terrainTopology.cornerElevations).sort().join(','), 'ne,nw,se,sw', 'Elevation topology should retain shared corner samples');
+  assertEqual(Object.keys(first.terrainTopology.terraceEdges).sort().join(','), 'east,north,south,west', 'Elevation topology should retain reciprocal terrace deltas');
+  assert(first.terrainTopology.terraceLevel >= 0 && first.terrainTopology.terraceLevel < first.terrainTopology.terraceCount, 'Elevation topology should publish a bounded visual terrace level');
+  assert(first.terrainTopology.contours.every(contour => contour.mask > 0 && contour.mask < 15), 'Elevation contours should only publish crossed marching-squares cases');
   assertEqual(JSON.stringify(first.terrainTopology), JSON.stringify(second.terrainTopology), 'Elevation topology should be stable for the same seed and coordinate');
+  const east = App.getBaseTile(38, -22);
+  assertEqual(first.terrainTopology.cornerElevations.ne, east.terrainTopology.cornerElevations.nw, 'East-west neighbors should share their north elevation corner exactly');
+  assertEqual(first.terrainTopology.cornerElevations.se, east.terrainTopology.cornerElevations.sw, 'East-west neighbors should share their south elevation corner exactly');
+  assertEqual(first.terrainTopology.terraceEdges.east, -east.terrainTopology.terraceEdges.west, 'East-west neighbors should publish reciprocal terrace deltas');
   assert(first.regionCell?.id, 'Base tile should include cellular macro-region metadata');
   assert(Array.isArray(first.terrainTags), 'Base tile should include terrain tags');
 });
@@ -23475,7 +23487,7 @@ test('Bundled landmarks use a transparent marker without changing the pack seam'
   assertContains(templateContent, '.yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"]', 'Landmark correction should remain scoped to the first-party pack');
 });
 
-test('Terrain Transition V1 derives outer and diagonal inner shoreline corners', () => {
+test('Terrain Transition V1 derives shoreline junction metadata without diagonal-only paint', () => {
   const { App } = loadAppForCombat();
   const beach = { x: 0, y: 0, biome: 'beach', baseBiome: 'beach', derivedBiome: 'beach', overlays: {} };
   const water = { biome: 'water', derivedBiome: 'water', water: true };
@@ -23484,7 +23496,7 @@ test('Terrain Transition V1 derives outer and diagonal inner shoreline corners',
   assertEqual(outer.shorelineEdges.join(','), 'north,east', 'Adjacent cardinal water should derive ordered shoreline edges');
   assertEqual(outer.shorelineCorners.join(','), 'outer-ne', 'Two touching cardinal water edges should derive one outer blend corner');
   assertEqual(outer.shorelineMask, 5, 'Eight-neighbor shoreline mask should encode north and east water bits');
-  assert(outer.semanticKeys.includes('shoreline-water-outer-ne'), 'Outer shoreline corner should remain an authored tileset semantic');
+  assert(!outer.semanticKeys.includes('shoreline-water-outer-ne'), 'Outer shoreline corners should be owned by joined cardinal contour geometry, not overlapping corner stickers');
   const outerAttrs = App._mapTileAttrs(outer);
   assertContains(outerAttrs, 'data-shoreline-corners="outer-ne"', 'Rendered coast should expose its corner transition contract');
   assertContains(outerAttrs, 'data-shoreline-mask="5"', 'Rendered coast should expose its eight-neighbor bitmask');
@@ -23492,19 +23504,25 @@ test('Terrain Transition V1 derives outer and diagonal inner shoreline corners',
   const diagonalNeighbors = new Map([['1,-1', water]]);
   const inner = App._mapTileVisual(beach, { neighborResolver: (x, y) => diagonalNeighbors.get(`${x},${y}`) || null });
   assertEqual(inner.shorelineEdges.length, 0, 'Diagonal-only water should not invent a cardinal shoreline edge');
-  assertEqual(inner.shorelineCorners.join(','), 'inner-ne', 'Diagonal-only water should derive a small inner corner blend');
+  assertEqual(inner.shorelineCorners.join(','), 'inner-ne', 'Diagonal-only water should remain available as junction metadata');
   assertEqual(inner.shorelineMask, 2, 'Eight-neighbor shoreline mask should encode diagonal northeast water');
-  assert(inner.semanticKeys.includes('shoreline-water-inner-ne'), 'Inner shoreline corner should remain an authored tileset semantic');
+  assert(inner.semanticKeys.includes('shoreline-water-inner-ne'), 'Diagonal-only water must retain its authored replacement-pack semantic');
+  assertContains(templateContent, '[data-shoreline-corners*="inner-"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"]', 'Only the bundled diagonal shoreline crop should be suppressed');
 });
 
 test('Bundled natural water suppresses literal wall art without removing blocked semantics', () => {
   const template = fs.readFileSync(TEMPLATE, 'utf8');
   assertContains(
     template,
-    '[data-base-tileset-key="terrain-water"][data-map-kind="biome"]:is([data-blocked-reason="impassable"], [data-blocked-reason="capability"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"]',
-    'The bundled skin should scope natural-water wall suppression to ordinary water biomes'
+    '[data-base-tileset-key="terrain-water"][data-map-kind="biome"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"]',
+    'The bundled skin should suppress literal wall props for ordinary water regardless of the current blocked-reason presentation'
   );
   assertContains(template, 'opacity: 0 !important;', 'Bundled natural-water blocked art should be visually suppressed');
+  assertContains(
+    template,
+    '[data-map-kind="biome"][data-blocked-reason="bridge-direction"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"]',
+    'Bundled bridge-direction constraints should retain semantics without painting adjacent log walls'
+  );
   const { App } = loadAppForCombat();
   const visual = App._mapTileVisual(
     { biome: 'water', baseBiome: 'water', derivedBiome: 'water', water: true, overlays: { barriers: [] } },
@@ -26870,6 +26888,68 @@ test('Combat fallback controls keep Skip and Flee reachable without valid target
   assertEqual(advanced, 1, 'Skip fallback should advance the current combat turn');
 });
 
+function makeAutonomousStalemateFixture(options = {}) {
+  const scheduled = [];
+  const loaded = loadAppForCombat(() => 0.99, {
+    combatPacing: options.instant ? 'instant' : 'readable',
+    setTimeout(fn) {
+      scheduled.push(fn);
+      return scheduled.length;
+    }
+  });
+  const { App, window } = loaded;
+  const player = makeUnit('You', { id: 'stalemate-player', CPun: 1, knockedOut: true, combatRow: 'front' });
+  const ally = makeUnit('Passive Flyer', {
+    id: 'stalemate-ally',
+    flying: true,
+    combatRow: 'front',
+    companionBehavior: {
+      version: 2,
+      duty: 'scout',
+      stance: 'passive',
+      control: 'deterministic',
+      preferredRow: 'front',
+      recruitmentContinuity: null
+    }
+  });
+  const enemy = makeUnit('Huge Ground Enemy', {
+    id: 'stalemate-enemy',
+    size: 100,
+    disposition: App.DISPOSITION.ENEMY,
+    combatRow: 'front',
+    reinforcementBlocked: true
+  });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.worldMeta = { seed: 'autonomous-stalemate-fixture', generatorVersion: 2 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'plains', explored: true, creatures: [enemy] }]]);
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: [],
+    sceneExchangeId: 'combat-stalemate-fixture',
+    presentationAutomatic: false
+  };
+  if (options.blockCommands) App._validateInteractionCommand = () => ({ ok: false, reason: 'fixture-blocked' });
+  window.YAW_COMBAT_ACTOR_STATE.resetLiveness(App, 'test-fixture');
+  return { ...loaded, scheduled, player, ally, enemy };
+}
+
+function drainScheduledCombat(fixture, limit = 100) {
+  let callbacks = 0;
+  while (fixture.scheduled.length > 0 && callbacks < limit && fixture.App.combatState.active) {
+    fixture.scheduled.shift()();
+    callbacks++;
+  }
+  return callbacks;
+}
+
 test('Combat progress state classifies terminal automatic manual and transient phases', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'progress-player' });
@@ -26934,6 +27014,209 @@ test('Combat progress state classifies terminal automatic manual and transient p
   state = App._combatProgressState();
   assertEqual(state.kind, 'terminal', 'Combat without living enemies should be classified as terminal');
   assertEqual(state.phase, 'victory', 'Combat without living enemies should resolve as victory');
+});
+
+test('Combat progress diagnostics use V2 companion control and enabled sleep status', () => {
+  const { App, window } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'progress-control-player', CPun: 1, knockedOut: true });
+  const ally = makeUnit('Autonomous Ally', {
+    id: 'progress-control-ally',
+    companionBehavior: { version: 2, duty: 'scout', stance: 'passive', control: 'deterministic', preferredRow: 'front' }
+  });
+  const enemy = makeUnit('Enemy', { id: 'progress-control-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: ally }, { unit: enemy }],
+    syncActions: []
+  };
+  let state = App._combatProgressState();
+  assertEqual(App._getCompanionControl(ally), 'deterministic', 'Fixture should use authoritative V2 deterministic control');
+  assertEqual(state.kind, 'automatic', 'V2 deterministic companions should be diagnosed as automatic rather than legacy manual actors');
+  assertEqual(state.phase, 'ally-ai', 'V2 deterministic companion diagnostics should identify ally AI');
+
+  window.YAW_TIME_SYSTEM.SLEEP_ENABLED = true;
+  ally.status.sleep = { turns: 2, source: 'test' };
+  state = App._combatProgressState();
+  assertEqual(state.phase, 'status-sleep', 'Enabled sleep should be diagnosed as bounded automatic status loss');
+  window.YAW_TIME_SYSTEM.SLEEP_ENABLED = false;
+});
+
+test('Passive autonomous companions abandon Hold during an incapacitated-player crisis', () => {
+  const fixture = makeAutonomousStalemateFixture();
+  let advanced = 0;
+  fixture.App.nextTurn = () => { advanced++; };
+  fixture.App.allyTurn(fixture.ally);
+  const log = fixture.App.log.map(entry => entry.text).join('\n');
+  assertContains(log, 'abandon their usual restraint', 'Crisis autonomy should narrate why a passive companion changes behavior');
+  assertNotContains(log, 'Passive Flyer holds position.', 'A passive companion should not indefinitely Hold while the player is incapacitated and a useful action exists');
+  assertEqual(advanced, 1, 'The crisis action should still consume exactly one autonomous turn');
+});
+
+test('Repeated automatic no-progress rounds narratively disengage without false victory', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  fixture.App.processTurn();
+  const callbacks = drainScheduledCombat(fixture, 40);
+  const log = fixture.App.log.map(entry => entry.text).join('\n');
+  const outcomes = fixture.hooks.filter(entry => entry.event === 'onEncounterResolved');
+  assert(callbacks < 40, 'No-progress combat should resolve before exhausting the bounded callback guard');
+  assertEqual(fixture.App.combatState.active, false, 'Repeated automatic material state should close combat');
+  assertContains(log, 'Neither side can force the encounter forward.', 'Stalemate should resolve through Scene narration');
+  assertNotContains(log, 'Victory!', 'Stalemate must not grant a false victory');
+  assertEqual(outcomes.length, 1, 'Stalemate should publish exactly one encounter resolution');
+  assertEqual(outcomes[0].payload.result, 'disengage', 'Stalemate should use the established non-victory disengage outcome');
+});
+
+test('Instant pacing resolves repeated automatic state without recursive overflow', () => {
+  const fixture = makeAutonomousStalemateFixture({ instant: true, blockCommands: true });
+  let error = null;
+  try {
+    fixture.App.processTurn();
+  } catch (caught) {
+    error = caught;
+  }
+  assertEqual(error, null, 'Instant-pacing stalemate resolution should not overflow the JavaScript call stack');
+  assertEqual(fixture.App.combatState.active, false, 'Instant-pacing stalemate should close combat synchronously');
+  assert(fixture.App.combatState.round <= 5, 'Instant-pacing stalemate should resolve within the bounded no-progress window');
+});
+
+test('Automatic liveness defers to an already-terminal combat outcome', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  fixture.enemy.CPun = 0;
+  let forcedOutcome = null;
+  fixture.App.endCombat = outcome => { forcedOutcome = outcome; };
+  fixture.App.combatState.round = 2;
+  const result = fixture.window.YAW_COMBAT_ACTOR_STATE.observeAutomaticRound(fixture.App);
+  assertEqual(result.reason, 'terminal-pending', 'Liveness should leave an already-terminal state to the normal combat resolver');
+  assertEqual(result.resolved, false, 'Terminal detection should not masquerade as stalemate resolution');
+  assertEqual(forcedOutcome, null, 'Liveness should not replace an earned victory with disengagement');
+});
+
+test('Multi-actor autonomous stalemates resolve once through shared narration', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  const secondAlly = makeUnit('Second Flyer', {
+    id: 'stalemate-ally-2',
+    flying: true,
+    companionBehavior: { version: 2, duty: 'guard', stance: 'passive', control: 'deterministic', preferredRow: 'front' }
+  });
+  const secondEnemy = makeUnit('Second Ground Enemy', {
+    id: 'stalemate-enemy-2',
+    size: 100,
+    disposition: fixture.App.DISPOSITION.ENEMY,
+    reinforcementBlocked: true
+  });
+  fixture.App.party.push(secondAlly);
+  fixture.App.creatures.push(secondEnemy);
+  fixture.App.worldMap.get('0,0').creatures.push(secondEnemy);
+  fixture.App.combatState.turnQueue = [
+    { unit: fixture.ally, initiative: 40 },
+    { unit: fixture.enemy, initiative: 30 },
+    { unit: secondAlly, initiative: 20 },
+    { unit: secondEnemy, initiative: 10 }
+  ];
+  fixture.window.YAW_COMBAT_ACTOR_STATE.resetLiveness(fixture.App, 'multi-actor-test');
+  fixture.App.processTurn();
+  const callbacks = drainScheduledCombat(fixture, 60);
+  const stalemateLogs = fixture.App.log.filter(entry => entry.text?.includes('Neither side can force the encounter forward.'));
+  const outcomes = fixture.hooks.filter(entry => entry.event === 'onEncounterResolved');
+  assert(callbacks < 60, 'Multiple automatic actors should remain bounded by the shared liveness policy');
+  assertEqual(fixture.App.combatState.active, false, 'Multi-actor no-progress combat should disengage');
+  assertEqual(stalemateLogs.length, 1, 'Multi-actor stalemate should emit one narrative resolution');
+  assertEqual(outcomes.length, 1, 'Multi-actor stalemate should publish one encounter outcome');
+});
+
+test('Restored autonomous stalemates receive a fresh bounded liveness guard', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  const restored = fixture.App._restoreCombatState({
+    active: true,
+    round: 12,
+    currentTurn: 0,
+    activeActorId: fixture.ally.id,
+    sceneExchangeId: 'combat-restored-stalemate',
+    turnQueue: [
+      { unitId: fixture.ally.id, initiative: 20, actedThisRound: false },
+      { unitId: fixture.enemy.id, initiative: 10, actedThisRound: false }
+    ],
+    syncActions: []
+  });
+  assertEqual(restored, true, 'The active autonomous encounter should restore');
+  assertEqual(fixture.App.combatState.liveness.reason, 'combat-restored', 'Restore should initialize bounded liveness from the restored material state');
+  assertEqual(fixture.App._resumeLoadedCombat(), true, 'Restored combat should resume through the authoritative processor');
+  const callbacks = drainScheduledCombat(fixture, 40);
+  assert(callbacks < 40, 'Restored no-progress combat should resolve within the bounded callback guard');
+  assertEqual(fixture.App.combatState.active, false, 'Restored autonomous stalemate should disengage instead of resuming forever');
+  assertContains(fixture.App.log.map(entry => entry.text).join('\n'), 'Neither side can force the encounter forward.', 'Restored stalemate should resolve through narration');
+});
+
+test('Manual companions suppress automatic stalemate resolution', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  fixture.ally.companionBehavior.control = 'manual';
+  const observer = fixture.window.YAW_COMBAT_ACTOR_STATE;
+  for (let round = 2; round <= 12; round++) {
+    fixture.App.combatState.round = round;
+    const result = observer.observeAutomaticRound(fixture.App);
+    assertEqual(result.reason, 'manual-actor-available', 'A living manual companion should retain player-directed combat control');
+  }
+  assertEqual(fixture.App.combatState.active, true, 'Liveness protection must not force-disengage while a manual actor remains');
+});
+
+test('Bounded player status loss delays but does not suppress liveness protection', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  fixture.player.knockedOut = false;
+  fixture.player.CPun = 100;
+  fixture.player.status.stun = { turns: 2, source: 'test' };
+  const observer = fixture.window.YAW_COMBAT_ACTOR_STATE;
+  observer.resetLiveness(fixture.App, 'blocked-player-test');
+
+  fixture.App.combatState.round = 2;
+  fixture.player.status.stun.turns = 1;
+  let result = observer.observeAutomaticRound(fixture.App);
+  assertEqual(result.reason, 'material-progress', 'A decreasing manual-player status should count as bounded material progress');
+  assertEqual(fixture.App.combatState.active, true, 'A recovering player status should not resolve as a stalemate');
+
+  fixture.App.combatState.round = 3;
+  delete fixture.player.status.stun;
+  result = observer.observeAutomaticRound(fixture.App);
+  assertEqual(result.reason, 'manual-actor-available', 'Clearing the blocking status should restore manual control immediately');
+  assertEqual(observer.manualActors(fixture.App).includes(fixture.player), true, 'The recovered player should rejoin the authoritative manual actor set');
+});
+
+test('Bounded status recovery changes material state and avoids premature stalemate', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  fixture.ally.status.stun = { turns: 2, source: 'test' };
+  fixture.enemy.status.stun = { turns: 2, source: 'test' };
+  fixture.window.YAW_COMBAT_ACTOR_STATE.resetLiveness(fixture.App, 'status-test');
+  fixture.App.processTurn();
+  drainScheduledCombat(fixture, 4);
+  assertEqual(fixture.App.combatState.active, true, 'Changing bounded status turns should count as material progress');
+  assertNotContains(fixture.App.log.map(entry => entry.text).join('\n'), 'Neither side can force the encounter forward.', 'Temporary status recovery must not narrate a premature stalemate');
+});
+
+test('Enemy AI excludes knocked-out and fled party targets', () => {
+  const { App } = loadAppForCombat(() => 0.99);
+  const player = makeUnit('You', { id: 'invalid-target-player', CPun: 20, knockedOut: true });
+  const fled = makeUnit('Fled Ally', { id: 'invalid-target-fled', CPun: 10, fledCombat: true });
+  const active = makeUnit('Active Ally', { id: 'valid-target-ally', CPun: 100, con: 1 });
+  const enemy = makeUnit('Enemy', { id: 'target-filter-enemy', disposition: App.DISPOSITION.ENEMY, Figh: 40 });
+  App.player = player;
+  App.party = [player, fled, active];
+  App.creatures = [enemy];
+  App.combatState.active = true;
+  App.nextTurn = function() {};
+  App._enemyShouldFlee = () => false;
+  App._enemyCallReinforcement = () => false;
+  App._combatScavengeRemains = () => false;
+  App._terrainCausesMiss = () => false;
+  App._targetDodgeRoll = () => 1;
+  App.enemyTurn(enemy);
+  assertEqual(player.CPun, 20, 'Enemy AI should not attack a knocked-out party member');
+  assertEqual(fled.CPun, 10, 'Enemy AI should not attack a party member who already fled');
+  assert(active.CPun < 100, 'Enemy AI should select the remaining active party target');
 });
 
 test('Every core incapacitating combat state advances without requiring player controls', () => {
@@ -32786,7 +33069,7 @@ test('Toast auto-dismiss pauses on hover and resets on tap', () => {
   }
 });
 
-test('Activity log toast metadata is opt-in and high-signal blocked movement creates toast', () => {
+test('Activity log toast metadata is opt-in and blocked movement remains narrative-only', () => {
   const { App, elements } = loadAppForCombat();
   App._pushLog('Routine entry', 'discovery');
   assertEqual(App.log.length, 1, 'Routine _pushLog should still write Activity Log history');
@@ -32803,7 +33086,7 @@ test('Activity log toast metadata is opt-in and high-signal blocked movement cre
   App.mode = App.GAME_MODE.COMBAT;
   App.move(1, 0);
   assertContains(App.log[App.log.length - 1].text, 'Use Flee', 'Blocked combat movement should still write Activity Log guidance');
-  assertContains(elements.get('toast-stack').innerHTML, 'Use Flee', 'Blocked combat movement should create a high-signal toast');
+  assertEqual(elements.get('toast-stack').innerHTML, '', 'Blocked combat movement should remain in narration without a duplicate toast');
 });
 
 test('Activity log renders relative timestamps list roles and mobile recent entries', () => {

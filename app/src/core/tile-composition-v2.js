@@ -66,27 +66,50 @@ const YAW_TILE_COMPOSITION_V2 = {
     },
 
     _clearCoverAnchor(value, clearance = {}, edgeBand = '') {
-        const original = this._anchor(value);
+        const record = value && typeof value === 'object' && value.anchor ? value : { anchor: value };
+        const original = this._anchor(record.anchor);
+        // Shared-edge cover is one paired visual split across two clipped
+        // cells. Moving only the side with a local feature or route would
+        // break its cross-edge phase. Route-bearing edges are suppressed by
+        // the visual recipe before snapshotting; centered features render
+        // above this bounded edge band.
+        if (edgeBand && record.pairRole) return original;
         const routeConnections = this._directions(clearance.routeConnections);
+        const shorelineEdges = this._directions(clearance.shorelineEdges);
         const routeRadius = Math.max(0, Math.min(0.45, this._number(clearance.routeRadius, 0)));
+        const shorelineRadius = Math.max(0, Math.min(0.45, this._number(clearance.shorelineRadius, 0)));
         const featureRadius = Math.max(0, Math.min(0.48, this._number(clearance.featureRadius, 0)));
         const edgePadding = Math.max(0, Math.min(0.2, this._number(clearance.edgePadding, 0.08)));
-        if ((!routeConnections.length || routeRadius <= 0) && featureRadius <= 0) return original;
+        const scale = Math.max(0.25, Math.min(2, this._number(record.scale, 1)));
+        const renderedScale = record.stratum === 'canopy'
+            ? Math.max(0.46, Math.min(0.68, scale * 0.58))
+            : Math.max(0.28, Math.min(0.58, scale * 0.5));
+        const safeInset = record.edgeSafe && !edgeBand
+            ? Math.max(edgePadding, Math.min(0.35, renderedScale / 2 + 0.01))
+            : edgePadding;
+        if ((!routeConnections.length || routeRadius <= 0) && featureRadius <= 0
+            && (!shorelineEdges.length || shorelineRadius <= 0)) return original;
         const endpoints = {
             north: { x: 0.5, y: 0 }, east: { x: 1, y: 0.5 },
             south: { x: 0.5, y: 1 }, west: { x: 0, y: 0.5 }
         };
         const center = { x: 0.5, y: 0.5 };
         const safe = point => {
-            if (point.x < edgePadding || point.x > 1 - edgePadding || point.y < edgePadding || point.y > 1 - edgePadding) return false;
+            if (point.x < safeInset || point.x > 1 - safeInset || point.y < safeInset || point.y > 1 - safeInset) return false;
             if (edgeBand === 'north' && point.y > 0.22) return false;
             if (edgeBand === 'east' && point.x < 0.78) return false;
             if (edgeBand === 'south' && point.y < 0.78) return false;
             if (edgeBand === 'west' && point.x > 0.22) return false;
+            if (shorelineRadius > 0) {
+                if (shorelineEdges.includes('north') && point.y < shorelineRadius) return false;
+                if (shorelineEdges.includes('east') && point.x > 1 - shorelineRadius) return false;
+                if (shorelineEdges.includes('south') && point.y > 1 - shorelineRadius) return false;
+                if (shorelineEdges.includes('west') && point.x < shorelineRadius) return false;
+            }
             if (featureRadius > 0 && Math.hypot(point.x - center.x, point.y - center.y) < featureRadius) return false;
             return !routeConnections.some(direction => this._distanceToSegment(point, center, endpoints[direction]) < routeRadius);
         };
-        const positions = [0.1, 0.18, 0.28, 0.72, 0.82, 0.9];
+        const positions = [0.1, 0.18, 0.25, 0.28, 0.34, 0.66, 0.72, 0.75, 0.82, 0.9];
         const edgeCandidates = edgeBand === 'north' || edgeBand === 'south'
             ? [0.18, 0.32, 0.68, 0.82].map(x => ({ x, y: edgeBand === 'north' ? 0.1 : 0.9 }))
             : (edgeBand === 'east' || edgeBand === 'west'
@@ -99,7 +122,12 @@ const YAW_TILE_COMPOSITION_V2 = {
                 const rightDistance = (right.x - original.x) ** 2 + (right.y - original.y) ** 2;
                 return leftDistance - rightDistance || left.y - right.y || left.x - right.x;
             });
-        return candidates[0] || original;
+        if (candidates[0]) return candidates[0];
+        if (!record.edgeSafe || edgeBand) return original;
+        return {
+            x: Math.max(safeInset, Math.min(1 - safeInset, original.x)),
+            y: Math.max(safeInset, Math.min(1 - safeInset, original.y))
+        };
     },
 
     _bounded(records = []) {
@@ -147,11 +175,49 @@ const YAW_TILE_COMPOSITION_V2 = {
         }];
         const topology = tile.terrainTopology || tile.terrain?.topology;
         if (topology && typeof topology === 'object') {
+            const cornerElevations = Object.fromEntries(['nw', 'ne', 'se', 'sw'].map(corner => [
+                corner,
+                Math.max(0, Math.min(1, this._number(topology.cornerElevations?.[corner], topology.elevation ?? tile.elevation ?? 0.5)))
+            ]));
+            const terraceEdges = Object.fromEntries(this.DIRECTIONS.map(direction => [
+                direction,
+                Math.max(-8, Math.min(8, Math.trunc(this._number(topology.terraceEdges?.[direction], 0))))
+            ]));
+            const contours = (Array.isArray(topology.contours) ? topology.contours : []).slice(0, 6).map(contour => ({
+                level: Math.max(0, Math.min(8, Math.trunc(this._number(contour?.level, 0)))),
+                threshold: Math.max(0, Math.min(1, this._number(contour?.threshold, 0.5))),
+                mask: Math.max(0, Math.min(15, Math.trunc(this._number(contour?.mask, 0)))),
+                segments: (Array.isArray(contour?.segments) ? contour.segments : []).slice(0, 2).map(segment => ({
+                    from: {
+                        edge: this._text(segment?.from?.edge, '', 16),
+                        x: Math.max(0, Math.min(1, this._number(segment?.from?.x, 0.5))),
+                        y: Math.max(0, Math.min(1, this._number(segment?.from?.y, 0.5)))
+                    },
+                    to: {
+                        edge: this._text(segment?.to?.edge, '', 16),
+                        x: Math.max(0, Math.min(1, this._number(segment?.to?.x, 0.5))),
+                        y: Math.max(0, Math.min(1, this._number(segment?.to?.y, 0.5)))
+                    }
+                }))
+            }));
             terrain.push({
                 kind: 'elevation-transition',
                 subLayer: 30,
                 type: this._text(topology.kind, 'level'),
                 band: this._text(topology.band, 'mid'),
+                terraceLevel: Math.max(0, Math.min(8, Math.trunc(this._number(topology.terraceLevel, 0)))),
+                terraceCount: Math.max(1, Math.min(8, Math.trunc(this._number(topology.terraceCount, 6)))),
+                cornerElevations,
+                gradient: {
+                    x: Math.max(-1, Math.min(1, this._number(topology.gradient?.x, 0))),
+                    y: Math.max(-1, Math.min(1, this._number(topology.gradient?.y, 0))),
+                    magnitude: Math.max(0, Math.min(2, this._number(topology.gradient?.magnitude, 0))),
+                    aspect: this._text(topology.gradient?.aspect, '', 16)
+                },
+                terraceEdges,
+                wallEdges: this._directions(topology.wallEdges),
+                riseEdges: this._directions(topology.riseEdges),
+                contours,
                 primaryUphill: this._text(topology.primaryUphill),
                 primaryDownhill: this._text(topology.primaryDownhill),
                 uphillEdges: this._directions(topology.uphillEdges),
@@ -222,7 +288,15 @@ const YAW_TILE_COMPOSITION_V2 = {
         const cover = coverValues.map((value, index) => {
             const originalAnchor = this._anchor(value?.anchor);
             const edgeBand = this._text(value?.edgeBand, '', 16);
-            const anchor = this._clearCoverAnchor(originalAnchor, adjacencyBlend.clearance, edgeBand);
+            // A shared-edge record is one conceptual sprite whose two halves
+            // are clipped by neighboring tile viewports. Moving just one half
+            // around a local route or feature creates the very seam this pair
+            // is meant to conceal, so only unpaired cover participates in
+            // per-cell clearance adjustment.
+            const pairedEdge = Boolean(value?.sharedEdgeKey && value?.pairRole);
+            const anchor = pairedEdge
+                ? originalAnchor
+                : this._clearCoverAnchor(value, adjacencyBlend.clearance, edgeBand);
             return {
                 ...this._ref(value, this._text(value?.kind, 'cover'), index),
                 subLayer: Math.max(0, Math.min(99, Math.trunc(this._number(value?.subLayer, 20)))),
@@ -244,6 +318,8 @@ const YAW_TILE_COMPOSITION_V2 = {
                 sourceDirection: this._text(value?.sourceDirection, '', 16),
                 edgeBand,
                 sharedEdgeKey: this._text(value?.sharedEdgeKey, '', 120),
+                pairRole: this._text(value?.pairRole, '', 20),
+                edgeSafe: Boolean(value?.edgeSafe),
                 destinationOwned: value?.destinationOwned !== false,
                 clearanceAdjusted: anchor.x !== originalAnchor.x || anchor.y !== originalAnchor.y
             };

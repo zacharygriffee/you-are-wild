@@ -1044,6 +1044,85 @@ const WorldGen = (() => {
         return barriers;
     }
 
+    const TERRACE_COUNT = 6;
+    const TERRACE_CORNERS = Object.freeze(['nw', 'ne', 'se', 'sw']);
+
+    function terraceLevel(elevation) {
+        return Math.max(0, Math.min(TERRACE_COUNT - 1, Math.floor(clamp01(Number(elevation) || 0) * TERRACE_COUNT)));
+    }
+
+    function getElevationCorners(seed, version, x, y) {
+        return {
+            nw: Number(getTerrainFields(seed, version, x - 0.5, y - 0.5).elevation.toFixed(4)),
+            ne: Number(getTerrainFields(seed, version, x + 0.5, y - 0.5).elevation.toFixed(4)),
+            se: Number(getTerrainFields(seed, version, x + 0.5, y + 0.5).elevation.toFixed(4)),
+            sw: Number(getTerrainFields(seed, version, x - 0.5, y + 0.5).elevation.toFixed(4))
+        };
+    }
+
+    function contourEdgePoint(corners, threshold, edge) {
+        const endpoints = {
+            north: ['nw', 'ne', [0, 0], [1, 0]],
+            east: ['ne', 'se', [1, 0], [1, 1]],
+            south: ['sw', 'se', [0, 1], [1, 1]],
+            west: ['nw', 'sw', [0, 0], [0, 1]]
+        }[edge];
+        if (!endpoints) return null;
+        const [firstKey, secondKey, firstPoint, secondPoint] = endpoints;
+        const first = Number(corners[firstKey]);
+        const second = Number(corners[secondKey]);
+        const span = second - first;
+        const amount = Math.abs(span) < 0.000001 ? 0.5 : Math.max(0, Math.min(1, (threshold - first) / span));
+        return {
+            edge,
+            x: Number((firstPoint[0] + (secondPoint[0] - firstPoint[0]) * amount).toFixed(4)),
+            y: Number((firstPoint[1] + (secondPoint[1] - firstPoint[1]) * amount).toFixed(4))
+        };
+    }
+
+    function contourEdgePairs(mask, centerHigh) {
+        const fixed = {
+            1: [['west', 'north']], 2: [['north', 'east']], 3: [['west', 'east']],
+            4: [['east', 'south']], 6: [['north', 'south']], 7: [['west', 'south']],
+            8: [['south', 'west']], 9: [['north', 'south']], 11: [['east', 'south']],
+            12: [['west', 'east']], 13: [['north', 'east']], 14: [['west', 'north']]
+        };
+        if (mask === 5) return centerHigh
+            ? [['west', 'south'], ['north', 'east']]
+            : [['west', 'north'], ['east', 'south']];
+        if (mask === 10) return centerHigh
+            ? [['west', 'north'], ['east', 'south']]
+            : [['north', 'east'], ['south', 'west']];
+        return fixed[mask] || [];
+    }
+
+    function getElevationContours(corners) {
+        const values = TERRACE_CORNERS.map(corner => Number(corners[corner]));
+        const minimum = Math.min(...values);
+        const maximum = Math.max(...values);
+        const center = values.reduce((sum, value) => sum + value, 0) / values.length;
+        const contours = [];
+        for (let level = 1; level < TERRACE_COUNT; level++) {
+            const threshold = level / TERRACE_COUNT;
+            if (threshold <= minimum || threshold >= maximum) continue;
+            const mask = TERRACE_CORNERS.reduce((value, corner, index) => (
+                value | (Number(corners[corner]) >= threshold ? (1 << index) : 0)
+            ), 0);
+            if (mask === 0 || mask === 15) continue;
+            const segments = contourEdgePairs(mask, center >= threshold).map(([firstEdge, secondEdge]) => ({
+                from: contourEdgePoint(corners, threshold, firstEdge),
+                to: contourEdgePoint(corners, threshold, secondEdge)
+            }));
+            contours.push({
+                level,
+                threshold: Number(threshold.toFixed(4)),
+                mask,
+                segments
+            });
+        }
+        return contours;
+    }
+
     function getElevationTopology(seed, version, x, y, fields = null, options = {}) {
         const current = fields || getTerrainFields(seed, version, x, y);
         const directions = [
@@ -1060,6 +1139,20 @@ const WorldGen = (() => {
         const byDrop = grades.slice().sort((left, right) => left.grade - right.grade || left.direction.localeCompare(right.direction));
         const maxGrade = Math.max(0, ...grades.map(entry => Math.abs(entry.grade)));
         const barrierEdges = directions.map(([direction]) => direction).filter(direction => (options.barrierEdges || []).includes(direction));
+        const cornerElevations = getElevationCorners(seed, version, x, y);
+        const currentTerraceLevel = terraceLevel(current.elevation);
+        const terraceEdges = Object.fromEntries(directions.map(([direction, dx, dy]) => {
+            const neighbor = getTerrainFields(seed, version, x + dx, y + dy);
+            return [direction, terraceLevel(neighbor.elevation) - currentTerraceLevel];
+        }));
+        const wallEdges = directions.map(([direction]) => direction).filter(direction => terraceEdges[direction] < 0);
+        const riseEdges = directions.map(([direction]) => direction).filter(direction => terraceEdges[direction] > 0);
+        const gradientX = ((cornerElevations.ne + cornerElevations.se) - (cornerElevations.nw + cornerElevations.sw)) / 2;
+        const gradientY = ((cornerElevations.sw + cornerElevations.se) - (cornerElevations.nw + cornerElevations.ne)) / 2;
+        const gradientMagnitude = Math.sqrt(gradientX * gradientX + gradientY * gradientY);
+        const gradientAspect = Math.abs(gradientX) >= Math.abs(gradientY)
+            ? (gradientX >= 0 ? 'east' : 'west')
+            : (gradientY >= 0 ? 'south' : 'north');
         const kind = barrierEdges.length || (options.biome === 'cliff' && maxGrade >= 0.035)
             ? 'cliff'
             : (maxGrade >= 0.075 ? 'ledge' : (maxGrade >= 0.035 ? 'slope' : 'level'));
@@ -1068,6 +1161,19 @@ const WorldGen = (() => {
             kind,
             elevation: Number(current.elevation.toFixed(4)),
             band: current.elevation >= 0.72 ? 'high' : (current.elevation <= 0.28 ? 'low' : 'mid'),
+            terraceLevel: currentTerraceLevel,
+            terraceCount: TERRACE_COUNT,
+            cornerElevations,
+            gradient: {
+                x: Number(gradientX.toFixed(4)),
+                y: Number(gradientY.toFixed(4)),
+                magnitude: Number(gradientMagnitude.toFixed(4)),
+                aspect: gradientMagnitude >= 0.0001 ? gradientAspect : null
+            },
+            terraceEdges,
+            wallEdges,
+            riseEdges,
+            contours: getElevationContours(cornerElevations),
             primaryUphill: byRise[0]?.grade > 0 ? byRise[0].direction : null,
             primaryDownhill: byDrop[0]?.grade < 0 ? byDrop[0].direction : null,
             uphillEdges: grades.filter(entry => entry.grade >= slopeThreshold).map(entry => entry.direction),
@@ -1364,6 +1470,8 @@ const WorldGen = (() => {
         getRoadOverlay,
         getBridgeOverlay,
         getBarrierEdges,
+        getElevationCorners,
+        getElevationContours,
         getElevationTopology,
         getGeneratedCover,
         cellularFeaturePoint,

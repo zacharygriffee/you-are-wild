@@ -18,7 +18,8 @@ const EXPECTED = {
   'companion-management': { party: 3, creatures: 0, combat: false, inventory: 4 },
   'content-posture': { party: 1, creatures: 1, combat: false },
   'responsive-layout': { party: 2, creatures: 2, combat: false },
-  'terrain-composition': { party: 1, creatures: 0, combat: false, knownTiles: 81, noEnemies: true }
+  'terrain-composition': { party: 1, creatures: 0, combat: false, knownTiles: 81, noEnemies: true },
+  'terrain-workbench': { party: 1, creatures: 0, combat: false, knownTiles: 49, noEnemies: true }
 };
 
 async function serveBuild() {
@@ -90,11 +91,14 @@ async function inspectScenario(page) {
       const inactiveTraversalCell = activeGrid?.querySelector('[data-stage-surface="traversal-cell"]:not(.moveable)');
       const moveableTraversalCell = activeGrid?.querySelector('.moveable:not(.center)');
       const restingPoiCell = activeGrid?.querySelector('.map-visual-poi:not(.center), .map-visual-landmark:not(.center), .map-visual-structure:not(.center)');
-      const overflowCoverLayer = activeGrid?.querySelector('[data-tile-composition-layer="cover"]');
-      const overflowCoverCell = overflowCoverLayer?.closest('[data-tile-composition-space="overworld"]');
-      const overflowCoverArt = overflowCoverCell?.querySelector('.yaw-tile-art');
-      const coverRect = overflowCoverLayer?.getBoundingClientRect();
-      const coverCellRect = overflowCoverCell?.getBoundingClientRect();
+      const coverArt = activeGrid?.querySelector('.yaw-tile-art');
+      const canopyLayers = [...(activeGrid?.querySelectorAll('[data-cover-kind="biome-identity"][data-cover-stratum="canopy"]') || [])];
+      const interiorCanopyContained = canopyLayers.every(layer => {
+        const cell = layer.closest('[data-tile-composition-space="overworld"]');
+        const rect = layer.getBoundingClientRect();
+        const cellRect = cell?.getBoundingClientRect();
+        return Boolean(cellRect && rect.left >= cellRect.left - 1 && rect.right <= cellRect.right + 1 && rect.top >= cellRect.top - 1 && rect.bottom <= cellRect.bottom + 1);
+      });
       const sharedEdgeLayer = activeGrid?.querySelector('[data-shared-edge-key][data-tileset-semantic-key^="ground-transition-"]');
       const sharedEdgeDirection = sharedEdgeLayer?.dataset.tilesetSemanticKey?.match(/-(north|east|south|west)$/)?.[1] || '';
       const sharedEdgeOverscan = sharedEdgeLayer && sharedEdgeDirection
@@ -114,11 +118,11 @@ async function inspectScenario(page) {
       const structureVisuals = structureRow.map(visualFor);
       const poiVisuals = poiRow.map(visualFor);
       const beachCoastVisual = visualFor(row(-4).find(tile => tile.biome === 'beach'));
-      const identityFamilies = row(-4).flatMap(tile => App._mapTileVisual(tile, {
+      const identityFamilies = [...new Set(row(-4).flatMap(tile => App._mapTileVisual(tile, {
         neighborResolver: (x, y) => App.worldMap.get(`${x},${y}`) || null
       }).composition?.layers?.cover?.records || [])
         .filter(record => record.kind === 'biome-identity')
-        .map(record => record.family)
+        .map(record => record.family))]
         .sort();
       return {
         biomes: [...new Set(row(-4).map(tile => tile.displayBiome || tile.biome))].sort(),
@@ -158,11 +162,9 @@ async function inspectScenario(page) {
         moveableRestingRing: moveableTraversalCell ? getComputedStyle(moveableTraversalCell).boxShadow : '',
         moveableCueContent: moveableTraversalCell ? getComputedStyle(moveableTraversalCell, '::before').content : '',
         restingPoiRing: restingPoiCell ? getComputedStyle(restingPoiCell).boxShadow : '',
-        overflowCoverArt: overflowCoverArt ? getComputedStyle(overflowCoverArt).overflow : '',
-        overflowCoverEscapes: Boolean(coverRect && coverCellRect && (
-          coverRect.left < coverCellRect.left || coverRect.right > coverCellRect.right
-          || coverRect.top < coverCellRect.top || coverRect.bottom > coverCellRect.bottom
-        )),
+        coverArtOverflow: coverArt ? getComputedStyle(coverArt).overflow : '',
+        interiorCanopyContained,
+        pairedJungleEdges: document.querySelectorAll('[data-cover-kind="edge-continuity"][data-shared-edge-key]').length,
         sharedEdgeOverscan,
         currentStateOpacity: stateLayer ? getComputedStyle(stateLayer).opacity : '',
         currentCellRing: activeCenter ? getComputedStyle(activeCenter).boxShadow : '',
@@ -170,6 +172,29 @@ async function inspectScenario(page) {
         unnamedTraversalButtons: [...(traversalGroup?.querySelectorAll('button') || [])]
           .filter(button => !(button.getAttribute('aria-label') || button.textContent || '').trim()).length,
         currentStateAboveWorld: stateZ > lowerZ
+      };
+    })() : null;
+    if (App.alphaSession?.scenarioId === 'terrain-workbench') App.renderLargeMap?.();
+    const terrainWorkbench = App.alphaSession?.scenarioId === 'terrain-workbench' ? (() => {
+      const tiles = [...App.worldMap.values()];
+      const panel = document.getElementById('alpha-terrain-workbench');
+      return {
+        tileCount: tiles.length,
+        source: App.alphaTerrainWorkbench?.source,
+        destination: App.alphaTerrainWorkbench?.destination,
+        caseCount: YAW_ALPHA_LAB.terrainWorkbenchCaseCount(),
+        controls: panel?.querySelectorAll('[data-terrain-workbench-control]').length || 0,
+        panelVisible: Boolean(panel && !panel.hidden && panel.getBoundingClientRect().height > 0),
+        knownReviewTiles: document.querySelectorAll('#large-map .large-map-tile.known[data-tile-composition-version="2"]').length,
+        phases: YAW_ALPHA_LAB.TERRAIN_WORKBENCH_PHASES.slice(),
+        geometries: YAW_ALPHA_LAB.TERRAIN_WORKBENCH_GEOMETRIES.slice(),
+        reliefs: YAW_ALPHA_LAB.TERRAIN_WORKBENCH_RELIEFS.slice(),
+        overlays: YAW_ALPHA_LAB.TERRAIN_WORKBENCH_OVERLAYS.slice(),
+        biomeCount: YAW_ALPHA_LAB.TERRAIN_WORKBENCH_BIOMES.length,
+        sharedCornerTiles: tiles.filter(tile => ['nw', 'ne', 'se', 'sw'].every(corner => Number.isFinite(tile.terrainTopology?.cornerElevations?.[corner]))).length,
+        contourTiles: tiles.filter(tile => tile.terrainTopology?.contours?.length).length,
+        renderedContourSegments: document.querySelectorAll('.yaw-terrain-contour-segment').length,
+        bodyPhase: document.body.dataset.dayPhase
       };
     })() : null;
     return {
@@ -186,7 +211,8 @@ async function inspectScenario(page) {
       bannerControls: banner?.querySelectorAll('button').length || 0,
       gameVisible: getComputedStyle(appRoot).display !== 'none',
       horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-      terrainSurvey
+      terrainSurvey,
+      terrainWorkbench
     };
   });
 }
@@ -195,7 +221,7 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
   const { context, page, failures } = await makePage(browser, viewport);
   try {
     const query = new URLSearchParams({ alphaScenario: scenarioId });
-    if (scenarioId !== 'terrain-composition') query.set('graphics', 'emoji');
+    if (!['terrain-composition', 'terrain-workbench'].includes(scenarioId)) query.set('graphics', 'emoji');
     await page.goto(`${origin}/dist/you-are-wild?${query}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(id => window.App?.alphaSession?.scenarioId === id, scenarioId, { timeout: 60000 });
     await page.waitForTimeout(250);
@@ -253,8 +279,9 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
       assert.equal(actual.terrainSurvey.moveableRestingRing, 'none', 'traversable neighbors should not divide continuous artwork with resting full-cell outlines');
       assert.notEqual(actual.terrainSurvey.moveableCueContent, 'none', 'traversable neighbors should retain a bounded non-text movement cue');
       assert.equal(actual.terrainSurvey.restingPoiRing, 'none', 'POI and structure ownership should remain on their bounded art instead of outlining the whole cell');
-      assert.equal(actual.terrainSurvey.overflowCoverArt, 'visible', 'overworld decorative cover should cross internal cell boundaries without changing the owning control');
-      assert.equal(actual.terrainSurvey.overflowCoverEscapes, true, 'terrain survey should exercise at least one canopy or edge-spill layer beyond its owning cell');
+      assert.equal(actual.terrainSurvey.coverArtOverflow, 'hidden', 'each tile should clip art consistently after safe placement and paired edge composition');
+      assert.equal(actual.terrainSurvey.interiorCanopyContained, true, 'interior jungle canopies should remain inside their owning safe inset');
+      assert(actual.terrainSurvey.pairedJungleEdges >= 2, 'contiguous jungle should render paired shared-edge canopy bands');
       assert(actual.terrainSurvey.sharedEdgeOverscan < 0, 'bundled shared-edge paint should overscan its owning boundary to hide fractional raster seams');
       assert.equal(actual.terrainSurvey.currentStateOpacity, '0', 'bundled current-position atlas art should not obstruct terrain');
       assert.notEqual(actual.terrainSurvey.currentCellRing, 'none', 'current position should remain legible as a bounded owning-cell ring');
@@ -262,11 +289,84 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
       assert.equal(actual.terrainSurvey.unnamedTraversalButtons, 0, 'terrain survey traversal controls should retain accessible names');
       assert.equal(actual.terrainSurvey.currentStateAboveWorld, true, 'terrain survey current-position cue should remain above world art');
     }
+    if (scenarioId === 'terrain-workbench') {
+      assert.equal(actual.terrainWorkbench.tileCount, 49, 'terrain workbench should isolate one bounded 7x7 case');
+      assert.equal(actual.terrainWorkbench.source, 'jungle', 'terrain workbench default source');
+      assert.equal(actual.terrainWorkbench.destination, 'plains', 'terrain workbench default destination');
+      assert.equal(actual.terrainWorkbench.caseCount, 699840, 'terrain workbench should enumerate the complete bounded case matrix');
+      assert.equal(actual.terrainWorkbench.controls, 8, 'terrain workbench should expose every case dimension');
+      assert.equal(actual.terrainWorkbench.panelVisible, true, 'terrain workbench controls should open with the mission');
+      assert.equal(actual.terrainWorkbench.knownReviewTiles, 49, `terrain workbench case should reach Review Map (got ${actual.terrainWorkbench.knownReviewTiles})`);
+      assert.deepEqual(actual.terrainWorkbench.phases, ['day', 'night'], 'terrain workbench day/night controls');
+      assert.equal(actual.terrainWorkbench.geometries.length, 6, 'terrain workbench boundary geometries');
+      assert.deepEqual(actual.terrainWorkbench.reliefs, ['level', 'slope', 'terrace', 'cliff-corner', 'rugged'], 'terrain workbench relief fixtures');
+      assert.equal(actual.terrainWorkbench.overlays.length, 9, 'terrain workbench overlay states');
+      assert.equal(actual.terrainWorkbench.biomeCount, 9, 'terrain workbench biome matrix');
+      assert.equal(actual.terrainWorkbench.sharedCornerTiles, 49, 'every workbench tile should carry shared corner-height topology');
+      assert(actual.terrainWorkbench.contourTiles >= 7, 'the default terrace fixture should cross the full 7x7 case');
+      assert(actual.terrainWorkbench.renderedContourSegments >= 7, 'the default terrace fixture should render connected contour walls');
+      assert.equal(actual.terrainWorkbench.bodyPhase, 'day', 'terrain workbench default lighting');
+      const changed = await page.evaluate(() => {
+        const startedAt = performance.now();
+        App.setTerrainWorkbench('destination', 'water');
+        App.setTerrainWorkbench('direction', 'west');
+        App.setTerrainWorkbench('geometry', 'four-way');
+        App.setTerrainWorkbench('relief', 'rugged');
+        App.setTerrainWorkbench('overlay', 'all');
+        App.setTerrainWorkbench('phase', 'night');
+        App.setTerrainWorkbench('seed', 3);
+        const center = App.worldMap.get('0,0');
+        const before = YAW_ALPHA_LAB.terrainWorkbenchCaseIndex(App.alphaTerrainWorkbench);
+        const phaseBeforeStep = document.body.dataset.dayPhase;
+        const urlBeforeStep = location.search;
+        App.stepTerrainWorkbench(1);
+        return {
+          before,
+          after: YAW_ALPHA_LAB.terrainWorkbenchCaseIndex(App.alphaTerrainWorkbench),
+          phase: phaseBeforeStep,
+          phaseAfterStep: document.body.dataset.dayPhase,
+          structure: center.structure,
+          poi: center.overlays?.poi?.category,
+          evidence: center.items?.length,
+          presence: center.creatures?.length,
+          url: urlBeforeStep,
+          durationMs: performance.now() - startedAt,
+          overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+        };
+      });
+      assert.equal(changed.phase, 'night', 'workbench lighting changes should update the rendered phase');
+      assert.equal(changed.structure, 'camp', 'all-overlay case should include a structure');
+      assert.equal(changed.poi, 'landmark', 'all-overlay case should include a POI');
+      assert.equal(changed.evidence, 1, 'all-overlay case should include evidence');
+      assert.equal(changed.presence, 1, 'all-overlay case should include presence');
+      assert.equal(changed.after, changed.before + 1, 'next case should advance exactly one bounded matrix case');
+      assert(changed.durationMs < 5000, `seven synchronous workbench state changes should remain bounded (got ${changed.durationMs.toFixed(1)}ms)`);
+      assert(changed.url.includes('terrainGeometry=four-way') && changed.url.includes('terrainRelief=rugged') && changed.url.includes('terrainPhase=night'), 'workbench state should remain shareable in the URL');
+      assert.equal(changed.overflow, false, 'workbench controls should not create horizontal overflow');
+      const reviewMapMode = await page.evaluate(() => {
+        togglePanel('map');
+        const map = document.getElementById('panel-map');
+        const workbench = document.getElementById('alpha-terrain-workbench');
+        return {
+          mapDisplay: getComputedStyle(map).display,
+          workbenchVisibility: getComputedStyle(workbench).visibility,
+          knownTiles: document.querySelectorAll('#large-map .large-map-tile.known[data-tile-composition-version="2"]').length
+        };
+      });
+      assert.equal(reviewMapMode.mapDisplay, 'flex', 'Review Map should open for composition inspection');
+      assert.equal(reviewMapMode.workbenchVisibility, 'hidden', 'floating workbench controls must not cover Review Map tiles');
+      assert.equal(reviewMapMode.knownTiles, 49, 'Review Map should retain the complete isolated workbench case');
+      const restoredWorkbench = await page.evaluate(() => {
+        togglePanel('map');
+        return getComputedStyle(document.getElementById('alpha-terrain-workbench')).visibility;
+      });
+      assert.equal(restoredWorkbench, 'visible', 'closing Review Map should restore the unchanged workbench controls');
+    }
     assert.equal(actual.diagnostics.activeScenario, scenarioId, `${scenarioId} diagnostic identity`);
     assert.equal(actual.diagnostics.isolatedSaveDb, true, `${scenarioId} isolated save database`);
     assert.equal(actual.diagnostics.isolatedWorldDb, true, `${scenarioId} isolated world database`);
     assert.equal(actual.bannerVisible, true, `${scenarioId} Alpha banner`);
-    assert.equal(actual.bannerControls, 2, `${scenarioId} report and exit controls`);
+    assert.equal(actual.bannerControls, scenarioId === 'terrain-workbench' ? 3 : 2, `${scenarioId} Alpha session controls`);
     assert.equal(actual.gameVisible, true, `${scenarioId} game surface`);
     assert.equal(actual.horizontalOverflow, false, `${scenarioId} page overflow at ${viewport.width}px`);
     assert.deepEqual(failures, [], `${scenarioId} browser failures:\n${failures.join('\n')}`);
@@ -282,7 +382,7 @@ async function checkPublicLab(browser, origin) {
     await page.goto(`${origin}/dist/you-are-wild?graphics=emoji`, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForSelector('#screen-menu.active', { state: 'visible', timeout: 60000 });
     await page.getByRole('button', { name: 'Open Alpha Lab' }).waitFor({ state: 'visible', timeout: 60000 });
-    await page.getByRole('button', { name: 'Open Alpha Lab' }).click();
+    await page.getByRole('button', { name: 'Open Alpha Lab' }).click({ force: true });
     await page.waitForSelector('#screen-alpha.active');
     assert.equal(await page.locator('.alpha-mission-card').count(), Object.keys(EXPECTED).length, 'public lab should list every mission');
     assert.equal(await page.locator('#alpha-report-preview').count(), 0, 'public lab should not expose a report before a mission starts');
@@ -313,6 +413,7 @@ async function main() {
     }
     results.push(await checkScenario(browser, fixture.origin, 'responsive-layout', { width: 390, height: 844 }));
     results.push(await checkScenario(browser, fixture.origin, 'terrain-composition', { width: 390, height: 844 }));
+    results.push(await checkScenario(browser, fixture.origin, 'terrain-workbench', { width: 390, height: 844 }));
   } finally {
     await browser.close();
     await fixture.close();
@@ -322,5 +423,9 @@ async function main() {
 
 main().catch(error => {
   console.error(error.stack || error.message || error);
+  if (error && Object.prototype.hasOwnProperty.call(error, 'actual')) {
+    console.error(`actual: ${JSON.stringify(error.actual)}`);
+    console.error(`expected: ${JSON.stringify(error.expected)}`);
+  }
   process.exitCode = 1;
 });

@@ -29,7 +29,8 @@ The maintained fixture set covers:
 6. companion naming and shared-Pack loadouts;
 7. SFW and Mature vocabulary;
 8. desktop and mobile interaction layout;
-9. deterministic terrain composition and adjacency review.
+9. deterministic terrain composition and adjacency review;
+10. an isolated Tile Composition Workbench for exhaustive biome-pair cases.
 
 Every mission has a stable URL:
 
@@ -45,6 +46,16 @@ The terrain mission is available at:
 dist/you-are-wild?alphaScenario=terrain-composition
 ```
 
+The engine-neutral Canvas lane is now the default for the same fixture. Its
+explicit diagnostic URL is:
+
+```text
+dist/you-are-wild?alphaScenario=terrain-composition&terrainRenderer=canvas-v1
+```
+
+Use `terrainRenderer=legacy` to compare or roll back to the established
+per-cell renderer without changing the fixture or save state.
+
 It prepares an explored 9x9 visual survey with no encounters. Read the rows
 from north to south as biome identity, explicit cover families, continuous
 road and bridge geometry, structures, POIs, evidence and presence,
@@ -53,6 +64,30 @@ cover grove, forest, plains, swamp, jungle, beach, water, cliff, and cave.
 This fixture is for repeatable visual inspection; its overlays do not grant
 terrain mechanics or alter ordinary adventure saves.
 
+The isolated workbench is available at:
+
+```text
+dist/you-are-wild?alphaScenario=terrain-workbench
+```
+
+It renders one explored 7x7 case at a time and exposes source biome,
+    destination biome, cardinal orientation, boundary geometry, relief fixture, overlay state,
+day/night lighting, and deterministic art seed controls. The controls cover
+all nine maintained biomes, six boundary geometries, five relief fixtures, nine
+overlay states, two lighting phases, and four enumerated art seeds: 699,840
+reproducible cases.
+The current case is encoded in `terrainSource`, `terrainDestination`,
+`terrainDirection`, `terrainGeometry`, `terrainRelief`, `terrainOverlay`, `terrainPhase`, and
+`terrainSeed` URL parameters so a visual defect can be shared directly.
+The floating controls become a bounded bottom sheet at phone widths and
+temporarily step behind Review Map while that full-surface inspector is open;
+closing Review Map restores the same URL-backed case without resetting it.
+
+The maintained reported-case set pins seven URLs/states: plains relief, swamp
+relief, beach corner geometry, forest cover, jungle variation, road scale, and
+bridge-adjacent water walls. These are regression anchors, not a replacement
+for reviewing the complete matrix.
+
 ## Automated agent matrix
 
 Run from the repository root:
@@ -60,9 +95,12 @@ Run from the repository root:
 ```sh
 npm run build
 npm run test:alpha
+npm run test:terrain-workbench
+npm run test:terrain-renderer
+npm run test:terrain-canvas-browser
 ```
 
-The Playwright matrix opens the public Alpha Lab at a phone viewport, launches every deterministic fixture directly at desktop size, and repeats both the responsive and terrain-composition fixtures at phone size. It asserts:
+The Playwright matrix opens the public Alpha Lab at a phone viewport, launches every deterministic fixture directly at desktop size, and repeats the responsive, terrain-composition, and terrain-workbench fixtures at phone size. It asserts:
 
 - scenario identity and expected fixture counts;
 - isolated save and world databases;
@@ -73,8 +111,8 @@ The Playwright matrix opens the public Alpha Lab at a phone viewport, launches e
 
 Interaction-only missions use the Lightweight renderer so the matrix can focus
 on fixture and control behavior without repeatedly decoding the embedded atlas
-set. The terrain-composition mission deliberately uses the Textured renderer at
-both sizes; the separate composition browser gate also covers hosted and file
+set. The terrain missions deliberately use the Textured renderer at both
+sizes; the separate composition browser gate also covers hosted and file
 origins at every maintained viewport.
 
 The terrain fixture additionally checks its exact biome, road, bridge,
@@ -85,6 +123,22 @@ jungle retains separate canopy, undergrowth, and litter records. The matrix
 also checks all nine route underlays/decks, destination-grounded structure and
 POI rows, single-owned beach/water shoreline paint, and junction narration
 after biome rebasing.
+
+The workbench contract test walks the complete Cartesian matrix without
+rendering every case at once. It proves stable case indexing, URL-safe input
+normalization, distinct rotated geometry masks, and both-biome coverage for
+every orientation. The browser matrix then exercises control changes,
+previous/next stepping, overlay composition, Review Map projection, and mobile
+containment on representative rendered cases.
+
+The Canvas browser gate separately covers hosted and `file://` origins at
+desktop and phone sizes. It proves exact-once local movement, narrative-only
+blocked attempts, one active responsive surface, 3x3/Survey camera parity,
+survey keyboard and pointer authority, mixed known/unknown privacy, resize and
+orientation behavior, bounded accessibility state, explicit query opt-out, and
+transactional failure fallback. Touch playthroughs add real pinch and drag
+evidence and must record the artifact hash, viewport, DPR, origin, and any
+console or page errors.
 
 The command prints a JSON result summary suitable for CI logs. It is also part of `npm run full-build`.
 

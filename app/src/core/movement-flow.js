@@ -16,7 +16,6 @@ const YAW_MOVEMENT_FLOW = {
         if (app.mode === app.GAME_MODE.COMBAT) {
             const text = app._label('log.inCombatCannotMove', 'You are in combat! Use Flee to escape.');
             app.log.push({ text, type: 'combat' });
-            app.showToast?.({ text, type: 'blocked', importance: 'notable', dedupeKey: 'blocked:combat-move' });
             app.renderLog();
             return;
         }
@@ -31,7 +30,6 @@ const YAW_MOVEMENT_FLOW = {
         if (!traversal.allowed) {
             const text = app._traversalMessage(traversal);
             app.log.push({ text, type: 'move' });
-            app.showToast?.({ text, type: 'blocked', importance: 'notable', dedupeKey: `blocked:travel:${traversal.reasonCode}` });
             app.renderLog();
             return false;
         }

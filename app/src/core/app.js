@@ -6775,6 +6775,15 @@
             launchAlphaScenario(scenarioId) {
                 return YAW_ALPHA_LAB.launch(this, scenarioId);
             },
+            setTerrainWorkbench(key, value) {
+                return YAW_ALPHA_LAB.setTerrainWorkbench(this, key, value);
+            },
+            stepTerrainWorkbench(amount) {
+                return YAW_ALPHA_LAB.stepTerrainWorkbench(this, amount);
+            },
+            toggleTerrainWorkbench(force = null) {
+                return YAW_ALPHA_LAB.toggleTerrainWorkbench(this, force);
+            },
             exitAlphaScenario() {
                 return YAW_ALPHA_LAB.exit(this);
             },
@@ -6906,6 +6915,8 @@
                 return this.executeCombatIntent(action, this.activeActor || this.player);
             },
             togglePanel(p) {
+                if (p === 'map' && typeof YAW_TERRAIN_CANVAS_ALPHA !== 'undefined'
+                    && YAW_TERRAIN_CANVAS_ALPHA.openSurvey?.(this)) return true;
                 return YAW_PANEL_SHELL.toggle(this, p);
             },
             toggleDesktopMapPanel(panel) {

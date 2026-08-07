@@ -128,6 +128,14 @@ inherited-ground POIs, evidence/presence, directional relief, and mixed
 four-tile junctions. It is the visual-review entry point for this phase rather
 than a handcrafted replacement for ordinary world generation.
 
+The separate `terrain-workbench` Alpha mission isolates one 7x7 boundary case
+and makes every biome pairing, cardinal orientation, straight/diagonal/convex/
+concave/T/four-way geometry, level/slope/terrace/cliff-corner/rugged relief,
+overlay state, lighting phase, and enumerated art seed directly selectable. Its
+699,840 stable cases are URL-addressable and
+project through both the local map and Review Map, so neighboring showcase
+rows cannot accidentally influence the case under inspection.
+
 Artifact acceptance caps the offline build, hosted shell, external atlas set,
 textured cold transfer, and the directly relevant ground, cover, relief, and
 jungle atlases. Animation and
@@ -168,12 +176,15 @@ receive a generic landmark or a full-cell outline, and bundled POI art is
 scaled to a compact marker.
 
 Traversal artwork now treats those controls as interaction geometry rather
-than visual clipping masks. Pointer-transparent canopy, undergrowth, and
-adjacent-spill records can cross an internal desktop or phone cell boundary,
-while the outer 3x3 frame remains clipped. The bundled skin insets smooth
-ground/terrain atlas samples by a fractional source pixel and extends canonical
-shared-edge paint one CSS pixel across its owned boundary, preventing atlas
-bleed and subpixel hairlines without changing replacement-pack crop geometry.
+than part of the terrain bitmap. Each cell owns a bounded art viewport:
+interior canopy and undergrowth are clamped to a scale-aware safe inset, while
+intentional edge vegetation is emitted as a deterministic paired band on both
+sides of the same shared edge. This prevents clipped half-trees without
+allowing one control's art to obscure its neighbor. The bundled skin insets
+smooth ground/terrain atlas samples by a fractional source pixel and extends
+canonical shared-edge paint one CSS pixel across its owned boundary,
+preventing atlas bleed and subpixel hairlines without changing replacement-pack
+crop geometry.
 
 One runtime contour compositor now owns all bundled soft/hard corner geometry.
 Isolated edges taper at four-cell junctions, mixed-source corners select one
@@ -183,6 +194,36 @@ biome strata now choose deterministic secondary families and densities, making
 coordinate variants visibly different without another atlas. Night exposes a
 presentation-only phase that lifts first-party material readability without
 changing visibility mechanics or grading replacement packs.
+
+Jungle identity now distributes four canopy anchors plus independent
+undergrowth and litter across an unobstructed tile. Contiguous jungle pairs add
+three overlapping, transform-matched same-material canopy continuity bands on
+each unobstructed shared edge. Those paired halves keep one canonical axis and
+cross-edge position and are never independently displaced by local clearance;
+routes reserve their crossing edge while features still clear interior
+foliage. The result is a layered forest field rather than one centered
+vegetation clump or a row of clipped half-trees, without making foliage a
+movement or visibility fact.
+
+Visual Recipe Version 6 adds the correction pass over that baseline. Plains,
+swamp, beach, sand, and farm use slope lighting without terrace-wall bands;
+forest, grove, and jungle retain only restrained contour relief; cliff and
+cave keep the full plateau treatment. Forest now distributes three canopy
+clusters plus understory and pairs two continuity records across unobstructed
+same-forest edges. Plains uses dispersed grass and optional scrub, swamp uses
+shallow wetland material plus reeds, jungle gains broader deterministic anchor
+and rotation variation. Bundled roads narrow to a 22% travel surface and keep
+one deck material across biome boundaries; slope-only biomes suppress large
+ledge/cliff sprites as well as contour walls; diagonal-only water no longer
+paints a triangular land-corner crop; and
+natural-water blocked semantics no longer paint bridge-adjacent wall props.
+Shared-corner shoreline caps taper before four-cell junctions to avoid dark
+beach wedges while retaining one canonical coastline owner.
+
+Polished bridge-to-road approaches, scout-dependent structure/POI discovery,
+quest and objective interaction parity on the unified Canvas navigation,
+streams, lakes, broader hydrology, and animation remain deferred work rather
+than hidden scope in this pass.
 
 ## Phase D — persistent tile evidence (complete baseline)
 

@@ -174,6 +174,7 @@ async function readOverworldAcceptance(page) {
         bridgeSpanLength: element?.getAttribute('data-bridge-span-length') || '',
         bridgeApproaches: element?.getAttribute('data-bridge-approach-edges') || '',
         visualRecipe: element?.getAttribute('data-visual-recipe') || '',
+        reliefMode: element?.getAttribute('data-relief-mode') || '',
         routeShoulder: element?.getAttribute('data-route-shoulder') || '',
         adjacencyEdges: element?.getAttribute('data-adjacency-blend-edges') || '',
         sharedEdgeKeys: element?.getAttribute('data-shared-edge-keys') || '',
@@ -206,6 +207,18 @@ async function readOverworldAcceptance(page) {
     const shorelineStyle = shorelineLayer ? getComputedStyle(shorelineLayer) : null;
     const shorelineFoamContent = shorelineLayer ? getComputedStyle(shorelineLayer, '::after').content : '';
     const duplicateWaterBlend = [...document.querySelectorAll('[data-shoreline-edges]')].some(element => String(element.getAttribute('data-ground-transitions') || '').includes(':water'));
+    const diagonalOnlyShorelineArt = [...document.querySelectorAll('[data-shoreline-corners*="inner-"]')].some(element =>
+      [...element.querySelectorAll('[data-tileset-semantic-key^="shoreline-water-inner-"]')]
+        .some(layer => Number.parseFloat(getComputedStyle(layer).opacity || '0') > 0.01)
+    );
+    const slopeOnlyOversizedRelief = [...document.querySelectorAll('[data-relief-mode="slope-only"] [data-tileset-semantic-key^="terrain-elevation-"]')]
+      .filter(element => /terrain-elevation-(ledge|cliff)-/.test(element.getAttribute('data-tileset-semantic-key') || ''))
+      .length;
+    const roadShoulderFilters = [...document.querySelectorAll('[data-route-shoulder] [data-tileset-semantic-key^="route-road-"]')]
+      .map(element => ({
+        shoulder: element.closest('[data-route-shoulder]')?.getAttribute('data-route-shoulder') || '',
+        filter: getComputedStyle(element).filter
+      }));
     return {
       protocol: location.protocol,
       mobile: read('#mobile-mini-map [data-stage-cell="center"]'),
@@ -239,6 +252,9 @@ async function readOverworldAcceptance(page) {
       shorelineMaskImage: shorelineStyle?.maskImage || shorelineStyle?.webkitMaskImage || '',
       shorelineFoamContent,
       duplicateWaterBlend,
+      diagonalOnlyShorelineArt,
+      slopeOnlyOversizedRelief,
+      roadShoulderFilters,
       jungleIdentityCounts: {
         mobile: document.querySelectorAll('#mobile-mini-map [data-visual-recipe="jungle"] [data-cover-kind="biome-identity"]').length,
         desktop: document.querySelectorAll('#desktop-neighborhood-grid [data-visual-recipe="jungle"] [data-cover-kind="biome-identity"]').length,
@@ -536,6 +552,8 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert.strictEqual(activeLocal.bridgeApproaches, 'east west', `${prefix}: active local bridge should expose both destination-owned land approaches`);
     assert.strictEqual(activeLocal.bridgeApproaches, overworld.large.bridgeApproaches, `${prefix}: Review Map bridge approaches should match the active local map`);
     assert.strictEqual(activeLocal.visualRecipe, 'water', `${prefix}: current bridge should expose its water presentation recipe`);
+    assert.strictEqual(activeLocal.reliefMode, 'none', `${prefix}: current bridge should expose its non-relief water presentation mode`);
+    assert.strictEqual(activeLocal.reliefMode, overworld.large.reliefMode, `${prefix}: desktop and Review Map should expose the same relief mode`);
     assert.strictEqual(activeLocal.routeShoulder, 'wet', `${prefix}: current bridge should expose its biome-aware shoulder treatment`);
     assert(activeLocal.sharedEdgeKeys && activeLocal.sharedEdgeKeys === overworld.large.sharedEdgeKeys, `${prefix}: active local and Review Map surfaces should expose the same canonical shared-edge keys`);
     assert.strictEqual(activeLocal.adjacencyEdges, '', `${prefix}: a water source tile must not repaint land through a duplicate generic transition`);
@@ -553,14 +571,18 @@ async function checkOriginViewport(browser, origin, url, viewport) {
     assert(overworld.coverSpills.length >= 1 && overworld.coverSpills.every(record => record.destinationOwned && !record.mechanical && record.edgeBand), `${prefix}: a soft dominant neighbor should contribute only edge-bounded destination-owned spill`);
     assert(overworld.transitionEdges.length >= 1 && overworld.transitionEdges.every(edge => edge.sharedEdgeKey && edge.style), `${prefix}: rendered terrain transitions should retain canonical seam metadata`);
     assert(overworld.transitionJunctions.length === 4, `${prefix}: the destination snapshot should publish all four eight-neighbor junction decisions`);
-    assert.strictEqual(overworld.transitionRecipeVersion, 3, `${prefix}: map-scene snapshots should advertise visual recipe Version 3`);
+    assert.strictEqual(overworld.transitionRecipeVersion, 6, `${prefix}: map-scene snapshots should advertise visual recipe Version 6`);
     assert.strictEqual(overworld.transitionContour.split(' ').length, 5, `${prefix}: rendered soft transitions should expose their five-point deterministic contour`);
     assert(overworld.transitionClipPath.startsWith('polygon(') && overworld.transitionMaskImage !== 'none', `${prefix}: bundled soft transitions should combine a contour polygon with a feathered material mask`);
     assert.strictEqual(overworld.shorelineContour.split(' ').length, 5, `${prefix}: specialized water-land seams should expose their canonical contour`);
     assert(overworld.shorelineClipPath.startsWith('polygon(') && overworld.shorelineMaskImage !== 'none', `${prefix}: bundled shoreline water should follow the canonical contour through its specialized mask`);
     assert(['none', 'normal', ''].includes(overworld.shorelineFoamContent), `${prefix}: bundled shoreline paint must not restore the removed repeating scallop pseudo-element`);
     assert.strictEqual(overworld.duplicateWaterBlend, false, `${prefix}: a shoreline cell must not also render a generic water transition`);
-    assert(overworld.jungleIdentityCounts.mobile >= 3 && overworld.jungleIdentityCounts.desktop >= 3 && overworld.jungleIdentityCounts.large >= 3, `${prefix}: jungle canopy, undergrowth, and litter strata must reach every map surface`);
+    assert.strictEqual(overworld.diagonalOnlyShorelineArt, false, `${prefix}: diagonal-only water metadata must not paint a triangular crop into land`);
+    assert.strictEqual(overworld.slopeOnlyOversizedRelief, 0, `${prefix}: slope-only biomes must not resolve ledge or cliff sprites`);
+    assert(overworld.roadShoulderFilters.length >= 1, `${prefix}: route fixture should resolve a bundled road treatment`);
+    assert.strictEqual(new Set(overworld.roadShoulderFilters.map(entry => entry.filter)).size, 1, `${prefix}: one connected bundled road deck must retain one visual treatment across biome shoulders`);
+    assert(overworld.jungleIdentityCounts.mobile >= 7 && overworld.jungleIdentityCounts.desktop >= 7 && overworld.jungleIdentityCounts.large >= 7, `${prefix}: varied jungle canopy, undergrowth, and litter strata must reach every map surface`);
     assert(overworld.plainsIdentityCount > 0, `${prefix}: plains should receive its restrained grass identity overlay`);
     assert(overworld.beachIdentityCount > 0, `${prefix}: beach should receive its restrained drift identity overlay`);
     assert(overworld.plainsIdentityCount < Object.values(overworld.jungleIdentityCounts).reduce((sum, count) => sum + count, 0), `${prefix}: plains identity should remain sparser than layered jungle`);

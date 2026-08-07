@@ -681,20 +681,22 @@
             pointer-events: none;
         }
 
-        /* Overworld art is composed across the neighborhood, while the nine
-           controls remain separate hit targets. Let decorative cover escape
-           its owning art box so tree canopies and edge spill are not guillotined
-           at an internal cell boundary. The outer grid still clips the complete
-           3x3 surface, and every art node remains pointer-transparent. */
-        #mobile-mini-map[data-map-mode="overworld"] > .map-tile[data-tile-composition-space="overworld"],
-        .desktop-neighborhood-grid > .desktop-play-cell[data-tile-composition-space="overworld"] {
-            overflow: visible;
+        /* The bundled material atlas contains a faint crop edge that becomes a
+           grid when nine otherwise gapless cells meet. Overscan only its base
+           ground plane by one rendered pixel, discarding that crop edge while
+           preserving authored replacement-pack coordinates exactly. */
+        .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tile-composition-layer="ground"] {
+            inset: -1px;
         }
 
+        /* Each cell owns a bounded art viewport. Interior vegetation stays
+           inside a safe inset; intentional edge vegetation is rendered as a
+           deterministic paired strip on both sides of the shared boundary.
+           This keeps local and Review Map clipping behavior identical. */
         #mobile-mini-map[data-map-mode="overworld"] > .map-tile[data-tile-composition-space="overworld"] > .yaw-tile-art,
         .desktop-neighborhood-grid > .desktop-play-cell[data-tile-composition-space="overworld"] > .yaw-tile-art {
-            overflow: visible;
-            z-index: auto;
+            overflow: hidden;
+            z-index: 0;
         }
 
         /* Tile Composition V2 directional terrain presentation. Simulation
@@ -707,6 +709,24 @@
             --yaw-cliff-west: linear-gradient(transparent, transparent);
             --yaw-slope-light: linear-gradient(transparent, transparent);
             --yaw-biome-floor-light: linear-gradient(transparent, transparent);
+            --yaw-ground-edge-seal: #454447;
+        }
+
+        [data-visual-recipe="water"] { --yaw-ground-edge-seal: #0d4a62; }
+        [data-visual-recipe="beach"] { --yaw-ground-edge-seal: #c9a76f; }
+        [data-visual-recipe="plains"] { --yaw-ground-edge-seal: #64733d; }
+        [data-visual-recipe="grove"] { --yaw-ground-edge-seal: #31502c; }
+        [data-visual-recipe="forest"] { --yaw-ground-edge-seal: #29472e; }
+        [data-visual-recipe="jungle"] { --yaw-ground-edge-seal: #244721; }
+        [data-visual-recipe="swamp"] { --yaw-ground-edge-seal: #394d3c; }
+        :is([data-visual-recipe="cliff"], [data-visual-recipe="cave"]) { --yaw-ground-edge-seal: #4b4a46; }
+
+        .yaw-ground-edge-seal {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            box-shadow: inset 0 0 0 1px var(--yaw-ground-edge-seal);
+            pointer-events: none;
         }
 
         [data-tile-composition-space="overworld"][data-visual-recipe="jungle"] {
@@ -714,6 +734,20 @@
                 radial-gradient(circle at 18% 22%, rgba(220, 255, 178, 0.13) 0 3%, transparent 11%),
                 radial-gradient(circle at 72% 16%, rgba(206, 247, 160, 0.1) 0 4%, transparent 13%),
                 radial-gradient(circle at 54% 72%, rgba(5, 18, 9, 0.22) 0 9%, transparent 24%);
+        }
+
+        [data-tile-composition-space="overworld"][data-visual-recipe="plains"] {
+            --yaw-biome-floor-light:
+                radial-gradient(ellipse at 18% 72%, rgba(218, 225, 139, 0.12) 0 7%, transparent 19%),
+                radial-gradient(ellipse at 76% 28%, rgba(38, 71, 30, 0.12) 0 8%, transparent 24%),
+                repeating-linear-gradient(102deg, transparent 0 13px, rgba(223, 231, 150, 0.04) 13px 15px, transparent 15px 29px);
+        }
+
+        [data-tile-composition-space="overworld"][data-visual-recipe="swamp"] {
+            --yaw-biome-floor-light:
+                radial-gradient(ellipse at 24% 32%, rgba(33, 83, 78, 0.4) 0 10%, rgba(25, 54, 48, 0.2) 18%, transparent 31%),
+                radial-gradient(ellipse at 72% 72%, rgba(39, 91, 79, 0.34) 0 8%, rgba(28, 58, 48, 0.18) 17%, transparent 29%),
+                radial-gradient(ellipse at 68% 18%, rgba(127, 137, 68, 0.12) 0 5%, transparent 16%);
         }
 
         [data-tile-composition-space="overworld"][data-visual-recipe="jungle"] .yaw-tile-art > [data-tile-composition-layer="ground"] {
@@ -735,20 +769,74 @@
             filter: brightness(1.02) saturate(1.2) contrast(1.06);
         }
 
-        [data-tile-composition-space="overworld"][data-cliff-edges~="north"] {
-            --yaw-cliff-north: linear-gradient(to bottom, rgba(10, 12, 16, 0.82) 0 5%, rgba(33, 38, 46, 0.52) 10%, transparent 34%);
+        :is(
+            [data-tile-composition-space="overworld"][data-cliff-edges~="north"],
+            [data-tile-composition-space="overworld"][data-terrace-wall-edges~="north"]
+        ) {
+            --yaw-cliff-north: linear-gradient(to bottom, rgba(219, 210, 192, 0.34) 0 2%, rgba(66, 61, 58, 0.82) 4% 10%, rgba(15, 17, 20, 0.44) 16%, transparent 25%);
         }
 
-        [data-tile-composition-space="overworld"][data-cliff-edges~="east"] {
-            --yaw-cliff-east: linear-gradient(to left, rgba(10, 12, 16, 0.82) 0 5%, rgba(33, 38, 46, 0.52) 10%, transparent 34%);
+        :is(
+            [data-tile-composition-space="overworld"][data-cliff-edges~="east"],
+            [data-tile-composition-space="overworld"][data-terrace-wall-edges~="east"]
+        ) {
+            --yaw-cliff-east: linear-gradient(to left, rgba(219, 210, 192, 0.34) 0 2%, rgba(66, 61, 58, 0.82) 4% 10%, rgba(15, 17, 20, 0.44) 16%, transparent 25%);
         }
 
-        [data-tile-composition-space="overworld"][data-cliff-edges~="south"] {
-            --yaw-cliff-south: linear-gradient(to top, rgba(10, 12, 16, 0.82) 0 5%, rgba(33, 38, 46, 0.52) 10%, transparent 34%);
+        :is(
+            [data-tile-composition-space="overworld"][data-cliff-edges~="south"],
+            [data-tile-composition-space="overworld"][data-terrace-wall-edges~="south"]
+        ) {
+            --yaw-cliff-south: linear-gradient(to top, rgba(219, 210, 192, 0.34) 0 2%, rgba(66, 61, 58, 0.82) 4% 10%, rgba(15, 17, 20, 0.44) 16%, transparent 25%);
         }
 
-        [data-tile-composition-space="overworld"][data-cliff-edges~="west"] {
-            --yaw-cliff-west: linear-gradient(to right, rgba(10, 12, 16, 0.82) 0 5%, rgba(33, 38, 46, 0.52) 10%, transparent 34%);
+        :is(
+            [data-tile-composition-space="overworld"][data-cliff-edges~="west"],
+            [data-tile-composition-space="overworld"][data-terrace-wall-edges~="west"]
+        ) {
+            --yaw-cliff-west: linear-gradient(to right, rgba(219, 210, 192, 0.34) 0 2%, rgba(66, 61, 58, 0.82) 4% 10%, rgba(15, 17, 20, 0.44) 16%, transparent 25%);
+        }
+
+        /* Contour terrain is drawn from shared corner samples. Each segment is
+           the top lip of a terrace; the rock face grows toward the locally
+           lower side, so neighboring cells meet on the same endpoints without
+           repeating a full-cell cliff illustration. */
+        .yaw-terrain-contours {
+            position: absolute;
+            inset: 0;
+            z-index: 132;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .yaw-terrain-contour-segment {
+            position: absolute;
+            display: block;
+            height: clamp(13px, 22%, 26px);
+            transform-origin: 0 0;
+            transform: rotate(var(--yaw-contour-angle)) scaleY(var(--yaw-contour-side));
+            border-radius: 2px 2px 38% 24%;
+            background:
+                repeating-linear-gradient(102deg,
+                    transparent 0 6px,
+                    rgba(20, 18, 18, 0.22) 6px 8px,
+                    rgba(255, 245, 224, 0.08) 8px 10px,
+                    transparent 10px 14px),
+                linear-gradient(to bottom,
+                    rgba(242, 231, 209, 0.9) 0 5%,
+                    rgba(163, 146, 124, 0.99) 7% 22%,
+                    rgba(111, 96, 84, 0.99) 25% 62%,
+                    rgba(52, 48, 47, 0.96) 72% 82%,
+                    transparent 100%);
+            box-shadow: 0 4px 3px rgba(5, 7, 10, 0.42);
+            opacity: calc(0.82 + var(--yaw-contour-level) * 0.025);
+        }
+
+        .yaw-terrain-contour-segment[data-relief-mode="restrained"] {
+            height: clamp(7px, 10%, 13px);
+            opacity: 0.44;
+            filter: saturate(0.72) brightness(0.9);
+            box-shadow: 0 2px 2px rgba(5, 7, 10, 0.28);
         }
 
         [data-tile-composition-space="overworld"][data-elevation-kind="slope"][data-elevation-uphill="north"] {
@@ -1150,22 +1238,37 @@
            bundled blocked-edge sprites read as constructed cliff walls. Keep
            the semantic layers in the DOM for rules and replacement packs while
            suppressing that literal artwork only on ordinary water biomes. */
-        [data-base-tileset-key="terrain-water"][data-map-kind="biome"]:is([data-blocked-reason="impassable"], [data-blocked-reason="capability"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"] {
+        [data-base-tileset-key="terrain-water"][data-map-kind="biome"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"] {
             opacity: 0 !important;
         }
 
-        /* Road Geometry V2. The source road crops do not share a common
+        /* A bridge-direction restriction is route geometry, not a constructed
+           barrier beside the deck. Keep the directional blocked semantic for
+           movement and authored packs, but do not paint the bundled log-wall
+           prop on the neighboring natural biome cell. */
+        [data-map-kind="biome"][data-blocked-reason="bridge-direction"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"] {
+            opacity: 0 !important;
+        }
+
+        /* Diagonal water touches land at one mathematical corner but shares
+           no traversable edge. Preserve the semantic for authored packs while
+           hiding the bundled triangular crop that reads as a false inlet. */
+        [data-shoreline-corners*="inner-"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="shoreline-water-inner-"] {
+            opacity: 0 !important;
+        }
+
+        /* Road Geometry V3. The source road crops do not share a common
            centerline: corner and junction art exits close to a cell edge and
            bleeds into neighboring atlas cells. The bundled skin therefore
-           uses exact 50% vector geometry with one 44% outer width and one 32%
+           uses exact 50% vector geometry with one 30% outer width and one 22%
            travel surface. Manifest rotations still produce every direction;
            authored replacement packs keep their own route artwork. */
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] {
-            --yaw-road-straight: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V100' fill='none' stroke='%23412f1e' stroke-width='44'/%3E%3Cpath d='M50 0V100' fill='none' stroke='%2380603a' stroke-width='38'/%3E%3Cpath d='M50 0V100' fill='none' stroke='%23c49a5f' stroke-width='32'/%3E%3C/svg%3E");
-            --yaw-road-end: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V50' fill='none' stroke='%23412f1e' stroke-width='44' stroke-linecap='round'/%3E%3Cpath d='M50 0V50' fill='none' stroke='%2380603a' stroke-width='38' stroke-linecap='round'/%3E%3Cpath d='M50 0V50' fill='none' stroke='%23c49a5f' stroke-width='32' stroke-linecap='round'/%3E%3C/svg%3E");
-            --yaw-road-corner: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%23412f1e' stroke-width='44' stroke-linejoin='round'/%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%2380603a' stroke-width='38' stroke-linejoin='round'/%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%23c49a5f' stroke-width='32' stroke-linejoin='round'/%3E%3C/svg%3E");
-            --yaw-road-t: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%23412f1e' stroke-width='44' stroke-linejoin='round'/%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%2380603a' stroke-width='38' stroke-linejoin='round'/%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%23c49a5f' stroke-width='32' stroke-linejoin='round'/%3E%3C/svg%3E");
-            --yaw-road-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%23412f1e' stroke-width='44'/%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%2380603a' stroke-width='38'/%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%23c49a5f' stroke-width='32'/%3E%3C/svg%3E");
+            --yaw-road-straight: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V100' fill='none' stroke='%23412f1e' stroke-width='30'/%3E%3Cpath d='M50 0V100' fill='none' stroke='%2380603a' stroke-width='26'/%3E%3Cpath d='M50 0V100' fill='none' stroke='%23c49a5f' stroke-width='22'/%3E%3C/svg%3E");
+            --yaw-road-end: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V50' fill='none' stroke='%23412f1e' stroke-width='30' stroke-linecap='round'/%3E%3Cpath d='M50 0V50' fill='none' stroke='%2380603a' stroke-width='26' stroke-linecap='round'/%3E%3Cpath d='M50 0V50' fill='none' stroke='%23c49a5f' stroke-width='22' stroke-linecap='round'/%3E%3C/svg%3E");
+            --yaw-road-corner: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%23412f1e' stroke-width='30' stroke-linejoin='round'/%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%2380603a' stroke-width='26' stroke-linejoin='round'/%3E%3Cpath d='M50 0V50H100' fill='none' stroke='%23c49a5f' stroke-width='22' stroke-linejoin='round'/%3E%3C/svg%3E");
+            --yaw-road-t: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%23412f1e' stroke-width='30' stroke-linejoin='round'/%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%2380603a' stroke-width='26' stroke-linejoin='round'/%3E%3Cpath d='M0 50H100M50 50V100' fill='none' stroke='%23c49a5f' stroke-width='22' stroke-linejoin='round'/%3E%3C/svg%3E");
+            --yaw-road-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%23412f1e' stroke-width='30'/%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%2380603a' stroke-width='26'/%3E%3Cpath d='M50 0V100M0 50H100' fill='none' stroke='%23c49a5f' stroke-width='22'/%3E%3C/svg%3E");
         }
 
         .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
@@ -1196,29 +1299,9 @@
             background-image: var(--yaw-road-cross) !important;
         }
 
-        /* Recipe-selected verge treatments tint only the bundled vector road.
-           Replacement packs retain their authored colors and geometry. */
-        [data-route-shoulder="leaf-litter"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
-            filter: sepia(0.35) hue-rotate(46deg) saturate(0.82) brightness(0.82) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.42));
-        }
-        [data-route-shoulder="needles"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
-            filter: sepia(0.38) hue-rotate(28deg) saturate(0.72) brightness(0.76) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.44));
-        }
-        [data-route-shoulder="mud"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
-            filter: sepia(0.52) saturate(0.7) brightness(0.62) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.48));
-        }
-        [data-route-shoulder="grass"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
-            filter: sepia(0.3) hue-rotate(55deg) saturate(0.78) brightness(0.9) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.36));
-        }
-        [data-route-shoulder="sand"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
-            filter: sepia(0.22) saturate(0.82) brightness(1.08) drop-shadow(0 1px 2px rgba(79, 55, 28, 0.32));
-        }
-        [data-route-shoulder="stone"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
-            filter: grayscale(0.68) brightness(0.82) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.48));
-        }
-        [data-route-shoulder="wet"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"] {
-            filter: sepia(0.16) hue-rotate(150deg) saturate(0.72) brightness(0.78) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
-        }
+        /* Shoulder metadata still describes how vegetation and future verge
+           art should meet a route. It must not recolor the road deck itself:
+           one connected road keeps one material across every biome boundary. */
 
         /* The first-party tower cell was painted against opaque terrain. Keep
            landmark identity as a marker over the real biome/route stack by
@@ -10390,6 +10473,78 @@
             box-shadow: var(--shadow-lg);
         }
         .alpha-session-banner[hidden] { display: none; }
+        .alpha-terrain-workbench {
+            position: fixed;
+            top: 124px;
+            right: 16px;
+            z-index: 189;
+            width: min(390px, calc(100vw - 32px));
+            max-height: calc(100dvh - 140px);
+            overflow: auto;
+            box-sizing: border-box;
+            padding: 14px;
+            color: var(--text-primary);
+            background: color-mix(in srgb, var(--bg-secondary) 96%, var(--accent-primary));
+            border: 1px solid color-mix(in srgb, var(--accent-primary) 68%, var(--border-default));
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+        }
+        .alpha-terrain-workbench[hidden] { display: none; }
+        /* Review Map is itself the full-surface composition inspector. Keep
+           the floating case controls from covering its tiles; closing the map
+           reveals the unchanged workbench state immediately. */
+        body:has(#panel-map.active) .alpha-terrain-workbench {
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .terrain-workbench-heading,
+        .terrain-workbench-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .terrain-workbench-heading small {
+            display: block;
+            margin-top: 3px;
+            color: var(--text-muted);
+        }
+        .terrain-workbench-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin: 12px 0;
+        }
+        .terrain-workbench-grid label {
+            min-width: 0;
+            display: grid;
+            gap: 4px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.025em;
+        }
+        .terrain-workbench-grid select,
+        .terrain-workbench-grid input {
+            width: 100%;
+            min-width: 0;
+            min-height: 38px;
+            box-sizing: border-box;
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            padding: 7px 8px;
+        }
+        .terrain-workbench-actions > * { flex: 1 1 0; }
+        .terrain-workbench-summary {
+            margin: 10px 0 0;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
         .alpha-session-actions,
         .alpha-report-actions,
         .alpha-outcome-row {
@@ -10477,6 +10632,15 @@
                 font-size: 12px;
             }
             .alpha-session-actions .nav-btn { padding: 5px 7px; font-size: 11px; }
+            .alpha-terrain-workbench {
+                top: auto;
+                right: 8px;
+                bottom: max(8px, env(safe-area-inset-bottom));
+                width: calc(100vw - 16px);
+                max-height: min(52dvh, 460px);
+                padding: 12px;
+            }
+            .terrain-workbench-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
             .alpha-lab-shell { padding: 16px 12px; }
             .alpha-lab-header { align-items: stretch; }
             .alpha-lab-header .nav-btn { flex: 0 0 auto; }
@@ -10756,6 +10920,7 @@
             </header>
 
             <aside id="alpha-session-banner" class="alpha-session-banner" aria-live="polite" hidden></aside>
+            <aside id="alpha-terrain-workbench" class="alpha-terrain-workbench" aria-label="Tile Composition Workbench" aria-live="polite" hidden></aside>
 
             <!-- Stage -->
             <div class="stage">

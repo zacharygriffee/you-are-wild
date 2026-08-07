@@ -4,14 +4,55 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Engine-neutral Terrain Scene V1 now drives one Canvas2D surface for local
+  traversal and Survey navigation, with deterministic fixed chunks, semantic
+  overlays, offline atlas art, bounded caching, and an explicit legacy
+  rollback. Water/land coastlines interpolate through a shared scalar field,
+  cached chunks sample into identical aprons at fractional zoom, and
+  rectangular per-tile elevation washes are suppressed so tile and chunk
+  ownership do not show through the landscape. First-party ground materials
+  now use world-aligned mirrored fields, and local semantic labels no longer
+  lay a separate gradient panel over each tile, reducing the faint grid most
+  visible across dense grove and forest ground. Non-water contours use one
+  ecological surface priority in every direction, so beach/plains and similar
+  joins cannot reverse ownership according to paint order. Same-material joins
+  use a feathered interior-texture bridge, and mixed four-tile junctions use a
+  shared organic corner owner instead of competing edge strips.
+- Alpha Lab now includes a URL-addressable Tile Composition Workbench. One
+  isolated 7x7 case can exercise every maintained biome pairing, cardinal
+  orientation, six boundary geometries, five relief fixtures, nine overlay
+  states, day/night, and four enumerated art seeds. The stable 699,840-case matrix projects through
+  the normal local map and Review Map and has dedicated model plus desktop/
+  mobile browser acceptance.
+- Visual Recipe Version 6 makes relief and composition biome-aware. Plains,
+  swamp, beach, sand, and farm keep slope light without repeated terrace-wall
+  bands or oversized ledge/cliff sprites; forest, grove, and jungle use
+  restrained relief; cliff and cave retain
+  the full connected plateau treatment. Forest distributes three canopy
+  clusters plus understory and paired edge continuity, plains and swamp use
+  dispersed identity layers, and jungle gains less rigid deterministic
+  variation. Bundled roads now use a 22% travel surface and retain one deck
+  material across biome boundaries rather than recoloring per shoulder. POIs use the shared
+  42% marker scale, natural water retains blocked semantics without literal
+  bridge-adjacent wall props, and shoreline caps taper before four-cell
+  corners. Route, feature, evidence, presence, selection, mechanics, saves,
+  information hiding, and replacement-pack ownership remain unchanged.
+  Diagonal-only water remains junction metadata but no longer paints a
+  triangular shoreline crop into a land tile.
+- Shared corner-height samples now derive deterministic terrace levels,
+  reciprocal edge deltas, local gradient/aspect, and marching-squares contour
+  segments. The bundled skin renders those as connected plateau walls instead
+  of repeated full-tile cliff faces, while authored replacement packs retain
+  their semantic relief contract. Shoreline endpoints use the same corner
+  arbitration and keep decorative cover out of the visible bank.
 - Desktop, phone, and Review Map terrain now paint as continuous surfaces with
   zero inter-cell artwork gap. The nine controls remain independent and
   accessible; a compact movement dot plus hover/focus/current rings replace
   resting full-cell outlines, card gutters, whole-cell blocked dimming, and the
-  oversized bundled current-position compass. Pointer-transparent canopy and
-  edge-spill art may cross internal 3x3 boundaries without enlarging a control;
-  bundled material crops use a fractional atlas gutter and shared-edge paint
-  overscans its owning boundary to prevent raster hairlines.
+  oversized bundled current-position compass. Interior cover remains inside
+  its owning art viewport while paired edge records meet across canonical
+  boundaries; bundled material crops use a fractional atlas gutter and
+  shared-edge paint overscans its owning boundary to prevent raster hairlines.
 - Categorized POIs no longer duplicate the generic landmark or outline their
   whole tile, bundled POI art is bounded, and one corner-aware runtime
   compositor now tapers isolated seams,

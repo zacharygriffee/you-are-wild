@@ -26853,6 +26853,68 @@ test('Combat fallback controls keep Skip and Flee reachable without valid target
   assertEqual(advanced, 1, 'Skip fallback should advance the current combat turn');
 });
 
+function makeAutonomousStalemateFixture(options = {}) {
+  const scheduled = [];
+  const loaded = loadAppForCombat(() => 0.99, {
+    combatPacing: options.instant ? 'instant' : 'readable',
+    setTimeout(fn) {
+      scheduled.push(fn);
+      return scheduled.length;
+    }
+  });
+  const { App, window } = loaded;
+  const player = makeUnit('You', { id: 'stalemate-player', CPun: 1, knockedOut: true, combatRow: 'front' });
+  const ally = makeUnit('Passive Flyer', {
+    id: 'stalemate-ally',
+    flying: true,
+    combatRow: 'front',
+    companionBehavior: {
+      version: 2,
+      duty: 'scout',
+      stance: 'passive',
+      control: 'deterministic',
+      preferredRow: 'front',
+      recruitmentContinuity: null
+    }
+  });
+  const enemy = makeUnit('Huge Ground Enemy', {
+    id: 'stalemate-enemy',
+    size: 100,
+    disposition: App.DISPOSITION.ENEMY,
+    combatRow: 'front',
+    reinforcementBlocked: true
+  });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.worldMeta = { seed: 'autonomous-stalemate-fixture', generatorVersion: 2 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'plains', explored: true, creatures: [enemy] }]]);
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: [],
+    sceneExchangeId: 'combat-stalemate-fixture',
+    presentationAutomatic: false
+  };
+  if (options.blockCommands) App._validateInteractionCommand = () => ({ ok: false, reason: 'fixture-blocked' });
+  window.YAW_COMBAT_ACTOR_STATE.resetLiveness(App, 'test-fixture');
+  return { ...loaded, scheduled, player, ally, enemy };
+}
+
+function drainScheduledCombat(fixture, limit = 100) {
+  let callbacks = 0;
+  while (fixture.scheduled.length > 0 && callbacks < limit && fixture.App.combatState.active) {
+    fixture.scheduled.shift()();
+    callbacks++;
+  }
+  return callbacks;
+}
+
 test('Combat progress state classifies terminal automatic manual and transient phases', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'progress-player' });
@@ -26917,6 +26979,209 @@ test('Combat progress state classifies terminal automatic manual and transient p
   state = App._combatProgressState();
   assertEqual(state.kind, 'terminal', 'Combat without living enemies should be classified as terminal');
   assertEqual(state.phase, 'victory', 'Combat without living enemies should resolve as victory');
+});
+
+test('Combat progress diagnostics use V2 companion control and enabled sleep status', () => {
+  const { App, window } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'progress-control-player', CPun: 1, knockedOut: true });
+  const ally = makeUnit('Autonomous Ally', {
+    id: 'progress-control-ally',
+    companionBehavior: { version: 2, duty: 'scout', stance: 'passive', control: 'deterministic', preferredRow: 'front' }
+  });
+  const enemy = makeUnit('Enemy', { id: 'progress-control-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: ally }, { unit: enemy }],
+    syncActions: []
+  };
+  let state = App._combatProgressState();
+  assertEqual(App._getCompanionControl(ally), 'deterministic', 'Fixture should use authoritative V2 deterministic control');
+  assertEqual(state.kind, 'automatic', 'V2 deterministic companions should be diagnosed as automatic rather than legacy manual actors');
+  assertEqual(state.phase, 'ally-ai', 'V2 deterministic companion diagnostics should identify ally AI');
+
+  window.YAW_TIME_SYSTEM.SLEEP_ENABLED = true;
+  ally.status.sleep = { turns: 2, source: 'test' };
+  state = App._combatProgressState();
+  assertEqual(state.phase, 'status-sleep', 'Enabled sleep should be diagnosed as bounded automatic status loss');
+  window.YAW_TIME_SYSTEM.SLEEP_ENABLED = false;
+});
+
+test('Passive autonomous companions abandon Hold during an incapacitated-player crisis', () => {
+  const fixture = makeAutonomousStalemateFixture();
+  let advanced = 0;
+  fixture.App.nextTurn = () => { advanced++; };
+  fixture.App.allyTurn(fixture.ally);
+  const log = fixture.App.log.map(entry => entry.text).join('\n');
+  assertContains(log, 'abandon their usual restraint', 'Crisis autonomy should narrate why a passive companion changes behavior');
+  assertNotContains(log, 'Passive Flyer holds position.', 'A passive companion should not indefinitely Hold while the player is incapacitated and a useful action exists');
+  assertEqual(advanced, 1, 'The crisis action should still consume exactly one autonomous turn');
+});
+
+test('Repeated automatic no-progress rounds narratively disengage without false victory', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  fixture.App.processTurn();
+  const callbacks = drainScheduledCombat(fixture, 40);
+  const log = fixture.App.log.map(entry => entry.text).join('\n');
+  const outcomes = fixture.hooks.filter(entry => entry.event === 'onEncounterResolved');
+  assert(callbacks < 40, 'No-progress combat should resolve before exhausting the bounded callback guard');
+  assertEqual(fixture.App.combatState.active, false, 'Repeated automatic material state should close combat');
+  assertContains(log, 'Neither side can force the encounter forward.', 'Stalemate should resolve through Scene narration');
+  assertNotContains(log, 'Victory!', 'Stalemate must not grant a false victory');
+  assertEqual(outcomes.length, 1, 'Stalemate should publish exactly one encounter resolution');
+  assertEqual(outcomes[0].payload.result, 'disengage', 'Stalemate should use the established non-victory disengage outcome');
+});
+
+test('Instant pacing resolves repeated automatic state without recursive overflow', () => {
+  const fixture = makeAutonomousStalemateFixture({ instant: true, blockCommands: true });
+  let error = null;
+  try {
+    fixture.App.processTurn();
+  } catch (caught) {
+    error = caught;
+  }
+  assertEqual(error, null, 'Instant-pacing stalemate resolution should not overflow the JavaScript call stack');
+  assertEqual(fixture.App.combatState.active, false, 'Instant-pacing stalemate should close combat synchronously');
+  assert(fixture.App.combatState.round <= 5, 'Instant-pacing stalemate should resolve within the bounded no-progress window');
+});
+
+test('Automatic liveness defers to an already-terminal combat outcome', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  fixture.enemy.CPun = 0;
+  let forcedOutcome = null;
+  fixture.App.endCombat = outcome => { forcedOutcome = outcome; };
+  fixture.App.combatState.round = 2;
+  const result = fixture.window.YAW_COMBAT_ACTOR_STATE.observeAutomaticRound(fixture.App);
+  assertEqual(result.reason, 'terminal-pending', 'Liveness should leave an already-terminal state to the normal combat resolver');
+  assertEqual(result.resolved, false, 'Terminal detection should not masquerade as stalemate resolution');
+  assertEqual(forcedOutcome, null, 'Liveness should not replace an earned victory with disengagement');
+});
+
+test('Multi-actor autonomous stalemates resolve once through shared narration', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  const secondAlly = makeUnit('Second Flyer', {
+    id: 'stalemate-ally-2',
+    flying: true,
+    companionBehavior: { version: 2, duty: 'guard', stance: 'passive', control: 'deterministic', preferredRow: 'front' }
+  });
+  const secondEnemy = makeUnit('Second Ground Enemy', {
+    id: 'stalemate-enemy-2',
+    size: 100,
+    disposition: fixture.App.DISPOSITION.ENEMY,
+    reinforcementBlocked: true
+  });
+  fixture.App.party.push(secondAlly);
+  fixture.App.creatures.push(secondEnemy);
+  fixture.App.worldMap.get('0,0').creatures.push(secondEnemy);
+  fixture.App.combatState.turnQueue = [
+    { unit: fixture.ally, initiative: 40 },
+    { unit: fixture.enemy, initiative: 30 },
+    { unit: secondAlly, initiative: 20 },
+    { unit: secondEnemy, initiative: 10 }
+  ];
+  fixture.window.YAW_COMBAT_ACTOR_STATE.resetLiveness(fixture.App, 'multi-actor-test');
+  fixture.App.processTurn();
+  const callbacks = drainScheduledCombat(fixture, 60);
+  const stalemateLogs = fixture.App.log.filter(entry => entry.text?.includes('Neither side can force the encounter forward.'));
+  const outcomes = fixture.hooks.filter(entry => entry.event === 'onEncounterResolved');
+  assert(callbacks < 60, 'Multiple automatic actors should remain bounded by the shared liveness policy');
+  assertEqual(fixture.App.combatState.active, false, 'Multi-actor no-progress combat should disengage');
+  assertEqual(stalemateLogs.length, 1, 'Multi-actor stalemate should emit one narrative resolution');
+  assertEqual(outcomes.length, 1, 'Multi-actor stalemate should publish one encounter outcome');
+});
+
+test('Restored autonomous stalemates receive a fresh bounded liveness guard', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  const restored = fixture.App._restoreCombatState({
+    active: true,
+    round: 12,
+    currentTurn: 0,
+    activeActorId: fixture.ally.id,
+    sceneExchangeId: 'combat-restored-stalemate',
+    turnQueue: [
+      { unitId: fixture.ally.id, initiative: 20, actedThisRound: false },
+      { unitId: fixture.enemy.id, initiative: 10, actedThisRound: false }
+    ],
+    syncActions: []
+  });
+  assertEqual(restored, true, 'The active autonomous encounter should restore');
+  assertEqual(fixture.App.combatState.liveness.reason, 'combat-restored', 'Restore should initialize bounded liveness from the restored material state');
+  assertEqual(fixture.App._resumeLoadedCombat(), true, 'Restored combat should resume through the authoritative processor');
+  const callbacks = drainScheduledCombat(fixture, 40);
+  assert(callbacks < 40, 'Restored no-progress combat should resolve within the bounded callback guard');
+  assertEqual(fixture.App.combatState.active, false, 'Restored autonomous stalemate should disengage instead of resuming forever');
+  assertContains(fixture.App.log.map(entry => entry.text).join('\n'), 'Neither side can force the encounter forward.', 'Restored stalemate should resolve through narration');
+});
+
+test('Manual companions suppress automatic stalemate resolution', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  fixture.ally.companionBehavior.control = 'manual';
+  const observer = fixture.window.YAW_COMBAT_ACTOR_STATE;
+  for (let round = 2; round <= 12; round++) {
+    fixture.App.combatState.round = round;
+    const result = observer.observeAutomaticRound(fixture.App);
+    assertEqual(result.reason, 'manual-actor-available', 'A living manual companion should retain player-directed combat control');
+  }
+  assertEqual(fixture.App.combatState.active, true, 'Liveness protection must not force-disengage while a manual actor remains');
+});
+
+test('Bounded player status loss delays but does not suppress liveness protection', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  fixture.player.knockedOut = false;
+  fixture.player.CPun = 100;
+  fixture.player.status.stun = { turns: 2, source: 'test' };
+  const observer = fixture.window.YAW_COMBAT_ACTOR_STATE;
+  observer.resetLiveness(fixture.App, 'blocked-player-test');
+
+  fixture.App.combatState.round = 2;
+  fixture.player.status.stun.turns = 1;
+  let result = observer.observeAutomaticRound(fixture.App);
+  assertEqual(result.reason, 'material-progress', 'A decreasing manual-player status should count as bounded material progress');
+  assertEqual(fixture.App.combatState.active, true, 'A recovering player status should not resolve as a stalemate');
+
+  fixture.App.combatState.round = 3;
+  delete fixture.player.status.stun;
+  result = observer.observeAutomaticRound(fixture.App);
+  assertEqual(result.reason, 'manual-actor-available', 'Clearing the blocking status should restore manual control immediately');
+  assertEqual(observer.manualActors(fixture.App).includes(fixture.player), true, 'The recovered player should rejoin the authoritative manual actor set');
+});
+
+test('Bounded status recovery changes material state and avoids premature stalemate', () => {
+  const fixture = makeAutonomousStalemateFixture({ blockCommands: true });
+  fixture.ally.status.stun = { turns: 2, source: 'test' };
+  fixture.enemy.status.stun = { turns: 2, source: 'test' };
+  fixture.window.YAW_COMBAT_ACTOR_STATE.resetLiveness(fixture.App, 'status-test');
+  fixture.App.processTurn();
+  drainScheduledCombat(fixture, 4);
+  assertEqual(fixture.App.combatState.active, true, 'Changing bounded status turns should count as material progress');
+  assertNotContains(fixture.App.log.map(entry => entry.text).join('\n'), 'Neither side can force the encounter forward.', 'Temporary status recovery must not narrate a premature stalemate');
+});
+
+test('Enemy AI excludes knocked-out and fled party targets', () => {
+  const { App } = loadAppForCombat(() => 0.99);
+  const player = makeUnit('You', { id: 'invalid-target-player', CPun: 20, knockedOut: true });
+  const fled = makeUnit('Fled Ally', { id: 'invalid-target-fled', CPun: 10, fledCombat: true });
+  const active = makeUnit('Active Ally', { id: 'valid-target-ally', CPun: 100, con: 1 });
+  const enemy = makeUnit('Enemy', { id: 'target-filter-enemy', disposition: App.DISPOSITION.ENEMY, Figh: 40 });
+  App.player = player;
+  App.party = [player, fled, active];
+  App.creatures = [enemy];
+  App.combatState.active = true;
+  App.nextTurn = function() {};
+  App._enemyShouldFlee = () => false;
+  App._enemyCallReinforcement = () => false;
+  App._combatScavengeRemains = () => false;
+  App._terrainCausesMiss = () => false;
+  App._targetDodgeRoll = () => 1;
+  App.enemyTurn(enemy);
+  assertEqual(player.CPun, 20, 'Enemy AI should not attack a knocked-out party member');
+  assertEqual(fled.CPun, 10, 'Enemy AI should not attack a party member who already fled');
+  assert(active.CPun < 100, 'Enemy AI should select the remaining active party target');
 });
 
 test('Every core incapacitating combat state advances without requiring player controls', () => {

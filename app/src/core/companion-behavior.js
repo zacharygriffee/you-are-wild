@@ -468,15 +468,38 @@ const YAW_COMPANION_BEHAVIOR = {
         }
     },
 
+    crisisChoice(app, ally, ranked, choice) {
+        if (!choice || choice.action !== 'hold') return null;
+        const playerUnavailable = !app.player
+            || app.player.CPun <= 0
+            || app.player.knockedOut
+            || app.player.fledCombat;
+        if (!playerUnavailable) return null;
+        const manualActors = typeof YAW_COMBAT_ACTOR_STATE !== 'undefined'
+            ? YAW_COMBAT_ACTOR_STATE.manualActors(app)
+            : (app.party || []).filter(unit => unit
+                && unit.CPun > 0
+                && !unit.knockedOut
+                && !unit.fledCombat
+                && (unit === app.player || app._getCompanionControl?.(unit) === 'manual'));
+        if (manualActors.length > 0) return null;
+        return ranked.find(entry => entry.action !== 'hold') || null;
+    },
+
     choose(app, ally) {
         const behavior = this.get(app, ally);
         const ranked = this.ranked(app, ally);
         if (behavior.control === 'provider') {
             const provider = this.providerChoice(app, ally, ranked);
+            const selected = provider.choice || ranked[0];
+            const crisis = this.crisisChoice(app, ally, ranked, selected);
+            if (crisis) return { choice: crisis, behavior, fallbackReason: 'combat-crisis' };
             if (provider.choice) return { choice: provider.choice, behavior, fallbackReason: null };
-            return { choice: ranked[0], behavior, fallbackReason: provider.reason };
+            return { choice: selected, behavior, fallbackReason: provider.reason };
         }
-        return { choice: ranked[0], behavior, fallbackReason: null };
+        const selected = ranked[0];
+        const crisis = this.crisisChoice(app, ally, ranked, selected);
+        return { choice: crisis || selected, behavior, fallbackReason: crisis ? 'combat-crisis' : null };
     },
 
     evidence(app, ally, choice, behavior, fallbackReason = null) {
@@ -492,9 +515,11 @@ const YAW_COMPANION_BEHAVIOR = {
         const target = choice?.target?.name
             ? app._label('party.behavior.targetSuffix', ' on {target}', { target: choice.target.name })
             : '';
-        const fallback = fallbackReason
-            ? ` ${app._label('party.behavior.providerFallback', 'AI control was unavailable, so deterministic autonomy took over.')}`
-            : '';
+        const fallback = fallbackReason === 'combat-crisis'
+            ? ` ${app._label('party.behavior.crisisOverride', 'With no one else able to direct the fight, they abandon their usual restraint.')}`
+            : (fallbackReason
+                ? ` ${app._label('party.behavior.providerFallback', 'AI control was unavailable, so deterministic autonomy took over.')}`
+                : '');
         const text = app._label('party.behavior.choice', '{name} weighs their {duty} duty with a {stance} stance and chooses to {action}{target}.', {
             name: ally.name,
             duty: duty.toLowerCase(),

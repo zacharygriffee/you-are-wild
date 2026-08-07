@@ -149,6 +149,9 @@ const YAW_COMBAT_LIFECYCLE = {
             .map(c => ({ unit: c, initiative: app._calcInitiative(c) + (c.ambushReady ? app._ambushInitiativeBonus() : 0) }))
             .sort((a, b) => b.initiative - a.initiative);
         app.combatState.currentTurn = 0;
+        if (typeof YAW_COMBAT_ACTOR_STATE !== 'undefined') {
+            YAW_COMBAT_ACTOR_STATE.resetLiveness(app, 'combat-start');
+        }
         const detectedAmbushers = ambushAwareness.detected || [];
         const ambushers = ambushAwareness.undetected || enemies.filter(e => e.ambushReady);
         if (detectedAmbushers.length > 0) {
@@ -215,6 +218,7 @@ const YAW_COMBAT_LIFECYCLE = {
     endCombat(app, result) {
         const outcome = result === true ? 'victory' : result === false ? 'defeat' : (result || 'victory');
         const publicOutcome = this.publicOutcome(app, outcome);
+        const disengageReason = app.combatState?.disengageReason || null;
         if (typeof YAW_COMBAT_PACING !== 'undefined') YAW_COMBAT_PACING.cancel(app);
         let pendingPlayerDeath = Boolean(app.defeatState?.pending && app.defeatState?.terminal);
         if (app.combatState?.sceneExchangeId && app.combatState?.round > 0 && typeof YAW_NARRATION_SYSTEM !== 'undefined') {
@@ -229,6 +233,8 @@ const YAW_COMBAT_LIFECYCLE = {
         app.combatState.currentTurn = 0;
         app.combatState.syncActions = [];
         app.combatState.pendingFleeOutcome = null;
+        app.combatState.disengageReason = null;
+        app.combatState.liveness = null;
         app.activeActor = null;
         app._clearTransientInteractionState();
         app._clearCombatRefreshSnapshot(app.activeSlot);
@@ -268,8 +274,32 @@ const YAW_COMBAT_LIFECYCLE = {
             app.log.push({ text: app._label('combat.escapedEncounter', 'You escaped the encounter.'), type: 'move' });
             app.updateScene(app._label('combat.escapedTitle', 'Escaped'), app._label('combat.escapedScene', 'You put distance between yourself and danger.'), false);
         } else if (outcome === 'disengage') {
-            app.log.push({ text: app._label('combat.disengaged', 'The encounter breaks off.'), type: 'move' });
-            app.updateScene(app._label('combat.disengagedTitle', 'Disengaged'), app._label('combat.disengaged', 'The encounter breaks off.'), false);
+            const stalemate = disengageReason === 'stalemate';
+            const text = stalemate
+                ? app._label('combat.stalemate', 'Neither side can force the encounter forward. The remaining combatants break apart and withdraw.')
+                : app._label('combat.disengaged', 'The encounter breaks off.');
+            app.log.push({ text, type: 'move' });
+            if (stalemate) {
+                app.emitSceneBeat?.({
+                    mode: 'combat',
+                    actors: [],
+                    targets: [],
+                    action: 'disengage',
+                    tags: ['disengage', 'stalemate', 'no-progress'],
+                    source: 'combat-liveness'
+                }, text, {
+                    mode: 'combat',
+                    resultKind: 'disengage',
+                    importance: 'notable',
+                    tags: ['disengage', 'stalemate', 'no-progress'],
+                    source: 'combat-liveness'
+                });
+            }
+            app.updateScene(
+                stalemate ? app._label('combat.stalemateTitle', 'Stalemate Broken') : app._label('combat.disengagedTitle', 'Disengaged'),
+                text,
+                false
+            );
         } else {
             app.log.push({ text: app._label('combat.defeat', 'Defeat...'), type: 'combat' });
             app.updateScene(app._label('combat.defeatTitle', 'Defeat'), app._label('combat.defeatScene', 'Darkness claims you...'), false);

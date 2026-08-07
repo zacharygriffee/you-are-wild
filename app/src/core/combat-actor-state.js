@@ -4,23 +4,170 @@
  */
 
 const YAW_COMBAT_ACTOR_STATE = {
+    NO_PROGRESS_ROUND_LIMIT: 3,
+    AUTOMATIC_ROUND_LIMIT: 150,
+    LIVENESS_HISTORY_LIMIT: 8,
+
     current(app) {
         if (!app.combatState?.active) return null;
         return app.combatState.turnQueue?.[app.combatState.currentTurn]?.unit || null;
     },
 
-    blockingStatus(unit) {
+    blockingStatus(unit, app = null) {
         if (!unit) return null;
         if (unit.refractory) return 'refractory';
         const status = unit.status || {};
         if (status.stun?.turns > 0) return 'stun';
         if (status.freeze?.skip) return 'freeze';
+        if ((!app || app._sleepSystemEnabled?.()) && status.sleep?.turns > 0) return 'sleep';
         if (status.restrained?.turns > 0) return 'restrained';
         if (status.stuck?.turns > 0) return 'stuck';
         if (status.enveloped?.turns > 0) return 'enveloped';
         if (status.terror?.turns > 0 || status.frightened
             || (status.fear?.turns > 0 && unit.CPun < unit.MPun * 0.3)) return 'terror-flee';
         return null;
+    },
+
+    isManualActor(app, unit) {
+        if (!unit || !app.party?.includes(unit) || unit.CPun <= 0 || unit.knockedOut || unit.fledCombat) return false;
+        if (this.blockingStatus(unit, app)) return false;
+        if (unit === app.player) return true;
+        return (app._getCompanionControl?.(unit) || 'manual') === 'manual';
+    },
+
+    manualActors(app) {
+        return (app.party || []).filter(unit => this.isManualActor(app, unit));
+    },
+
+    statusFingerprint(status = {}) {
+        const bounded = value => {
+            if (!value) return null;
+            if (value === true) return true;
+            if (typeof value !== 'object') return value;
+            return {
+                turns: Math.max(0, Number(value.turns) || 0),
+                skip: Boolean(value.skip),
+                slowTurns: Math.max(0, Number(value.slowTurns) || 0),
+                stacks: Math.max(0, Number(value.stacks) || 0),
+                dmg: Math.max(0, Number(value.dmg) || 0),
+                by: String(value.by || '').slice(0, 80),
+                source: String(value.source || '').slice(0, 80)
+            };
+        };
+        const keys = [
+            'stun', 'freeze', 'sleep', 'restrained', 'stuck', 'enveloped',
+            'charm', 'fear', 'terror', 'poisoned', 'bleed', 'burn'
+        ];
+        return keys.reduce((result, key) => {
+            const value = bounded(status[key]);
+            if (value) result[key] = value;
+            return result;
+        }, {});
+    },
+
+    containedFingerprint(app, holder) {
+        const summarize = (container, entry) => ({
+            container,
+            id: String(app._unitSelectionId?.(entry) || entry?.id || entry?.name || 'contained').slice(0, 120),
+            state: String(entry?.state || entry?.digestionState || 'contained').slice(0, 40),
+            CPun: Number(entry?.CPun ?? entry?.vitality ?? 0),
+            inStomach: entry?.inStomach !== false
+        });
+        return ['stomach', 'womb', 'balls']
+            .flatMap(container => (holder?.[container] || []).map(entry => summarize(container, entry)))
+            .sort((left, right) => `${left.container}:${left.id}`.localeCompare(`${right.container}:${right.id}`));
+    },
+
+    materialFingerprint(app) {
+        const party = new Set(app.party || []);
+        const units = [...new Set([...(app.party || []), ...(app.creatures || [])])]
+            .filter(Boolean)
+            .map(unit => ({
+                id: String(app._unitSelectionId?.(unit) || unit.id || unit.name || 'unit').slice(0, 120),
+                side: party.has(unit) ? 'party' : 'creature',
+                disposition: String(unit.disposition || '').slice(0, 40),
+                CPun: Number(unit.CPun || 0),
+                CPle: Number(unit.CPle || 0),
+                row: String(unit.combatRow || ''),
+                knockedOut: Boolean(unit.knockedOut),
+                fledCombat: Boolean(unit.fledCombat),
+                refractory: Boolean(unit.refractory),
+                status: this.statusFingerprint(unit.status),
+                contained: this.containedFingerprint(app, unit)
+            }))
+            .sort((left, right) => `${left.side}:${left.id}`.localeCompare(`${right.side}:${right.id}`));
+        return JSON.stringify(units);
+    },
+
+    resetLiveness(app, reason = 'reset') {
+        if (!app.combatState?.active) return null;
+        const fingerprint = this.materialFingerprint(app);
+        app.combatState.liveness = {
+            version: 1,
+            reason: String(reason || 'reset').slice(0, 80),
+            observedRound: Math.max(0, Number(app.combatState.round) || 0),
+            automaticRounds: 0,
+            repeatedRounds: 0,
+            history: [fingerprint]
+        };
+        return app.combatState.liveness;
+    },
+
+    resolveStalemate(app, reason = 'repeated-state') {
+        if (!app.combatState?.active) return false;
+        app.combatState.disengageReason = 'stalemate';
+        app.combatState.liveness = {
+            ...(app.combatState.liveness || {}),
+            resolved: true,
+            resolutionReason: String(reason || 'repeated-state').slice(0, 80)
+        };
+        app.endCombat('disengage');
+        return true;
+    },
+
+    observeAutomaticRound(app) {
+        if (!app.combatState?.active) return { resolved: false, reason: 'inactive' };
+        const livingEnemies = (app.creatures || []).filter(unit => unit
+            && unit.disposition === app.DISPOSITION?.ENEMY
+            && unit.CPun > 0
+            && !unit.fledCombat);
+        const livingParty = (app.party || []).filter(unit => unit
+            && unit.CPun > 0
+            && !unit.knockedOut
+            && !unit.fledCombat);
+        if (livingEnemies.length === 0 || livingParty.length === 0) {
+            return { resolved: false, reason: 'terminal-pending' };
+        }
+        const round = Math.max(0, Number(app.combatState.round) || 0);
+        let state = app.combatState.liveness;
+        if (!state || state.version !== 1) state = this.resetLiveness(app, 'lazy-round-observation');
+        if (state.observedRound === round) return { resolved: false, reason: 'already-observed', state };
+
+        const fingerprint = this.materialFingerprint(app);
+        state.observedRound = round;
+        if (this.manualActors(app).length > 0) {
+            state.automaticRounds = 0;
+            state.repeatedRounds = 0;
+            state.history = [fingerprint];
+            return { resolved: false, reason: 'manual-actor-available', state };
+        }
+
+        state.automaticRounds = Math.max(0, Number(state.automaticRounds) || 0) + 1;
+        const history = Array.isArray(state.history) ? state.history.slice(-this.LIVENESS_HISTORY_LIMIT) : [];
+        const repeated = history.includes(fingerprint);
+        state.repeatedRounds = repeated ? Math.max(0, Number(state.repeatedRounds) || 0) + 1 : 0;
+        history.push(fingerprint);
+        state.history = history.slice(-this.LIVENESS_HISTORY_LIMIT);
+
+        if (state.repeatedRounds >= this.NO_PROGRESS_ROUND_LIMIT) {
+            this.resolveStalemate(app, 'repeated-material-state');
+            return { resolved: true, reason: 'repeated-material-state', state };
+        }
+        if (state.automaticRounds >= this.AUTOMATIC_ROUND_LIMIT) {
+            this.resolveStalemate(app, 'automatic-round-limit');
+            return { resolved: true, reason: 'automatic-round-limit', state };
+        }
+        return { resolved: false, reason: repeated ? 'repeated-material-state' : 'material-progress', state };
     },
 
     progressState(app) {
@@ -44,11 +191,11 @@ const YAW_COMBAT_ACTOR_STATE = {
         }
         const actorId = app._unitSelectionId(actor);
         const base = { actorId, actorName: actor.name || actorId };
-        const blockingStatus = this.blockingStatus(actor);
+        const blockingStatus = this.blockingStatus(actor, app);
         if (blockingStatus) {
             return { kind: 'automatic', phase: `status-${blockingStatus}`, ...base, commands: ['process-turn'] };
         }
-        const controllable = app.party.includes(actor) && (actor.name === app.player?.name || actor.obedient !== false);
+        const controllable = this.isManualActor(app, actor);
         if (!controllable) {
             return { kind: 'automatic', phase: app.party.includes(actor) ? 'ally-ai' : 'enemy-ai', ...base, commands: ['process-turn'] };
         }

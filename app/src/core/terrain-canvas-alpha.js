@@ -208,6 +208,12 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
         return worldRevision(app);
     }
 
+    function lightingPhase(app) {
+        if (typeof app?._isNight === 'function') return app._isNight() ? 'night' : 'day';
+        const hour = ((Number(app?.timeHour) || 0) % 24 + 24) % 24;
+        return hour >= 20 || hour < 6 ? 'night' : 'day';
+    }
+
     function tileVisualSignature(app) {
         const x = Number(app.location?.x) || 0;
         const y = Number(app.location?.y) || 0;
@@ -633,7 +639,8 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 cacheTilePixels: size.width <= 420 ? 48 : 64,
                 worldRevision: revision,
                 resolveTile,
-                resolvePresence: presenceResolver(app)
+                resolvePresence: presenceResolver(app),
+                resolveLighting: () => ({ phase: lightingPhase(app) })
             });
             if (previousCamera) {
                 surface.setCamera(previousCamera);
@@ -643,6 +650,7 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 app, container, canvas, controls, focusMarker, inspector, surveyList, focusTarget: null, surface, resolveTile, frame: null,
                 worldIdentity: worldIdentity(app),
                 worldRevision: revision,
+                lightingPhase: lightingPhase(app),
                 tileVisualSignature: tileVisualSignature(app),
                 location: { x: app.location.x, y: app.location.y },
                 abortController: new AbortController()
@@ -682,6 +690,7 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 const size = canvasSize(container);
                 const nextRevision = renderRevision(app);
                 const nextIdentity = worldIdentity(app);
+                const nextLightingPhase = lightingPhase(app);
                 const nextTileVisualSignature = tileVisualSignature(app);
                 const camera = prior.surface.camera();
                 const isLocal = prior.frame?.mode === 'local' || YAW_TERRAIN_VIEWPORT_V1.mode(camera) === 'local';
@@ -690,6 +699,7 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 const resized = Math.abs(size.width - prior.frame.display.width) > 1 || Math.abs(size.height - prior.frame.display.height) > 1;
                 const revised = prior.worldRevision !== nextRevision;
                 const identityChanged = prior.worldIdentity !== nextIdentity;
+                const lightingChanged = prior.lightingPhase !== nextLightingPhase;
                 const tileVisualChanged = prior.tileVisualSignature !== nextTileVisualSignature;
                 if (identityChanged) {
                     prior.surface.invalidate(nextRevision);
@@ -703,13 +713,14 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                     prior.worldRevision = nextRevision;
                 }
                 prior.worldIdentity = nextIdentity;
+                prior.lightingPhase = nextLightingPhase;
                 prior.tileVisualSignature = nextTileVisualSignature;
                 prior.location = { x: app.location.x, y: app.location.y };
                 if (resized) {
                     prior.surface.resize(size.width, size.height);
                 }
                 if (isLocal && (playerMoved || resized)) prior.surface.setLocal(app.location);
-                if (revised || identityChanged || tileVisualChanged || (isLocal && playerMoved) || resized) {
+                if (revised || identityChanged || lightingChanged || tileVisualChanged || (isLocal && playerMoved) || resized) {
                     draw(prior, { phase: 'synchronization' });
                 } else if (prior.frame) updateMode(prior, prior.frame);
                 return prior;

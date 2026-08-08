@@ -12,7 +12,9 @@ const YAW_ALPHA_LAB = {
     TERRAIN_WORKBENCH_BIOMES: Object.freeze(['grove', 'forest', 'plains', 'swamp', 'jungle', 'beach', 'water', 'cliff', 'cave']),
     TERRAIN_WORKBENCH_DIRECTIONS: Object.freeze(['north', 'east', 'south', 'west']),
     TERRAIN_WORKBENCH_GEOMETRIES: Object.freeze(['straight', 'diagonal', 'convex', 'concave', 't-junction', 'four-way']),
-    TERRAIN_WORKBENCH_RELIEFS: Object.freeze(['level', 'slope', 'terrace', 'cliff-corner', 'rugged']),
+    TERRAIN_WORKBENCH_RELIEFS: Object.freeze([
+        'level', 'slope', 'terrace', 'drop', 'ridge', 'saddle', 'valley', 'peak', 'cliff-corner', 'rugged'
+    ]),
     TERRAIN_WORKBENCH_OVERLAYS: Object.freeze(['none', 'road', 'bridge', 'structure', 'poi', 'evidence', 'presence', 'selection', 'all']),
     TERRAIN_WORKBENCH_PHASES: Object.freeze(['day', 'night']),
     TERRAIN_WORKBENCH_SEED_COUNT: 4,
@@ -23,7 +25,12 @@ const YAW_ALPHA_LAB = {
         Object.freeze({ id: 'forest-cover', source: 'forest', destination: 'forest', relief: 'level', geometry: 'four-way', direction: 'north', overlay: 'none', phase: 'day', seed: 1 }),
         Object.freeze({ id: 'jungle-variation', source: 'jungle', destination: 'jungle', relief: 'level', geometry: 'four-way', direction: 'north', overlay: 'none', phase: 'day', seed: 4 }),
         Object.freeze({ id: 'road-scale', source: 'forest', destination: 'forest', relief: 'level', geometry: 'straight', direction: 'east', overlay: 'road', phase: 'day', seed: 2 }),
-        Object.freeze({ id: 'bridge-water-walls', source: 'beach', destination: 'water', relief: 'level', geometry: 'straight', direction: 'east', overlay: 'bridge', phase: 'day', seed: 1 })
+        Object.freeze({ id: 'bridge-water-walls', source: 'beach', destination: 'water', relief: 'level', geometry: 'straight', direction: 'east', overlay: 'bridge', phase: 'day', seed: 1 }),
+        Object.freeze({ id: 'oriented-drop', source: 'cliff', destination: 'plains', relief: 'drop', geometry: 'straight', direction: 'south', overlay: 'none', phase: 'day', seed: 2 }),
+        Object.freeze({ id: 'ridge-road', source: 'cliff', destination: 'plains', relief: 'ridge', geometry: 'diagonal', direction: 'east', overlay: 'road', phase: 'day', seed: 1 }),
+        Object.freeze({ id: 'saddle-structure', source: 'cliff', destination: 'cave', relief: 'saddle', geometry: 'four-way', direction: 'north', overlay: 'structure', phase: 'night', seed: 3 }),
+        Object.freeze({ id: 'valley-presence', source: 'forest', destination: 'plains', relief: 'valley', geometry: 'concave', direction: 'west', overlay: 'presence', phase: 'day', seed: 2 }),
+        Object.freeze({ id: 'peak-poi', source: 'cliff', destination: 'plains', relief: 'peak', geometry: 'convex', direction: 'north', overlay: 'poi', phase: 'day', seed: 1 })
     ]),
 
     missions: [
@@ -786,6 +793,15 @@ const YAW_ALPHA_LAB = {
         const { across, forward } = this.terrainWorkbenchCoordinates(x, y, state.direction);
         if (state.relief === 'slope') return Math.max(0.18, Math.min(0.82, 0.5 - forward * 0.045));
         if (state.relief === 'terrace') return forward < 0 ? 0.72 : 0.44;
+        if (state.relief === 'drop') return forward <= 0 ? 0.82 : 0.24;
+        if (state.relief === 'ridge') return Math.max(0.12, Math.min(0.88,
+            0.18 + Math.exp(-(across * across) * 0.9) * 0.7 + Math.sin(forward * 0.55) * 0.02));
+        if (state.relief === 'valley') return Math.max(0.12, Math.min(0.88,
+            0.82 - Math.exp(-(across * across) * 0.9) * 0.66 + Math.sin(forward * 0.45) * 0.02));
+        if (state.relief === 'peak') return Math.max(0.12, Math.min(0.9,
+            0.18 + Math.exp(-(across * across + forward * forward) * 0.55) * 0.72));
+        if (state.relief === 'saddle') return Math.max(0.12, Math.min(0.88,
+            0.5 + Math.tanh(across * forward * 0.72) * 0.3));
         if (state.relief === 'cliff-corner') return forward < 0 || across > 0 ? 0.76 : 0.38;
         if (state.relief === 'rugged') {
             const seed = Number(state.seed || 0);
@@ -833,22 +849,35 @@ const YAW_ALPHA_LAB = {
         const byRise = Object.entries(grades).sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
         const byDrop = Object.entries(grades).sort((left, right) => left[1] - right[1] || left[0].localeCompare(right[0]));
         const maximumGrade = Math.max(...Object.values(grades).map(value => Math.abs(value)));
-        const kind = state.relief === 'cliff-corner' ? 'cliff'
+        const kind = ['drop', 'cliff-corner'].includes(state.relief) ? 'cliff'
             : (state.relief === 'terrace' ? 'ledge'
-                : (state.relief === 'rugged' ? (maximumGrade >= 0.075 ? 'cliff' : (maximumGrade >= 0.035 ? 'ledge' : 'slope')) : state.relief));
+                : (state.relief === 'rugged' ? (maximumGrade >= 0.075 ? 'cliff' : (maximumGrade >= 0.035 ? 'ledge' : 'slope'))
+                    : (['ridge', 'saddle', 'valley', 'peak'].includes(state.relief)
+                        ? (maximumGrade >= 0.12 ? 'ledge' : 'slope')
+                        : state.relief)));
+        const curvature = {
+            x: Number((grades.east + grades.west).toFixed(4)),
+            y: Number((grades.north + grades.south).toFixed(4)),
+            cross: Number(((cornerElevations.ne + cornerElevations.sw
+                - cornerElevations.nw - cornerElevations.se) / 2).toFixed(4))
+        };
+        curvature.laplacian = Number((curvature.x + curvature.y).toFixed(4));
         return {
             elevation: Number(elevation.toFixed(4)), kind, band: elevation >= 0.72 ? 'high' : (elevation <= 0.28 ? 'low' : 'mid'),
+            landform: state.relief === 'cliff-corner' ? 'drop' : state.relief,
             terraceLevel, terraceCount, cornerElevations,
             gradient: { x: Number(gradientX.toFixed(4)), y: Number(gradientY.toFixed(4)), magnitude: Number(magnitude.toFixed(4)), aspect: magnitude ? aspect : null },
+            curvature,
             terraceEdges, wallEdges, riseEdges,
             contours: typeof WorldGen !== 'undefined' && typeof WorldGen.getElevationContours === 'function'
                 ? WorldGen.getElevationContours(cornerElevations)
                 : [],
             primaryUphill: byRise[0]?.[1] > 0 ? byRise[0][0] : null,
             primaryDownhill: byDrop[0]?.[1] < 0 ? byDrop[0][0] : null,
+            dropOrientation: ['drop', 'cliff-corner', 'terrace'].includes(state.relief) && byDrop[0]?.[1] < 0 ? byDrop[0][0] : null,
             uphillEdges: directions.map(([direction]) => direction).filter(direction => grades[direction] >= 0.025),
             downhillEdges: directions.map(([direction]) => direction).filter(direction => grades[direction] <= -0.025),
-            cliffEdges: ['cliff-corner', 'rugged'].includes(state.relief) && kind === 'cliff' ? wallEdges : [],
+            cliffEdges: ['drop', 'cliff-corner', 'rugged'].includes(state.relief) && kind === 'cliff' ? wallEdges : [],
             grades
         };
     },

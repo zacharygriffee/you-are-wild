@@ -97,6 +97,13 @@ atlases. Atlas identities and rectangles remain renderer policy: Terrain Scene
 does not contain CSS classes, tileset keys, atlas rectangles, HTML, or
 executable rendering instructions.
 
+Time-of-day lighting is a camera-composition concern rather than a cached
+Terrain Scene layer. The surface resolves the current day/night phase after it
+composes static chunks and before it paints live actor presence. A phase change
+therefore repaints routes, relief, cover, structures, POIs, and evidence
+together without rebuilding unchanged chunk geometry, while player and party
+markers retain their final-pass contrast.
+
 The Canvas adapter owns deterministic organic biome contours, continuous
 material paint, cover placement that may extend through the chunk apron,
 narrow route scale, bridge continuity, and procedural fallbacks for missing
@@ -111,12 +118,19 @@ continuous instead of exposing square per-tile shoreline steps. Terrain Scene al
 compiles known corner elevations into a canonical world-coordinate vertex
 field. Adjacent chunks therefore sample the same owner and height at every
 shared vertex, while unknown-only vertices remain explicitly masked. Canvas2D
-uses that field for restrained world-aligned hillshade, shared plateau fills,
-and stronger contour lips, jagged rock faces, fractures, and low-side shadows
-in cliff and cave terrain. Relief has a fixed-north presentation: south-facing
-drops open toward the viewer, side faces remain narrow, and rear drops reduce
-to a lip instead of making every contour resemble a road. Open and wooded biomes keep the lighter hillshade policy so
-elevation does not bury their identity art. Cached chunks sample one pixel into
+uses that field for smoothed finite-difference hillshade, curvature cues,
+shared plateau fills, and stronger contour lips, jagged rock faces, fractures,
+and low-side shadows in cliff and cave terrain. Terrain Scene may carry derived
+landform, curvature, and drop-orientation metadata for ridge, saddle, valley,
+peak, slope, terrace, and drop review; those fields never replace the canonical
+height vertices or grant traversal authority. Relief has a fixed-north
+presentation: south-facing drops open toward the viewer, side faces remain
+narrow but legible, and rear drops reduce to a lip. A steep cell projects one
+canonical scarp instead of extruding every crossed threshold into parallel
+road-like bands. Biome strata paint before relief, while routes, cover,
+structures, POIs, evidence, and presence retain their semantic layer order.
+Open and wooded biomes keep bounded hillshade policies so elevation remains
+readable without burying identity art. Cached chunks sample one pixel into
 their identical aprons so fractional zoom cannot expose transparent borders.
 
 Soft non-water biomes are not painted as tile-edge strips. A deterministic
@@ -149,7 +163,7 @@ string-keyed lookups per sample. Repeated material fields are cached, uniform
 chunks skip redundant masks and hillshade, and survey/mobile raster scale uses
 a lower decorative-cover density without removing ground, routes, structures,
 POIs, evidence, or actor semantics. Camera frames report cache hits, misses,
-dynamic-presence count, and render time for acceptance tests.
+dynamic-presence count, lighting phase, and render time for acceptance tests.
 
 The browser gate requires the mounted Canvas and its controls to survive local
 movement, a warm in-chunk move to settle in under one second with cache hits and
@@ -158,6 +172,27 @@ its affected chunk while reusing unaffected chunks. It also keeps forty cached
 Survey frames within the broader stress budget. Hosted and offline mobile
 builds run the same checks. This is a regression ceiling, not a claim that every
 physical phone will have identical timing.
+
+The 2026-08-08 physical-device gate used a Galaxy S21 (`SM-G991U1`) against
+the HTTP-served terrain-composition scenario after a fresh page load. The
+initial run reached DOM content in 9.6 seconds and a ready eight-asset Canvas
+in 10.1 seconds. After two warm-up moves, fifty alternating local moves
+recorded an 83.6 ms median, 117.5 ms p95, and 120.4 ms maximum end-to-end
+action time. The Canvas pass itself recorded a 0.1 ms median, 0.2 ms p95, and
+0.4 ms maximum, with 200 chunk-cache hits and zero misses.
+
+A second fresh-load gate against the final lighting-integrated build exposed
+the expected startup variance: DOM content arrived in 25.6 seconds and Canvas
+readiness in 25.9 seconds. Its fifty measured moves crossed both day and night
+lighting phases and recorded a 107.3 ms median, 125.5 ms p95, and 133.4 ms
+maximum action time. Canvas rendering remained 0.2 ms median and 0.3 ms p95
+and maximum, again with 200 hits, zero misses, one persistent Canvas and
+control set, and dynamic presence on every frame. Reported JavaScript heap was
+47.4 MB. Android thermal status remained `0`; AP/skin rose from 32.7/33.0 C to
+35.3/34.1 C during that final run, while Chrome PSS/RSS moved from
+229090/233792 KiB to 241503/268216 KiB. These figures are a reproducible
+development baseline, including the cold-start variance, not a universal
+device promise.
 
 ## First implementation boundary
 

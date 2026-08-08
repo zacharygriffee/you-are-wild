@@ -321,13 +321,15 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
       assert.equal(actual.terrainWorkbench.tileCount, 49, 'terrain workbench should isolate one bounded 7x7 case');
       assert.equal(actual.terrainWorkbench.source, 'jungle', 'terrain workbench default source');
       assert.equal(actual.terrainWorkbench.destination, 'plains', 'terrain workbench default destination');
-      assert.equal(actual.terrainWorkbench.caseCount, 699840, 'terrain workbench should enumerate the complete bounded case matrix');
+      assert.equal(actual.terrainWorkbench.caseCount, 1399680, 'terrain workbench should enumerate the complete bounded case matrix');
       assert.equal(actual.terrainWorkbench.controls, 8, 'terrain workbench should expose every case dimension');
       assert.equal(actual.terrainWorkbench.panelVisible, true, 'terrain workbench controls should open with the mission');
       assert.equal(actual.terrainWorkbench.knownReviewTiles, 49, `terrain workbench case should reach Review Map (got ${actual.terrainWorkbench.knownReviewTiles})`);
       assert.deepEqual(actual.terrainWorkbench.phases, ['day', 'night'], 'terrain workbench day/night controls');
       assert.equal(actual.terrainWorkbench.geometries.length, 6, 'terrain workbench boundary geometries');
-      assert.deepEqual(actual.terrainWorkbench.reliefs, ['level', 'slope', 'terrace', 'cliff-corner', 'rugged'], 'terrain workbench relief fixtures');
+      assert.deepEqual(actual.terrainWorkbench.reliefs,
+        ['level', 'slope', 'terrace', 'drop', 'ridge', 'saddle', 'valley', 'peak', 'cliff-corner', 'rugged'],
+        'terrain workbench relief fixtures');
       assert.equal(actual.terrainWorkbench.overlays.length, 9, 'terrain workbench overlay states');
       assert.equal(actual.terrainWorkbench.biomeCount, 9, 'terrain workbench biome matrix');
       assert.equal(actual.terrainWorkbench.sharedCornerTiles, 49, 'every workbench tile should carry shared corner-height topology');
@@ -335,7 +337,7 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
       assert(actual.terrainWorkbench.renderedContourSegments >= 7 || actual.terrainWorkbench.canvasActive,
         'the default terrace fixture should reach either the legacy contour layer or the Canvas terrain surface');
       assert.equal(actual.terrainWorkbench.bodyPhase, 'day', 'terrain workbench default lighting');
-      const changed = await page.evaluate(() => {
+      const changed = await page.evaluate(async () => {
         const startedAt = performance.now();
         App.setTerrainWorkbench('destination', 'water');
         App.setTerrainWorkbench('direction', 'west');
@@ -344,16 +346,21 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
         App.setTerrainWorkbench('overlay', 'all');
         App.setTerrainWorkbench('phase', 'night');
         App.setTerrainWorkbench('seed', 3);
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const center = App.worldMap.get('0,0');
         const before = YAW_ALPHA_LAB.terrainWorkbenchCaseIndex(App.alphaTerrainWorkbench);
         const phaseBeforeStep = document.body.dataset.dayPhase;
+        const canvasLightingBeforeStep = globalThis.YAW_TERRAIN_CANVAS_ALPHA?.diagnostics?.()[0]?.renderStats?.lightingPhase || null;
         const urlBeforeStep = location.search;
         App.stepTerrainWorkbench(1);
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         return {
           before,
           after: YAW_ALPHA_LAB.terrainWorkbenchCaseIndex(App.alphaTerrainWorkbench),
           phase: phaseBeforeStep,
           phaseAfterStep: document.body.dataset.dayPhase,
+          canvasLightingBeforeStep,
+          canvasLightingAfterStep: globalThis.YAW_TERRAIN_CANVAS_ALPHA?.diagnostics?.()[0]?.renderStats?.lightingPhase || null,
           structure: center.structure,
           poi: center.overlays?.poi?.category,
           evidence: center.items?.length,
@@ -364,6 +371,11 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
         };
       });
       assert.equal(changed.phase, 'night', 'workbench lighting changes should update the rendered phase');
+      if (actual.terrainWorkbench.canvasActive) {
+        assert.equal(changed.canvasLightingBeforeStep, 'night', 'workbench lighting changes should reach the active Canvas camera composition');
+        assert.equal(changed.canvasLightingAfterStep, changed.phaseAfterStep,
+          'matrix stepping should keep the active Canvas composition synchronized with the resulting phase');
+      }
       assert.equal(changed.structure, 'camp', 'all-overlay case should include a structure');
       assert.equal(changed.poi, 'landmark', 'all-overlay case should include a POI');
       assert.equal(changed.evidence, 1, 'all-overlay case should include evidence');

@@ -82,11 +82,13 @@ const resolveTile = (x, y) => {
     water: x < 0,
     traversal: { passable: x >= 0, traversalCost: x >= 0 ? 1 : 3 },
     terrainTopology: {
-      kind: 'slope', band: 'mid', terraceLevel: 3, terraceCount: 6,
+      kind: 'slope', landform: 'ridge', band: 'mid', terraceLevel: 3, terraceCount: 6,
       primaryUphill: 'north', primaryDownhill: 'south',
+      dropOrientation: 'south',
       uphillEdges: ['north'], downhillEdges: ['south'], cliffEdges: ['west'],
       cornerElevations: { nw: 0.42, ne: 0.48, se: 0.36, sw: 0.31 },
       gradient: { x: 0.055, y: -0.115, magnitude: 0.1275, aspect: 'north' },
+      curvature: { x: -0.08, y: 0.02, cross: 0.03, laplacian: -0.06 },
       terraceEdges: { north: 1, east: 0, south: -1, west: -2 },
       wallEdges: ['south', 'west'], riseEdges: ['north'],
       grades: { north: 0.08, east: 0.01, south: -0.09, west: -0.12 },
@@ -134,6 +136,9 @@ check(elevationRecord.terraceEdges.west === -2 && elevationRecord.wallEdges.join
 check(elevationRecord.contours[0].mask === 3 && elevationRecord.contours[0].segments[0].to.edge === 'east'
   && elevationRecord.corners.se === 0.36 && elevationRecord.primaryDownhill === 'south',
   'Terrain Scene must preserve bounded shared corners, contours, and primary directions');
+check(elevationRecord.landform === 'ridge' && elevationRecord.dropOrientation === 'south'
+  && elevationRecord.curvature.laplacian === -0.06 && elevationRecord.curvature.cross === 0.03,
+  'Terrain Scene must preserve renderer-neutral derived landform, orientation, and curvature cues');
 check(first.elevationField.width === first.renderBounds.width + 1
   && first.elevationField.height === first.renderBounds.height + 1
   && first.elevationField.values.length === first.elevationField.validity.length,
@@ -208,6 +213,17 @@ check(Math.abs(canvas.bilinearHeight({ nw: 0, ne: 1, se: 1, sw: 0 }, 0.25, 0.75)
   'Canvas relief interpolation must preserve a linear shared-corner height plane');
 check(canvas.bilinearHeight({ nw: 0, ne: null, se: 1, sw: 0 }, 0.5, 0.5) === null,
   'Canvas relief interpolation must refuse incomplete or unknown corner data');
+const sampledField = {
+  width: 3, height: 3,
+  values: [0.2, 0.4, 0.2, 0.4, 0.8, 0.4, 0.2, 0.4, 0.2],
+  validity: Array(9).fill(1)
+};
+check(Math.abs(canvas.heightFieldSample(sampledField, 1, 1) - 0.8) < 1e-9,
+  'Canvas height sampling must retain the authoritative shared vertex at integer coordinates');
+const sampledPeak = canvas.heightFieldDifferential(sampledField, 1, 1, 0.5);
+check(sampledPeak && Math.abs(sampledPeak.gradientX) < 1e-9 && Math.abs(sampledPeak.gradientY) < 1e-9
+  && sampledPeak.laplacian < 0,
+  'Canvas differential sampling must distinguish a peak from a flat slope without changing source heights');
 
 const connectedReliefScene = scene.compileChunk({
   chunkX: 0, chunkY: 0, chunkSize: 2, apron: 0, worldRevision: 'connected-relief',

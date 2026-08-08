@@ -10,13 +10,18 @@ This is a compact history of completed foundations. Git remains the authoritativ
   rollback. Water/land coastlines interpolate through a shared scalar field,
   and soft land biomes resolve through one world-space ownership raster rather
   than independently painted tile edges. Canonical shared height vertices feed
-  fixed-north plateau faces and restrained hillshade,
+  fixed-north plateau faces and curvature-aware hillshade. Derived ridge,
+  saddle, valley, peak, slope, terrace, and drop cues remain presentation data;
+  one canonical scarp is projected for a steep cell so its thresholds do not
+  turn into parallel brick or road bands,
   cached chunks sample into identical aprons at fractional zoom, and
   rectangular per-tile elevation washes are suppressed so tile and chunk
   ownership do not show through the landscape. First-party ground materials
   now use world-aligned mirrored fields, and local semantic labels no longer
   lay a separate gradient panel over each tile, reducing the faint grid most
-  visible across dense grove and forest ground. Static chunks exclude live
+  visible across dense grove and forest ground. Day/night lighting now composes
+  over warm chunks without invalidating them, before live presence is painted
+  for contrast. Static chunks exclude live
   party markers, mobile uses bounded eight-tile chunks plus decorative LOD,
   and local numeric/noise fields keep cold movement inside the mobile latency
   gate. Non-water contours use one
@@ -26,8 +31,8 @@ This is a compact history of completed foundations. Git remains the authoritativ
   shared organic corner owner instead of competing edge strips.
 - Alpha Lab now includes a URL-addressable Tile Composition Workbench. One
   isolated 7x7 case can exercise every maintained biome pairing, cardinal
-  orientation, six boundary geometries, five relief fixtures, nine overlay
-  states, day/night, and four enumerated art seeds. The stable 699,840-case matrix projects through
+  orientation, six boundary geometries, ten relief fixtures, nine overlay
+  states, day/night, and four enumerated art seeds. The stable 1,399,680-case matrix projects through
   the normal local map and Review Map and has dedicated model plus desktop/
   mobile browser acceptance.
 - Visual Recipe Version 6 makes relief and composition biome-aware. Plains,

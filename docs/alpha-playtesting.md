@@ -73,8 +73,8 @@ dist/you-are-wild?alphaScenario=terrain-workbench
 It renders one explored 7x7 case at a time and exposes source biome,
     destination biome, cardinal orientation, boundary geometry, relief fixture, overlay state,
 day/night lighting, and deterministic art seed controls. The controls cover
-all nine maintained biomes, six boundary geometries, five relief fixtures, nine
-overlay states, two lighting phases, and four enumerated art seeds: 699,840
+all nine maintained biomes, six boundary geometries, ten relief fixtures, nine
+overlay states, two lighting phases, and four enumerated art seeds: 1,399,680
 reproducible cases.
 The current case is encoded in `terrainSource`, `terrainDestination`,
 `terrainDirection`, `terrainGeometry`, `terrainRelief`, `terrainOverlay`, `terrainPhase`, and

@@ -65,20 +65,20 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         'beach', 'sand', 'swamp', 'plains', 'farm', 'grove', 'forest', 'jungle'
     ]);
     const RELIEF_PROFILE = Object.freeze({
-        water: { shade: 0, plateau: 0, walls: false, wallDepth: 0 },
-        unknown: { shade: 0, plateau: 0, walls: false, wallDepth: 0 },
-        beach: { shade: 0.24, plateau: 0.012, walls: false, wallDepth: 0 },
-        sand: { shade: 0.24, plateau: 0.012, walls: false, wallDepth: 0 },
-        plains: { shade: 0.32, plateau: 0.014, walls: false, wallDepth: 0 },
-        farm: { shade: 0.28, plateau: 0.012, walls: false, wallDepth: 0 },
-        swamp: { shade: 0.24, plateau: 0.01, walls: false, wallDepth: 0 },
-        grove: { shade: 0.2, plateau: 0.008, walls: false, wallDepth: 0 },
-        forest: { shade: 0.18, plateau: 0.007, walls: false, wallDepth: 0 },
-        jungle: { shade: 0.16, plateau: 0.006, walls: false, wallDepth: 0 },
-        cliff: { shade: 0.72, plateau: 0.034, walls: true, wallDepth: 0.17 },
-        cave: { shade: 0.62, plateau: 0.03, walls: true, wallDepth: 0.145 },
-        dungeon: { shade: 0.5, plateau: 0.024, walls: true, wallDepth: 0.12 },
-        indoors: { shade: 0.12, plateau: 0, walls: false, wallDepth: 0 }
+        water: { shade: 0, curvature: 0, contour: 0, plateau: 0, walls: false, wallDepth: 0 },
+        unknown: { shade: 0, curvature: 0, contour: 0, plateau: 0, walls: false, wallDepth: 0 },
+        beach: { shade: 0.24, curvature: 0.1, contour: 0.05, plateau: 0.012, walls: false, wallDepth: 0 },
+        sand: { shade: 0.24, curvature: 0.1, contour: 0.05, plateau: 0.012, walls: false, wallDepth: 0 },
+        plains: { shade: 0.32, curvature: 0.14, contour: 0.07, plateau: 0.014, walls: false, wallDepth: 0 },
+        farm: { shade: 0.28, curvature: 0.12, contour: 0.06, plateau: 0.012, walls: false, wallDepth: 0 },
+        swamp: { shade: 0.28, curvature: 0.12, contour: 0.055, plateau: 0.01, walls: false, wallDepth: 0 },
+        grove: { shade: 0.26, curvature: 0.11, contour: 0.055, plateau: 0.008, walls: false, wallDepth: 0 },
+        forest: { shade: 0.25, curvature: 0.1, contour: 0.05, plateau: 0.007, walls: false, wallDepth: 0 },
+        jungle: { shade: 0.22, curvature: 0.09, contour: 0.045, plateau: 0.006, walls: false, wallDepth: 0 },
+        cliff: { shade: 0.72, curvature: 0.34, contour: 0.2, plateau: 0.034, walls: true, wallDepth: 0.17 },
+        cave: { shade: 0.62, curvature: 0.3, contour: 0.18, plateau: 0.03, walls: true, wallDepth: 0.145 },
+        dungeon: { shade: 0.5, curvature: 0.24, contour: 0.14, plateau: 0.024, walls: true, wallDepth: 0.12 },
+        indoors: { shade: 0.12, curvature: 0.04, contour: 0, plateau: 0, walls: false, wallDepth: 0 }
     });
     const assets = { key: '', promise: null, images: new Map() };
     const materialFieldCanvases = new Map();
@@ -811,6 +811,42 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         return Object.values(corners).every(Number.isFinite) ? corners : null;
     }
 
+    function heightFieldSample(field, x, y) {
+        if (!field || field.width < 2 || field.height < 2) return null;
+        const boundedX = Math.max(0, Math.min(field.width - 1, Number(x) || 0));
+        const boundedY = Math.max(0, Math.min(field.height - 1, Number(y) || 0));
+        const column = Math.min(field.width - 2, Math.floor(boundedX));
+        const row = Math.min(field.height - 2, Math.floor(boundedY));
+        const u = boundedX - column;
+        const v = boundedY - row;
+        const sample = (sampleX, sampleY) => {
+            const index = sampleY * field.width + sampleX;
+            return field.validity?.[index] ? Number(field.values?.[index]) : null;
+        };
+        const corners = {
+            nw: sample(column, row), ne: sample(column + 1, row),
+            se: sample(column + 1, row + 1), sw: sample(column, row + 1)
+        };
+        return bilinearHeight(corners, u, v);
+    }
+
+    function heightFieldDifferential(field, x, y, radius = 0.42) {
+        const center = heightFieldSample(field, x, y);
+        if (center === null) return null;
+        const west = heightFieldSample(field, x - radius, y);
+        const east = heightFieldSample(field, x + radius, y);
+        const north = heightFieldSample(field, x, y - radius);
+        const south = heightFieldSample(field, x, y + radius);
+        if (![west, east, north, south].every(Number.isFinite)) return null;
+        const divisor = Math.max(0.001, radius * 2);
+        return {
+            height: center,
+            gradientX: (east - west) / divisor,
+            gradientY: (south - north) / divisor,
+            laplacian: west + east + north + south - center * 4
+        };
+    }
+
     function contourEdgePoint(corners, threshold, edge) {
         const endpoints = {
             north: ['nw', 'ne', [0, 0], [1, 0]],
@@ -977,10 +1013,6 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         if (!rasterContext?.createImageData || !rasterContext?.putImageData) return false;
         const image = rasterContext.createImageData(raster.width, raster.height);
         const groundByLocal = new Map((scene.layers.ground || []).map(record => [`${record.localX},${record.localY}`, record]));
-        const vertex = (column, row) => {
-            const index = row * field.width + column;
-            return field.validity[index] ? Number(field.values[index]) : null;
-        };
         const light = { x: -0.48, y: -0.62, z: 0.62 };
         const lightLength = Math.hypot(light.x, light.y, light.z);
         light.x /= lightLength;
@@ -988,20 +1020,17 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         light.z /= lightLength;
         for (let py = 0; py < raster.height; py += 1) {
             const row = Math.min(field.height - 2, Math.floor(py / samplesPerTile));
-            const v = (py % samplesPerTile + 0.5) / samplesPerTile;
             for (let px = 0; px < raster.width; px += 1) {
                 const column = Math.min(field.width - 2, Math.floor(px / samplesPerTile));
-                const u = (px % samplesPerTile + 0.5) / samplesPerTile;
-                const nw = vertex(column, row);
-                const ne = vertex(column + 1, row);
-                const se = vertex(column + 1, row + 1);
-                const sw = vertex(column, row + 1);
-                if (![nw, ne, se, sw].every(Number.isFinite)) continue;
                 const ground = groundByLocal.get(`${column},${row}`);
                 const profile = reliefProfile(ground?.biome);
                 if (!ground?.known || !profile.shade) continue;
-                const gradientX = (ne - nw) * (1 - v) + (se - sw) * v;
-                const gradientY = (sw - nw) * (1 - u) + (se - ne) * u;
+                const sampleX = (px + 0.5) / samplesPerTile;
+                const sampleY = (py + 0.5) / samplesPerTile;
+                const differential = heightFieldDifferential(field, sampleX, sampleY);
+                if (!differential) continue;
+                const gradientX = differential.gradientX;
+                const gradientY = differential.gradientY;
                 const reliefScale = profile.walls ? 8.5 : 5.5;
                 let nx = -gradientX * reliefScale;
                 let ny = -gradientY * reliefScale;
@@ -1010,13 +1039,16 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
                 nx /= normalLength;
                 ny /= normalLength;
                 nz /= normalLength;
-                const intensity = Math.max(-1, Math.min(1, nx * light.x + ny * light.y + nz * light.z - 0.64));
+                const directional = nx * light.x + ny * light.y + nz * light.z - 0.64;
+                const curvature = Math.max(-0.5, Math.min(0.5, -differential.laplacian * 4.2));
+                const intensity = Math.max(-1, Math.min(1, directional + curvature * 0.34));
                 const offset = (py * raster.width + px) * 4;
                 const lightPixel = intensity >= 0;
                 image.data[offset] = lightPixel ? 255 : 18;
                 image.data[offset + 1] = lightPixel ? 250 : 20;
                 image.data[offset + 2] = lightPixel ? 235 : 24;
-                image.data[offset + 3] = Math.round(Math.min(0.72, Math.abs(intensity) * profile.shade) * 255);
+                image.data[offset + 3] = Math.round(Math.min(0.72,
+                    Math.abs(intensity) * profile.shade + Math.abs(curvature) * profile.curvature) * 255);
             }
         }
         rasterContext.putImageData(image, 0, 0);
@@ -1054,7 +1086,49 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
             }
             context.restore();
 
-            for (const segment of geometry.contours.filter(entry => entry.profile.walls)) {
+            for (const segment of geometry.contours.filter(entry => !entry.profile.walls && entry.profile.contour)) {
+                const normal = lowSideNormal(segment);
+                const offset = tilePixels * (0.008 + Math.min(6, segment.level) * 0.0015);
+                context.save();
+                context.strokeStyle = `rgba(19,17,18,${segment.profile.contour})`;
+                context.lineWidth = Math.max(0.55, tilePixels * 0.012);
+                context.beginPath();
+                context.moveTo(segment.from.x + normal.x * offset, segment.from.y + normal.y * offset);
+                context.lineTo(segment.to.x + normal.x * offset, segment.to.y + normal.y * offset);
+                context.stroke();
+                context.strokeStyle = `rgba(249,241,214,${segment.profile.contour * 0.72})`;
+                context.lineWidth = Math.max(0.45, tilePixels * 0.007);
+                context.beginPath();
+                context.moveTo(segment.from.x, segment.from.y);
+                context.lineTo(segment.to.x, segment.to.y);
+                context.stroke();
+                context.restore();
+            }
+
+            const wallSegments = geometry.contours.filter(entry => entry.profile.walls);
+            const wallSegmentsByRecord = new Map();
+            for (const segment of wallSegments) {
+                if (!wallSegmentsByRecord.has(segment.record.key)) wallSegmentsByRecord.set(segment.record.key, []);
+                wallSegmentsByRecord.get(segment.record.key).push(segment);
+            }
+            const faceSegments = [];
+            for (const segments of wallSegmentsByRecord.values()) {
+                const terraceCount = Math.max(2, Number(segments[0]?.record?.terraceCount) || 6);
+                const canonicalLevel = Math.round(terraceCount / 2);
+                const preferredLevel = segments.some(segment => segment.level === canonicalLevel)
+                    ? canonicalLevel
+                    : segments.slice().sort((left, right) => (
+                        Math.abs(left.threshold - 0.5) - Math.abs(right.threshold - 0.5)
+                        || left.level - right.level
+                    ))[0]?.level;
+                faceSegments.push(...segments.filter(segment => segment.level === preferredLevel));
+            }
+
+            // A steep cell can cross most terrace thresholds. Extruding every
+            // contour makes parallel rock faces read like roads or brick
+            // courses. Keep every threshold in the shared height field and
+            // plateau shading, but project one canonical scarp per cell.
+            for (const segment of faceSegments) {
                 const normal = lowSideNormal(segment);
                 // Canvas uses one fixed-north reading of relief. South-facing
                 // drops open toward the viewer, east/west faces remain narrow,
@@ -1062,7 +1136,7 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
                 // orientation equal depth makes a plateau read like a road.
                 const towardViewer = Math.max(0, normal.y);
                 const sideFacing = 1 - Math.abs(normal.y);
-                const faceVisibility = Math.max(0.02, towardViewer + sideFacing * 0.055);
+                const faceVisibility = Math.max(0.02, towardViewer + sideFacing * 0.18);
                 const baseDepth = tilePixels * Math.min(0.19,
                     segment.profile.wallDepth * (0.72 + Math.min(6, segment.level) * 0.055));
                 const depth = baseDepth * faceVisibility;
@@ -1075,8 +1149,13 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
                     const worldY = segment.record.y + localY;
                     const variation = 0.76 + unitPoint('cliff-face-depth-v1',
                         `${Math.round(worldX * 48)},${Math.round(worldY * 48)}:${segment.level}`) * 0.42;
-                    const topX = segment.from.x + (segment.to.x - segment.from.x) * amount;
-                    const topY = segment.from.y + (segment.to.y - segment.from.y) * amount;
+                    const straightTopX = segment.from.x + (segment.to.x - segment.from.x) * amount;
+                    const straightTopY = segment.from.y + (segment.to.y - segment.from.y) * amount;
+                    const lipJitter = Math.max(tilePixels * 0.006, depth * 0.18)
+                        * (unitPoint('cliff-face-lip-v2',
+                            `${Math.round(worldX * 64)},${Math.round(worldY * 64)}:${segment.level}`) - 0.5) * 2;
+                    const topX = straightTopX + normal.x * lipJitter;
+                    const topY = straightTopY + normal.y * lipJitter;
                     return {
                         topX, topY,
                         x: topX + normal.x * depth * variation,
@@ -1084,23 +1163,24 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
                         variation
                     };
                 };
-                const bottom = Array.from({ length: 7 }, (_, index) => facePoint(1 - index / 6));
+                const top = Array.from({ length: 7 }, (_, index) => facePoint(index / 6));
+                const bottom = top.slice().reverse();
                 context.save();
                 const faceAlpha = 0.28 + faceVisibility * 0.5;
                 context.fillStyle = segment.record.biome === 'cliff'
                     ? `rgba(48,43,40,${faceAlpha})`
                     : `rgba(24,23,25,${Math.min(0.78, faceAlpha + 0.02)})`;
                 context.beginPath();
-                context.moveTo(segment.from.x, segment.from.y);
-                context.lineTo(segment.to.x, segment.to.y);
+                context.moveTo(top[0].topX, top[0].topY);
+                for (const point of top.slice(1)) context.lineTo(point.topX, point.topY);
                 for (const point of bottom) context.lineTo(point.x, point.y);
                 context.closePath();
                 context.fill();
                 context.strokeStyle = `rgba(226,218,196,${0.2 + faceVisibility * 0.28})`;
                 context.lineWidth = Math.max(0.7, tilePixels * (0.009 + faceVisibility * 0.007));
                 context.beginPath();
-                context.moveTo(segment.from.x, segment.from.y);
-                context.lineTo(segment.to.x, segment.to.y);
+                context.moveTo(top[0].topX, top[0].topY);
+                for (const point of top.slice(1)) context.lineTo(point.topX, point.topY);
                 context.stroke();
                 context.strokeStyle = `rgba(224,205,180,${0.08 + faceVisibility * 0.12})`;
                 context.lineWidth = Math.max(0.65, tilePixels * 0.008);
@@ -1521,12 +1601,15 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
             if (!drawContinuousWaterField(context, scene, tilePixels)) {
                 drawWaterContinuum(context, scene.layers.ground, tilePixels);
             }
-            drawHillshadeField(context, scene, tilePixels, pixelRatio);
-            drawElevationRelief(context, scene.layers.elevation, tilePixels, scene.elevationField);
             for (const ground of scene.layers.ground) {
                 if (!asset('atlas.materials-v2')) drawGroundTexture(context, ground, tilePixels);
                 drawBiomeStrata(context, ground, tilePixels);
             }
+            // Relief is presentation over the material field, not another
+            // ground texture. Painting strata after hillshade erased slope and
+            // ridge cues, especially in wooded biomes.
+            drawHillshadeField(context, scene, tilePixels, pixelRatio);
+            drawElevationRelief(context, scene.layers.elevation, tilePixels, scene.elevationField);
             context.lineCap = 'round';
             context.lineJoin = 'round';
             for (const record of scene.layers.hydrology) {
@@ -1709,7 +1792,8 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
     if (typeof YAW_TERRAIN_RENDERERS !== 'undefined') YAW_TERRAIN_RENDERERS.register(descriptor);
     return {
         ID, PALETTE, MATERIAL_CELLS, RELIEF_PROFILE,
-        prepareAssets, assetStatus, bilinearHeight, reliefGeometry, softBiomeField, waterField, create, descriptor
+        prepareAssets, assetStatus, bilinearHeight, heightFieldSample, heightFieldDifferential,
+        reliefGeometry, softBiomeField, waterField, create, descriptor
     };
 })();
 

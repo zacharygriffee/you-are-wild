@@ -130,9 +130,10 @@ than a handcrafted replacement for ordinary world generation.
 
 The separate `terrain-workbench` Alpha mission isolates one 7x7 boundary case
 and makes every biome pairing, cardinal orientation, straight/diagonal/convex/
-concave/T/four-way geometry, level/slope/terrace/cliff-corner/rugged relief,
+concave/T/four-way geometry, level/slope/terrace/drop/ridge/saddle/valley/peak/
+cliff-corner/rugged relief,
 overlay state, lighting phase, and enumerated art seed directly selectable. Its
-699,840 stable cases are URL-addressable and
+1,399,680 stable cases are URL-addressable and
 project through both the local map and Review Map, so neighboring showcase
 rows cannot accidentally influence the case under inspection.
 

@@ -116,6 +116,29 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
             return painted;
         }
 
+        function lightingPhase() {
+            const source = typeof options.resolveLighting === 'function'
+                ? options.resolveLighting()
+                : options.lighting;
+            const value = typeof source === 'string' ? source : source?.phase;
+            return String(value || 'day').toLowerCase() === 'night' ? 'night' : 'day';
+        }
+
+        function drawLighting(display) {
+            const phase = lightingPhase();
+            if (phase !== 'night') return phase;
+            // Lighting belongs to the camera composition, not a fixed terrain
+            // chunk. A phase change therefore preserves geometry and warm
+            // chunk rasters while tinting routes, relief, features, evidence,
+            // and POIs together. Dynamic actor presence is painted afterward
+            // so mobile navigation markers retain their contrast.
+            context.save();
+            context.fillStyle = 'rgba(8,14,36,0.27)';
+            context.fillRect(0, 0, display.width, display.height);
+            context.restore();
+            return phase;
+        }
+
         function pruneCache(keepKeys) {
             if (chunkCache.size <= maxCacheEntries) return;
             for (const [key, raster] of chunkCache) {
@@ -157,6 +180,7 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
                 );
                 renderedChunks.push({ key: raster.key, x: topLeft.x, y: topLeft.y, width, height });
             }
+            const phase = drawLighting(display);
             const dynamicPresenceCount = drawDynamicPresence(scale, display);
             pruneCache(new Set(renderedChunks.map(chunk => chunk.key)));
             const endedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -165,7 +189,8 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
                 milliseconds: Math.max(0, endedAt - startedAt),
                 cacheHits: counters.hits,
                 cacheMisses: counters.misses,
-                dynamicPresenceCount
+                dynamicPresenceCount,
+                lightingPhase: phase
             };
             return {
                 version: VERSION,

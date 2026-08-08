@@ -16,10 +16,15 @@ const expectedBiomes = ['grove', 'forest', 'plains', 'swamp', 'jungle', 'beach',
 check(JSON.stringify(lab.TERRAIN_WORKBENCH_BIOMES) === JSON.stringify(expectedBiomes), 'Workbench biomes must match the maintained generated presentation set');
 check(lab.TERRAIN_WORKBENCH_DIRECTIONS.length === 4, 'Workbench must expose every cardinal orientation');
 check(lab.TERRAIN_WORKBENCH_GEOMETRIES.length === 6, 'Workbench must expose six distinct boundary geometries');
-check(JSON.stringify(lab.TERRAIN_WORKBENCH_RELIEFS) === JSON.stringify(['level', 'slope', 'terrace', 'cliff-corner', 'rugged']), 'Workbench must expose reproducible level, slope, terrace, cliff-corner, and rugged relief');
+const expectedReliefs = ['level', 'slope', 'terrace', 'drop', 'ridge', 'saddle', 'valley', 'peak', 'cliff-corner', 'rugged'];
+check(JSON.stringify(lab.TERRAIN_WORKBENCH_RELIEFS) === JSON.stringify(expectedReliefs),
+  'Workbench must expose reproducible flat, directional, curved, and rugged landforms');
 check(lab.TERRAIN_WORKBENCH_OVERLAYS.includes('selection') && lab.TERRAIN_WORKBENCH_OVERLAYS.includes('all'), 'Workbench must directly exercise selection and mixed overlays');
 check(JSON.stringify(lab.TERRAIN_WORKBENCH_PHASES) === JSON.stringify(['day', 'night']), 'Workbench must expose day and night rendering');
-const expectedRegressionIds = ['plains-relief', 'swamp-relief', 'beach-corner', 'forest-cover', 'jungle-variation', 'road-scale', 'bridge-water-walls'];
+const expectedRegressionIds = [
+  'plains-relief', 'swamp-relief', 'beach-corner', 'forest-cover', 'jungle-variation', 'road-scale',
+  'bridge-water-walls', 'oriented-drop', 'ridge-road', 'saddle-structure', 'valley-presence', 'peak-poi'
+];
 check(JSON.stringify(lab.TERRAIN_WORKBENCH_REGRESSIONS.map(entry => entry.id)) === JSON.stringify(expectedRegressionIds),
   'Workbench must retain one pinned regression for every reported correction case');
 for (const regression of lab.TERRAIN_WORKBENCH_REGRESSIONS) {
@@ -73,12 +78,29 @@ check(normalized.overlay === 'selection' && normalized.phase === 'night' && norm
 for (const relief of lab.TERRAIN_WORKBENCH_RELIEFS) {
   const state = lab.normalizeTerrainWorkbench({ relief, direction: 'north' });
   const topology = lab.terrainWorkbenchTopologyAt(0, 0, state);
-  check(relief === 'rugged'
-    ? ['slope', 'ledge', 'cliff'].includes(topology.kind)
-    : topology.kind === (relief === 'cliff-corner' ? 'cliff' : (relief === 'terrace' ? 'ledge' : relief)),
+  check(['level', 'slope', 'ledge', 'cliff'].includes(topology.kind),
   `${relief} must publish its intended presentation topology`);
+  check(topology.landform === (relief === 'cliff-corner' ? 'drop' : relief), `${relief} must publish its derived landform identity`);
   check(Object.keys(topology.cornerElevations).sort().join(',') === 'ne,nw,se,sw', `${relief} must publish four shared corner samples`);
   check(Object.keys(topology.terraceEdges).sort().join(',') === 'east,north,south,west', `${relief} must publish four reciprocal terrace edges`);
+  check(Object.keys(topology.curvature).sort().join(',') === 'cross,laplacian,x,y', `${relief} must publish bounded curvature cues`);
+  const east = lab.terrainWorkbenchTopologyAt(1, 0, state);
+  check(topology.cornerElevations.ne === east.cornerElevations.nw
+    && topology.cornerElevations.se === east.cornerElevations.sw,
+  `${relief} must keep exact shared samples across tile boundaries`);
 }
+
+const oriented = relief => lab.normalizeTerrainWorkbench({ relief, direction: 'north', seed: 2 });
+check(lab.terrainWorkbenchHeightAt(0, 0, oriented('ridge')) > lab.terrainWorkbenchHeightAt(2, 0, oriented('ridge')),
+  'Ridge fixtures must crown their oriented spine');
+check(lab.terrainWorkbenchHeightAt(0, 0, oriented('valley')) < lab.terrainWorkbenchHeightAt(2, 0, oriented('valley')),
+  'Valley fixtures must lower their oriented channel');
+check(lab.terrainWorkbenchHeightAt(0, 0, oriented('peak')) > lab.terrainWorkbenchHeightAt(2, 2, oriented('peak')),
+  'Peak fixtures must fall away radially');
+check(lab.terrainWorkbenchHeightAt(1, 1, oriented('saddle')) > 0.5
+  && lab.terrainWorkbenchHeightAt(-1, 1, oriented('saddle')) < 0.5,
+  'Saddle fixtures must alternate opposing rises and falls');
+check(lab.terrainWorkbenchTopologyAt(0, 0, oriented('drop')).dropOrientation === 'south',
+  'Drop fixtures must expose their low-side orientation');
 
 console.log(`Tile Composition Workbench: ${passed} checks passed across ${expectedCount.toLocaleString()} cases`);

@@ -199,7 +199,7 @@ automated geometry acceptance is not treated as proof of taste.
 
 The `terrain-workbench` Alpha mission provides an isolated 7x7 case generator
 for all maintained biome pairs, four orientations, six boundary geometries,
-five relief fixtures, nine overlay states, day/night, and four enumerated art seeds. Its 699,840
+ten relief fixtures, nine overlay states, day/night, and four enumerated art seeds. Its 1,399,680
 cases have stable forward/reverse indexing and URL parameters. Automated
 desktop and 390x844 checks require the controls, case stepping, Review Map
 projection, selection/mixed overlays, and horizontal containment to remain

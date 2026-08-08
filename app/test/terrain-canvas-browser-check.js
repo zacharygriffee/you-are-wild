@@ -723,12 +723,28 @@ async function exerciseElevationPixels(browser, origin) {
       }
       return hash >>> 0;
     };
-    const height = (x, y) => Math.max(0.04, Math.min(0.96,
-      0.5 + Math.sin(x * 0.52) * 0.22 + Math.cos(y * 0.41) * 0.16));
-    const tile = (x, y, relief) => {
+    const height = (x, y, shape, orientation = 'north') => {
+      const rawX = x - 3.5;
+      const rawY = y - 3.5;
+      const { across, forward } = orientation === 'east' ? { across: rawY, forward: -rawX }
+        : (orientation === 'south' ? { across: -rawX, forward: -rawY }
+          : (orientation === 'west' ? { across: -rawY, forward: rawX } : { across: rawX, forward: rawY }));
+      const clamp = value => Math.max(0.04, Math.min(0.96, value));
+      if (shape === 'flat') return 0.5;
+      if (shape === 'slope') return clamp(0.5 - forward * 0.05);
+      if (shape === 'terrace') return forward <= 0 ? 0.72 : 0.44;
+      if (shape === 'drop') return forward <= 0 ? 0.86 : 0.16;
+      if (shape === 'ridge') return clamp(0.18 + Math.exp(-(across * across) * 0.9) * 0.7);
+      if (shape === 'valley') return clamp(0.82 - Math.exp(-(across * across) * 0.9) * 0.66);
+      if (shape === 'peak') return clamp(0.18 + Math.exp(-(across * across + forward * forward) * 0.55) * 0.72);
+      if (shape === 'saddle') return clamp(0.5 + Math.tanh(across * forward * 0.72) * 0.3);
+      return clamp(0.5 + Math.sin(x * 0.52) * 0.22 + Math.cos(y * 0.41) * 0.16);
+    };
+    const tile = (x, y, shape, orientation) => {
+      const relief = shape !== 'flat';
       const corners = relief ? {
-        nw: height(x - 0.5, y - 0.5), ne: height(x + 0.5, y - 0.5),
-        se: height(x + 0.5, y + 0.5), sw: height(x - 0.5, y + 0.5)
+        nw: height(x - 0.5, y - 0.5, shape, orientation), ne: height(x + 0.5, y - 0.5, shape, orientation),
+        se: height(x + 0.5, y + 0.5, shape, orientation), sw: height(x - 0.5, y + 0.5, shape, orientation)
       } : { nw: 0.5, ne: 0.5, se: 0.5, sw: 0.5 };
       const center = Object.values(corners).reduce((sum, value) => sum + value, 0) / 4;
       return {
@@ -745,55 +761,127 @@ async function exerciseElevationPixels(browser, origin) {
           },
           terraceEdges: {}, wallEdges: [], riseEdges: [], cliffEdges: []
         },
-        overlays: y === 4 ? { road: { id: `relief-road-${x}`, connections: ['east', 'west'] } } : {},
-        creatures: [], items: []
+        structure: x === 3 && y === 3 ? 'camp' : null,
+        overlays: {
+          ...(y === 4 ? { road: { id: `relief-road-${x}`, connections: ['east', 'west'] } } : {}),
+          ...(x === 4 && y === 3 ? { poi: { id: 'relief-poi', name: 'Relief marker', category: 'landmark' } } : {}),
+          ...(x === 3 && y === 4 ? { cover: [{ id: 'relief-tree', family: 'conifer', anchor: { x: 0.7, y: 0.3 } }] } : {})
+        },
+        creatures: x === 4 && y === 4 ? [{ id: 'relief-scout', name: 'Scout', role: 'party' }] : [],
+        items: x === 3 && y === 4 ? [{ id: 'relief-item', name: 'Marker' }] : []
       };
     };
-    const render = (pixelRatio, zoom, relief) => {
+    const render = (pixelRatio, zoom, shape, orientation = 'north', phase = 'day') => {
       const canvas = document.createElement('canvas');
       const surface = YAW_TERRAIN_CANVAS_SURFACE_V1.create(canvas, {
         width: 321, height: 279, centerX: 3.5, centerY: 3.5, zoom,
         pixelRatio, chunkSize: 4, apron: 2, cacheTilePixels: 40,
-        resolveTile: (x, y) => tile(x, y, relief)
+        resolveTile: (x, y) => tile(x, y, shape, orientation),
+        resolveLighting: () => ({ phase })
       });
       surface.setCamera({
         center: { x: 3.5, y: 3.5 }, zoom,
         viewport: { width: 321, height: 279 }, baseTilePixels: 64,
         limits: { minZoom: 0.125, maxZoom: 4 }
       });
-      surface.render();
+      const firstFrame = surface.render();
       const context = canvas.getContext('2d');
       const first = context.getImageData(0, 0, canvas.width, canvas.height).data;
       let transparent = 0;
       for (let index = 3; index < first.length; index += 4) if (first[index] !== 255) transparent += 1;
       const firstChecksum = checksum(first);
       surface.invalidate('relief-rebuild');
-      surface.render();
+      const secondFrame = surface.render();
       const secondChecksum = checksum(context.getImageData(0, 0, canvas.width, canvas.height).data);
-      const result = { firstChecksum, secondChecksum, transparent, width: canvas.width, height: canvas.height };
+      const result = {
+        firstChecksum, secondChecksum, transparent, width: canvas.width, height: canvas.height,
+        firstLightingPhase: firstFrame.renderStats.lightingPhase,
+        secondLightingPhase: secondFrame.renderStats.lightingPhase
+      };
       surface.destroy();
       return result;
     };
-    return [
+    const shapes = ['flat', 'slope', 'terrace', 'drop', 'ridge', 'saddle', 'valley', 'peak', 'rugged'];
+    const matrix = [
       { dpr: 1, zoom: 1.333 },
       { dpr: 2, zoom: 0.37 },
       { dpr: 3, zoom: 0.5 }
     ].map(entry => ({
       ...entry,
-      relief: render(entry.dpr, entry.zoom, true),
-      flat: render(entry.dpr, entry.zoom, false)
+      shapes: Object.fromEntries(shapes.map(shape => [shape, render(entry.dpr, entry.zoom, shape)]))
     }));
+    const directionalShapes = ['slope', 'drop', 'ridge', 'saddle', 'valley'];
+    const orientations = Object.fromEntries(['north', 'east', 'south', 'west'].map(orientation => [
+      orientation,
+      Object.fromEntries(directionalShapes.map(shape => [shape, render(1, 0.73, shape, orientation)]))
+    ]));
+    const lighting = Object.fromEntries(['day', 'night'].map(phase => [
+      phase,
+      Object.fromEntries(shapes.map(shape => [shape, render(2, 0.73, shape, 'north', phase)]))
+    ]));
+    const lightingReuse = (() => {
+      const canvas = document.createElement('canvas');
+      let phase = 'day';
+      const surface = YAW_TERRAIN_CANVAS_SURFACE_V1.create(canvas, {
+        width: 321, height: 279, centerX: 3.5, centerY: 3.5, zoom: 0.73,
+        pixelRatio: 2, chunkSize: 4, apron: 2, cacheTilePixels: 40,
+        resolveTile: (x, y) => tile(x, y, 'peak', 'north'),
+        resolveLighting: () => ({ phase })
+      });
+      const context = canvas.getContext('2d');
+      const dayFrame = surface.render();
+      const dayChecksum = checksum(context.getImageData(0, 0, canvas.width, canvas.height).data);
+      phase = 'night';
+      const nightFrame = surface.render();
+      const nightChecksum = checksum(context.getImageData(0, 0, canvas.width, canvas.height).data);
+      surface.destroy();
+      return { dayFrame, nightFrame, dayChecksum, nightChecksum };
+    })();
+    return { matrix, orientations, lighting, lightingReuse };
   });
-  for (const result of results) {
-    assert.strictEqual(result.relief.transparent, 0,
-      `Non-flat relief across a four-chunk junction must remain opaque at DPR ${result.dpr}, zoom ${result.zoom}`);
-    assert.strictEqual(result.relief.firstChecksum, result.relief.secondChecksum,
-      `Relief invalidation must reproduce identical pixels at DPR ${result.dpr}, zoom ${result.zoom}`);
-    assert.notStrictEqual(result.relief.firstChecksum, result.flat.firstChecksum,
-      `Continuous elevation must materially change Canvas pixels at DPR ${result.dpr}, zoom ${result.zoom}`);
-    assert.strictEqual(result.relief.width, Math.round(321 * result.dpr), 'Relief Canvas backing width must honor DPR');
-    assert.strictEqual(result.relief.height, Math.round(279 * result.dpr), 'Relief Canvas backing height must honor DPR');
+  for (const result of results.matrix) {
+    for (const [shape, rendered] of Object.entries(result.shapes)) {
+      assert.strictEqual(rendered.transparent, 0,
+        `${shape} relief across a four-chunk junction must remain opaque at DPR ${result.dpr}, zoom ${result.zoom}`);
+      assert.strictEqual(rendered.firstChecksum, rendered.secondChecksum,
+        `${shape} relief invalidation must reproduce identical pixels at DPR ${result.dpr}, zoom ${result.zoom}`);
+      assert.strictEqual(rendered.width, Math.round(321 * result.dpr), 'Relief Canvas backing width must honor DPR');
+      assert.strictEqual(rendered.height, Math.round(279 * result.dpr), 'Relief Canvas backing height must honor DPR');
+    }
+    const checksums = Object.values(result.shapes).map(rendered => rendered.firstChecksum);
+    assert.strictEqual(new Set(checksums).size, checksums.length,
+      `Every elevation form must produce distinct Canvas pixels at DPR ${result.dpr}, zoom ${result.zoom}`);
   }
+  for (const shape of ['slope', 'drop', 'ridge', 'saddle', 'valley']) {
+    const checksums = Object.values(results.orientations).map(forms => forms[shape].firstChecksum);
+    const expectedOrientations = ['slope', 'drop'].includes(shape) ? 4 : 2;
+    assert.strictEqual(new Set(checksums).size, expectedOrientations,
+      `${shape} must retain its ${expectedOrientations} distinct fixed-north orientation readings`);
+    for (const forms of Object.values(results.orientations)) {
+      assert.strictEqual(forms[shape].transparent, 0, `${shape} orientation pixels must remain opaque`);
+      assert.strictEqual(forms[shape].firstChecksum, forms[shape].secondChecksum,
+        `${shape} orientation rebuilds must remain deterministic`);
+    }
+  }
+  for (const shape of ['flat', 'slope', 'terrace', 'drop', 'ridge', 'saddle', 'valley', 'peak', 'rugged']) {
+    const day = results.lighting.day[shape];
+    const night = results.lighting.night[shape];
+    assert.notStrictEqual(day.firstChecksum, night.firstChecksum,
+      `${shape} must retain distinct day and night camera-composition pixels`);
+    assert.strictEqual(day.firstLightingPhase, 'day', `${shape} day frame must report its lighting phase`);
+    assert.strictEqual(night.firstLightingPhase, 'night', `${shape} night frame must report its lighting phase`);
+    assert.strictEqual(night.firstLightingPhase, night.secondLightingPhase,
+      `${shape} rebuilt night frame must retain its lighting phase`);
+    assert.strictEqual(night.firstChecksum, night.secondChecksum,
+      `${shape} night lighting rebuilds must remain deterministic`);
+    assert.strictEqual(night.transparent, 0, `${shape} night lighting pixels must remain opaque`);
+  }
+  assert.notStrictEqual(results.lightingReuse.dayChecksum, results.lightingReuse.nightChecksum,
+    'A live lighting phase change must repaint the camera composition');
+  assert.strictEqual(results.lightingReuse.nightFrame.renderStats.cacheMisses, 0,
+    'A live lighting phase change must not rebuild unchanged terrain chunks');
+  assert.ok(results.lightingReuse.nightFrame.renderStats.cacheHits >= 1,
+    'A live lighting phase change must reuse warm terrain chunks');
   await page.close();
 }
 

@@ -228,6 +228,7 @@ const YAW_TERRAIN_SCENE_V1 = (() => {
             biome,
             value: boundedElevation,
             type: text(topology.kind, 'level', 40),
+            landform: text(topology.landform, topology.kind || 'level', 40),
             band: text(topology.band, 'mid', 20),
             terraceLevel: Math.trunc(clamp(topology.terraceLevel, 0, 8, 0)),
             terraceCount: Math.trunc(clamp(topology.terraceCount, 1, 8, 6)),
@@ -236,12 +237,19 @@ const YAW_TERRAIN_SCENE_V1 = (() => {
             cliffs: directions(topology.cliffEdges),
             primaryUphill: direction(topology.primaryUphill),
             primaryDownhill: direction(topology.primaryDownhill),
+            dropOrientation: direction(topology.dropOrientation),
             corners: elevationCorners(topology, boundedElevation),
             gradient: {
                 x: clamp(topology.gradient?.x, -1, 1, 0),
                 y: clamp(topology.gradient?.y, -1, 1, 0),
                 magnitude: clamp(topology.gradient?.magnitude, 0, 2, 0),
                 aspect: direction(topology.gradient?.aspect)
+            },
+            curvature: {
+                x: clamp(topology.curvature?.x, -2, 2, 0),
+                y: clamp(topology.curvature?.y, -2, 2, 0),
+                cross: clamp(topology.curvature?.cross, -2, 2, 0),
+                laplacian: clamp(topology.curvature?.laplacian, -4, 4, 0)
             },
             terraceEdges: elevationEdgeValues(topology.terraceEdges),
             wallEdges: directions(topology.wallEdges),

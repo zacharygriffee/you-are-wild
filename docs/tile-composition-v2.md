@@ -211,10 +211,11 @@ mixed-source junctions, biome identity, record sub-order, route/feature
 clearance, bridge approaches, V1 fallback, non-mutation, and shared
 interior/overworld projection.
 
-`npm run test:terrain-workbench` checks the complete 699,840-case index space,
-input normalization, orientation rotation, distinct boundary masks, five
-deterministic relief fixtures, and seven pinned reported cases for plains,
-swamp, beach, forest, jungle, roads, and bridges. The
+`npm run test:terrain-workbench` checks the complete 1,399,680-case index space,
+input normalization, orientation rotation, distinct boundary masks, ten
+deterministic relief fixtures, and twelve pinned reported or landform cases for
+plains, swamp, beach, forest, jungle, roads, bridges, drops, ridges, saddles,
+valleys, and peaks. The
 Alpha browser matrix renders representative desktop and phone cases and checks
 that workbench controls, URL state, overlays, and Review Map projection remain
 usable.

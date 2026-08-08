@@ -112,6 +112,7 @@ async function exerciseNavigation(page, viewport, origin) {
 
   const initial = await page.evaluate(selector => {
     const grid = document.querySelector(selector);
+    window.__yawTerrainCanvasBeforeMovement = grid.querySelector('canvas.yaw-terrain-world-canvas');
     return {
       location: { ...App.location },
       explored: App.exploredTiles.size,
@@ -166,6 +167,10 @@ async function exerciseNavigation(page, viewport, origin) {
     'Intermediate zoom must suppress fixed 3x3 controls whose hit regions no longer align with Canvas tiles');
   await page.locator(`${gridSelector} [data-terrain-view="local"]`).click();
   await page.waitForFunction(selector => document.querySelector(selector)?.getAttribute('data-terrain-camera-mode') === 'local', gridSelector);
+  await page.evaluate(selector => {
+    window.__yawTerrainCanvasBeforeMovement = document.querySelector(selector)
+      ?.querySelector('canvas.yaw-terrain-world-canvas') || null;
+  }, gridSelector);
 
   const movementStarted = performance.now();
   await page.locator(eastSelector).click();
@@ -174,6 +179,8 @@ async function exerciseNavigation(page, viewport, origin) {
   const moved = await page.evaluate(({ gridSelector, centerSelector }) => ({
     location: { ...App.location },
     centerLabel: document.querySelector(centerSelector)?.getAttribute('aria-label') || '',
+    sameCanvas: window.__yawTerrainCanvasBeforeMovement
+      === document.querySelector(gridSelector)?.querySelector('canvas.yaw-terrain-world-canvas'),
     canvases: document.querySelector(gridSelector)?.querySelectorAll('canvas.yaw-terrain-world-canvas').length || 0,
     controls: document.querySelector(gridSelector)?.querySelectorAll('.yaw-terrain-canvas-controls').length || 0,
     mode: document.querySelector(gridSelector)?.getAttribute('data-terrain-camera-mode'),
@@ -183,16 +190,53 @@ async function exerciseNavigation(page, viewport, origin) {
   assert.deepStrictEqual(moved.location, { x: 1, y: 0 }, 'A local Canvas click must dispatch one authoritative move');
   assert.match(moved.centerLabel, /\(1, 0\)/, 'The local semantic center must follow the moved player');
   assert.strictEqual(moved.moveNarration, 1, 'A Canvas click must produce exactly one movement narration');
-  assert.strictEqual(moved.canvases, 1, 'Movement remount must not duplicate the Canvas');
-  assert.strictEqual(moved.controls, 1, 'Movement remount must not duplicate camera controls');
+  assert.strictEqual(moved.sameCanvas, true, 'Movement must preserve the mounted Canvas surface and its raster cache');
+  assert.strictEqual(moved.canvases, 1, 'Movement must not duplicate the Canvas');
+  assert.strictEqual(moved.controls, 1, 'Movement must not duplicate camera controls');
   assert.strictEqual(moved.mode, 'local', 'Movement from the 3x3 view must keep the camera in the 3x3 view');
   assert.ok(moved.diagnostics?.renderStats?.dynamicPresenceCount >= 1,
     'Movement must repaint live party presence without baking it into a terrain chunk');
-  assert.ok((moved.diagnostics?.renderStats?.cacheMisses ?? Infinity) <= 4,
-    'One mobile/local move must rebuild only the bounded nearby chunk set');
+  assert.ok((moved.diagnostics?.renderStats?.cacheHits ?? 0) >= 1,
+    'Warm local movement must reuse at least one cached terrain chunk');
+  assert.strictEqual(moved.diagnostics?.renderStats?.cacheMisses, 0,
+    'Warm in-chunk movement must not rebuild unchanged terrain chunks');
   assert.ok(movementElapsed < 1000,
     `One local Canvas move must settle within the broad mobile latency gate, received ${Math.round(movementElapsed)}ms`
     + ` (${JSON.stringify(moved.diagnostics?.renderStats || {})})`);
+
+  const visualMutation = await page.evaluate(async selector => {
+    const grid = document.querySelector(selector);
+    const canvas = grid?.querySelector('canvas.yaw-terrain-world-canvas') || null;
+    const tile = App.getTile(App.location.x, App.location.y);
+    const marker = { id: 'terrain-canvas-cache-test-item', name: 'Cache test marker', quantity: 1 };
+    tile.items = Array.isArray(tile.items) ? tile.items : [];
+    tile.items.push(marker);
+    App.markCurrentWorldTileDirty('terrain-canvas-cache-test');
+    App.renderMap();
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const diagnostics = YAW_TERRAIN_CANVAS_ALPHA.diagnostics()[0] || null;
+    const result = {
+      sameCanvas: canvas === grid?.querySelector('canvas.yaw-terrain-world-canvas'),
+      canvases: grid?.querySelectorAll('canvas.yaw-terrain-world-canvas').length || 0,
+      controls: grid?.querySelectorAll('.yaw-terrain-canvas-controls').length || 0,
+      diagnostics
+    };
+    tile.items = tile.items.filter(item => item !== marker);
+    App.markCurrentWorldTileDirty('terrain-canvas-cache-test-cleanup');
+    App.renderMap();
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return result;
+  }, gridSelector);
+  assert.strictEqual(visualMutation.sameCanvas, true,
+    'A legitimate tile visual mutation must preserve the mounted Canvas surface');
+  assert.strictEqual(visualMutation.canvases, 1,
+    'A legitimate tile visual mutation must not duplicate the Canvas');
+  assert.strictEqual(visualMutation.controls, 1,
+    'A legitimate tile visual mutation must not duplicate camera controls');
+  assert.ok((visualMutation.diagnostics?.renderStats?.cacheMisses ?? 0) >= 1,
+    'A legitimate tile visual mutation must rebuild its affected terrain chunk');
+  assert.ok((visualMutation.diagnostics?.renderStats?.cacheHits ?? 0) >= 1,
+    'A legitimate tile visual mutation must reuse unaffected cached terrain chunks');
 
   await page.locator(northwestSelector).click({ force: true });
   const blocked = await page.evaluate(() => ({

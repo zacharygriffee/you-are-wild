@@ -200,8 +200,7 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
         return [
             worldIdentity(app),
             app.worldMap instanceof Map ? app.worldMap.size : Object.keys(app.worldMap || {}).length,
-            app.exploredTiles instanceof Set ? app.exploredTiles.size : 0,
-            app.tileDeltas instanceof Map ? app.tileDeltas.size : 0
+            app.exploredTiles instanceof Set ? app.exploredTiles.size : 0
         ].join(':');
     }
 

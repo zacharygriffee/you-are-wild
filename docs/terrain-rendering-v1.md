@@ -70,6 +70,10 @@ future structure and POI callers, but those UI paths are not claimed here.
 - World identity changes clear the cache. Bounded tile changes invalidate only
   intersecting chunks and their apron dependents; camera movement alone does
   not change the terrain revision.
+- Sparse persistence bookkeeping is not itself a terrain revision. Merely
+  materializing or marking a tile delta during traversal must preserve cached
+  rasters; changes to known geography or the current tile's visible contents
+  still invalidate the affected chunks.
 - Fixed chunks are the render, cache, invalidation, and visual-test unit. They
   are not new save entities.
 
@@ -147,11 +151,13 @@ a lower decorative-cover density without removing ground, routes, structures,
 POIs, evidence, or actor semantics. Camera frames report cache hits, misses,
 dynamic-presence count, and render time for acceptance tests.
 
-The browser gate requires a cold local move in the deterministic phone fixture
-to settle in under one second, permits at most four nearby chunk misses, and
-keeps forty cached Survey frames within the broader stress budget. Hosted and
-offline mobile builds run the same checks. This is a regression ceiling, not a
-claim that every physical phone will have identical timing.
+The browser gate requires the mounted Canvas and its controls to survive local
+movement, a warm in-chunk move to settle in under one second with cache hits and
+no unchanged-terrain misses, and a legitimate tile-visual mutation to rebuild
+its affected chunk while reusing unaffected chunks. It also keeps forty cached
+Survey frames within the broader stress budget. Hosted and offline mobile
+builds run the same checks. This is a regression ceiling, not a claim that every
+physical phone will have identical timing.
 
 ## First implementation boundary
 

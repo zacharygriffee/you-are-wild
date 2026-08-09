@@ -33,6 +33,13 @@ visible tile bounds, visible chunk enumeration, anchored pinch zoom, panning,
 and local/survey presets. Renderer adapters consume the resulting camera state;
 they do not own navigation or reveal undiscovered simulation facts.
 
+The three-by-three neighborhood is the accepted close-play presentation for
+this version, not a renderer limit. Regional and Survey cameras already draw
+more terrain through the same scene, chunk, and renderer contracts. Choosing a
+larger default tactical neighborhood, conditionally expanding the close view,
+or changing how much discovered terrain remains visible is separate product
+and interaction work; it does not require another composition backend.
+
 The Canvas surface rasterizes apron-expanded chunks into private buffers, crops
 only each chunk's canonical interior, and places those interiors on one display
 canvas through the camera transform. Local and survey views therefore share
@@ -132,6 +139,11 @@ structures, POIs, evidence, and presence retain their semantic layer order.
 Open and wooded biomes keep bounded hillshade policies so elevation remains
 readable without burying identity art. Cached chunks sample one pixel into
 their identical aprons so fractional zoom cannot expose transparent borders.
+The accepted Canvas2D baseline improves cliff direction and continuity but
+does not claim volumetric mountain depth: at a fixed north-facing camera,
+plateaus and scarps can still read flatter than a rotatable 2.5D or 3D scene.
+That aesthetic ceiling is explicit future renderer or art-pack work, not a
+reason to move elevation authority out of Terrain Scene or block this release.
 
 Soft non-water biomes are not painted as tile-edge strips. A deterministic
 multi-material ownership raster samples nearby authored tile centers in one
@@ -164,6 +176,46 @@ chunks skip redundant masks and hillshade, and survey/mobile raster scale uses
 a lower decorative-cover density without removing ground, routes, structures,
 POIs, evidence, or actor semantics. Camera frames report cache hits, misses,
 dynamic-presence count, lighting phase, and render time for acceptance tests.
+
+The first-party surface selects raster policy from semantic camera mode rather
+than viewport or map-panel width. The maintained profiles are:
+
+- **Performance:** Local 96 px at full density, Regional 64 px at 0.72 density,
+  and Survey 32 px at 0.26 density.
+- **Balanced (default):** Local 112 px at full density, Regional 64 px at 0.82
+  density, and Survey 40 px at 0.42 density.
+- **High:** Local 128 px at full density, Regional 64 px at 0.92 density, and
+  Survey 48 px at 0.58 density.
+
+Each mode has a separate bounded cache. Visible chunks form an irreducible
+working set and are never evicted during their frame; inactive chunks are
+trimmed to the profile's Local, Regional, or Survey limit. Quality changes
+clear old tiers transactionally. Ground, routes, structures, POIs, evidence,
+actor presence, simulation authority, and source atlas resolution never vary
+with these profiles. Only raster resolution and optional decorative-cover
+density vary.
+
+The 2026-08-08 quality-selection pass compared all three profiles on a physical
+Galaxy S21 at a 360 by 669 CSS-pixel viewport and DPR 3. The maintained evidence
+harness covered all nine biomes, day and night, and Local, 12-tile Regional, and
+40-tile Survey cameras: 162 successful render cases. Balanced cold-render
+medians were 22.8 ms Local, 29.9 ms Regional, and 2.8 ms Survey, with respective
+maxima of 45.5, 56.2, and 4.7 ms. Six alternating real Local moves per profile
+reused four cached chunks with zero misses; end-to-end median moves were 61.4 ms
+Performance, 56.2 ms Balanced, and 54.3 ms High.
+
+Maximum three-tier raster cache estimates were 40.1 MB for Performance, 53.1 MB
+for Balanced, and 68.4 MB for High. After two exhaustive passes plus warm-move
+probes, process-wide Chrome memory was about 251 MiB PSS and 271 MiB RSS, versus
+about 210 MiB PSS and 232 MiB RSS before the pass. Android thermal status stayed
+at 0; the final AP, battery, and skin readings were 33.0, 31.7, and 32.9 C.
+Balanced is the selected default because it is visually close to High on the
+physical phone while using about 15 MB less three-tier cache, and its 112 px
+Local raster closely matches the canonical 106.7 px desktop 3x3 display scale.
+Human visual approval was completed on 2026-08-09 after ordinary desktop play
+and physical S21 field traversal across wooded, beach, and water boundaries.
+Performance remains the lower-memory option and High remains an explicit
+comparison option.
 
 The browser gate requires the mounted Canvas and its controls to survive local
 movement, a warm in-chunk move to settle in under one second with cache hits and

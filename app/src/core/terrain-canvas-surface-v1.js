@@ -7,6 +7,43 @@
 
 const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
     const VERSION = 1;
+    const DEFAULT_QUALITY = 'balanced';
+    const QUALITY_PROFILES = Object.freeze({
+        performance: Object.freeze({
+            local: Object.freeze({ tilePixels: 96, decorativeDensity: 1, maxCacheEntries: 8 }),
+            regional: Object.freeze({ tilePixels: 64, decorativeDensity: 0.72, maxCacheEntries: 16 }),
+            survey: Object.freeze({ tilePixels: 32, decorativeDensity: 0.26, maxCacheEntries: 24 })
+        }),
+        balanced: Object.freeze({
+            local: Object.freeze({ tilePixels: 112, decorativeDensity: 1, maxCacheEntries: 6 }),
+            regional: Object.freeze({ tilePixels: 64, decorativeDensity: 0.82, maxCacheEntries: 16 }),
+            survey: Object.freeze({ tilePixels: 40, decorativeDensity: 0.42, maxCacheEntries: 24 })
+        }),
+        high: Object.freeze({
+            local: Object.freeze({ tilePixels: 128, decorativeDensity: 1, maxCacheEntries: 4 }),
+            regional: Object.freeze({ tilePixels: 64, decorativeDensity: 0.92, maxCacheEntries: 16 }),
+            survey: Object.freeze({ tilePixels: 48, decorativeDensity: 0.58, maxCacheEntries: 24 })
+        })
+    });
+
+    function normalizeQuality(value) {
+        const quality = String(value || DEFAULT_QUALITY).toLowerCase();
+        return Object.prototype.hasOwnProperty.call(QUALITY_PROFILES, quality) ? quality : DEFAULT_QUALITY;
+    }
+
+    function qualityPolicy(quality, mode) {
+        const normalizedQuality = normalizeQuality(quality);
+        const normalizedMode = ['local', 'regional', 'survey'].includes(mode) ? mode : 'regional';
+        const profile = QUALITY_PROFILES[normalizedQuality][normalizedMode];
+        return {
+            id: `${normalizedQuality}:${normalizedMode}`,
+            quality: normalizedQuality,
+            mode: normalizedMode,
+            tilePixels: profile.tilePixels,
+            decorativeDensity: profile.decorativeDensity,
+            maxCacheEntries: profile.maxCacheEntries
+        };
+    }
 
     function create(target, options = {}) {
         if (!target || typeof target.getContext !== 'function') throw new TypeError('Terrain canvas surface requires a canvas');
@@ -15,13 +52,19 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
         if (!context) throw new TypeError('Terrain canvas surface requires CanvasRenderingContext2D');
         const chunkSize = Math.max(1, Math.min(128, Math.trunc(Number(options.chunkSize) || YAW_TERRAIN_SCENE_V1.DEFAULT_CHUNK_SIZE)));
         const apron = Math.max(0, Math.min(8, Math.trunc(Number(options.apron) || YAW_TERRAIN_SCENE_V1.DEFAULT_APRON)));
-        const cacheTilePixels = Math.max(16, Math.min(256, Number(options.cacheTilePixels) || 64));
-        const maxCacheEntries = Math.max(8, Math.min(512, Math.trunc(Number(options.maxCacheEntries) || 96)));
+        const fixedCacheTilePixels = options.cacheTilePixels == null
+            ? null
+            : Math.max(16, Math.min(256, Number(options.cacheTilePixels) || 64));
+        const fixedMaxCacheEntries = Math.max(1, Math.min(512, Math.trunc(Number(options.maxCacheEntries) || 96)));
+        const fixedDecorativeDensity = options.decorativeDensity == null
+            ? null
+            : Math.max(0, Math.min(1, Number(options.decorativeDensity) || 0));
         const createCanvas = typeof options.createCanvas === 'function'
             ? options.createCanvas
             : (() => document.createElement('canvas'));
-        const chunkCache = new Map();
+        const chunkCaches = new Map();
         let destroyed = false;
+        let quality = normalizeQuality(options.quality);
         let worldRevision = String(options.worldRevision || 'unversioned');
         let displayWidth = Math.max(1, Number(options.width) || target.clientWidth || 320);
         let displayHeight = Math.max(1, Number(options.height) || target.clientHeight || 320);
@@ -53,11 +96,30 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
             return { width, height, pixelRatio };
         }
 
-        function chunkRaster(address, counters) {
-            const key = `${address.x},${address.y}:${chunkSize}:${apron}:${cacheTilePixels}`;
-            if (chunkCache.has(key)) {
+        function rasterPolicy() {
+            if (fixedCacheTilePixels !== null) {
+                return {
+                    id: `fixed:${fixedCacheTilePixels}:${fixedDecorativeDensity ?? 'auto'}`,
+                    quality: 'fixed',
+                    mode: YAW_TERRAIN_VIEWPORT_V1.mode(camera),
+                    tilePixels: fixedCacheTilePixels,
+                    decorativeDensity: fixedDecorativeDensity,
+                    maxCacheEntries: fixedMaxCacheEntries
+                };
+            }
+            return qualityPolicy(quality, YAW_TERRAIN_VIEWPORT_V1.mode(camera));
+        }
+
+        function cacheFor(policy) {
+            if (!chunkCaches.has(policy.id)) chunkCaches.set(policy.id, new Map());
+            return chunkCaches.get(policy.id);
+        }
+
+        function chunkRaster(address, counters, policy, cache) {
+            const key = `${address.x},${address.y}:${chunkSize}:${apron}:${policy.tilePixels}:${policy.decorativeDensity ?? 'auto'}`;
+            if (cache.has(key)) {
                 counters.hits += 1;
-                return chunkCache.get(key);
+                return cache.get(key);
             }
             const scene = YAW_TERRAIN_SCENE_V1.compileChunk({
                 chunkX: address.x,
@@ -69,12 +131,13 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
             });
             const canvas = createCanvas();
             const renderer = YAW_TERRAIN_RENDERERS.create(YAW_TERRAIN_CANVAS_V1.ID, canvas, {
-                tilePixels: cacheTilePixels,
-                pixelRatio: 1
+                tilePixels: policy.tilePixels,
+                pixelRatio: 1,
+                decorativeDensity: policy.decorativeDensity
             });
             const frame = renderer.render(scene);
-            const raster = { key, canvas, scene, frame, renderer };
-            chunkCache.set(key, raster);
+            const raster = { key, canvas, scene, frame, renderer, byteEstimate: canvas.width * canvas.height * 4 };
+            cache.set(key, raster);
             counters.misses += 1;
             return raster;
         }
@@ -139,14 +202,26 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
             return phase;
         }
 
-        function pruneCache(keepKeys) {
-            if (chunkCache.size <= maxCacheEntries) return;
-            for (const [key, raster] of chunkCache) {
-                if (chunkCache.size <= maxCacheEntries) break;
+        function pruneCache(cache, keepKeys, maxCacheEntries) {
+            if (cache.size <= maxCacheEntries) return;
+            for (const [key, raster] of cache) {
+                if (cache.size <= maxCacheEntries) break;
                 if (keepKeys.has(key)) continue;
                 raster.renderer.destroy();
-                chunkCache.delete(key);
+                cache.delete(key);
             }
+        }
+
+        function cacheDiagnostics() {
+            const entriesByTier = {};
+            let entries = 0;
+            let byteEstimate = 0;
+            for (const [id, cache] of chunkCaches) {
+                entriesByTier[id] = cache.size;
+                entries += cache.size;
+                for (const raster of cache.values()) byteEstimate += Number(raster.byteEstimate) || 0;
+            }
+            return { entries, entriesByTier, byteEstimate };
         }
 
         function render() {
@@ -154,13 +229,15 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
             const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
                 ? performance.now() : Date.now();
             const display = prepareDisplay();
+            const policy = rasterPolicy();
+            const cache = cacheFor(policy);
             const addresses = YAW_TERRAIN_VIEWPORT_V1.visibleChunks(camera, { chunkSize, overscanTiles: apron });
             const scale = YAW_TERRAIN_VIEWPORT_V1.tilePixels(camera);
             const renderedChunks = [];
             const counters = { hits: 0, misses: 0 };
             context.imageSmoothingEnabled = true;
             for (const address of addresses) {
-                const raster = chunkRaster(address, counters);
+                const raster = chunkRaster(address, counters, policy, cache);
                 const interior = raster.scene.interiorBounds;
                 const topLeft = YAW_TERRAIN_VIEWPORT_V1.worldToScreen(camera, interior.minX - 0.5, interior.minY - 0.5);
                 const width = interior.width * scale;
@@ -170,7 +247,7 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
                 // chunks overlap with identical world content instead of exposing
                 // transparent resampling fringes at fractional zoom.
                 const sourcePad = Math.min(1, source.x, source.y);
-                const destinationPad = sourcePad * scale / cacheTilePixels;
+                const destinationPad = sourcePad * scale / policy.tilePixels;
                 context.drawImage(
                     raster.canvas,
                     source.x - sourcePad, source.y - sourcePad,
@@ -182,7 +259,8 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
             }
             const phase = drawLighting(display);
             const dynamicPresenceCount = drawDynamicPresence(scale, display);
-            pruneCache(new Set(renderedChunks.map(chunk => chunk.key)));
+            pruneCache(cache, new Set(renderedChunks.map(chunk => chunk.key)), policy.maxCacheEntries);
+            const cacheState = cacheDiagnostics();
             const endedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
                 ? performance.now() : Date.now();
             lastRenderStats = {
@@ -190,7 +268,12 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
                 cacheHits: counters.hits,
                 cacheMisses: counters.misses,
                 dynamicPresenceCount,
-                lightingPhase: phase
+                lightingPhase: phase,
+                quality: policy.quality,
+                rasterTier: policy.mode,
+                cacheTilePixels: policy.tilePixels,
+                decorativeDensity: policy.decorativeDensity,
+                cacheByteEstimate: cacheState.byteEstimate
             };
             return {
                 version: VERSION,
@@ -199,7 +282,8 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
                 display,
                 renderedChunks,
                 visibleBounds: YAW_TERRAIN_VIEWPORT_V1.visibleBounds(camera),
-                cacheEntries: chunkCache.size,
+                cacheEntries: cacheState.entries,
+                cacheEntriesByTier: cacheState.entriesByTier,
                 renderStats: { ...lastRenderStats }
             };
         }
@@ -254,10 +338,21 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
             return { x: Math.floor(world.x + 0.5), y: Math.floor(world.y + 0.5) };
         }
 
+        function setQuality(next) {
+            const normalized = normalizeQuality(next);
+            if (normalized === quality) return quality;
+            quality = normalized;
+            invalidate(worldRevision);
+            return quality;
+        }
+
         function invalidate(revision = worldRevision) {
             worldRevision = String(revision || 'unversioned');
-            for (const raster of chunkCache.values()) raster.renderer.destroy();
-            chunkCache.clear();
+            for (const cache of chunkCaches.values()) {
+                for (const raster of cache.values()) raster.renderer.destroy();
+                cache.clear();
+            }
+            chunkCaches.clear();
         }
 
         function invalidateTiles(tileKeys = [], revision = worldRevision, options = {}) {
@@ -268,13 +363,15 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
                 return { x, y };
             }).filter(value => Number.isFinite(value.x) && Number.isFinite(value.y));
             let removed = 0;
-            for (const [key, raster] of [...chunkCache]) {
-                const bounds = options.includeApron === false ? raster.scene.interiorBounds : raster.scene.renderBounds;
-                if (!coordinates.some(point => point.x >= bounds.minX && point.x <= bounds.maxX
-                    && point.y >= bounds.minY && point.y <= bounds.maxY)) continue;
-                raster.renderer.destroy();
-                chunkCache.delete(key);
-                removed += 1;
+            for (const cache of chunkCaches.values()) {
+                for (const [key, raster] of [...cache]) {
+                    const bounds = options.includeApron === false ? raster.scene.interiorBounds : raster.scene.renderBounds;
+                    if (!coordinates.some(point => point.x >= bounds.minX && point.x <= bounds.maxX
+                        && point.y >= bounds.minY && point.y <= bounds.maxY)) continue;
+                    raster.renderer.destroy();
+                    cache.delete(key);
+                    removed += 1;
+                }
             }
             return removed;
         }
@@ -299,6 +396,8 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
             panPixels,
             worldAt,
             tileAt,
+            quality: () => quality,
+            setQuality,
             invalidate,
             invalidateTiles,
             stats: () => lastRenderStats ? { ...lastRenderStats } : null,
@@ -306,7 +405,7 @@ const YAW_TERRAIN_CANVAS_SURFACE_V1 = (() => {
         };
     }
 
-    return { VERSION, create };
+    return { VERSION, DEFAULT_QUALITY, QUALITY_PROFILES, normalizeQuality, qualityPolicy, create };
 })();
 
 if (typeof window !== 'undefined') window.YAW_TERRAIN_CANVAS_SURFACE_V1 = YAW_TERRAIN_CANVAS_SURFACE_V1;

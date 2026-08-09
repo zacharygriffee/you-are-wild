@@ -33,6 +33,32 @@ function check(condition, message) {
   passed += 1;
 }
 
+check(canvasSurface.DEFAULT_QUALITY === 'balanced', 'Balanced must remain the core terrain quality default');
+check(canvasSurface.normalizeQuality('PERFORMANCE') === 'performance'
+  && canvasSurface.normalizeQuality('unknown') === 'balanced',
+  'Terrain quality names must normalize deterministically with a Balanced fallback');
+check(canvasSurface.qualityPolicy('performance', 'local').tilePixels === 96
+  && canvasSurface.qualityPolicy('balanced', 'local').tilePixels === 112
+  && canvasSurface.qualityPolicy('high', 'local').tilePixels === 128,
+  'Local quality profiles must expose the bounded 96, 112, and 128 px raster candidates');
+check(canvasSurface.qualityPolicy('balanced', 'regional').tilePixels === 64
+  && canvasSurface.qualityPolicy('performance', 'survey').tilePixels === 32
+  && canvasSurface.qualityPolicy('balanced', 'survey').tilePixels === 40
+  && canvasSurface.qualityPolicy('high', 'survey').tilePixels === 48,
+  'Regional and Survey profiles must retain their explicit bounded raster tiers');
+check(canvasSurface.qualityPolicy('performance', 'survey').decorativeDensity
+  < canvasSurface.qualityPolicy('balanced', 'survey').decorativeDensity
+  && canvasSurface.qualityPolicy('balanced', 'survey').decorativeDensity
+  < canvasSurface.qualityPolicy('high', 'survey').decorativeDensity,
+  'Survey decorative density must increase monotonically across quality profiles');
+check(canvas.decorativeDensityFor(32) === 0.26
+  && canvas.decorativeDensityFor(48) === 0.58
+  && canvas.decorativeDensityFor(64) === 1,
+  'Renderer calls without an explicit profile must preserve the legacy tile-scale density fallback');
+check(canvas.decorativeDensityFor(128, 0) === 0
+  && canvas.decorativeDensityFor(32, 1) === 1,
+  'Explicit decorative density must override tile-scale inference across the full zero-to-one range');
+
 check(scene.chunkAddress(0, 0, 16).key === '0,0', 'Origin must use chunk 0,0');
 check(scene.chunkAddress(15, 15, 16).key === '0,0', 'Positive chunk upper edge must remain in chunk 0,0');
 check(scene.chunkAddress(16, 16, 16).key === '1,1', 'Positive chunk rollover must be exact');
@@ -501,5 +527,66 @@ for (let index = 0; index < 20; index += 1) {
 }
 check(cappedSurface.render().cacheEntries <= 12, 'Long-distance camera panning must evict off-screen chunk rasters from the bounded cache');
 cappedSurface.destroy();
+
+const profiledCanvas = fakeCanvas();
+const profiledSurface = canvasSurface.create(profiledCanvas, {
+  width: 320,
+  height: 320,
+  centerX: 0,
+  centerY: 0,
+  chunkSize: 8,
+  apron: 2,
+  resolveTile,
+  createCanvas: fakeCanvas
+});
+check(profiledSurface.quality() === 'balanced', 'A profiled surface must start on the Balanced quality baseline');
+profiledSurface.setLocal({ x: 0, y: 0 });
+const balancedLocal = profiledSurface.render();
+check(balancedLocal.renderStats.quality === 'balanced'
+  && balancedLocal.renderStats.rasterTier === 'local'
+  && balancedLocal.renderStats.cacheTilePixels === 112
+  && balancedLocal.renderStats.decorativeDensity === 1,
+  'Balanced Local rendering must use full density at the 112 px raster tier');
+profiledSurface.setSurvey({ x: 0, y: 0 }, 17);
+const balancedRegional = profiledSurface.render();
+check(balancedRegional.mode === 'regional'
+  && balancedRegional.renderStats.cacheTilePixels === 64
+  && balancedRegional.cacheEntriesByTier['balanced:local'] === balancedLocal.renderedChunks.length,
+  'Regional rendering must use its own 64 px cache without evicting the Local tier');
+profiledSurface.setLocal({ x: 0, y: 0 });
+const reusedBalancedLocal = profiledSurface.render();
+check(reusedBalancedLocal.renderStats.cacheMisses === 0
+  && reusedBalancedLocal.renderStats.cacheHits === reusedBalancedLocal.renderedChunks.length,
+  'Returning to Local view must reuse the separate warm Local cache');
+profiledSurface.setSurvey({ x: 0, y: 0 }, 40);
+const balancedSurvey = profiledSurface.render();
+check(balancedSurvey.mode === 'survey'
+  && balancedSurvey.renderStats.cacheTilePixels === 40
+  && balancedSurvey.renderStats.decorativeDensity === 0.42,
+  'Balanced Survey rendering must use its separate 40 px reduced-density raster tier');
+const activeSurveyEntries = balancedSurvey.cacheEntriesByTier['balanced:survey'];
+check(activeSurveyEntries <= Math.max(24, balancedSurvey.renderedChunks.length),
+  'Survey caching must stay within its limit except for the irreducible visible working set');
+check(balancedSurvey.renderStats.cacheByteEstimate > 0,
+  'Profiled rendering must expose a non-zero deterministic cache byte estimate');
+profiledSurface.setQuality('high');
+profiledSurface.setLocal({ x: 0, y: 0 });
+const highLocal = profiledSurface.render();
+check(highLocal.renderStats.quality === 'high'
+  && highLocal.renderStats.cacheTilePixels === 128
+  && Object.keys(highLocal.cacheEntriesByTier).every(key => key.startsWith('high:')),
+  'Changing quality must invalidate old tiers and render High Local at 128 px');
+profiledSurface.setQuality('performance');
+profiledSurface.setLocal({ x: 0, y: 0 });
+const performanceLocal = profiledSurface.render();
+check(performanceLocal.renderStats.cacheTilePixels === 96
+  && performanceLocal.renderStats.decorativeDensity === 1,
+  'Performance Local must preserve full feature density while bounding source rasters at 96 px');
+profiledSurface.resize(240, 480);
+profiledSurface.setLocal({ x: 0, y: 0 });
+const portraitLocal = profiledSurface.render();
+check(portraitLocal.mode === 'local' && portraitLocal.renderStats.cacheTilePixels === 96,
+  'Responsive portrait resize must select quality by semantic camera mode, not narrow surface width');
+profiledSurface.destroy();
 
 console.log(`Terrain renderer V1 checks passed (${passed} checks).`);

@@ -213,6 +213,7 @@ async function inspectScenario(page) {
         panelVisible: Boolean(panel && !panel.hidden && panel.getBoundingClientRect().height > 0),
         knownReviewTiles: document.querySelectorAll('#large-map .large-map-tile.known[data-tile-composition-version="2"]').length,
         phases: YAW_ALPHA_LAB.TERRAIN_WORKBENCH_PHASES.slice(),
+        qualities: YAW_ALPHA_LAB.TERRAIN_WORKBENCH_QUALITIES.slice(),
         geometries: YAW_ALPHA_LAB.TERRAIN_WORKBENCH_GEOMETRIES.slice(),
         reliefs: YAW_ALPHA_LAB.TERRAIN_WORKBENCH_RELIEFS.slice(),
         overlays: YAW_ALPHA_LAB.TERRAIN_WORKBENCH_OVERLAYS.slice(),
@@ -322,10 +323,11 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
       assert.equal(actual.terrainWorkbench.source, 'jungle', 'terrain workbench default source');
       assert.equal(actual.terrainWorkbench.destination, 'plains', 'terrain workbench default destination');
       assert.equal(actual.terrainWorkbench.caseCount, 1399680, 'terrain workbench should enumerate the complete bounded case matrix');
-      assert.equal(actual.terrainWorkbench.controls, 8, 'terrain workbench should expose every case dimension');
+      assert.equal(actual.terrainWorkbench.controls, 9, 'terrain workbench should expose every case dimension plus rendering quality');
       assert.equal(actual.terrainWorkbench.panelVisible, true, 'terrain workbench controls should open with the mission');
       assert.equal(actual.terrainWorkbench.knownReviewTiles, 49, `terrain workbench case should reach Review Map (got ${actual.terrainWorkbench.knownReviewTiles})`);
       assert.deepEqual(actual.terrainWorkbench.phases, ['day', 'night'], 'terrain workbench day/night controls');
+      assert.deepEqual(actual.terrainWorkbench.qualities, ['performance', 'balanced', 'high'], 'terrain workbench rendering quality candidates');
       assert.equal(actual.terrainWorkbench.geometries.length, 6, 'terrain workbench boundary geometries');
       assert.deepEqual(actual.terrainWorkbench.reliefs,
         ['level', 'slope', 'terrace', 'drop', 'ridge', 'saddle', 'valley', 'peak', 'cliff-corner', 'rugged'],
@@ -338,6 +340,7 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
         'the default terrace fixture should reach either the legacy contour layer or the Canvas terrain surface');
       assert.equal(actual.terrainWorkbench.bodyPhase, 'day', 'terrain workbench default lighting');
       const changed = await page.evaluate(async () => {
+        await new Promise(resolve => requestIdleCallback(resolve, { timeout: 2000 }));
         const startedAt = performance.now();
         App.setTerrainWorkbench('destination', 'water');
         App.setTerrainWorkbench('direction', 'west');
@@ -345,6 +348,7 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
         App.setTerrainWorkbench('relief', 'rugged');
         App.setTerrainWorkbench('overlay', 'all');
         App.setTerrainWorkbench('phase', 'night');
+        App.setTerrainWorkbench('quality', 'high');
         App.setTerrainWorkbench('seed', 3);
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const center = App.worldMap.get('0,0');
@@ -361,6 +365,9 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
           phaseAfterStep: document.body.dataset.dayPhase,
           canvasLightingBeforeStep,
           canvasLightingAfterStep: globalThis.YAW_TERRAIN_CANVAS_ALPHA?.diagnostics?.()[0]?.renderStats?.lightingPhase || null,
+          canvasQualityAfterStep: globalThis.YAW_TERRAIN_CANVAS_ALPHA?.diagnostics?.()[0]?.renderStats?.quality || null,
+          canvasTilePixelsAfterStep: globalThis.YAW_TERRAIN_CANVAS_ALPHA?.diagnostics?.()[0]?.renderStats?.cacheTilePixels || null,
+          workbenchQualityAfterStep: App.alphaTerrainWorkbench?.quality || null,
           structure: center.structure,
           poi: center.overlays?.poi?.category,
           evidence: center.items?.length,
@@ -375,6 +382,9 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
         assert.equal(changed.canvasLightingBeforeStep, 'night', 'workbench lighting changes should reach the active Canvas camera composition');
         assert.equal(changed.canvasLightingAfterStep, changed.phaseAfterStep,
           'matrix stepping should keep the active Canvas composition synchronized with the resulting phase');
+        assert.equal(changed.workbenchQualityAfterStep, 'high', 'matrix stepping should preserve the selected presentation quality');
+        assert.equal(changed.canvasQualityAfterStep, 'high', 'workbench quality changes should reach the active Canvas surface');
+        assert.equal(changed.canvasTilePixelsAfterStep, 128, 'High-quality Local workbench rendering should use its bounded 128 px raster tier');
       }
       assert.equal(changed.structure, 'camp', 'all-overlay case should include a structure');
       assert.equal(changed.poi, 'landmark', 'all-overlay case should include a POI');
@@ -441,7 +451,7 @@ async function checkPublicLab(browser, origin) {
     assert.equal(await page.locator('.alpha-mission-card').count(), Object.keys(EXPECTED).length, 'public lab should list every mission');
     assert.equal(await page.locator('#alpha-report-preview').count(), 0, 'public lab should not expose a report before a mission starts');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1), false, 'public lab mobile width should not overflow');
-    await page.locator('[data-alpha-scenario="interaction-single"]').click();
+    await page.evaluate(() => document.querySelector('[data-alpha-scenario="interaction-single"]')?.click());
     await page.waitForFunction(() => App.alphaSession?.scenarioId === 'interaction-single', null, { timeout: 60000 });
     await page.getByRole('button', { name: 'Report outcome' }).click();
     await page.waitForSelector('#screen-alpha.active #alpha-report-preview');

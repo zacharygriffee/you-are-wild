@@ -139,6 +139,12 @@ async function exerciseNavigation(page, viewport, origin) {
   assert.strictEqual(initial.inspectorHidden, true, 'The local movement view must not cover terrain with a duplicate map inspector');
   assert.ok(initial.diagnostics?.renderStats?.dynamicPresenceCount >= 1,
     'The Canvas display pass must retain live party presence outside cached terrain chunks');
+  assert.strictEqual(initial.diagnostics?.renderStats?.quality, 'balanced',
+    'Ordinary desktop and mobile Canvas surfaces must default to the Balanced quality profile');
+  assert.strictEqual(initial.diagnostics?.renderStats?.cacheTilePixels, 112,
+    'Local Canvas quality must follow semantic camera mode rather than the map panel width');
+  assert.strictEqual(initial.diagnostics?.renderStats?.decorativeDensity, 1,
+    'Local Balanced rendering must retain the full first-party decorative layer density');
   assert.ok(initial.tileLabelBackgrounds.every(background => background === 'none'),
     'Local semantic labels must not reintroduce a visible per-tile gradient grid over the Canvas');
 

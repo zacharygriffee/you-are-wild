@@ -78,10 +78,41 @@ overlay states, two lighting phases, and four enumerated art seeds: 1,399,680
 reproducible cases.
 The current case is encoded in `terrainSource`, `terrainDestination`,
 `terrainDirection`, `terrainGeometry`, `terrainRelief`, `terrainOverlay`, `terrainPhase`, and
-`terrainSeed` URL parameters so a visual defect can be shared directly.
+`terrainQuality`, and `terrainSeed` URL parameters so a visual defect can be
+shared directly. `terrainQuality` accepts `performance`, `balanced`, or `high`;
+it is a presentation-only comparison control and does not multiply the
+authoritative 1,399,680-case composition matrix.
 The floating controls become a bounded bottom sheet at phone widths and
 temporarily step behind Review Map while that full-surface inspector is open;
 closing Review Map restores the same URL-backed case without resetting it.
+
+### Terrain quality evidence matrix
+
+`npm run evidence:terrain-quality` drives the workbench through every maintained
+biome, day and night, Local/Regional/Survey, and Performance/Balanced/High: 162
+render cases in total. It writes a JSON diagnostics report and the 54 Balanced
+visual references to `/tmp/yaw-terrain-quality-evidence` by default. Override
+the target label, output folder, build URL, or a physical Chrome DevTools target
+with `YAW_EVIDENCE_TARGET`, `YAW_EVIDENCE_OUTPUT`, `YAW_EVIDENCE_URL`, and
+`YAW_EVIDENCE_CDP`.
+
+For a connected Android lab device, keep the game server reachable from the
+phone, forward Chrome DevTools, and run the same maintained harness:
+
+```sh
+adb forward tcp:9222 localabstract:chrome_devtools_remote
+YAW_EVIDENCE_TARGET=s21 \
+YAW_EVIDENCE_CDP=http://127.0.0.1:9222 \
+YAW_EVIDENCE_URL=http://DESKTOP_LAN_IP:3000/dist/you-are-wild \
+YAW_EVIDENCE_OUTPUT=/tmp/yaw-s21-terrain-matrix \
+npm run evidence:terrain-quality
+```
+
+The harness rejects blank surfaces and stale workbench chunks. It also performs
+six alternating real moves per quality and requires warm cache reuse with no
+unchanged-terrain misses. Its pixel and renderer diagnostics are reproducible
+machine evidence, while the Balanced captures still require human visual
+review; neither substitutes for the other.
 
 The maintained reported-case set pins seven URLs/states: plains relief, swamp
 relief, beach corner geometry, forest cover, jungle variation, road scale, and

@@ -20,6 +20,7 @@
     "test:tile-composition": "node test/tile-composition-v2-check.js",
     "test:terrain-workbench": "node test/terrain-workbench-check.js",
     "test:tile-composition-browser": "npm run build --silent && npm run build:hosted --silent && node test/tile-composition-browser-check.js",
+    "evidence:terrain-quality": "node test/terrain-quality-evidence-check.js",
     "lint": "node build.js --lint-only",
     "watch": "node build.js --watch",
     "dev": "node dev.js",

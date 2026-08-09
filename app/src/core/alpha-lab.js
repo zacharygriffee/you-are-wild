@@ -17,6 +17,7 @@ const YAW_ALPHA_LAB = {
     ]),
     TERRAIN_WORKBENCH_OVERLAYS: Object.freeze(['none', 'road', 'bridge', 'structure', 'poi', 'evidence', 'presence', 'selection', 'all']),
     TERRAIN_WORKBENCH_PHASES: Object.freeze(['day', 'night']),
+    TERRAIN_WORKBENCH_QUALITIES: Object.freeze(['performance', 'balanced', 'high']),
     TERRAIN_WORKBENCH_SEED_COUNT: 4,
     TERRAIN_WORKBENCH_REGRESSIONS: Object.freeze([
         Object.freeze({ id: 'plains-relief', source: 'plains', destination: 'plains', relief: 'rugged', geometry: 'straight', direction: 'north', overlay: 'none', phase: 'day', seed: 1 }),
@@ -686,6 +687,7 @@ const YAW_ALPHA_LAB = {
             relief: 'terrace',
             overlay: 'none',
             phase: 'day',
+            quality: 'balanced',
             seed: 0
         };
     },
@@ -701,6 +703,7 @@ const YAW_ALPHA_LAB = {
             relief: choose(input.relief, this.TERRAIN_WORKBENCH_RELIEFS, defaults.relief),
             overlay: choose(input.overlay, this.TERRAIN_WORKBENCH_OVERLAYS, defaults.overlay),
             phase: choose(input.phase, this.TERRAIN_WORKBENCH_PHASES, defaults.phase),
+            quality: choose(input.quality, this.TERRAIN_WORKBENCH_QUALITIES, defaults.quality),
             seed: Math.max(0, Math.min(999, Math.trunc(Number(input.seed) || 0)))
         };
     },
@@ -716,6 +719,7 @@ const YAW_ALPHA_LAB = {
             relief: query.get('terrainRelief'),
             overlay: query.get('terrainOverlay'),
             phase: query.get('terrainPhase'),
+            quality: query.get('terrainQuality'),
             seed: query.get('terrainSeed')
         });
     },
@@ -978,7 +982,7 @@ const YAW_ALPHA_LAB = {
         const state = this.normalizeTerrainWorkbench(app.alphaTerrainWorkbench);
         const index = this.terrainWorkbenchCaseIndex(state);
         const count = this.terrainWorkbenchCaseCount();
-        panel.innerHTML = `<div class="terrain-workbench-heading"><div><strong>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.title', 'Tile Composition Workbench'))}</strong><small>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.case', 'Case {current} of {count}', { current: index + 1, count: count.toLocaleString() }))}</small></div><button type="button" class="nav-btn" aria-label="${this.escape(app, this.label(app, 'alpha.terrainWorkbench.close', 'Close workbench'))}" onclick="App.toggleTerrainWorkbench(false)">×</button></div><div class="terrain-workbench-grid"><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.source', 'Source biome'))}${this.terrainWorkbenchSelect(app, 'source', this.TERRAIN_WORKBENCH_BIOMES, state.source)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.destination', 'Destination biome'))}${this.terrainWorkbenchSelect(app, 'destination', this.TERRAIN_WORKBENCH_BIOMES, state.destination)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.direction', 'Direction'))}${this.terrainWorkbenchSelect(app, 'direction', this.TERRAIN_WORKBENCH_DIRECTIONS, state.direction)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.geometry', 'Boundary geometry'))}${this.terrainWorkbenchSelect(app, 'geometry', this.TERRAIN_WORKBENCH_GEOMETRIES, state.geometry)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.relief', 'Relief'))}${this.terrainWorkbenchSelect(app, 'relief', this.TERRAIN_WORKBENCH_RELIEFS, state.relief)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.overlay', 'Overlay'))}${this.terrainWorkbenchSelect(app, 'overlay', this.TERRAIN_WORKBENCH_OVERLAYS, state.overlay)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.phase', 'Lighting'))}${this.terrainWorkbenchSelect(app, 'phase', this.TERRAIN_WORKBENCH_PHASES, state.phase)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.seed', 'Art seed'))}<input id="terrain-workbench-seed" data-terrain-workbench-control="seed" type="number" min="0" max="999" step="1" value="${state.seed}" onchange="App.setTerrainWorkbench('seed', this.value)"></label></div><div class="terrain-workbench-actions"><button type="button" class="nav-btn" onclick="App.stepTerrainWorkbench(-1)">← ${this.escape(app, this.label(app, 'alpha.terrainWorkbench.previous', 'Previous case'))}</button><button type="button" class="nav-btn primary" onclick="App.stepTerrainWorkbench(1)">${this.escape(app, this.label(app, 'alpha.terrainWorkbench.next', 'Next case'))} →</button></div><p class="terrain-workbench-summary">${this.escape(app, `${state.source} → ${state.destination} · ${state.geometry} ${state.direction} · ${state.relief} · ${state.overlay} · ${state.phase} · seed ${state.seed}`)}</p>`;
+        panel.innerHTML = `<div class="terrain-workbench-heading"><div><strong>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.title', 'Tile Composition Workbench'))}</strong><small>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.case', 'Case {current} of {count}', { current: index + 1, count: count.toLocaleString() }))}</small></div><button type="button" class="nav-btn" aria-label="${this.escape(app, this.label(app, 'alpha.terrainWorkbench.close', 'Close workbench'))}" onclick="App.toggleTerrainWorkbench(false)">×</button></div><div class="terrain-workbench-grid"><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.source', 'Source biome'))}${this.terrainWorkbenchSelect(app, 'source', this.TERRAIN_WORKBENCH_BIOMES, state.source)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.destination', 'Destination biome'))}${this.terrainWorkbenchSelect(app, 'destination', this.TERRAIN_WORKBENCH_BIOMES, state.destination)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.direction', 'Direction'))}${this.terrainWorkbenchSelect(app, 'direction', this.TERRAIN_WORKBENCH_DIRECTIONS, state.direction)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.geometry', 'Boundary geometry'))}${this.terrainWorkbenchSelect(app, 'geometry', this.TERRAIN_WORKBENCH_GEOMETRIES, state.geometry)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.relief', 'Relief'))}${this.terrainWorkbenchSelect(app, 'relief', this.TERRAIN_WORKBENCH_RELIEFS, state.relief)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.overlay', 'Overlay'))}${this.terrainWorkbenchSelect(app, 'overlay', this.TERRAIN_WORKBENCH_OVERLAYS, state.overlay)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.phase', 'Lighting'))}${this.terrainWorkbenchSelect(app, 'phase', this.TERRAIN_WORKBENCH_PHASES, state.phase)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.quality', 'Rendering quality'))}${this.terrainWorkbenchSelect(app, 'quality', this.TERRAIN_WORKBENCH_QUALITIES, state.quality)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.seed', 'Art seed'))}<input id="terrain-workbench-seed" data-terrain-workbench-control="seed" type="number" min="0" max="999" step="1" value="${state.seed}" onchange="App.setTerrainWorkbench('seed', this.value)"></label></div><div class="terrain-workbench-actions"><button type="button" class="nav-btn" onclick="App.stepTerrainWorkbench(-1)">← ${this.escape(app, this.label(app, 'alpha.terrainWorkbench.previous', 'Previous case'))}</button><button type="button" class="nav-btn primary" onclick="App.stepTerrainWorkbench(1)">${this.escape(app, this.label(app, 'alpha.terrainWorkbench.next', 'Next case'))} →</button></div><p class="terrain-workbench-summary">${this.escape(app, `${state.source} → ${state.destination} · ${state.geometry} ${state.direction} · ${state.relief} · ${state.overlay} · ${state.phase} · ${state.quality} · seed ${state.seed}`)}</p>`;
     },
 
     updateTerrainWorkbenchUrl(state) {
@@ -988,7 +992,7 @@ const YAW_ALPHA_LAB = {
             terrainSource: state.source, terrainDestination: state.destination,
             terrainDirection: state.direction, terrainGeometry: state.geometry,
             terrainRelief: state.relief,
-            terrainOverlay: state.overlay, terrainPhase: state.phase, terrainSeed: state.seed
+            terrainOverlay: state.overlay, terrainPhase: state.phase, terrainQuality: state.quality, terrainSeed: state.seed
         };
         Object.entries(values).forEach(([key, value]) => url.searchParams.set(key, String(value)));
         history.replaceState(null, '', url.toString());
@@ -1016,7 +1020,11 @@ const YAW_ALPHA_LAB = {
     },
 
     stepTerrainWorkbench(app, amount = 1) {
-        const state = this.terrainWorkbenchCaseAt(this.terrainWorkbenchCaseIndex(app.alphaTerrainWorkbench) + Math.trunc(Number(amount) || 0));
+        const quality = this.normalizeTerrainWorkbench(app.alphaTerrainWorkbench).quality;
+        const state = {
+            ...this.terrainWorkbenchCaseAt(this.terrainWorkbenchCaseIndex(app.alphaTerrainWorkbench) + Math.trunc(Number(amount) || 0)),
+            quality
+        };
         if (app.alphaSession?.scenarioId !== 'terrain-workbench') return false;
         app.alphaTerrainWorkbench = state;
         return this.setTerrainWorkbench(app, 'seed', state.seed);

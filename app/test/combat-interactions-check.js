@@ -586,7 +586,12 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert(stageState.stackEnemyMarkCount >= 1, 'Desktop combat enemy micro cards should expose compact combat marks');
   assert.strictEqual(stageState.interactiveCardRootCount, 0, 'Desktop combat micro card bodies should remain passive while mark buttons stay interactive');
   assert.strictEqual(stageState.centerIntentCount, 0, 'Desktop combat center should stay free of duplicated intent/action grids');
-  await page.locator('#enemies-content .compact-tactical-card').first().click();
+  const passiveEnemyCard = page.locator('#enemies-content .compact-tactical-card').first();
+  await passiveEnemyCard.waitFor({ state: 'visible' });
+  // This assertion intentionally probes a passive card body. Dispatching the
+  // DOM click avoids coupling the semantic check to Playwright's pointer
+  // stability heuristic while the responsive combat rails finish reflowing.
+  await passiveEnemyCard.evaluate(card => card.click());
   let state = await page.evaluate(() => ({
     enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
     combatTargetId: App.combatTargetId,

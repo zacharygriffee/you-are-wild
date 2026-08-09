@@ -1301,13 +1301,19 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         return true;
     }
 
-    function drawBiomeStrata(context, record, tilePixels) {
-        if (!asset('atlas.biome-strata-v2') && !asset('atlas.jungle-strata-v1')) return false;
-        const baseDensity = { plains: 0.34, grove: 0.78, forest: 0.92, swamp: 0.67, jungle: 0.9, cliff: 0.32, cave: 0.26 }[record.biome] || 0;
+    function decorativeDensityFor(tilePixels, densityOverride = null) {
         // Chunk rasters are a level-of-detail boundary. At survey resolution,
         // material texture carries biome identity and dense full-atlas canopy
         // draws are both visually noisy and disproportionately expensive.
-        const detailDensity = tilePixels <= 36 ? 0.26 : (tilePixels <= 52 ? 0.58 : 1);
+        return densityOverride != null && Number.isFinite(Number(densityOverride))
+            ? Math.max(0, Math.min(1, Number(densityOverride)))
+            : (tilePixels <= 36 ? 0.26 : (tilePixels <= 52 ? 0.58 : 1));
+    }
+
+    function drawBiomeStrata(context, record, tilePixels, densityOverride = null) {
+        if (!asset('atlas.biome-strata-v2') && !asset('atlas.jungle-strata-v1')) return false;
+        const baseDensity = { plains: 0.34, grove: 0.78, forest: 0.92, swamp: 0.67, jungle: 0.9, cliff: 0.32, cave: 0.26 }[record.biome] || 0;
+        const detailDensity = decorativeDensityFor(tilePixels, densityOverride);
         const density = baseDensity * detailDensity;
         if (!density || unitPoint(record.seed, 'biome-strata-density') > density) return false;
         const box = tileBox(record, tilePixels);
@@ -1539,6 +1545,9 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
         const canvas = target?.getContext ? target : context.canvas;
         let tilePixels = Math.max(8, Math.min(256, Number(options.tilePixels) || 64));
         let pixelRatio = Math.max(1, Math.min(4, Number(options.pixelRatio) || 1));
+        const decorativeDensity = options.decorativeDensity == null
+            ? null
+            : Math.max(0, Math.min(1, Number(options.decorativeDensity) || 0));
 
         function resize(scene) {
             const width = scene.renderBounds.width * tilePixels;
@@ -1603,7 +1612,7 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
             }
             for (const ground of scene.layers.ground) {
                 if (!asset('atlas.materials-v2')) drawGroundTexture(context, ground, tilePixels);
-                drawBiomeStrata(context, ground, tilePixels);
+                drawBiomeStrata(context, ground, tilePixels, decorativeDensity);
             }
             // Relief is presentation over the material field, not another
             // ground texture. Painting strata after hillshade erased slope and
@@ -1792,7 +1801,7 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
     if (typeof YAW_TERRAIN_RENDERERS !== 'undefined') YAW_TERRAIN_RENDERERS.register(descriptor);
     return {
         ID, PALETTE, MATERIAL_CELLS, RELIEF_PROFILE,
-        prepareAssets, assetStatus, bilinearHeight, heightFieldSample, heightFieldDifferential,
+        prepareAssets, assetStatus, decorativeDensityFor, bilinearHeight, heightFieldSample, heightFieldDifferential,
         reliefGeometry, softBiomeField, waterField, create, descriptor
     };
 })();

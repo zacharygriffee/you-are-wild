@@ -20,6 +20,7 @@
     "test:tile-composition": "npm --prefix app run test:tile-composition",
     "test:terrain-workbench": "npm --prefix app run test:terrain-workbench",
     "test:tile-composition-browser": "npm --prefix app run test:tile-composition-browser",
+    "evidence:terrain-quality": "npm --prefix app run evidence:terrain-quality",
     "build:simple-narrator": "node scripts/build-simple-narrator-package.js",
     "build:example-sprites": "node scripts/build-example-sprite-atlas.js",
     "lint": "npm --prefix app run lint",

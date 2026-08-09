@@ -21,6 +21,8 @@ check(JSON.stringify(lab.TERRAIN_WORKBENCH_RELIEFS) === JSON.stringify(expectedR
   'Workbench must expose reproducible flat, directional, curved, and rugged landforms');
 check(lab.TERRAIN_WORKBENCH_OVERLAYS.includes('selection') && lab.TERRAIN_WORKBENCH_OVERLAYS.includes('all'), 'Workbench must directly exercise selection and mixed overlays');
 check(JSON.stringify(lab.TERRAIN_WORKBENCH_PHASES) === JSON.stringify(['day', 'night']), 'Workbench must expose day and night rendering');
+check(JSON.stringify(lab.TERRAIN_WORKBENCH_QUALITIES) === JSON.stringify(['performance', 'balanced', 'high']),
+  'Workbench must expose the three bounded Canvas quality candidates without multiplying simulation cases');
 const expectedRegressionIds = [
   'plains-relief', 'swamp-relief', 'beach-corner', 'forest-cover', 'jungle-variation', 'road-scale',
   'bridge-water-walls', 'oriented-drop', 'ridge-road', 'saddle-structure', 'valley-presence', 'peak-poi'
@@ -32,7 +34,7 @@ for (const regression of lab.TERRAIN_WORKBENCH_REGRESSIONS) {
   check(JSON.stringify(normalizedRegression) === JSON.stringify({
     source: regression.source, destination: regression.destination, direction: regression.direction,
     geometry: regression.geometry, relief: regression.relief, overlay: regression.overlay,
-    phase: regression.phase, seed: regression.seed
+    phase: regression.phase, quality: 'balanced', seed: regression.seed
   }), `${regression.id} must be a stable, valid workbench state`);
   check(lab.terrainWorkbenchCaseAt(lab.terrainWorkbenchCaseIndex(normalizedRegression)).source === regression.source,
     `${regression.id} must round-trip through the exhaustive case index`);
@@ -68,12 +70,16 @@ for (const direction of lab.TERRAIN_WORKBENCH_DIRECTIONS) {
 
 const normalized = lab.normalizeTerrainWorkbench({
   source: 'not-a-biome', destination: 'water', direction: 'sideways', geometry: 'unknown',
-  relief: 'not-relief', overlay: 'selection', phase: 'night', seed: 1200
+  relief: 'not-relief', overlay: 'selection', phase: 'night', quality: 'ultra', seed: 1200
 });
 check(normalized.source === 'jungle' && normalized.destination === 'water', 'Invalid workbench biome input must normalize without losing valid input');
 check(normalized.direction === 'north' && normalized.geometry === 'straight', 'Invalid geometry input must normalize to reproducible defaults');
 check(normalized.relief === 'terrace', 'Invalid relief input must normalize to the reproducible terrace default');
 check(normalized.overlay === 'selection' && normalized.phase === 'night' && normalized.seed === 999, 'Overlay, lighting, and seed normalization must remain bounded');
+check(normalized.quality === 'balanced', 'Invalid rendering quality must normalize to the core Balanced baseline');
+const highQualityCase = lab.normalizeTerrainWorkbench({ ...lab.terrainWorkbenchCaseAt(42), quality: 'high' });
+check(lab.terrainWorkbenchCaseIndex(highQualityCase) === 42,
+  'Rendering quality must remain a presentation comparison and must not multiply authoritative terrain cases');
 
 for (const relief of lab.TERRAIN_WORKBENCH_RELIEFS) {
   const state = lab.normalizeTerrainWorkbench({ relief, direction: 'north' });

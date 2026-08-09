@@ -33081,12 +33081,15 @@ test('Activity log toast metadata is opt-in and blocked movement remains narrati
   assertEqual(App.log.length, 2, 'Toast metadata should not skip Activity Log history');
   assertEqual(App.toasts.length, 1, 'Explicit toast metadata should create a toast');
   assertContains(elements.get('toast-stack').innerHTML, 'Important loot', 'Explicit log toast should render');
+  const priorToastMarkup = elements.get('toast-stack').innerHTML;
+  const priorToastCount = App.toasts.length;
 
   App.player = makeUnit('You', { CPun: 100, MPun: 100 });
   App.mode = App.GAME_MODE.COMBAT;
   App.move(1, 0);
   assertContains(App.log[App.log.length - 1].text, 'Use Flee', 'Blocked combat movement should still write Activity Log guidance');
-  assertEqual(elements.get('toast-stack').innerHTML, '', 'Blocked combat movement should remain in narration without a duplicate toast');
+  assertEqual(App.toasts.length, priorToastCount, 'Blocked combat movement should not add a duplicate toast');
+  assertEqual(elements.get('toast-stack').innerHTML, priorToastMarkup, 'Blocked combat movement should preserve unrelated existing notifications');
 });
 
 test('Activity log renders relative timestamps list roles and mobile recent entries', () => {

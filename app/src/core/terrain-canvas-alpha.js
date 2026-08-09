@@ -205,13 +205,40 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
     }
 
     function renderRevision(app) {
-        return worldRevision(app);
+        const revision = worldRevision(app);
+        if (app?.alphaSession?.scenarioId !== 'terrain-workbench') return revision;
+        const state = app.alphaTerrainWorkbench || {};
+        // The workbench replaces its entire deterministic 7x7 world in place.
+        // Its Map size and identity intentionally remain stable, so ordinary
+        // sparse-world revision signals cannot distinguish two composition
+        // cases. Include every raster-authoritative workbench dimension here;
+        // lighting and quality remain presentation policies handled separately.
+        const composition = [
+            state.source,
+            state.destination,
+            state.direction,
+            state.geometry,
+            state.relief,
+            state.overlay,
+            state.seed
+        ].map(value => String(value ?? '')).join(':');
+        return `${revision}:workbench:${composition}`;
     }
 
     function lightingPhase(app) {
         if (typeof app?._isNight === 'function') return app._isNight() ? 'night' : 'day';
         const hour = ((Number(app?.timeHour) || 0) % 24 + 24) % 24;
         return hour >= 20 || hour < 6 ? 'night' : 'day';
+    }
+
+    function terrainQuality(app) {
+        const workbenchQuality = app?.alphaSession?.scenarioId === 'terrain-workbench'
+            ? app?.alphaTerrainWorkbench?.quality
+            : null;
+        const queryQuality = typeof location !== 'undefined'
+            ? new URLSearchParams(location.search).get('terrainQuality')
+            : null;
+        return YAW_TERRAIN_CANVAS_SURFACE_V1.normalizeQuality(workbenchQuality || queryQuality);
     }
 
     function tileVisualSignature(app) {
@@ -632,11 +659,13 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 height: size.height,
                 centerX: app.location.x,
                 centerY: app.location.y,
-                // Eight-tile chunks keep local movement refreshes bounded on
-                // phones while still amortizing survey rendering and caching.
+                // Eight-tile chunks amortize compilation. Raster resolution,
+                // decorative density, and cache limits now follow the camera
+                // mode and explicit quality profile instead of mistaking a
+                // narrow desktop map panel for a low-quality mobile surface.
                 chunkSize: 8,
                 apron: 2,
-                cacheTilePixels: size.width <= 420 ? 48 : 64,
+                quality: terrainQuality(app),
                 worldRevision: revision,
                 resolveTile,
                 resolvePresence: presenceResolver(app),
@@ -650,6 +679,7 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 app, container, canvas, controls, focusMarker, inspector, surveyList, focusTarget: null, surface, resolveTile, frame: null,
                 worldIdentity: worldIdentity(app),
                 worldRevision: revision,
+                terrainQuality: terrainQuality(app),
                 lightingPhase: lightingPhase(app),
                 tileVisualSignature: tileVisualSignature(app),
                 location: { x: app.location.x, y: app.location.y },
@@ -690,6 +720,7 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 const size = canvasSize(container);
                 const nextRevision = renderRevision(app);
                 const nextIdentity = worldIdentity(app);
+                const nextTerrainQuality = terrainQuality(app);
                 const nextLightingPhase = lightingPhase(app);
                 const nextTileVisualSignature = tileVisualSignature(app);
                 const camera = prior.surface.camera();
@@ -699,6 +730,7 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 const resized = Math.abs(size.width - prior.frame.display.width) > 1 || Math.abs(size.height - prior.frame.display.height) > 1;
                 const revised = prior.worldRevision !== nextRevision;
                 const identityChanged = prior.worldIdentity !== nextIdentity;
+                const qualityChanged = prior.terrainQuality !== nextTerrainQuality;
                 const lightingChanged = prior.lightingPhase !== nextLightingPhase;
                 const tileVisualChanged = prior.tileVisualSignature !== nextTileVisualSignature;
                 if (identityChanged) {
@@ -709,10 +741,12 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                     dirty.add(`${prior.location?.x ?? app.location.x},${prior.location?.y ?? app.location.y}`);
                     prior.surface.invalidateTiles(dirty, nextRevision, { includeApron: revised });
                 }
+                if (qualityChanged) prior.surface.setQuality(nextTerrainQuality);
                 if (revised || identityChanged) {
                     prior.worldRevision = nextRevision;
                 }
                 prior.worldIdentity = nextIdentity;
+                prior.terrainQuality = nextTerrainQuality;
                 prior.lightingPhase = nextLightingPhase;
                 prior.tileVisualSignature = nextTileVisualSignature;
                 prior.location = { x: app.location.x, y: app.location.y };
@@ -720,7 +754,7 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                     prior.surface.resize(size.width, size.height);
                 }
                 if (isLocal && (playerMoved || resized)) prior.surface.setLocal(app.location);
-                if (revised || identityChanged || lightingChanged || tileVisualChanged || (isLocal && playerMoved) || resized) {
+                if (revised || identityChanged || qualityChanged || lightingChanged || tileVisualChanged || (isLocal && playerMoved) || resized) {
                     draw(prior, { phase: 'synchronization' });
                 } else if (prior.frame) updateMode(prior, prior.frame);
                 return prior;

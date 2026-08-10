@@ -1963,18 +1963,62 @@
                 if (this._combatStateRoll('combat-ally-flee', ally, 'badly-outnumbered') < chance) {
                     const destination = this._fleeDestination?.(ally, { source: 'combat-ally-flee', safeOnly: true }) || null;
                     if (!destination) {
-                        this.log.push({ text: this._label('combat.allyFleeFailed', '{name} tries to flee but cannot get away!', { name: ally.name }), type: 'combat' });
+                        const summary = this._label(
+                            'combat.allyFleeOutnumberedCornered',
+                            '{name} looks for an escape while the party is badly outnumbered, but every safe route is cut off.',
+                            { name: ally.name }
+                        );
+                        this._pushLog(summary, 'combat', { actor: ally, action: 'flee', phase: 'badly-outnumbered-cornered' });
+                        this.emitSceneBeat?.({
+                            mode: 'combat',
+                            actors: [ally],
+                            targets: livingEnemies,
+                            action: 'flee',
+                            tags: ['flee', 'badly-outnumbered', 'cornered'],
+                            source: 'combat-ally-flee'
+                        }, summary, {
+                            mode: 'combat',
+                            resultKind: 'failure',
+                            importance: 'notable',
+                            tags: ['flee', 'badly-outnumbered', 'cornered'],
+                            source: 'combat-ally-flee'
+                        });
                         this.renderLog();
                         return false;
                     }
                     this._relocateFleeingPartyMember?.(ally, { source: 'combat-ally-flee', destination });
-                    this.log.push({ text: this._label('combat.allyFlees', '{name} loses their nerve and flees from the fight!', { name: ally.name }), type: 'combat' });
+                    const summary = this._label(
+                        'combat.allyFleesOutnumbered',
+                        '{name} sees the party badly outnumbered, loses their nerve, and flees from the fight!',
+                        { name: ally.name }
+                    );
+                    this._pushLog(summary, 'combat', { actor: ally, action: 'flee', phase: 'badly-outnumbered' });
+                    this._emitCombatAction('flee', ally, livingEnemies, summary);
                     this.renderLog();
                     this.renderParty();
                     this.nextTurn();
                     return true;
                 }
-                this.log.push({ text: this._label('combat.allyFleeFailed', '{name} tries to flee but cannot get away!', { name: ally.name }), type: 'combat' });
+                const summary = this._label(
+                    'combat.allyFleeOutnumberedSteady',
+                    '{name} sees the party badly outnumbered, but masters their fear and stays in the fight.',
+                    { name: ally.name }
+                );
+                this._pushLog(summary, 'combat', { actor: ally, action: 'flee', phase: 'badly-outnumbered-steady' });
+                this.emitSceneBeat?.({
+                    mode: 'combat',
+                    actors: [ally],
+                    targets: livingEnemies,
+                    action: 'flee',
+                    tags: ['flee', 'badly-outnumbered', 'steady'],
+                    source: 'combat-ally-flee'
+                }, summary, {
+                    mode: 'combat',
+                    resultKind: 'resisted',
+                    importance: 'notable',
+                    tags: ['flee', 'badly-outnumbered', 'steady'],
+                    source: 'combat-ally-flee'
+                });
                 this.renderLog();
                 return false;
             },

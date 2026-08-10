@@ -136,9 +136,16 @@ const YAW_COMBAT_LIFECYCLE = {
         app.combatState.sceneExchangeId = `combat-${(Number(app.storyEventSeq) || 0) + 1}`;
         app.combatState.syncActions = [];
         app.combatState.xpEarned = 0;
+        app.combatState.pendingFleeOutcome = null;
+        app.combatState.disengageReason = null;
+        app.combatState.liveness = null;
         app.party.forEach(p => app._normalizeUnit(p, { disposition: app.DISPOSITION.PARTY }));
         enemies.forEach(e => app._normalizeUnit(e, { disposition: app.DISPOSITION.ENEMY }));
         const allCombatants = [...app.party, ...enemies];
+        // Flight belongs to one encounter. A stale save or interrupted transition must
+        // not admit a unit to the next turn order while interaction validation still
+        // treats that unit as absent.
+        allCombatants.forEach(unit => { unit.fledCombat = false; });
         app._prepareCombatRows(allCombatants);
         const ambushAwareness = app._resolveAmbushAwareness?.(enemies) || {
             detected: [],

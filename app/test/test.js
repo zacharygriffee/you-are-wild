@@ -17817,6 +17817,39 @@ test('Timid ally flees instead of attacking when badly outnumbered', () => {
   assert(!App.combatState.turnQueue.some(entry => entry.unit === ally), 'Fled ally should be removed from combat queue');
   assert([...App.worldMap.values()].some(tile => (tile.creatures || []).includes(ally)), 'Timid ally should be recoverable on an adjacent tile');
   assertEqual(enemies[0].CPun, 100, 'Fled ally should not attack');
+  const fleeLog = App.log.find(entry => String(entry?.text || '').includes('badly outnumbered'));
+  assert(fleeLog, 'Timid ally flight should immediately explain the badly outnumbered cause in the Activity Log');
+  const fleeBeat = (App.storyEvents || []).find(entry => String(entry?.summary || '').includes('badly outnumbered'));
+  assert(fleeBeat, 'Timid ally flight should immediately explain the badly outnumbered cause in the Scene Feed');
+});
+
+test('New combat clears stale companion flight state before group actions', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-flight-boundary' });
+  const harpy = makeUnit('Harpy', {
+    id: 'harpy-flight-boundary',
+    species: 'harpy',
+    disposition: App.DISPOSITION.PARTY,
+    fledCombat: true,
+    flying: true
+  });
+  const wolfkin = makeUnit('Wolfkin', {
+    id: 'wolfkin-flight-boundary',
+    species: 'wolf',
+    disposition: App.DISPOSITION.ENEMY
+  });
+  App.player = player;
+  App.party = [player, harpy];
+  App.creatures = [wolfkin];
+  App.processTurn = () => {};
+
+  App.startCombat([wolfkin]);
+
+  assertEqual(harpy.fledCombat, false, 'A companion admitted to a new encounter should not retain an earlier encounter flight flag');
+  assertEqual(App.combatState.turnQueue.filter(entry => entry.unit === harpy).length, 1, 'Recovered companion should appear exactly once in the new turn queue');
+  assertEqual(App._isTimid(harpy), false, 'Harpy temperament should not qualify for timid autonomous flight');
+  assertEqual(App._isCombatQueueUnitValid(harpy), true, 'A recovered Harpy should be available for a group Talk action in the new encounter');
+  assertEqual(App.log.some(entry => String(entry?.text || '').includes('Harpy has fled')), false, 'New encounter should not falsely disclose that Harpy has fled');
 });
 
 test('Timid ally combat flee is deterministic by combat state', () => {

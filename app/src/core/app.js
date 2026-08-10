@@ -2397,14 +2397,20 @@
             persistTileDelta(x, y, tile = null, options = {}) {
                 return YAW_WORLD_STATE.persistTileDelta(this, x, y, tile, options);
             },
-            markWorldTileDirty(x, y, reason = '') {
-                return YAW_WORLD_STATE.markWorldTileDirty(this, x, y, reason);
+            markWorldTileDirty(x, y, reason = '', options = {}) {
+                return YAW_WORLD_STATE.markWorldTileDirty(this, x, y, reason, options);
             },
             markCurrentWorldTileDirty(reason = '') {
                 return YAW_WORLD_STATE.markCurrentWorldTileDirty(this, reason);
             },
             dirtyWorldTileKeys() {
                 return YAW_WORLD_STATE.dirtyWorldTileKeys(this);
+            },
+            worldTileVisualRevision() {
+                return YAW_WORLD_STATE.worldTileVisualRevision(this);
+            },
+            worldTileVisualChangesSince(cursor = 0) {
+                return YAW_WORLD_STATE.worldTileVisualChangesSince(this, cursor);
             },
             clearDirtyWorldTileKeys(keys = null) {
                 return YAW_WORLD_STATE.clearDirtyWorldTileKeys(this, keys);
@@ -5921,13 +5927,9 @@
                     y: y - Number(this.location?.y || 0)
                 };
                 this.largeMapSelected = { x, y };
-                const focused = typeof YAW_TERRAIN_CANVAS_ALPHA !== 'undefined'
-                    && YAW_TERRAIN_CANVAS_ALPHA.focusSurvey?.(this, { ...target, x, y }, options);
-                if (focused) this.closePanelDetails?.('party');
-                else {
-                    this.openPanel?.('map');
-                    this.renderLargeMap();
-                }
+                YAW_PANEL_SHELL.closeRoster?.(this, { restoreFocus: false });
+                this.openPanel?.('map');
+                this.renderLargeMap();
                 return true;
             },
 
@@ -6934,8 +6936,6 @@
                 return this.executeCombatIntent(action, this.activeActor || this.player);
             },
             togglePanel(p) {
-                if (p === 'map' && typeof YAW_TERRAIN_CANVAS_ALPHA !== 'undefined'
-                    && YAW_TERRAIN_CANVAS_ALPHA.openSurvey?.(this)) return true;
                 return YAW_PANEL_SHELL.toggle(this, p);
             },
             toggleDesktopMapPanel(panel) {

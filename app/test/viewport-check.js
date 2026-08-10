@@ -4606,18 +4606,16 @@ async function checkViewport(browser, name, width, height) {
         previousLocation: previous.location
       };
     }, { center: desktopCenterAfterComposer, location: desktopLocationBeforeMap });
+    assert.strictEqual(mapOverlay.map.active, true, `${name}: desktop Map toggle should activate the planning Review Map`);
+    assert.notStrictEqual(mapOverlay.map.display, 'none', `${name}: desktop Review Map should become visible after toggling Map`);
+    assert.strictEqual(mapOverlay.map.position, 'fixed', `${name}: desktop Review Map should be a fixed overlay`);
+    assert(mapOverlay.map.zIndex > mapOverlay.party.zIndex, `${name}: desktop Review Map should layer above side panels`);
+    assert(mapOverlay.map.left >= -1 && mapOverlay.map.right <= width + 1, `${name}: desktop Review Map should stay inside viewport horizontally`);
+    assert(mapOverlay.map.top >= 59 && mapOverlay.map.bottom <= height + 1, `${name}: desktop Review Map should stay below the header and inside the viewport`);
     if (mapOverlay.canvas.active) {
-      assert.strictEqual(mapOverlay.map.active, false, `${name}: desktop Map toggle should not open the duplicate legacy overlay while Canvas is active`);
-      assert.strictEqual(mapOverlay.canvas.count, 1, `${name}: desktop Map toggle should retain exactly one Canvas terrain surface`);
-      assert(['regional', 'survey'].includes(mapOverlay.canvas.mode), `${name}: desktop Map toggle should open the unified Canvas survey camera`);
-      assert.deepStrictEqual(mapOverlay.canvas.location, mapOverlay.previousLocation, `${name}: opening the Canvas survey should not move the party`);
-    } else {
-      assert.strictEqual(mapOverlay.map.active, true, `${name}: desktop Map toggle should activate the fallback map overlay`);
-      assert.notStrictEqual(mapOverlay.map.display, 'none', `${name}: desktop fallback map overlay should become visible after toggling Map`);
-      assert.strictEqual(mapOverlay.map.position, 'fixed', `${name}: desktop fallback map should be a fixed overlay`);
-      assert(mapOverlay.map.zIndex > mapOverlay.party.zIndex, `${name}: desktop fallback map overlay should layer above side panels`);
-      assert(mapOverlay.map.left >= -1 && mapOverlay.map.right <= width + 1, `${name}: desktop fallback map overlay should stay inside viewport horizontally`);
-      assert(mapOverlay.map.top >= 59 && mapOverlay.map.bottom <= height + 1, `${name}: desktop fallback map overlay should stay below the header and inside the viewport`);
+      assert.strictEqual(mapOverlay.canvas.count, 1, `${name}: desktop Map toggle should retain exactly one local Canvas terrain surface`);
+      assert.strictEqual(mapOverlay.canvas.mode, 'local', `${name}: desktop Map toggle should not replace the explicit Canvas Survey control`);
+      assert.deepStrictEqual(mapOverlay.canvas.location, mapOverlay.previousLocation, `${name}: opening Review Map should not move the party`);
     }
     assert.notStrictEqual(mapOverlay.party.display, 'none', `${name}: desktop party panel should remain rendered behind the map overlay`);
     assert.notStrictEqual(mapOverlay.enemies.display, 'none', `${name}: desktop creatures panel should remain rendered behind the map overlay`);

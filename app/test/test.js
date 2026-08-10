@@ -5691,6 +5691,7 @@ test('World state helper module is registered before app code', () => {
   assertContains(worldStateContent, 'app.persistTileDelta(effective.x, effective.y, effective, { markDirty: false })', 'World restore should rebuild sparse tile deltas without marking load state dirty');
   assertContains(worldStateContent, 'markWorldTileDirty(app, x, y, reason', 'World state helper should expose dirty tile tracking');
   assertContains(worldStateContent, 'dirtyWorldTileKeys(app)', 'World state helper should expose dirty tile key inspection');
+  assertContains(worldStateContent, 'worldTileVisualChangesSince(app, cursor', 'World state helper should expose an independent renderer invalidation journal');
   assertContains(worldStateContent, 'exploreTile(app, x, y)', 'World state helper should own first-discovery tile mutation');
   assertContains(worldStateContent, 'revealVisibleTiles(app', 'World state helper should own nearby map sight reveal');
   assertContains(worldStateContent, 'WorldGen.hash01(app._mapSeed()', 'World tile descriptions should be deterministic in the helper');
@@ -5701,7 +5702,8 @@ test('World state helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_WORLD_STATE.revealVisibleTiles(this, x, y, radius)', 'App sight reveal wrapper should delegate to world state');
   assertContains(appContent, 'YAW_WORLD_STATE.getBaseTile(this, x, y)', 'App base tile wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.persistTileDelta(this, x, y, tile, options)', 'App tile delta wrapper should delegate to the helper with options');
-  assertContains(appContent, 'YAW_WORLD_STATE.markWorldTileDirty(this, x, y, reason)', 'App dirty tile wrapper should delegate to world state');
+  assertContains(appContent, 'YAW_WORLD_STATE.markWorldTileDirty(this, x, y, reason, options)', 'App dirty tile wrapper should delegate to world state with renderer invalidation policy');
+  assertContains(appContent, 'YAW_WORLD_STATE.worldTileVisualChangesSince(this, cursor)', 'App should expose renderer invalidation changes without consuming persistence dirtiness');
   assertContains(appContent, 'YAW_WORLD_STATE.applyTileDeltaRecords(this, records)', 'App sparse record wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.restoreWorldState(this, loaded)', 'App world restore wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.getTile(this, x, y)', 'App tile cache wrapper should delegate to the helper');
@@ -33805,6 +33807,32 @@ test('Routine movement sparse autosave skips full snapshot and writes dirty worl
   assertEqual(debug.defaultDirtyFallbackCount, baselineFallbacks, 'Routine movement should not increment default fallback count after baseline');
   assertIncludesEvery(debug.lastDirtyDomains, ['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'Movement sparse save should keep movement-related domains');
   assertExcludesEvery(debug.lastDirtyDomains, ['settings', 'inventory'], 'Movement sparse save should exclude unrelated domains');
+});
+
+test('World tile visual journal preserves repeated changes across persistence clearing', () => {
+  const harness = loadAppForCombat(() => 0.99);
+  const App = harness.App;
+  const cursor = App.worldTileVisualRevision();
+
+  App.markWorldTileDirty(2, 3, 'first-visual-change');
+  App.markWorldTileDirty(2, 3, 'second-visual-change');
+  const repeated = App.worldTileVisualChangesSince(cursor);
+  assertEqual(repeated.overflow, false, 'A current renderer cursor should remain inside the visual journal');
+  assertEqual(JSON.stringify(repeated.keys), JSON.stringify(['2,3', '2,3']), 'Repeated changes to one tile should remain distinct renderer events');
+
+  App.clearDirtyWorldTileKeys();
+  const afterPersistenceCursor = repeated.revision;
+  App.markWorldTileDirty(2, 3, 'sparse-current-tile');
+  assertEqual(App.worldTileVisualRevision(), afterPersistenceCursor, 'Unchanged sparse-save bookkeeping must not invalidate terrain rasters');
+  App.markWorldTileDirty(2, 3, 'after-persistence-clear');
+  const afterPersistence = App.worldTileVisualChangesSince(afterPersistenceCursor);
+  assertEqual(JSON.stringify(afterPersistence.keys), JSON.stringify(['2,3']), 'Persistence clearing must not erase unobserved renderer changes');
+  assertEqual(JSON.stringify(App.dirtyWorldTileKeys()), JSON.stringify(['2,3']), 'Persistence dirtiness should continue to use its independent deduplicated work set');
+
+  for (let index = 0; index < 513; index += 1) App.markWorldTileDirty(4, 4, `overflow-${index}`);
+  const overflow = App.worldTileVisualChangesSince(cursor);
+  assertEqual(overflow.overflow, true, 'A renderer that falls behind the bounded journal should request conservative cache invalidation');
+  assertEqual(overflow.keys.length, 0, 'Overflow should not claim an incomplete selective invalidation set');
 });
 
 test('Routine inventory and scene sparse autosaves avoid default fallback and world persistence', async () => {

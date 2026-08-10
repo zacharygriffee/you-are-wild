@@ -1734,8 +1734,9 @@ const YAW_TERRAIN_CANVAS_V1 = (() => {
                 const box = tileBox(record, tilePixels);
                 const offset = (record.ordinal % 3) - 1;
                 const label = String(record.label || '').toLowerCase();
-                const evidenceKind = record.kind === 'item' && /food|ration|provision/.test(label) ? 'provisions'
-                    : (record.kind === 'placed-object' && /trail|marker/.test(label) ? 'trail-marker' : record.kind);
+                const evidenceKind = record.kind === 'resource-change' && record.state === 'depleted' ? 'depleted'
+                    : (record.kind === 'item' && /food|ration|provision/.test(label) ? 'provisions'
+                        : (record.kind === 'placed-object' && /trail|marker/.test(label) ? 'trail-marker' : record.kind));
                 const evidenceCell = EVIDENCE_CELLS[evidenceKind] || EVIDENCE_CELLS.item;
                 const evidenceSize = tilePixels * 0.24;
                 if (drawAtlasRect(context, 'atlas.evidence-v3', gridSource(1774, 887, 4, 2, evidenceCell), {

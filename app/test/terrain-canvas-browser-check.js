@@ -241,8 +241,8 @@ async function exerciseNavigation(page, viewport, origin) {
     'A legitimate tile visual mutation must not duplicate camera controls');
   assert.ok((visualMutation.diagnostics?.renderStats?.cacheMisses ?? 0) >= 1,
     'A legitimate tile visual mutation must rebuild its affected terrain chunk');
-  assert.ok((visualMutation.diagnostics?.renderStats?.cacheHits ?? 0) >= 1,
-    'A legitimate tile visual mutation must reuse unaffected cached terrain chunks');
+  assert.ok((visualMutation.diagnostics?.renderStats?.cacheMisses ?? 0) <= 4,
+    'A local tile mutation must invalidate only its owning and apron-dependent visible chunks');
 
   await page.locator(northwestSelector).click({ force: true });
   const blocked = await page.evaluate(() => ({
@@ -341,20 +341,7 @@ async function exerciseNavigation(page, viewport, origin) {
   assert.strictEqual(localRestored.mode, 'local', 'Local control must return the shared camera to the player');
   assert.strictEqual(localRestored.suppressed, 0, 'Local control must restore the semantic movement plane');
 
-  await page.evaluate(() => App.togglePanel('map'));
-  const unifiedMap = await page.evaluate(selector => ({
-    mode: document.querySelector(selector)?.getAttribute('data-terrain-camera-mode'),
-    location: { ...App.location },
-    legacyPanelActive: document.querySelector('#panel-map')?.classList.contains('active') || false
-  }), gridSelector);
-  assert.notStrictEqual(unifiedMap.mode, 'local', 'The ordinary Map command must open the unified Canvas survey camera');
-  assert.deepStrictEqual(unifiedMap.location, surveyStart.location, 'Opening the unified Map must not move the party');
-  assert.strictEqual(unifiedMap.legacyPanelActive, false, 'The ordinary Map command must not open a second legacy map compositor while Canvas is active');
-  const focusedMap = await page.evaluate(selector => {
-    const before = {
-      location: { ...App.location }, timeHour: App.timeHour,
-      explored: App.exploredTiles.size, worldTiles: App.worldMap.size
-    };
+  await page.evaluate(() => {
     App.quests = [{
       id: 'canvas-map-quest', title: 'Survey marker', status: 'active', lifecycleState: 'active',
       objectives: [{
@@ -362,83 +349,96 @@ async function exerciseNavigation(page, viewport, origin) {
         checkpoints: [{ x: 3, y: 2, label: 'Quest objective', complete: false }]
       }]
     }];
+    App.renderLargeMap();
+    App.togglePanel('map');
+  });
+  const reviewMap = await page.evaluate(selector => ({
+    mode: document.querySelector(selector)?.getAttribute('data-terrain-camera-mode'),
+    location: { ...App.location },
+    panelActive: document.querySelector('#panel-map')?.classList.contains('active') || false,
+    filters: document.querySelectorAll('#large-map-filters .large-map-filter').length,
+    controls: document.querySelectorAll('#panel-map [data-command-surface="review-map"]').length,
+    tracked: Boolean(document.querySelector('#large-map-tracked select')),
+    legend: document.querySelector('#large-map-legend')?.textContent || ''
+  }), gridSelector);
+  assert.strictEqual(reviewMap.mode, 'local', 'The ordinary Map command must not replace the explicit Canvas Survey control');
+  assert.deepStrictEqual(reviewMap.location, surveyStart.location, 'Opening Review Map must not move the party');
+  assert.strictEqual(reviewMap.panelActive, true, 'The ordinary Map command must preserve the planning Review Map in Canvas mode');
+  assert.strictEqual(reviewMap.filters, 8, 'Review Map must preserve all planning filters in Canvas mode');
+  assert.ok(reviewMap.controls >= 7, 'Review Map must preserve zoom, pan, and recenter controls in Canvas mode');
+  assert.strictEqual(reviewMap.tracked, true, 'Review Map must preserve tracked-quest controls in Canvas mode');
+  assert.ok(reviewMap.legend.trim(), 'Review Map must preserve its marker legend in Canvas mode');
+  const focusedMap = await page.evaluate(() => {
+    const before = {
+      location: { ...App.location }, timeHour: App.timeHour,
+      explored: App.exploredTiles.size, worldTiles: App.worldMap.size
+    };
     const focused = App.focusQuestOnMap('canvas-map-quest', 'canvas-map-objective');
-    const grid = document.querySelector(selector);
-    const marker = grid?.querySelector('.yaw-terrain-canvas-focus-marker');
     return {
       focused,
-      mode: grid?.getAttribute('data-terrain-camera-mode'),
-      markerHidden: marker?.hidden,
-      markerTitle: marker?.getAttribute('title') || '',
-      status: grid?.querySelector('.yaw-terrain-canvas-inspection')?.textContent || '',
-      inspector: grid?.querySelector('.yaw-terrain-canvas-inspector')?.textContent || '',
+      panelActive: document.querySelector('#panel-map')?.classList.contains('active') || false,
+      selected: { ...App.largeMapSelected },
+      selectedTitle: document.querySelector('#large-map .large-map-tile.selected')?.getAttribute('title') || '',
+      inspector: document.querySelector('#large-map-inspector')?.textContent || '',
       before,
       after: {
         location: { ...App.location }, timeHour: App.timeHour,
         explored: App.exploredTiles.size, worldTiles: App.worldMap.size
       }
     };
-  }, gridSelector);
-  assert.strictEqual(focusedMap.focused, true, 'Quest commands must be able to focus the unified Canvas survey');
-  assert.notStrictEqual(focusedMap.mode, 'local', 'A focused map target must remain in the non-movement survey camera');
-  assert.strictEqual(focusedMap.markerHidden, false, 'A focused map target must have one bounded Canvas overlay marker');
-  assert.strictEqual(focusedMap.markerTitle, 'Quest objective', 'The Canvas focus marker must retain its semantic label');
-  assert.match(focusedMap.status, /focused on Quest objective at 3, 2/i, 'Canvas focus must be announced without depending on pixels');
-  assert.match(focusedMap.inspector, /focused on Quest objective at 3, 2/i, 'Canvas focus must remain visibly inspectable');
+  });
+  assert.strictEqual(focusedMap.focused, true, 'Quest commands must be able to focus Review Map');
+  assert.strictEqual(focusedMap.panelActive, true, 'Quest focus must not toggle an already-open Review Map closed');
+  assert.deepStrictEqual(focusedMap.selected, { x: 3, y: 2 }, 'Quest focus must select its Review Map coordinate');
+  assert.match(`${focusedMap.selectedTitle} ${focusedMap.inspector}`, /Quest objective|Reach the marked terrain|Survey marker/i,
+    'Quest focus must remain inspectable through semantic Review Map content');
   assert.deepStrictEqual(focusedMap.after, focusedMap.before,
     'Focusing a quest must not move time, reveal terrain, materialize world tiles, or move the party');
 
-  const turnInFocus = await page.evaluate(selector => {
+  const turnInFocus = await page.evaluate(() => {
     App.quests.push({
       id: 'canvas-turn-in-quest', title: 'Return the survey', status: 'active', lifecycleState: 'objectives_complete',
       turnInPolicy: { type: 'named_location', location: { x: 4, y: 1, label: 'Turn-in camp' } }
     });
     const focused = App.focusQuestTurnInOnMap('canvas-turn-in-quest');
-    const grid = document.querySelector(selector);
     return {
       focused,
-      status: grid?.querySelector('.yaw-terrain-canvas-inspection')?.textContent || '',
-      markerTitle: grid?.querySelector('.yaw-terrain-canvas-focus-marker')?.getAttribute('title') || ''
+      panelActive: document.querySelector('#panel-map')?.classList.contains('active') || false,
+      selected: { ...App.largeMapSelected },
+      inspector: document.querySelector('#large-map-inspector')?.textContent || ''
     };
-  }, gridSelector);
+  });
   assert.strictEqual(turnInFocus.focused, true, 'Quest turn-in commands must use the renderer-neutral map focus route');
-  assert.match(turnInFocus.status, /focused on Turn-in camp at 4, 1/i, 'Quest turn-in focus must be announced through the Canvas survey');
-  assert.strictEqual(turnInFocus.markerTitle, 'Turn-in camp', 'Quest turn-in focus must retain its semantic label');
+  assert.strictEqual(turnInFocus.panelActive, true, 'Quest turn-in focus must keep Review Map open');
+  assert.deepStrictEqual(turnInFocus.selected, { x: 4, y: 1 }, 'Quest turn-in focus must select its Review Map coordinate');
+  assert.match(turnInFocus.inspector, /Turn-in camp|turn-in/i, 'Quest turn-in focus must retain its semantic label');
 
-  const poiFocus = await page.evaluate(selector => {
+  const poiFocus = await page.evaluate(() => {
     const before = {
       location: { ...App.location }, timeHour: App.timeHour,
       explored: App.exploredTiles.size, worldTiles: App.worldMap.size
     };
     const focused = App.focusMapTarget({ x: 30, y: 30, label: 'Hidden cave' });
-    const grid = document.querySelector(selector);
     return {
       focused,
-      status: grid?.querySelector('.yaw-terrain-canvas-inspection')?.textContent || '',
-      markerTitle: grid?.querySelector('.yaw-terrain-canvas-focus-marker')?.getAttribute('title') || '',
+      panelActive: document.querySelector('#panel-map')?.classList.contains('active') || false,
+      selected: { ...App.largeMapSelected },
+      inspector: document.querySelector('#large-map-inspector')?.textContent || '',
       before,
       after: {
         location: { ...App.location }, timeHour: App.timeHour,
         explored: App.exploredTiles.size, worldTiles: App.worldMap.size
       }
     };
-  }, gridSelector);
+  });
   assert.strictEqual(poiFocus.focused, true, 'POI callers must be able to use the renderer-neutral map focus route');
-  assert.match(poiFocus.status, /focused on Hidden cave at 30, 30.*unknown/i, 'Unknown POI focus must preserve terrain privacy');
-  assert.strictEqual(poiFocus.markerTitle, 'Hidden cave', 'POI focus must retain its semantic label');
+  assert.strictEqual(poiFocus.panelActive, true, 'POI focus must keep Review Map open');
+  assert.deepStrictEqual(poiFocus.selected, { x: 30, y: 30 }, 'POI focus must select the requested Review Map coordinate');
+  assert.match(poiFocus.inspector, /unknown|not discovered/i, 'Unknown POI focus must preserve terrain privacy');
   assert.deepStrictEqual(poiFocus.after, poiFocus.before,
     'Focusing an unknown POI must not move time, reveal terrain, materialize world tiles, or move the party');
-  await page.keyboard.press('ArrowRight');
-  const pannedFocusText = await page.locator(`${gridSelector} .yaw-terrain-canvas-inspector`).textContent();
-  assert.doesNotMatch(pannedFocusText, /focused on Hidden cave/i,
-    'Panning away from a focus target must not attach its label to the new camera coordinate');
-  await localButton.click();
-  const focusCleared = await page.evaluate(selector => ({
-    hidden: document.querySelector(selector)?.querySelector('.yaw-terrain-canvas-focus-marker')?.hidden,
-    mode: document.querySelector(selector)?.getAttribute('data-terrain-camera-mode')
-  }), gridSelector);
-  assert.strictEqual(focusCleared.hidden, true, 'Returning to 3x3 must clear the ephemeral map focus marker');
-  assert.strictEqual(focusCleared.mode, 'local', 'Returning from a focused target must restore local movement mode');
+  await page.evaluate(() => App.closeAllPanels());
+  await waitForCanvasAlpha(page, gridSelector);
 
   await page.keyboard.press('ArrowLeft');
   await page.waitForFunction(() => App.location.x === 0 && App.location.y === 0);
@@ -713,6 +713,71 @@ async function exerciseFractionalSeamsAndCache(browser, origin) {
   assert.ok(result.elapsed < 5000,
     `Forty cached survey frames must remain within the broad mobile performance gate, received ${Math.round(result.elapsed)}ms`
     + ` (${result.cacheHits} hits, ${result.cacheMisses} misses, slowest ${Math.round(result.slowestFrame)}ms)`);
+  await page.close();
+}
+
+async function exerciseDirtyTileInvalidation(browser, origin) {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.goto(alphaUrl(origin), { waitUntil: 'domcontentloaded' });
+  await waitForCanvasAlpha(page, '#mobile-mini-map');
+  const result = await page.evaluate(() => {
+    const checksum = () => {
+      const canvas = document.querySelector('#mobile-mini-map canvas.yaw-terrain-world-canvas');
+      const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      let hash = 2166136261;
+      for (let index = 0; index < pixels.length; index += 1) {
+        hash ^= pixels[index];
+        hash = Math.imul(hash, 16777619);
+      }
+      return hash >>> 0;
+    };
+    const diagnostic = () => YAW_TERRAIN_CANVAS_ALPHA.diagnostics()
+      .find(record => record.containerId === 'mobile-mini-map');
+    App.clearDirtyWorldTileKeys();
+    YAW_TERRAIN_CANVAS_ALPHA.sync();
+    const before = diagnostic();
+    const beforeChecksum = checksum();
+    const remoteEntry = [...App.worldMap.entries()].find(([key]) => {
+      const [x, y] = key.split(',').map(Number);
+      return key !== `${App.location.x},${App.location.y}`
+        && Math.abs(x - App.location.x) <= 1
+        && Math.abs(y - App.location.y) <= 1;
+    });
+    if (!remoteEntry) throw new Error('Terrain fixture has no non-current tile');
+    const [key, tile] = remoteEntry;
+    const [x, y] = key.split(',').map(Number);
+    tile.items = [...(tile.items || []), { id: 'remote-cache-evidence', name: 'Remote cache evidence' }];
+    App.markWorldTileDirty(x, y, 'browser-cache-regression');
+    YAW_TERRAIN_CANVAS_ALPHA.sync();
+    const afterFirst = diagnostic();
+    const firstChecksum = checksum();
+
+    tile.items.push({ id: 'remote-cache-evidence-2', name: 'Second remote cache evidence' });
+    App.markWorldTileDirty(x, y, 'browser-cache-regression-repeat');
+    App.clearDirtyWorldTileKeys();
+    YAW_TERRAIN_CANVAS_ALPHA.sync();
+    const afterPersistenceClear = diagnostic();
+
+    tile.items.push({ id: 'remote-cache-evidence-3', name: 'Third remote cache evidence' });
+    App.markWorldTileDirty(x, y, 'browser-cache-regression-after-clear');
+    YAW_TERRAIN_CANVAS_ALPHA.sync();
+    const afterRepeated = diagnostic();
+    YAW_TERRAIN_CANVAS_ALPHA.sync();
+    const afterNoChange = diagnostic();
+    return { before, afterFirst, afterPersistenceClear, afterRepeated, afterNoChange, beforeChecksum, firstChecksum, key };
+  });
+  assert.ok(result.afterFirst.drawCount > result.before.drawCount,
+    `A dirty non-current tile must redraw Canvas without a map-size change (${result.key})`);
+  assert.ok(result.afterFirst.renderStats.cacheMisses > 0,
+    `A dirty non-current tile must invalidate at least one affected cached chunk (${result.key})`);
+  assert.notStrictEqual(result.firstChecksum, result.beforeChecksum,
+    `A visible non-current tile mutation must change Canvas pixels (${result.key})`);
+  assert.ok(result.afterPersistenceClear.drawCount > result.afterFirst.drawCount,
+    'Persistence clearing must not erase a renderer change that has not synchronized yet');
+  assert.ok(result.afterRepeated.drawCount > result.afterPersistenceClear.drawCount,
+    'A repeated change to the same tile must create a new renderer invalidation event');
+  assert.strictEqual(result.afterNoChange.drawCount, result.afterRepeated.drawCount,
+    'A renderer cursor must prevent repeated invalidation when no new visual mutation occurred');
   await page.close();
 }
 
@@ -1307,6 +1372,8 @@ async function main() {
     console.log('  ✓ localized Canvas controls, status, and survey narration');
     await exerciseFractionalSeamsAndCache(browser, hosted.url);
     console.log('  ✓ fractional seams, DPR 2, and cache stress');
+    await exerciseDirtyTileInvalidation(browser, hosted.url);
+    console.log('  ✓ dirty non-current tile invalidation');
     await exerciseElevationPixels(browser, hosted.url);
     console.log('  ✓ continuous elevation across DPR and chunk junctions');
     await exerciseBiomeJunctionPixels(browser, hosted.url);
@@ -1319,7 +1386,7 @@ async function main() {
     await browser.close();
     await hosted.close();
   }
-  console.log('Canvas terrain browser checks passed (16 cases).');
+  console.log('Canvas terrain browser checks passed (17 cases).');
 }
 
 main().catch(error => {

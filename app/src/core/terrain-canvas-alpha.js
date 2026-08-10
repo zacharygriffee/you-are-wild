@@ -249,13 +249,15 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
         const units = values => (Array.isArray(values) ? values : []).map(unit => [
             unit?.id || unit?.instanceId || unit?.name || '',
             Number(unit?.CPun ?? unit?.hp ?? 0),
-            Boolean(unit?.knockedOut || unit?.dead || unit?.alive === false)
+            Boolean(unit?.knockedOut || unit?.dead || unit?.alive === false),
+            unit?.kind || '', unit?.disposition || '', Boolean(unit?.depleted || unit?.scavenged)
         ]);
         const evidence = values => (Array.isArray(values) ? values : []).map(value => [
             value?.id || value?.instanceId || value?.name || '', Number(value?.quantity || 1), value?.state || ''
         ]);
         return JSON.stringify([
             tile.biome, tile.derivedBiome, tile.structure, tile.hasLandmark, tile.landmarkName,
+            Boolean(tile.resourceSearched),
             units(tile.creatures), evidence(tile.items), evidence(tile.deathBags), evidence(tile.placedObjects)
         ]);
     }
@@ -312,11 +314,17 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
         const details = [];
         if (tile.structure) details.push(localized(app, 'ui.terrainCanvas.structure', 'structure'));
         if (tile.hasLandmark || tile.overlays?.poi) details.push(localized(app, 'ui.terrainCanvas.poi', 'point of interest'));
-        const evidence = (tile.items?.length || 0) + (tile.deathBags?.length || 0) + (tile.placedObjects?.length || 0);
+        const remains = (tile.creatures || []).filter(unit => Boolean(
+            unit?.alive === false || unit?.dead === true || unit?.corpse === true
+            || unit?.kind === 'remains' || unit?.disposition === 'corpse' || unit?.disposition === 'remains'
+        ));
+        const resourceChanges = tile.resourceSearched && tile.overlays?.poi?.category === 'resourceSite' ? 1 : 0;
+        const evidence = (tile.items?.length || 0) + (tile.deathBags?.length || 0)
+            + (tile.placedObjects?.length || 0) + remains.length + resourceChanges;
         if (evidence) details.push(localized(app,
             evidence === 1 ? 'ui.terrainCanvas.evidenceOne' : 'ui.terrainCanvas.evidenceMany',
             evidence === 1 ? '1 evidence marker' : '{count} evidence markers', { count: evidence }));
-        const creatures = (tile.creatures || []).filter(unit => unit?.alive !== false && unit?.dead !== true).length;
+        const creatures = (tile.creatures || []).filter(unit => !remains.includes(unit)).length;
         if (creatures) details.push(localized(app,
             creatures === 1 ? 'ui.terrainCanvas.presenceOne' : 'ui.terrainCanvas.presenceMany',
             creatures === 1 ? '1 presence' : '{count} presences', { count: creatures }));
@@ -679,6 +687,7 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 app, container, canvas, controls, focusMarker, inspector, surveyList, focusTarget: null, surface, resolveTile, frame: null,
                 worldIdentity: worldIdentity(app),
                 worldRevision: revision,
+                visualDirtyCursor: app.worldTileVisualRevision?.() || 0,
                 terrainQuality: terrainQuality(app),
                 lightingPhase: lightingPhase(app),
                 tileVisualSignature: tileVisualSignature(app),
@@ -723,6 +732,11 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 const nextTerrainQuality = terrainQuality(app);
                 const nextLightingPhase = lightingPhase(app);
                 const nextTileVisualSignature = tileVisualSignature(app);
+                const visualChanges = app.worldTileVisualChangesSince?.(prior.visualDirtyCursor) || {
+                    revision: prior.visualDirtyCursor || 0,
+                    overflow: false,
+                    keys: []
+                };
                 const camera = prior.surface.camera();
                 const isLocal = prior.frame?.mode === 'local' || YAW_TERRAIN_VIEWPORT_V1.mode(camera) === 'local';
                 const playerMoved = camera.center.x !== app.location.x || camera.center.y !== app.location.y;
@@ -733,13 +747,18 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 const qualityChanged = prior.terrainQuality !== nextTerrainQuality;
                 const lightingChanged = prior.lightingPhase !== nextLightingPhase;
                 const tileVisualChanged = prior.tileVisualSignature !== nextTileVisualSignature;
+                const visualTilesChanged = visualChanges.overflow || visualChanges.keys.length > 0;
                 if (identityChanged) {
                     prior.surface.invalidate(nextRevision);
-                } else if (revised || (!locationChanged && tileVisualChanged)) {
-                    const dirty = new Set(app.dirtyWorldTileKeys?.() || []);
-                    dirty.add(`${app.location.x},${app.location.y}`);
-                    dirty.add(`${prior.location?.x ?? app.location.x},${prior.location?.y ?? app.location.y}`);
-                    prior.surface.invalidateTiles(dirty, nextRevision, { includeApron: revised });
+                } else if (visualChanges.overflow) {
+                    prior.surface.invalidate(nextRevision);
+                } else if (revised || visualTilesChanged || (!locationChanged && tileVisualChanged)) {
+                    const dirty = new Set(visualChanges.keys);
+                    if (revised || tileVisualChanged) {
+                        dirty.add(`${app.location.x},${app.location.y}`);
+                        dirty.add(`${prior.location?.x ?? app.location.x},${prior.location?.y ?? app.location.y}`);
+                    }
+                    prior.surface.invalidateTiles(dirty, nextRevision, { includeApron: true });
                 }
                 if (qualityChanged) prior.surface.setQuality(nextTerrainQuality);
                 if (revised || identityChanged) {
@@ -749,12 +768,13 @@ const YAW_TERRAIN_CANVAS_ALPHA = (() => {
                 prior.terrainQuality = nextTerrainQuality;
                 prior.lightingPhase = nextLightingPhase;
                 prior.tileVisualSignature = nextTileVisualSignature;
+                prior.visualDirtyCursor = visualChanges.revision;
                 prior.location = { x: app.location.x, y: app.location.y };
                 if (resized) {
                     prior.surface.resize(size.width, size.height);
                 }
                 if (isLocal && (playerMoved || resized)) prior.surface.setLocal(app.location);
-                if (revised || identityChanged || qualityChanged || lightingChanged || tileVisualChanged || (isLocal && playerMoved) || resized) {
+                if (revised || identityChanged || qualityChanged || lightingChanged || tileVisualChanged || visualTilesChanged || (isLocal && playerMoved) || resized) {
                     draw(prior, { phase: 'synchronization' });
                 } else if (prior.frame) updateMode(prior, prior.frame);
                 return prior;

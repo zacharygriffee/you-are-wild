@@ -127,12 +127,16 @@ const resolveTile = (x, y) => {
       road: y === 0 ? { id: `road-${x}`, connections: ['east', 'west'] } : null,
       shoreline: x < 0 ? { edges: ['east'] } : null,
       cover: x === 0 && y === 0 ? [{ id: 'tree-1', name: 'Tree', family: 'conifer', anchor: { x: 0.2, y: 0.8 }, scale: 1.25 }] : [],
-      poi: x === 1 && y === 1 ? { id: 'spring-1', name: 'Spring', category: 'resource' } : null
+      poi: x === 0 && y === 0 ? { id: 'spring-1', name: 'Spring', category: 'resourceSite' } : null
     },
+    resourceSearched: x === 0 && y === 0,
     items: x === 0 && y === 0 ? [{ id: 'rope-1', name: 'Rope' }] : [],
     deathBags: x === 0 && y === 0 ? [{ id: 'bag-1', name: 'Recovery bag' }] : [],
     placedObjects: x === 0 && y === 0 ? [{ id: 'marker-1', name: 'Trail marker' }] : [],
-    creatures: x === 0 && y === 0 ? [{ id: 'fox-1', name: 'Fox' }] : []
+    creatures: x === 0 && y === 0 ? [
+      { id: 'fox-1', name: 'Fox' },
+      { id: 'fallen-1', name: 'Fallen wolf', alive: false, dead: true, disposition: 'corpse', scavenged: false }
+    ] : []
   };
 };
 
@@ -150,8 +154,13 @@ check(!JSON.stringify(first).includes('function'), 'Terrain scenes must contain 
 check(first.layers.ground.some(record => record.x === -1 && record.biome === 'water' && !record.passable), 'Simulation-owned biome and traversal facts must survive compilation');
 check(first.layers.hydrology.some(record => record.kind === 'water' && record.edges.includes('east')), 'Hydrology must carry authored shoreline edges without renderer policy');
 check(first.layers.cover.some(record => record.family === 'conifer' && record.anchor.x === 0.2 && record.scale === 1.25), 'Cover semantics must retain deterministic family, anchor, and scale facts');
-check(first.layers.evidence.some(record => record.kind === 'item') && first.layers.evidence.some(record => record.kind === 'recovery-bag'), 'Durable evidence types must survive scene compilation');
+check(first.layers.evidence.some(record => record.kind === 'item')
+  && first.layers.evidence.some(record => record.kind === 'recovery-bag')
+  && first.layers.evidence.some(record => record.kind === 'remains' && record.id === 'fallen-1')
+  && first.layers.evidence.some(record => record.kind === 'resource-change' && record.state === 'depleted'),
+  'Items, recovery bags, remains, and resource depletion must survive scene compilation');
 check(first.layers.presence.some(record => record.label === 'Fox'), 'Known live presence must survive scene compilation');
+check(!first.layers.presence.some(record => record.id === 'fallen-1'), 'Dead creatures must move to evidence instead of remaining live presence');
 const elevationRecord = first.layers.elevation[0];
 check(elevationRecord.terraceLevel === 3 && elevationRecord.terraceCount === 6
   && elevationRecord.gradient.aspect === 'north' && elevationRecord.gradient.x === 0.055,

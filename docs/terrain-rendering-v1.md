@@ -20,13 +20,19 @@ The data flow is:
 DOM controls remain a transparent semantic and interaction plane above those
 pixels. Losing or replacing a renderer must never make the map inoperable.
 
-## One canvas, two familiar views
+## One canvas camera, plus the planning Review Map
 
-The local 3x3 view and the broader Map are camera presets over the same chunked
-world canvas. Local mode fits roughly three tiles across the limiting axis.
-Pinch, wheel, keyboard, or explicit Map controls may zoom continuously into a
-regional or survey scale without switching terrain implementations. Panning
-and zooming do not move the party.
+The local 3x3 view and its explicit Survey control are camera presets over the
+same chunked world canvas. Local mode fits roughly three tiles across the
+limiting axis. Pinch, wheel, keyboard, or the Canvas 3x3/Survey controls may
+zoom continuously into a regional or survey scale without switching terrain
+implementations. Panning and zooming do not move the party.
+
+The ordinary Map command remains the semantic planning Review Map. It owns the
+complete filter set, tracked-quest guidance, markers, selected-tile inspector,
+legend, zoom, pan, recenter, and dock behavior. Opening it does not change the
+Canvas camera. This preserves planning and accessibility behavior while keeping
+Canvas Survey available as a lightweight nearby-terrain camera.
 
 The camera contract is renderer-neutral and provides world/screen transforms,
 visible tile bounds, visible chunk enumeration, anchored pinch zoom, panning,
@@ -42,21 +48,19 @@ and interaction work; it does not require another composition backend.
 
 The Canvas surface rasterizes apron-expanded chunks into private buffers, crops
 only each chunk's canonical interior, and places those interiors on one display
-canvas through the camera transform. Local and survey views therefore share
-the same scene compiler, chunk cache, renderer adapter, and world-to-screen
-math rather than attempting to keep a separate Review Map compositor aligned.
+canvas through the camera transform. Local and Canvas Survey views therefore
+share the same scene compiler, chunk cache, renderer adapter, and world-to-screen
+math. Review Map is deliberately retained as the established planning surface,
+not treated as a second Canvas camera preset.
 
 At close scale, the existing semantic DOM controls remain aligned above the
-visible neighboring cells. At survey scale, those local controls become inert
-and hidden from assistive technology while core provides a visible inspector,
-a single bounded live description, and a semantic 3x3 neighborhood around the camera
-cursor. Quest objective and turn-in focus commands center that same camera and
-place one ephemeral labelled marker without moving the party or revealing
-unknown terrain. This avoids creating an unbounded DOM button for every world
-tile. Those callers use the renderer-neutral `App.focusMapTarget` service;
-Canvas failure routes the same request to the established Map instead of making
-quest code depend on a concrete renderer. The generic service is also ready for
-future structure and POI callers, but those UI paths are not claimed here.
+visible neighboring cells. At Canvas Survey scale, those local controls become
+inert and hidden from assistive technology while core provides a visible
+inspector, a single bounded live description, and a semantic 3x3 neighborhood
+around the camera cursor. Quest objective, turn-in, structure, and POI focus
+callers instead use the renderer-neutral `App.focusMapTarget` service to open
+Review Map idempotently and select the requested coordinate. Focus does not move
+the party, advance time, materialize world tiles, or reveal unknown terrain.
 
 ## Fixed chunks
 
@@ -267,8 +271,9 @@ The Canvas default cutover required all of these acceptance gates:
 After passing the automated and independent acceptance gates, Canvas V1 is the
 default overworld terrain renderer. Wheel or pinch zooms around the gesture
 anchor, two-finger or survey drag pans, and 3x3/Survey controls select the
-three-tile or broader camera preset. The ordinary Map command opens this same
-survey camera, and Survey exposes an explicit Center recovery control.
+three-tile or broader camera preset. The ordinary Map command opens the planning
+Review Map without changing that camera; Canvas Survey exposes its own explicit
+Center recovery control.
 
 `terrainRenderer=canvas-v1` remains an explicit selection for diagnostics.
 `terrainRenderer=legacy` is the rollback switch and returns to the established

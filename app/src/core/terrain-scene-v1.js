@@ -294,13 +294,41 @@ const YAW_TERRAIN_SCENE_V1 = (() => {
                 }
             });
         }
+        const creatures = Array.isArray(tile.creatures) ? tile.creatures : [];
+        const isRemains = creature => Boolean(
+            creature?.alive === false
+            || creature?.dead === true
+            || creature?.corpse === true
+            || creature?.kind === 'remains'
+            || creature?.disposition === 'corpse'
+            || creature?.disposition === 'remains'
+        );
+        const remains = creatures.filter(isRemains);
         const evidence = [
             ...normalizedRefs(tile.items, 'item', identity),
             ...normalizedRefs(tile.deathBags, 'recovery-bag', identity),
-            ...normalizedRefs(tile.placedObjects, 'placed-object', identity)
+            ...normalizedRefs(tile.placedObjects, 'placed-object', identity),
+            ...normalizedRefs(remains, 'remains', identity).map((record, index) => ({
+                ...record,
+                depleted: Boolean(remains[index]?.depleted || remains[index]?.scavenged),
+                state: remains[index]?.depleted || remains[index]?.scavenged ? 'depleted' : record.state
+            }))
         ];
-        const presence = normalizedRefs(tile.creatures, 'creature', identity)
-            .filter((_record, index) => tile.creatures[index]?.alive !== false && tile.creatures[index]?.dead !== true);
+        if (tile.resourceSearched && overlays.poi?.category === 'resourceSite') {
+            evidence.push({
+                ...identity,
+                kind: 'resource-change',
+                id: text(overlays.poi?.id, `resource:${identity.key}`, 120),
+                label: text(overlays.poi?.name || overlays.poi?.id, 'Resource site'),
+                quantity: 1,
+                state: 'depleted',
+                family: text(overlays.poi?.category, 'resourceSite', 60),
+                role: '', anchor: null, scale: 1,
+                mechanical: false, blocksMovement: false, blocksSight: false,
+                ordinal: evidence.length
+            });
+        }
+        const presence = normalizedRefs(creatures.filter(creature => !isRemains(creature)), 'creature', identity);
 
         return {
             identity, ground, hydrology, elevation: elevationLayer,

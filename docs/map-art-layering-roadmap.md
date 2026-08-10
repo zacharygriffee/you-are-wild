@@ -222,9 +222,10 @@ Shared-corner shoreline caps taper before four-cell junctions to avoid dark
 beach wedges while retaining one canonical coastline owner.
 
 Polished bridge-to-road approaches, scout-dependent structure/POI discovery,
-quest and objective interaction parity on the unified Canvas navigation,
-streams, lakes, broader hydrology, and animation remain deferred work rather
-than hidden scope in this pass.
+Canvas-native quest planning, streams, lakes, broader hydrology, and animation
+remain deferred work rather than hidden scope in this pass. The current release
+preserves quest and objective planning parity through the complete Review Map;
+the ordinary Map command does not replace those controls with Canvas Survey.
 
 ## Phase D — persistent tile evidence (complete baseline)
 

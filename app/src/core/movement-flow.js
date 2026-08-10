@@ -38,7 +38,7 @@ const YAW_MOVEMENT_FLOW = {
         const oldTile = app.worldMap.get(oldKey);
         if (oldTile) {
             oldTile.creatures = app._tileCreatures(app.creatures);
-            app.persistTileDelta(oldTile.x, oldTile.y, oldTile);
+            app.persistTileDelta(oldTile.x, oldTile.y, oldTile, { visual: false });
         }
         app.clearTileBoundExplorationTargets();
         app.location.x = traversal.to.x; app.location.y = traversal.to.y;
@@ -88,7 +88,7 @@ const YAW_MOVEMENT_FLOW = {
             }
         }
         tile.creatures = app._tileCreatures(app.creatures);
-        app.persistTileDelta(tile.x, tile.y, tile);
+        app.persistTileDelta(tile.x, tile.y, tile, { visual: !wasExplored });
         app.emitTileObservation?.(tile, { wasExplored });
         YAW_COMPANION_BEHAVIOR?.reactToTile?.(app, tile, { wasExplored, interior: false });
         if (!recoveryJourney) {

@@ -405,26 +405,20 @@ async function checkScenario(browser, origin, scenarioId, viewport) {
           knownTiles: document.querySelectorAll('#large-map .large-map-tile.known[data-tile-composition-version="2"]').length
         };
       });
-      if (reviewMapMode.canvasMode) {
-        assert(['regional', 'survey'].includes(reviewMapMode.canvasMode), 'Review Map should zoom the Canvas terrain surface beyond local mode');
-        assert.equal(reviewMapMode.mapDisplay, 'none', 'Canvas survey should not open the duplicate legacy Review Map panel');
-        assert.equal(reviewMapMode.workbenchVisibility, 'visible', 'workbench controls should remain available beside the Canvas survey');
-      } else {
-        assert.equal(reviewMapMode.mapDisplay, 'flex', 'Review Map should open for composition inspection');
-        assert.equal(reviewMapMode.workbenchVisibility, 'hidden', 'floating workbench controls must not cover Review Map tiles');
-        assert.equal(reviewMapMode.knownTiles, 49, 'Review Map should retain the complete isolated workbench case');
-      }
+      assert.equal(reviewMapMode.canvasMode, 'local', 'The Map command should not change the explicit Canvas camera controls');
+      assert.equal(reviewMapMode.mapDisplay, 'flex', 'Review Map should open for composition inspection');
+      assert.equal(reviewMapMode.workbenchVisibility, 'hidden', 'floating workbench controls must not cover Review Map tiles');
+      assert.equal(reviewMapMode.knownTiles, 49, 'Review Map should retain the complete isolated workbench case');
       const restoredWorkbench = await page.evaluate(() => {
+        togglePanel('map');
         const canvas = document.querySelector('.yaw-terrain-canvas-alpha');
-        if (canvas) canvas.querySelector('[data-terrain-view="local"]')?.click();
-        else togglePanel('map');
         return {
           visibility: getComputedStyle(document.getElementById('alpha-terrain-workbench')).visibility,
           canvasMode: canvas?.dataset.terrainCameraMode || ''
         };
       });
       assert.equal(restoredWorkbench.visibility, 'visible', 'closing Review Map should restore the unchanged workbench controls');
-      if (reviewMapMode.canvasMode) assert.equal(restoredWorkbench.canvasMode, 'local', '3x3 should restore the local Canvas camera');
+      assert.equal(restoredWorkbench.canvasMode, 'local', 'closing Review Map should leave the local Canvas camera unchanged');
     }
     assert.equal(actual.diagnostics.activeScenario, scenarioId, `${scenarioId} diagnostic identity`);
     assert.equal(actual.diagnostics.isolatedSaveDb, true, `${scenarioId} isolated save database`);

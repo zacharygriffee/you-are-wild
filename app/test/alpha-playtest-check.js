@@ -459,6 +459,39 @@ async function checkPublicLab(browser, origin) {
   }
 }
 
+async function checkWorkbenchExit(browser, origin) {
+  const { context, page, failures } = await makePage(browser, { width: 1280, height: 800 });
+  try {
+    const url = new URL(`${origin}/dist/you-are-wild`);
+    url.searchParams.set('alphaScenario', 'terrain-workbench');
+    url.searchParams.set('terrainRenderer', 'canvas-v1');
+    url.searchParams.set('terrainRelief', 'rugged');
+    url.searchParams.set('terrainQuality', 'high');
+    await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForFunction(() => App.alphaSession?.scenarioId === 'terrain-workbench', null, { timeout: 60000 });
+    await page.getByRole('button', { name: 'Exit Alpha' }).click();
+    await page.waitForFunction(() => (
+      !new URL(location.href).searchParams.has('alphaScenario')
+      && typeof window.App !== 'undefined'
+      && !window.App.alphaSession
+    ), null, { timeout: 60000 });
+    const exited = await page.evaluate(() => ({
+      alpha: App.alphaSession || null,
+      params: Object.fromEntries(new URL(location.href).searchParams),
+      menuVisible: document.getElementById('screen-menu')?.classList.contains('active') || false
+    }));
+    assert.equal(exited.alpha, null, 'Exit Alpha should restore ordinary startup state');
+    assert.equal(exited.params.terrainRelief, undefined, 'Exit Alpha should clear workbench-only relief');
+    assert.equal(exited.params.terrainQuality, undefined, 'Exit Alpha should clear workbench-only quality');
+    assert.equal(exited.params.terrainRenderer, 'canvas-v1', 'Exit Alpha should preserve an explicit ordinary renderer choice');
+    assert.equal(exited.menuVisible, true, 'Exit Alpha should return to the ordinary menu');
+    assert.deepEqual(failures, [], `workbench exit browser failures:\n${failures.join('\n')}`);
+    return { surface: 'terrain-workbench-exit', viewport: { width: 1280, height: 800 }, outcome: 'passed' };
+  } finally {
+    await context.close();
+  }
+}
+
 async function main() {
   assert.ok(fs.existsSync(BUILD), 'Build missing; run npm run build first');
   const fixture = await serveBuild();
@@ -466,6 +499,7 @@ async function main() {
   const results = [];
   try {
     results.push(await checkPublicLab(browser, fixture.origin));
+    results.push(await checkWorkbenchExit(browser, fixture.origin));
     for (const scenarioId of Object.keys(EXPECTED)) {
       results.push(await checkScenario(browser, fixture.origin, scenarioId, { width: 1280, height: 800 }));
     }

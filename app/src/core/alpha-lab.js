@@ -1306,7 +1306,7 @@ const YAW_ALPHA_LAB = {
         if (typeof location === 'undefined') return false;
         const url = new URL(location.href);
         url.searchParams.delete('alphaScenario');
-        ['terrainSource', 'terrainDestination', 'terrainDirection', 'terrainGeometry', 'terrainOverlay', 'terrainPhase', 'terrainSeed']
+        ['terrainSource', 'terrainDestination', 'terrainDirection', 'terrainGeometry', 'terrainRelief', 'terrainOverlay', 'terrainPhase', 'terrainQuality', 'terrainSeed']
             .forEach(key => url.searchParams.delete(key));
         history.replaceState(null, '', url.toString());
         location.reload();

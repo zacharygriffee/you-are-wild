@@ -113,14 +113,119 @@ separates soft material blending, hard stone/interior edges, and specialized
 water/land shorelines. Eight-neighbor junctions trim mixed-source corner
 losers, decorative spill remains in the owning edge band, roads receive
 biome-aware shoulders, bridges receive landward approach pads, and route/POI
-clearance protects topology. Static jungle canopy, undergrowth, and floor
-light distinguish dense jungle from intentionally open plains without a new
-atlas. These remain records in the existing terrain, route, cover, and feature
-layers—not simulation state or a saved biome blend.
+clearance protects topology. Terrain Art Quality Pass 1 adds a transparent
+directional relief atlas for north/east/south/west slopes, ledges, and cliffs,
+plus a transparent jungle atlas with independently replaceable canopy,
+undergrowth, litter, and edge-spill artwork. Dense jungle now remains visibly
+distinct from intentionally open plains without baking either identity into
+the ground material. These remain records in the existing terrain, route,
+cover, and feature layers—not simulation state or a saved biome blend.
+
+A maintained `terrain-composition` Alpha mission presents the same deterministic
+9x9 survey on desktop, phone, and Review Map surfaces. Its rows cover biome
+identity, cover families, road/bridge continuity, inherited-ground structures,
+inherited-ground POIs, evidence/presence, directional relief, and mixed
+four-tile junctions. It is the visual-review entry point for this phase rather
+than a handcrafted replacement for ordinary world generation.
+
+The separate `terrain-workbench` Alpha mission isolates one 7x7 boundary case
+and makes every biome pairing, cardinal orientation, straight/diagonal/convex/
+concave/T/four-way geometry, level/slope/terrace/drop/ridge/saddle/valley/peak/
+cliff-corner/rugged relief,
+overlay state, lighting phase, and enumerated art seed directly selectable. Its
+1,399,680 stable cases are URL-addressable and
+project through both the local map and Review Map, so neighboring showcase
+rows cannot accidentally influence the case under inspection.
 
 Artifact acceptance caps the offline build, hosted shell, external atlas set,
-textured cold transfer, and the two directly relevant atlases. Animation and
+textured cold transfer, and the directly relevant ground, cover, relief, and
+jungle atlases. Animation and
 mod-supplied animated media remain a future composition-version topic.
+
+Terrain Art Quality Pass 2 extends that visual baseline without widening the
+contract. Grove, forest, plains, swamp, and cave now have separately
+replaceable identity art; soft-biome adjacency uses matching directional spill
+strips instead of reusing the older generic cover crops. Deterministic
+transform and anchor variation keeps repeated tiles from becoming identical,
+while the existing route and feature clearance pass protects readable paths,
+structures, and POIs. Plains deliberately emits one restrained identity record
+per tile; jungle remains the only dense three-stratum baseline.
+
+Beach uses one restrained `cover-beach-identity` drift overlay from the
+existing reviewed V3 cover sheet. Its water boundary remains a specialized
+shoreline layer rather than a generic ground spill, keeping coastal seams
+single-owned and free of repeating scallop decoration.
+
+Terrain Art Quality Pass 3 replaces the bundled skin's uniform transition
+cutoff with a deterministic five-point contour derived from the canonical
+shared-edge key. Soft biome seams retain a feathered material blend, hard
+edges remain shallow, and shoreline water follows its specialized contour
+without restoring synthetic foam. Mixed-corner trim and extend decisions now
+shape the rendered polygon as well as the serialized metadata. The contour
+mask is scoped to the bundled pack, so replacement packs keep full control of
+authored transition art. Coordinate-derived anchor, scale, rotation, flip, and
+variant signatures reduce repeated identity placement without rotating the
+seam-matched ground plane or changing any tile fact.
+
+The Pass 3 correction keeps the nine controls but removes their visual card
+gutters and per-cell dimming, so desktop, phone, and Review Map paint one
+continuous surface. Moveability, focus, selection, and current position use
+a compact resting dot plus bounded hover/focus/selection/current rings instead.
+The `state-current` semantic remains in the pack stack for compatibility, while
+the bundled oversized compass is suppressed; categorized POIs no longer also
+receive a generic landmark or a full-cell outline, and bundled POI art is
+scaled to a compact marker.
+
+Traversal artwork now treats those controls as interaction geometry rather
+than part of the terrain bitmap. Each cell owns a bounded art viewport:
+interior canopy and undergrowth are clamped to a scale-aware safe inset, while
+intentional edge vegetation is emitted as a deterministic paired band on both
+sides of the same shared edge. This prevents clipped half-trees without
+allowing one control's art to obscure its neighbor. The bundled skin insets
+smooth ground/terrain atlas samples by a fractional source pixel and extends
+canonical shared-edge paint one CSS pixel across its owned boundary,
+preventing atlas bleed and subpixel hairlines without changing replacement-pack
+crop geometry.
+
+One runtime contour compositor now owns all bundled soft/hard corner geometry.
+Isolated edges taper at four-cell junctions, mixed-source corners select one
+winner and aggressively trim the loser, soft paint is capped at 26% depth, and
+hard paint at 19%. Specialized shorelines retain their own authority. Existing
+biome strata now choose deterministic secondary families and densities, making
+coordinate variants visibly different without another atlas. Night exposes a
+presentation-only phase that lifts first-party material readability without
+changing visibility mechanics or grading replacement packs.
+
+Jungle identity now distributes four canopy anchors plus independent
+undergrowth and litter across an unobstructed tile. Contiguous jungle pairs add
+three overlapping, transform-matched same-material canopy continuity bands on
+each unobstructed shared edge. Those paired halves keep one canonical axis and
+cross-edge position and are never independently displaced by local clearance;
+routes reserve their crossing edge while features still clear interior
+foliage. The result is a layered forest field rather than one centered
+vegetation clump or a row of clipped half-trees, without making foliage a
+movement or visibility fact.
+
+Visual Recipe Version 6 adds the correction pass over that baseline. Plains,
+swamp, beach, sand, and farm use slope lighting without terrace-wall bands;
+forest, grove, and jungle retain only restrained contour relief; cliff and
+cave keep the full plateau treatment. Forest now distributes three canopy
+clusters plus understory and pairs two continuity records across unobstructed
+same-forest edges. Plains uses dispersed grass and optional scrub, swamp uses
+shallow wetland material plus reeds, jungle gains broader deterministic anchor
+and rotation variation. Bundled roads narrow to a 22% travel surface and keep
+one deck material across biome boundaries; slope-only biomes suppress large
+ledge/cliff sprites as well as contour walls; diagonal-only water no longer
+paints a triangular land-corner crop; and
+natural-water blocked semantics no longer paint bridge-adjacent wall props.
+Shared-corner shoreline caps taper before four-cell junctions to avoid dark
+beach wedges while retaining one canonical coastline owner.
+
+Polished bridge-to-road approaches, scout-dependent structure/POI discovery,
+Canvas-native quest planning, streams, lakes, broader hydrology, and animation
+remain deferred work rather than hidden scope in this pass. The current release
+preserves quest and objective planning parity through the complete Review Map;
+the ordinary Map command does not replace those controls with Canvas Survey.
 
 ## Phase D — persistent tile evidence (complete baseline)
 

@@ -97,6 +97,62 @@ demonstrated contradiction:
 - appetite, recruitment, restraint duration, danger, and reward balance;
 - English and Spanish player-facing clarity and human translation quality.
 
+## Post-stabilization — Chew nourishment and combat agency
+
+These reported gaps are accepted backlog items. They do not interrupt the
+active performance and visual-quality branch, and they require stable
+reproduction fixtures before gameplay code changes.
+
+1. **Audit Chew nourishment.** Chew currently spends the Feast hunger cost but
+   resolves as vitality and punishment damage with no automatic consumption
+   credit. Reproduce the reported hunger result for player and companion
+   actors, in single and group Chew, across hit, resisted, surviving, and
+   depleted-target outcomes. Decide whether actual mass removed should grant
+   bounded immediate nourishment, or whether Chew remains strictly an attack
+   and its cost, label, and feedback must make that clear. Any nourishment rule
+   must conserve food value so the same mass cannot feed the chewer once and
+   then grant full value again through later containment or digestion.
+2. **Design Combat Agency / Interruption V1.** Preserve the deterministic turn
+   queue, but do not leave the player without meaningful agency while automatic
+   combat events advance. Separate and specify:
+   - an always-available presentation pause or hold control;
+   - an out-of-turn emergency attempt to flee or stop party automation, with an
+     explicit cost, cooldown, or reservation against future player action;
+   - a pre-commit companion-intent preview such as "A party member is about to
+     do X," followed by a bounded opportunity to *try* to redirect or stop it;
+   - deterministic companion compliance or refusal based on authored state,
+     with every refusal or unavailable response narrated rather than surfaced
+     as a warning or error; and
+   - a separate priority contract for true instant or reaction actions, rather
+     than treating the existing readable, fast, and instant presentation modes
+     as mechanical priority.
+3. **Audit unexplained companion flight and its narrative continuity.**
+   Reproduce the reported combat in which Harpy appears in the opening turn
+   order, then a later group Talk attempt reports that Harpy has fled even
+   though no intervening Scene or Activity Log event says that Harpy tried to
+   flee, succeeded, or had a reason to do so. Trace the exact state transition
+   that sets the fled flag and distinguish an authored flee action from stale
+   queue state, settlement cleanup, fear handling, or target-validation drift.
+   Acceptance requires:
+   - every attempted and resolved flee to create an immediate causal combat
+     event and player-facing narration, including the relevant authored reason;
+   - a later group-action failure to narrate the consequence without becoming
+     the first or only disclosure that the companion left;
+   - deterministic flee scoring that accounts for condition, fear, stance,
+     relative threat, safe routes, reach, row, and mobility, so an airborne
+     companion facing a grounded threat does not flee without another credible
+     pressure; and
+   - queue, party, world-placement, save/reload, and interaction-selection state
+     to agree after flight, with fixtures for manual and autonomous companions
+     and single and committed group actions.
+
+The preview duration is a UI opportunity, not authoritative real-time game
+state: pausing, slow devices, accessibility needs, save/reload, and `file://`
+play must not change the deterministic outcome. Acceptance must cover the
+player, manual and autonomous companions, enemies, committed group actions,
+fear and restraint, save/reload, all combat-pacing modes, and desktop and mobile
+layouts without duplicate turns, free repeated reactions, or lost action cost.
+
 ## Later gameplay and mod work
 
 The following remain valid backlog, but none blocks 0.18.3 stabilization:

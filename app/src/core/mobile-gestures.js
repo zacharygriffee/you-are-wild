@@ -18,12 +18,14 @@ const YAW_MOBILE_GESTURES = {
     },
 
     handleMapTouchStart(app, event) {
+        if (typeof YAW_TERRAIN_CANVAS_ALPHA !== 'undefined' && YAW_TERRAIN_CANVAS_ALPHA.enabled?.()) return;
         if (!event.touches || event.touches.length < 2) return;
         app._pinchStartDistance = this.touchDistance(event.touches);
         app._pinchStartZoom = app.mobileMapZoom || 1;
     },
 
     handleMapTouchMove(app, event) {
+        if (typeof YAW_TERRAIN_CANVAS_ALPHA !== 'undefined' && YAW_TERRAIN_CANVAS_ALPHA.enabled?.()) return;
         if (!event.touches || event.touches.length < 2 || !app._pinchStartDistance) return;
         if (typeof event.preventDefault === 'function') event.preventDefault();
         const distance = this.touchDistance(event.touches);
@@ -38,7 +40,9 @@ const YAW_MOBILE_GESTURES = {
 
     applyMobileMapZoom(app) {
         const map = document.getElementById('mobile-mini-map');
-        if (map) map.style.transform = `scale(${app.mobileMapZoom || 1})`;
+        if (map) map.style.transform = typeof YAW_TERRAIN_CANVAS_ALPHA !== 'undefined' && YAW_TERRAIN_CANVAS_ALPHA.enabled?.()
+            ? ''
+            : `scale(${app.mobileMapZoom || 1})`;
     },
 
     unitStripPanSelector: '.mobile-unit-strip, .mobile-actor-belt, .mobile-target-picker-belt',

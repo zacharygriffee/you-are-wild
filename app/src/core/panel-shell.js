@@ -35,7 +35,8 @@ const YAW_PANEL_SHELL = {
         if (!panel) return false;
         if (!isMobile) {
             if (panelName === 'map') {
-                this.toggleDesktopMap(app, panel);
+                if (!panel.classList.contains('active')) this.toggleDesktopMap(app, panel);
+                else this.focusPanel(panel, { preventScroll: true });
                 return true;
             }
             this.focusDesktopPanel(app, panelName);
@@ -190,9 +191,9 @@ const YAW_PANEL_SHELL = {
             dock.classList.remove('selected');
         }
         const focusComposer = options.focusComposer === true;
-        const focusTarget = focusComposer
+        const focusTarget = options.restoreFocus === false ? null : (focusComposer
             ? document.querySelector('#mobile-target-action-tray button, #mobile-explore-actions button, #mobile-combat-toolbelt button, #mobile-selection-sentence [tabindex]')
-            : (app._mobileRosterOpener || dock);
+            : (app._mobileRosterOpener || dock));
         app._mobileRosterOpener = null;
         app._mobilePanelReturnRail = null;
         if (focusTarget && typeof focusTarget.focus === 'function') {

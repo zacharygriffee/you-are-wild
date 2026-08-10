@@ -62,6 +62,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         const bridgeApproachEdges = visual?.adjacencyBlend?.route?.find(entry => entry?.kind === 'bridge-approach')?.approachEdges || [];
         setOrRemove('data-bridge-approach-edges', bridgeApproachEdges.join(' '));
         setOrRemove('data-visual-recipe', visual?.adjacencyBlend?.biome || '');
+        setOrRemove('data-relief-mode', visual?.visualRecipe?.reliefMode || '');
         setOrRemove('data-route-shoulder', visual?.visualRecipe?.routeShoulder || '');
         setOrRemove('data-route-clearance', visual?.visualRecipe?.routeClearance ? String(visual.visualRecipe.routeClearance) : '');
         setOrRemove('data-adjacency-blend-edges', Array.isArray(visual?.adjacencyBlend?.terrain) ? visual.adjacencyBlend.terrain.map(entry => entry.direction).join(' ') : '');
@@ -170,6 +171,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         if (this.isEditableEventTarget(event.target || document.activeElement)) return false;
         if (app.screen !== 'game' || !app.player || this.isCombatActive(app)) return false;
         if (this.hasBlockingOverlay(app)) return false;
+        if (typeof YAW_TERRAIN_CANVAS_ALPHA !== 'undefined' && YAW_TERRAIN_CANVAS_ALPHA.handleTraversalKey?.(event)) return true;
         const direction = this.keyDirection(event);
         if (!direction) return false;
         event.preventDefault?.();

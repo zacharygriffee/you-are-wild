@@ -233,12 +233,90 @@ const YAW_TILESET_RUNTIME = {
     },
 
     _transitionMetadata(visual, semanticKey) {
-        const match = String(semanticKey || '').match(/^ground-transition-(.+)-(north|east|south|west)$/);
-        if (!match) return null;
-        const [, biome, direction] = match;
-        return (visual?.adjacencyBlend?.terrain || []).find(entry => (
-            String(entry?.biome || entry?.sourceBiome) === biome && String(entry?.direction) === direction
-        )) || null;
+        const value = String(semanticKey || '');
+        const groundMatch = value.match(/^ground-transition-(.+)-(north|east|south|west)$/);
+        if (groundMatch) {
+            const [, biome, direction] = groundMatch;
+            const metadata = (visual?.adjacencyBlend?.terrain || []).find(entry => (
+                String(entry?.biome || entry?.sourceBiome) === biome && String(entry?.direction) === direction
+            ));
+            return metadata ? { ...metadata, kind: 'ground-transition' } : null;
+        }
+        const shorelineMatch = value.match(/^shoreline-water-(north|east|south|west)$/);
+        if (!shorelineMatch) return null;
+        const direction = shorelineMatch[1];
+        const metadata = (visual?.adjacencyBlend?.sharedEdges || []).find(entry => (
+            entry?.policy === 'shoreline' && entry?.destinationOwned && String(entry?.direction) === direction
+        ));
+        return metadata ? { ...metadata, kind: 'shoreline' } : null;
+    },
+
+    _edgeClipPath(metadata = {}) {
+        const direction = String(metadata?.direction || '');
+        const contour = (Array.isArray(metadata?.contour) ? metadata.contour : [])
+            .slice(0, 5)
+            .map(value => Math.max(0.12, Math.min(0.46, Number(value) || 0)));
+        if (!['north', 'east', 'south', 'west'].includes(direction) || contour.length !== 5) return '';
+        const endpointCorners = {
+            north: ['wn', 'ne'], east: ['ne', 'es'], south: ['sw', 'es'], west: ['wn', 'sw']
+        }[direction];
+        const cornerState = endpointCorners.map(corner => String(metadata?.corners?.[corner] || ''));
+        const isTrimmed = state => state === 'trim';
+        const isCapped = state => state === 'cap';
+        const edgeStart = isTrimmed(cornerState[0]) ? 0.26 : 0;
+        const edgeEnd = isTrimmed(cornerState[1]) ? 0.74 : 1;
+        // A cap must still meet the source material at the shared boundary,
+        // but it tapers before entering the four-cell corner. A split trims
+        // the losing edge more aggressively, leaving exactly one material to
+        // own the junction. Joined or extended same-material edges remain
+        // full width so their identical paint can meet without a hole.
+        const contourStart = isTrimmed(cornerState[0]) ? 0.38 : 0;
+        const contourEnd = isTrimmed(cornerState[1]) ? 0.62 : 1;
+        // Interpolate the five canonical samples before clipping. Corner caps
+        // need more than one intermediate point or an otherwise continuous
+        // beach/ground edge collapses into a conspicuous triangular wedge.
+        const interpolatedContour = Array.from({ length: 9 }, (_, index) => {
+            const position = index / 2;
+            const lower = Math.floor(position);
+            const upper = Math.min(4, Math.ceil(position));
+            const mix = position - lower;
+            return contour[lower] * (1 - mix) + contour[upper] * mix;
+        });
+        const adjustedDepth = interpolatedContour.map((value, index) => {
+            const state = index === 0 ? cornerState[0] : (index === 8 ? cornerState[1] : '');
+            const extension = state === 'extend' ? 0.045 : (state === 'join' ? 0.025 : 0);
+            let cappedDepth = value;
+            const startDistance = index;
+            const endDistance = 8 - index;
+            if (isCapped(cornerState[0]) && startDistance <= 3) {
+                const progress = startDistance / 3;
+                const eased = progress * progress * (3 - 2 * progress);
+                cappedDepth = 0.12 + (cappedDepth - 0.12) * eased;
+            }
+            if (isCapped(cornerState[1]) && endDistance <= 3) {
+                const progress = endDistance / 3;
+                const eased = progress * progress * (3 - 2 * progress);
+                cappedDepth = 0.12 + (cappedDepth - 0.12) * eased;
+            }
+            return Math.max(0.12, Math.min(0.48, cappedDepth + extension));
+        });
+        const crossValues = Array.from({ length: 9 }, (_, index) => contourStart + (contourEnd - contourStart) * index / 8);
+        const percent = value => Number((value * 100).toFixed(1));
+        const edgePoint = cross => {
+            if (direction === 'north') return `${percent(cross)}% 0%`;
+            if (direction === 'east') return `100% ${percent(cross)}%`;
+            if (direction === 'south') return `${percent(cross)}% 100%`;
+            return `0% ${percent(cross)}%`;
+        };
+        const contourPoint = (cross, depth) => {
+            if (direction === 'north') return `${percent(cross)}% ${percent(depth)}%`;
+            if (direction === 'east') return `${percent(1 - depth)}% ${percent(cross)}%`;
+            if (direction === 'south') return `${percent(cross)}% ${percent(1 - depth)}%`;
+            return `${percent(depth)}% ${percent(cross)}%`;
+        };
+        const points = [edgePoint(edgeStart), edgePoint(edgeEnd)];
+        for (let index = 8; index >= 0; index--) points.push(contourPoint(crossValues[index], adjustedDepth[index]));
+        return `polygon(${points.join(', ')})`;
     },
 
     _dynamicLayerRequests(visual = {}) {
@@ -250,28 +328,43 @@ const YAW_TILESET_RUNTIME = {
             const family = String(record?.family || (record?.mechanical ? 'rock' : 'foliage'));
             const kind = String(record?.kind || 'cover');
             const scale = Number(record?.scale || 1);
-            const renderedScale = kind === 'adjacent-spill'
-                ? Math.max(0.24, Math.min(0.44, scale * 0.46))
+            const edgeCover = ['adjacent-spill', 'edge-spill-origin', 'edge-continuity'].includes(kind);
+            const renderedScale = edgeCover
+                ? (family.endsWith('-spill')
+                    ? Math.max(0.52, Math.min(0.74, scale * 0.86))
+                    : Math.max(0.24, Math.min(0.44, scale * 0.46)))
                 : (kind === 'biome-identity' && record?.stratum === 'canopy'
                     ? Math.max(0.46, Math.min(0.68, scale * 0.58))
                     : Math.max(0.28, Math.min(0.58, scale * 0.5)));
+            const rotation = Number(record?.rotation || 0);
+            const radians = rotation * Math.PI / 180;
+            const requestedX = Number(record?.anchor?.x ?? 0.5);
+            const requestedY = Number(record?.anchor?.y ?? 0.5);
+            const interiorSafe = record?.edgeSafe === undefined
+                ? ['biome-identity', 'biome-detail'].includes(kind)
+                : Boolean(record.edgeSafe);
+            const rotatedExtent = Math.min(0.48, renderedScale * (Math.abs(Math.cos(radians)) + Math.abs(Math.sin(radians))) / 2 + 0.012);
+            const safeCoordinate = value => Math.max(rotatedExtent, Math.min(1 - rotatedExtent, value));
             requests.push({
                 key: `cover-${family}`,
                 fallbackKey: record?.mechanical ? 'cover-obstacle' : 'cover-foliage',
                 compositionLayer: 'cover',
                 compositionSubLayer: Math.max(0, Math.min(99, Number(record?.subLayer ?? 20))),
                 placement: {
-                    x: Number(record?.anchor?.x ?? 0.5),
-                    y: Number(record?.anchor?.y ?? 0.5),
+                    x: interiorSafe && !edgeCover ? safeCoordinate(requestedX) : requestedX,
+                    y: interiorSafe && !edgeCover ? safeCoordinate(requestedY) : requestedY,
                     scale: record?.mechanical ? Math.max(0.28, Math.min(0.68, scale * 0.58)) : renderedScale,
-                    rotate: Number(record?.rotation || 0),
+                    rotate: rotation,
                     flipX: Boolean(record?.flipX)
                 },
                 opacity: Math.max(0, Math.min(1, Number(record?.opacity ?? 1))),
                 recordKind: kind,
+                variant: Math.max(0, Math.min(3, Math.trunc(Number(record?.variant || 0)))),
                 stratum: String(record?.stratum || ''),
                 edgeBand: String(record?.edgeBand || ''),
                 sharedEdgeKey: String(record?.sharedEdgeKey || ''),
+                pairRole: String(record?.pairRole || ''),
+                interiorSafe,
                 recordIndex: index
             });
         });
@@ -304,6 +397,8 @@ const YAW_TILESET_RUNTIME = {
         const dynamicRequests = this._dynamicLayerRequests(visual);
         const dynamicPrefixes = new Set(dynamicRequests.map(request => request.compositionLayer));
         const primaryKey = String(visual.tilesetKey || visual.baseTilesetKey || '');
+        const bundledContourTerrain = visual.elevationCorners && typeof visual.elevationCorners === 'object';
+        const reliefMode = String(visual?.visualRecipe?.reliefMode || 'terrace');
         const layers = [];
         let primaryRendered = false;
         for (const semanticKey of semanticKeys) {
@@ -311,16 +406,28 @@ const YAW_TILESET_RUNTIME = {
             if (dynamicPrefixes.has(semanticLayer) && ['cover', 'evidence', 'presence'].includes(semanticLayer)) continue;
             const resolved = this.resolveTile(semanticKey);
             if (!resolved) continue;
+            const bundledLegacyRelief = resolved.pack.id === 'yaw.default-basic-v1'
+                && /^terrain-elevation-(?:ledge|cliff)-/.test(semanticKey);
+            if (bundledLegacyRelief && (
+                bundledContourTerrain
+                || ['none', 'slope-only'].includes(reliefMode)
+                || (reliefMode === 'restrained' && /^terrain-elevation-cliff-/.test(semanticKey))
+            )) continue;
             if (semanticKey === primaryKey || resolved.key === primaryKey) primaryRendered = true;
             for (const layer of resolved.tile.layers) {
                 const atlas = resolved.atlases.get(layer.atlasId);
                 if (!atlas?.url) continue;
+                const bundledPoiPlacement = resolved.pack.id === 'yaw.default-basic-v1' && semanticKey.startsWith('poi-')
+                    ? { x: 0.5, y: 0.5, scale: Number(globalThis.YAW_TILE_VISUAL_RECIPES?.VISUAL_SCALE?.poi || 0.42) }
+                    : null;
                 layers.push({
                     ...layer,
                     semanticKey,
                     compositionLayer: this._compositionLayerForKey(semanticKey),
                     compositionSubLayer: this._compositionSubRankForKey(semanticKey),
                     transitionMetadata: this._transitionMetadata(visual, semanticKey),
+                    ...(bundledPoiPlacement ? { placement: bundledPoiPlacement } : {}),
+                    packId: resolved.pack.id,
                     url: atlas.url,
                     cssImage: atlas.cssImage,
                     atlasWidth: atlas.width,
@@ -344,9 +451,11 @@ const YAW_TILESET_RUNTIME = {
                     opacity: Math.max(0, Math.min(1, Number(layer.opacity ?? 1) * Number(request.opacity ?? 1))),
                     recordIndex: request.recordIndex,
                     recordKind: request.recordKind,
+                    variant: request.variant,
                     stratum: request.stratum,
                     edgeBand: request.edgeBand,
                     sharedEdgeKey: request.sharedEdgeKey,
+                    packId: resolved.pack.id,
                     url: atlas.url,
                     cssImage: atlas.cssImage,
                     atlasWidth: atlas.width,
@@ -366,19 +475,98 @@ const YAW_TILESET_RUNTIME = {
         return { layers, primaryRendered };
     },
 
+    _terrainHeightAt(corners, x, y) {
+        const nw = Number(corners?.nw ?? 0.5);
+        const ne = Number(corners?.ne ?? nw);
+        const se = Number(corners?.se ?? ne);
+        const sw = Number(corners?.sw ?? nw);
+        const north = nw + (ne - nw) * x;
+        const south = sw + (se - sw) * x;
+        return north + (south - north) * y;
+    },
+
+    _terrainContourHtml(app, visual = {}, packId = '') {
+        if (packId !== 'yaw.default-basic-v1') return '';
+        const contours = Array.isArray(visual.elevationContours) ? visual.elevationContours : [];
+        const corners = visual.elevationCorners;
+        const reliefMode = String(visual?.visualRecipe?.reliefMode || 'terrace');
+        if (['none', 'slope-only'].includes(reliefMode)
+            || !corners || !contours.length || !['ledge', 'cliff'].includes(String(visual.elevationKind || ''))) return '';
+        const spans = [];
+        const visibleContours = reliefMode === 'restrained' ? contours.slice(0, 2) : contours.slice(0, 6);
+        visibleContours.forEach((contour, contourIndex) => {
+            (Array.isArray(contour?.segments) ? contour.segments : []).slice(0, 2).forEach((segment, segmentIndex) => {
+                const from = segment?.from || {};
+                const to = segment?.to || {};
+                const x1 = Math.max(0, Math.min(1, Number(from.x) || 0));
+                const y1 = Math.max(0, Math.min(1, Number(from.y) || 0));
+                const x2 = Math.max(0, Math.min(1, Number(to.x) || 0));
+                const y2 = Math.max(0, Math.min(1, Number(to.y) || 0));
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const length = Math.hypot(dx, dy);
+                if (length < 0.01) return;
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                const normalX = -dy / length;
+                const normalY = dx / length;
+                const midpointX = (x1 + x2) / 2;
+                const midpointY = (y1 + y2) / 2;
+                const sample = 0.035;
+                const leftHeight = this._terrainHeightAt(corners,
+                    Math.max(0, Math.min(1, midpointX + normalX * sample)),
+                    Math.max(0, Math.min(1, midpointY + normalY * sample)));
+                const rightHeight = this._terrainHeightAt(corners,
+                    Math.max(0, Math.min(1, midpointX - normalX * sample)),
+                    Math.max(0, Math.min(1, midpointY - normalY * sample)));
+                const wallSign = leftHeight <= rightHeight ? 1 : -1;
+                const style = [
+                    `left:${(x1 * 100).toFixed(2)}%`,
+                    `top:${(y1 * 100).toFixed(2)}%`,
+                    `width:${(length * 100).toFixed(2)}%`,
+                    `--yaw-contour-angle:${angle.toFixed(3)}deg`,
+                    `--yaw-contour-side:${wallSign}`,
+                    `--yaw-contour-level:${Math.max(0, Math.min(8, Number(contour?.level) || 0))}`
+                ].join(';');
+                spans.push(`<span class="yaw-terrain-contour-segment" data-relief-mode="${app._escapeHtml(reliefMode)}" data-contour-level="${app._escapeHtml(String(contour?.level ?? 0))}" data-contour-mask="${app._escapeHtml(String(contour?.mask ?? 0))}" data-contour-segment="${contourIndex}-${segmentIndex}" style="${app._escapeHtml(style)}"></span>`);
+            });
+        });
+        return spans.length ? `<span class="yaw-terrain-contours" data-relief-mode="${app._escapeHtml(reliefMode)}" data-contour-count="${spans.length}">${spans.join('')}</span>` : '';
+    },
+
     _styleUrl(value) {
         return String(value || '').replace(/[\\"'()\n\r]/g, character => `\\${character}`);
     },
 
     _layerStyle(layer) {
         const rect = layer.rect;
-        const sizeX = (layer.atlasWidth / rect.width) * 100;
-        const sizeY = (layer.atlasHeight / rect.height) * 100;
-        const positionX = layer.atlasWidth === rect.width ? 0 : (rect.x / (layer.atlasWidth - rect.width)) * 100;
-        const positionY = layer.atlasHeight === rect.height ? 0 : (rect.y / (layer.atlasHeight - rect.height)) * 100;
+        // Smoothly scaled atlas crops can borrow a fractional pixel from the
+        // neighboring sprite at a grid boundary. Inset only the bundled
+        // material planes inside their atlas rectangles; authored packs keep
+        // their exact crop contract and full-atlas images need no gutter.
+        const atlasInset = layer.packId === 'yaw.default-basic-v1'
+            && ['ground', 'terrain'].includes(layer.compositionLayer)
+            && (rect.width < layer.atlasWidth || rect.height < layer.atlasHeight)
+            ? Math.min(0.75, rect.width / 16, rect.height / 16)
+            : 0;
+        const sampleRect = {
+            x: rect.x + atlasInset,
+            y: rect.y + atlasInset,
+            width: rect.width - atlasInset * 2,
+            height: rect.height - atlasInset * 2
+        };
+        const sizeX = (layer.atlasWidth / sampleRect.width) * 100;
+        const sizeY = (layer.atlasHeight / sampleRect.height) * 100;
+        const positionX = layer.atlasWidth === sampleRect.width ? 0 : (sampleRect.x / (layer.atlasWidth - sampleRect.width)) * 100;
+        const positionY = layer.atlasHeight === sampleRect.height ? 0 : (sampleRect.y / (layer.atlasHeight - sampleRect.height)) * 100;
         const scaleX = Boolean(layer.transform.flipX) !== Boolean(layer.placement?.flipX) ? -1 : 1;
         const scaleY = layer.transform.flipY ? -1 : 1;
         const placement = layer.placement;
+        const contour = Array.isArray(layer.transitionMetadata?.contour) ? layer.transitionMetadata.contour : [];
+        const contourClip = layer.packId === 'yaw.default-basic-v1' ? this._edgeClipPath(layer.transitionMetadata) : '';
+        const contourStyles = contourClip ? [
+            `--yaw-edge-fade-end:${Math.max(...contour.map(value => Number(value) || 0), 0.28) * 100}%`,
+            `clip-path:${contourClip}`
+        ] : [];
         const placementStyles = placement ? [
             'inset:auto',
             `left:${(placement.x - placement.scale / 2) * 100}%`,
@@ -388,6 +576,7 @@ const YAW_TILESET_RUNTIME = {
         ] : [];
         return [
             ...placementStyles,
+            ...contourStyles,
             `background-image:${layer.cssImage || `url("${this._styleUrl(layer.url)}")`}`,
             `background-size:${sizeX}% ${sizeY}%`,
             `background-position:${positionX}% ${positionY}%`,
@@ -411,16 +600,20 @@ const YAW_TILESET_RUNTIME = {
             const subLayer = app._escapeHtml(String(layer.compositionSubLayer ?? 0));
             const transition = layer.transitionMetadata;
             const edgeAttrs = transition
-                ? ` data-shared-edge-key="${app._escapeHtml(transition.sharedEdgeKey || '')}" data-edge-blend-style="${app._escapeHtml(transition.style || 'soft')}" data-edge-corners="${app._escapeHtml(Object.entries(transition.corners || {}).map(([corner, state]) => `${corner}:${state}`).join(' '))}"`
+                ? ` data-shared-edge-key="${app._escapeHtml(transition.sharedEdgeKey || '')}" data-edge-profile="${app._escapeHtml(transition.kind || 'ground-transition')}" data-edge-blend-style="${app._escapeHtml(transition.style || 'soft')}" data-edge-phase="${Number(transition.phase || 0).toFixed(6)}" data-edge-contour="${app._escapeHtml((transition.contour || []).join(' '))}" data-edge-corners="${app._escapeHtml(Object.entries(transition.corners || {}).map(([corner, state]) => `${corner}:${state}`).join(' '))}"`
                 : '';
             const coverAttrs = layer.recordKind
-                ? ` data-cover-kind="${app._escapeHtml(layer.recordKind)}" data-cover-stratum="${app._escapeHtml(layer.stratum || '')}" data-edge-band="${app._escapeHtml(layer.edgeBand || '')}"${layer.sharedEdgeKey ? ` data-shared-edge-key="${app._escapeHtml(layer.sharedEdgeKey)}"` : ''}`
+                ? ` data-cover-kind="${app._escapeHtml(layer.recordKind)}" data-cover-variant="${app._escapeHtml(String(layer.variant || 0))}" data-cover-stratum="${app._escapeHtml(layer.stratum || '')}" data-edge-band="${app._escapeHtml(layer.edgeBand || '')}" data-interior-safe="${layer.interiorSafe ? 'true' : 'false'}"${layer.pairRole ? ` data-edge-pair-role="${app._escapeHtml(layer.pairRole)}"` : ''}${layer.sharedEdgeKey ? ` data-shared-edge-key="${app._escapeHtml(layer.sharedEdgeKey)}"` : ''}`
                 : '';
             return `<span class="yaw-tile-art-layer" data-tileset-layer="${slot}" data-tile-composition-layer="${compositionLayer}" data-composition-sub-layer="${subLayer}" data-tileset-semantic-key="${key}" data-tileset-layer-index="${index}"${edgeAttrs}${coverAttrs} style="${style}"></span>`;
         }).join('');
         const primaryClass = rendered.primaryRendered ? ' primary-rendered' : '';
         const packId = app._escapeHtml(this.activeCandidate()?.pack.id || '');
-        return `<span class="yaw-tile-art${primaryClass}" data-tileset-pack="${packId}" aria-hidden="true">${layers}</span>`;
+        const terrainContours = this._terrainContourHtml(app, visual, this.activeCandidate()?.pack.id || '');
+        const groundSeal = this.activeCandidate()?.pack.id === 'yaw.default-basic-v1'
+            ? '<span class="yaw-ground-edge-seal"></span>'
+            : '';
+        return `<span class="yaw-tile-art${primaryClass}" data-tileset-pack="${packId}" aria-hidden="true">${layers}${groundSeal}${terrainContours}</span>`;
     }
 };
 

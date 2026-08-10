@@ -62,6 +62,9 @@ async function startHostedTilesetCacheServer() {
     'bridge-span-v2.png',
     'foliage-cover-v2.png',
     'cover-overlays-v3.png',
+    'terrain-relief-v1.png',
+    'jungle-strata-v1.png',
+    'biome-strata-v2.png',
     'structure-overlays-v3.png',
     'poi-overlays-v3.png',
     'evidence-overlays-v3.png'
@@ -583,7 +586,12 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert(stageState.stackEnemyMarkCount >= 1, 'Desktop combat enemy micro cards should expose compact combat marks');
   assert.strictEqual(stageState.interactiveCardRootCount, 0, 'Desktop combat micro card bodies should remain passive while mark buttons stay interactive');
   assert.strictEqual(stageState.centerIntentCount, 0, 'Desktop combat center should stay free of duplicated intent/action grids');
-  await page.locator('#enemies-content .compact-tactical-card').first().click();
+  const passiveEnemyCard = page.locator('#enemies-content .compact-tactical-card').first();
+  await passiveEnemyCard.waitFor({ state: 'visible' });
+  // This assertion intentionally probes a passive card body. Dispatching the
+  // DOM click avoids coupling the semantic check to Playwright's pointer
+  // stability heuristic while the responsive combat rails finish reflowing.
+  await passiveEnemyCard.evaluate(card => card.click());
   let state = await page.evaluate(() => ({
     enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
     combatTargetId: App.combatTargetId,
@@ -5101,6 +5109,7 @@ async function runTilesetCrossSurfaceFlow(page) {
           derivedBiome: isWater ? 'water' : 'beach',
           displayBiome: isWater ? 'water' : 'beach',
           water: isWater,
+          hasLandmark: isAnchor,
           explored: true,
           creatures: [], items: [],
           overlays: {
@@ -5141,15 +5150,23 @@ async function runTilesetCrossSurfaceFlow(page) {
       mobileAnchors: document.querySelectorAll('#mobile-mini-map [data-tileset-key="poi-danger-site"]').length,
       desktopAnchors: document.querySelectorAll('#desktop-neighborhood-grid [data-tileset-key="poi-danger-site"]').length,
       largeAnchors: document.querySelectorAll('#large-map [data-tileset-key="poi-danger-site"]').length,
+      duplicateLandmarks: document.querySelectorAll('[data-tileset-semantic-key="poi-landmark"]').length,
       mobileInfluence: document.querySelectorAll('#mobile-mini-map [data-danger-influence="true"]').length,
       desktopInfluence: document.querySelectorAll('#desktop-neighborhood-grid [data-danger-influence="true"]').length,
-      largeInfluence: document.querySelectorAll('#large-map [data-danger-influence="true"]').length
+      largeInfluence: document.querySelectorAll('#large-map [data-danger-influence="true"]').length,
+      mobileGap: getComputedStyle(document.querySelector('#mobile-mini-map')).gap,
+      desktopGap: getComputedStyle(document.querySelector('#desktop-neighborhood-grid')).gap,
+      largeRowGap: getComputedStyle(document.querySelector('#large-map .large-map-row')).gap,
+      currentOpacity: getComputedStyle(document.querySelector('#desktop-map-cell-center [data-tileset-semantic-key="state-current"]')).opacity,
+      poiWidth: document.querySelector('#desktop-map-cell-center [data-tileset-semantic-key="poi-danger-site"]')?.style.width || '',
+      mobileBorder: getComputedStyle(document.querySelector('#mobile-mini-map .map-tile.center')).borderTopWidth,
+      desktopBorder: getComputedStyle(document.querySelector('#desktop-map-cell-center')).borderTopWidth
     };
   });
   for (const [surface, value] of [['mobile coast', state.mobile], ['desktop coast', state.desktop], ['large-map coast', state.large]]) {
     assert(value.semantics.includes('terrain-sand') && value.semantics.includes('terrain-beach'), `${surface} should retain reusable sand and beach identity semantics`);
     assert(value.semantics.includes('shoreline-water-north') && value.semantics.includes('shoreline-water-east'), `${surface} should compose every adjacent cardinal shoreline`);
-    assert(value.semantics.includes('shoreline-water-outer-ne'), `${surface} should compose the outer corner joining adjacent north and east water`);
+    assert(!value.semantics.includes('shoreline-water-outer-ne'), `${surface} should join adjacent north and east shoreline masks without an overlapping outer-corner sticker`);
     assert.strictEqual(value.shoreline, 'north east', `${surface} should expose authoritative shoreline metadata`);
     assert.strictEqual(value.shorelineCorners, 'outer-ne', `${surface} should expose authoritative shoreline corner metadata`);
     assert.strictEqual(value.shorelineMask, '5', `${surface} should expose its eight-neighbor transition mask`);
@@ -5160,13 +5177,29 @@ async function runTilesetCrossSurfaceFlow(page) {
     assert(['none', 'normal', ''].includes(value.northFoamContent), `${surface} should omit the retired repeating scallop foam while retaining the shoreline mask`);
   }
   assert.deepStrictEqual([state.mobileAnchors, state.desktopAnchors, state.largeAnchors], [1, 1, 1], 'Every map surface should render one danger-site anchor instead of a skull carpet');
+  assert.strictEqual(state.duplicateLandmarks, 0, 'A categorized POI must not also render the generic landmark semantic');
   assert.deepStrictEqual([state.mobileInfluence, state.desktopInfluence, state.largeInfluence], [9, 9, 9], 'Every map surface should retain the bounded 3x3 danger influence footprint');
+  assert.deepStrictEqual([state.mobileGap, state.desktopGap, state.largeRowGap], ['0px', '0px', '0px'], 'Map artwork should meet across cell boundaries on mobile, desktop, and Review Map');
+  assert.deepStrictEqual([state.mobileBorder, state.desktopBorder], ['0px', '0px'], 'Interactive traversal cells should use inset affordances instead of artwork-breaking borders');
+  assert.strictEqual(state.currentOpacity, '0', 'The bundled current-position semantic should defer to the bounded cell ring without hiding terrain');
+  assert.strictEqual(state.poiWidth, '42%', 'The bundled POI semantic should remain a centered, scale-consistent marker even when its surface is off-screen');
+  const nightReadability = await page.evaluate(() => {
+    App.timeHour = 23;
+    App._renderTime();
+    const ground = document.querySelector('#desktop-map-cell-center [data-tile-composition-layer="ground"]');
+    return {
+      phase: document.body.getAttribute('data-day-phase') || '',
+      filter: ground ? getComputedStyle(ground).filter : ''
+    };
+  });
+  assert.strictEqual(nightReadability.phase, 'night', 'Night rendering should expose an explicit presentation phase without changing map facts');
+  assert(nightReadability.filter.includes('brightness(1.1)'), `Bundled night terrain should retain a readable material lift; got ${nightReadability.filter}`);
   const shorelineLayers = await page.evaluate(() => [...document.querySelectorAll('#desktop-map-cell-center [data-tileset-semantic-key^="shoreline-water-"]')].map(layer => ({
     key: layer.getAttribute('data-tileset-semantic-key'),
     opacity: getComputedStyle(layer).opacity,
     mask: getComputedStyle(layer).maskImage
   })));
-  assert(shorelineLayers.length >= 3, 'Cross-surface coast fixture should resolve edge and outer-corner shoreline semantics');
+  assert(shorelineLayers.length >= 2, 'Cross-surface coast fixture should resolve both joined cardinal shoreline masks');
   assert(shorelineLayers.every(layer => layer.opacity === '1' && layer.mask !== 'none'), `Bundled shoreline semantics should paint reusable water only through directional masks: ${JSON.stringify(shorelineLayers)}`);
 
   const naturalWaterWalls = await page.evaluate(() => {

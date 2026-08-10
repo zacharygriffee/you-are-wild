@@ -16,7 +16,6 @@ const YAW_MOVEMENT_FLOW = {
         if (app.mode === app.GAME_MODE.COMBAT) {
             const text = app._label('log.inCombatCannotMove', 'You are in combat! Use Flee to escape.');
             app.log.push({ text, type: 'combat' });
-            app.showToast?.({ text, type: 'blocked', importance: 'notable', dedupeKey: 'blocked:combat-move' });
             app.renderLog();
             return;
         }
@@ -31,7 +30,6 @@ const YAW_MOVEMENT_FLOW = {
         if (!traversal.allowed) {
             const text = app._traversalMessage(traversal);
             app.log.push({ text, type: 'move' });
-            app.showToast?.({ text, type: 'blocked', importance: 'notable', dedupeKey: `blocked:travel:${traversal.reasonCode}` });
             app.renderLog();
             return false;
         }
@@ -40,7 +38,7 @@ const YAW_MOVEMENT_FLOW = {
         const oldTile = app.worldMap.get(oldKey);
         if (oldTile) {
             oldTile.creatures = app._tileCreatures(app.creatures);
-            app.persistTileDelta(oldTile.x, oldTile.y, oldTile);
+            app.persistTileDelta(oldTile.x, oldTile.y, oldTile, { visual: false });
         }
         app.clearTileBoundExplorationTargets();
         app.location.x = traversal.to.x; app.location.y = traversal.to.y;
@@ -90,7 +88,7 @@ const YAW_MOVEMENT_FLOW = {
             }
         }
         tile.creatures = app._tileCreatures(app.creatures);
-        app.persistTileDelta(tile.x, tile.y, tile);
+        app.persistTileDelta(tile.x, tile.y, tile, { visual: !wasExplored });
         app.emitTileObservation?.(tile, { wasExplored });
         YAW_COMPANION_BEHAVIOR?.reactToTile?.(app, tile, { wasExplored, interior: false });
         if (!recoveryJourney) {

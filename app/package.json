@@ -15,13 +15,17 @@
     "test:interactions": "node test/combat-interactions-check.js",
     "test:alpha": "node test/alpha-playtest-check.js",
     "test:lifecycle": "node test/adventure-lifecycle-check.js",
+    "test:terrain-renderer": "node test/terrain-renderer-v1-check.js",
+    "test:terrain-canvas-browser": "npm run build --silent && npm run build:hosted --silent && node test/terrain-canvas-browser-check.js",
     "test:tile-composition": "node test/tile-composition-v2-check.js",
+    "test:terrain-workbench": "node test/terrain-workbench-check.js",
     "test:tile-composition-browser": "npm run build --silent && npm run build:hosted --silent && node test/tile-composition-browser-check.js",
+    "evidence:terrain-quality": "node test/terrain-quality-evidence-check.js",
     "lint": "node build.js --lint-only",
     "watch": "node build.js --watch",
     "dev": "node dev.js",
     "clean": "rm -f ../dist/you-are-wild.html",
-    "full-build": "npm run clean && npm run build && npm run test && npm run lint && npm run check && npm run test:viewport && npm run test:interactions && npm run test:alpha && npm run test:lifecycle && npm run test:tile-composition && npm run test:tile-composition-browser"
+    "full-build": "npm run clean && npm run build && npm run test && npm run lint && npm run check && npm run test:viewport && npm run test:interactions && npm run test:alpha && npm run test:lifecycle && npm run test:terrain-renderer && npm run test:terrain-canvas-browser && npm run test:tile-composition && npm run test:terrain-workbench && npm run test:tile-composition-browser"
   },
   "keywords": [
     "game",

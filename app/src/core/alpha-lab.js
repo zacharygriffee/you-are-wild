@@ -9,6 +9,30 @@ const YAW_ALPHA_LAB = {
     WORLD_DB_NAME: 'YAW_Alpha_Worlds',
     REPORT_SCHEMA: 'yaw-alpha-report-v1',
     ISSUE_URL: 'https://github.com/zacharygriffee/you-are-wild/issues/new',
+    TERRAIN_WORKBENCH_BIOMES: Object.freeze(['grove', 'forest', 'plains', 'swamp', 'jungle', 'beach', 'water', 'cliff', 'cave']),
+    TERRAIN_WORKBENCH_DIRECTIONS: Object.freeze(['north', 'east', 'south', 'west']),
+    TERRAIN_WORKBENCH_GEOMETRIES: Object.freeze(['straight', 'diagonal', 'convex', 'concave', 't-junction', 'four-way']),
+    TERRAIN_WORKBENCH_RELIEFS: Object.freeze([
+        'level', 'slope', 'terrace', 'drop', 'ridge', 'saddle', 'valley', 'peak', 'cliff-corner', 'rugged'
+    ]),
+    TERRAIN_WORKBENCH_OVERLAYS: Object.freeze(['none', 'road', 'bridge', 'structure', 'poi', 'evidence', 'presence', 'selection', 'all']),
+    TERRAIN_WORKBENCH_PHASES: Object.freeze(['day', 'night']),
+    TERRAIN_WORKBENCH_QUALITIES: Object.freeze(['performance', 'balanced', 'high']),
+    TERRAIN_WORKBENCH_SEED_COUNT: 4,
+    TERRAIN_WORKBENCH_REGRESSIONS: Object.freeze([
+        Object.freeze({ id: 'plains-relief', source: 'plains', destination: 'plains', relief: 'rugged', geometry: 'straight', direction: 'north', overlay: 'none', phase: 'day', seed: 1 }),
+        Object.freeze({ id: 'swamp-relief', source: 'swamp', destination: 'swamp', relief: 'terrace', geometry: 'diagonal', direction: 'east', overlay: 'none', phase: 'day', seed: 2 }),
+        Object.freeze({ id: 'beach-corner', source: 'beach', destination: 'water', relief: 'cliff-corner', geometry: 'concave', direction: 'north', overlay: 'none', phase: 'night', seed: 3 }),
+        Object.freeze({ id: 'forest-cover', source: 'forest', destination: 'forest', relief: 'level', geometry: 'four-way', direction: 'north', overlay: 'none', phase: 'day', seed: 1 }),
+        Object.freeze({ id: 'jungle-variation', source: 'jungle', destination: 'jungle', relief: 'level', geometry: 'four-way', direction: 'north', overlay: 'none', phase: 'day', seed: 4 }),
+        Object.freeze({ id: 'road-scale', source: 'forest', destination: 'forest', relief: 'level', geometry: 'straight', direction: 'east', overlay: 'road', phase: 'day', seed: 2 }),
+        Object.freeze({ id: 'bridge-water-walls', source: 'beach', destination: 'water', relief: 'level', geometry: 'straight', direction: 'east', overlay: 'bridge', phase: 'day', seed: 1 }),
+        Object.freeze({ id: 'oriented-drop', source: 'cliff', destination: 'plains', relief: 'drop', geometry: 'straight', direction: 'south', overlay: 'none', phase: 'day', seed: 2 }),
+        Object.freeze({ id: 'ridge-road', source: 'cliff', destination: 'plains', relief: 'ridge', geometry: 'diagonal', direction: 'east', overlay: 'road', phase: 'day', seed: 1 }),
+        Object.freeze({ id: 'saddle-structure', source: 'cliff', destination: 'cave', relief: 'saddle', geometry: 'four-way', direction: 'north', overlay: 'structure', phase: 'night', seed: 3 }),
+        Object.freeze({ id: 'valley-presence', source: 'forest', destination: 'plains', relief: 'valley', geometry: 'concave', direction: 'west', overlay: 'presence', phase: 'day', seed: 2 }),
+        Object.freeze({ id: 'peak-poi', source: 'cliff', destination: 'plains', relief: 'peak', geometry: 'convex', direction: 'north', overlay: 'poi', phase: 'day', seed: 1 })
+    ]),
 
     missions: [
         {
@@ -121,6 +145,34 @@ const YAW_ALPHA_LAB = {
                 ['alpha.check.responsive.reachable', 'Every action and exit control remains visible and reachable.'],
                 ['alpha.check.responsive.noOverflow', 'The page and option sheets do not overflow horizontally.'],
                 ['alpha.check.responsive.stable', 'Group cancel and option-sheet controls do not push the action belt out of reach.']
+            ]
+        },
+        {
+            id: 'terrain-composition',
+            icon: '🗺️',
+            category: 'presentation',
+            titleKey: 'alpha.mission.terrainComposition.title',
+            title: 'Terrain composition survey',
+            descriptionKey: 'alpha.mission.terrainComposition.description',
+            description: 'Traverse a deterministic 9x9 gallery of biomes, seams, elevation, routes, features, evidence, and state overlays.',
+            checklist: [
+                ['alpha.check.terrain.identity', 'Every biome remains recognizable beneath cover, routes, features, and state.'],
+                ['alpha.check.terrain.seams', 'Soft blends, hard elevation edges, shorelines, roads, and bridges meet without square gaps or doubled seams.'],
+                ['alpha.check.terrain.layers', 'Structures, POIs, evidence, presence, danger, and selection remain legible on desktop, mobile, and Review Map.']
+            ]
+        },
+        {
+            id: 'terrain-workbench',
+            icon: '🧪',
+            category: 'presentation',
+            titleKey: 'alpha.mission.terrainWorkbench.title',
+            title: 'Tile Composition Workbench',
+            descriptionKey: 'alpha.mission.terrainWorkbench.description',
+            description: 'Generate isolated terrain pairings and junctions without neighboring test cases changing the result.',
+            checklist: [
+                ['alpha.check.terrainWorkbench.matrix', 'Every biome pairing, direction, geometry, overlay state, seed, and day phase is directly selectable.'],
+                ['alpha.check.terrainWorkbench.isolation', 'Each generated 7x7 case is isolated, reproducible, and visible on local and Review Map surfaces.'],
+                ['alpha.check.terrainWorkbench.jungle', 'Jungle reads as a continuous layered canopy without clipped trees or hidden gameplay markers.']
             ]
         }
     ],
@@ -294,6 +346,8 @@ const YAW_ALPHA_LAB = {
         app.transactionWindow = null;
         app.defeatState = null;
         app.strandedCompanions = [];
+        app.cheats = { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false, noEnemies: false };
+        app._overpoweredSnapshot = null;
         return player;
     },
 
@@ -366,10 +420,632 @@ const YAW_ALPHA_LAB = {
                     spd: 8
                 });
             }
+        } else if (mission.id === 'terrain-composition' || mission.id === 'terrain-workbench') {
+            app.cheats.noEnemies = true;
         }
     },
 
+    terrainSurveyTile(app, x, y, biome, overrides = {}) {
+        const base = app.getBaseTile(x, y);
+        const overlays = {
+            barriers: [],
+            obstacles: [],
+            cover: [],
+            ...(overrides.overlays || {})
+        };
+        const terrainTopology = { elevation: 0.5, kind: 'level', band: 'mid', uphillEdges: [], downhillEdges: [], cliffEdges: [] };
+        return {
+            ...base,
+            x,
+            y,
+            biome,
+            baseBiome: biome,
+            derivedBiome: biome,
+            displayBiome: biome,
+            macroBiome: biome,
+            water: biome === 'water',
+            elevation: 0.5,
+            terrainTopology,
+            terrain: {
+                ...(base.terrain || {}),
+                water: biome === 'water',
+                elevation: 0.5,
+                topology: terrainTopology
+            },
+            explored: true,
+            seen: true,
+            description: `Terrain survey ${biome} at ${x}, ${y}.`,
+            hostile: false,
+            danger: 0,
+            dangerPressure: Number(overrides.dangerPressure || 0.08),
+            creatures: [],
+            items: [],
+            deathBags: [],
+            placedObjects: [],
+            structure: null,
+            hasLandmark: false,
+            landmarkName: '',
+            traversal: {
+                ...(base.traversal || {}),
+                passable: true,
+                blocked: false,
+                barrierEdges: []
+            },
+            overlays,
+            ...overrides,
+            overlays
+        };
+    },
+
+    terrainSurveyHeightAt(x, y) {
+        const elevation = 0.48
+            + x * 0.055
+            + Math.sin(y * 0.82) * 0.07
+            + Math.cos((x - y) * 0.48) * 0.035;
+        return Math.max(0.08, Math.min(0.92, elevation));
+    },
+
+    terrainSurveyTopologyAt(x, y) {
+        const directions = [
+            ['north', 0, -1], ['east', 1, 0], ['south', 0, 1], ['west', -1, 0]
+        ];
+        const elevation = this.terrainSurveyHeightAt(x, y);
+        const cornerElevations = {
+            nw: this.terrainSurveyHeightAt(x - 0.5, y - 0.5),
+            ne: this.terrainSurveyHeightAt(x + 0.5, y - 0.5),
+            se: this.terrainSurveyHeightAt(x + 0.5, y + 0.5),
+            sw: this.terrainSurveyHeightAt(x - 0.5, y + 0.5)
+        };
+        Object.keys(cornerElevations).forEach(corner => {
+            cornerElevations[corner] = Number(cornerElevations[corner].toFixed(4));
+        });
+        const terraceCount = 6;
+        const levelFor = value => Math.max(0, Math.min(terraceCount - 1, Math.floor(value * terraceCount)));
+        const terraceLevel = levelFor(elevation);
+        const grades = Object.fromEntries(directions.map(([direction, dx, dy]) => [
+            direction,
+            Number((this.terrainSurveyHeightAt(x + dx, y + dy) - elevation).toFixed(4))
+        ]));
+        const terraceEdges = Object.fromEntries(directions.map(([direction, dx, dy]) => [
+            direction,
+            levelFor(this.terrainSurveyHeightAt(x + dx, y + dy)) - terraceLevel
+        ]));
+        const wallEdges = directions.map(([direction]) => direction).filter(direction => terraceEdges[direction] < 0);
+        const riseEdges = directions.map(([direction]) => direction).filter(direction => terraceEdges[direction] > 0);
+        const gradientX = ((cornerElevations.ne + cornerElevations.se) - (cornerElevations.nw + cornerElevations.sw)) / 2;
+        const gradientY = ((cornerElevations.sw + cornerElevations.se) - (cornerElevations.nw + cornerElevations.ne)) / 2;
+        const magnitude = Math.hypot(gradientX, gradientY);
+        const aspect = Math.abs(gradientX) >= Math.abs(gradientY)
+            ? (gradientX >= 0 ? 'east' : 'west')
+            : (gradientY >= 0 ? 'south' : 'north');
+        const byRise = Object.entries(grades).sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+        const byDrop = Object.entries(grades).sort((left, right) => left[1] - right[1] || left[0].localeCompare(right[0]));
+        const maximumGrade = Math.max(...Object.values(grades).map(value => Math.abs(value)));
+        const kind = maximumGrade >= 0.075 ? 'ledge' : (maximumGrade >= 0.035 ? 'slope' : 'level');
+        return {
+            elevation: Number(elevation.toFixed(4)),
+            kind,
+            band: elevation >= 0.72 ? 'high' : (elevation <= 0.28 ? 'low' : 'mid'),
+            terraceLevel,
+            terraceCount,
+            cornerElevations,
+            gradient: {
+                x: Number(gradientX.toFixed(4)),
+                y: Number(gradientY.toFixed(4)),
+                magnitude: Number(magnitude.toFixed(4)),
+                aspect: magnitude >= 0.0001 ? aspect : null
+            },
+            terraceEdges,
+            wallEdges,
+            riseEdges,
+            contours: typeof WorldGen !== 'undefined' && typeof WorldGen.getElevationContours === 'function'
+                ? WorldGen.getElevationContours(cornerElevations)
+                : [],
+            primaryUphill: byRise[0]?.[1] > 0 ? byRise[0][0] : null,
+            primaryDownhill: byDrop[0]?.[1] < 0 ? byDrop[0][0] : null,
+            uphillEdges: directions.map(([direction]) => direction).filter(direction => grades[direction] >= 0.025),
+            downhillEdges: directions.map(([direction]) => direction).filter(direction => grades[direction] <= -0.025),
+            cliffEdges: [],
+            grades
+        };
+    },
+
+    configureTerrainSurvey(app) {
+        const biomes = ['grove', 'forest', 'plains', 'swamp', 'jungle', 'beach', 'water', 'cliff', 'cave'];
+        const coverFamilies = ['broadleaf', 'conifer', 'grass', 'reeds', 'jungle', 'drift', '', 'rock', 'rock'];
+        const structures = ['camp', 'hut', 'farm', 'spring', 'tree', 'cabin', 'pond', 'ruins', 'cave'];
+        const poiCategories = ['restSite', 'structure', 'resourceSite', 'landmark', 'settlement', 'dangerSite', 'resourceSite', 'landmark', 'structure'];
+        const tileAt = (x, y) => app.worldMap.get(`${x},${y}`);
+
+        for (let y = -4; y <= 4; y++) {
+            for (let x = -4; x <= 4; x++) {
+                const column = x + 4;
+                const biome = biomes[column];
+                const terrainTopology = this.terrainSurveyTopologyAt(x, y);
+                app.worldMap.set(`${x},${y}`, this.terrainSurveyTile(app, x, y, biome, {
+                    elevation: terrainTopology.elevation,
+                    terrainTopology,
+                    terrain: {
+                        water: biome === 'water',
+                        elevation: terrainTopology.elevation,
+                        topology: terrainTopology
+                    }
+                }));
+                app.exploredTiles.add(`${x},${y}`);
+            }
+        }
+
+        // Row -3: explicit reusable cover families over their inherited ground.
+        biomes.forEach((biome, index) => {
+            const x = index - 4;
+            const tile = tileAt(x, -3);
+            const family = coverFamilies[index];
+            tile.overlays.cover = family ? [
+                { id: `survey-cover-${index}-a`, family, anchor: { x: 0.26, y: 0.3 }, scale: 0.66, role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false },
+                { id: `survey-cover-${index}-b`, family, anchor: { x: 0.72, y: 0.7 }, scale: 0.52, role: 'decorative', mechanical: false, blocksMovement: false, blocksSight: false }
+            ] : [];
+        });
+
+        // Row -2: one edge-to-edge road, with the water cell promoted to a bridge span.
+        biomes.forEach((_biome, index) => {
+            const x = index - 4;
+            const tile = tileAt(x, -2);
+            const connections = [
+                ...(x > -4 ? ['west'] : []),
+                ...(x < 4 ? ['east'] : [])
+            ];
+            if (tile.biome === 'water') {
+                tile.overlays.bridge = {
+                    id: 'survey-bridge', direction: 'east-west', connections,
+                    spanIndex: 0, spanLength: 1, spanRole: 'single', shoreEdges: ['east', 'west']
+                };
+                tile.traversal.route = 'bridge';
+            } else {
+                tile.overlays.road = { id: `survey-road-${x}`, direction: 'east-west', connections };
+                tile.traversal.route = 'road';
+            }
+        });
+
+        // Row -1: transparent structures on nine different inherited materials.
+        structures.forEach((structure, index) => {
+            const tile = tileAt(index - 4, -1);
+            tile.structure = structure;
+            tile.featureFootprint = { width: 1, height: 1, part: 'single', anchor: { x: 0.5, y: 0.5 } };
+        });
+
+        // Row 0: POI grounding plus one shared multi-cell settlement footprint.
+        poiCategories.forEach((category, index) => {
+            const tile = tileAt(index - 4, 0);
+            tile.overlays.poi = { id: `survey-poi-${index}`, category, footprint: { width: 1, height: 1, part: 'single' } };
+            tile.hasLandmark = true;
+            tile.landmarkName = `Survey ${category}`;
+        });
+        for (const x of [-1, 0]) {
+            const tile = tileAt(x, 0);
+            tile.overlays.poi = { id: 'survey-settlement-footprint', category: 'settlement', footprint: { width: 2, height: 1 } };
+            tile.landmarkName = 'Shared survey settlement';
+        }
+
+        // Row 1: durable evidence and a non-hostile occupant without changing terrain identity.
+        biomes.forEach((_biome, index) => {
+            const x = index - 4;
+            const tile = tileAt(x, 1);
+            if (index % 4 === 0) tile.items = [{ id: `survey-item-${index}`, name: 'Survey item', quantity: index + 1 }];
+            if (index % 4 === 1) tile.deathBags = [{ id: `survey-bag-${index}`, gold: index + 2, items: [] }];
+            if (index % 4 === 2) tile.placedObjects = [{ id: `survey-object-${index}`, name: 'Trail marker', kind: 'trail-marker' }];
+            if (index % 4 === 3) tile.resourceSearched = true;
+        });
+        tileAt(0, 1).creatures = [this.unit(app, 'survey-occupant', 'Surveyor', 'fox', {
+            disposition: app.DISPOSITION.NEUTRAL,
+            willing: true,
+            obedient: false
+        })];
+
+        // Row 2: continuous computed elevation samples. Mechanical cliff facts
+        // follow the same topology instead of overriding its grades or contours.
+        biomes.forEach((_biome, index) => {
+            const tile = tileAt(index - 4, 2);
+            const cliffEdges = tile.biome === 'cliff' ? [...(tile.terrainTopology.wallEdges || [])] : [];
+            tile.terrainTopology = { ...tile.terrainTopology, cliffEdges };
+            tile.terrain = { ...(tile.terrain || {}), elevation: tile.elevation, topology: tile.terrainTopology };
+            tile.overlays.barriers = cliffEdges;
+            tile.traversal.barrierEdges = cliffEdges;
+        });
+
+        // Rows 3-4 deliberately alternate materials to expose cardinal seams and four-tile junctions.
+        const junctionBiomes = ['jungle', 'plains', 'cliff', 'beach', 'water', 'swamp', 'forest', 'sand', 'grove'];
+        junctionBiomes.forEach((biome, index) => {
+            const x = index - 4;
+            for (const y of [3, 4]) {
+                const tile = tileAt(x, y);
+                const surveyBiome = y === 3 ? biome : junctionBiomes[(index + 1) % junctionBiomes.length];
+                const displayBiome = surveyBiome === 'sand' ? 'beach' : surveyBiome;
+                tile.biome = surveyBiome;
+                tile.baseBiome = surveyBiome;
+                tile.derivedBiome = surveyBiome;
+                tile.displayBiome = displayBiome;
+                tile.macroBiome = surveyBiome;
+                tile.water = surveyBiome === 'water';
+                tile.terrain = { ...(tile.terrain || {}), water: tile.water };
+                tile.description = `Terrain survey ${displayBiome} at ${x}, ${y}.`;
+            }
+        });
+
+        app.location = { x: 0, y: 0 };
+        app.currentBiome = tileAt(0, 0).biome;
+        app.creatures = tileAt(0, 0).creatures || [];
+        app.largeMapOffset = { x: 0, y: 0 };
+        app.largeMapSelected = { x: 0, y: 0 };
+    },
+
+    terrainWorkbenchDefaults() {
+        return {
+            source: 'jungle',
+            destination: 'plains',
+            direction: 'north',
+            geometry: 'straight',
+            relief: 'terrace',
+            overlay: 'none',
+            phase: 'day',
+            quality: 'balanced',
+            seed: 0
+        };
+    },
+
+    normalizeTerrainWorkbench(input = {}) {
+        const defaults = this.terrainWorkbenchDefaults();
+        const choose = (value, values, fallback) => values.includes(String(value || '')) ? String(value) : fallback;
+        return {
+            source: choose(input.source, this.TERRAIN_WORKBENCH_BIOMES, defaults.source),
+            destination: choose(input.destination, this.TERRAIN_WORKBENCH_BIOMES, defaults.destination),
+            direction: choose(input.direction, this.TERRAIN_WORKBENCH_DIRECTIONS, defaults.direction),
+            geometry: choose(input.geometry, this.TERRAIN_WORKBENCH_GEOMETRIES, defaults.geometry),
+            relief: choose(input.relief, this.TERRAIN_WORKBENCH_RELIEFS, defaults.relief),
+            overlay: choose(input.overlay, this.TERRAIN_WORKBENCH_OVERLAYS, defaults.overlay),
+            phase: choose(input.phase, this.TERRAIN_WORKBENCH_PHASES, defaults.phase),
+            quality: choose(input.quality, this.TERRAIN_WORKBENCH_QUALITIES, defaults.quality),
+            seed: Math.max(0, Math.min(999, Math.trunc(Number(input.seed) || 0)))
+        };
+    },
+
+    terrainWorkbenchFromUrl() {
+        if (typeof location === 'undefined') return this.terrainWorkbenchDefaults();
+        const query = new URLSearchParams(location.search);
+        return this.normalizeTerrainWorkbench({
+            source: query.get('terrainSource'),
+            destination: query.get('terrainDestination'),
+            direction: query.get('terrainDirection'),
+            geometry: query.get('terrainGeometry'),
+            relief: query.get('terrainRelief'),
+            overlay: query.get('terrainOverlay'),
+            phase: query.get('terrainPhase'),
+            quality: query.get('terrainQuality'),
+            seed: query.get('terrainSeed')
+        });
+    },
+
+    terrainWorkbenchCaseCount() {
+        return this.TERRAIN_WORKBENCH_BIOMES.length ** 2
+            * this.TERRAIN_WORKBENCH_DIRECTIONS.length
+            * this.TERRAIN_WORKBENCH_GEOMETRIES.length
+            * this.TERRAIN_WORKBENCH_RELIEFS.length
+            * this.TERRAIN_WORKBENCH_OVERLAYS.length
+            * this.TERRAIN_WORKBENCH_PHASES.length
+            * this.TERRAIN_WORKBENCH_SEED_COUNT;
+    },
+
+    terrainWorkbenchCaseIndex(input = {}) {
+        const state = this.normalizeTerrainWorkbench(input);
+        const dimensions = [
+            [state.source, this.TERRAIN_WORKBENCH_BIOMES],
+            [state.destination, this.TERRAIN_WORKBENCH_BIOMES],
+            [state.direction, this.TERRAIN_WORKBENCH_DIRECTIONS],
+            [state.geometry, this.TERRAIN_WORKBENCH_GEOMETRIES],
+            [state.relief, this.TERRAIN_WORKBENCH_RELIEFS],
+            [state.overlay, this.TERRAIN_WORKBENCH_OVERLAYS],
+            [state.phase, this.TERRAIN_WORKBENCH_PHASES],
+            [state.seed % this.TERRAIN_WORKBENCH_SEED_COUNT, Array.from({ length: this.TERRAIN_WORKBENCH_SEED_COUNT }, (_, index) => index)]
+        ];
+        return dimensions.reduce((index, [value, values]) => index * values.length + values.indexOf(value), 0);
+    },
+
+    terrainWorkbenchCaseAt(index = 0) {
+        const dimensions = [
+            this.TERRAIN_WORKBENCH_BIOMES,
+            this.TERRAIN_WORKBENCH_BIOMES,
+            this.TERRAIN_WORKBENCH_DIRECTIONS,
+            this.TERRAIN_WORKBENCH_GEOMETRIES,
+            this.TERRAIN_WORKBENCH_RELIEFS,
+            this.TERRAIN_WORKBENCH_OVERLAYS,
+            this.TERRAIN_WORKBENCH_PHASES,
+            Array.from({ length: this.TERRAIN_WORKBENCH_SEED_COUNT }, (_, value) => value)
+        ];
+        const values = Array(dimensions.length);
+        let cursor = ((Math.trunc(Number(index) || 0) % this.terrainWorkbenchCaseCount()) + this.terrainWorkbenchCaseCount()) % this.terrainWorkbenchCaseCount();
+        for (let position = dimensions.length - 1; position >= 0; position--) {
+            const options = dimensions[position];
+            values[position] = options[cursor % options.length];
+            cursor = Math.floor(cursor / options.length);
+        }
+        return this.normalizeTerrainWorkbench({
+            source: values[0], destination: values[1], direction: values[2], geometry: values[3], relief: values[4],
+            overlay: values[5], phase: values[6], seed: values[7]
+        });
+    },
+
+    terrainWorkbenchCoordinates(x, y, direction) {
+        if (direction === 'east') return { across: y, forward: -x };
+        if (direction === 'south') return { across: -x, forward: -y };
+        if (direction === 'west') return { across: -y, forward: x };
+        return { across: x, forward: y };
+    },
+
+    terrainWorkbenchBiomeAt(x, y, state) {
+        const { across, forward } = this.terrainWorkbenchCoordinates(x, y, state.direction);
+        const destination = {
+            straight: forward < 0,
+            diagonal: forward + across < 0,
+            convex: forward < 0 && across > 0,
+            concave: forward < 0 || across > 0,
+            't-junction': forward < 0 || (Math.abs(across) <= 1 && forward > 0),
+            'four-way': (across < 0 && forward < 0) || (across > 0 && forward > 0)
+        }[state.geometry];
+        return destination ? state.destination : state.source;
+    },
+
+    terrainWorkbenchHeightAt(x, y, state) {
+        const { across, forward } = this.terrainWorkbenchCoordinates(x, y, state.direction);
+        if (state.relief === 'slope') return Math.max(0.18, Math.min(0.82, 0.5 - forward * 0.045));
+        if (state.relief === 'terrace') return forward < 0 ? 0.72 : 0.44;
+        if (state.relief === 'drop') return forward <= 0 ? 0.82 : 0.24;
+        if (state.relief === 'ridge') return Math.max(0.12, Math.min(0.88,
+            0.18 + Math.exp(-(across * across) * 0.9) * 0.7 + Math.sin(forward * 0.55) * 0.02));
+        if (state.relief === 'valley') return Math.max(0.12, Math.min(0.88,
+            0.82 - Math.exp(-(across * across) * 0.9) * 0.66 + Math.sin(forward * 0.45) * 0.02));
+        if (state.relief === 'peak') return Math.max(0.12, Math.min(0.9,
+            0.18 + Math.exp(-(across * across + forward * forward) * 0.55) * 0.72));
+        if (state.relief === 'saddle') return Math.max(0.12, Math.min(0.88,
+            0.5 + Math.tanh(across * forward * 0.72) * 0.3));
+        if (state.relief === 'cliff-corner') return forward < 0 || across > 0 ? 0.76 : 0.38;
+        if (state.relief === 'rugged') {
+            const seed = Number(state.seed || 0);
+            return Math.max(0.16, Math.min(0.84,
+                0.5
+                + Math.sin((across + seed * 0.37) * 0.92) * 0.18
+                + Math.cos((forward - seed * 0.29) * 0.74) * 0.14));
+        }
+        return 0.5;
+    },
+
+    terrainWorkbenchTopologyAt(x, y, state) {
+        const directions = [
+            ['north', 0, -1], ['east', 1, 0], ['south', 0, 1], ['west', -1, 0]
+        ];
+        const elevation = this.terrainWorkbenchHeightAt(x, y, state);
+        const cornerElevations = {
+            nw: this.terrainWorkbenchHeightAt(x - 0.5, y - 0.5, state),
+            ne: this.terrainWorkbenchHeightAt(x + 0.5, y - 0.5, state),
+            se: this.terrainWorkbenchHeightAt(x + 0.5, y + 0.5, state),
+            sw: this.terrainWorkbenchHeightAt(x - 0.5, y + 0.5, state)
+        };
+        Object.keys(cornerElevations).forEach(corner => {
+            cornerElevations[corner] = Number(cornerElevations[corner].toFixed(4));
+        });
+        const terraceCount = 6;
+        const levelFor = value => Math.max(0, Math.min(terraceCount - 1, Math.floor(value * terraceCount)));
+        const terraceLevel = levelFor(elevation);
+        const grades = Object.fromEntries(directions.map(([direction, dx, dy]) => [
+            direction,
+            Number((this.terrainWorkbenchHeightAt(x + dx, y + dy, state) - elevation).toFixed(4))
+        ]));
+        const terraceEdges = Object.fromEntries(directions.map(([direction, dx, dy]) => [
+            direction,
+            levelFor(this.terrainWorkbenchHeightAt(x + dx, y + dy, state)) - terraceLevel
+        ]));
+        const wallEdges = directions.map(([direction]) => direction).filter(direction => terraceEdges[direction] < 0);
+        const riseEdges = directions.map(([direction]) => direction).filter(direction => terraceEdges[direction] > 0);
+        const gradientX = ((cornerElevations.ne + cornerElevations.se) - (cornerElevations.nw + cornerElevations.sw)) / 2;
+        const gradientY = ((cornerElevations.sw + cornerElevations.se) - (cornerElevations.nw + cornerElevations.ne)) / 2;
+        const magnitude = Math.hypot(gradientX, gradientY);
+        const aspect = Math.abs(gradientX) >= Math.abs(gradientY)
+            ? (gradientX >= 0 ? 'east' : 'west')
+            : (gradientY >= 0 ? 'south' : 'north');
+        const byRise = Object.entries(grades).sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+        const byDrop = Object.entries(grades).sort((left, right) => left[1] - right[1] || left[0].localeCompare(right[0]));
+        const maximumGrade = Math.max(...Object.values(grades).map(value => Math.abs(value)));
+        const kind = ['drop', 'cliff-corner'].includes(state.relief) ? 'cliff'
+            : (state.relief === 'terrace' ? 'ledge'
+                : (state.relief === 'rugged' ? (maximumGrade >= 0.075 ? 'cliff' : (maximumGrade >= 0.035 ? 'ledge' : 'slope'))
+                    : (['ridge', 'saddle', 'valley', 'peak'].includes(state.relief)
+                        ? (maximumGrade >= 0.12 ? 'ledge' : 'slope')
+                        : state.relief)));
+        const curvature = {
+            x: Number((grades.east + grades.west).toFixed(4)),
+            y: Number((grades.north + grades.south).toFixed(4)),
+            cross: Number(((cornerElevations.ne + cornerElevations.sw
+                - cornerElevations.nw - cornerElevations.se) / 2).toFixed(4))
+        };
+        curvature.laplacian = Number((curvature.x + curvature.y).toFixed(4));
+        return {
+            elevation: Number(elevation.toFixed(4)), kind, band: elevation >= 0.72 ? 'high' : (elevation <= 0.28 ? 'low' : 'mid'),
+            landform: state.relief === 'cliff-corner' ? 'drop' : state.relief,
+            terraceLevel, terraceCount, cornerElevations,
+            gradient: { x: Number(gradientX.toFixed(4)), y: Number(gradientY.toFixed(4)), magnitude: Number(magnitude.toFixed(4)), aspect: magnitude ? aspect : null },
+            curvature,
+            terraceEdges, wallEdges, riseEdges,
+            contours: typeof WorldGen !== 'undefined' && typeof WorldGen.getElevationContours === 'function'
+                ? WorldGen.getElevationContours(cornerElevations)
+                : [],
+            primaryUphill: byRise[0]?.[1] > 0 ? byRise[0][0] : null,
+            primaryDownhill: byDrop[0]?.[1] < 0 ? byDrop[0][0] : null,
+            dropOrientation: ['drop', 'cliff-corner', 'terrace'].includes(state.relief) && byDrop[0]?.[1] < 0 ? byDrop[0][0] : null,
+            uphillEdges: directions.map(([direction]) => direction).filter(direction => grades[direction] >= 0.025),
+            downhillEdges: directions.map(([direction]) => direction).filter(direction => grades[direction] <= -0.025),
+            cliffEdges: ['drop', 'cliff-corner', 'rugged'].includes(state.relief) && kind === 'cliff' ? wallEdges : [],
+            grades
+        };
+    },
+
+    applyTerrainWorkbenchOverlay(app, state) {
+        const tileAt = (x, y) => app.worldMap.get(`${x},${y}`);
+        const routeVertical = state.direction === 'north' || state.direction === 'south';
+        const routeCoordinates = Array.from({ length: 7 }, (_, index) => routeVertical
+            ? { x: 0, y: index - 3 }
+            : { x: index - 3, y: 0 });
+        const addRoad = () => routeCoordinates.forEach(({ x, y }, index) => {
+            const tile = tileAt(x, y);
+            const connections = routeVertical
+                ? [...(index > 0 ? ['north'] : []), ...(index < routeCoordinates.length - 1 ? ['south'] : [])]
+                : [...(index > 0 ? ['west'] : []), ...(index < routeCoordinates.length - 1 ? ['east'] : [])];
+            tile.overlays.road = { id: `workbench-road-${x}-${y}`, direction: routeVertical ? 'north-south' : 'east-west', connections };
+            tile.traversal.route = 'road';
+        });
+        if (state.overlay === 'road' || state.overlay === 'all') addRoad();
+        if (state.overlay === 'bridge') {
+            const center = tileAt(0, 0);
+            center.overlays.bridge = {
+                id: 'workbench-bridge', direction: routeVertical ? 'north-south' : 'east-west',
+                connections: routeVertical ? ['north', 'south'] : ['east', 'west'],
+                spanIndex: 0, spanLength: 1, spanRole: 'single',
+                shoreEdges: routeVertical ? ['north', 'south'] : ['east', 'west']
+            };
+            center.traversal.route = 'bridge';
+        }
+        const center = tileAt(0, 0);
+        if (state.overlay === 'structure' || state.overlay === 'all') {
+            center.structure = 'camp';
+            center.featureFootprint = { width: 1, height: 1, part: 'single', anchor: { x: 0.5, y: 0.5 } };
+        }
+        if (state.overlay === 'poi' || state.overlay === 'all') {
+            center.overlays.poi = { id: 'workbench-poi', category: 'landmark', footprint: { width: 1, height: 1, part: 'single' } };
+            center.hasLandmark = true;
+            center.landmarkName = 'Composition marker';
+        }
+        if (state.overlay === 'evidence' || state.overlay === 'all') {
+            center.items = [{ id: 'workbench-item', name: 'Survey item', quantity: 1 }];
+            center.deathBags = [{ id: 'workbench-bag', gold: 2, items: [] }];
+            center.placedObjects = [{ id: 'workbench-marker', name: 'Trail marker', kind: 'trail-marker' }];
+        }
+        if (state.overlay === 'presence' || state.overlay === 'all') {
+            center.creatures = [this.unit(app, 'workbench-scout', 'Surveyor', 'fox', {
+                disposition: app.DISPOSITION.NEUTRAL, willing: true
+            })];
+        }
+        app.largeMapSelected = ['selection', 'all'].includes(state.overlay) ? { x: 0, y: 0 } : null;
+    },
+
+    configureTerrainWorkbench(app, input = app.alphaTerrainWorkbench) {
+        const state = this.normalizeTerrainWorkbench(input);
+        app.alphaTerrainWorkbench = state;
+        app.worldMap.clear();
+        app.exploredTiles.clear();
+        for (let y = -3; y <= 3; y++) {
+            for (let x = -3; x <= 3; x++) {
+                const biome = this.terrainWorkbenchBiomeAt(x, y, state);
+                const tile = this.terrainSurveyTile(app, x, y, biome, {
+                    visualSeed: state.seed,
+                    description: `${state.geometry} ${state.source} to ${state.destination} composition case at ${x}, ${y}.`
+                });
+                const topology = this.terrainWorkbenchTopologyAt(x, y, state);
+                tile.elevation = topology.elevation;
+                tile.terrainTopology = topology;
+                tile.terrain = { ...(tile.terrain || {}), elevation: topology.elevation, topology };
+                tile.overlays.barriers = topology.cliffEdges.slice();
+                tile.traversal.barrierEdges = topology.cliffEdges.slice();
+                app.worldMap.set(`${x},${y}`, tile);
+                app.exploredTiles.add(`${x},${y}`);
+            }
+        }
+        this.applyTerrainWorkbenchOverlay(app, state);
+        app.location = { x: 0, y: 0 };
+        app.currentBiome = app.worldMap.get('0,0').biome;
+        app.creatures = app.worldMap.get('0,0').creatures || [];
+        app.largeMapOffset = { x: 0, y: 0 };
+        if (!['selection', 'all'].includes(state.overlay)) app.largeMapSelected = null;
+        app.timeHour = state.phase === 'night' ? 22 : 12;
+        app._renderTime?.();
+        return state;
+    },
+
+    terrainWorkbenchSelect(app, key, values, current) {
+        const labels = { 't-junction': 'T-junction', 'four-way': 'Four-way junction' };
+        const options = values.map(value => `<option value="${this.escape(app, value)}"${value === current ? ' selected' : ''}>${this.escape(app, labels[value] || String(value).replace(/(^|-)([a-z])/g, (_match, prefix, letter) => `${prefix ? ' ' : ''}${letter.toUpperCase()}`))}</option>`).join('');
+        return `<select id="terrain-workbench-${this.escape(app, key)}" data-terrain-workbench-control="${this.escape(app, key)}" onchange="App.setTerrainWorkbench('${this.escape(app, key)}', this.value)">${options}</select>`;
+    },
+
+    renderTerrainWorkbench(app) {
+        const panel = document.getElementById('alpha-terrain-workbench');
+        if (!panel) return;
+        const active = app.alphaSession?.scenarioId === 'terrain-workbench';
+        panel.hidden = !active || app.alphaTerrainWorkbenchOpen === false;
+        if (!active) return;
+        const state = this.normalizeTerrainWorkbench(app.alphaTerrainWorkbench);
+        const index = this.terrainWorkbenchCaseIndex(state);
+        const count = this.terrainWorkbenchCaseCount();
+        panel.innerHTML = `<div class="terrain-workbench-heading"><div><strong>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.title', 'Tile Composition Workbench'))}</strong><small>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.case', 'Case {current} of {count}', { current: index + 1, count: count.toLocaleString() }))}</small></div><button type="button" class="nav-btn" aria-label="${this.escape(app, this.label(app, 'alpha.terrainWorkbench.close', 'Close workbench'))}" onclick="App.toggleTerrainWorkbench(false)">×</button></div><div class="terrain-workbench-grid"><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.source', 'Source biome'))}${this.terrainWorkbenchSelect(app, 'source', this.TERRAIN_WORKBENCH_BIOMES, state.source)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.destination', 'Destination biome'))}${this.terrainWorkbenchSelect(app, 'destination', this.TERRAIN_WORKBENCH_BIOMES, state.destination)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.direction', 'Direction'))}${this.terrainWorkbenchSelect(app, 'direction', this.TERRAIN_WORKBENCH_DIRECTIONS, state.direction)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.geometry', 'Boundary geometry'))}${this.terrainWorkbenchSelect(app, 'geometry', this.TERRAIN_WORKBENCH_GEOMETRIES, state.geometry)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.relief', 'Relief'))}${this.terrainWorkbenchSelect(app, 'relief', this.TERRAIN_WORKBENCH_RELIEFS, state.relief)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.overlay', 'Overlay'))}${this.terrainWorkbenchSelect(app, 'overlay', this.TERRAIN_WORKBENCH_OVERLAYS, state.overlay)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.phase', 'Lighting'))}${this.terrainWorkbenchSelect(app, 'phase', this.TERRAIN_WORKBENCH_PHASES, state.phase)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.quality', 'Rendering quality'))}${this.terrainWorkbenchSelect(app, 'quality', this.TERRAIN_WORKBENCH_QUALITIES, state.quality)}</label><label>${this.escape(app, this.label(app, 'alpha.terrainWorkbench.seed', 'Art seed'))}<input id="terrain-workbench-seed" data-terrain-workbench-control="seed" type="number" min="0" max="999" step="1" value="${state.seed}" onchange="App.setTerrainWorkbench('seed', this.value)"></label></div><div class="terrain-workbench-actions"><button type="button" class="nav-btn" onclick="App.stepTerrainWorkbench(-1)">← ${this.escape(app, this.label(app, 'alpha.terrainWorkbench.previous', 'Previous case'))}</button><button type="button" class="nav-btn primary" onclick="App.stepTerrainWorkbench(1)">${this.escape(app, this.label(app, 'alpha.terrainWorkbench.next', 'Next case'))} →</button></div><p class="terrain-workbench-summary">${this.escape(app, `${state.source} → ${state.destination} · ${state.geometry} ${state.direction} · ${state.relief} · ${state.overlay} · ${state.phase} · ${state.quality} · seed ${state.seed}`)}</p>`;
+    },
+
+    updateTerrainWorkbenchUrl(state) {
+        if (typeof history === 'undefined' || typeof location === 'undefined') return;
+        const url = new URL(location.href);
+        const values = {
+            terrainSource: state.source, terrainDestination: state.destination,
+            terrainDirection: state.direction, terrainGeometry: state.geometry,
+            terrainRelief: state.relief,
+            terrainOverlay: state.overlay, terrainPhase: state.phase, terrainQuality: state.quality, terrainSeed: state.seed
+        };
+        Object.entries(values).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+        history.replaceState(null, '', url.toString());
+    },
+
+    setTerrainWorkbench(app, key, value) {
+        if (app.alphaSession?.scenarioId !== 'terrain-workbench') return false;
+        const state = this.configureTerrainWorkbench(app, { ...(app.alphaTerrainWorkbench || {}), [key]: value });
+        this.updateTerrainWorkbenchUrl(state);
+        app.renderMap?.();
+        app.renderParty?.();
+        app.renderCreatures?.();
+        app.renderExplorationActions?.();
+        app.updateScene?.(
+            this.label(app, 'alpha.terrainWorkbench.sceneTitle', 'Composition case: {source} to {destination}', {
+                source: state.source,
+                destination: state.destination
+            }),
+            `${state.geometry} ${state.direction} · ${state.overlay} · ${state.phase} · seed ${state.seed}`,
+            false
+        );
+        this.renderSessionBanner(app);
+        this.renderTerrainWorkbench(app);
+        return true;
+    },
+
+    stepTerrainWorkbench(app, amount = 1) {
+        const quality = this.normalizeTerrainWorkbench(app.alphaTerrainWorkbench).quality;
+        const state = {
+            ...this.terrainWorkbenchCaseAt(this.terrainWorkbenchCaseIndex(app.alphaTerrainWorkbench) + Math.trunc(Number(amount) || 0)),
+            quality
+        };
+        if (app.alphaSession?.scenarioId !== 'terrain-workbench') return false;
+        app.alphaTerrainWorkbench = state;
+        return this.setTerrainWorkbench(app, 'seed', state.seed);
+    },
+
+    toggleTerrainWorkbench(app, force = null) {
+        const next = force == null ? app.alphaTerrainWorkbenchOpen === false : Boolean(force);
+        app.alphaTerrainWorkbenchOpen = next;
+        this.renderTerrainWorkbench(app);
+        return next;
+    },
+
     tileFor(app) {
+        if (app.alphaSession?.scenarioId === 'terrain-composition') {
+            this.configureTerrainSurvey(app);
+            return app.worldMap.get('0,0');
+        }
+        if (app.alphaSession?.scenarioId === 'terrain-workbench') {
+            this.configureTerrainWorkbench(app);
+            return app.worldMap.get('0,0');
+        }
         const base = app.getBaseTile(0, 0);
         const tile = {
             ...base,
@@ -400,6 +1076,7 @@ const YAW_ALPHA_LAB = {
         );
         app._addTileEvent?.(this.label(app, 'alpha.scene.ready', 'The prepared Alpha scenario is ready for testing.'), 'discovery');
         this.renderSessionBanner(app);
+        this.renderTerrainWorkbench(app);
     },
 
     async launch(app, id, options = {}) {
@@ -411,7 +1088,6 @@ const YAW_ALPHA_LAB = {
         if (options.preserveSandbox !== true) await this.clearSandboxStorage();
         const player = this.resetState(app, mission);
         this.configureMission(app, mission, player);
-        this.tileFor(app);
         app.alphaSession = {
             version: this.VERSION,
             scenarioId: mission.id,
@@ -419,14 +1095,21 @@ const YAW_ALPHA_LAB = {
             outcome: 'unreviewed',
             checklist: this.checklistText(app, mission).map(text => ({ text, checked: false }))
         };
+        if (mission.id === 'terrain-workbench') {
+            app.alphaTerrainWorkbench = this.terrainWorkbenchFromUrl();
+            app.alphaTerrainWorkbenchOpen = true;
+        }
+        this.tileFor(app);
         this.renderGame(app, mission);
         if (mission.id === 'combat-group' || mission.id === 'failure-narration') {
             app.startCombat([...app.creatures], { source: 'alpha-lab', announce: false });
             this.renderSessionBanner(app);
         }
         app._autoSaveSuppressed = false;
-        app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'alpha-scenario');
-        app.autoSave?.({ immediate: true, reason: 'alpha-scenario' });
+        if (!['terrain-composition', 'terrain-workbench'].includes(mission.id)) {
+            app.markAutoSaveDirty?.(['manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile', 'worldTiles', 'combat', 'sceneFeed', 'activityLog'], 'alpha-scenario');
+            app.autoSave?.({ immediate: true, reason: 'alpha-scenario' });
+        }
         if (options.updateUrl !== false && typeof history !== 'undefined' && typeof location !== 'undefined') {
             const url = new URL(location.href);
             url.searchParams.set('alphaScenario', mission.id);
@@ -460,7 +1143,10 @@ const YAW_ALPHA_LAB = {
         const prefix = this.escape(app, this.label(app, 'alpha.banner', 'Alpha mission'));
         const report = this.escape(app, this.label(app, 'alpha.report.open', 'Report outcome'));
         const exit = this.escape(app, this.label(app, 'alpha.exit', 'Exit Alpha'));
-        banner.innerHTML = `<strong>${prefix}: ${title}</strong><span class="alpha-session-actions"><button class="nav-btn primary" type="button" data-command-surface="alpha-session" data-command-mode="system" data-command-control="open-alpha-report" onclick="App.showAlphaLab(true)">${report}</button><button class="nav-btn" type="button" data-command-surface="alpha-session" data-command-mode="system" data-command-control="exit-alpha" onclick="App.exitAlphaScenario()">${exit}</button></span>`;
+        const workbench = mission.id === 'terrain-workbench'
+            ? `<button class="nav-btn" type="button" data-command-surface="alpha-session" data-command-mode="system" data-command-control="toggle-terrain-workbench" onclick="App.toggleTerrainWorkbench()">${this.escape(app, this.label(app, 'alpha.terrainWorkbench.open', 'Workbench'))}</button>`
+            : '';
+        banner.innerHTML = `<strong>${prefix}: ${title}</strong><span class="alpha-session-actions">${workbench}<button class="nav-btn primary" type="button" data-command-surface="alpha-session" data-command-mode="system" data-command-control="open-alpha-report" onclick="App.showAlphaLab(true)">${report}</button><button class="nav-btn" type="button" data-command-surface="alpha-session" data-command-mode="system" data-command-control="exit-alpha" onclick="App.exitAlphaScenario()">${exit}</button></span>`;
     },
 
     render(app, reportMode = false) {
@@ -542,7 +1228,10 @@ const YAW_ALPHA_LAB = {
                 title: mission ? this.missionTitle(app, mission) : 'None',
                 fixtureVersion: this.VERSION,
                 outcome: app.alphaSession?.outcome || 'unreviewed',
-                checklist: { checked, total: app.alphaSession?.checklist?.length || 0 }
+                checklist: { checked, total: app.alphaSession?.checklist?.length || 0 },
+                ...(mission?.id === 'terrain-workbench'
+                    ? { compositionCase: this.normalizeTerrainWorkbench(app.alphaTerrainWorkbench) }
+                    : {})
             },
             environment: {
                 language: String(app.settings?.language || 'en'),
@@ -617,6 +1306,8 @@ const YAW_ALPHA_LAB = {
         if (typeof location === 'undefined') return false;
         const url = new URL(location.href);
         url.searchParams.delete('alphaScenario');
+        ['terrainSource', 'terrainDestination', 'terrainDirection', 'terrainGeometry', 'terrainRelief', 'terrainOverlay', 'terrainPhase', 'terrainQuality', 'terrainSeed']
+            .forEach(key => url.searchParams.delete(key));
         history.replaceState(null, '', url.toString());
         location.reload();
         return true;

@@ -32,11 +32,25 @@ const YAW_WORLD_STATE = {
         return app._dirtyWorldTileKeys;
     },
 
-    markWorldTileDirty(app, x, y, reason = '') {
+    worldTileVisualJournal(app) {
+        if (!Array.isArray(app._worldTileVisualDirtyJournal)) app._worldTileVisualDirtyJournal = [];
+        app._worldTileVisualDirtyRevision = Math.max(0, Number(app._worldTileVisualDirtyRevision) || 0);
+        return app._worldTileVisualDirtyJournal;
+    },
+
+    markWorldTileDirty(app, x, y, reason = '', options = {}) {
         const nx = Number(x);
         const ny = Number(y);
         if (!Number.isFinite(nx) || !Number.isFinite(ny)) return false;
-        this.dirtyWorldTileState(app).add(app._tileKey(Math.floor(nx), Math.floor(ny)));
+        const key = app._tileKey(Math.floor(nx), Math.floor(ny));
+        this.dirtyWorldTileState(app).add(key);
+        if (options.visual !== false && String(reason || '') !== 'sparse-current-tile') {
+            const journal = this.worldTileVisualJournal(app);
+            const revision = app._worldTileVisualDirtyRevision + 1;
+            app._worldTileVisualDirtyRevision = revision;
+            journal.push({ revision, key, reason: String(reason || 'world-tile-dirty') });
+            if (journal.length > 512) journal.splice(0, journal.length - 512);
+        }
         app._lastWorldTileDirtyReason = String(reason || 'world-tile-dirty');
         return true;
     },
@@ -47,6 +61,26 @@ const YAW_WORLD_STATE = {
 
     dirtyWorldTileKeys(app) {
         return Array.from(this.dirtyWorldTileState(app));
+    },
+
+    worldTileVisualRevision(app) {
+        this.worldTileVisualJournal(app);
+        return app._worldTileVisualDirtyRevision;
+    },
+
+    worldTileVisualChangesSince(app, cursor = 0) {
+        const journal = this.worldTileVisualJournal(app);
+        const revision = app._worldTileVisualDirtyRevision;
+        const normalizedCursor = Math.max(0, Number(cursor) || 0);
+        const oldestRevision = journal[0]?.revision || (revision + 1);
+        const overflow = normalizedCursor > revision || normalizedCursor < oldestRevision - 1;
+        return {
+            revision,
+            overflow,
+            keys: overflow
+                ? []
+                : journal.filter(entry => entry.revision > normalizedCursor).map(entry => entry.key)
+        };
     },
 
     clearDirtyWorldTileKeys(app, keys = null) {
@@ -192,7 +226,9 @@ const YAW_WORLD_STATE = {
         const delta = app._tileDeltaFromEffectiveTile(effective);
         if (delta) app.tileDeltas.set(key, delta);
         else app.tileDeltas.delete(key);
-        if (options.markDirty !== false) app.markWorldTileDirty?.(x, y, options.reason || 'tile-delta');
+        if (options.markDirty !== false) {
+            app.markWorldTileDirty?.(x, y, options.reason || 'tile-delta', { visual: options.visual !== false });
+        }
         return delta;
     },
 

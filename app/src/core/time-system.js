@@ -28,6 +28,8 @@ const YAW_TIME_SYSTEM = {
 
     render(app) {
         const label = this.label(app);
+        const phase = this.isNight(app) ? 'night' : 'day';
+        if (typeof document !== 'undefined') document.body?.setAttribute('data-day-phase', phase);
         ['time-display', 'mobile-time-display'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = label;

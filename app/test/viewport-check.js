@@ -4569,9 +4569,10 @@ async function checkViewport(browser, name, width, height) {
     assert.deepStrictEqual(desktopSubActionSheet.clippedButtons, [], `${name}: desktop sub-action sheet buttons should not clip`);
     await page.evaluate(() => App.closeIntentMenu());
 
+    const desktopLocationBeforeMap = await page.evaluate(() => ({ ...App.location }));
     await page.evaluate(() => togglePanel('map'));
     await page.waitForTimeout(50);
-    const mapOverlay = await page.evaluate(previousCenter => {
+    const mapOverlay = await page.evaluate(previous => {
       const read = id => {
         const el = document.getElementById(id);
         const rect = el.getBoundingClientRect();
@@ -4589,20 +4590,33 @@ async function checkViewport(browser, name, width, height) {
           zIndex: Number.parseInt(style.zIndex, 10) || 0
         };
       };
+      const canvasContainer = document.querySelector('.yaw-terrain-canvas-alpha');
       return {
         map: read('panel-map'),
         party: read('panel-party'),
         enemies: read('panel-enemies'),
         center: read('desktop-play-cell-center'),
-        previousCenter
+        canvas: {
+          active: Boolean(canvasContainer?.querySelector('canvas.yaw-terrain-world-canvas')),
+          count: document.querySelectorAll('canvas.yaw-terrain-world-canvas').length,
+          mode: canvasContainer?.getAttribute('data-terrain-camera-mode') || null,
+          location: { ...App.location }
+        },
+        previousCenter: previous.center,
+        previousLocation: previous.location
       };
-    }, desktopCenterAfterComposer);
-    assert.strictEqual(mapOverlay.map.active, true, `${name}: desktop Map toggle should activate the map overlay`);
-    assert.notStrictEqual(mapOverlay.map.display, 'none', `${name}: desktop map overlay should become visible after toggling Map`);
-    assert.strictEqual(mapOverlay.map.position, 'fixed', `${name}: desktop map should be a fixed overlay`);
-    assert(mapOverlay.map.zIndex > mapOverlay.party.zIndex, `${name}: desktop map overlay should layer above side panels`);
-    assert(mapOverlay.map.left >= -1 && mapOverlay.map.right <= width + 1, `${name}: desktop map overlay should stay inside viewport horizontally`);
-    assert(mapOverlay.map.top >= 59 && mapOverlay.map.bottom <= height + 1, `${name}: desktop map overlay should stay below the header and inside the viewport`);
+    }, { center: desktopCenterAfterComposer, location: desktopLocationBeforeMap });
+    assert.strictEqual(mapOverlay.map.active, true, `${name}: desktop Map toggle should activate the planning Review Map`);
+    assert.notStrictEqual(mapOverlay.map.display, 'none', `${name}: desktop Review Map should become visible after toggling Map`);
+    assert.strictEqual(mapOverlay.map.position, 'fixed', `${name}: desktop Review Map should be a fixed overlay`);
+    assert(mapOverlay.map.zIndex > mapOverlay.party.zIndex, `${name}: desktop Review Map should layer above side panels`);
+    assert(mapOverlay.map.left >= -1 && mapOverlay.map.right <= width + 1, `${name}: desktop Review Map should stay inside viewport horizontally`);
+    assert(mapOverlay.map.top >= 59 && mapOverlay.map.bottom <= height + 1, `${name}: desktop Review Map should stay below the header and inside the viewport`);
+    if (mapOverlay.canvas.active) {
+      assert.strictEqual(mapOverlay.canvas.count, 1, `${name}: desktop Map toggle should retain exactly one local Canvas terrain surface`);
+      assert.strictEqual(mapOverlay.canvas.mode, 'local', `${name}: desktop Map toggle should not replace the explicit Canvas Survey control`);
+      assert.deepStrictEqual(mapOverlay.canvas.location, mapOverlay.previousLocation, `${name}: opening Review Map should not move the party`);
+    }
     assert.notStrictEqual(mapOverlay.party.display, 'none', `${name}: desktop party panel should remain rendered behind the map overlay`);
     assert.notStrictEqual(mapOverlay.enemies.display, 'none', `${name}: desktop creatures panel should remain rendered behind the map overlay`);
     assert(Math.abs(mapOverlay.center.left - mapOverlay.previousCenter.left) <= 1, `${name}: opening desktop map should not reflow center play tile horizontally`);

@@ -4,6 +4,73 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Engine-neutral Terrain Scene V1 now drives one Canvas2D surface for local
+  traversal and Survey navigation, with deterministic fixed chunks, semantic
+  overlays, offline atlas art, bounded caching, and an explicit legacy
+  rollback. Water/land coastlines interpolate through a shared scalar field,
+  and soft land biomes resolve through one world-space ownership raster rather
+  than independently painted tile edges. Canonical shared height vertices feed
+  fixed-north plateau faces and curvature-aware hillshade. Derived ridge,
+  saddle, valley, peak, slope, terrace, and drop cues remain presentation data;
+  one canonical scarp is projected for a steep cell so its thresholds do not
+  turn into parallel brick or road bands,
+  cached chunks sample into identical aprons at fractional zoom, and
+  rectangular per-tile elevation washes are suppressed so tile and chunk
+  ownership do not show through the landscape. First-party ground materials
+  now use world-aligned mirrored fields, and local semantic labels no longer
+  lay a separate gradient panel over each tile, reducing the faint grid most
+  visible across dense grove and forest ground. Day/night lighting now composes
+  over warm chunks without invalidating them, before live presence is painted
+  for contrast. Static chunks exclude live
+  party markers, mobile uses bounded eight-tile chunks plus decorative LOD,
+  and local numeric/noise fields keep cold movement inside the mobile latency
+  gate. Non-water contours use one
+  ecological surface priority in every direction, so beach/plains and similar
+  joins cannot reverse ownership according to paint order. Same-material joins
+  use a feathered interior-texture bridge, and mixed four-tile junctions use a
+  shared organic corner owner instead of competing edge strips.
+- Alpha Lab now includes a URL-addressable Tile Composition Workbench. One
+  isolated 7x7 case can exercise every maintained biome pairing, cardinal
+  orientation, six boundary geometries, ten relief fixtures, nine overlay
+  states, day/night, and four enumerated art seeds. The stable 1,399,680-case matrix projects through
+  the normal local map and Review Map and has dedicated model plus desktop/
+  mobile browser acceptance.
+- Visual Recipe Version 6 makes relief and composition biome-aware. Plains,
+  swamp, beach, sand, and farm keep slope light without repeated terrace-wall
+  bands or oversized ledge/cliff sprites; forest, grove, and jungle use
+  restrained relief; cliff and cave retain
+  the full connected plateau treatment. Forest distributes three canopy
+  clusters plus understory and paired edge continuity, plains and swamp use
+  dispersed identity layers, and jungle gains less rigid deterministic
+  variation. Bundled roads now use a 22% travel surface and retain one deck
+  material across biome boundaries rather than recoloring per shoulder. POIs use the shared
+  42% marker scale, natural water retains blocked semantics without literal
+  bridge-adjacent wall props, and shoreline caps taper before four-cell
+  corners. Route, feature, evidence, presence, selection, mechanics, saves,
+  information hiding, and replacement-pack ownership remain unchanged.
+  Diagonal-only water remains junction metadata but no longer paints a
+  triangular shoreline crop into a land tile.
+- Shared corner-height samples now derive deterministic terrace levels,
+  reciprocal edge deltas, local gradient/aspect, and marching-squares contour
+  segments. The bundled skin renders those as connected plateau walls instead
+  of repeated full-tile cliff faces, while authored replacement packs retain
+  their semantic relief contract. Shoreline endpoints use the same corner
+  arbitration and keep decorative cover out of the visible bank.
+- Desktop, phone, and Review Map terrain now paint as continuous surfaces with
+  zero inter-cell artwork gap. The nine controls remain independent and
+  accessible; a compact movement dot plus hover/focus/current rings replace
+  resting full-cell outlines, card gutters, whole-cell blocked dimming, and the
+  oversized bundled current-position compass. Interior cover remains inside
+  its owning art viewport while paired edge records meet across canonical
+  boundaries; bundled material crops use a fractional atlas gutter and
+  shared-edge paint overscans its owning boundary to prevent raster hairlines.
+- Categorized POIs no longer duplicate the generic landmark or outline their
+  whole tile, bundled POI art is bounded, and one corner-aware runtime
+  compositor now tapers isolated seams,
+  assigns mixed corners to one material, and caps soft/hard transition depth.
+  Existing biome strata provide visibly different secondary-family/density
+  variants, while first-party night materials receive a readability lift that
+  does not alter scouting mechanics or third-party pack grading.
 - Automatic combat now has an authoritative liveness guard. When the player
   and every manual companion are unavailable, passive autonomy can abandon
   Hold during a crisis; repeated no-progress or cyclic rounds end through a
@@ -33,11 +100,15 @@ This is a compact history of completed foundations. Git remains the authoritativ
 - Per-biome visual recipes now derive canonical shared-edge keys, one painted
   destination, and eight-neighbor junction decisions without changing the
   resolved biome or save schema. Water/land uses one shoreline authority and
-  the bundled repeating scallop foam is removed; hard boundaries suppress
+  the bundled repeating scallop foam is removed. Deterministic five-point
+  contours now shape soft, hard, shoreline, and mixed-corner pixels while
+  remaining scoped away from replacement-pack art; hard boundaries suppress
   unrelated foliage, soft spill remains edge-bounded, and static jungle
-  canopy/undergrowth reads distinctly from open plains. One sub-layer order
-  reaches local and Review Map surfaces, while enforced artifact ceilings keep
-  the richer static composition inside the existing atlas budget.
+  canopy/undergrowth reads distinctly from open plains. Broader deterministic
+  identity transforms reduce obvious repetition without rotating the seamless
+  ground plane. One sub-layer order reaches local and Review Map surfaces,
+  while enforced artifact ceilings keep the richer static composition inside
+  the existing atlas budget.
 
 - Licensing is explicitly versioned: the annotated `v0.18.2` tag preserves
   the final MIT-licensed revision, while `v0.18.3` and later use PolyForm

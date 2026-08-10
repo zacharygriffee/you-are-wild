@@ -234,7 +234,19 @@ const YAW_LOCAL_MAP = {
         const containers = [document.getElementById('mobile-mini-map')].filter(Boolean);
         containers.forEach(container => {
             container.setAttribute?.('data-map-mode', mode);
-            container.innerHTML = html;
+            if (typeof document.createRange !== 'function' || typeof container.insertBefore !== 'function') {
+                container.innerHTML = html;
+                return;
+            }
+            const fragment = document.createRange().createContextualFragment(html);
+            for (const cell of container.querySelectorAll(':scope > .map-tile')) cell.remove();
+            const canvasOwnedAnchor = container.querySelector(
+                ':scope > .yaw-terrain-canvas-controls, '
+                + ':scope > .yaw-terrain-canvas-focus-marker, '
+                + ':scope > .yaw-terrain-canvas-inspector, '
+                + ':scope > .yaw-terrain-canvas-survey-list'
+            );
+            container.insertBefore(fragment, canvasOwnedAnchor || null);
         });
     }
 };

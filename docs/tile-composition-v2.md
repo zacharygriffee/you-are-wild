@@ -52,18 +52,19 @@ transparent bridge art across a visual gutter, but the cell remains the sole
 hit target and state owner.
 
 Known neighbor biome changes first produce a canonical shared-edge descriptor.
-Both cells derive the same coordinate-pair key and phase, but only the lower-
-priority destination paints the dominant material. Soft pairs receive a
-bounded `ground-transition`; hard stone/interior boundaries receive a shallow
-hard edge; equal material groups receive no redundant paint. Neither the
-descriptor nor its bitmap changes the effective biome. Structures and POIs
+Both cells derive the same coordinate-pair key, phase, depth, and bounded
+five-point contour, but only the lower-priority destination paints the dominant
+material. Soft pairs receive a bounded `ground-transition`; hard stone/interior
+boundaries receive a shallow hard edge; equal material groups receive no
+redundant paint. Neither the descriptor nor its bitmap changes the effective
+biome. Structures and POIs
 carry a bounded footprint plus passable approach edges. When several adjacent
 tiles share one feature identity, the renderer derives its local footprint
 part from those shared cardinal connections.
 
 ## Visual recipes and adjacency blending
 
-`app/src/core/tile-visual-recipes.js` Version 2 is the deterministic presentation policy
+`app/src/core/tile-visual-recipes.js` Version 6 is the deterministic presentation policy
 for the generated overworld biomes. It is intentionally separate from Biome
 Recipe V1, which can change an unmaterialized tile's effective biome. Visual
 recipes only choose bounded edge depth, decorative spill family and scale,
@@ -81,10 +82,19 @@ the existing stack:
 
 Water/land pairs use the existing `shoreline-water-*` semantics as their one
 specialized authority; they never also emit a generic water transition. The
-bundled skin no longer adds repeated scallop foam, while replacement packs can
-still author every existing edge and corner semantic. Mixed-source corners
-select one deterministic winner and trim the other edge rather than producing
-a circular hole or muddy overlap.
+bundled skin no longer adds repeated scallop foam. Instead, its water material
+and biome-transition materials follow the canonical edge contour through a
+direction-aware polygon and feathered mask. Those masks are bundled-pack-only,
+so replacement packs can still author every existing edge and corner semantic
+without core clipping. An explicitly authored shoreline edge receives the
+same coordinate-derived contour even when its neighboring tile is unavailable;
+that uses only the already-declared local overlay and reveals no hidden biome.
+Diagonal-only water still appears in shoreline junction metadata, but the
+bundled skin does not paint a corner crop when no cardinal edge is shared.
+This avoids a false triangular inlet inside the land tile.
+Mixed-source corners select one deterministic winner
+and trim the other rendered polygon rather than producing a circular hole or
+muddy overlap.
 
 An unknown neighbor contributes nothing, so Review Map and sight-limited local
 maps cannot reveal undiscovered terrain. Spill records are always decorative:
@@ -93,10 +103,25 @@ are deterministically moved outside authored route corridors and local feature
 clearance, but the input tile and sparse delta are never mutated. Bridge
 approach pads remain inside the owning cell and do not expand its hit target.
 
-Spill anchors stay in the shared-edge band. Hard boundaries and shoreline
-edges do not scatter unrelated foliage. Jungle additionally composes bounded
-static canopy and undergrowth records plus a dappled floor treatment from the
-existing atlas; plains intentionally receives no equivalent density. Generator
+Spill anchors stay in the shared-edge band. Each soft transition emits a
+matched source-side `edge-spill-origin` record and destination-side
+`adjacent-spill` record from the same shared-edge key; both remain clipped to
+their owning cells. The pair shares its cross-edge position, sprite variant,
+scale, opacity, flip, and axis orientation. Per-cell route or feature
+clearance may not move only one half of that conceptual sprite. Hard
+boundaries and shoreline edges do not scatter unrelated foliage. Ordinary
+decorative identity art may reach an owning viewport edge only when paired
+continuity records complete the adjacent cell; route and feature clearance
+still reserve their local corridors. Forest composes three distributed canopy
+clusters plus understory and two paired continuity records on each unobstructed
+same-forest edge. Jungle additionally composes three or four distributed
+canopy records, independent undergrowth and litter, and cardinal spill records
+from independently addressable transparent artwork. Equal jungle neighbors
+receive three overlapping pairs of transform-identical `edge-continuity`
+records along an unobstructed shared edge; route crossings reserve that edge
+instead. Plains uses distributed grasses and optional scrub; swamp uses shallow
+wetland identity plus two reed groups. Neither flat biome renders terrace-wall
+segments. Generator
 V7 emits deterministic cover families with normalized anchors,
 scale, and an explicit `decorative` or `mechanical` role. Decorative foliage
 sets `mechanical: false`, `blocksMovement: false`, and `blocksSight: false`.
@@ -145,8 +170,9 @@ surfaces use the same runtime sorter.
 The acceptance audit enforces ceilings of 18 MiB for the embedded offline
 artifact, 4 MiB for the hosted shell, 10.5 MiB for the external atlas set, and
 11 MiB for estimated hosted textured cold transfer. The terrain-material and
-cover atlases are individually capped at 1.25 MiB and 1.75 MiB. Current V2
-identity and seam work reuses the existing atlases and adds no raster bytes.
+cover atlases are individually capped at 1.25 MiB and 1.75 MiB. The directional
+relief, jungle-strata, and remaining-biome-strata atlases are capped at 0.3
+MiB, 0.4 MiB, and 0.25 MiB respectively.
 
 First-party generation prompts, alpha extraction, deterministic atlas
 post-processing, and asset paths are recorded in
@@ -185,12 +211,24 @@ mixed-source junctions, biome identity, record sub-order, route/feature
 clearance, bridge approaches, V1 fallback, non-mutation, and shared
 interior/overworld projection.
 
+`npm run test:terrain-workbench` checks the complete 1,399,680-case index space,
+input normalization, orientation rotation, distinct boundary masks, ten
+deterministic relief fixtures, and twelve pinned reported or landform cases for
+plains, swamp, beach, forest, jungle, roads, bridges, drops, ridges, saddles,
+valleys, and peaks. The
+Alpha browser matrix renders representative desktop and phone cases and checks
+that workbench controls, URL state, overlays, and Review Map projection remain
+usable.
+
 `npm run test:tile-composition-browser` runs both the single-file `file:` build
 and hosted HTTP build at 313x670, 390x844, 412x915, and 1365x768. It checks all
 three map surfaces, interiors, viewport containment, resource failures,
-pixel-matched ground edges, transparent bridge/cover assets, bridge gutter
+pixel-matched ground edges, transparent bridge/cover/relief/jungle assets, bridge gutter
 continuity, canonical edge metadata, edge-bounded spill art, shoreline
-deduplication, absence of bundled scallop foam, jungle/plains readability,
+deduplication, bounded non-repeating contours, bundled-pack mask scoping,
+absence of bundled scallop foam, biome-aware relief modes, forest continuity,
+jungle/plains/swamp readability, the shared route/feature scale reference,
+suppression of literal blocked-water wall props beside bridges,
 biome-aware route treatment, bridge approaches, sparse evidence restoration,
 and absence of horizontal overflow.
 
@@ -207,3 +245,8 @@ authorize those mechanics.
 Animated composition and mod-supplied animated media are also deferred to a
 future reviewed composition version. This static slice defines no playback,
 timing, reduced-motion, or animated pack contract.
+
+Polished bridge-to-road approaches, scout-dependent structure and POI
+discovery, and streams/lakes/broader hydrology remain separate follow-up work.
+This correction pass does not infer visibility range or water networks from
+presentation layers.

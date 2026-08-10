@@ -1,0 +1,305 @@
+# Terrain Rendering V1 — Clean Architecture Decision
+
+Terrain Rendering V1 starts from simulation-owned world tiles. It is not an
+adaptation of the existing DOM/CSS tile compositor. Tile Composition V2 and
+Tileset Pack V1 remain compatibility and comparison surfaces while this new
+lane proves itself.
+
+## Authority boundary
+
+Core owns world generation, tile deltas, saves, traversal, discovery, input,
+hit testing, labels, focus, and accessibility. A terrain renderer receives a
+bounded serializable scene and a drawing target. It does not receive the App
+object, callbacks, stores, credentials, or permission to infer mechanics from
+pixels.
+
+The data flow is:
+
+`world tile resolver -> Terrain Scene V1 -> renderer adapter -> pixels`
+
+DOM controls remain a transparent semantic and interaction plane above those
+pixels. Losing or replacing a renderer must never make the map inoperable.
+
+## One canvas camera, plus the planning Review Map
+
+The local 3x3 view and its explicit Survey control are camera presets over the
+same chunked world canvas. Local mode fits roughly three tiles across the
+limiting axis. Pinch, wheel, keyboard, or the Canvas 3x3/Survey controls may
+zoom continuously into a regional or survey scale without switching terrain
+implementations. Panning and zooming do not move the party.
+
+The ordinary Map command remains the semantic planning Review Map. It owns the
+complete filter set, tracked-quest guidance, markers, selected-tile inspector,
+legend, zoom, pan, recenter, and dock behavior. Opening it does not change the
+Canvas camera. This preserves planning and accessibility behavior while keeping
+Canvas Survey available as a lightweight nearby-terrain camera.
+
+The camera contract is renderer-neutral and provides world/screen transforms,
+visible tile bounds, visible chunk enumeration, anchored pinch zoom, panning,
+and local/survey presets. Renderer adapters consume the resulting camera state;
+they do not own navigation or reveal undiscovered simulation facts.
+
+The three-by-three neighborhood is the accepted close-play presentation for
+this version, not a renderer limit. Regional and Survey cameras already draw
+more terrain through the same scene, chunk, and renderer contracts. Choosing a
+larger default tactical neighborhood, conditionally expanding the close view,
+or changing how much discovered terrain remains visible is separate product
+and interaction work; it does not require another composition backend.
+
+The Canvas surface rasterizes apron-expanded chunks into private buffers, crops
+only each chunk's canonical interior, and places those interiors on one display
+canvas through the camera transform. Local and Canvas Survey views therefore
+share the same scene compiler, chunk cache, renderer adapter, and world-to-screen
+math. Review Map is deliberately retained as the established planning surface,
+not treated as a second Canvas camera preset.
+
+At close scale, the existing semantic DOM controls remain aligned above the
+visible neighboring cells. At Canvas Survey scale, those local controls become
+inert and hidden from assistive technology while core provides a visible
+inspector, a single bounded live description, and a semantic 3x3 neighborhood
+around the camera cursor. Quest objective, turn-in, structure, and POI focus
+callers instead use the renderer-neutral `App.focusMapTarget` service to open
+Review Map idempotently and select the requested coordinate. Focus does not move
+the party, advance time, materialize world tiles, or reveal unknown terrain.
+
+## Fixed chunks
+
+- The renderer contract defaults to 16 by 16 authoritative world tiles. The
+  first-party responsive surface uses 8 by 8 chunks so a local movement frame
+  never recompiles a phone-sized 16-tile region.
+- Each compiled scene includes a two-tile apron on every side.
+- Terrain, routes, vegetation, and features may be drawn continuously through
+  the apron. Only the canonical 16 by 16 interior is cached or displayed.
+- Chunk coordinates use mathematical floor division, including negative world
+  coordinates.
+- Chunk scenes are deterministic JSON data and have stable revision-aware cache
+  keys.
+- The Canvas surface retains at most 96 off-screen chunk rasters by default;
+  visible chunks are never evicted during their frame.
+- Static terrain chunks never contain live party markers. Presence is a cheap
+  display pass, so movement can reuse unchanged ground while actors move.
+- World identity changes clear the cache. Bounded tile changes invalidate only
+  intersecting chunks and their apron dependents; camera movement alone does
+  not change the terrain revision.
+- Sparse persistence bookkeeping is not itself a terrain revision. Merely
+  materializing or marking a tile delta during traversal must preserve cached
+  rasters; changes to known geography or the current tile's visible contents
+  still invalidate the affected chunks.
+- Fixed chunks are the render, cache, invalidation, and visual-test unit. They
+  are not new save entities.
+
+A future quadtree may index chunks, POIs, structures, or visible instances for
+large-map culling and level of detail. It must remain an ephemeral index rather
+than authoritative world state or a rendering boundary.
+
+## Renderer adapter contract
+
+Adapters register an id, API version, engine label, capabilities, and a factory.
+An instance must provide `render(scene)` and `destroy()`. Canvas2D is the first
+adapter. PixiJS, BabylonJS, WebGPU, or mod-supplied trusted-local adapters can
+implement the same contract later without changing saves or simulation rules.
+
+Terrain Scene V1 contains semantic layers for ground, hydrology, elevation,
+routes, cover, features, durable evidence, and live presence. Canvas2D paints
+each of those layers in that order, including player and party presence on the
+current known tile. Its first-party art adapter may consume bundled or
+renderer-supplied material, vegetation, bridge, structure, POI, and evidence
+atlases. Atlas identities and rectangles remain renderer policy: Terrain Scene
+does not contain CSS classes, tileset keys, atlas rectangles, HTML, or
+executable rendering instructions.
+
+Time-of-day lighting is a camera-composition concern rather than a cached
+Terrain Scene layer. The surface resolves the current day/night phase after it
+composes static chunks and before it paints live actor presence. A phase change
+therefore repaints routes, relief, cover, structures, POIs, and evidence
+together without rebuilding unchanged chunk geometry, while player and party
+markers retain their final-pass contrast.
+
+The Canvas adapter owns deterministic organic biome contours, continuous
+material paint, cover placement that may extend through the chunk apron,
+narrow route scale, bridge continuity, and procedural fallbacks for missing
+assets. Loading or replacing artwork cannot reveal terrain, change traversal,
+or mutate the scene.
+
+Water and shoreline presentation is reconstructed as a deterministic,
+world-aligned scalar raster over the chunk apron. Smooth deformation and an
+interpolated threshold produce one curved coast across straight edges,
+diagonals, and corners without a second shoreline stroke. This keeps beaches
+continuous instead of exposing square per-tile shoreline steps. Terrain Scene also
+compiles known corner elevations into a canonical world-coordinate vertex
+field. Adjacent chunks therefore sample the same owner and height at every
+shared vertex, while unknown-only vertices remain explicitly masked. Canvas2D
+uses that field for smoothed finite-difference hillshade, curvature cues,
+shared plateau fills, and stronger contour lips, jagged rock faces, fractures,
+and low-side shadows in cliff and cave terrain. Terrain Scene may carry derived
+landform, curvature, and drop-orientation metadata for ridge, saddle, valley,
+peak, slope, terrace, and drop review; those fields never replace the canonical
+height vertices or grant traversal authority. Relief has a fixed-north
+presentation: south-facing drops open toward the viewer, side faces remain
+narrow but legible, and rear drops reduce to a lip. A steep cell projects one
+canonical scarp instead of extruding every crossed threshold into parallel
+road-like bands. Biome strata paint before relief, while routes, cover,
+structures, POIs, evidence, and presence retain their semantic layer order.
+Open and wooded biomes keep bounded hillshade policies so elevation remains
+readable without burying identity art. Cached chunks sample one pixel into
+their identical aprons so fractional zoom cannot expose transparent borders.
+The accepted Canvas2D baseline improves cliff direction and continuity but
+does not claim volumetric mountain depth: at a fixed north-facing camera,
+plateaus and scarps can still read flatter than a rotatable 2.5D or 3D scene.
+That aesthetic ceiling is explicit future renderer or art-pack work, not a
+reason to move elevation authority out of Terrain Scene or block this release.
+
+Soft non-water biomes are not painted as tile-edge strips. A deterministic
+multi-material ownership raster samples nearby authored tile centers in one
+smoothly deformed world plane. It crosses tile interiors, resolves arbitrary
+multi-biome corners in one pass, and yields identical samples inside adjacent
+chunk aprons. Ecological priority gives lower surfaces a modest visual reach:
+beach and sand yield to water but own their boundary against wetland and higher
+ground; swamp owns open-ground boundaries; open ground owns wooded boundaries.
+Numeric elevation breaks close ties. Distance remains dominant, so every
+authored biome retains a readable core. This is renderer policy only and never
+rewrites the biome or elevation stored in Terrain Scene.
+
+First-party ground materials render as world-aligned two-by-two mirrored
+fields. Both sides of every repeated edge therefore share the same source
+pixels, including when the field is rebuilt in an adjacent fixed chunk. A
+narrow feathered bridge remains as a compatibility fallback where Canvas
+patterns are unavailable. The compatibility renderer also retains the older
+edge-and-corner contour fallback for minimal Canvas implementations or missing
+material atlases; the first-party path uses the continuous ownership field.
+Local semantic labels retain text shadow but no longer paint separate per-cell
+gradient panels over the field.
+
+## Mobile performance policy
+
+Canvas keeps semantic quality independent from device pixel ratio, while its
+presentation cost is bounded. Continuous biome and water masks use local
+numeric record grids and precomputed deterministic noise planes rather than
+string-keyed lookups per sample. Repeated material fields are cached, uniform
+chunks skip redundant masks and hillshade, and survey/mobile raster scale uses
+a lower decorative-cover density without removing ground, routes, structures,
+POIs, evidence, or actor semantics. Camera frames report cache hits, misses,
+dynamic-presence count, lighting phase, and render time for acceptance tests.
+
+The first-party surface selects raster policy from semantic camera mode rather
+than viewport or map-panel width. The maintained profiles are:
+
+- **Performance:** Local 96 px at full density, Regional 64 px at 0.72 density,
+  and Survey 32 px at 0.26 density.
+- **Balanced (default):** Local 112 px at full density, Regional 64 px at 0.82
+  density, and Survey 40 px at 0.42 density.
+- **High:** Local 128 px at full density, Regional 64 px at 0.92 density, and
+  Survey 48 px at 0.58 density.
+
+Each mode has a separate bounded cache. Visible chunks form an irreducible
+working set and are never evicted during their frame; inactive chunks are
+trimmed to the profile's Local, Regional, or Survey limit. Quality changes
+clear old tiers transactionally. Ground, routes, structures, POIs, evidence,
+actor presence, simulation authority, and source atlas resolution never vary
+with these profiles. Only raster resolution and optional decorative-cover
+density vary.
+
+The 2026-08-08 quality-selection pass compared all three profiles on a physical
+Galaxy S21 at a 360 by 669 CSS-pixel viewport and DPR 3. The maintained evidence
+harness covered all nine biomes, day and night, and Local, 12-tile Regional, and
+40-tile Survey cameras: 162 successful render cases. Balanced cold-render
+medians were 22.8 ms Local, 29.9 ms Regional, and 2.8 ms Survey, with respective
+maxima of 45.5, 56.2, and 4.7 ms. Six alternating real Local moves per profile
+reused four cached chunks with zero misses; end-to-end median moves were 61.4 ms
+Performance, 56.2 ms Balanced, and 54.3 ms High.
+
+Maximum three-tier raster cache estimates were 40.1 MB for Performance, 53.1 MB
+for Balanced, and 68.4 MB for High. After two exhaustive passes plus warm-move
+probes, process-wide Chrome memory was about 251 MiB PSS and 271 MiB RSS, versus
+about 210 MiB PSS and 232 MiB RSS before the pass. Android thermal status stayed
+at 0; the final AP, battery, and skin readings were 33.0, 31.7, and 32.9 C.
+Balanced is the selected default because it is visually close to High on the
+physical phone while using about 15 MB less three-tier cache, and its 112 px
+Local raster closely matches the canonical 106.7 px desktop 3x3 display scale.
+Human visual approval was completed on 2026-08-09 after ordinary desktop play
+and physical S21 field traversal across wooded, beach, and water boundaries.
+Performance remains the lower-memory option and High remains an explicit
+comparison option.
+
+The browser gate requires the mounted Canvas and its controls to survive local
+movement, a warm in-chunk move to settle in under one second with cache hits and
+no unchanged-terrain misses, and a legitimate tile-visual mutation to rebuild
+its affected chunk while reusing unaffected chunks. It also keeps forty cached
+Survey frames within the broader stress budget. Hosted and offline mobile
+builds run the same checks. This is a regression ceiling, not a claim that every
+physical phone will have identical timing.
+
+The 2026-08-08 physical-device gate used a Galaxy S21 (`SM-G991U1`) against
+the HTTP-served terrain-composition scenario after a fresh page load. The
+initial run reached DOM content in 9.6 seconds and a ready eight-asset Canvas
+in 10.1 seconds. After two warm-up moves, fifty alternating local moves
+recorded an 83.6 ms median, 117.5 ms p95, and 120.4 ms maximum end-to-end
+action time. The Canvas pass itself recorded a 0.1 ms median, 0.2 ms p95, and
+0.4 ms maximum, with 200 chunk-cache hits and zero misses.
+
+A second fresh-load gate against the final lighting-integrated build exposed
+the expected startup variance: DOM content arrived in 25.6 seconds and Canvas
+readiness in 25.9 seconds. Its fifty measured moves crossed both day and night
+lighting phases and recorded a 107.3 ms median, 125.5 ms p95, and 133.4 ms
+maximum action time. Canvas rendering remained 0.2 ms median and 0.3 ms p95
+and maximum, again with 200 hits, zero misses, one persistent Canvas and
+control set, and dynamic presence on every frame. Reported JavaScript heap was
+47.4 MB. Android thermal status remained `0`; AP/skin rose from 32.7/33.0 C to
+35.3/34.1 C during that final run, while Chrome PSS/RSS moved from
+229090/233792 KiB to 241503/268216 KiB. These figures are a reproducible
+development baseline, including the cold-start variance, not a universal
+device promise.
+
+## First implementation boundary
+
+The Canvas2D backend was built independently from the DOM/CSS compositor. It
+first proved continuous chunk rendering, cropping, caching, negative-coordinate
+behavior, and engine replacement with procedural marks, then added a distinct
+renderer-owned art pass. It reuses first-party media assets, but does not carry
+forward the previous per-cell CSS composition algorithm or make its seam rules
+part of the scene contract.
+
+The Canvas default cutover required all of these acceptance gates:
+
+1. Desktop, mobile, Review Map, hosted, and `file://` operation.
+2. Keyboard, pointer, focus, label, and screen-reader parity through the DOM
+   interaction plane.
+3. Seam inspection at fractional zoom and supported device-pixel ratios.
+4. Deterministic chunk rebuild and visual regression checks.
+5. Failure fallback with no movement or save-state impact.
+
+After passing the automated and independent acceptance gates, Canvas V1 is the
+default overworld terrain renderer. Wheel or pinch zooms around the gesture
+anchor, two-finger or survey drag pans, and 3x3/Survey controls select the
+three-tile or broader camera preset. The ordinary Map command opens the planning
+Review Map without changing that camera; Canvas Survey exposes its own explicit
+Center recovery control.
+
+`terrainRenderer=canvas-v1` remains an explicit selection for diagnostics.
+`terrainRenderer=legacy` is the rollback switch and returns to the established
+renderer without migrating saves or world state. Emoji graphics mode also
+keeps the established presentation. A failed Canvas context or transactional
+mount, asset refresh, or later draw restores that renderer automatically.
+Surface mutation and camera-input failures use the same boundary rather than
+leaking an exception from a half-mounted renderer. Canvas controls, status, and
+semantic survey descriptions resolve through the active content locale.
+Canvas-owned inspector, status, control, and marker mutations are excluded from
+the semantic observer, preventing redraw loops while ordinary game-state DOM
+changes still invalidate the surface.
+
+## Current verification gate
+
+Run `npm run test:terrain-renderer` for deterministic scene, camera, input,
+layer, negative-coordinate, chunk-crop, cache-bound, and adapter checks. Run
+`npm run test:terrain-canvas-browser` for hosted and `file://` desktop/mobile
+navigation, narrative-only blocked attempts, responsive remounting, focused
+quest inspection and generic target-focus capability, localized survey
+semantics, survey authority/privacy, four-biome corners, elevation, curved
+shoreline fields, and road/bridge continuity at multiple device-pixel ratios
+and chunk junctions, query opt-out, and renderer/surface-failure fallback.
+
+Independent touch playthroughs must additionally cover repeated movement,
+drag, pinch through Regional into Survey, survey inspection, Local recentering,
+orientation changes, and console/page errors. Passing automation is not a
+substitute for the aesthetic seam and legibility review that must precede a
+default-renderer cutover.

@@ -807,15 +807,11 @@ const YAW_QUEST_FLOW = {
             app.renderLog();
             return false;
         }
-        app.largeMapOffset = {
-            x: Number(marker.x) - Number(app.location.x || 0),
-            y: Number(marker.y) - Number(app.location.y || 0)
-        };
-        app.renderLargeMap();
         const checkpointIndex = Math.max(0, (objective?.checkpoints || []).indexOf(marker));
         const markerLabel = marker.generatedLabel
             ? this.checkpointLabel(app, marker, checkpointIndex)
             : marker.label || this.objectiveDisplayLabel(app, objective);
+        app.focusMapTarget({ ...marker, label: markerLabel });
         app.log.push({ text: app._label('quest.mapFocusedObjective', 'Map focused on {title}: {label}.', { title: this.titleLabel(app, quest), label: markerLabel }), type: 'discovery' });
         app.renderLog();
         return true;
@@ -847,11 +843,7 @@ const YAW_QUEST_FLOW = {
             app.renderLog();
             return false;
         }
-        app.largeMapOffset = {
-            x: Number(marker.x) - Number(app.location.x || 0),
-            y: Number(marker.y) - Number(app.location.y || 0)
-        };
-        app.renderLargeMap();
+        app.focusMapTarget(marker);
         app.log.push({ text: app._label('quest.mapFocusedTurnIn', 'Map focused on {title} turn-in: {label}.', { title: this.titleLabel(app, quest), label: marker.label }), type: 'discovery' });
         app.renderLog();
         return true;

@@ -299,8 +299,28 @@ const YAW_MAP_VISUALS = {
         for (const direction of shorelineEdges) {
             semanticKeys.push(app.MAP_TILESET_KEYS.shorelines?.[direction] || `shoreline-water-${direction}`);
         }
-        for (const corner of shorelineCorners) {
+        // Cardinal contour masks own outer coastline joins. Preserve the
+        // diagonal-only semantic for authored replacement packs; the bundled
+        // skin suppresses its literal triangular crop in presentation CSS.
+        for (const corner of shorelineCorners.filter(value => value.startsWith('inner-'))) {
             semanticKeys.push(app.MAP_TILESET_KEYS.shorelineCorners?.[corner] || `shoreline-water-${corner}`);
+        }
+        if (elevationTopology?.kind === 'slope' && elevationTopology.primaryUphill) {
+            semanticKeys.push(app.MAP_TILESET_KEYS.elevation?.[`slope-${elevationTopology.primaryUphill}`] || `terrain-elevation-slope-${elevationTopology.primaryUphill}`);
+        }
+        if (elevationTopology?.kind === 'ledge' && (elevationTopology.primaryDownhill || elevationTopology.downhillEdges?.[0])) {
+            const direction = elevationTopology.primaryDownhill || elevationTopology.downhillEdges[0];
+            semanticKeys.push(app.MAP_TILESET_KEYS.elevation?.[`ledge-${direction}`] || `terrain-elevation-ledge-${direction}`);
+        }
+        if (elevationTopology?.kind === 'cliff') {
+            const directions = this.normalizedDirections(
+                elevationTopology.cliffEdges?.length
+                    ? elevationTopology.cliffEdges
+                    : [elevationTopology.primaryDownhill]
+            );
+            directions.forEach(direction => {
+                semanticKeys.push(app.MAP_TILESET_KEYS.elevation?.[`cliff-${direction}`] || `terrain-elevation-cliff-${direction}`);
+            });
         }
         if (tile.overlays?.bridge) {
             const direction = tile.overlays.bridge.direction || tile.overlays.road?.direction || 'east-west';
@@ -359,7 +379,7 @@ const YAW_MAP_VISUALS = {
             icon = structure?.icon || icon;
             kind = 'structure';
             classes.push('map-visual-structure');
-        } else if (tile.hasLandmark) {
+        } else if (tile.hasLandmark && !tile.overlays?.poi) {
             tilesetKey = 'poi-landmark';
             kind = 'landmark';
             classes.push('map-visual-landmark');
@@ -373,8 +393,25 @@ const YAW_MAP_VISUALS = {
             ...(tile.overlays?.barriers || []),
             ...(options.blockedEdges || [])
         ]);
+        const terrainWallEdges = this.normalizedDirections(elevationTopology?.wallEdges || elevationTopology?.cliffEdges || []);
+        const reciprocalTerrainWalls = blockedEdges.filter(direction => {
+            if (typeof options.neighborResolver !== 'function' || !Number.isFinite(Number(tile?.x)) || !Number.isFinite(Number(tile?.y))) return false;
+            const descriptor = this.directions().find(entry => entry.id === direction);
+            if (!descriptor) return false;
+            const neighbor = options.neighborResolver(Number(tile.x) + descriptor.dx, Number(tile.y) + descriptor.dy);
+            const neighborTopology = neighbor?.terrainTopology || neighbor?.terrain?.topology || null;
+            return this.normalizedDirections(neighborTopology?.wallEdges || []).includes(descriptor.opposite);
+        });
+        const unmatchedBlockedEdges = blockedEdges.filter(direction => (
+            !terrainWallEdges.includes(direction) && !reciprocalTerrainWalls.includes(direction)
+        ));
         const blockedReason = options.blockedReason ? String(options.blockedReason) : '';
-        semanticKeys.push(...this.blockedStateKeys(app, blockedEdges));
+        // A terrace wall already communicates its authoritative traversal
+        // barrier. Painting the legacy blocked-rock sprite over the same edge
+        // duplicates the wall into a row of repeated boulders. Preserve the
+        // blocked facts and accessibility text, but reserve that marker art for
+        // barriers that are not represented by terrain topology.
+        semanticKeys.push(...this.blockedStateKeys(app, unmatchedBlockedEdges));
         const dangerInfluence = Boolean(tile.overlays?.dangerInfluence);
         if (dangerInfluence) {
             classes.push('map-visual-danger-influence');
@@ -408,6 +445,14 @@ const YAW_MAP_VISUALS = {
             groundTransitions,
             elevationKind: elevationTopology?.kind || 'level',
             elevationBand: elevationTopology?.band || 'mid',
+            elevationTerraceLevel: Number.isInteger(elevationTopology?.terraceLevel) ? elevationTopology.terraceLevel : 0,
+            elevationTerraceCount: Number.isInteger(elevationTopology?.terraceCount) ? elevationTopology.terraceCount : 6,
+            elevationCorners: elevationTopology?.cornerElevations || null,
+            elevationGradient: elevationTopology?.gradient || null,
+            elevationContours: Array.isArray(elevationTopology?.contours) ? elevationTopology.contours : [],
+            terraceEdges: elevationTopology?.terraceEdges || {},
+            wallEdges: terrainWallEdges,
+            riseEdges: this.normalizedDirections(elevationTopology?.riseEdges || []),
             primaryUphill: elevationTopology?.primaryUphill || null,
             primaryDownhill: elevationTopology?.primaryDownhill || null,
             uphillEdges: this.normalizedDirections(elevationTopology?.uphillEdges || []),
@@ -457,6 +502,13 @@ const YAW_MAP_VISUALS = {
         const shorelineMask = Number.isInteger(visual?.shorelineMask) && visual.shorelineMask > 0 ? ` data-shoreline-mask="${visual.shorelineMask}"` : '';
         const elevationKind = visual?.elevationKind ? ` data-elevation-kind="${app._escapeHtml(visual.elevationKind)}"` : '';
         const elevationBand = visual?.elevationBand ? ` data-elevation-band="${app._escapeHtml(visual.elevationBand)}"` : '';
+        const elevationTerrace = Number.isInteger(visual?.elevationTerraceLevel)
+            ? ` data-elevation-terrace="${visual.elevationTerraceLevel}" data-elevation-terrace-count="${Number(visual.elevationTerraceCount) || 6}"`
+            : '';
+        const elevationContourMasks = visual?.elevationContours?.length
+            ? ` data-elevation-contours="${app._escapeHtml(visual.elevationContours.map(contour => `${contour.level}:${contour.mask}`).join(' '))}"`
+            : '';
+        const wallEdges = visual?.wallEdges?.length ? ` data-terrace-wall-edges="${app._escapeHtml(visual.wallEdges.join(' '))}"` : '';
         const primaryUphill = visual?.primaryUphill ? ` data-elevation-uphill="${app._escapeHtml(visual.primaryUphill)}"` : '';
         const primaryDownhill = visual?.primaryDownhill ? ` data-elevation-downhill="${app._escapeHtml(visual.primaryDownhill)}"` : '';
         const cliffEdges = visual?.cliffEdges?.length ? ` data-cliff-edges="${app._escapeHtml(visual.cliffEdges.join(' '))}"` : '';
@@ -472,7 +524,7 @@ const YAW_MAP_VISUALS = {
             ? ` data-ground-transitions="${app._escapeHtml(visual.groundTransitions.map(entry => `${entry.direction}:${entry.biome}`).join(' '))}"`
             : '';
         const visualRecipe = visual?.visualRecipe
-            ? ` data-visual-recipe="${app._escapeHtml(visual?.adjacencyBlend?.biome || 'unknown')}" data-route-shoulder="${app._escapeHtml(visual.visualRecipe.routeShoulder || 'earth')}" data-route-clearance="${Number(visual.visualRecipe.routeClearance) || 0}"`
+            ? ` data-visual-recipe="${app._escapeHtml(visual?.adjacencyBlend?.biome || 'unknown')}" data-relief-mode="${app._escapeHtml(visual.visualRecipe.reliefMode || 'none')}" data-route-shoulder="${app._escapeHtml(visual.visualRecipe.routeShoulder || 'earth')}" data-route-clearance="${Number(visual.visualRecipe.routeClearance) || 0}"`
             : '';
         const adjacencyBlend = visual?.adjacencyBlend?.terrain?.length
             ? ` data-adjacency-blend-edges="${app._escapeHtml(visual.adjacencyBlend.terrain.map(entry => entry.direction).join(' '))}"`
@@ -499,7 +551,7 @@ const YAW_MAP_VISUALS = {
         const assetAttrs = asset
             ? ` data-asset-id="${app._escapeHtml(asset.id)}" data-asset-fallback="${app._escapeHtml(asset.fallbackMode || 'emoji')}"${asset.src ? ` data-asset-src="${app._escapeHtml(asset.src)}"` : ''}`
             : '';
-        return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}${interiorShape}${interiorConnections}${interiorAdjacent}${interiorTheme}${interiorStructure}${interiorExitDirection}${blocked}${blockedReason}${shoreline}${shorelineCorners}${shorelineMask}${elevationKind}${elevationBand}${primaryUphill}${primaryDownhill}${cliffEdges}${bridgeSpan}${bridgeShoreEdges}${bridgeApproaches}${dangerInfluence}${immediateDanger}${groundTransitions}${visualRecipe}${adjacencyBlend}${sharedEdges}${junctions}${featureFootprint}${compositionAttrs}${semantics}${assetAttrs}`;
+        return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}${interiorShape}${interiorConnections}${interiorAdjacent}${interiorTheme}${interiorStructure}${interiorExitDirection}${blocked}${blockedReason}${shoreline}${shorelineCorners}${shorelineMask}${elevationKind}${elevationBand}${elevationTerrace}${elevationContourMasks}${wallEdges}${primaryUphill}${primaryDownhill}${cliffEdges}${bridgeSpan}${bridgeShoreEdges}${bridgeApproaches}${dangerInfluence}${immediateDanger}${groundTransitions}${visualRecipe}${adjacencyBlend}${sharedEdges}${junctions}${featureFootprint}${compositionAttrs}${semantics}${assetAttrs}`;
     },
 
     interiorTileVisual(app, room = null, options = {}) {

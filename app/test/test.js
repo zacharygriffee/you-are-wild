@@ -4740,10 +4740,13 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   const bridgeV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'bridge-span-v2.png'));
   const coverV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'foliage-cover-v2.png'));
   const coverV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'cover-overlays-v3.png'));
+  const reliefV1Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'terrain-relief-v1.png'));
+  const jungleStrataV1Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'jungle-strata-v1.png'));
+  const biomeStrataV2Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'biome-strata-v2.png'));
   const structureV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'structure-overlays-v3.png'));
   const poiV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'poi-overlays-v3.png'));
   const evidenceV3Bytes = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'evidence-overlays-v3.png'));
-  const reviewedBytes = [atlasBytes, overlayBytes, materialBytes, materialV2Bytes, bridgeV2Bytes, coverV2Bytes, coverV3Bytes, structureV3Bytes, poiV3Bytes, evidenceV3Bytes];
+  const reviewedBytes = [atlasBytes, overlayBytes, materialBytes, materialV2Bytes, bridgeV2Bytes, coverV2Bytes, coverV3Bytes, reliefV1Bytes, jungleStrataV1Bytes, biomeStrataV2Bytes, structureV3Bytes, poiV3Bytes, evidenceV3Bytes];
   reviewedBytes.forEach((bytes, index) => {
     const descriptor = bundled.resources[index];
     const hash = require('crypto').createHash('sha256').update(bytes).digest('hex');
@@ -4789,6 +4792,9 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertContains(buildContent, "'./assets/bridge-span-v2.png'", 'Hosted builds should reference the cacheable V2 bridge atlas');
   assertContains(buildContent, "'./assets/foliage-cover-v2.png'", 'Hosted builds should reference the cacheable transparent cover atlas');
   assertContains(buildContent, "'./assets/cover-overlays-v3.png'", 'Hosted builds should reference generated biome cover overlays');
+  assertContains(buildContent, "'./assets/terrain-relief-v1.png'", 'Hosted builds should reference directional terrain relief overlays');
+  assertContains(buildContent, "'./assets/jungle-strata-v1.png'", 'Hosted builds should reference layered jungle identity overlays');
+  assertContains(buildContent, "'./assets/biome-strata-v2.png'", 'Hosted builds should reference layered grove, forest, plains, swamp, and cave identity overlays');
   assertContains(buildContent, "'./assets/structure-overlays-v3.png'", 'Hosted builds should reference transparent structure overlays');
   assertContains(buildContent, "'./assets/poi-overlays-v3.png'", 'Hosted builds should reference transparent POI overlays');
   assertContains(buildContent, "'./assets/evidence-overlays-v3.png'", 'Hosted builds should reference transparent evidence overlays');
@@ -4797,12 +4803,17 @@ test('Bundled Tileset Pack V1 covers every core semantic key with integer atlas 
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_BRIDGE_V2_URL'", 'V2 bridge object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_COVER_V2_URL'", 'V2 cover object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_COVER_V3_URL'", 'Generated cover object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_RELIEF_V1_URL'", 'Terrain relief object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_JUNGLE_STRATA_V1_URL'", 'Jungle strata object URLs should be published for bundled pack activation');
+  assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_BIOME_STRATA_V2_URL'", 'Biome strata object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_STRUCTURE_V3_URL'", 'Structure overlay object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_POI_V3_URL'", 'POI overlay object URLs should be published for bundled pack activation');
   assertContains(buildContent, "key: 'YAW_BUNDLED_TILESET_EVIDENCE_V3_URL'", 'Evidence overlay object URLs should be published for bundled pack activation');
   assertContains(buildContent, 'URL.revokeObjectURL(window.${asset.key})', 'Every embedded atlas object URL should be revoked when the page closes');
   assertContains(buildContent, 'BUNDLED_TILESET_COVER_V2,', 'Legacy bundled V2 cover should participate in development watch rebuilds');
   assertContains(buildContent, 'BUNDLED_TILESET_COVER_V3,', 'Generated cover overlays should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_RELIEF_V1,', 'Terrain relief overlays should participate in development watch rebuilds');
+  assertContains(buildContent, 'BUNDLED_TILESET_JUNGLE_STRATA_V1,', 'Jungle strata overlays should participate in development watch rebuilds');
   assertContains(buildContent, 'BUNDLED_TILESET_STRUCTURE_V3,', 'Structure overlays should participate in development watch rebuilds');
   assertContains(buildContent, 'BUNDLED_TILESET_POI_V3,', 'POI overlays should participate in development watch rebuilds');
   assertContains(buildContent, 'BUNDLED_TILESET_EVIDENCE_V3,', 'Evidence overlays should participate in development watch rebuilds');
@@ -5680,6 +5691,7 @@ test('World state helper module is registered before app code', () => {
   assertContains(worldStateContent, 'app.persistTileDelta(effective.x, effective.y, effective, { markDirty: false })', 'World restore should rebuild sparse tile deltas without marking load state dirty');
   assertContains(worldStateContent, 'markWorldTileDirty(app, x, y, reason', 'World state helper should expose dirty tile tracking');
   assertContains(worldStateContent, 'dirtyWorldTileKeys(app)', 'World state helper should expose dirty tile key inspection');
+  assertContains(worldStateContent, 'worldTileVisualChangesSince(app, cursor', 'World state helper should expose an independent renderer invalidation journal');
   assertContains(worldStateContent, 'exploreTile(app, x, y)', 'World state helper should own first-discovery tile mutation');
   assertContains(worldStateContent, 'revealVisibleTiles(app', 'World state helper should own nearby map sight reveal');
   assertContains(worldStateContent, 'WorldGen.hash01(app._mapSeed()', 'World tile descriptions should be deterministic in the helper');
@@ -5690,7 +5702,8 @@ test('World state helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_WORLD_STATE.revealVisibleTiles(this, x, y, radius)', 'App sight reveal wrapper should delegate to world state');
   assertContains(appContent, 'YAW_WORLD_STATE.getBaseTile(this, x, y)', 'App base tile wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.persistTileDelta(this, x, y, tile, options)', 'App tile delta wrapper should delegate to the helper with options');
-  assertContains(appContent, 'YAW_WORLD_STATE.markWorldTileDirty(this, x, y, reason)', 'App dirty tile wrapper should delegate to world state');
+  assertContains(appContent, 'YAW_WORLD_STATE.markWorldTileDirty(this, x, y, reason, options)', 'App dirty tile wrapper should delegate to world state with renderer invalidation policy');
+  assertContains(appContent, 'YAW_WORLD_STATE.worldTileVisualChangesSince(this, cursor)', 'App should expose renderer invalidation changes without consuming persistence dirtiness');
   assertContains(appContent, 'YAW_WORLD_STATE.applyTileDeltaRecords(this, records)', 'App sparse record wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.restoreWorldState(this, loaded)', 'App world restore wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.getTile(this, x, y)', 'App tile cache wrapper should delegate to the helper');
@@ -8268,8 +8281,8 @@ test('Binary save uses live top-level stats when nested stats are stale', () => 
 
 test('Binary saves exclude temporary Overpowered stat mutations', () => {
   const Binary = loadBinaryForTest();
-  const player = makeUnit('You', { Figh: 99, MPun: 999, CPun: 999 });
-  const snapshot = { Figh: 14, MPun: 120, CPun: 87 };
+  const player = makeUnit('You', { Figh: 99, str: 99, MPun: 999, CPun: 999 });
+  const snapshot = { Figh: 14, str: 14, MPun: 120, CPun: 87 };
   const buffer = Binary.saveGame({
     player,
     party: [player],
@@ -8281,10 +8294,10 @@ test('Binary saves exclude temporary Overpowered stat mutations', () => {
   });
   const loaded = Binary.loadGame(buffer);
 
-  assertEqual(loaded.playerStats.Figh, 14, 'Save metadata should use the pre-cheat Fight stat');
+  assertEqual(loaded.playerStats.str, 14, 'Save metadata should use the pre-cheat Strength stat');
   assertEqual(loaded.playerMaxHp, 120, 'Save metadata should use the pre-cheat maximum condition');
   assertEqual(loaded.playerHp, 87, 'Save metadata should use the pre-cheat current condition');
-  assertEqual(loaded.party[0].Figh, 14, 'The serialized player unit should use the pre-cheat Fight stat');
+  assertEqual(loaded.party[0].stats.str, 14, 'The serialized player unit should use the pre-cheat Strength stat');
   assertEqual(loaded.party[0].MPun, 120, 'The serialized player unit should use the pre-cheat maximum condition');
   assertEqual(loaded.party[0].CPun, 87, 'The serialized player unit should use the pre-cheat current condition');
 });
@@ -8789,6 +8802,9 @@ test('Asset manifest supports tileset provenance and fallback metadata', () => {
   assert(painted.sheets.some(sheet => sheet.src === 'structure-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent structures without baked terrain');
   assert(painted.sheets.some(sheet => sheet.src === 'poi-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent POI markers');
   assert(painted.sheets.some(sheet => sheet.src === 'evidence-overlays-v3.png' && sheet.alpha), 'Basic tileset should include transparent durable evidence');
+  assert(painted.sheets.some(sheet => sheet.src === 'terrain-relief-v1.png' && sheet.alpha), 'Basic tileset should include transparent directional elevation relief');
+  assert(painted.sheets.some(sheet => sheet.src === 'jungle-strata-v1.png' && sheet.alpha), 'Basic tileset should include independently replaceable jungle strata');
+  assert(painted.sheets.some(sheet => sheet.src === 'biome-strata-v2.png' && sheet.alpha), 'Basic tileset should include independently replaceable grove, forest, plains, swamp, and cave strata');
   assertEqual(painted.aiMetadata.aiMade, true, 'Basic tileset should expose AI-made metadata for future asset-pack policy');
   assert(painted.allowedUse.includes('future-mod-pack'), 'Tileset metadata should allow future mod-pack use');
   const forestAsset = manifest.getTileAsset('terrain-forest');
@@ -9260,7 +9276,13 @@ test('Alpha Lab exposes isolated public missions and deterministic agent launch 
   assertContains(alphaLabContent, "SAVE_DB_NAME: 'YAW_Alpha_Saves'", 'Alpha missions should not write the ordinary save database');
   assertContains(alphaLabContent, "WORLD_DB_NAME: 'YAW_Alpha_Worlds'", 'Alpha missions should not write the ordinary world database');
   assertContains(alphaLabContent, "new URLSearchParams(location.search).get('alphaScenario')", 'Agent scenarios should have a stable direct URL contract');
-  assertEqual((alphaLabContent.match(/id: '[a-z-]+'/g) || []).filter(entry => entry.includes('interaction') || entry.includes('containment') || entry.includes('combat') || entry.includes('narration') || entry.includes('companion') || entry.includes('content') || entry.includes('responsive')).length, 8, 'Alpha Lab should retain the maintained eight-mission fixture set');
+  assertEqual((alphaLabContent.match(/id: '[a-z-]+'/g) || []).filter(entry => entry.includes('interaction') || entry.includes('containment') || entry.includes('combat') || entry.includes('narration') || entry.includes('companion') || entry.includes('content') || entry.includes('responsive') || entry.includes('terrain')).length, 10, 'Alpha Lab should retain the maintained ten-mission fixture set');
+  assertContains(alphaLabContent, "id: 'terrain-composition'", 'Alpha Lab should expose the deterministic terrain-composition survey');
+  assertContains(alphaLabContent, "id: 'terrain-workbench'", 'Alpha Lab should expose the isolated tile-composition workbench');
+  assertContains(alphaLabContent, 'terrainWorkbenchCaseCount()', 'Tile Composition Workbench should publish a bounded exhaustive case matrix');
+  assertContains(template, 'id="alpha-terrain-workbench"', 'The game surface should expose the responsive terrain workbench controls');
+  assertContains(alphaLabContent, 'for (let y = -4; y <= 4; y++)', 'Terrain survey should materialize a bounded 9x9 review world');
+  assertContains(alphaLabContent, "app.cheats.noEnemies = true", 'Terrain survey should suppress hostile encounters during visual review');
   assertContains(alphaLabContent, 'share it only when you are comfortable with its contents', 'Reports should be review-before-share');
   assertNotContains(alphaLabContent, "fetch(this.ISSUE_URL", 'Alpha reports should never submit automatically');
 });
@@ -23118,9 +23140,10 @@ test('Bundled roads share an exact midpoint and edge width across every topology
   assertContains(templateContent, "d='M50 0V50H100'", 'Corner roads should turn through the exact tile center');
   assertContains(templateContent, "d='M0 50H100M50 50V100'", 'T-junction roads should meet at the exact tile center');
   assertContains(templateContent, "d='M50 0V100M0 50H100'", 'Intersections should cross on exact horizontal and vertical midpoints');
-  assertContains(templateContent, "stroke-width='44'", 'Every road topology should share the same outer edge width');
-  assertContains(templateContent, "stroke-width='32'", 'Every road topology should share the same travel-surface width');
+  assertContains(templateContent, "stroke-width='30'", 'Every road topology should share the same scaled outer edge width');
+  assertContains(templateContent, "stroke-width='22'", 'Every road topology should share the same scaled travel-surface width');
   assertContains(templateContent, '.yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="route-road-"]', 'Road correction should remain scoped to the bundled pack');
+  assertNotContains(templateContent, '[data-route-shoulder="', 'Biome shoulder metadata must not recolor any connected bundled road deck');
 });
 
 test('Map route visuals use canonical directional T-junction tileset keys', () => {
@@ -23334,7 +23357,15 @@ test('Noise biome generation is stable by seed and coordinate', () => {
   assertEqual(typeof first.dangerPressure, 'number', 'Base tile should include deterministic danger pressure');
   assert(first.terrainTopology && ['level', 'slope', 'ledge', 'cliff'].includes(first.terrainTopology.kind), 'Base tile should include deterministic elevation topology');
   assertEqual(Object.keys(first.terrainTopology.grades).sort().join(','), 'east,north,south,west', 'Elevation topology should retain signed grades for every cardinal edge');
+  assertEqual(Object.keys(first.terrainTopology.cornerElevations).sort().join(','), 'ne,nw,se,sw', 'Elevation topology should retain shared corner samples');
+  assertEqual(Object.keys(first.terrainTopology.terraceEdges).sort().join(','), 'east,north,south,west', 'Elevation topology should retain reciprocal terrace deltas');
+  assert(first.terrainTopology.terraceLevel >= 0 && first.terrainTopology.terraceLevel < first.terrainTopology.terraceCount, 'Elevation topology should publish a bounded visual terrace level');
+  assert(first.terrainTopology.contours.every(contour => contour.mask > 0 && contour.mask < 15), 'Elevation contours should only publish crossed marching-squares cases');
   assertEqual(JSON.stringify(first.terrainTopology), JSON.stringify(second.terrainTopology), 'Elevation topology should be stable for the same seed and coordinate');
+  const east = App.getBaseTile(38, -22);
+  assertEqual(first.terrainTopology.cornerElevations.ne, east.terrainTopology.cornerElevations.nw, 'East-west neighbors should share their north elevation corner exactly');
+  assertEqual(first.terrainTopology.cornerElevations.se, east.terrainTopology.cornerElevations.sw, 'East-west neighbors should share their south elevation corner exactly');
+  assertEqual(first.terrainTopology.terraceEdges.east, -east.terrainTopology.terraceEdges.west, 'East-west neighbors should publish reciprocal terrace deltas');
   assert(first.regionCell?.id, 'Base tile should include cellular macro-region metadata');
   assert(Array.isArray(first.terrainTags), 'Base tile should include terrain tags');
 });
@@ -23458,7 +23489,7 @@ test('Bundled landmarks use a transparent marker without changing the pack seam'
   assertContains(templateContent, '.yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"]', 'Landmark correction should remain scoped to the first-party pack');
 });
 
-test('Terrain Transition V1 derives outer and diagonal inner shoreline corners', () => {
+test('Terrain Transition V1 derives shoreline junction metadata without diagonal-only paint', () => {
   const { App } = loadAppForCombat();
   const beach = { x: 0, y: 0, biome: 'beach', baseBiome: 'beach', derivedBiome: 'beach', overlays: {} };
   const water = { biome: 'water', derivedBiome: 'water', water: true };
@@ -23467,7 +23498,7 @@ test('Terrain Transition V1 derives outer and diagonal inner shoreline corners',
   assertEqual(outer.shorelineEdges.join(','), 'north,east', 'Adjacent cardinal water should derive ordered shoreline edges');
   assertEqual(outer.shorelineCorners.join(','), 'outer-ne', 'Two touching cardinal water edges should derive one outer blend corner');
   assertEqual(outer.shorelineMask, 5, 'Eight-neighbor shoreline mask should encode north and east water bits');
-  assert(outer.semanticKeys.includes('shoreline-water-outer-ne'), 'Outer shoreline corner should remain an authored tileset semantic');
+  assert(!outer.semanticKeys.includes('shoreline-water-outer-ne'), 'Outer shoreline corners should be owned by joined cardinal contour geometry, not overlapping corner stickers');
   const outerAttrs = App._mapTileAttrs(outer);
   assertContains(outerAttrs, 'data-shoreline-corners="outer-ne"', 'Rendered coast should expose its corner transition contract');
   assertContains(outerAttrs, 'data-shoreline-mask="5"', 'Rendered coast should expose its eight-neighbor bitmask');
@@ -23475,19 +23506,25 @@ test('Terrain Transition V1 derives outer and diagonal inner shoreline corners',
   const diagonalNeighbors = new Map([['1,-1', water]]);
   const inner = App._mapTileVisual(beach, { neighborResolver: (x, y) => diagonalNeighbors.get(`${x},${y}`) || null });
   assertEqual(inner.shorelineEdges.length, 0, 'Diagonal-only water should not invent a cardinal shoreline edge');
-  assertEqual(inner.shorelineCorners.join(','), 'inner-ne', 'Diagonal-only water should derive a small inner corner blend');
+  assertEqual(inner.shorelineCorners.join(','), 'inner-ne', 'Diagonal-only water should remain available as junction metadata');
   assertEqual(inner.shorelineMask, 2, 'Eight-neighbor shoreline mask should encode diagonal northeast water');
-  assert(inner.semanticKeys.includes('shoreline-water-inner-ne'), 'Inner shoreline corner should remain an authored tileset semantic');
+  assert(inner.semanticKeys.includes('shoreline-water-inner-ne'), 'Diagonal-only water must retain its authored replacement-pack semantic');
+  assertContains(templateContent, '[data-shoreline-corners*="inner-"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"]', 'Only the bundled diagonal shoreline crop should be suppressed');
 });
 
 test('Bundled natural water suppresses literal wall art without removing blocked semantics', () => {
   const template = fs.readFileSync(TEMPLATE, 'utf8');
   assertContains(
     template,
-    '[data-base-tileset-key="terrain-water"][data-map-kind="biome"]:is([data-blocked-reason="impassable"], [data-blocked-reason="capability"]) .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"]',
-    'The bundled skin should scope natural-water wall suppression to ordinary water biomes'
+    '[data-base-tileset-key="terrain-water"][data-map-kind="biome"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"]',
+    'The bundled skin should suppress literal wall props for ordinary water regardless of the current blocked-reason presentation'
   );
   assertContains(template, 'opacity: 0 !important;', 'Bundled natural-water blocked art should be visually suppressed');
+  assertContains(
+    template,
+    '[data-map-kind="biome"][data-blocked-reason="bridge-direction"] .yaw-tile-art[data-tileset-pack="yaw.default-basic-v1"] > [data-tileset-semantic-key^="state-blocked"]',
+    'Bundled bridge-direction constraints should retain semantics without painting adjacent log walls'
+  );
   const { App } = loadAppForCombat();
   const visual = App._mapTileVisual(
     { biome: 'water', baseBiome: 'water', derivedBiome: 'water', water: true, overlays: { barriers: [] } },
@@ -33034,7 +33071,7 @@ test('Toast auto-dismiss pauses on hover and resets on tap', () => {
   }
 });
 
-test('Activity log toast metadata is opt-in and high-signal blocked movement creates toast', () => {
+test('Activity log toast metadata is opt-in and blocked movement remains narrative-only', () => {
   const { App, elements } = loadAppForCombat();
   App._pushLog('Routine entry', 'discovery');
   assertEqual(App.log.length, 1, 'Routine _pushLog should still write Activity Log history');
@@ -33046,12 +33083,15 @@ test('Activity log toast metadata is opt-in and high-signal blocked movement cre
   assertEqual(App.log.length, 2, 'Toast metadata should not skip Activity Log history');
   assertEqual(App.toasts.length, 1, 'Explicit toast metadata should create a toast');
   assertContains(elements.get('toast-stack').innerHTML, 'Important loot', 'Explicit log toast should render');
+  const priorToastMarkup = elements.get('toast-stack').innerHTML;
+  const priorToastCount = App.toasts.length;
 
   App.player = makeUnit('You', { CPun: 100, MPun: 100 });
   App.mode = App.GAME_MODE.COMBAT;
   App.move(1, 0);
   assertContains(App.log[App.log.length - 1].text, 'Use Flee', 'Blocked combat movement should still write Activity Log guidance');
-  assertContains(elements.get('toast-stack').innerHTML, 'Use Flee', 'Blocked combat movement should create a high-signal toast');
+  assertEqual(App.toasts.length, priorToastCount, 'Blocked combat movement should not add a duplicate toast');
+  assertEqual(elements.get('toast-stack').innerHTML, priorToastMarkup, 'Blocked combat movement should preserve unrelated existing notifications');
 });
 
 test('Activity log renders relative timestamps list roles and mobile recent entries', () => {
@@ -33767,6 +33807,32 @@ test('Routine movement sparse autosave skips full snapshot and writes dirty worl
   assertEqual(debug.defaultDirtyFallbackCount, baselineFallbacks, 'Routine movement should not increment default fallback count after baseline');
   assertIncludesEvery(debug.lastDirtyDomains, ['manifest', 'player', 'party', 'currentTile', 'worldTiles', 'sceneFeed', 'activityLog'], 'Movement sparse save should keep movement-related domains');
   assertExcludesEvery(debug.lastDirtyDomains, ['settings', 'inventory'], 'Movement sparse save should exclude unrelated domains');
+});
+
+test('World tile visual journal preserves repeated changes across persistence clearing', () => {
+  const harness = loadAppForCombat(() => 0.99);
+  const App = harness.App;
+  const cursor = App.worldTileVisualRevision();
+
+  App.markWorldTileDirty(2, 3, 'first-visual-change');
+  App.markWorldTileDirty(2, 3, 'second-visual-change');
+  const repeated = App.worldTileVisualChangesSince(cursor);
+  assertEqual(repeated.overflow, false, 'A current renderer cursor should remain inside the visual journal');
+  assertEqual(JSON.stringify(repeated.keys), JSON.stringify(['2,3', '2,3']), 'Repeated changes to one tile should remain distinct renderer events');
+
+  App.clearDirtyWorldTileKeys();
+  const afterPersistenceCursor = repeated.revision;
+  App.markWorldTileDirty(2, 3, 'sparse-current-tile');
+  assertEqual(App.worldTileVisualRevision(), afterPersistenceCursor, 'Unchanged sparse-save bookkeeping must not invalidate terrain rasters');
+  App.markWorldTileDirty(2, 3, 'after-persistence-clear');
+  const afterPersistence = App.worldTileVisualChangesSince(afterPersistenceCursor);
+  assertEqual(JSON.stringify(afterPersistence.keys), JSON.stringify(['2,3']), 'Persistence clearing must not erase unobserved renderer changes');
+  assertEqual(JSON.stringify(App.dirtyWorldTileKeys()), JSON.stringify(['2,3']), 'Persistence dirtiness should continue to use its independent deduplicated work set');
+
+  for (let index = 0; index < 513; index += 1) App.markWorldTileDirty(4, 4, `overflow-${index}`);
+  const overflow = App.worldTileVisualChangesSince(cursor);
+  assertEqual(overflow.overflow, true, 'A renderer that falls behind the bounded journal should request conservative cache invalidation');
+  assertEqual(overflow.keys.length, 0, 'Overflow should not claim an incomplete selective invalidation set');
 });
 
 test('Routine inventory and scene sparse autosaves avoid default fallback and world persistence', async () => {

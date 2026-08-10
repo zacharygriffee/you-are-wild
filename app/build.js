@@ -22,6 +22,9 @@ const BUNDLED_TILESET_MATERIALS_V2 = path.join(ROOT_DIR, 'media', 'terrain-mater
 const BUNDLED_TILESET_BRIDGE_V2 = path.join(ROOT_DIR, 'media', 'bridge-span-v2.png');
 const BUNDLED_TILESET_COVER_V2 = path.join(ROOT_DIR, 'media', 'foliage-cover-v2.png');
 const BUNDLED_TILESET_COVER_V3 = path.join(ROOT_DIR, 'media', 'cover-overlays-v3.png');
+const BUNDLED_TILESET_RELIEF_V1 = path.join(ROOT_DIR, 'media', 'terrain-relief-v1.png');
+const BUNDLED_TILESET_JUNGLE_STRATA_V1 = path.join(ROOT_DIR, 'media', 'jungle-strata-v1.png');
+const BUNDLED_TILESET_BIOME_STRATA_V2 = path.join(ROOT_DIR, 'media', 'biome-strata-v2.png');
 const BUNDLED_TILESET_STRUCTURE_V3 = path.join(ROOT_DIR, 'media', 'structure-overlays-v3.png');
 const BUNDLED_TILESET_POI_V3 = path.join(ROOT_DIR, 'media', 'poi-overlays-v3.png');
 const BUNDLED_TILESET_EVIDENCE_V3 = path.join(ROOT_DIR, 'media', 'evidence-overlays-v3.png');
@@ -157,6 +160,13 @@ const SCRIPT_ORDER = [
   'src/core/world-random.js',
   'src/core/encounter-preferences.js',
   'src/core/create-flow.js',
+  'src/core/terrain-scene-v1.js',
+  'src/core/terrain-viewport-v1.js',
+  'src/core/terrain-input-v1.js',
+  'src/core/terrain-renderer-registry.js',
+  'src/core/terrain-canvas-v1.js',
+  'src/core/terrain-canvas-surface-v1.js',
+  'src/core/terrain-canvas-alpha.js',
   'src/core/tile-composition-v2.js',
   'src/core/map-visuals.js',
   'src/core/large-map.js',
@@ -340,6 +350,9 @@ function tilesetBootstrap(release, mode = 'embedded', buildId = 'unknown') {
     { key: 'YAW_BUNDLED_TILESET_BRIDGE_V2_URL', file: BUNDLED_TILESET_BRIDGE_V2, url: './assets/bridge-span-v2.png' },
     { key: 'YAW_BUNDLED_TILESET_COVER_V2_URL', file: BUNDLED_TILESET_COVER_V2, url: './assets/foliage-cover-v2.png' },
     { key: 'YAW_BUNDLED_TILESET_COVER_V3_URL', file: BUNDLED_TILESET_COVER_V3, url: './assets/cover-overlays-v3.png' },
+    { key: 'YAW_BUNDLED_TILESET_RELIEF_V1_URL', file: BUNDLED_TILESET_RELIEF_V1, url: './assets/terrain-relief-v1.png' },
+    { key: 'YAW_BUNDLED_TILESET_JUNGLE_STRATA_V1_URL', file: BUNDLED_TILESET_JUNGLE_STRATA_V1, url: './assets/jungle-strata-v1.png' },
+    { key: 'YAW_BUNDLED_TILESET_BIOME_STRATA_V2_URL', file: BUNDLED_TILESET_BIOME_STRATA_V2, url: './assets/biome-strata-v2.png' },
     { key: 'YAW_BUNDLED_TILESET_STRUCTURE_V3_URL', file: BUNDLED_TILESET_STRUCTURE_V3, url: './assets/structure-overlays-v3.png' },
     { key: 'YAW_BUNDLED_TILESET_POI_V3_URL', file: BUNDLED_TILESET_POI_V3, url: './assets/poi-overlays-v3.png' },
     { key: 'YAW_BUNDLED_TILESET_EVIDENCE_V3_URL', file: BUNDLED_TILESET_EVIDENCE_V3, url: './assets/evidence-overlays-v3.png' }
@@ -383,6 +396,9 @@ function renderHtml(options = {}) {
     BUNDLED_TILESET_BRIDGE_V2,
     BUNDLED_TILESET_COVER_V2,
     BUNDLED_TILESET_COVER_V3,
+    BUNDLED_TILESET_RELIEF_V1,
+    BUNDLED_TILESET_JUNGLE_STRATA_V1,
+    BUNDLED_TILESET_BIOME_STRATA_V2,
     BUNDLED_TILESET_STRUCTURE_V3,
     BUNDLED_TILESET_POI_V3,
     BUNDLED_TILESET_EVIDENCE_V3
@@ -450,6 +466,9 @@ function watch() {
     BUNDLED_TILESET_BRIDGE_V2,
     BUNDLED_TILESET_COVER_V2,
     BUNDLED_TILESET_COVER_V3,
+    BUNDLED_TILESET_RELIEF_V1,
+    BUNDLED_TILESET_JUNGLE_STRATA_V1,
+    BUNDLED_TILESET_BIOME_STRATA_V2,
     BUNDLED_TILESET_STRUCTURE_V3,
     BUNDLED_TILESET_POI_V3,
     BUNDLED_TILESET_EVIDENCE_V3,

@@ -2397,14 +2397,20 @@
             persistTileDelta(x, y, tile = null, options = {}) {
                 return YAW_WORLD_STATE.persistTileDelta(this, x, y, tile, options);
             },
-            markWorldTileDirty(x, y, reason = '') {
-                return YAW_WORLD_STATE.markWorldTileDirty(this, x, y, reason);
+            markWorldTileDirty(x, y, reason = '', options = {}) {
+                return YAW_WORLD_STATE.markWorldTileDirty(this, x, y, reason, options);
             },
             markCurrentWorldTileDirty(reason = '') {
                 return YAW_WORLD_STATE.markCurrentWorldTileDirty(this, reason);
             },
             dirtyWorldTileKeys() {
                 return YAW_WORLD_STATE.dirtyWorldTileKeys(this);
+            },
+            worldTileVisualRevision() {
+                return YAW_WORLD_STATE.worldTileVisualRevision(this);
+            },
+            worldTileVisualChangesSince(cursor = 0) {
+                return YAW_WORLD_STATE.worldTileVisualChangesSince(this, cursor);
             },
             clearDirtyWorldTileKeys(keys = null) {
                 return YAW_WORLD_STATE.clearDirtyWorldTileKeys(this, keys);
@@ -5912,6 +5918,21 @@
                 return YAW_LARGE_MAP.render(this);
             },
 
+            focusMapTarget(target = {}, options = {}) {
+                const x = Number(target.x);
+                const y = Number(target.y);
+                if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+                this.largeMapOffset = {
+                    x: x - Number(this.location?.x || 0),
+                    y: y - Number(this.location?.y || 0)
+                };
+                this.largeMapSelected = { x, y };
+                YAW_PANEL_SHELL.closeRoster?.(this, { restoreFocus: false });
+                this.openPanel?.('map');
+                this.renderLargeMap();
+                return true;
+            },
+
             _dangerPressureLabel(value = 0) {
                 return YAW_MAP_VISUALS.dangerPressureLabel(this, value);
             },
@@ -6774,6 +6795,15 @@
             },
             launchAlphaScenario(scenarioId) {
                 return YAW_ALPHA_LAB.launch(this, scenarioId);
+            },
+            setTerrainWorkbench(key, value) {
+                return YAW_ALPHA_LAB.setTerrainWorkbench(this, key, value);
+            },
+            stepTerrainWorkbench(amount) {
+                return YAW_ALPHA_LAB.stepTerrainWorkbench(this, amount);
+            },
+            toggleTerrainWorkbench(force = null) {
+                return YAW_ALPHA_LAB.toggleTerrainWorkbench(this, force);
             },
             exitAlphaScenario() {
                 return YAW_ALPHA_LAB.exit(this);

@@ -24,30 +24,30 @@ blocked edges, structures, and exits may not.
 
 | Path | Asset behavior | Gameplay contract |
 | --- | --- | --- |
-| Offline Textured | Three atlases embedded as data and decoded asynchronously | Full semantic keys; emoji remains fallback if decoding fails. |
+| Offline Textured | First-party atlases embedded as data and decoded asynchronously | Full semantic keys; emoji remains fallback if decoding fails. |
 | Hosted Textured | Same atlases fetched as separate same-origin cacheable files | Same runtime, saves, topology, and mod layers. |
 | Lightweight | `?graphics=emoji` skips bundled atlas registration | Same semantic map and controls through emoji/text. |
 | Partial mod pack | Locally leased overrides compose above lower-priority packs | Missing base/route/state keys inherit; disabling restores the prior candidate. |
 
-Measured development artifacts for the 0.15.0 development head on 2026-07-25
+Measured development artifacts for the 0.18.3 development head on 2026-08-06
 (`npm run audit:map-assets`):
 
-- offline single-file build: 7.79 MiB (4.28 MiB gzip);
-- hosted runtime HTML: 2.75 MiB (0.50 MiB gzip);
-- external first-party atlases: 3.78 MiB combined (3.77 MiB gzip);
-- estimated hosted Lightweight transfer: 0.50 MiB;
-- estimated hosted Textured cold transfer: 4.28 MiB.
+- offline single-file build: 17.33 MiB (10.91 MiB gzip);
+- hosted runtime HTML: 3.7 MiB (0.69 MiB gzip);
+- external first-party atlases: 10.22 MiB combined (10.17 MiB gzip);
+- estimated hosted Lightweight transfer: 0.69 MiB;
+- estimated hosted Textured cold transfer: 10.91 MiB.
 
 Hosted Lightweight avoids the atlas transfer. Hosted Textured pays it once and
 can reuse normal browser cache; installed mod assets remain content-addressed in
 the Media Repository. At a theoretical 1.5 Mbps before latency and decode, the
-measured transfers take about 2.8 seconds and 24 seconds respectively. This is
+measured transfers take about 3.9 seconds and 61 seconds respectively. This is
 an artifact comparison, not a promise about real network timing.
 
 The audit rejects a hosted artifact that embeds atlas data, adds cache-busting
-queries to the stable first-party asset paths, or stops referencing all three
-external assets. Browser acceptance independently proves that a cold hosted
-Textured load requests each atlas exactly once, a reload reuses immutable cache,
+queries to the stable first-party asset paths, or stops referencing any
+required external asset. Browser acceptance independently proves that a cold hosted
+Textured load requests each atlas, while normal cache behavior can reuse it,
 and a fresh Lightweight context requests none. Low-bandwidth or failed atlas
 acquisition must leave the map actionable through semantic emoji fallback and
 must write diagnostics to the Activity Log rather than block startup.
@@ -115,3 +115,113 @@ the current-position marker, and the 17×17 review map.
 This sample closes the responsive route/POI legibility check. It does not
 replace the existing representative coast, cave, and building-interior review
 or authorize a new art direction.
+
+### Terrain Art Quality Pass 2 review — 2026-08-06
+
+The rebuilt `terrain-composition` Alpha mission was traversed in the in-app
+browser and inspected at the normal desktop viewport and at 390x844 mobile.
+The review covered the biome-identity row plus the centered structure, POI,
+evidence, beach, swamp, and jungle neighborhood.
+
+- Grove, forest, plains, swamp, jungle, beach, and cave retain visually
+  distinct ground/cover identities; jungle remains intentionally denser than
+  the restrained single-overlay biomes.
+- Beach now carries sparse drift detail without restoring the removed
+  repeating foam/scallop line. Water/land transitions remain a single-owned
+  shoreline layer, and adjacent vegetation stays in its edge band.
+- Structures and POIs remain transparent overlays on the destination biome;
+  route and feature clearance preserve their readable negative space.
+- The nine-cell grid, current marker, POI marker, presence overflow, and Alpha
+  banner remain contained and usable at 390x844 without horizontal overflow.
+
+The maintained Alpha matrix additionally proves all nine route cells retain a
+route deck plus biome-aware underlay, all nine structure cells and all nine POI
+cells retain destination ground plus grounding records, and the reviewed coast
+does not receive duplicate generic water-transition paint.
+
+### Terrain Art Quality Pass 3 review — 2026-08-06
+
+The rebuilt `terrain-composition` mission was inspected again in the in-app
+browser at the default 1280x720 desktop viewport and at 390x844 mobile. The
+review covered the centered 3x3 surface and the full 17x17 Review Map.
+
+- Canonical material seams render as bounded direction-aware polygons with a
+  feathered material mask; mixed-corner trim and extend decisions visibly
+  affect the polygon instead of remaining metadata-only.
+- The desktop gallery rendered 80 soft/hard transition layers and 28
+  specialized shoreline layers. After correcting correlated contour salts, 56
+  transition layers and 20 shoreline layers showed at least 0.025 normalized
+  depth variation; maximum observed spreads were 0.074 and 0.095.
+- Water/land boundaries retain one shoreline owner, omit synthetic foam, and
+  do not also receive generic water-transition paint.
+- The 390x844 3x3 surface contained all visible five-point contours without
+  horizontal overflow. The mobile Review Map contained 289 V2 cells and 90
+  contour layers inside its 332px map width without overflow.
+- Existing identity sprites show coordinate-derived placement, scale,
+  rotation, flip, and variant signatures. The seam-matched ground plane remains
+  untransformed, preserving material continuity.
+
+Automated acceptance repeats the file and hosted paths at all four maintained
+viewports and asserts computed polygon clipping, feathered masks, contour
+serialization, non-repeating generated samples, and bundled-pack-only mask
+ownership.
+
+### Pass 3 correction acceptance — 2026-08-06
+
+The cross-surface browser fixtures now additionally require:
+
+- zero artwork gap and zero cell-layout border on the active desktop and phone
+  3x3 surfaces, with nine independent composition-bearing cells retained;
+- bounded per-cell art viewports, scale-aware safe placement for interior
+  canopies, and paired shared-edge vegetation records that meet intentionally
+  without leaving a clipped half-tree; plus a first-party atlas sample gutter
+  and one-pixel canonical edge overscan to suppress raster crop hairlines while
+  authored replacement-pack crops remain exact;
+- full terrain opacity regardless of whether a direction is currently
+  traversable, with a compact resting movement dot and bounded
+  hover/focus/selection/current affordances instead of full-cell move rings;
+- one categorized POI marker without a duplicate generic landmark, a 42%
+  bounded bundled POI scale, and a semantically retained but visually
+  suppressed bundled `state-current` atlas layer, with no full-cell POI or
+  structure outline;
+- a single runtime-owned mixed-corner polygon, isolated-edge caps, and bounded
+  17–26% soft / 15–19% hard transition depth;
+- rendered secondary biome-detail records with deterministic family/density
+  variation, plus first-party night material lifting; and
+- real east/west movement across the composition fixture, followed by a
+  nine-cell rerender and exactly one synchronized Review Map current tile.
+
+These checks run for offline and hosted builds at all four maintained
+viewports. The final subjective visual sign-off remains a separate human gate;
+automated geometry acceptance is not treated as proof of taste.
+
+### Tile Composition Workbench acceptance — 2026-08-06
+
+The `terrain-workbench` Alpha mission provides an isolated 7x7 case generator
+for all maintained biome pairs, four orientations, six boundary geometries,
+ten relief fixtures, nine overlay states, day/night, and four enumerated art seeds. Its 1,399,680
+cases have stable forward/reverse indexing and URL parameters. Automated
+desktop and 390x844 checks require the controls, case stepping, Review Map
+projection, selection/mixed overlays, and horizontal containment to remain
+operable.
+
+Visual Recipe Version 6 keeps each art viewport owned, emits paired source/
+destination edge records with one shared key, and permits explicit decorative
+identity art to meet that edge only when neighbor-aware continuity completes
+the seam. Contiguous forest adds two same-material canopy pairs; contiguous
+jungle adds three. Forest distributes three canopy clusters plus understory,
+while an unobstructed jungle tile emits three or four canopy, two undergrowth,
+and two litter records before adjacency decoration. Plains distributes grass
+and optional scrub, and swamp combines shallow wetland identity with two reed
+groups. Roads, structures, POIs, evidence, presence, and state remain above or
+clear of that density according to the canonical layer order. Version 6 also
+joins shoreline endpoints through
+the same shared-edge contour policy, reserves the visible shore bank from
+decorative cover, and projects shared-corner terrace walls without replacing
+authored tileset relief. Plains, swamp, beach, sand, and farm retain slope
+lighting without repeated plateau walls or ledge/cliff sprites; forest, grove, and jungle use at most
+restrained relief; cliff and cave retain the full terrace treatment. The
+bundled road deck uses a 22% travel surface within a 30% edge and preserves
+one surface material across different biome shoulders. Diagonal-only water is
+retained as junction metadata without painting a land-corner wedge, and natural
+water keeps blocked semantics while suppressing literal wall props.

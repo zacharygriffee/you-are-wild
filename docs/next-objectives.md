@@ -6,13 +6,12 @@ belongs in `changelog.md`; requirement evidence belongs in
 
 ## Select-group alpha maintenance
 
-Version 0.18.2 is the active released public-access alpha for the accepted
-Moddable Core V1 boundary. Public access began on 2026-08-03 without a broader
-advertising campaign. Version 0.18.3 is the current unpublished development
-candidate. It carries the same frozen gameplay and module boundary while
-adding the versioned license cutoff and stabilization evidence.
+Version 0.18.3 is the active released public-access alpha for the accepted
+Moddable Core V1 boundary. Public access remains intentionally unadvertised.
+It keeps the frozen gameplay and module boundary while adding the versioned
+license cutoff, Canvas terrain presentation, and stabilization evidence.
 
-During candidate stabilization, do not add new module
+During select-group alpha maintenance, do not add new module
 permissions, public UI slots, resolver effect types, saved schemas, media
 providers, biome-recipe modes, recovery profiles, population simulation,
 elemental semantics, crafting, commerce, or arbitrary module callbacks.
@@ -22,44 +21,14 @@ documentation corrections, localization and accessibility fixes, and narrow
 hardening. Core gameplay remains deterministic, offline-capable, and
 independent of LLM or remote-service availability.
 
-## Immediate — 0.18.3 stabilization
+## Post-release terrain direction
 
-1. Exercise the built candidate through deterministic Alpha missions and
-   ordinary adventures. Cover exploration and combat, single/group/self/mixed
-   interactions, SFW and Mature posture, companion control, containment,
-   save/reload, and desktop/mobile presentation. Keep the maintained
-   `test:lifecycle` ordinary-adventure path in the release gate alongside the
-   Alpha and interaction matrices.
-2. Treat a reported problem as actionable only after it has stable setup and
-   reproduction steps. Add the smallest deterministic regression fixture that
-   fails first, then fix the implementation and keep the fixture permanently.
-3. Continue agent-led testing while human testing remains ongoing. Human
-   observations inform narration quality, touch comfort, pacing, and balance;
-   they do not pause independent automated or agent exploration.
-4. Keep candidate identity synchronized across the application package,
-   package lock, first-party packages, Mod Author Kit, fixtures, tests, and
-   release copy.
-5. Retain exact-candidate evidence for:
-   - the full local build, branding and whitespace checks;
-   - representative older-save loading;
-   - deterministic fixture install, enable, action resolution, runtime reload,
-     disable, and deletion;
-   - core Grab, restraint, Pull, Escape, and Seduce flows;
-   - short-mobile contributed-action disclosure;
-   - offline single-file and hosted artifact identity;
-   - green GitHub CI on each release-patch commit.
-6. Record observational defects without expanding the frozen contracts.
-7. Keep 0.18.3 unpublished until the operator explicitly approves release and
-   Sites publication. Public-preview promotion, advertising, and any
-   access-policy change remain separate decisions.
-
-## Post-stabilization priority — layered map art
-
-After the 0.18.3 stabilization gate, improve the 3x3 traversal presentation
-through the staged [Layered Map Art Roadmap](map-art-layering-roadmap.md).
-The first priorities are directional cliff and mountain slopes, edge-to-edge
-bridge continuity, and decomposing baked terrain art into reusable ground,
-route, foliage, feature, durable-world-evidence, presence, and state layers.
+The Canvas Terrain Scene and fixed-chunk renderer now provide the accepted
+3x3 and Survey baseline described by the
+[Layered Map Art Roadmap](map-art-layering-roadmap.md). Continue to improve
+directional cliffs, bridge-to-road approaches, larger-view presentation, and
+authored biome assets through those semantic layers rather than inferring game
+rules from pixels.
 
 This presentation work should precede Terrain Tactics V1 and Crafting V1.
 Those systems need stable terrain, obstacle, resource, and persistent tile

@@ -858,11 +858,11 @@ test('Native provider profiles expose bounded edit and destructive removal flows
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.18.3', 'Release manifest should identify the active patch candidate');
-  assertEqual(releaseInfo.status, 'candidate', 'The license-boundary patch should remain a candidate until operator publication');
-  assertEqual(releaseInfo.channel, 'development', 'An unpublished candidate should use the development channel');
-  assertEqual(Object.prototype.hasOwnProperty.call(releaseInfo, 'candidateFor'), false, 'A patch candidate should not introduce an undeclared target field');
-  assertEqual(releaseInfo.releasedAt, null, 'An unpublished candidate should not claim a release date');
+  assertEqual(releaseInfo.version, '0.18.3', 'Release manifest should identify the active patch release');
+  assertEqual(releaseInfo.status, 'released', 'The operator-approved patch should identify itself as released');
+  assertEqual(releaseInfo.channel, 'alpha', 'A select-group release should use the alpha channel');
+  assertEqual(Object.prototype.hasOwnProperty.call(releaseInfo, 'candidateFor'), false, 'A patch release should not introduce an undeclared target field');
+  assertEqual(releaseInfo.releasedAt, '2026-08-10', 'The released patch should record its publication date');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Moddable Core V1')), 'Release notes should describe the new bounded mechanics contracts');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Grab, Pull, and Escape')), 'Release notes should describe the restraint action slice');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('publicly accessible') && note.includes('unadvertised')), 'Release notes should disclose public access without broader promotion');

@@ -1,10 +1,10 @@
 # Release Readiness — 0.18.3
 
-Status: **development candidate — local stabilization gate passed**
+Status: **released select-group alpha**
 
-This checklist records the first independent agent-led stabilization pass for
-0.18.3. It does not authorize publication. Human playtesting remains ongoing
-and may add fixtures without pausing other candidate work.
+This checklist records the independent agent-led stabilization and protected
+release gate for 0.18.3. Human playtesting remains ongoing and may add later
+patch fixtures without invalidating this exact release record.
 
 ## Agent and live-browser pass — 2026-08-04
 
@@ -19,7 +19,8 @@ and may add fixtures without pausing other candidate work.
 - [x] The persistence audit covered source-level save/load, queue restoration,
   companion rename/loadout/behavior, AI-assisted fallback, containment,
   posture, and narrated failure contracts.
-- [x] The Alpha browser matrix passed all 10 maintained cases.
+- [x] The Alpha browser matrix passed all 15 maintained desktop and mobile
+  cases, including terrain workbench exit cleanup.
 - [x] A deterministic ordinary-adventure browser lifecycle passed all three
   phases: desktop setup/save, desktop reload plus phone containment actions,
   and phone reload/restoration. It uses the ordinary `YAW_Saves` and
@@ -60,14 +61,29 @@ assertion failed against the old behavior before its implementation changed.
   map/tileset acceptance, and branding audit all passed.
 - [x] `npm run test:interactions` — passed with targetless and vanished-target
   Scene narration assertions.
-- [x] `npm run test:alpha` — 10/10 cases passed.
+- [x] `npm run test:alpha` — 15/15 cases passed.
 - [x] `npm run test:lifecycle` — 3/3 ordinary lifecycle phases passed.
 - [x] `npm run check` — `dist/you-are-wild.html` is current.
 - [x] `git diff --check` — passed.
+- [x] Terrain Renderer V1 passed 519 checks, Canvas browser acceptance passed
+  17 hosted/offline and desktop/mobile cases, and the workbench exercised
+  1,399,812 deterministic checks across 1,399,680 cases.
+- [x] A physical Galaxy S21 pass exercised movement, Local/Survey changes,
+  touch drag, pinch zoom, warm-cache reuse, and day/night presentation with
+  one persistent Canvas/control set and no reported page or console error.
 
-## Remaining gates
+## Publication gates
 
-- [ ] GitHub CI passes for the exact stabilization commit.
+- [x] GitHub CI passed for the exact Canvas stabilization head before merge.
+- [x] Independent review findings were reproduced, fixed, regression-tested,
+  and resolved before the protected merge.
+- [x] Ongoing human testing reported no unresolved release blocker; each
+  reproducible report was converted into a deterministic fixture and resolved.
+- [x] Operator explicitly approved the candidate for merge and publication.
+
+## Continuing evidence
+
 - [ ] Ongoing human testing reports no new reproducible blocker, or each report
   is converted into a deterministic fixture and resolved.
-- [ ] Operator explicitly approves the candidate for merge and publication.
+- [ ] The synchronized Sites artifact reports 0.18.3, the merged source
+  revision, and the verified hosted-renderer digest after deployment.

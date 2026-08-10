@@ -1,9 +1,9 @@
 {
   "schema": 1,
   "version": "0.18.3",
-  "status": "candidate",
-  "releasedAt": null,
-  "channel": "development",
+  "status": "released",
+  "releasedAt": "2026-08-10",
+  "channel": "alpha",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
@@ -31,6 +31,8 @@
         "Native hosts can expose a host-owned desktop settings window for updates and peer availability without granting those controls to game modules."
       ],
       "changed": [
+        "Local terrain and Survey now share a backend-neutral Canvas2D renderer with continuous world-space biome, shoreline, relief, road, bridge, structure, evidence, and party layers over a bounded fixed-chunk cache.",
+        "The ordinary Map command keeps the complete Review Map planning surface, while Survey remains an explicit nearby-terrain camera with pan, pinch zoom, and Local return.",
         "The project license is now explicitly versioned: v0.18.2 and earlier remain MIT-licensed, while v0.18.3 and later use PolyForm Noncommercial 1.0.0.",
         "Talk, Play, Fight, Eat, and Feed now follow the canonical interaction and sub-action presentation across exploration, combat, single-actor, group, and self-selection contexts.",
         "Party Holdings supports bounded companion renaming and shared-Pack loadout management while preserving stable companion identity and save references.",
@@ -42,6 +44,8 @@
         "Contributed combat actions collapse into a bounded upward-opening menu on compact mobile layouts while remaining directly discoverable on larger surfaces."
       ],
       "fixed": [
+        "Terrain no longer exposes per-tile seams, clipped vegetation, square coastline ownership, or stale off-current cached features during ordinary movement and world changes.",
+        "Canvas terrain preserves remains and depleted resource evidence, while Alpha workbench quality and relief choices are cleared when returning to ordinary play.",
         "Alpha reports identify the exact release, source revision, viewport, fixture, and bounded recent Scene context without automatic submission.",
         "Committed module outcomes are deeply frozen, serializable, credential-redacted observations that cannot veto or rewrite resolved actions.",
         "Disabling or deleting a module removes its active definitions, relationships, leases, and uncommitted runtime state without rewriting committed history.",
@@ -74,6 +78,8 @@
         "Los hosts nativos pueden mostrar una ventana propia de ajustes de escritorio sin entregar controles nativos a los modulos."
       ],
       "changed": [
+        "El terreno local y Survey ahora comparten un renderizador Canvas2D neutral al backend, con capas continuas de bioma, costa, relieve, caminos, puentes, estructuras, evidencia y grupo sobre una cache limitada por regiones.",
+        "El comando Map conserva la superficie completa de planificacion Review Map, mientras Survey sigue siendo una camara explicita del terreno cercano con desplazamiento, zoom tactil y regreso a Local.",
         "La licencia del proyecto ahora esta versionada de forma explicita: v0.18.2 y anteriores conservan MIT, mientras v0.18.3 y posteriores usan PolyForm Noncommercial 1.0.0.",
         "Hablar, Jugar, Luchar, Comer y Alimentar siguen la presentacion canonica de interacciones y subacciones en exploracion, combate, actores individuales, grupos y seleccion propia.",
         "Pertenencias del grupo permite renombrar companeros y gestionar equipo desde una Mochila compartida sin cambiar su identidad estable ni referencias guardadas.",
@@ -85,6 +91,8 @@
         "Las acciones aportadas se agrupan en un menu limitado que se abre hacia arriba en pantallas moviles compactas."
       ],
       "fixed": [
+        "El terreno ya no muestra costuras por casilla, vegetacion recortada, costas cuadradas ni elementos obsoletos en cache fuera de la casilla actual durante el movimiento y los cambios del mundo.",
+        "El terreno Canvas conserva restos y evidencia de recursos agotados, y las opciones de calidad y relieve del laboratorio Alfa se eliminan al volver al juego normal.",
         "Los informes Alfa identifican la version, revision de origen, ventana, escenario y contexto reciente limitado de Escena sin envio automatico.",
         "Los resultados confirmados de modulos son observaciones serializables, inmutables y sin credenciales que no pueden vetar ni reescribir acciones resueltas.",
         "Desactivar o borrar un modulo elimina sus definiciones, relaciones, recursos multimedia y estado no confirmado sin reescribir la historia confirmada.",

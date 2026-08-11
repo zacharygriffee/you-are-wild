@@ -32,6 +32,51 @@ const YAW_PARTY_MANAGEMENT = {
         return YAW_COMPANION_BEHAVIOR.get(app, unit).control;
     },
 
+    autonomyStatus(app, unit) {
+        return YAW_COMPANION_BEHAVIOR.autonomyStatus(app, unit);
+    },
+
+    autonomyStatusLabel(app, unit) {
+        const status = this.autonomyStatus(app, unit);
+        return status ? app._label(`party.autonomyStatus.${status}`, {
+            active: 'Autonomy active',
+            paused: 'Autonomy paused',
+            'awaiting-direction': 'Awaiting direction'
+        }[status]) : '';
+    },
+
+    autonomyControl(app, unit, index, options = {}) {
+        if (!unit || unit === app.player || unit.mc) return '';
+        const status = this.autonomyStatus(app, unit);
+        const canToggle = YAW_COMPANION_BEHAVIOR.canToggleAutonomy(app, unit);
+        const action = status === 'active' ? 'pause' : (status === 'paused' ? 'play' : 'awaiting');
+        const actionLabel = app._label(`party.autonomyAction.${action}`, {
+            pause: 'Pause',
+            play: 'Play',
+            awaiting: 'Awaiting direction'
+        }[action]);
+        const statusLabel = this.autonomyStatusLabel(app, unit);
+        const title = canToggle
+            ? app._label('party.autonomyToggleFor', '{action} autonomy for {name}. {status}.', {
+                action: actionLabel,
+                name: unit.name || app._label('unit.partyMember', 'party member'),
+                status: statusLabel
+            })
+            : app._label('party.autonomyUnavailableFor', '{status} for {name}. Play/Pause is available only on your turn.', {
+                name: unit.name || app._label('unit.partyMember', 'party member'),
+                status: statusLabel
+            });
+        const classes = [
+            'action-btn',
+            'autonomy-toggle',
+            options.corner ? 'corner-card-toggle autonomy-corner-toggle' : '',
+            options.micro ? 'micro-card-toggle' : '',
+            status === 'paused' ? 'primary' : ''
+        ].filter(Boolean).join(' ');
+        const disabled = canToggle ? '' : ' disabled aria-disabled="true"';
+        return `<button class="${classes}" data-command-surface="companion-autonomy" data-command-mode="combat" data-command-control="toggle-companion-autonomy" data-autonomy-status="${app._escapeHtml(status)}" aria-pressed="${status === 'paused' ? 'true' : 'false'}" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}"${disabled} onclick="event.stopPropagation();App.toggleCompanionAutonomy(${index})">${options.micro ? '' : app._escapeHtml(actionLabel)}</button>`;
+    },
+
     aiOrderLabel(app, order) {
         return this.stanceLabel(app, YAW_COMPANION_BEHAVIOR.legacyStance(order));
     },
@@ -267,6 +312,24 @@ const YAW_PARTY_MANAGEMENT = {
             source: 'companion-behavior'
         });
         app.renderLog();
+        return true;
+    },
+
+    toggleAutonomy(app, index) {
+        const unit = app.party?.[index];
+        const paused = YAW_COMPANION_BEHAVIOR.toggleAutonomy(app, unit);
+        if (paused === null) return false;
+        app.log.push({
+            text: app._label(paused ? 'party.autonomyPausedLog' : 'party.autonomyResumedLog', paused
+                ? '{name} pauses autonomous behavior and keeps their current intent.'
+                : '{name} resumes autonomous behavior.', { name: unit.name }),
+            type: 'combat'
+        });
+        app.renderCombatSceneForTurn?.(YAW_COMPANION_BEHAVIOR.currentTurnUnit(app));
+        app.renderParty();
+        app.renderLog();
+        app.markAutoSaveDirty?.(['manifest', 'party', 'quests', 'activityLog'], 'party-autonomy-paused');
+        app.autoSave();
         return true;
     },
 

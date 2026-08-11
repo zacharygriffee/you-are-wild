@@ -56,6 +56,7 @@ const YAW_TACTICAL_CARD = {
     micro(app, unit, index, type, options = {}) {
         const presentation = options.presentation || 'mobile';
         const isParty = type === 'party';
+        const isCompanion = isParty && unit !== app.player && !unit.mc;
         const isCorpse = !isParty && app._isCorpse(unit);
         const targetKey = app._unitKey(unit);
         const explorationTargetKey = isParty ? targetKey : app._escapeJsString(app._explorationTargetUnitId('creature', unit));
@@ -156,9 +157,12 @@ const YAW_TACTICAL_CARD = {
         }
         const hasAgencyControl = Boolean(agencyControl);
         const hasTargetControl = Boolean(targetControl);
+        const autonomyControl = isCompanion ? app._companionAutonomyControl(unit, index, { micro: true }) : '';
+        const autonomyStatus = isCompanion ? app._companionAutonomyStatus(unit) : '';
+        const autonomyStatusAttr = autonomyStatus ? ` data-autonomy-status="${app._escapeHtml(autonomyStatus)}"` : '';
         const currentClass = app._isCurrentCombatActor?.(unit) ? ' current-actor' : '';
         const extraClass = options.extraClass ? ` ${options.extraClass}` : '';
-        const cardClass = `${rootBase} compact-tactical-card ${presentation}-tactical-card micro-tactical-card density-micro${extraClass}${hasAgencyControl || hasTargetControl ? ' has-corner-controls' : ''}${isTargetable ? ' targetable' : ''}${currentClass}${app._unitSelectionClass(unit, type)}`;
+        const cardClass = `${rootBase} compact-tactical-card ${presentation}-tactical-card micro-tactical-card density-micro${extraClass}${hasAgencyControl || hasTargetControl || autonomyControl ? ' has-corner-controls' : ''}${autonomyControl ? ' has-autonomy-control' : ''}${isTargetable ? ' targetable' : ''}${currentClass}${app._unitSelectionClass(unit, type)}`;
         const actionRowScope = isParty
             ? (app.syncSelection?.active ? 'sync-participants' : (app.combatState?.active ? 'combat-plan-actors' : 'party-selection'))
             : (app.combatState.active ? 'combat-target-mark' : 'creature-selection');
@@ -167,10 +171,11 @@ const YAW_TACTICAL_CARD = {
             : (quickIntent
                 ? `role="button" tabindex="0" data-card-purpose="quick-intent" aria-label="${app._escapeHtml(app._combatTargetPickHint(unit, quickIntent, true))}"`
                 : app._unitCardFocusAttrs(unit, false, unitName));
-        return `<div class="${cardClass}" data-card-role="compact-tactical" data-card-density="micro" data-unit-name="${unitLabel}" ${surfaceRoleAttrs} ${stageAttrs} ${rowAttr} ${syncRoleAttr} ${app._unitSelectionStateAttrs(unit, type)} ${focusAttrs}${interactionAttrs}${passive ? '' : pressHandlers} style="${isCorpse ? 'opacity:0.58;' : ''}">
+        return `<div class="${cardClass}"${autonomyStatusAttr} data-card-role="compact-tactical" data-card-density="micro" data-unit-name="${unitLabel}" ${surfaceRoleAttrs} ${stageAttrs} ${rowAttr} ${syncRoleAttr} ${app._unitSelectionStateAttrs(unit, type)} ${focusAttrs}${interactionAttrs}${passive ? '' : pressHandlers} style="${isCorpse ? 'opacity:0.58;' : ''}">
                     ${app._srOnly(unitName)}
                     ${app._srOnly(app._combatStatusText(unit), 'role="status" aria-live="polite"')}
                     <span class="unit-actions micro-control-slot micro-agency-slot ${hasAgencyControl ? 'has-control' : 'avatar-only'}" ${hasAgencyControl ? app._unitActionRowAttrs(actionRowScope, unit) : ''}>${agencyControl || `<span class="micro-avatar" aria-hidden="true">${app._unitArtHtml(unit, icon, { className: 'micro-card-sprite' })}</span>`}</span>
+                    ${autonomyControl ? `<span class="unit-actions micro-control-slot micro-autonomy-slot has-control" ${app._unitActionRowAttrs('companion-autonomy', unit)}>${autonomyControl}</span>` : ''}
                     <span class="micro-stat-slot">${app._unitTacticalRings(unit)}</span>
                     <span class="unit-actions micro-control-slot micro-target-slot ${hasTargetControl ? 'has-control' : 'empty'}" ${hasTargetControl ? app._unitActionRowAttrs(actionRowScope, unit) : ''}>${targetControl}</span>
                 </div>`;
@@ -178,6 +183,7 @@ const YAW_TACTICAL_CARD = {
 
     desktop(app, unit, index, type) {
         const isParty = type === 'party';
+        const isCompanion = isParty && unit !== app.player && !unit.mc;
         const isCorpse = !isParty && app._isCorpse(unit);
         const isLeader = isParty && app._getPartyLeader() === unit;
         const targetKey = app._unitKey(unit);
@@ -201,7 +207,8 @@ const YAW_TACTICAL_CARD = {
             const targetClass = targetSelected ? ' primary' : '';
             const actorAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" ${app._selectionControlAttrs('actor', explicitlySelectedActor)} ${this.agencyIconStyle(app, unit)}`;
             const targetAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;
-            actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('party-selection', unit)}>${button('action-btn actor-toggle corner-card-toggle agency-corner-toggle' + selectedClass, app._label('target.act', 'Actor'), app._actorToggleLabel(unit, explicitlySelectedActor), `event.stopPropagation();App.selectExplorationActor(${index})`, actorAttrs)}${button('action-btn target-toggle corner-card-toggle target-corner-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetAttrs)}</div>`;
+            const autonomyControl = isCompanion ? app._companionAutonomyControl(unit, index, { corner: true }) : '';
+            actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('party-selection', unit)}>${button('action-btn actor-toggle corner-card-toggle agency-corner-toggle' + selectedClass, app._label('target.act', 'Actor'), app._actorToggleLabel(unit, explicitlySelectedActor), `event.stopPropagation();App.selectExplorationActor(${index})`, actorAttrs)}${autonomyControl}${button('action-btn target-toggle corner-card-toggle target-corner-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetAttrs)}</div>`;
         } else if (isParty && app.combatState.active) {
             const participantControl = !app.feedSelection?.active && (!app.syncSelection?.active || app.syncSelection.phase === 'participants')
                 ? app._syncParticipantButton(unit, true)
@@ -211,7 +218,8 @@ const YAW_TACTICAL_CARD = {
                 : 'combat-plan-actors';
             const targetClass = targetSelected ? ' primary' : '';
             const targetAttrs = `data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;
-            actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs(actionScope, unit)}>${participantControl}${button('action-btn target-toggle corner-card-toggle target-corner-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetAttrs)}</div>`;
+            const autonomyControl = isCompanion ? app._companionAutonomyControl(unit, index, { corner: true }) : '';
+            actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs(actionScope, unit)}>${participantControl}${autonomyControl}${button('action-btn target-toggle corner-card-toggle target-corner-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetAttrs)}</div>`;
         }
         if (!isParty && isCorpse) {
             if (app.combatState.active && app.targetSelection?.source === 'combat' && app.targetSelection.action === 'scavenge') {
@@ -257,7 +265,10 @@ const YAW_TACTICAL_CARD = {
         const canDragPartyMember = isParty && unit !== app.player && !app.combatState.active;
         const dragAttrs = canDragPartyMember ? ` draggable="true" data-party-index="${index}" ondragstart="event.stopPropagation();App.startPartyDrag(${index})" ondragover="App.dragPartyOver(event)" ondrop="event.stopPropagation();App.dropPartyMember(${index})" ondragend="App.clearPartyDrag()"` : '';
         const rowLabel = app.combatState.active && unit.combatRow ? ` ${app._label('combat.row', 'Row')}:${app._combatRowLabel(unit.combatRow)}` : '';
-        const status = app._escapeHtml(`${isParty ? (unit === app.player ? app._label('party.you', 'You') : app._label('party.ally', 'Ally')) : dispLabel || app._unitDispositionLabel(unit)}${rowLabel ? ' | ' + rowLabel.trim() : ''}`);
+        const autonomyStatus = isCompanion ? app._companionAutonomyStatus(unit) : '';
+        const autonomyStatusLabel = isCompanion ? app._companionAutonomyStatusLabel(unit) : '';
+        const autonomyStatusAttr = autonomyStatus ? ` data-autonomy-status="${app._escapeHtml(autonomyStatus)}"` : '';
+        const status = app._escapeHtml(`${isParty ? (unit === app.player ? app._label('party.you', 'You') : app._label('party.ally', 'Ally')) : dispLabel || app._unitDispositionLabel(unit)}${autonomyStatusLabel ? ' | ' + autonomyStatusLabel : ''}${rowLabel ? ' | ' + rowLabel.trim() : ''}`);
         const unitMeta = [
             isLeader ? `<span class="unit-meta-badge leader">${app._escapeHtml(app._label('party.leader', 'Leader'))}</span>` : '',
             roleLabel ? `<span class="unit-meta-badge">${app._escapeHtml(roleLabel)}</span>` : '',
@@ -275,7 +286,7 @@ const YAW_TACTICAL_CARD = {
         const click = quickIntent
             ? `App.executeQuickCombatIntentOnTarget('${app._escapeJsString(quickIntent)}','${targetKey}')`
             : (isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`);
-        return `<div class="${cardClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, false, unitName)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}" onclick="${click}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}>
+        return `<div class="${cardClass}"${autonomyStatusAttr} data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, false, unitName)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}" onclick="${click}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}>
                     ${actionButtons}
                     <div class="unit-header">
                         <span class="unit-icon">${app._unitArtHtml(unit, isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon, { className: 'tactical-card-sprite' })}</span>
@@ -295,6 +306,7 @@ const YAW_TACTICAL_CARD = {
     mobile(app, unit, index, type) {
         const isExpanded = unit.expanded || false;
         const isParty = type === 'party';
+        const isCompanion = isParty && unit !== app.player && !unit.mc;
         const isCorpse = !isParty && app._isCorpse(unit);
         const targetKey = app._unitKey(unit);
         const explorationTargetKey = isParty ? targetKey : app._escapeJsString(app._explorationTargetUnitId('creature', unit));
@@ -320,9 +332,10 @@ const YAW_TACTICAL_CARD = {
             const targetPressed = targetSelected;
             const actorCommandAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" ${app._selectionControlAttrs('actor', actorPressed)} ${this.agencyIconStyle(app, unit)}`;
             const targetCommandAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetPressed)}`;
+            const autonomyControl = isCompanion ? app._companionAutonomyControl(unit, index, { corner: !isExpanded }) : '';
             actionButtons = isExpanded
-                ? `<div class="unit-actions tactical-card-selection-controls inline-card-controls" ${app._unitActionRowAttrs('party-selection', unit)}>${chipButton('action-btn actor-toggle' + selectedClass, app._label('target.act', 'Actor'), app._actorToggleLabel(unit, actorPressed), `event.stopPropagation();App.selectExplorationActor(${index})`, actorCommandAttrs)}${chipButton('action-btn target-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetPressed), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetCommandAttrs)}</div>`
-                : `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('party-selection', unit)}>${chipButton('action-btn actor-toggle corner-card-toggle agency-corner-toggle' + selectedClass, app._label('target.act', 'Actor'), app._actorToggleLabel(unit, actorPressed), `event.stopPropagation();App.selectExplorationActor(${index})`, actorCommandAttrs)}${chipButton('action-btn target-toggle corner-card-toggle target-corner-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetPressed), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetCommandAttrs)}</div>`;
+                ? `<div class="unit-actions tactical-card-selection-controls inline-card-controls" ${app._unitActionRowAttrs('party-selection', unit)}>${chipButton('action-btn actor-toggle' + selectedClass, app._label('target.act', 'Actor'), app._actorToggleLabel(unit, actorPressed), `event.stopPropagation();App.selectExplorationActor(${index})`, actorCommandAttrs)}${autonomyControl}${chipButton('action-btn target-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetPressed), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetCommandAttrs)}</div>`
+                : `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('party-selection', unit)}>${chipButton('action-btn actor-toggle corner-card-toggle agency-corner-toggle' + selectedClass, app._label('target.act', 'Actor'), app._actorToggleLabel(unit, actorPressed), `event.stopPropagation();App.selectExplorationActor(${index})`, actorCommandAttrs)}${autonomyControl}${chipButton('action-btn target-toggle corner-card-toggle target-corner-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetPressed), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetCommandAttrs)}</div>`;
             if (isExpanded) {
                 const behaviorButton = !unit.mc && unit !== app.player
                     ? chipButton('action-btn', app._label('party.manageBehavior', 'Behavior'), app._label('party.manageBehaviorFor', 'Behavior: {name}', { name: unitName }), `event.stopPropagation();App.showCompanionBehavior(${index})`, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-companion-behavior"')
@@ -338,7 +351,8 @@ const YAW_TACTICAL_CARD = {
                 : 'combat-plan-actors';
             const targetClass = targetSelected ? ' primary' : '';
             const targetCommandAttrs = `data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;
-            actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs(actionScope, unit)}>${participantControl}${chipButton('action-btn target-toggle corner-card-toggle target-corner-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetCommandAttrs)}</div>`;
+            const autonomyControl = isCompanion ? app._companionAutonomyControl(unit, index, { corner: true }) : '';
+            actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs(actionScope, unit)}>${participantControl}${autonomyControl}${chipButton('action-btn target-toggle corner-card-toggle target-corner-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetCommandAttrs)}</div>`;
         }
         if (isCorpse) {
             if (app.combatState.active && app.targetSelection?.source === 'combat' && app.targetSelection.action === 'scavenge') {
@@ -381,7 +395,10 @@ const YAW_TACTICAL_CARD = {
         }
         const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
         const partyRole = isParty && unit.name !== app.player?.name ? app._partyRoleLabel(app._getPartyRole(unit)) : '';
-        const partyStatus = unit.name === app.player?.name ? app._label('party.you', 'You') : `${app._label('party.ally', 'Ally')}${partyRole ? ' - ' + partyRole : ''}`;
+        const autonomyStatus = isCompanion ? app._companionAutonomyStatus(unit) : '';
+        const autonomyStatusLabel = isCompanion ? app._companionAutonomyStatusLabel(unit) : '';
+        const autonomyStatusAttr = autonomyStatus ? ` data-autonomy-status="${app._escapeHtml(autonomyStatus)}"` : '';
+        const partyStatus = unit === app.player ? app._label('party.you', 'You') : `${app._label('party.ally', 'Ally')}${partyRole ? ' - ' + partyRole : ''}${autonomyStatusLabel ? ' | ' + autonomyStatusLabel : ''}`;
         const status = isParty ? partyStatus : app._unitDispositionLabel(unit);
         const rowText = app.combatState.active && unit.combatRow ? ` | ${app._combatRowLabel(unit.combatRow)}` : '';
         const turnBadge = app._turnOrderBadge(unit);
@@ -404,7 +421,7 @@ const YAW_TACTICAL_CARD = {
         const keyActivate = `if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${chipClick}}`;
         const cornerActions = hasCornerControls ? actionButtons : '';
         const inlineActions = hasCornerControls ? '' : actionButtons;
-        return `<div class="${chipClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, isExpanded, unitName)} onkeydown="${keyActivate}" onclick="${chipClick}"${pressHandlers}>
+        return `<div class="${chipClass}"${autonomyStatusAttr} data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, isExpanded, unitName)} onkeydown="${keyActivate}" onclick="${chipClick}"${pressHandlers}>
                     ${cornerActions}
                     <div class="mobile-chip-name"><span>${app._unitArtHtml(unit, isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon, { className: 'mobile-chip-sprite' })}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}

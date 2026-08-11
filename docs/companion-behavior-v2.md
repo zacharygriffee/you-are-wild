@@ -11,6 +11,15 @@ fields mixed together:
 
 These values share one management surface but remain separate persisted facts.
 
+Each recruited companion card also exposes a per-companion Play/Pause control.
+It can be changed only during the player's combat turn. Pause suspends autonomous
+choices while retaining the configured Control, Duty, Stance, recruitment
+history, and any already-committed group intent. A paused companion presents
+the normal player action surface on their turn, previews the deterministic
+action they would prefer, and then reads as awaiting direction. The player can
+follow that one preference or choose another action; either choice leaves
+autonomy paused. Play resumes the same autonomous controller.
+
 ## Duties
 
 | Duty | Concrete contribution | Tradeoff |
@@ -89,6 +98,7 @@ companionBehavior: {
   duty,
   stance,
   control,
+  autonomyPaused,
   recruitmentContinuity
 }
 ```
@@ -101,7 +111,8 @@ autonomy.
 
 Sparse and binary saves preserve Duty, Stance, Control, recruitment
 continuity, bounded traversal-reaction history, drop-off records, defeat
-stranding, and containment through the normal unit serialization path.
+stranding, per-companion autonomy pause, and containment through the normal
+unit serialization path.
 
 ## Deliberately deferred
 

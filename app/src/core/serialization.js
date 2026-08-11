@@ -296,6 +296,7 @@
     const partyDuties = {};
     const partyStances = {};
     const partyControls = {};
+    const partyAutonomyPaused = {};
     const partyPreferredRows = {};
     const partyRecruitmentContinuity = {};
     const partyUnitRefs = (appState.party || []).map(unit => ({
@@ -315,6 +316,7 @@
         if (duty) partyDuties[key] = duty;
         if (stance) partyStances[key] = stance;
         if (behavior.control) partyControls[key] = behavior.control;
+        partyAutonomyPaused[key] = behavior.autonomyPaused === true;
         if (behavior.preferredRow) partyPreferredRows[key] = behavior.preferredRow;
         if (behavior.recruitmentContinuity) partyRecruitmentContinuity[key] = behavior.recruitmentContinuity;
       }
@@ -397,6 +399,7 @@
         partyDuties,
         partyStances,
         partyControls,
+        partyAutonomyPaused,
         partyPreferredRows,
         partyRecruitmentContinuity,
         logEntries,

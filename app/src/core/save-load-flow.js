@@ -180,6 +180,7 @@ const YAW_SAVE_LOAD_FLOW = {
             const savedDuties = loaded.questState?.partyDuties || {};
             const savedStances = loaded.questState?.partyStances || {};
             const savedControls = loaded.questState?.partyControls || {};
+            const savedAutonomyPaused = loaded.questState?.partyAutonomyPaused || {};
             const savedPreferredRows = loaded.questState?.partyPreferredRows || {};
             const savedContinuity = loaded.questState?.partyRecruitmentContinuity || {};
             for (const unit of app.party) {
@@ -191,14 +192,16 @@ const YAW_SAVE_LOAD_FLOW = {
                 const duty = keys.map(key => savedDuties[key]).find(value => app.PARTY_DUTIES[value]);
                 const stance = keys.map(key => savedStances[key]).find(value => app.PARTY_STANCES[value]);
                 const control = keys.map(key => savedControls[key]).find(value => app.PARTY_CONTROLS[value]);
+                const autonomyPaused = keys.map(key => savedAutonomyPaused[key]).find(value => typeof value === 'boolean');
                 const preferredRow = keys.map(key => savedPreferredRows[key]).find(value => app.PARTY_PREFERRED_ROWS?.[value]);
                 const recruitmentContinuity = keys.map(key => savedContinuity[key]).find(value => value && typeof value === 'object') || null;
-                if (duty || stance || control || preferredRow || recruitmentContinuity) {
+                if (duty || stance || control || typeof autonomyPaused === 'boolean' || preferredRow || recruitmentContinuity) {
                     unit.companionBehavior = {
                         ...(unit.companionBehavior || {}),
                         ...(duty ? { duty } : {}),
                         ...(stance ? { stance } : {}),
                         ...(control ? { control } : {}),
+                        ...(typeof autonomyPaused === 'boolean' ? { autonomyPaused } : {}),
                         ...(preferredRow ? { preferredRow } : {}),
                         ...(recruitmentContinuity ? { recruitmentContinuity } : {})
                     };

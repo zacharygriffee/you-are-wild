@@ -526,6 +526,158 @@ function assertMobileCombatPartyMediumFits(metrics) {
   assert.notStrictEqual(metrics.cardOverflowY, 'hidden', `Expanded medium party card should not hide its own content (${JSON.stringify(metrics)})`);
 }
 
+async function runCompanionAutonomyButtonFlow(page) {
+  await page.setViewportSize({ width: 1365, height: 768 });
+  const autonomyFixture = {
+    withAlly: true,
+    allyOverrides: {
+      companionBehavior: {
+        version: 2,
+        duty: 'guard',
+        stance: 'balanced',
+        control: 'deterministic',
+        autonomyPaused: false
+      }
+    }
+  };
+  await setupCombat(page, autonomyFixture);
+  await page.evaluate(() => App.renderParty());
+  const sceneSelector = '#scene-description .desktop-battle-lane.party .micro-tactical-card.has-autonomy-control button[data-command-control="toggle-companion-autonomy"]';
+  const panelSelector = '#party-content .unit-card button[data-command-control="toggle-companion-autonomy"]';
+  const mobileSelector = '#mobile-party-strip .mobile-unit-chip button[data-command-control="toggle-companion-autonomy"]';
+  const button = page.locator(sceneSelector).first();
+  const panelButton = page.locator(panelSelector).first();
+  await button.waitFor({ state: 'visible', timeout: 2000 });
+  await panelButton.waitFor({ state: 'visible', timeout: 2000 });
+  const readState = locator => locator.evaluate(element => ({
+    status: element.getAttribute('data-autonomy-status'),
+    glyph: getComputedStyle(element, '::before').content,
+    cardWidth: element.closest('.micro-tactical-card')?.getBoundingClientRect().width || 0
+  }));
+  let state = await readState(button);
+  assert.strictEqual(state.status, 'active', 'Active companion autonomy should expose active status');
+  assert(state.glyph.includes('⏸'), `Active companion autonomy should render a Pause symbol (got ${state.glyph})`);
+  assert(state.cardWidth >= 168, `Desktop companion micro cards should reserve enough width for four control/stat columns (got ${state.cardWidth})`);
+  let panelState = await readState(panelButton);
+  assert.strictEqual(panelState.status, 'active', 'Desktop party card should share active autonomy status');
+  assert(panelState.glyph.includes('⏸'), `Desktop party card should render a Pause symbol while active (got ${panelState.glyph})`);
+
+  await button.click();
+  await page.waitForSelector(`${sceneSelector}[data-autonomy-status="paused"]`);
+  await page.waitForSelector(`${panelSelector}[data-autonomy-status="paused"]`);
+  state = await readState(button);
+  assert(state.glyph.includes('▶'), `Paused companion autonomy should render a Play symbol (got ${state.glyph})`);
+  panelState = await readState(panelButton);
+  assert(panelState.glyph.includes('▶'), `Paused desktop party card should also render a Play symbol (got ${panelState.glyph})`);
+  assert.strictEqual(await page.evaluate(() => App.party[1]?.companionBehavior?.autonomyPaused), true, 'Pause should update the companion autonomy state');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => App.renderParty());
+  const mobileButton = page.locator(mobileSelector).first();
+  await mobileButton.waitFor({ state: 'attached', timeout: 2000 });
+  const mobileState = await readState(mobileButton);
+  assert.strictEqual(mobileState.status, 'paused', 'Mobile companion card should share paused autonomy status');
+  assert(mobileState.glyph.includes('▶'), `Paused mobile companion card should render a Play symbol (got ${mobileState.glyph})`);
+
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await page.evaluate(() => {
+    App.renderParty();
+    App.renderDesktopPlaySurface();
+  });
+  await button.click();
+  await page.waitForSelector(`${sceneSelector}[data-autonomy-status="active"]`);
+  await page.waitForSelector(`${panelSelector}[data-autonomy-status="active"]`);
+  state = await readState(button);
+  assert(state.glyph.includes('⏸'), `Resumed companion autonomy should restore the Pause symbol (got ${state.glyph})`);
+  panelState = await readState(panelButton);
+  assert(panelState.glyph.includes('⏸'), `Resumed desktop party card should also restore the Pause symbol (got ${panelState.glyph})`);
+  assert.strictEqual(await page.evaluate(() => App.party[1]?.companionBehavior?.autonomyPaused), false, 'Play should resume companion autonomy');
+
+  await button.click();
+  await page.evaluate(() => {
+    const ally = App.party[1];
+    const enemy = App.creatures[0];
+    App.combatState.turnQueue = [
+      { unit: App.player, initiative: 20 },
+      { unit: ally, initiative: 15 },
+      { unit: enemy, initiative: 10 }
+    ];
+    App.combatState.currentTurn = 1;
+    App.activeActor = ally;
+    App._advancedTurn = false;
+    App.processTurn();
+  });
+  const preferenceDialog = page.locator('#app-confirm-dialog');
+  await page.waitForTimeout(100);
+  const dialogDiagnostic = await page.evaluate(() => ({
+    dialog: Boolean(document.getElementById('app-confirm-dialog')),
+    paused: App.party[1]?.companionBehavior?.autonomyPaused,
+    current: App._currentCombatActor()?.id || '',
+    active: App.activeActor?.id || '',
+    pending: Boolean(App.pendingConfirm),
+    offered: App._pausedCompanionPreferenceTurn?.key || '',
+    advanced: App._advancedTurn === true
+  }));
+  assert.strictEqual(dialogDiagnostic.dialog, true, `Paused companion preference dialog should open (${JSON.stringify(dialogDiagnostic)})`);
+  let preferenceState = await page.evaluate(() => ({
+    title: document.getElementById('app-confirm-title')?.textContent || '',
+    message: document.getElementById('app-confirm-message')?.textContent || '',
+    confirm: document.querySelector('#app-confirm-dialog button[data-command-control="confirm-dialog"]')?.textContent || '',
+    cancel: document.querySelector('#app-confirm-dialog button[data-command-control="cancel-dialog"]')?.textContent || '',
+    paused: App.party[1]?.companionBehavior?.autonomyPaused,
+    automatic: App.combatState.presentationAutomatic
+  }));
+  assert(preferenceState.title.includes("Ally's preference"), `Paused companion turn should identify whose preference is shown (${preferenceState.title})`);
+  assert(preferenceState.message.includes('Ally would prefer to'), `Paused companion dialog should describe their deterministic preferred action (${preferenceState.message})`);
+  assert.strictEqual(preferenceState.confirm.trim(), 'Follow preference', 'Paused companion dialog should offer the preferred action');
+  assert.strictEqual(preferenceState.cancel.trim(), 'Choose another action', 'Paused companion dialog should preserve manual direction');
+  assert.strictEqual(preferenceState.paused, true, 'Showing a preference must leave autonomy paused');
+  assert.strictEqual(preferenceState.automatic, false, 'Paused companion preference should keep the turn under player direction');
+
+  await preferenceDialog.locator('button[data-command-control="cancel-dialog"]').click();
+  await preferenceDialog.waitFor({ state: 'detached', timeout: 2000 });
+  preferenceState = await page.evaluate(() => ({
+    paused: App.party[1]?.companionBehavior?.autonomyPaused,
+    currentActor: App._currentCombatActor()?.id || '',
+    hasActions: Boolean(document.querySelector('#desktop-context-belt .unit-combat-actions')),
+    advanced: App._advancedTurn === true
+  }));
+  assert.strictEqual(preferenceState.paused, true, 'Choosing another action should keep companion autonomy paused');
+  assert.strictEqual(preferenceState.currentActor, 'ally-1', 'Choosing another action should keep the companion turn active');
+  assert.strictEqual(preferenceState.hasActions, true, 'Choosing another action should expose the normal combat action controls');
+  assert.strictEqual(preferenceState.advanced, false, 'Choosing another action should not consume the companion turn');
+  await page.evaluate(() => App.processTurn());
+  assert.strictEqual(await preferenceDialog.count(), 0, 'Preference dialog should appear only once for the same companion turn');
+
+  await setupCombat(page, autonomyFixture);
+  await page.evaluate(() => {
+    App.renderParty();
+    App.toggleCompanionAutonomy(1);
+    const ally = App.party[1];
+    const enemy = App.creatures[0];
+    App.combatState.turnQueue = [
+      { unit: App.player, initiative: 20 },
+      { unit: ally, initiative: 15 },
+      { unit: enemy, initiative: 10 }
+    ];
+    App.combatState.currentTurn = 1;
+    App.activeActor = ally;
+    App._advancedTurn = false;
+    App.processTurn();
+  });
+  await preferenceDialog.waitFor({ state: 'visible', timeout: 2000 });
+  await preferenceDialog.locator('button[data-command-control="confirm-dialog"]').click();
+  await page.waitForFunction(() => App._advancedTurn === true, null, { timeout: 3000 });
+  const followed = await page.evaluate(() => ({
+    paused: App.party[1]?.companionBehavior?.autonomyPaused,
+    dialogOpen: Boolean(document.getElementById('app-confirm-dialog')),
+    advanced: App._advancedTurn === true
+  }));
+  assert.strictEqual(followed.paused, true, 'Following one preference should not resume companion autonomy');
+  assert.strictEqual(followed.dialogOpen, false, 'Following the preference should close the dialog');
+  assert.strictEqual(followed.advanced, true, 'Following the preference should resolve the choice and advance the turn');
+}
+
 async function runCombatTargetFirstComposerFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
   await setupCombat(page);
@@ -5837,6 +5989,7 @@ async function runUriFrenchLocaleLifecycleFlow(browser) {
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
     const texturedSnapshot = await runTilesetCrossSurfaceFlow(page);
+    await runCompanionAutonomyButtonFlow(page);
     await runCombatTargetFirstComposerFlow(page);
     await runCombatProgressInvariantFlow(page);
     await runAutonomousStalemateBrowserFlow(browser);

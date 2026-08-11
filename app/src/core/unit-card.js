@@ -38,7 +38,8 @@ const YAW_UNIT_CARD = {
             const targetTitle = app._escapeHtml(app._targetToggleLabel(unit, targetPressed));
             const actorCommandAttrs = 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"';
             const targetCommandAttrs = 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"';
-            actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" ${actorCommandAttrs} ${app._selectionControlAttrs('actor', actorPressed)} title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" ${targetCommandAttrs} ${app._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
+            const autonomyControl = isAlly ? app._companionAutonomyControl(unit, index) : '';
+            actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" ${actorCommandAttrs} ${app._selectionControlAttrs('actor', actorPressed)} title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button>${autonomyControl}<button class="action-btn${targetClass}" ${targetCommandAttrs} ${app._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
             actionButtons += `</div>`;
             const detailControls = [];
             const statsLabel = app._escapeHtml(app._label('ui.holdings', 'Holdings'));
@@ -97,10 +98,11 @@ const YAW_UNIT_CARD = {
             const participantButton = !app.feedSelection?.active && (!app.syncSelection?.active || app.syncSelection.phase === 'participants')
                 ? app._syncParticipantButton(unit)
                 : '';
+            const autonomyControl = isAlly ? app._companionAutonomyControl(unit, index) : '';
             const actionScope = app.syncSelection?.active && app.syncSelection.phase === 'participants'
                 ? 'sync-participants'
                 : 'party-selection';
-            actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs(actionScope, unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${participantButton}${targetButton}</div>`;
+            actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs(actionScope, unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${participantButton}${autonomyControl}${targetButton}</div>`;
         }
         if (!isParty && isCorpse) {
             const targetKey = app._unitKey(unit);
@@ -170,7 +172,10 @@ const YAW_UNIT_CARD = {
         const rowLabel = app.combatState.active && unit.combatRow ? ` ${app._label('combat.row', 'Row')}:${app._combatRowLabel(unit.combatRow)}` : '';
         const turnBadge = app._turnOrderBadge(unit);
         const combatStatus = app._srOnly(app._combatStatusText(unit), 'role="status" aria-live="polite"');
-        const compactStatus = app._escapeHtml(`${isParty ? (isPlayer ? app._label('party.you', 'You') : app._label('party.ally', 'Ally')) : dispLabel || app._unitDispositionLabel(unit)}${rowLabel ? ' | ' + rowLabel.trim() : ''}`);
+        const autonomyStatusLabel = isAlly ? app._companionAutonomyStatusLabel(unit) : '';
+        const autonomyStatus = isAlly ? app._companionAutonomyStatus(unit) : '';
+        const autonomyStatusAttr = autonomyStatus ? ` data-autonomy-status="${app._escapeHtml(autonomyStatus)}"` : '';
+        const compactStatus = app._escapeHtml(`${isParty ? (isPlayer ? app._label('party.you', 'You') : app._label('party.ally', 'Ally')) : dispLabel || app._unitDispositionLabel(unit)}${autonomyStatusLabel ? ' | ' + autonomyStatusLabel : ''}${rowLabel ? ' | ' + rowLabel.trim() : ''}`);
         const unitMeta = [
             isLeader ? `<span class="unit-meta-badge leader">${app._escapeHtml(app._label('party.leader', 'Leader'))}</span>` : '',
             roleLabel ? `<span class="unit-meta-badge">${roleLabel}</span>` : '',
@@ -183,7 +188,7 @@ const YAW_UNIT_CARD = {
             equipment: app._escapeHtml(app._label('party.equipment', 'Equipment'))
         };
         const cardContextMenuAttr = '';
-        return `<div class="${cardClass}" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, isExpanded, unitName)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
+        return `<div class="${cardClass}"${autonomyStatusAttr} ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, isExpanded, unitName)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
                     <div class="unit-header">
                         <span class="unit-icon">${app._unitArtHtml(unit, isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon, { className: 'unit-card-sprite' })}</span>
                         <div class="unit-info">

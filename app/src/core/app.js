@@ -3604,6 +3604,15 @@
             _getCompanionControl(unit) {
                 return YAW_PARTY_MANAGEMENT.getControl(this, unit);
             },
+            _companionAutonomyStatus(unit) {
+                return YAW_PARTY_MANAGEMENT.autonomyStatus(this, unit);
+            },
+            _companionAutonomyStatusLabel(unit) {
+                return YAW_PARTY_MANAGEMENT.autonomyStatusLabel(this, unit);
+            },
+            _companionAutonomyControl(unit, index, options = {}) {
+                return YAW_PARTY_MANAGEMENT.autonomyControl(this, unit, index, options);
+            },
             _partyAIOrderLabel(order) {
                 return YAW_PARTY_MANAGEMENT.aiOrderLabel(this, order);
             },
@@ -3657,6 +3666,9 @@
             },
             setCompanionControl(index, control) {
                 return YAW_PARTY_MANAGEMENT.setControl(this, index, control);
+            },
+            toggleCompanionAutonomy(index) {
+                return YAW_PARTY_MANAGEMENT.toggleAutonomy(this, index);
             },
             setCompanionPreferredRow(index, preferredRow) {
                 return YAW_PARTY_MANAGEMENT.setPreferredRow(this, index, preferredRow);

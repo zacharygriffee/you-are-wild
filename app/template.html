@@ -1858,7 +1858,7 @@
         .desktop-battle-units {
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: minmax(132px, 150px);
+            grid-auto-columns: minmax(150px, 174px);
             gap: 6px;
             min-width: 0;
             flex: 1 1 auto;
@@ -1878,6 +1878,17 @@
             max-height: 40px;
             padding: 0;
             align-content: center;
+        }
+
+        .desktop-battle-units .micro-tactical-card.has-autonomy-control {
+            grid-template-columns: 32px 28px minmax(64px, 1fr) 34px;
+        }
+
+        .desktop-battle-units .micro-tactical-card .micro-autonomy-slot,
+        .desktop-battle-units .micro-tactical-card .micro-autonomy-slot .action-btn {
+            width: 28px;
+            min-width: 28px;
+            max-width: 28px;
         }
 
         .desktop-battle-units .micro-tactical-card .micro-control-slot {
@@ -3987,6 +3998,10 @@
             padding: 1px 3px;
         }
 
+        .micro-tactical-card.has-autonomy-control {
+            grid-template-columns: 40px 30px minmax(42px, 1fr) 40px;
+        }
+
         .unit-card.compact-tactical-card.micro-tactical-card {
             padding: 1px 3px;
         }
@@ -4003,6 +4018,19 @@
             width: 40px;
             min-width: 40px;
             min-height: 44px;
+        }
+
+        .micro-tactical-card .micro-autonomy-slot,
+        .micro-tactical-card .micro-autonomy-slot .action-btn {
+            width: 30px;
+            min-width: 30px;
+            max-width: 30px;
+        }
+
+        .micro-tactical-card .micro-autonomy-slot .action-btn::before {
+            width: 24px;
+            height: 24px;
+            font-size: 13px;
         }
 
         .micro-tactical-card .unit-actions.micro-control-slot {
@@ -4152,6 +4180,40 @@
             --compact-card-icon-active-bg: rgba(255, 184, 0, 0.24);
             --compact-card-icon-active-border: var(--accent-warning);
             --compact-card-icon-active-ring: rgba(255, 184, 0, 0.3);
+        }
+
+        .micro-tactical-card .action-btn[data-command-control="toggle-companion-autonomy"],
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"] {
+            --compact-card-icon-content: "⏸";
+            --compact-card-icon-color: var(--accent-info);
+            --compact-card-icon-bg: rgba(64, 180, 255, 0.1);
+            --compact-card-icon-border: rgba(64, 180, 255, 0.48);
+            --compact-card-icon-active-bg: rgba(64, 180, 255, 0.22);
+            --compact-card-icon-active-border: var(--accent-info);
+            --compact-card-icon-active-ring: rgba(64, 180, 255, 0.28);
+        }
+
+        .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="paused"] {
+            --compact-card-icon-content: "▶";
+            --mobile-card-icon-content: "▶";
+        }
+
+        .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="awaiting-direction"] {
+            --compact-card-icon-content: "…";
+            --mobile-card-icon-content: "…";
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="paused"] {
+            --compact-card-icon-content: "▶";
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="awaiting-direction"] {
+            --compact-card-icon-content: "…";
+        }
+
+        .action-btn[data-command-control="toggle-companion-autonomy"][disabled] {
+            cursor: not-allowed;
+            opacity: 0.58;
         }
 
         .micro-tactical-card .action-btn[data-selection-control="sync-participant"][data-selection-state="locked"] {
@@ -7153,6 +7215,24 @@
                 --mobile-card-icon-active-ring: rgba(255, 184, 0, 0.3);
             }
 
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"] {
+                --mobile-card-icon-content: "⏸";
+                --mobile-card-icon-color: var(--accent-info);
+                --mobile-card-icon-bg: rgba(64, 180, 255, 0.1);
+                --mobile-card-icon-border: rgba(64, 180, 255, 0.48);
+                --mobile-card-icon-active-bg: rgba(64, 180, 255, 0.22);
+                --mobile-card-icon-active-border: var(--accent-info);
+                --mobile-card-icon-active-ring: rgba(64, 180, 255, 0.28);
+            }
+
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="paused"] {
+                --mobile-card-icon-content: "▶";
+            }
+
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="awaiting-direction"] {
+                --mobile-card-icon-content: "…";
+            }
+
             .panel-main {
                 width: 100%;
                 max-width: 100%;
@@ -8804,12 +8884,21 @@
                 text-align: center;
             }
 
+            .mobile-unit-chip.micro-tactical-card.has-autonomy-control {
+                flex: 0 0 clamp(180px, 48vw, 192px);
+                grid-template-columns: 40px 30px minmax(42px, 1fr) 40px;
+            }
+
             .mobile-unit-chip.micro-tactical-card.has-corner-controls {
                 padding-top: 1px;
             }
 
             .mobile-control-belt.actor-controls-open .mobile-actor-belt .mobile-unit-chip.micro-tactical-card {
                 flex: 0 0 clamp(148px, 40vw, 160px);
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-belt .mobile-unit-chip.micro-tactical-card.has-autonomy-control {
+                flex: 0 0 clamp(180px, 48vw, 192px);
             }
 
             .mobile-control-belt.actor-controls-open .mobile-actor-belt > .mobile-actor-chip.mobile-actor-details.mobile-strip-details-btn,
@@ -8886,11 +8975,20 @@
                 text-align: center;
             }
 
+            .mobile-play-surface.combat-active .mobile-unit-chip.micro-tactical-card.has-autonomy-control {
+                flex-basis: clamp(180px, 48vw, 192px);
+                grid-template-columns: 40px 30px minmax(42px, 1fr) 40px;
+            }
+
             .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.micro-tactical-card {
                 flex-basis: clamp(148px, 40vw, 160px);
                 min-height: 44px;
                 max-height: 50px;
                 padding: 1px 3px;
+            }
+
+            .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.micro-tactical-card.has-autonomy-control {
+                flex-basis: clamp(180px, 48vw, 192px);
             }
 
             .mobile-play-surface.combat-active .mobile-unit-chip.micro-tactical-card.has-corner-controls {
@@ -9153,6 +9251,27 @@
                 --mobile-card-icon-active-bg: rgba(255, 184, 0, 0.24);
                 --mobile-card-icon-active-border: var(--accent-warning);
                 --mobile-card-icon-active-ring: rgba(255, 184, 0, 0.3);
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"],
+            .mobile-unit-chip.micro-tactical-card .action-btn[data-command-control="toggle-companion-autonomy"] {
+                --mobile-card-icon-content: "⏸";
+                --mobile-card-icon-color: var(--accent-info);
+                --mobile-card-icon-bg: rgba(64, 180, 255, 0.1);
+                --mobile-card-icon-border: rgba(64, 180, 255, 0.48);
+                --mobile-card-icon-active-bg: rgba(64, 180, 255, 0.22);
+                --mobile-card-icon-active-border: var(--accent-info);
+                --mobile-card-icon-active-ring: rgba(64, 180, 255, 0.28);
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="paused"],
+            .mobile-unit-chip.micro-tactical-card .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="paused"] {
+                --mobile-card-icon-content: "▶";
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="awaiting-direction"],
+            .mobile-unit-chip.micro-tactical-card .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="awaiting-direction"] {
+                --mobile-card-icon-content: "…";
             }
 
             .mobile-unit-chip.compact-tactical-card.has-corner-controls {

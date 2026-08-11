@@ -130,6 +130,9 @@ const YAW_COMBAT_TURNS = {
         const companionControl = app.party.includes(currentUnit) && currentUnit !== app.player
             ? app._getCompanionControl?.(currentUnit)
             : 'manual';
+        const companionPaused = app.party.includes(currentUnit) && currentUnit !== app.player
+            ? YAW_COMPANION_BEHAVIOR.isPaused(app, currentUnit)
+            : false;
         const committedGroup = companionControl !== 'manual' && typeof YAW_COMBAT_SYNC !== 'undefined'
             ? YAW_COMBAT_SYNC.pendingParticipantAction(app, currentUnit)
             : null;
@@ -172,9 +175,10 @@ const YAW_COMBAT_TURNS = {
         app.renderMobileCombatToolbelt();
         app._writeCombatRefreshSnapshot();
         const isParty = app.party.includes(currentUnit);
-        if (isParty && (currentUnit.name === app.player.name || companionControl === 'manual')) {
+        if (isParty && (currentUnit === app.player || companionControl === 'manual' || companionPaused)) {
             app.combatState.presentationAutomatic = false;
             app.showActorActions(currentUnit);
+            if (companionPaused) YAW_COMPANION_BEHAVIOR.offerPausedPreference(app, currentUnit);
         } else if (isParty) {
             app.combatState.presentationAutomatic = true;
             app.allyTurn(currentUnit);

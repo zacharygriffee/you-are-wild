@@ -6119,6 +6119,11 @@ test('Companion Behavior V2 is registered before recruitment combat and app code
   assertContains(companionBehaviorContent, "source: 'companion-autonomy'", 'Autonomous choices should use the shared interaction command route');
   assertContains(companionBehaviorContent, 'app._validateInteractionCommand', 'Autonomous candidates should pass through the shared legality validator');
   assertContains(companionBehaviorContent, 'app._dispatchInteractionCommand(choice.command)', 'Autonomous choices should use the shared resolver path');
+  assertContains(companionBehaviorContent, 'offerPausedPreference(app, ally)', 'Paused companions should expose their deterministic preference before manual direction');
+  assertContains(companionBehaviorContent, "confirmLabel: app._label('party.autonomyPreferenceFollow'", 'Paused preference dialog should offer to follow the companion choice');
+  assertContains(companionBehaviorContent, "cancelLabel: app._label('party.autonomyPreferenceChoose'", 'Paused preference dialog should preserve the manual action route');
+  assertContains(companionBehaviorContent, 'return this.executeChoice(app, ally, { ...result, choice });', 'Following a paused preference should use the same autonomous resolution path');
+  assertContains(combatTurnsContent, 'YAW_COMPANION_BEHAVIOR.offerPausedPreference(app, currentUnit)', 'Paused companion turns should present their preference after rendering manual controls');
   assertContains(companionBehaviorContent, 'providerFallback', 'Unavailable AI control should expose deterministic fallback evidence');
   assertContains(recruitmentFlowContent, 'YAW_COMPANION_BEHAVIOR.seedRecruitment', 'Recruitment should record continuity and seed initial behavior');
   assertContains(savePersistenceContent, 'partyDuties', 'Sparse compatibility metadata should persist Duty explicitly');
@@ -6159,6 +6164,53 @@ test('Companion Behavior V2 migrates legacy companions and seeds recruitment con
   assertEqual(recruited.preferredRow, 'auto', 'New recruitment should seed an adaptive combat-row preference');
   assertEqual(recruited.recruitmentContinuity.kind, 'submitted', 'Recruitment should preserve how the relationship began');
   assertEqual(recruited.recruitmentContinuity.source, 'combat-fight', 'Recruitment continuity should retain its source');
+});
+
+test('Companion autonomy pause is companion-only, player-turn-only, and preserves behavior intent', () => {
+  const behavior = new Function('window', `${companionBehaviorContent}\nreturn YAW_COMPANION_BEHAVIOR;`)({});
+  const player = { id: 'player', name: 'You', mc: true };
+  const ally = {
+    id: 'ally',
+    name: 'Ally',
+    companionBehavior: {
+      version: 2,
+      duty: 'guard',
+      stance: 'defensive',
+      control: 'deterministic',
+      autonomyPaused: false,
+      recruitmentContinuity: { kind: 'befriended', source: 'recruitment' }
+    }
+  };
+  const app = {
+    player,
+    party: [player, ally],
+    combatState: { active: true, currentTurn: 0, turnQueue: [{ unit: player }, { unit: ally }] },
+    _currentCombatActor() { return this.combatState.turnQueue[this.combatState.currentTurn]?.unit || null; }
+  };
+  const before = JSON.stringify({
+    duty: ally.companionBehavior.duty,
+    stance: ally.companionBehavior.stance,
+    control: ally.companionBehavior.control,
+    recruitmentContinuity: ally.companionBehavior.recruitmentContinuity
+  });
+
+  assertEqual(behavior.autonomyStatus(app, ally), 'active', 'An unpaused autonomous companion should report active autonomy');
+  assertEqual(behavior.toggleAutonomy(app, player), null, 'The player character should never receive the companion-only autonomy control');
+  assertEqual(behavior.toggleAutonomy(app, ally), true, 'The player turn should be able to pause one autonomous companion');
+  assertEqual(behavior.autonomyStatus(app, ally), 'paused', 'A paused companion should visibly report paused while awaiting its turn');
+  assertEqual(JSON.stringify({
+    duty: ally.companionBehavior.duty,
+    stance: ally.companionBehavior.stance,
+    control: ally.companionBehavior.control,
+    recruitmentContinuity: ally.companionBehavior.recruitmentContinuity
+  }), before, 'Pausing should preserve Duty, Stance, Control, and recruitment history');
+
+  app.combatState.currentTurn = 1;
+  assertEqual(behavior.autonomyStatus(app, ally), 'awaiting-direction', 'A paused companion should await direction on their own turn');
+  assertEqual(behavior.toggleAutonomy(app, ally), null, 'Play/Pause should reject changes outside the player turn');
+  app.combatState.currentTurn = 0;
+  assertEqual(behavior.toggleAutonomy(app, ally), false, 'Play should resume the same configured autonomous controller');
+  assertEqual(ally.companionBehavior.control, 'deterministic', 'Resume should not replace the configured Control');
 });
 
 test('Companion Behavior V2 ranks every Duty and Stance combination through legal deterministic candidates', () => {
@@ -14338,6 +14390,42 @@ test('Committed group participants hold before group resolution instead of runni
   App.processTurn();
   assertEqual(resolutions, 1, 'The group action should resolve once its designated participant turn is reached');
   assertEqual(autonomousTurns, 0, 'Autonomy must not replace the collective action at its resolution point');
+});
+
+test('Paused autonomy exposes the normal companion action surface without consuming the turn', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'pause-player' });
+  const ally = makeUnit('Paused Ally', {
+    id: 'pause-ally',
+    companionBehavior: { version: 2, duty: 'scout', stance: 'balanced', control: 'deterministic', autonomyPaused: true }
+  });
+  const enemy = makeUnit('Enemy', { id: 'pause-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 1,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20, actedThisRound: true }, { unit: ally, initiative: 10, actedThisRound: false }, { unit: enemy, initiative: 5, actedThisRound: false }],
+    syncActions: []
+  };
+  let directedActor = null;
+  let autonomousTurns = 0;
+  App.showActorActions = actor => { directedActor = actor; };
+  App.allyTurn = () => { autonomousTurns++; };
+  App.renderCombatSceneForTurn = () => {};
+  App.renderParty = () => {};
+  App.renderCreatures = () => {};
+  App.renderMobileCombatToolbelt = () => {};
+  App._writeCombatRefreshSnapshot = () => {};
+
+  App.processTurn();
+  assertEqual(directedActor, ally, 'A paused autonomous companion should receive the ordinary direction surface on their turn');
+  assertEqual(autonomousTurns, 0, 'A paused companion should not choose an autonomous action');
+  assertEqual(App.combatState.currentTurn, 1, 'Presenting direction should not consume or advance the paused companion turn');
 });
 
 test('Queueing a group strategy reserves every autonomous participant before its resolution turn', () => {
@@ -27382,6 +27470,60 @@ test('Party panel keeps companion behavior behind one focused route', () => {
   assertNotContains(html, 'setCompanionControl(1,this.value)', 'Ally card should not duplicate the Control selector');
 });
 
+test('Companion cards place autonomy between Actor and Target across the card gate', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'card-player' });
+  const ally = makeUnit('Ally', {
+    id: 'card-ally',
+    companionBehavior: { version: 2, duty: 'guard', stance: 'balanced', control: 'deterministic', autonomyPaused: false }
+  });
+  App.player = player;
+  App.party = [player, ally];
+  App.combatState.active = false;
+
+  for (const html of [
+    App.renderUnitCard(ally, 1, 'party'),
+    App.renderTacticalCard(ally, 1, 'party', { presentation: 'desktop', density: 'medium' }),
+    App.renderTacticalCard(ally, 1, 'party', { presentation: 'mobile', density: 'medium' }),
+    App.renderTacticalCard(ally, 1, 'party', { presentation: 'mobile', density: 'micro' })
+  ]) {
+    const actor = html.indexOf('data-command-control="focus-actor"');
+    const autonomy = html.indexOf('data-command-control="toggle-companion-autonomy"');
+    const target = html.indexOf('data-command-control="focus-target"');
+    assert(actor >= 0 && autonomy > actor && target > autonomy, 'Every companion card presentation should order Actor, Play/Pause, then Target');
+    assertContains(html, 'data-autonomy-status="active"', 'Every companion card presentation should expose the visible autonomy state');
+    assertContains(html, 'disabled aria-disabled="true"', 'Exploration cards should keep Play/Pause unavailable outside the player combat turn');
+  }
+  assertNotContains(App.renderUnitCard(player, 0, 'party'), 'toggle-companion-autonomy', 'The player detailed card should not receive companion autonomy controls');
+  assertNotContains(App.renderTacticalCard(player, 0, 'party', { presentation: 'mobile', density: 'micro' }), 'toggle-companion-autonomy', 'The player micro-card should not receive companion autonomy controls');
+
+  const enemy = makeUnit('Enemy', { id: 'card-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: ally, initiative: 10 }, { unit: enemy, initiative: 5 }],
+    syncActions: []
+  };
+  const playerTurnCard = App.renderTacticalCard(ally, 1, 'party', { presentation: 'desktop', density: 'medium' });
+  assertNotContains(playerTurnCard.match(/<button[^>]+toggle-companion-autonomy[^>]*>/)?.[0] || '', 'disabled', 'Companion Play/Pause should enable during the player turn');
+  App.toggleCompanionAutonomy(1);
+  const pausedPresentations = [
+    App.renderUnitCard(ally, 1, 'party'),
+    App.renderTacticalCard(ally, 1, 'party', { presentation: 'desktop', density: 'medium' }),
+    App.renderTacticalCard(ally, 1, 'party', { presentation: 'mobile', density: 'medium' }),
+    App.renderTacticalCard(ally, 1, 'party', { presentation: 'mobile', density: 'micro' })
+  ];
+  pausedPresentations.forEach(html => {
+    assertContains(html, 'data-autonomy-status="paused"', 'Every companion card presentation should share paused state');
+    if (!html.includes('micro-card-toggle')) {
+      assertContains(html, '>Play</button>', 'Every non-micro paused control should expose Play text when text is rendered');
+    }
+  });
+});
+
 test('Party panel exposes management controls and leader badge', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
@@ -27877,7 +28019,7 @@ test('Companion Duty Stance Control and preferred row persist through binary sav
   const player = makeUnit('You', { id: 'player-1' });
   const ally = makeUnit('Ally', {
     id: 'ally-1',
-    companionBehavior: { version: 2, duty: 'scout', stance: 'defensive', control: 'deterministic', preferredRow: 'back' }
+    companionBehavior: { version: 2, duty: 'scout', stance: 'defensive', control: 'deterministic', autonomyPaused: true, preferredRow: 'back' }
   });
   App.player = player;
   App.party = [player, ally];
@@ -27888,6 +28030,7 @@ test('Companion Duty Stance Control and preferred row persist through binary sav
   assertEqual(loaded.questState.partyDuties['ally-1'], 'scout', 'Duty should persist by id');
   assertEqual(loaded.questState.partyStances['ally-1'], 'defensive', 'Stance should persist by id');
   assertEqual(loaded.questState.partyControls['ally-1'], 'deterministic', 'Control should persist by id');
+  assertEqual(loaded.questState.partyAutonomyPaused['ally-1'], true, 'Per-companion autonomy pause should persist by id');
   assertEqual(loaded.questState.partyPreferredRows['ally-1'], 'back', 'Preferred combat row should persist by id');
 });
 
@@ -30612,8 +30755,12 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(templateContent, '.unit-card.compact-tactical-card:not(.micro-tactical-card)', 'Desktop compact padding should not apply to micro cards');
   assertContains(templateContent, 'grid-template-rows: minmax(0, 1fr);', 'Desktop combat stage should give the center battle context the full play surface');
   assertContains(templateContent, '.desktop-battle-stack', 'Desktop combat stage should stack enemy and party micro belts inside the center context');
-  assertContains(templateContent, 'grid-auto-columns: minmax(132px, 150px);', 'Desktop battle micro cards should use compact mobile-parity columns');
+  assertContains(templateContent, 'grid-auto-columns: minmax(150px, 174px);', 'Desktop battle micro cards should leave enough room between autonomy, stat, and target controls');
   assertContains(templateContent, '.desktop-battle-units .micro-tactical-card {\n            grid-template-columns: 32px minmax(58px, 1fr) 34px;', 'Desktop battle micro cards should remove extra interior control padding');
+  assertContains(templateContent, '.desktop-battle-units .micro-tactical-card.has-autonomy-control {\n            grid-template-columns: 32px 28px minmax(64px, 1fr) 34px;', 'Desktop companion micro cards should reserve a full stat cluster between autonomy and target controls');
+  assertContains(templateContent, '.unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="paused"] {\n            --compact-card-icon-content: "▶";', 'Full desktop party cards should override their active Pause glyph with Play when paused');
+  assertContains(templateContent, '.panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="paused"] {\n                --mobile-card-icon-content: "▶";', 'Desktop party cards should override their active Pause glyph with Play when paused');
+  assertContains(templateContent, '.mobile-unit-chip.micro-tactical-card .action-btn[data-command-control="toggle-companion-autonomy"][data-autonomy-status="paused"] {\n                --mobile-card-icon-content: "▶";', 'Mobile party cards should override their active Pause glyph with Play when paused');
   assertContains(templateContent, '.desktop-battle-units .micro-tactical-card .micro-target-slot {\n            width: 34px;\n            min-width: 34px;\n            margin-left: 3px;', 'Desktop battle target controls should keep only a small gap from stat rings');
   assertContains(templateContent, '.desktop-battle-units .micro-tactical-card .action-btn::before {\n            width: 28px;\n            height: 28px;\n            background: transparent;', 'Desktop battle actor and mark controls should avoid filled underglow backgrounds');
   assertContains(templateContent, '.desktop-battle-units .micro-tactical-card.selected-actor', 'Desktop battle micro cards should suppress bulky selected glow rules');

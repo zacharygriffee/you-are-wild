@@ -135,6 +135,7 @@ const YAW_COMPANION_BEHAVIOR = {
             duty,
             stance,
             control,
+            autonomyPaused: existing.autonomyPaused === true,
             preferredRow,
             recruitmentContinuity: continuity ? { ...continuity } : null
         };
@@ -152,6 +153,7 @@ const YAW_COMPANION_BEHAVIOR = {
             duty: 'support',
             stance: 'balanced',
             control: 'manual',
+            autonomyPaused: false,
             preferredRow: 'auto',
             recruitmentContinuity: null
         };
@@ -172,6 +174,39 @@ const YAW_COMPANION_BEHAVIOR = {
         if (field === 'stance') unit.aiOrder = value;
         if (field === 'preferredRow') unit.preferredCombatRow = value;
         return true;
+    },
+
+    currentTurnUnit(app) {
+        return app?._currentCombatActor?.()
+            || app?.combatState?.turnQueue?.[app?.combatState?.currentTurn]?.unit
+            || app?.activeActor
+            || null;
+    },
+
+    isPaused(app, unit) {
+        if (!unit || unit === app?.player || unit.mc) return false;
+        return this.get(app, unit).autonomyPaused === true;
+    },
+
+    autonomyStatus(app, unit) {
+        if (!unit || unit === app?.player || unit.mc) return null;
+        const behavior = this.get(app, unit);
+        if (behavior.control === 'manual') return 'awaiting-direction';
+        if (!behavior.autonomyPaused) return 'active';
+        return this.currentTurnUnit(app) === unit ? 'awaiting-direction' : 'paused';
+    },
+
+    canToggleAutonomy(app, unit) {
+        if (!app?.combatState?.active || !unit || unit === app.player || unit.mc) return false;
+        if (this.get(app, unit).control === 'manual') return false;
+        return this.currentTurnUnit(app) === app.player;
+    },
+
+    toggleAutonomy(app, unit) {
+        if (!this.canToggleAutonomy(app, unit)) return null;
+        const behavior = this.get(app, unit);
+        behavior.autonomyPaused = !behavior.autonomyPaused;
+        return behavior.autonomyPaused;
     },
 
     seedRecruitment(app, target, actor = app?.player, options = {}) {
@@ -206,6 +241,7 @@ const YAW_COMPANION_BEHAVIOR = {
             duty,
             stance,
             control: 'deterministic',
+            autonomyPaused: false,
             preferredRow: 'auto',
             recruitmentContinuity: continuity
         };
@@ -502,6 +538,46 @@ const YAW_COMPANION_BEHAVIOR = {
         return { choice: crisis || selected, behavior, fallbackReason: crisis ? 'combat-crisis' : null };
     },
 
+    preferenceSummary(app, choice) {
+        const action = choice?.action === 'hold'
+            ? app._label('party.behavior.hold', 'hold position')
+            : choice?.action === 'advance'
+                ? app._label('action.advance', 'advance').toLowerCase()
+                : choice?.action === 'digest'
+                    ? app._label('containment.digest', 'digest').toLowerCase()
+                    : app._uiLabel?.(choice?.action || 'action').toLowerCase();
+        const target = choice?.target?.name
+            ? app._label('party.behavior.targetSuffix', ' on {target}', { target: choice.target.name })
+            : '';
+        return { action, target };
+    },
+
+    offerPausedPreference(app, ally) {
+        if (!this.isPaused(app, ally) || this.currentTurnUnit(app) !== ally || app.pendingConfirm) return false;
+        const turnKey = `${Number(app.combatState?.round || 0)}:${Number(app.combatState?.currentTurn || 0)}:${app._unitSelectionId?.(ally) || ally.id || ally.name || 'companion'}`;
+        const offered = app._pausedCompanionPreferenceTurn;
+        if (offered?.combatState === app.combatState && offered.key === turnKey) return false;
+        const result = this.choose(app, ally);
+        const choice = result.choice || { action: 'hold', target: null, command: null };
+        const summary = this.preferenceSummary(app, choice);
+        app._pausedCompanionPreferenceTurn = { combatState: app.combatState, key: turnKey };
+        return app.showConfirmDialog?.({
+            title: app._label('party.autonomyPreferenceTitle', "{name}'s preference", { name: ally.name }),
+            message: app._label('party.autonomyPreferencePrompt', '{name} would prefer to {action}{target}. Follow that preference or choose another action?', {
+                name: ally.name,
+                action: summary.action,
+                target: summary.target
+            }),
+            confirmLabel: app._label('party.autonomyPreferenceFollow', 'Follow preference'),
+            cancelLabel: app._label('party.autonomyPreferenceChoose', 'Choose another action'),
+            onConfirm: () => {
+                if (!this.isPaused(app, ally) || this.currentTurnUnit(app) !== ally) return false;
+                return this.executeChoice(app, ally, { ...result, choice });
+            },
+            onCancel: () => false
+        }) ?? false;
+    },
+
     evidence(app, ally, choice, behavior, fallbackReason = null) {
         const duty = app._companionDutyLabel?.(behavior.duty) || this.DUTIES[behavior.duty]?.label || behavior.duty;
         const stance = app._companionStanceLabel?.(behavior.stance) || this.STANCES[behavior.stance]?.label || behavior.stance;
@@ -555,6 +631,51 @@ const YAW_COMPANION_BEHAVIOR = {
         return text;
     },
 
+    executeChoice(app, ally, result = {}) {
+        const choice = result.choice || { action: 'hold', target: null, command: null };
+        const behavior = result.behavior || this.get(app, ally);
+        this.evidence(app, ally, choice, behavior, result.fallbackReason || null);
+        app.renderLog?.();
+        if (choice.action === 'advance') {
+            if (typeof app.moveCombatRow === 'function') {
+                app.moveCombatRow();
+                return true;
+            }
+            ally.combatRow = 'front';
+            app.nextTurn?.();
+            return true;
+        }
+        if (choice.action === 'hold' || !choice.command) {
+            if (choice.action === 'digest') {
+                const partyIndex = (app.party || []).indexOf(ally);
+                const digested = partyIndex >= 0
+                    && app.digestContained?.('party', partyIndex, choice.container || 'stomach', Number(choice.containedIndex || 0));
+                if (digested) return true;
+                const text = app._label('party.behavior.legalFallback', '{name} cannot complete that choice and holds position instead.', { name: ally.name });
+                app._pushLog?.(text, 'combat', { actor: ally, action: 'digest', phase: 'companion-fallback' });
+                app.renderLog?.();
+                app.nextTurn?.();
+                return true;
+            }
+            app._pushLog?.(
+                app._label('combat.allyHolds', '{name} holds position.', { name: ally.name }),
+                'combat',
+                { actor: ally, action: 'hold', phase: 'companion-action' }
+            );
+            app.renderLog?.();
+            app.nextTurn();
+            return true;
+        }
+        const dispatched = app._dispatchInteractionCommand(choice.command);
+        if (dispatched === false) {
+            const text = app._label('party.behavior.legalFallback', '{name} cannot complete that choice and holds position instead.', { name: ally.name });
+            app._pushLog?.(text, 'combat', { actor: ally, action: choice.action, phase: 'companion-fallback' });
+            app.renderLog?.();
+            app.nextTurn();
+        }
+        return true;
+    },
+
     tileReactionKey(app, tile, duty, interior = false) {
         const origin = interior && app.activeInterior?.origin
             ? `${app.activeInterior.origin.x},${app.activeInterior.origin.y}:`
@@ -566,7 +687,7 @@ const YAW_COMPANION_BEHAVIOR = {
 
     tileReactionFor(app, unit, tile, context = {}) {
         const behavior = this.get(app, unit);
-        if (behavior.control === 'manual') return null;
+        if (behavior.control === 'manual' || behavior.autonomyPaused) return null;
         const hostile = (app.creatures || []).some(creature => creature
             && creature.disposition === app.DISPOSITION?.ENEMY
             && Number(creature.CPun || 0) > 0
@@ -636,6 +757,7 @@ const YAW_COMPANION_BEHAVIOR = {
     },
 
     takeTurn(app, ally) {
+        if (this.isPaused(app, ally)) return false;
         const committedGroup = typeof YAW_COMBAT_SYNC !== 'undefined'
             ? YAW_COMBAT_SYNC.pendingParticipantAction(app, ally)
             : null;
@@ -650,47 +772,7 @@ const YAW_COMPANION_BEHAVIOR = {
             return true;
         }
         const result = this.choose(app, ally);
-        const choice = result.choice || { action: 'hold', target: null, command: null };
-        this.evidence(app, ally, choice, result.behavior, result.fallbackReason);
-        app.renderLog?.();
-        if (choice.action === 'advance') {
-            if (typeof app.moveCombatRow === 'function') {
-                app.moveCombatRow();
-                return true;
-            }
-            ally.combatRow = 'front';
-            app.nextTurn?.();
-            return true;
-        }
-        if (choice.action === 'hold' || !choice.command) {
-            if (choice.action === 'digest') {
-                const partyIndex = (app.party || []).indexOf(ally);
-                const digested = partyIndex >= 0
-                    && app.digestContained?.('party', partyIndex, choice.container || 'stomach', Number(choice.containedIndex || 0));
-                if (digested) return true;
-                const text = app._label('party.behavior.legalFallback', '{name} cannot complete that choice and holds position instead.', { name: ally.name });
-                app._pushLog?.(text, 'combat', { actor: ally, action: 'digest', phase: 'companion-fallback' });
-                app.renderLog?.();
-                app.nextTurn?.();
-                return true;
-            }
-            app._pushLog?.(
-                app._label('combat.allyHolds', '{name} holds position.', { name: ally.name }),
-                'combat',
-                { actor: ally, action: 'hold', phase: 'companion-action' }
-            );
-            app.renderLog?.();
-            app.nextTurn();
-            return true;
-        }
-        const dispatched = app._dispatchInteractionCommand(choice.command);
-        if (dispatched === false) {
-            const text = app._label('party.behavior.legalFallback', '{name} cannot complete that choice and holds position instead.', { name: ally.name });
-            app._pushLog?.(text, 'combat', { actor: ally, action: choice.action, phase: 'companion-fallback' });
-            app.renderLog?.();
-            app.nextTurn();
-        }
-        return true;
+        return this.executeChoice(app, ally, result);
     }
 };
 

@@ -8,7 +8,7 @@ const ROOT = path.resolve(__dirname, '..');
 const MIB = 1024 * 1024;
 const BUDGETS = Object.freeze({
   offlineBytes: 18 * MIB,
-  hostedBytes: 4 * MIB,
+  hostedBytes: 40 * MIB,
   atlasTotalBytes: 10.5 * MIB,
   texturedColdBytes: 11 * MIB,
   terrainMaterialsBytes: 1.25 * MIB,

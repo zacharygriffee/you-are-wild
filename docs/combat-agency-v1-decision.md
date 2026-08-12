@@ -1,9 +1,10 @@
 # Combat Agency / Interruption V1 Contract
 
-Status: **approved and implemented locally**
+Status: **implemented on the 0.19.0 release-candidate line**
 
-This contract is scoped to `codex/gameplay-issues-reproduction` at base
-`c365856`. It does not authorize a release, merge, or deployment.
+This contract was merged through PR #18 at `44e0dad`. Release-candidate
+preparation does not itself authorize publication, deployment, tagging, or
+promotion.
 
 ## Player flow
 

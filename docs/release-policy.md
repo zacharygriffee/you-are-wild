@@ -168,3 +168,20 @@ request.
 - The annotated `v0.18.2` tag is the final MIT-licensed revision. Version
   `0.18.3` and later use PolyForm Noncommercial 1.0.0 unless a later release
   or individual file expressly states otherwise.
+
+## Version 0.19.0 Candidate Compatibility
+
+- Version 0.19.0 is an unpublished development candidate. Version 0.18.3
+  remains the active released select-group alpha until a separate operator
+  decision assigns a release date and promotion channel.
+- Existing 0.10.x through 0.18.3 saves remain within the maintained additive
+  migration contract. Save Schema remains 11 and Module API remains 1.
+- Older companions deterministically initialize per-companion autonomy and the
+  bounded Companion Bond ledger. Missing combat reservations and finite-mass
+  nourishment history default safely without rewriting stable identity,
+  recruitment history, Duty, Stance, or Control.
+- No new module permission, callback, or minimum-version floor is introduced.
+  Existing module declarations remain valid.
+- Final compatibility claims require exact-candidate older-save, companion
+  pause/intent, turn-reservation, Chew nourishment, reach-aware flight, and
+  offline/localhost/hosted parity smoke before the record may become released.

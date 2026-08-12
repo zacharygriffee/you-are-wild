@@ -1,114 +1,68 @@
 {
   "schema": 1,
-  "version": "0.18.3",
-  "status": "released",
-  "releasedAt": "2026-08-10",
-  "channel": "alpha",
+  "version": "0.19.0",
+  "status": "candidate",
+  "releasedAt": null,
+  "channel": "development",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Release compatibility: existing 0.10.x through 0.16.0 saves load through maintained additive migrations. Recorded generator versions remain unchanged.",
-      "mods": "Module API remains version 1. Existing minimum-version declarations remain valid; modules using the Moddable Core V1 action, status, restraint, equipment, body, biome-recipe, or audio contracts should require game version 0.18.0 or newer."
+      "saves": "Candidate compatibility: existing 0.10.x through 0.18.3 saves load through maintained additive migrations. Companion autonomy, Bond, interruption reservations, and body-mass nourishment initialize deterministically when older saves omit them.",
+      "mods": "Module API remains version 1. Existing minimum-version declarations remain valid; no new module permission or callback is introduced by this candidate."
     },
     "es": {
-      "saves": "Compatibilidad de la version: las partidas 0.10.x a 0.16.0 cargan mediante migraciones aditivas mantenidas. Las versiones de generador registradas no cambian.",
-      "mods": "La API de modulos sigue en la version 1. Los requisitos minimos existentes siguen validos; los modulos que usan los contratos de acciones, estados, restricciones, equipo, cuerpo, recetas de bioma o audio de Moddable Core V1 deben requerir la version 0.18.0 o posterior."
+      "saves": "Compatibilidad de la candidata: las partidas 0.10.x a 0.18.3 cargan mediante migraciones aditivas mantenidas. La autonomia, el Vinculo, las reservas de interrupcion y la nutricion por masa corporal se inicializan de forma determinista cuando faltan en partidas antiguas.",
+      "mods": "La API de modulos sigue en la version 1. Los requisitos minimos existentes siguen validos; esta candidata no agrega permisos ni callbacks nuevos para modulos."
     }
   },
   "notes": {
     "en": {
       "added": [
-        "Alpha Lab adds eight isolated guided missions for interaction, group, self-containment, combat, narration, companion, content-posture, and responsive playtesting, with review-before-share diagnostic reports.",
-        "Deterministic Alpha scenario URLs and the maintained browser-agent matrix make the same prepared states reproducible locally and in CI without touching ordinary adventure saves.",
-        "Moddable Core V1 adds owned data-only action, status, restraint, equipment, body-mass, biome-recipe, audio-pack, and immutable post-commit outcome contracts.",
-        "Action Resolver V1 provides deterministic costs, checks, effects, semantic structure requirements, and one scalable action catalog for core and module actions.",
-        "Grab, Pull, and Escape establish source-target restraint relationships, while appetite-gated Seduce can make a target recruitment-ready and withdraw both participants from combat.",
-        "Dismissed recruits become persistent coarse-step autonomous actors whose movement and sightings are limited by perception rather than player omniscience.",
-        "World Scaling V1 applies distance, biome, cave, structure, and authored difficulty factors to encounters and procedural quest rewards.",
-        "Audio Pack V1 maps semantic game cues to internally leased packaged media without exposing arbitrary playback callbacks, AI generation, or TTS.",
-        "Native hosts can expose a host-owned desktop settings window for updates and peer availability without granting those controls to game modules."
+        "Each recruited companion card has its own Play or Pause autonomy control during the player's turn, with active, paused, and awaiting-direction states; the player character never receives this control.",
+        "Combat Agency V1 previews an autonomous companion's uncommitted intent and up to three stored legal alternatives before the action resolves.",
+        "The player may suggest one stored alternative. A saved Companion Bond V1 ledger deterministically decides compliance or refusal from recruitment history and authored care events."
       ],
       "changed": [
-        "Local terrain and Survey now share a backend-neutral Canvas2D renderer with continuous world-space biome, shoreline, relief, road, bridge, structure, evidence, and party layers over a bounded fixed-chunk cache.",
-        "The ordinary Map command keeps the complete Review Map planning surface, while Survey remains an explicit nearby-terrain camera with pan, pinch zoom, and Local return.",
-        "The project license is now explicitly versioned: v0.18.2 and earlier remain MIT-licensed, while v0.18.3 and later use PolyForm Noncommercial 1.0.0.",
-        "Talk, Play, Fight, Eat, and Feed now follow the canonical interaction and sub-action presentation across exploration, combat, single-actor, group, and self-selection contexts.",
-        "Party Holdings supports bounded companion renaming and shared-Pack loadout management while preserving stable companion identity and save references.",
-        "Ghost pilgrimage is now the conservative default recovery mode; Regenerate and owned Recovery Mode V1 profiles remain available.",
-        "Automatic combat events can use readable, fast, or instant presentation pacing without changing turn order, simulation time, saves, or immediate player commands.",
-        "Merchants now declare finite or authored-restock lifecycles instead of silently replenishing depleted finite stock.",
-        "Downloaded file play exposes compatible LLM profiles and attempts configured HTTPS REST endpoints directly, with an opaque-origin CORS warning instead of a remote-provider gate.",
-        "Mature posture selects richer localized encounter, combat, social, feeding, and containment narration while SFW posture retains the existing neutral text.",
-        "Contributed combat actions collapse into a bounded upward-opening menu on compact mobile layouts while remaining directly discoverable on larger surfaces."
+        "A companion suggestion reserves the player's next ordinary actionable combat turn whether the companion complies or refuses; forced status skips resolve first without erasing or double-charging the reservation.",
+        "Chew now grants immediate nourishment only to participating chewers from the finite conserved body mass actually removed from the target, including deterministic proportional sharing for group Chew.",
+        "Paused companion preference and combat-intent controls preserve Duty, Stance, Control, identity, history, and the unspent deterministic turn through save and reload."
       ],
       "fixed": [
-        "Terrain no longer exposes per-tile seams, clipped vegetation, square coastline ownership, or stale off-current cached features during ordinary movement and world changes.",
-        "Canvas terrain preserves remains and depleted resource evidence, while Alpha workbench quality and relief choices are cleared when returning to ordinary play.",
-        "Alpha reports identify the exact release, source revision, viewport, fixture, and bounded recent Scene context without automatic submission.",
-        "Committed module outcomes are deeply frozen, serializable, credential-redacted observations that cannot veto or rewrite resolved actions.",
-        "Disabling or deleting a module removes its active definitions, relationships, leases, and uncommitted runtime state without rewriting committed history.",
-        "Biome recipes affect only matching unmaterialized tiles, and sparse materialized geography remains pinned across module removal and save reload.",
-        "Combat pacing timers remain transient and never enter the combat save DTO.",
-        "Group and single-actor mobile combat controls remain above the fixed dock across the maintained viewport matrix.",
-        "Fight uses the same bounded approach chooser as Feast; Mature Talk and Play expose their specific approaches while SFW retains broad neutral defaults.",
-        "Unavailable AI-assisted companion control falls back to Autonomous with narration, and autonomous support never restores a hostile target.",
-        "Afraid preserves player agency, while Terrified consistently resolves at turn start through an involuntary escape or narrated cowering when no safe route exists.",
-        "Combat group selection keeps the primary interaction belt stable: the command sentence owns group and intent cancellation instead of inserting a separate Cancel Group row."
+        "Companion flight now narrates its authored cause immediately and keeps the party, turn queue, world placement, selection, and saved state consistent.",
+        "A flying player no longer auto-flees under Terror when every living hostile is ground-only and has no legal attack path; reachable flying, ranged, or anti-flying attackers preserve normal danger behavior.",
+        "An automatic encounter in which neither side can make legal progress ends through explicit stalemate disengagement instead of assigning an unexplained player or companion flee."
       ],
       "knownIssues": [
-        "This select-group alpha is publicly accessible but intentionally unadvertised; broader promotion remains deferred.",
-        "Regional population simulation, designed regions, placeable anomalies, portal worlds, and persistent merchant supply remain deferred beyond the bounded V1 seams.",
-        "Permanent body-stat penalties, shrine economies, crafting, Sleep or Rest V2, terrain tactics, and shared elemental damage semantics remain deliberately deferred.",
-        "AI or TTS audio generation, physical-device comfort, authored art, and human translation quality still require later work or operator review.",
+        "This is an unpublished release candidate. Version 0.18.3 remains the active released select-group alpha until an operator separately authorizes promotion and publication.",
+        "Combat Agency V1 reserves an ordinary future player turn; true reaction priority and emergency out-of-turn player Flee remain deferred.",
+        "Companion Bond V1 does not yet model loyalty decay, needs, neglect, witnessed conduct, desertion, or hostility.",
+        "Physical-device comfort and human review of English and Spanish player-facing copy remain operator observations.",
         "Provider-backed companion control and AI narration remain optional and depend on endpoint availability; deterministic play does not."
       ]
     },
     "es": {
       "added": [
-        "Laboratorio Alfa agrega ocho misiones aisladas para probar interacciones, grupos, contencion propia, combate, narracion, companeros, postura de contenido y diseno adaptable, con informes revisables antes de compartir.",
-        "Las URL deterministas de escenarios Alfa y la matriz mantenida para agentes de navegador hacen reproducibles los mismos estados sin tocar partidas normales.",
-        "Moddable Core V1 agrega contratos propios y basados en datos para acciones, estados, restricciones, equipo, masa corporal, recetas de bioma, paquetes de audio y resultados inmutables posteriores a la confirmacion.",
-        "Action Resolver V1 ofrece costes, pruebas, efectos y requisitos semanticos de estructuras deterministas en un catalogo escalable para acciones centrales y de modulos.",
-        "Agarrar, Tirar y Escapar establecen relaciones entre origen y objetivo; Seducir requiere apetito, puede preparar el reclutamiento y retira a ambos participantes del combate.",
-        "Los reclutas despedidos se convierten en actores autonomos persistentes con pasos espaciados, movimiento y avistamientos limitados por la percepcion.",
-        "World Scaling V1 aplica distancia, bioma, cueva, estructura y dificultad escrita a encuentros y recompensas de misiones procedurales.",
-        "Audio Pack V1 asigna eventos semanticos a medios empaquetados sin callbacks arbitrarios, generacion por IA ni TTS.",
-        "Los hosts nativos pueden mostrar una ventana propia de ajustes de escritorio sin entregar controles nativos a los modulos."
+        "Cada tarjeta de companero reclutado tiene su propio control Jugar o Pausar la autonomia durante el turno del jugador, con estados activo, pausado y esperando instrucciones; el personaje jugador nunca recibe este control.",
+        "Combat Agency V1 muestra la intencion aun no confirmada de un companero autonomo y hasta tres alternativas legales guardadas antes de resolver la accion.",
+        "El jugador puede sugerir una alternativa guardada. Un registro persistente Companion Bond V1 decide de forma determinista si el companero acepta o rechaza segun el reclutamiento y eventos de cuidado escritos."
       ],
       "changed": [
-        "El terreno local y Survey ahora comparten un renderizador Canvas2D neutral al backend, con capas continuas de bioma, costa, relieve, caminos, puentes, estructuras, evidencia y grupo sobre una cache limitada por regiones.",
-        "El comando Map conserva la superficie completa de planificacion Review Map, mientras Survey sigue siendo una camara explicita del terreno cercano con desplazamiento, zoom tactil y regreso a Local.",
-        "La licencia del proyecto ahora esta versionada de forma explicita: v0.18.2 y anteriores conservan MIT, mientras v0.18.3 y posteriores usan PolyForm Noncommercial 1.0.0.",
-        "Hablar, Jugar, Luchar, Comer y Alimentar siguen la presentacion canonica de interacciones y subacciones en exploracion, combate, actores individuales, grupos y seleccion propia.",
-        "Pertenencias del grupo permite renombrar companeros y gestionar equipo desde una Mochila compartida sin cambiar su identidad estable ni referencias guardadas.",
-        "La peregrinacion fantasmal ahora es la recuperacion conservadora predeterminada; Regenerar y los perfiles propios de Recovery Mode V1 siguen disponibles.",
-        "Los eventos automaticos de combate pueden usar ritmo legible, rapido o instantaneo sin cambiar turnos, tiempo simulado, partidas ni ordenes inmediatas.",
-        "Los mercaderes declaran inventario finito o reposicion escrita en lugar de rellenar silenciosamente existencias finitas.",
-        "El juego descargado muestra perfiles LLM compatibles e intenta endpoints REST HTTPS configurados, con una advertencia CORS para el origen opaco.",
-        "La postura Madura selecciona narracion localizada mas expresiva para encuentros, combate, acciones sociales, alimentacion y contencion; la postura SFW conserva el texto neutral existente.",
-        "Las acciones aportadas se agrupan en un menu limitado que se abre hacia arriba en pantallas moviles compactas."
+        "Sugerir una accion reserva el siguiente turno ordinario y util del jugador en combate tanto si el companero acepta como si rechaza; los estados forzados se resuelven primero sin borrar ni cobrar dos veces la reserva.",
+        "Masticar ahora alimenta de inmediato solo a quienes mastican usando la masa corporal finita y conservada que realmente se retira del objetivo, con reparto proporcional determinista para grupos.",
+        "Los controles de preferencia pausada e intencion conservan Deber, Postura, Control, identidad, historia y el turno determinista no gastado al guardar y recargar."
       ],
       "fixed": [
-        "El terreno ya no muestra costuras por casilla, vegetacion recortada, costas cuadradas ni elementos obsoletos en cache fuera de la casilla actual durante el movimiento y los cambios del mundo.",
-        "El terreno Canvas conserva restos y evidencia de recursos agotados, y las opciones de calidad y relieve del laboratorio Alfa se eliminan al volver al juego normal.",
-        "Los informes Alfa identifican la version, revision de origen, ventana, escenario y contexto reciente limitado de Escena sin envio automatico.",
-        "Los resultados confirmados de modulos son observaciones serializables, inmutables y sin credenciales que no pueden vetar ni reescribir acciones resueltas.",
-        "Desactivar o borrar un modulo elimina sus definiciones, relaciones, recursos multimedia y estado no confirmado sin reescribir la historia confirmada.",
-        "Las recetas de bioma solo afectan casillas compatibles no materializadas; la geografia materializada permanece fijada tras eliminar un modulo o recargar.",
-        "Los temporizadores de ritmo de combate son transitorios y nunca entran en los datos guardados de combate.",
-        "Los controles de combate individuales y grupales permanecen sobre la barra fija en la matriz movil mantenida.",
-        "Lucha usa el mismo selector limitado de enfoques que Comer; Hablar y Jugar en postura Madura muestran sus enfoques especificos mientras SFW conserva opciones neutrales amplias.",
-        "El control asistido por IA no disponible vuelve a Autonomo con narracion, y el apoyo autonomo nunca restaura a un objetivo hostil.",
-        "El miedo moderado conserva la autonomia del jugador, mientras el Terror se resuelve al inicio del turno mediante una huida involuntaria o una narracion de inmovilidad cuando no existe una ruta segura.",
-        "La seleccion de grupo en combate mantiene estable la barra principal de interacciones: la frase de orden controla la cancelacion del grupo y de la intencion sin insertar una fila separada de Cancelar Grupo."
+        "La huida de un companero ahora narra de inmediato su causa escrita y mantiene coherentes el grupo, la cola de turnos, la posicion en el mundo, la seleccion y la partida guardada.",
+        "Un jugador volador ya no huye automaticamente por Terror cuando todos los hostiles vivos estan en tierra y no tienen una ruta legal de ataque; los atacantes voladores, a distancia o antiaereos que puedan alcanzarlo conservan el peligro normal.",
+        "Un encuentro automatico en el que ningun bando puede progresar legalmente termina con una separacion explicita por estancamiento en vez de asignar una huida inexplicada al jugador o a un companero."
       ],
       "knownIssues": [
-        "Esta alfa para un grupo selecto tiene acceso publico, pero no se anuncia; la promocion general sigue aplazada.",
-        "La simulacion regional de poblacion, regiones disenadas, anomalias colocables, mundos portal y suministro persistente siguen aplazados mas alla de V1.",
-        "Las penalizaciones corporales permanentes, economias de santuarios, fabricacion, Descanso V2, tacticas de terreno y dano elemental compartido siguen aplazados.",
-        "El audio por IA o TTS, la comodidad fisica, el arte y la traduccion humana requieren trabajo posterior o revision del operador.",
+        "Esta es una candidata no publicada. La version 0.18.3 sigue siendo la alfa activa para un grupo selecto hasta que el operador autorice por separado la promocion y la publicacion.",
+        "Combat Agency V1 reserva un futuro turno ordinario del jugador; la prioridad real de reacciones y la Huida de emergencia fuera de turno siguen aplazadas.",
+        "Companion Bond V1 aun no modela desgaste de lealtad, necesidades, abandono, conducta observada, desercion ni hostilidad.",
+        "La comodidad en dispositivos fisicos y la revision humana del texto en ingles y espanol siguen siendo observaciones del operador.",
         "El control de companeros por proveedor y la narracion IA siguen opcionales y dependen del endpoint; el juego determinista no."
       ]
     }

@@ -131,7 +131,16 @@ party removal, queue removal, selection cleanup, safe adjacent world placement,
 `lastFledAt.source`, and binary save placement all agree. A separate existing
 fixture clears stale `fledCombat` at the start of every new encounter.
 
-No new morale scoring was added. Condition, stance, threat, route, reach, row,
-and mobility belong to a future authored morale rule; adding them without an
-observed transition would create a new mechanic rather than correct the reported
-state/narration defect.
+Player Terror now has one reach-aware boundary that is deliberately separate
+from companion morale. A flying player does not automatically leave combat when
+every living hostile is ground-only and the shared Fight reach resolver says
+none can attack them. Terror still consumes that bounded status turn and the
+Scene Feed explains that the player holds altitude. Any flying, ranged,
+anti-flying, or otherwise authored reachable attacker preserves the existing
+forced-flight result. Companion Terror remains unchanged.
+
+If an automatic encounter cannot make material progress, the existing bounded
+liveness guard resolves it as an explicit stalemate/disengage; it does not set
+the player or a companion's `fledCombat` flag. No broader morale scoring was
+added. Condition, stance, route choice, loyalty, and player-directed retreat
+remain separate authored rules.

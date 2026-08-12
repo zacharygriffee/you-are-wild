@@ -10333,7 +10333,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'max-height: min(268px, 40dvh);\n                overflow-y: visible;', 'mobile combat action belt should reserve enough zero-scroll height for the primary intent grid');
   assertContains(mobileCombatToolbeltContent, "app.targetSelection?.source !== 'combat'", 'mobile combat should hide action intents during target confirmation while retaining presentation control');
   assertContains(mobileCombatToolbeltContent, '!(app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent)', 'mobile combat should hide action intents once a group intent is pending while retaining presentation control');
-  assertContains(mobileCombatToolbeltContent, 'presentationControls(app, { compact: true, bare: true })', 'mobile combat should keep the finger-sized presentation hold in the compact intent grid');
+  assertContains(mobileCombatToolbeltContent, 'presentationControls(app, { compact: true, bare: true, iconOnly: true })', 'mobile combat should keep the finger-sized symbol-switching presentation hold in the compact status row');
   assertContains(mobileCombatToolbeltContent, "if (!app.combatPlanSelection.pendingIntent) return '';", 'mobile combat should not insert a duplicate group-cancel row before the intent grid');
   assertContains(mobileCombatToolbeltContent, 'app._combatPlanControls?.({ includeReset: false })', 'mobile group confirmation should rely on the command-sentence actor exit instead of a duplicate cancel button');
   assertContains(template, '.mobile-location-actions', 'mobile location actions should have bounded control-belt styling');
@@ -13818,9 +13818,10 @@ test('Combat Agency V1 rejects a stale timer after combat state is replaced even
 
   pacing.schedule(app, () => { oldCommits++; }, 'Old companion intent');
   const oldTimer = scheduled[0];
+  const oldToken = app.combatState.presentationToken;
   app.combatState = { active: true };
   pacing.schedule(app, () => { restoredCommits++; }, 'Restored companion intent');
-  assertEqual(app.combatState.presentationToken, 1, 'The restored state should reproduce the old numeric timer token for the collision fixture');
+  assertEqual(app.combatState.presentationToken, oldToken, 'The restored state should reproduce the old numeric timer token for the collision fixture');
 
   oldTimer();
   assertEqual(oldCommits, 0, 'A timer owned by the replaced combat state must not commit');
@@ -15762,6 +15763,106 @@ test('Terrified player turns flee automatically before desktop or mobile control
   assertNotContains(elements.get('desktop-context-belt').innerHTML, 'executeCombatIntent', 'Desktop should not present doomed controls before terror resolves');
   assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'executeCombatIntent', 'Mobile should not present doomed controls before terror resolves');
   assertEqual(App.combatCorrectionMessage, null, 'Forced terror flight should not create a warning banner');
+});
+
+test('Terrified flying player holds altitude instead of auto-fleeing from ground-only attackers', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', {
+    id: 'terror-flying-player',
+    flying: true,
+    status: { terror: { turns: 1, by: 'Ground Hunter', source: 'fixture-terror' } }
+  });
+  const enemy = makeUnit('Ground Hunter', {
+    id: 'terror-ground-only-enemy',
+    disposition: App.DISPOSITION.ENEMY,
+    flying: false,
+    ranged: false,
+    antiflying: false
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 10 }, { unit: enemy, initiative: 5 }], syncActions: [] };
+  App._fleeDestination = () => ({ to: { x: 1, y: 0 }, direction: 'east' });
+  let retreat = null;
+  let ended = null;
+  let advanced = 0;
+  App._retreatPartyFromCombat = (actor, options) => { retreat = { actor, options }; return options.destination; };
+  App.endCombat = result => { ended = result; };
+  App.nextTurn = () => { advanced++; };
+
+  assertEqual(App._canReachCombatTarget(enemy, player, 'fight'), false, 'Ground-only attacker fixture must have no legal attack path to the flying player');
+  App.processTurn();
+
+  assertEqual(retreat, null, 'An unreachable ground-only attacker must not relocate the flying player');
+  assertEqual(ended, null, 'An unreachable ground-only attacker must not end combat through player Flee');
+  assertEqual(Boolean(player.fledCombat), false, 'Reach-aware Terror must not mark the flying player as individually fled');
+  assertEqual(App._fearState(player), 'steady', 'The bounded Terror turn should expire after the flying player holds altitude');
+  assertEqual(advanced, 1, 'Holding altitude under Terror should preserve the existing forced-status turn cost');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'cannot reach', 'Scene narration should explain why Terror did not force flight');
+});
+
+test('Flying ranged and anti-flying attackers preserve terrified flying player auto-flee', () => {
+  for (const threat of [
+    { label: 'Flying Hunter', flying: true },
+    { label: 'Archer', ranged: true },
+    { label: 'Sky Hooker', antiflying: true }
+  ]) {
+    const { App } = loadAppForCombat(() => 0.5);
+    const player = makeUnit('You', {
+      id: `terror-reachable-player-${threat.label}`,
+      flying: true,
+      status: { terror: { turns: 1, by: threat.label, source: 'fixture-terror' } }
+    });
+    const enemy = makeUnit(threat.label, {
+      id: `terror-reachable-enemy-${threat.label}`,
+      disposition: App.DISPOSITION.ENEMY,
+      flying: Boolean(threat.flying),
+      ranged: Boolean(threat.ranged),
+      antiflying: Boolean(threat.antiflying)
+    });
+    App.player = player;
+    App.party = [player];
+    App.creatures = [enemy];
+    App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 10 }, { unit: enemy, initiative: 5 }], syncActions: [] };
+    App._fleeDestination = () => ({ to: { x: 1, y: 0 }, direction: 'east' });
+    let ended = null;
+    App._retreatPartyFromCombat = () => ({});
+    App.endCombat = result => { ended = result; App.combatState.active = false; };
+
+    assertEqual(App._canReachCombatTarget(enemy, player, 'fight'), true, `${threat.label} must retain a legal attack path to a flying player`);
+    App.processTurn();
+    assertEqual(ended, 'flee', `${threat.label} should preserve normal forced player flight under Terror`);
+  }
+});
+
+test('Reach-aware player Terror gate does not change terrified flying companion flight', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'terror-companion-owner' });
+  const companion = makeUnit('Flying Companion', {
+    id: 'terror-flying-companion-reach-boundary',
+    flying: true,
+    status: { terror: { turns: 1, by: 'Ground Hunter', source: 'fixture-terror' } }
+  });
+  const enemy = makeUnit('Ground Hunter', {
+    id: 'terror-companion-ground-enemy',
+    disposition: App.DISPOSITION.ENEMY,
+    flying: false,
+    ranged: false,
+    antiflying: false
+  });
+  App.player = player;
+  App.party = [player, companion];
+  App.creatures = [enemy];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: companion, initiative: 20 }, { unit: player, initiative: 10 }, { unit: enemy, initiative: 5 }], syncActions: [] };
+  App._fleeDestination = () => ({ to: { x: 1, y: 0 }, direction: 'east' });
+  let relocated = null;
+  App._relocateFleeingPartyMember = unit => { relocated = unit; return {}; };
+
+  assertEqual(App._canReachCombatTarget(enemy, companion, 'fight'), false, 'Companion boundary fixture should use the same unreachable ground-only threat');
+  const outcome = App._resolveFearTurn(companion);
+  assertEqual(outcome.kind, 'flee', 'Companion Terror should retain its existing actor-specific flight behavior');
+  assertEqual(relocated, companion, 'The player-only reach gate must not suppress companion relocation');
 });
 
 test('Terror applied after an actor acts survives the round boundary and resolves on their next turn', () => {
@@ -27923,6 +28024,8 @@ test('Repeated automatic no-progress rounds narratively disengage without false 
   assertNotContains(log, 'Victory!', 'Stalemate must not grant a false victory');
   assertEqual(outcomes.length, 1, 'Stalemate should publish exactly one encounter resolution');
   assertEqual(outcomes[0].payload.result, 'disengage', 'Stalemate should use the established non-victory disengage outcome');
+  assertEqual(Boolean(fixture.player.fledCombat), false, 'Encounter-level stalemate must not masquerade as an individual player flee');
+  assertEqual(Boolean(fixture.ally.fledCombat), false, 'Encounter-level stalemate must not masquerade as an individual companion flee');
 });
 
 test('Instant pacing resolves repeated automatic state without recursive overflow', () => {
@@ -28000,7 +28103,7 @@ test('Restored autonomous stalemates receive a fresh bounded liveness guard', ()
   assertEqual(restored, true, 'The active autonomous encounter should restore');
   assertEqual(fixture.App.combatState.liveness.reason, 'combat-restored', 'Restore should initialize bounded liveness from the restored material state');
   assertEqual(fixture.App._resumeLoadedCombat(), true, 'Restored combat should resume through the authoritative processor');
-  assertEqual(fixture.App.combatState.presentationHeld, undefined, 'Reload should not restore presentation-only hold state');
+  assertEqual(Boolean(fixture.App.combatState.presentationHeld), false, 'Reload should not restore an active presentation-only hold state');
   assertEqual(fixture.App.combatState.companionIntentPreview?.actorId, fixture.ally.id, 'Reload should rebuild the current companion intent from the unspent queue turn');
   assertEqual(fixture.App.combatState.companionIntentTransaction?.status, 'pending', 'Reload should rebuild one fresh finite transaction before commitment');
   const callbacks = drainScheduledCombat(fixture, 40);
@@ -36552,13 +36655,17 @@ test('Group chew applies vital damage without synthetic portion records', () => 
   assert(target.vitalRemaining < target.vitalMax, 'Group chew should reduce target vital integrity');
   assertEqual(target.vitalMax - target.vitalRemaining, breakdown.damage, 'The resolved group Chew should apply the combined participant damage');
   assertEqual(target.vitalMax - target.vitalRemaining, target.MPun - target.CPun, 'Group chew should reduce Vitality and punishment by the same amount');
-  assertEqual(actor.hunger, 50, 'Group chew should not grant automatic nourishment before action costs');
-  assertEqual(helper.hunger, 50, 'Chew helpers should not receive automatic nourishment');
+  const nourishment = target.bodyMass.transactions.at(-1);
+  assertEqual(nourishment.reason, 'chew-nourishment', 'Group Chew should record its finite conserved mass transfer');
+  assert(actor.hunger < 50, 'The lead chewer should receive nourishment from removed body mass');
+  assert(helper.hunger < 50, 'Each contributing Chew helper should receive a weighted nourishment share');
+  assertEqual((50 - actor.hunger) + (50 - helper.hunger), nourishment.amount, 'Distributed hunger relief should equal the conserved mass removed from the target');
+  assert(actor.hunger < helper.hunger, 'The larger Chew contribution should receive the larger nourishment share');
   assertEqual(actor.stomach.length, 0, 'Group chew should not create actor portion records');
   assertEqual(helper.stomach.length, 0, 'Group chew should not create helper portion records');
 });
 
-test('Chew is progressive equal Vitality and punishment damage without healing or consumption credit', () => {
+test('Chew is progressive equal Vitality and punishment damage with finite nourishment but no healing or consumption credit', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', { id: 'progressive-chew-actor', Feas: 20, CPun: 45, MPun: 100, hunger: 30 });
   const target = makeUnit('Target', {
@@ -36589,7 +36696,9 @@ test('Chew is progressive equal Vitality and punishment damage without healing o
   assertEqual(target.vitalRemaining, 100 - expectedDamage, 'Progressive Chew should reduce Vitality by the same amount');
   assertEqual(target.alive === false, false, 'A surviving Chew target should remain alive');
   assertEqual(actor.CPun, 45, 'Chew should not heal its actor');
-  assertEqual(actor.hunger, 30, 'The sub-action should not provide immediate nourishment');
+  const nourishment = target.bodyMass.transactions.at(-1);
+  assertEqual(nourishment.reason, 'chew-nourishment', 'Chew should record the exact mass that nourishes the chewer');
+  assertEqual(actor.hunger, Math.max(0, 30 - nourishment.amount), 'Chew should relieve hunger by the finite body mass removed from the target');
   assertEqual(actor.Feas, 20, 'Chew should not directly inflate the Feas stat');
   assertEqual(defeatXp, 0, 'A surviving Chew target should not grant defeat XP');
   assertEqual(questEvents.some(event => event.type === 'consume'), false, 'Chew damage should not count as consumption');
@@ -36733,7 +36842,9 @@ test('Combat and multi-target Chew use action cost and spread scaling', () => {
   assertEqual(first.CPun, 100 - expectedDamage, 'Combat Chew should use the shared progressive damage contract');
   assertEqual(first.vitalRemaining, 100 - expectedDamage, 'Combat Chew should apply equal Vitality damage');
   assertEqual(actor.CPun, 50, 'Combat Chew should not heal the attacker');
-  assertEqual(actor.hunger, 12, 'Combat Chew should charge the Feast hunger cost exactly once');
+  const nourishment = first.bodyMass.transactions.at(-1);
+  assertEqual(nourishment.reason, 'chew-nourishment', 'Combat Chew should conserve its nourishment against target mass');
+  assertEqual(actor.hunger, Math.max(0, 12 - nourishment.amount), 'Combat Chew should charge Feast once, then apply its finite nourishment relief');
   assertEqual(App._chewTurnAdvanced, true, 'Combat Chew should spend the acting turn');
 
   const singleDamage = App._chewDamageValue(actor, second, { mode: 'combat' });
@@ -37003,6 +37114,7 @@ test('Desktop panel lists default to compact tactical cards and preserve full de
   App.player = player;
   App.party = [player, ally];
   App.creatures = [guide];
+  [player, ally, guide].forEach(unit => App._normalizeUnit(unit));
 
   App.renderParty();
   App.renderCreatures();

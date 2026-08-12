@@ -401,6 +401,17 @@ const YAW_TACTICAL_CARD = {
         const partyStatus = unit === app.player ? app._label('party.you', 'You') : `${app._label('party.ally', 'Ally')}${partyRole ? ' - ' + partyRole : ''}${autonomyStatusLabel ? ' | ' + autonomyStatusLabel : ''}`;
         const status = isParty ? partyStatus : app._unitDispositionLabel(unit);
         const rowText = app.combatState.active && unit.combatRow ? ` | ${app._combatRowLabel(unit.combatRow)}` : '';
+        const bodyMass = unit.bodyMass || null;
+        const bodyProfile = bodyMass && typeof YAW_BODY_MASS !== 'undefined'
+            ? YAW_BODY_MASS.profileFor(app, unit)
+            : null;
+        const bodyMassSummary = isExpanded && bodyMass && bodyProfile
+            ? app._label('unit.bodyMassSummary', 'Body Mass: {current}/{maximum} · Chew nourishment: {available}', {
+                current: bodyMass.current,
+                maximum: bodyMass.maximum,
+                available: Math.max(0, Number(bodyMass.current || 0) - Math.ceil(Number(bodyMass.maximum || 0) * bodyProfile.minimumViablePercent / 100))
+            })
+            : '';
         const turnBadge = app._turnOrderBadge(unit);
         const combatStatus = app._srOnly(app._combatStatusText(unit), 'role="status" aria-live="polite"');
         const pressTargetKey = !isParty && !isCorpse ? explorationTargetKey : targetKey;
@@ -426,6 +437,7 @@ const YAW_TACTICAL_CARD = {
                     <div class="mobile-chip-name"><span>${app._unitArtHtml(unit, isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon, { className: 'mobile-chip-sprite' })}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
                     <div class="mobile-chip-meta">${app._escapeHtml(status)}${rowText}</div>
+                    ${bodyMassSummary ? `<div class="mobile-chip-meta unit-body-mass">${app._escapeHtml(bodyMassSummary)}</div>` : ''}
                     ${app._unitTacticalRings(unit)}
                     ${app._unitTraitChips(unit, type)}
                     ${app._unitSelectionChips(unit, type)}

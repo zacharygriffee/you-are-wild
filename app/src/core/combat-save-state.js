@@ -73,6 +73,32 @@ const YAW_COMBAT_SAVE_STATE = {
                 .sort((a, b) => b.initiative - a.initiative);
         }
         const maxTurn = Math.max(0, turnQueue.length - 1);
+        const savedReservation = savedCombat.playerTurnReservation && typeof savedCombat.playerTurnReservation === 'object'
+            ? savedCombat.playerTurnReservation
+            : null;
+        const reservationPlayer = savedReservation ? resolve(savedReservation.playerId) : null;
+        const reservationCompanion = savedReservation ? resolve(savedReservation.companionId) : null;
+        const playerTurnReservation = savedReservation?.status === 'reserved'
+            && reservationPlayer === app.player
+            && reservationCompanion
+            && reservationCompanion !== app.player
+            && app.party.includes(reservationCompanion)
+            ? {
+                version: 1,
+                status: 'reserved',
+                playerId: String(savedReservation.playerId || ''),
+                companionId: String(savedReservation.companionId || ''),
+                companionName: String(reservationCompanion.name || savedReservation.companionName || ''),
+                sourceTurnKey: String(savedReservation.sourceTurnKey || ''),
+                requestKey: String(savedReservation.requestKey || ''),
+                requestedAction: String(savedReservation.requestedAction || 'hold'),
+                requestedTargetId: String(savedReservation.requestedTargetId || ''),
+                requestedTargetName: String(savedReservation.requestedTargetName || ''),
+                complied: savedReservation.complied === true,
+                createdRound: Math.max(1, Math.floor(Number(savedReservation.createdRound) || 1)),
+                createdTurn: Math.max(0, Math.floor(Number(savedReservation.createdTurn) || 0))
+            }
+            : null;
         app.mode = app.GAME_MODE.COMBAT;
         app.combatState = {
             active: true,
@@ -130,7 +156,8 @@ const YAW_COMBAT_SAVE_STATE = {
                 };
             }).filter(sync => sync && sync.target && sync.participants.length >= 2 && !sync.resolved),
             processing: false,
-            xpEarned: savedCombat.xpEarned || 0
+            xpEarned: savedCombat.xpEarned || 0,
+            playerTurnReservation
         };
         app.activeActor = resolve(savedCombat.activeActorId) || app.combatState.turnQueue[app.combatState.currentTurn]?.unit || app.player;
         app.targetSelection = null;

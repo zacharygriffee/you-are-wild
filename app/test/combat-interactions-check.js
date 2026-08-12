@@ -604,6 +604,24 @@ async function runCompanionAutonomyButtonFlow(page) {
     ];
     App.combatState.currentTurn = 1;
     App.activeActor = ally;
+    ally.companionBond = {
+      version: 1,
+      nextSeq: 2,
+      carriedWeight: 0,
+      prunedCount: 0,
+      events: [{
+        seq: 1,
+        type: 'recruitment.bonded',
+        weight: 26,
+        day: 0,
+        hour: 0,
+        source: 'browser-fixture',
+        by: App._unitSelectionId(App.player),
+        requestKey: null,
+        dedupeKey: 'recruitment:bonded'
+      }]
+    };
+    YAW_COMPANION_BEHAVIOR.normalizeBond(App, ally);
     App._advancedTurn = false;
     App.processTurn();
   });
@@ -4907,6 +4925,138 @@ async function runCombatProgressInvariantFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
 }
 
+async function runCombatAgencyPresentationFlow(page) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupCombat(page, {
+    withAlly: true,
+    allyOverrides: { CPun: 100, MPun: 100, companionBehavior: { version: 2, duty: 'guard', stance: 'aggressive', control: 'deterministic', autonomyPaused: false } }
+  });
+  const held = await page.evaluate(() => {
+    const ally = App.party[1];
+    const enemy = App.creatures[0];
+    App.combatState.turnQueue = [
+      { unit: App.player, initiative: 20 },
+      { unit: ally, initiative: 15 },
+      { unit: enemy, initiative: 10 }
+    ];
+    App.combatState.currentTurn = 1;
+    App.activeActor = ally;
+    App.settings.combatPacing = 'instant';
+    const originalDispatch = App._dispatchInteractionCommand.bind(App);
+    const originalNextTurn = App.nextTurn.bind(App);
+    App.__agencyOriginalDispatch = originalDispatch;
+    App.__agencyOriginalNextTurn = originalNextTurn;
+    App.__agencyDispatches = [];
+    App._dispatchInteractionCommand = command => {
+      App.__agencyDispatches.push({ action: command.action, targetIds: command.targets?.map(target => target.id) || [] });
+      return true;
+    };
+    App.nextTurn = () => { App.__agencyAdvanced = (App.__agencyAdvanced || 0) + 1; };
+    App.toggleCombatPresentationHold();
+    App.allyTurn(ally);
+    const desktopButton = document.querySelector('#desktop-context-belt [data-command-control="presentation-hold"]');
+    const mobileButton = document.querySelector('#mobile-combat-toolbelt [data-command-control="presentation-hold"]');
+    return {
+      held: App.combatState.presentationHeld,
+      pending: App.combatState.presentationPending,
+      previewAction: App.combatState.companionIntentPreview?.action || '',
+      dispatches: App.__agencyDispatches.length,
+      desktopPressed: desktopButton?.getAttribute('aria-pressed') || '',
+      mobilePressed: mobileButton?.getAttribute('aria-pressed') || '',
+      desktopText: desktopButton?.textContent?.trim() || '',
+      mobileText: mobileButton?.textContent?.trim() || '',
+      desktopPreview: document.querySelector('#scene-description [data-command-preview="companion-intent"]')?.textContent || '',
+      mobilePreview: document.querySelector('#mobile-combat-toolbelt [data-command-preview="companion-intent"]')?.textContent || '',
+      desktopSuggestions: document.querySelectorAll('#scene-description [data-command-control="request-companion-intervention"]').length,
+      mobileSuggestions: document.querySelectorAll('#mobile-combat-toolbelt [data-command-control="request-companion-intervention"]').length
+    };
+  });
+  assert.strictEqual(held.held, true, 'Combat Agency browser flow should hold automatic presentation');
+  assert.strictEqual(held.pending, true, 'Held companion intent should retain one pending continuation');
+  assert.strictEqual(held.previewAction, 'fight', 'Browser intent preview should expose the deterministic companion choice');
+  assert.strictEqual(held.dispatches, 0, 'Held browser preview should not commit its action');
+  assert.strictEqual(held.desktopPressed, 'true', 'Desktop hold control should expose pressed state');
+  assert.strictEqual(held.mobilePressed, 'true', 'Mobile hold control should expose the same pressed state');
+  assert(held.desktopText.includes('▶') && held.mobileText.includes('▶'), 'Both held controls should switch visibly to the Play symbol');
+  assert(held.desktopPreview.includes('Ally intends to fight') && held.mobilePreview.includes('Ally intends to fight'), 'Desktop and mobile should show the same companion intent');
+  assert(held.desktopSuggestions > 0 && held.mobileSuggestions > 0, 'Held desktop and mobile previews should expose the same bounded suggestion choices');
+
+  const requested = await page.evaluate(() => {
+    document.querySelector('#mobile-combat-toolbelt [data-command-control="request-companion-intervention"]')?.click();
+    return {
+      requestOutcome: App.combatState.companionIntentTransaction?.requestOutcome || '',
+      requestedAction: App.combatState.companionIntentTransaction?.requestedChoice?.action || '',
+      reserved: App.combatState.playerTurnReservation?.status || '',
+      reservedCompanion: App.combatState.playerTurnReservation?.companionId || '',
+      desktopState: document.querySelector('#scene-description .companion-intervention-controls')?.dataset.interventionState || '',
+      mobileState: document.querySelector('#mobile-combat-toolbelt .companion-intervention-controls')?.dataset.interventionState || '',
+      desktopPreview: document.querySelector('#scene-description [data-command-preview="companion-intent"]')?.textContent || '',
+      mobilePreview: document.querySelector('#mobile-combat-toolbelt [data-command-preview="companion-intent"]')?.textContent || ''
+    };
+  });
+  assert.strictEqual(requested.requestOutcome, 'complied', 'Trusted browser fixture should accept its first low-departure suggestion deterministically');
+  assert(requested.requestedAction && requested.requestedAction !== 'fight', 'Accepted suggestion should redirect to one stored alternative');
+  assert.strictEqual(requested.reserved, 'reserved', 'The UI request should reserve the player next ordinary turn');
+  assert(requested.reservedCompanion, 'The saved cost should retain the exact companion identity');
+  assert.strictEqual(requested.desktopState, 'already-requested', 'Desktop should explain that the one request was spent');
+  assert.strictEqual(requested.mobileState, 'already-requested', 'Mobile should explain the same spent-request state');
+  assert(requested.desktopPreview.includes('now intends') && requested.mobilePreview.includes('now intends'), 'Both previews should announce the accepted redirection');
+
+  const resumed = await page.evaluate(() => {
+    App.toggleCombatPresentationHold();
+    const desktopButton = document.querySelector('#desktop-context-belt [data-command-control="presentation-hold"]');
+    const mobileButton = document.querySelector('#mobile-combat-toolbelt [data-command-control="presentation-hold"]');
+    const result = {
+      held: App.combatState.presentationHeld,
+      pending: App.combatState.presentationPending,
+      preview: App.combatState.companionIntentPreview,
+      reservation: App.combatState.playerTurnReservation,
+      dispatches: App.__agencyDispatches.slice(),
+      desktopPressed: desktopButton?.getAttribute('aria-pressed') || '',
+      mobilePressed: mobileButton?.getAttribute('aria-pressed') || '',
+      desktopText: desktopButton?.textContent?.trim() || '',
+      mobileText: mobileButton?.textContent?.trim() || '',
+      desktopPreviewPresent: Boolean(document.querySelector('#scene-description [data-command-preview="companion-intent"]')),
+      mobilePreviewPresent: Boolean(document.querySelector('#mobile-combat-toolbelt [data-command-preview="companion-intent"]'))
+    };
+    return result;
+  });
+  assert.strictEqual(resumed.held, false, 'Resume should clear held presentation state');
+  assert.strictEqual(resumed.pending, false, 'Resume should consume the retained continuation');
+  assert.strictEqual(resumed.preview, null, 'Resume should clear transient intent state');
+  assert.strictEqual(resumed.dispatches.length, 1, 'Resume should commit exactly one stored browser action');
+  assert.strictEqual(resumed.dispatches[0].action, requested.requestedAction, 'Resume should commit the accepted stored alternative without reranking');
+  assert.strictEqual(resumed.reservation?.status, 'reserved', 'Companion commitment should not erase the later player-turn cost');
+  assert.strictEqual(resumed.desktopPressed, 'false', 'Desktop resume should clear pressed state');
+  assert.strictEqual(resumed.mobilePressed, 'false', 'Mobile resume should clear pressed state');
+  assert(resumed.desktopText.includes('⏸') && resumed.mobileText.includes('⏸'), 'Both resumed controls should switch visibly to the Pause symbol');
+  assert.strictEqual(resumed.desktopPreviewPresent, false, 'Desktop preview should clear at commitment');
+  assert.strictEqual(resumed.mobilePreviewPresent, false, 'Mobile preview should clear at commitment');
+
+  const charged = await page.evaluate(() => {
+    App.combatState.currentTurn = 0;
+    App.combatState.turnQueue[0].actedThisRound = false;
+    App.activeActor = App.player;
+    const before = App.__agencyAdvanced || 0;
+    App.processTurn();
+    const result = {
+      reservation: App.combatState.playerTurnReservation,
+      advanced: (App.__agencyAdvanced || 0) - before,
+      chargedLog: App.log.some(entry => String(entry?.phase || '') === 'player-turn-reservation-consumed')
+    };
+    App._dispatchInteractionCommand = App.__agencyOriginalDispatch;
+    App.nextTurn = App.__agencyOriginalNextTurn;
+    delete App.__agencyOriginalDispatch;
+    delete App.__agencyOriginalNextTurn;
+    delete App.__agencyDispatches;
+    delete App.__agencyAdvanced;
+    return result;
+  });
+  assert.strictEqual(charged.reservation, null, 'The next ordinary browser player turn should clear the saved cost');
+  assert.strictEqual(charged.advanced, 1, 'Charging the request should consume exactly one player turn');
+  assert.strictEqual(charged.chargedLog, true, 'The consumed turn should have explicit causal narration');
+}
+
 async function runAutonomousStalemateBrowserFlow(browser) {
   const viewports = [
     { name: 'desktop', width: 1365, height: 768, feed: '#desktop-scene-feed-latest' },
@@ -5990,6 +6140,7 @@ async function runUriFrenchLocaleLifecycleFlow(browser) {
     await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
     const texturedSnapshot = await runTilesetCrossSurfaceFlow(page);
     await runCompanionAutonomyButtonFlow(page);
+    await runCombatAgencyPresentationFlow(page);
     await runCombatTargetFirstComposerFlow(page);
     await runCombatProgressInvariantFlow(page);
     await runAutonomousStalemateBrowserFlow(browser);

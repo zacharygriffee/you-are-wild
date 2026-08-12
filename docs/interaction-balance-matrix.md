@@ -23,7 +23,7 @@ does not authorize retuning the values it reports.
 | Talk | `flirt` | 1 | Spirit `floor(charm × 0.3)` and Fight -1 on success | 50 XP on enemy social resolution |
 | Play | `fuck` | 4 | Spirit `floor(charm × 0.5)` on success | 50 XP on enemy social resolution |
 | Feed | `feed` | 1 | Tend restores Condition `floor(Feed × 2)` only | Support XP follows net Condition bands; at most 20 across one full allied target pool; none for self-care |
-| Feast | `feast` | 2 | Variant-defined containment or vitality result; Chew applies equal progressive Vitality/Condition damage and its multi-target effect is practice-scaled | 75 XP on enemy containment; 50 XP when Chew defeats a hostile |
+| Feast | `feast` | 2 | Variant-defined containment or vitality result; Chew applies equal progressive Vitality/Condition damage, debits proportional conserved body mass as immediate nourishment for the chewer, and practice-scales its multi-target effect | 75 XP on enemy containment; 50 XP when Chew defeats a hostile |
 | Flee | `flee` | 3 | Safe adjacent relocation on success | None |
 
 The runtime matrix contains the formulas, ownership, shape policy, and current

@@ -431,6 +431,12 @@
             renderDesktopCombatComposer(actor) {
                 return YAW_COMBAT_ACTIONS.renderDesktopComposer(this, actor);
             },
+            toggleCombatPresentationHold() {
+                return YAW_COMBAT_PACING.toggleHold(this);
+            },
+            requestCompanionIntervention(alternativeIndex) {
+                return YAW_COMPANION_BEHAVIOR.requestIntervention(this, alternativeIndex);
+            },
             BODY_PARTS: {
                 fangs: { id: 'fangs', label: 'Fangs', desc: 'Bloodsuck/poison. +2 SPD priority. Enables bite attacks.', priority: 2 },
                 wings: { id: 'wings', label: 'Wings', desc: 'Flying. +3 SPD priority. 50% dodge vs non-reach. Enables flight.', priority: 3 },
@@ -1645,19 +1651,78 @@
                 const breakdown = this._chewDamageBreakdown(actor, target, options);
                 return breakdown.damage;
             },
+            _resolveChewNourishment(target, actors = [], contributions = [], actualVitalDamage = 0) {
+                const participants = [...new Set((actors || []).filter(unit => unit && this._isLivingCreature(unit)))];
+                if (!target || participants.length === 0 || actualVitalDamage <= 0) {
+                    return { massConsumed: 0, nourishment: 0, hungerRelief: 0, participants: [] };
+                }
+                const body = YAW_BODY_MASS.ensure(this, target);
+                const vitalMaximum = Math.max(1, Number(target.vitalMax || target.capturedPun || target.MPun || 1));
+                const requestedMass = Math.max(1, Math.round(body.maximum * Math.min(vitalMaximum, actualVitalDamage) / vitalMaximum));
+                const transaction = YAW_BODY_MASS.consume(this, target, requestedMass, {
+                    kind: 'chew',
+                    reason: 'chew-nourishment',
+                    sourceId: participants.map(unit => this._unitSelectionId(unit)).join(',')
+                });
+                const nourishment = Math.max(0, Number(transaction?.amount) || 0);
+                if (nourishment <= 0) {
+                    return { massConsumed: 0, nourishment: 0, hungerRelief: 0, participants: [], transaction };
+                }
+                const weights = participants.map(unit => {
+                    const entry = (contributions || []).find(candidate => candidate.actor === unit);
+                    return Math.max(1, Number(entry?.damage) || 1);
+                });
+                const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+                const shares = weights.map(weight => Math.floor(nourishment * weight / totalWeight));
+                let unassigned = nourishment - shares.reduce((sum, share) => sum + share, 0);
+                const remainderOrder = weights
+                    .map((weight, index) => ({ index, fraction: (nourishment * weight / totalWeight) - shares[index] }))
+                    .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
+                for (const entry of remainderOrder) {
+                    if (unassigned <= 0) break;
+                    shares[entry.index] += 1;
+                    unassigned--;
+                }
+                const participantResults = participants.map((unit, index) => {
+                    const share = shares[index];
+                    const result = share > 0
+                        ? this._applyHungerRelief(unit, share, {
+                            action: 'feast',
+                            source: 'chew-nourishment',
+                            target,
+                            emitScene: false
+                        })
+                        : null;
+                    return {
+                        actor: unit,
+                        nourishment: share,
+                        hungerRelief: Math.max(0, -(Number(result?.amount) || 0))
+                    };
+                });
+                return {
+                    massConsumed: nourishment,
+                    nourishment,
+                    hungerRelief: participantResults.reduce((sum, entry) => sum + entry.hungerRelief, 0),
+                    participants: participantResults,
+                    transaction
+                };
+            },
             _resolveChewAttack(actor, target, options = {}) {
                 if (!actor || !target || actor === target || !this._isLivingCreature(target)) {
-                    return { damage: 0, depleted: false, target };
+                    return { damage: 0, depleted: false, target, massConsumed: 0, nourishment: 0, hungerRelief: 0 };
                 }
                 const targetWasParty = this.party.includes(target);
                 const targetWasHostile = target.disposition === this.DISPOSITION.ENEMY;
                 const actors = [...new Set((options.actors || [actor]).filter(unit => unit && this._isLivingCreature(unit)))];
                 const breakdown = this._chewDamageBreakdown(actor, target, { ...options, actors });
                 const damage = breakdown.damage;
+                const vitalDamageBefore = Math.max(0, Number(target.vitalDamageTaken) || 0);
                 this._applyVitalDamage(target, damage, {
                     source: actors.length > 1 ? 'group-chew' : 'chew',
                     terminal: false
                 });
+                const actualVitalDamage = Math.max(0, (Number(target.vitalDamageTaken) || 0) - vitalDamageBefore);
+                const nourishment = this._resolveChewNourishment(target, actors, breakdown.contributions, actualVitalDamage);
                 this._wakeOnDamage?.(target);
                 const depleted = Number(target.CPun) <= 0 || Number(target.vitalRemaining) <= 0;
                 if (depleted) {
@@ -1672,6 +1737,11 @@
                     target,
                     actors,
                     contributions: breakdown.contributions,
+                    actualVitalDamage,
+                    massConsumed: nourishment.massConsumed,
+                    nourishment: nourishment.nourishment,
+                    hungerRelief: nourishment.hungerRelief,
+                    nourishmentParticipants: nourishment.participants,
                     vitalRemaining: Math.max(0, Number(target.vitalRemaining) || 0),
                     conditionRemaining: Math.max(0, Number(target.CPun) || 0)
                 };
@@ -3238,6 +3308,12 @@
                                 target: target.name,
                                 amount: outcome.damage
                             });
+                        if (outcome.massConsumed > 0) {
+                            result += ` ${this._label('feast.chewNourishment', '{actor} consumes {mass} body mass as nourishment.', {
+                                actor: actorName,
+                                mass: outcome.massConsumed
+                            })}`;
+                        }
                         break;
                     }
                     case 'feast.cockVore': {
@@ -4010,13 +4086,23 @@
                     ...options,
                     actors: participants
                 });
-                return this._label(outcome.depleted ? 'group.feast.chewDepleted' : 'group.feast.split', outcome.depleted
+                let result = this._label(outcome.depleted ? 'group.feast.chewDepleted' : 'group.feast.split', outcome.depleted
                     ? '{actors} chew into {target} for {amount} vitality and punishment damage. {target} is depleted and leaves recoverable remains.'
                     : '{actors} chew into {target} for {amount} vitality and punishment damage.', {
                     actors: participants.map(actor => actor.name).join(', '),
                     target: target.name,
                     amount: outcome.damage
                 });
+                if (outcome.massConsumed > 0) {
+                    result += ` ${this._label('group.feast.chewNourishment', '{actors} consume {mass} body mass as nourishment.', {
+                        actors: (outcome.nourishmentParticipants || [])
+                            .filter(entry => entry.nourishment > 0)
+                            .map(entry => entry.actor.name)
+                            .join(', '),
+                        mass: outcome.massConsumed
+                    })}`;
+                }
+                return result;
             },
             _selectGroupFeastPrimary(actors, target) {
                 const candidates = (actors || []).filter(actor => actor && actor !== target);
@@ -4698,6 +4784,7 @@
                     : (requestedSubAction && this.SUB_ACTIONS[action]?.[requestedSubAction] ? requestedSubAction : null);
                 let result = '';
                 let affected = true;
+                const careBefore = target ? { CPun: target.CPun, CPle: target.CPle } : {};
                 let startCombatAfter = false;
                 let combatTargets = [];
                 const pressure = this._canAffordActionPressure?.(action, actor, { mode: 'adventure' }) || { ok: true };
@@ -4935,6 +5022,13 @@
                     this.emitStoryResult({ mode: 'adventure', actors: [actor], targets: [target], action, shape: 'one-to-one', subAction: selectedSubAction }, result);
                 }
                 this.lastActionResolution = { action, actor, target, ok: affected, affected, message: result };
+                YAW_COMPANION_BEHAVIOR.recordCareFromInteraction(this, {
+                    actor,
+                    target,
+                    action,
+                    before: careBefore,
+                    source: 'exploration-resolution'
+                });
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();

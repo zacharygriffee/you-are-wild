@@ -139,6 +139,14 @@ const YAW_COMBAT_LIFECYCLE = {
         app.combatState.pendingFleeOutcome = null;
         app.combatState.disengageReason = null;
         app.combatState.liveness = null;
+        app.combatState.presentationHeld = false;
+        app.combatState.presentationPending = false;
+        app.combatState.presentationCallback = null;
+        app.combatState.presentationTimer = null;
+        app.combatState.companionIntentPreview = null;
+        app.combatState.companionIntentTransaction = null;
+        app.combatState.lastCompanionIntentTransaction = null;
+        app.combatState.playerTurnReservation = null;
         app.party.forEach(p => app._normalizeUnit(p, { disposition: app.DISPOSITION.PARTY }));
         enemies.forEach(e => app._normalizeUnit(e, { disposition: app.DISPOSITION.ENEMY }));
         const allCombatants = [...app.party, ...enemies];
@@ -242,6 +250,7 @@ const YAW_COMBAT_LIFECYCLE = {
         app.combatState.pendingFleeOutcome = null;
         app.combatState.disengageReason = null;
         app.combatState.liveness = null;
+        app.combatState.playerTurnReservation = null;
         app.activeActor = null;
         app._clearTransientInteractionState();
         app._clearCombatRefreshSnapshot(app.activeSlot);

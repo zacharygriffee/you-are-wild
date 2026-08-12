@@ -42,11 +42,14 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
     },
 
     intentButtons(app, actor = app._currentCombatActor()) {
-        if (!app.combatState?.active || !actor || !(actor === app.player || app.party.includes(actor))) return '';
-        if ((app.syncSelection?.active && !app._isCombatGroupCompose?.()) || app.feedSelection?.active) return '';
-        if (app.targetSelection?.source === 'combat') return '';
-        if (app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent) return '';
-        const buttons = app._combatActionButtons(actor, { compact: true });
+        if (!app.combatState?.active) return '';
+        const canAct = actor && (actor === app.player || app.party.includes(actor));
+        const actionPhase = canAct
+            && !(app.syncSelection?.active && !app._isCombatGroupCompose?.())
+            && !app.feedSelection?.active
+            && app.targetSelection?.source !== 'combat'
+            && !(app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent);
+        const buttons = actionPhase ? app._combatActionButtons(actor, { compact: true }) : '';
         if (!buttons) return '';
         const label = app._escapeHtml(app._label('mobile.combat.intents', 'Combat intents'));
         return `<div class="mobile-combat-intents" data-command-surface="combat-intents" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${label}">${buttons}</div>`;
@@ -156,12 +159,19 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const actorName = actor?.name || app._label('ui.creatures', 'Creatures');
         const status = app._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', { round, turn, total });
         const title = app._label('mobile.combat.actor', '{name} to act', { name: actorName });
+        const presentation = typeof YAW_COMBAT_PACING !== 'undefined'
+            ? YAW_COMBAT_PACING.presentationControls(app, { compact: true, bare: true, iconOnly: true })
+            : '';
         const prompt = this.prompt(app, actor);
         const promptClass = 'mobile-combat-prompt';
         const sentence = this.selectionSentence(app);
+        const preview = app.combatState.companionIntentPreview;
+        const previewHtml = preview
+            ? `<div class="combat-intent-preview mobile-combat-intent-preview" data-command-preview="companion-intent"><div class="combat-intent-announcement" role="status" aria-live="polite"><strong>${app._escapeHtml(app._label('combat.agency.intentTitle', 'Companion intent'))}</strong><span>${app._escapeHtml(preview.text)}</span><small>${app._escapeHtml(preview.reason)}</small><small>${app._escapeHtml(app._label('combat.agency.intentUncommitted', 'Preview only — no action has committed yet.'))}</small></div>${YAW_COMPANION_BEHAVIOR.interventionControls(app, { compact: true })}</div>`
+            : '';
         const phaseControls = this.phaseControls(app, actor);
         const intents = this.intentButtons(app, actor);
-        const html = `<div class="mobile-combat-status"><strong>${app._escapeHtml(title)}</strong><span>${app._escapeHtml(status)}</span></div>${sentence}${phaseControls}<div class="${promptClass}">${app._escapeHtml(prompt)}</div>${intents}`;
+        const html = `<div class="mobile-combat-status"><strong>${app._escapeHtml(title)}</strong><span>${app._escapeHtml(status)}</span>${presentation}</div>${previewHtml}${sentence}${phaseControls}<div class="${promptClass}">${app._escapeHtml(prompt)}</div>${intents}`;
         belt.className = 'mobile-combat-toolbelt active';
         belt.setAttribute('data-surface-role', 'command-composer');
         belt.setAttribute('data-command-surface', 'combat-composer');

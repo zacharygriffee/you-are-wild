@@ -6,6 +6,21 @@
 
 const YAW_COMPANION_BEHAVIOR = {
     VERSION: 2,
+    BOND_VERSION: 1,
+    BOND_EVENT_LIMIT: 48,
+
+    BOND_EVENTS: {
+        'recruitment.legacy': { weight: 16 },
+        'recruitment.submitted': { weight: 4 },
+        'recruitment.invited': { weight: 12 },
+        'recruitment.befriended': { weight: 18 },
+        'recruitment.bonded': { weight: 26 },
+        'care.feed': { weight: 3 },
+        'care.talk': { weight: 2 },
+        'care.play': { weight: 3 },
+        'agency.request.complied': { weight: 0 },
+        'agency.request.refused': { weight: -1 }
+    },
 
     DUTIES: {
         guard: {
@@ -100,6 +115,128 @@ const YAW_COMPANION_BEHAVIOR = {
         return 'balanced';
     },
 
+    bondEventTypeForRecruitment(continuity = null) {
+        const kind = String(continuity?.kind || 'legacy').toLowerCase();
+        return this.BOND_EVENTS[`recruitment.${kind}`] ? `recruitment.${kind}` : 'recruitment.legacy';
+    },
+
+    normalizeBond(app, unit, options = {}) {
+        if (!unit) return null;
+        if (unit === app?.player || unit.mc) {
+            if (Object.prototype.hasOwnProperty.call(unit, 'companionBond')) delete unit.companionBond;
+            return null;
+        }
+        const raw = unit.companionBond && typeof unit.companionBond === 'object'
+            ? unit.companionBond
+            : {};
+        const normalizedEvents = (Array.isArray(raw.events) ? raw.events : [])
+            .map((event, index) => {
+                const type = String(event?.type || '');
+                const definition = this.BOND_EVENTS[type];
+                if (!definition) return null;
+                return {
+                    seq: Math.max(1, Math.floor(Number(event.seq) || index + 1)),
+                    type,
+                    weight: definition.weight,
+                    day: Math.max(0, Math.floor(Number(event.day) || 0)),
+                    hour: Math.max(0, Math.min(23, Math.floor(Number(event.hour) || 0))),
+                    source: String(event.source || type).slice(0, 80),
+                    by: event.by == null ? null : String(event.by).slice(0, 120),
+                    requestKey: event.requestKey == null ? null : String(event.requestKey).slice(0, 180),
+                    dedupeKey: event.dedupeKey == null ? null : String(event.dedupeKey).slice(0, 180)
+                };
+            })
+            .filter(Boolean)
+            .sort((left, right) => left.seq - right.seq);
+        const events = normalizedEvents.slice(-this.BOND_EVENT_LIMIT);
+        const continuity = options.recruitmentContinuity
+            || unit.companionBehavior?.recruitmentContinuity
+            || unit.recruitmentContinuity
+            || null;
+        if (events.length === 0 && Math.max(0, Number(raw.prunedCount) || 0) === 0) {
+            const type = this.bondEventTypeForRecruitment(continuity);
+            const definition = this.BOND_EVENTS[type];
+            events.push({
+                seq: 1,
+                type,
+                weight: definition.weight,
+                day: Math.max(0, Math.floor(Number(continuity?.day ?? app?.dayCount ?? 0) || 0)),
+                hour: Math.max(0, Math.min(23, Math.floor(Number(continuity?.hour ?? app?.timeHour ?? 0) || 0))),
+                source: String(continuity?.source || 'legacy-migration').slice(0, 80),
+                by: continuity?.by == null
+                    ? (app?.player ? String(app._unitSelectionId?.(app.player) || app.player.id || app.player.name || 'player').slice(0, 120) : null)
+                    : String(continuity.by).slice(0, 120),
+                requestKey: null,
+                dedupeKey: `recruitment:${type}`
+            });
+        }
+        const maxSeq = events.reduce((highest, event) => Math.max(highest, event.seq), 0);
+        unit.companionBond = {
+            version: this.BOND_VERSION,
+            nextSeq: Math.max(maxSeq + 1, Math.floor(Number(raw.nextSeq) || 1)),
+            carriedWeight: Math.max(-100, Math.min(100, Math.floor(Number(raw.carriedWeight) || 0))),
+            prunedCount: Math.max(0, Math.floor(Number(raw.prunedCount) || 0)),
+            events
+        };
+        return unit.companionBond;
+    },
+
+    bondProjection(app, unit) {
+        const bond = this.normalizeBond(app, unit);
+        if (!bond) return null;
+        const eventWeight = bond.events.reduce((total, event) => total + Number(event.weight || 0), 0);
+        const score = Math.max(-100, Math.min(100, Number(bond.carriedWeight || 0) + eventWeight));
+        const tier = score >= 24 ? 'trusted' : (score >= 14 ? 'steady' : (score >= 6 ? 'tentative' : 'strained'));
+        return { version: this.BOND_VERSION, score, tier, eventCount: bond.prunedCount + bond.events.length };
+    },
+
+    recordBondEvent(app, unit, type, options = {}) {
+        const definition = this.BOND_EVENTS[type];
+        const bond = this.normalizeBond(app, unit);
+        if (!definition || !bond) return null;
+        const dedupeKey = options.dedupeKey == null ? null : String(options.dedupeKey).slice(0, 180);
+        if (dedupeKey && bond.events.some(event => event.dedupeKey === dedupeKey)) return null;
+        const event = {
+            seq: bond.nextSeq++,
+            type,
+            weight: definition.weight,
+            day: Math.max(0, Math.floor(Number(options.day ?? app?.dayCount ?? 0) || 0)),
+            hour: Math.max(0, Math.min(23, Math.floor(Number(options.hour ?? app?.timeHour ?? 0) || 0))),
+            source: String(options.source || type).slice(0, 80),
+            by: options.by == null
+                ? (app?.player ? String(app._unitSelectionId?.(app.player) || app.player.id || app.player.name || 'player').slice(0, 120) : null)
+                : String(options.by).slice(0, 120),
+            requestKey: options.requestKey == null ? null : String(options.requestKey).slice(0, 180),
+            dedupeKey
+        };
+        bond.events.push(event);
+        while (bond.events.length > this.BOND_EVENT_LIMIT) {
+            const removed = bond.events.shift();
+            bond.carriedWeight = Math.max(-100, Math.min(100, bond.carriedWeight + Number(removed?.weight || 0)));
+            bond.prunedCount++;
+        }
+        app?.markAutoSaveDirty?.(['party', 'quests'], `companion-bond:${type}`);
+        return event;
+    },
+
+    recordCareFromInteraction(app, { actor, target, action, before = {}, source = 'interaction' } = {}) {
+        if (!app || !actor || !target || actor !== app.player || target === app.player || !app.party?.includes(target)) return null;
+        const conditionGain = Math.max(0, Number(target.CPun || 0) - Number(before.CPun ?? target.CPun ?? 0));
+        const spiritGain = Math.max(0, Number(target.CPle || 0) - Number(before.CPle ?? target.CPle ?? 0));
+        const type = action === 'feed' && conditionGain > 0
+            ? 'care.feed'
+            : (action === 'flirt' && spiritGain > 0
+                ? 'care.talk'
+                : (action === 'fuck' && spiritGain > 0 ? 'care.play' : null));
+        if (!type) return null;
+        const targetId = app._unitSelectionId?.(target) || target.id || target.name || 'companion';
+        const day = Math.max(0, Math.floor(Number(app.dayCount) || 0));
+        return this.recordBondEvent(app, target, type, {
+            source,
+            dedupeKey: `${day}:${type}:${targetId}`
+        });
+    },
+
     normalize(app, unit, options = {}) {
         if (!unit || typeof unit !== 'object') return null;
         const existing = unit.companionBehavior && typeof unit.companionBehavior === 'object'
@@ -140,6 +277,7 @@ const YAW_COMPANION_BEHAVIOR = {
             recruitmentContinuity: continuity ? { ...continuity } : null
         };
         unit.recruitmentContinuity = unit.companionBehavior.recruitmentContinuity;
+        this.normalizeBond(app, unit, { recruitmentContinuity: continuity });
         // Compatibility mirrors are intentionally retained for old saves and mods.
         unit.partyRole = duty;
         unit.aiOrder = stance;
@@ -246,6 +384,8 @@ const YAW_COMPANION_BEHAVIOR = {
             recruitmentContinuity: continuity
         };
         target.recruitmentContinuity = { ...continuity };
+        target.companionBond = null;
+        this.normalizeBond(app, target, { recruitmentContinuity: continuity });
         return this.normalize(app, target);
     },
 
@@ -529,13 +669,13 @@ const YAW_COMPANION_BEHAVIOR = {
             const provider = this.providerChoice(app, ally, ranked);
             const selected = provider.choice || ranked[0];
             const crisis = this.crisisChoice(app, ally, ranked, selected);
-            if (crisis) return { choice: crisis, behavior, fallbackReason: 'combat-crisis' };
-            if (provider.choice) return { choice: provider.choice, behavior, fallbackReason: null };
-            return { choice: selected, behavior, fallbackReason: provider.reason };
+            if (crisis) return { choice: crisis, behavior, fallbackReason: 'combat-crisis', rankedChoices: ranked };
+            if (provider.choice) return { choice: provider.choice, behavior, fallbackReason: null, rankedChoices: ranked };
+            return { choice: selected, behavior, fallbackReason: provider.reason, rankedChoices: ranked };
         }
         const selected = ranked[0];
         const crisis = this.crisisChoice(app, ally, ranked, selected);
-        return { choice: crisis || selected, behavior, fallbackReason: crisis ? 'combat-crisis' : null };
+        return { choice: crisis || selected, behavior, fallbackReason: crisis ? 'combat-crisis' : null, rankedChoices: ranked };
     },
 
     preferenceSummary(app, choice) {
@@ -550,6 +690,378 @@ const YAW_COMPANION_BEHAVIOR = {
             ? app._label('party.behavior.targetSuffix', ' on {target}', { target: choice.target.name })
             : '';
         return { action, target };
+    },
+
+    choiceKey(app, choice) {
+        const targetId = choice?.target
+            ? String(app._unitSelectionId?.(choice.target) || choice.target.id || choice.target.name || '')
+            : '';
+        return `${choice?.action || 'hold'}:${choice?.subAction || ''}:${targetId}`;
+    },
+
+    beginIntentTransaction(app, ally, result = {}) {
+        if (!app?.combatState?.active || !ally) return null;
+        const turnKey = `${Number(app.combatState.round || 0)}:${Number(app.combatState.currentTurn || 0)}:${app._unitSelectionId?.(ally) || ally.id || ally.name || 'companion'}`;
+        const existing = app.combatState.companionIntentTransaction;
+        if (existing?.status === 'pending' && existing.turnKey === turnKey) return existing;
+        const primary = result.choice || { action: 'hold', target: null, command: null };
+        const primaryKey = this.choiceKey(app, primary);
+        const alternatives = (Array.isArray(result.rankedChoices) ? result.rankedChoices : [])
+            .filter(choice => this.choiceKey(app, choice) !== primaryKey)
+            .slice(0, 3);
+        const transaction = {
+            version: 1,
+            turnKey,
+            actor: ally,
+            behavior: result.behavior || this.get(app, ally),
+            primary,
+            alternatives,
+            fallbackReason: result.fallbackReason || null,
+            interventionUsed: false,
+            fallbackEvaluated: false,
+            status: 'pending'
+        };
+        app.combatState.companionIntentTransaction = transaction;
+        const reservation = app.combatState.playerTurnReservation;
+        if (reservation?.status === 'reserved' && reservation.sourceTurnKey === turnKey) {
+            transaction.interventionUsed = true;
+            transaction.requestKey = String(reservation.requestKey || '');
+            transaction.requestOutcome = reservation.complied === true ? 'complied' : 'refused';
+            if (reservation.complied === true) {
+                transaction.requestedChoice = alternatives.find(choice => this.choiceKey(app, choice) === transaction.requestKey) || null;
+                transaction.requestedChoiceMissing = !transaction.requestedChoice;
+            }
+        }
+        return transaction;
+    },
+
+    intentPreview(app, ally, result = {}) {
+        if (!app?.combatState?.active || !ally) return null;
+        const transaction = result.primary ? result : this.beginIntentTransaction(app, ally, result);
+        if (!transaction) return null;
+        const choice = transaction.requestedChoice || transaction.primary;
+        const behavior = transaction.behavior;
+        const summary = this.preferenceSummary(app, choice);
+        const duty = app._companionDutyLabel?.(behavior.duty) || this.DUTIES[behavior.duty]?.label || behavior.duty;
+        const stance = app._companionStanceLabel?.(behavior.stance) || this.STANCES[behavior.stance]?.label || behavior.stance;
+        const text = app._label('party.agency.intentPreview', '{name} intends to {action}{target}.', {
+            name: ally.name,
+            action: summary.action,
+            target: summary.target
+        });
+        const reason = transaction.requestedChoice
+            ? app._label('party.agency.intentRedirectedReason', 'Accepted request · Bond: {tier}', {
+                tier: this.bondTierLabel(app, this.bondProjection(app, ally)?.tier)
+            })
+            : (transaction.requestedChoiceMissing
+                ? app._label('party.agency.intentStaleReason', 'Accepted request is no longer legal · original plan restored')
+                : app._label('party.agency.intentReason', '{duty} duty · {stance} stance', { duty, stance }));
+        const preview = {
+            version: 1,
+            turnKey: transaction.turnKey,
+            actorId: String(app._unitSelectionId?.(ally) || ally.id || ally.name || 'companion'),
+            actorName: String(ally.name || app._label('ui.ally', 'Ally')),
+            action: String(choice.action || 'hold'),
+            targetId: choice.target ? String(app._unitSelectionId?.(choice.target) || choice.target.id || choice.target.name || '') : '',
+            targetName: String(choice.target?.name || ''),
+            text,
+            reason,
+            bond: this.bondProjection(app, ally)
+        };
+        app.combatState.companionIntentPreview = preview;
+        app.renderCombatSceneForTurn?.(ally);
+        app.renderDesktopCombatComposer?.(ally);
+        app.renderMobileCombatToolbelt?.();
+        return preview;
+    },
+
+    interventionDifficulty(transaction, choice, index = 0) {
+        const preferenceGap = Math.max(0, Number(transaction?.primary?.score || 0) - Number(choice?.score || 0));
+        return Math.max(6, Math.min(30, 6 + Math.max(0, Number(index) || 0) * 4 + Math.min(12, Math.floor(preferenceGap / 8))));
+    },
+
+    interventionState(app) {
+        const transaction = app?.combatState?.companionIntentTransaction;
+        const actor = transaction?.actor || null;
+        const reservation = app?.combatState?.playerTurnReservation || null;
+        const playerAvailable = Boolean(app?.player
+            && Number(app.player.CPun || 0) > 0
+            && !app.player.knockedOut
+            && !app.player.fledCombat);
+        let reason = '';
+        if (!transaction || transaction.status !== 'pending' || !actor || actor === app?.player || !app?.party?.includes(actor)) reason = 'no-intent';
+        else if (!this.isHeld(app)) reason = 'pause-first';
+        else if (transaction.interventionUsed) reason = 'already-requested';
+        else if (reservation?.status === 'reserved') reason = 'turn-reserved';
+        else if (!playerAvailable) reason = 'player-unavailable';
+        else if (!transaction.alternatives.length) reason = 'no-alternatives';
+        return {
+            available: !reason,
+            reason,
+            transaction,
+            actor,
+            reservation,
+            bond: actor ? this.bondProjection(app, actor) : null
+        };
+    },
+
+    isHeld(app) {
+        return typeof YAW_COMBAT_PACING !== 'undefined'
+            ? YAW_COMBAT_PACING.isHeld(app)
+            : Boolean(app?.combatState?.presentationHeld);
+    },
+
+    bondTierLabel(app, tier = 'tentative') {
+        const fallbacks = { strained: 'Strained', tentative: 'Tentative', steady: 'Steady', trusted: 'Trusted' };
+        return app._label(`party.bond.tier.${tier}`, fallbacks[tier] || fallbacks.tentative);
+    },
+
+    interventionControls(app, { compact = false } = {}) {
+        const state = this.interventionState(app);
+        if (!state.transaction || !state.actor || state.reason === 'no-intent') return '';
+        const bondLabel = this.bondTierLabel(app, state.bond?.tier);
+        const heading = app._label('party.agency.suggestHeading', 'Suggest another action');
+        const explanation = state.reason === 'pause-first'
+            ? app._label('party.agency.suggestPauseFirst', 'Pause auto to make one suggestion before this intent commits.')
+            : state.reason === 'turn-reserved'
+                ? app._label('party.agency.suggestReserved', 'Your next ordinary turn is already reserved by an earlier request.')
+                : state.reason === 'already-requested'
+                    ? app._label('party.agency.suggestUsed', 'You have already made your one request for this intent.')
+                    : state.reason === 'player-unavailable'
+                        ? app._label('party.agency.suggestUnavailable', 'You cannot make a combat request while unable to act.')
+                        : state.reason === 'no-alternatives'
+                            ? app._label('party.agency.suggestNoAlternatives', 'No other legal action is available to suggest.')
+                            : app._label('party.agency.suggestCost', 'One request reserves and consumes your next ordinary turn, even if the companion refuses.');
+        const bond = app._label('party.agency.bondSummary', 'Bond: {tier}', { tier: bondLabel });
+        const buttons = state.available
+            ? state.transaction.alternatives.map((choice, index) => {
+                const summary = this.preferenceSummary(app, choice);
+                const label = app._label('party.agency.askAction', 'Ask: {action}{target}', {
+                    action: summary.action,
+                    target: summary.target
+                });
+                const title = app._label('party.agency.askActionTitle', 'Ask {name} to {action}{target}; this reserves your next ordinary turn.', {
+                    name: state.actor.name,
+                    action: summary.action,
+                    target: summary.target
+                });
+                return `<button type="button" class="action-btn compact-secondary" data-command-surface="companion-intervention" data-command-mode="combat" data-command-control="request-companion-intervention" data-intervention-index="${index}" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="event.stopPropagation();App.requestCompanionIntervention(${index})">${app._escapeHtml(label)}</button>`;
+            }).join('')
+            : '';
+        return `<div class="companion-intervention-controls${compact ? ' compact' : ''}" data-intervention-state="${app._escapeHtml(state.reason || 'available')}" role="group" aria-label="${app._escapeHtml(heading)}"><strong>${app._escapeHtml(heading)}</strong><span>${app._escapeHtml(bond)}</span><small>${app._escapeHtml(explanation)}</small>${buttons ? `<div class="companion-intervention-actions">${buttons}</div>` : ''}</div>`;
+    },
+
+    requestIntervention(app, alternativeIndex) {
+        const state = this.interventionState(app);
+        const index = Math.max(0, Math.floor(Number(alternativeIndex) || 0));
+        const choice = state.transaction?.alternatives?.[index] || null;
+        if (!state.available || !choice) return false;
+        const transaction = state.transaction;
+        const requestKey = this.choiceKey(app, choice);
+        const difficulty = this.interventionDifficulty(transaction, choice, index);
+        const bond = state.bond || { score: 0, tier: 'strained' };
+        const complies = bond.score >= difficulty;
+        transaction.interventionUsed = true;
+        transaction.requestKey = requestKey;
+        transaction.requestOutcome = complies ? 'complied' : 'refused';
+        transaction.requestDifficulty = difficulty;
+        transaction.requestedChoice = complies ? choice : null;
+        const playerId = String(app._unitSelectionId?.(app.player) || app.player.id || app.player.name || 'player');
+        const actorId = String(app._unitSelectionId?.(state.actor) || state.actor.id || state.actor.name || 'companion');
+        app.combatState.playerTurnReservation = {
+            version: 1,
+            status: 'reserved',
+            playerId,
+            companionId: actorId,
+            companionName: String(state.actor.name || ''),
+            sourceTurnKey: transaction.turnKey,
+            requestKey,
+            requestedAction: String(choice.action || 'hold'),
+            requestedTargetId: choice.target ? String(app._unitSelectionId?.(choice.target) || choice.target.id || choice.target.name || '') : '',
+            requestedTargetName: String(choice.target?.name || ''),
+            complied: complies,
+            createdRound: Math.max(1, Number(app.combatState.round) || 1),
+            createdTurn: Math.max(0, Number(app.combatState.currentTurn) || 0)
+        };
+        this.recordBondEvent(app, state.actor, complies ? 'agency.request.complied' : 'agency.request.refused', {
+            source: 'combat-agency-v1',
+            requestKey,
+            dedupeKey: `agency:${transaction.turnKey}`
+        });
+        const summary = this.preferenceSummary(app, choice);
+        const requestText = app._label('party.agency.requestCost', 'You ask {name} to {action}{target}, committing your next ordinary turn to the request.', {
+            name: state.actor.name,
+            action: summary.action,
+            target: summary.target
+        });
+        const outcomeText = complies
+            ? app._label('party.agency.complied', '{name} trusts your direction and changes course.', { name: state.actor.name })
+            : app._label('party.agency.refused', '{name} hears you but keeps their own plan. Your next turn remains committed.', { name: state.actor.name });
+        const text = `${requestText} ${outcomeText}`;
+        app._pushLog?.(text, 'combat', {
+            actor: state.actor,
+            action: choice.action,
+            phase: complies ? 'companion-compliance' : 'companion-refusal',
+            requestKey,
+            bondScore: bond.score,
+            difficulty,
+            playerTurnReserved: true
+        });
+        app.emitSceneBeat?.({
+            mode: 'combat',
+            actors: [app.player, state.actor].filter(Boolean),
+            targets: [choice.target].filter(Boolean),
+            action: 'request',
+            tags: ['combat-agency', complies ? 'complied' : 'refused', 'player-turn-reserved'],
+            source: 'combat-agency-v1'
+        }, text, {
+            mode: 'combat',
+            resultKind: complies ? 'decision' : 'resistance',
+            importance: 'notable',
+            tags: ['combat-agency', complies ? 'complied' : 'refused', 'player-turn-reserved'],
+            source: 'combat-agency-v1'
+        });
+        if (complies) {
+            const updated = this.preferenceSummary(app, choice);
+            app.combatState.companionIntentPreview = {
+                ...app.combatState.companionIntentPreview,
+                action: String(choice.action || 'hold'),
+                targetId: choice.target ? String(app._unitSelectionId?.(choice.target) || choice.target.id || choice.target.name || '') : '',
+                targetName: String(choice.target?.name || ''),
+                text: app._label('party.agency.intentRedirected', '{name} now intends to {action}{target}.', {
+                    name: state.actor.name,
+                    action: updated.action,
+                    target: updated.target
+                }),
+                reason: app._label('party.agency.intentRedirectedReason', 'Accepted request · Bond: {tier}', {
+                    tier: this.bondTierLabel(app, bond.tier)
+                })
+            };
+        } else if (app.combatState.companionIntentPreview) {
+            app.combatState.companionIntentPreview.reason = app._label('party.agency.intentRefusedReason', 'Request refused · Bond: {tier}', {
+                tier: this.bondTierLabel(app, bond.tier)
+            });
+        }
+        app.markAutoSaveDirty?.(['combat', 'party', 'quests', 'sceneFeed', 'activityLog'], 'combat-agency-request');
+        app.autoSave?.({ delayMs: 0, reason: 'combat-agency-request' });
+        app.renderLog?.();
+        app.renderCombatSceneForTurn?.(state.actor);
+        app.renderDesktopCombatComposer?.(state.actor);
+        app.renderMobileCombatToolbelt?.();
+        return { complies, difficulty, bondScore: bond.score, requestKey };
+    },
+
+    consumePlayerTurnReservation(app, unit) {
+        const reservation = app?.combatState?.playerTurnReservation;
+        if (!reservation || reservation.status !== 'reserved' || !unit || unit !== app.player) return false;
+        const playerId = String(app._unitSelectionId?.(unit) || unit.id || unit.name || 'player');
+        if (reservation.playerId && String(reservation.playerId) !== playerId) return false;
+        const text = app._label('party.agency.turnConsumed', 'Your promised direction to {name} consumes this ordinary turn.', {
+            name: reservation.companionName || app._label('ui.ally', 'your companion')
+        });
+        app.combatState.playerTurnReservation = null;
+        app._pushLog?.(text, 'combat', {
+            actor: unit,
+            action: 'request-cost',
+            phase: 'player-turn-reservation-consumed',
+            companionId: reservation.companionId,
+            requestKey: reservation.requestKey
+        });
+        app.emitSceneBeat?.({
+            mode: 'combat',
+            actors: [unit],
+            action: 'request-cost',
+            tags: ['combat-agency', 'player-turn-consumed'],
+            source: 'combat-agency-v1'
+        }, text, {
+            mode: 'combat',
+            resultKind: 'cost',
+            importance: 'notable',
+            tags: ['combat-agency', 'player-turn-consumed'],
+            source: 'combat-agency-v1'
+        });
+        app.markAutoSaveDirty?.(['combat', 'sceneFeed', 'activityLog'], 'combat-agency-turn-consumed');
+        app.autoSave?.({ delayMs: 0, reason: 'combat-agency-turn-consumed' });
+        app.renderLog?.();
+        app.nextTurn?.();
+        return true;
+    },
+
+    choiceStillValid(app, choice) {
+        if (!choice || ['hold', 'advance', 'digest'].includes(choice.action)) return true;
+        if (!choice.command) return false;
+        return app._validateInteractionCommand?.(choice.command)?.ok === true;
+    },
+
+    commitIntentTransaction(app, transaction) {
+        const current = app?.combatState?.companionIntentTransaction;
+        if (!transaction || current !== transaction || transaction.status !== 'pending') return false;
+        transaction.status = 'committing';
+        const acceptedRequestMissing = transaction.requestedChoiceMissing === true;
+        if (acceptedRequestMissing) {
+            transaction.fallbackEvaluated = true;
+            const text = app._label('party.agency.requestStale', '{name} accepted your direction, but that action is no longer legal and they return to their original plan.', {
+                name: transaction.actor.name
+            });
+            app._pushLog?.(text, 'combat', {
+                actor: transaction.actor,
+                action: transaction.primary?.action || 'hold',
+                phase: 'companion-fallback'
+            });
+            app.renderLog?.();
+        }
+        let selected = transaction.requestedChoice || transaction.primary;
+        if (!this.choiceStillValid(app, selected)) {
+            transaction.fallbackEvaluated = true;
+            const fallback = acceptedRequestMissing
+                ? { action: 'hold', target: null, command: null }
+                : (transaction.requestedChoice
+                    ? transaction.primary
+                    : (transaction.alternatives[0] || { action: 'hold', target: null, command: null }));
+            const text = app._label(transaction.requestedChoice ? 'party.agency.requestStale' : 'party.agency.intentChanged', transaction.requestedChoice
+                ? '{name} can no longer follow the accepted request and returns to their original intent.'
+                : '{name} can no longer complete that intent and tries one fallback.', {
+                name: transaction.actor.name
+            });
+            app._pushLog?.(text, 'combat', {
+                actor: transaction.actor,
+                action: selected?.action || 'hold',
+                phase: 'companion-fallback'
+            });
+            app.renderLog?.();
+            selected = this.choiceStillValid(app, fallback)
+                ? fallback
+                : { action: 'hold', target: null, command: null };
+        }
+        transaction.status = 'committed';
+        app.combatState.lastCompanionIntentTransaction = {
+            version: 1,
+            turnKey: transaction.turnKey,
+            actorId: String(app._unitSelectionId?.(transaction.actor) || transaction.actor.id || transaction.actor.name || 'companion'),
+            primaryAction: String(transaction.primary?.action || 'hold'),
+            committedAction: String(selected?.action || 'hold'),
+            interventionUsed: transaction.interventionUsed === true,
+            requestKey: transaction.requestKey || null,
+            requestOutcome: transaction.requestOutcome || null,
+            fallbackEvaluated: transaction.fallbackEvaluated === true
+        };
+        this.clearIntentPreview(app, transaction.turnKey);
+        app.combatState.companionIntentTransaction = null;
+        return this.executeChoice(app, transaction.actor, {
+            choice: selected,
+            behavior: transaction.behavior,
+            fallbackReason: transaction.fallbackReason
+        });
+    },
+
+    clearIntentPreview(app, turnKey = '') {
+        const preview = app?.combatState?.companionIntentPreview;
+        if (!preview || (turnKey && preview.turnKey !== turnKey)) return false;
+        app.combatState.companionIntentPreview = null;
+        app.renderCombatSceneForTurn?.(this.currentTurnUnit(app));
+        app.renderDesktopCombatComposer?.(this.currentTurnUnit(app));
+        app.renderMobileCombatToolbelt?.();
+        return true;
     },
 
     offerPausedPreference(app, ally) {
@@ -771,7 +1283,23 @@ const YAW_COMPANION_BEHAVIOR = {
             }
             return true;
         }
+        const currentPreview = app.combatState?.companionIntentPreview;
+        const currentTurnKey = `${Number(app.combatState?.round || 0)}:${Number(app.combatState?.currentTurn || 0)}:${app._unitSelectionId?.(ally) || ally.id || ally.name || 'companion'}`;
+        if (currentPreview?.turnKey === currentTurnKey && app.combatState?.presentationPending) {
+            app.renderCombatSceneForTurn?.(ally);
+            app.renderDesktopCombatComposer?.(ally);
+            app.renderMobileCombatToolbelt?.();
+            return true;
+        }
         const result = this.choose(app, ally);
+        const transaction = this.beginIntentTransaction(app, ally, result);
+        const preview = this.intentPreview(app, ally, transaction);
+        if (preview && typeof YAW_COMBAT_PACING !== 'undefined') {
+            return YAW_COMBAT_PACING.schedule(app, () => {
+                return this.commitIntentTransaction(app, transaction);
+            }, preview.text);
+        }
+        if (preview) return this.commitIntentTransaction(app, transaction);
         return this.executeChoice(app, ally, result);
     }
 };

@@ -114,6 +114,17 @@ const YAW_COMBAT_STATUS = {
         return 'afraid';
     },
 
+    flyingPlayerOutsideHostileReach(app, unit) {
+        if (!unit?.flying || unit !== app?.player || typeof app?._canReachCombatTarget !== 'function') return false;
+        const enemies = (app.creatures || []).filter(enemy => enemy
+            && enemy.disposition === app.DISPOSITION?.ENEMY
+            && enemy.CPun > 0
+            && !enemy.knockedOut
+            && !enemy.fledCombat);
+        return enemies.length > 0
+            && enemies.every(enemy => !app._canReachCombatTarget(enemy, unit, 'fight'));
+    },
+
     resolveFearTurn(app, unit) {
         const status = this.normalizeFearStatus(unit) || {};
         const state = this.fearState(app, unit);
@@ -134,6 +145,20 @@ const YAW_COMBAT_STATUS = {
                 turns: Math.max(1, Number(status.fear?.turns || 1)),
                 by: status.fear?.by || '',
                 source: status.fear?.source || 'fear-escalation'
+            };
+        }
+        if (this.flyingPlayerOutsideHostileReach(app, unit)) {
+            status.terror.turns = Math.max(0, Number(status.terror.turns || 1) - 1);
+            if (status.terror.turns <= 0) delete status.terror;
+            return {
+                kind: 'unreachable-threat',
+                consumesTurn: true,
+                escaped: false,
+                summary: app._label(
+                    'combat.status.terrorUnreachableThreat',
+                    '{name} panics, but the ground-bound threats cannot reach them in the air; they hold altitude through the turn.',
+                    { name: unit.name }
+                )
             };
         }
         const isParty = (app.party || []).includes(unit);

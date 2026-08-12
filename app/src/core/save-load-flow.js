@@ -75,6 +75,10 @@ const YAW_SAVE_LOAD_FLOW = {
                 if (compatible.creationOptions && typeof compatible.creationOptions === 'object' && !Array.isArray(compatible.creationOptions)) {
                     unit.creationOptions = JSON.parse(JSON.stringify(compatible.creationOptions));
                 }
+                if (compatible.bodyProfileKey) unit.bodyProfileKey = String(compatible.bodyProfileKey);
+                if (compatible.bodyMass && typeof compatible.bodyMass === 'object' && !Array.isArray(compatible.bodyMass)) {
+                    unit.bodyMass = JSON.parse(JSON.stringify(compatible.bodyMass));
+                }
                 if (compatible.lifeStage) unit.lifeStage = compatible.lifeStage;
                 if (compatible.adultEligibility && typeof compatible.adultEligibility === 'object') {
                     unit.adultEligibility = { ...compatible.adultEligibility };
@@ -183,6 +187,7 @@ const YAW_SAVE_LOAD_FLOW = {
             const savedAutonomyPaused = loaded.questState?.partyAutonomyPaused || {};
             const savedPreferredRows = loaded.questState?.partyPreferredRows || {};
             const savedContinuity = loaded.questState?.partyRecruitmentContinuity || {};
+            const savedBonds = loaded.questState?.partyCompanionBonds || {};
             for (const unit of app.party) {
                 const keys = [unit.id, unit.name].filter(Boolean).map(String);
                 const role = keys.map(key => savedRoles[key]).find(value => app.PARTY_ROLES[value]);
@@ -195,6 +200,7 @@ const YAW_SAVE_LOAD_FLOW = {
                 const autonomyPaused = keys.map(key => savedAutonomyPaused[key]).find(value => typeof value === 'boolean');
                 const preferredRow = keys.map(key => savedPreferredRows[key]).find(value => app.PARTY_PREFERRED_ROWS?.[value]);
                 const recruitmentContinuity = keys.map(key => savedContinuity[key]).find(value => value && typeof value === 'object') || null;
+                const companionBond = keys.map(key => savedBonds[key]).find(value => value && typeof value === 'object') || null;
                 if (duty || stance || control || typeof autonomyPaused === 'boolean' || preferredRow || recruitmentContinuity) {
                     unit.companionBehavior = {
                         ...(unit.companionBehavior || {}),
@@ -206,6 +212,7 @@ const YAW_SAVE_LOAD_FLOW = {
                         ...(recruitmentContinuity ? { recruitmentContinuity } : {})
                     };
                 }
+                if (companionBond && unit !== app.player && !unit.mc) unit.companionBond = companionBond;
                 YAW_COMPANION_BEHAVIOR.normalize(app, unit, {
                     duty: role,
                     stance: order,

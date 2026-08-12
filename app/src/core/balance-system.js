@@ -643,9 +643,9 @@ const YAW_BALANCE_SYSTEM = {
                     reward: { xpOnEnemyResolution: rewards.consumeEnemy }
                 }),
                 variant('feast', 'chew', {
-                    source: { hunger: Number(cfg.costs.feast ?? 0), condition: 0, charge: 'once-per-committed-actor-command' },
-                    target: { vitality: '-same-as-condition-damage', condition: '-same-as-vitality-damage', state: 'survives, flees, fights, or becomes depleted remains' },
-                    reward: { xpOnEnemyResolution: rewards.defeatEnemy, rewardMode: 'defeat-only; no automatic consumption credit' }
+                    source: { hunger: Number(cfg.costs.feast ?? 0), condition: 0, nourishment: 'proportional-conserved-body-mass-removed', charge: 'once-per-committed-actor-command' },
+                    target: { vitality: '-same-as-condition-damage', condition: '-same-as-vitality-damage', bodyMass: '-proportional-to-actual-vitality-damage-above-viable-residue', state: 'survives, flees, fights, or becomes depleted remains' },
+                    reward: { xpOnEnemyResolution: rewards.defeatEnemy, rewardMode: 'defeat-only; nourishment is conserved mass transfer, not reward credit' }
                 }),
                 variant('feast', 'digest', {
                     scope: 'self',

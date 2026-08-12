@@ -149,6 +149,7 @@ const YAW_COMBAT_RESOLUTION = {
             const actorName = actorIsPlayer ? app._label('party.you', 'You') : actor.name;
             const actorVerb = actorIsPlayer ? '' : 's';
             const targetWasParty = app.party.includes(target);
+            const careBefore = { CPun: target.CPun, CPle: target.CPle };
             let result = '';
             const reach = app._combatReachResult?.(actor, target, action, { techniqueKey: options.subAction });
             if (reach?.canAttempt && !reach.canSucceed) {
@@ -398,6 +399,13 @@ const YAW_COMBAT_RESOLUTION = {
             }
             app._pushLog(result, 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'action' });
             app.lastCombatActionResult = { action, actor, target, result, multiEffect: options.multiEffect || null };
+            YAW_COMPANION_BEHAVIOR.recordCareFromInteraction(app, {
+                actor,
+                target,
+                action,
+                before: careBefore,
+                source: 'combat-resolution'
+            });
             if (!options.suppressStory) app._emitCombatAction(action, actor, target, result);
             app.renderCombatSceneForTurn(actor);
             app.renderLog();

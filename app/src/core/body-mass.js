@@ -197,6 +197,28 @@ const YAW_BODY_MASS = {
         });
     },
 
+    consume(app, unit, amount, options = {}) {
+        const state = this.ensure(app, unit);
+        const requested = Math.max(0, Math.floor(Number(amount) || 0));
+        const profile = this.profileFor(app, unit);
+        const preserveViable = options.preserveViable !== false;
+        const minimum = preserveViable
+            ? Math.ceil(state.maximum * profile.minimumViablePercent / 100)
+            : 0;
+        const consumed = Math.min(requested, Math.max(0, state.current - minimum));
+        if (consumed < 1) return null;
+        const before = state.current;
+        state.current -= consumed;
+        return this._record(app, unit, {
+            kind: options.kind || 'consumption',
+            amount: consumed,
+            before,
+            after: state.current,
+            reason: options.reason || 'body-consumed',
+            sourceId: options.sourceId
+        });
+    },
+
     add(app, unit, amount, options = {}) {
         const state = this.ensure(app, unit);
         const requested = Math.max(0, Math.floor(Number(amount) || 0));

@@ -102,9 +102,11 @@ Corpse/remains records should normalize these neutral fields while preserving cu
 
 - `swallow` / `ingest`: places an intact target into a container. It should do little or no immediate vital damage by default. Digestion ticks later reduce `vitalRemaining`. Release is possible while `vitalRemaining > 0`.
 - `chew`: applies one Feas-based attack's damage equally to Vitality and
-  current condition. It does not automatically spend the full Vital Pool,
-  heal the attacker, relieve hunger, or grant consumption credit. If either
-  track reaches zero, the target becomes recoverable remains. A non-party
+  current condition. Actual Vitality removed debits a proportional amount from
+  the conserved Body Mass Ledger above the profile's viable residue; that mass
+  immediately relieves the participating chewer's hunger. Group Chew shares the
+  finite transfer by deterministic damage contribution. If either track reaches
+  zero, the target becomes recoverable remains. A non-party
   exploration survivor flees to an adjacent valid tile or becomes hostile and
   enters combat. Core does not create creature-piece inventory items.
 - `slurp` / `fragment`: applies vital damage to divisible or soft targets. The target can remain active, weakened, or depleted. Core should not create itemized fragments.

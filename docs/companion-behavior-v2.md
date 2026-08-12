@@ -75,6 +75,24 @@ The controller:
 Manual and autonomous actions therefore share the same reach, row, target,
 cost, multi-target, containment, and resolution mechanics.
 
+### Combat intent transaction
+
+Combat Agency V1 adds a bounded transaction before an autonomous
+companion commits. One candidate build supplies one primary preview and at most
+three stored alternatives. Repeated held-turn processing does not rerank. At
+most one player suggestion may select a stored alternative. The request reserves
+the player's next ordinary actionable turn whether the companion complies or
+refuses. Compliance is deterministic from the companion's saved Bond projection
+and departure from their own stored ranking. At commit, only the requested
+choice or original primary and one bounded stale fallback are checked. Exactly
+one choice then enters the existing resolver.
+
+The callback, preview, and live transaction references are transient. Saves
+retain the unspent round, queue index, unit identities, Companion Bond ledger,
+and plain-data player-turn reservation, then rebuild the same deterministic turn
+after reload. The full contract is in
+[Combat Agency / Interruption V1 Decision](combat-agency-v1-decision.md).
+
 ## Recruitment continuity
 
 Recruitment stores a bounded snapshot containing method, source, initiator,
@@ -87,6 +105,13 @@ day, and hour. It seeds the initial Duty and Stance:
 This history does not permanently control the companion. Duty and Stance are
 free to change during alpha. Drop-off and rejoin preserve the selected
 behavior and recruitment history rather than reseeding them.
+
+Recruitment also seeds Companion Bond V1. Its bounded authored event ledger is
+separate from tactical preference: Bond may affect whether a companion accepts
+a player suggestion, while Duty and Stance continue to rank what the companion
+wants to do. Successful player-to-companion Feed, Talk, and Play can add
+deduplicated care events. Broader neglect, coercion, witnessed conduct,
+desertion, and hostility remain future authored event types.
 
 ## Persistence and migration
 
@@ -101,6 +126,14 @@ companionBehavior: {
   autonomyPaused,
   recruitmentContinuity
 }
+
+companionBond: {
+  version: 1,
+  nextSeq,
+  carriedWeight,
+  prunedCount,
+  events: [authoredEvent, ...] // maximum 48 live entries
+}
 ```
 
 Legacy `partyRole` and `aiOrder` values remain compatibility mirrors. Old
@@ -110,14 +143,16 @@ remain Manual, while newly recruited companions default to deterministic
 autonomy.
 
 Sparse and binary saves preserve Duty, Stance, Control, recruitment
-continuity, bounded traversal-reaction history, drop-off records, defeat
-stranding, per-companion autonomy pause, and containment through the normal
-unit serialization path.
+continuity, the bounded Bond ledger, bounded traversal-reaction history,
+drop-off records, defeat stranding, per-companion autonomy pause, and
+containment through the normal unit serialization path. Active combat saves
+also preserve a plain-data pending player-turn reservation; preview objects and
+callbacks remain transient.
 
 ## Deliberately deferred
 
 - evolving emotional state that silently changes behavior;
-- loyalty, authority, or service costs for changing behavior;
+- broader loyalty decay, authority, or service costs beyond Combat Agency V1;
 - free-form AI actions or provider-owned outcomes;
 - independent companion movement during ordinary party traversal;
 - automatic searching, looting, healing, or structure interaction.

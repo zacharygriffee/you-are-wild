@@ -154,9 +154,14 @@ const YAW_COMBAT_ACTIONS = {
 
     desktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {
         if (!app.combatState?.active) return '';
-        if (app.feedSelection?.active) return '';
+        const presentation = typeof YAW_COMBAT_PACING !== 'undefined'
+            ? YAW_COMBAT_PACING.presentationControls(app)
+            : '';
+        const wrap = content => `<div class="desktop-combat-composer" role="group" aria-label="${app._escapeHtml(app._label('combat.intentControls', 'Combat intent controls'))}">${presentation}${content || ''}</div>`;
+        if (app.feedSelection?.active) return presentation ? wrap('') : '';
         if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
-            return app._renderCombatPanelTray?.() || '';
+            const tray = app._renderCombatPanelTray?.() || '';
+            return presentation || tray ? wrap(tray) : '';
         }
         if (app.targetSelection?.source === 'combat') {
             const actionText = app._combatActionLabel?.(app.targetSelection.action || 'action') || app._uiLabel(app.targetSelection.action || 'action');
@@ -171,17 +176,24 @@ const YAW_COMBAT_ACTIONS = {
             const confirm = markedTargets.length
                 ? `<button class="action-btn primary" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="App.confirmCombatTargets(true)">${confirmLabel}</button>`
                 : '';
-            return `<div class="panel-interaction-tray combat-target-tray" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" role="region" aria-label="${label}"><div class="target-action-row" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${label}">${confirm}<button class="action-btn compact-secondary" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button></div></div>`;
+            return wrap(`<div class="panel-interaction-tray combat-target-tray" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" role="region" aria-label="${label}"><div class="target-action-row" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${label}">${confirm}<button class="action-btn compact-secondary" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button></div></div>`);
         }
         const label = app._escapeHtml(app._label('combat.intentControls', 'Combat intent controls'));
         const pendingGroupIntent = Boolean(app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent);
         if (pendingGroupIntent) {
             const confirm = app._combatPlanControls?.({ includeReset: false }) || '';
-            return confirm ? `<div class="desktop-combat-composer" role="group" aria-label="${label}">${confirm}</div>` : '';
+            return presentation || confirm ? `<div class="desktop-combat-composer" role="group" aria-label="${label}">${presentation}${confirm}</div>` : '';
         }
         const actions = this.actionButtons(app, actor, { source: 'desktop-composer' });
-        if (!actions) return '';
-        return `<div class="desktop-combat-composer" role="group" aria-label="${label}">${actions}</div>`;
+        if (!actions && !presentation) return '';
+        let controls = actions || presentation;
+        if (actions && presentation) {
+            const close = actions.lastIndexOf('</div>');
+            controls = close >= 0
+                ? `${actions.slice(0, close)}${presentation}${actions.slice(close)}`
+                : `${actions}${presentation}`;
+        }
+        return `<div class="desktop-combat-composer" role="group" aria-label="${label}">${controls}</div>`;
     },
 
     renderDesktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {

@@ -3754,7 +3754,7 @@ async function checkViewport(browser, name, width, height) {
       assert(!groupIntentPhase.buttonRects.some(button => button.text === 'Cancel Group'), `${name}: group intent phase should not insert a duplicate Cancel Group row`);
       assert.strictEqual(groupIntentPhase.phaseControlCount, 0, `${name}: group intent phase should keep the primary interaction grid in its stable slot`);
       assert.strictEqual(groupIntentPhase.actorExitLabel, 'Cancel group selection', `${name}: group intent phase should expose its canonical exit through the command sentence`);
-      assert(groupIntentPhase.beltScrollHeight <= groupIntentPhase.beltClientHeight + 1, `${name}: group intent phase should not require internal belt scrolling at 412x915`);
+      assert(groupIntentPhase.beltScrollHeight <= groupIntentPhase.beltClientHeight + 1, `${name}: group intent phase should not require internal belt scrolling at 412x915; got ${JSON.stringify({ scrollHeight: groupIntentPhase.beltScrollHeight, clientHeight: groupIntentPhase.beltClientHeight, controls: groupIntentPhase.buttonRects })}`);
       assert.strictEqual(groupIntentPhase.beltOverflowY, 'visible', `${name}: group intent phase should avoid a nested scroll belt`);
 
       const groupConfirmPhase = await page.evaluate(() => {
@@ -4160,7 +4160,7 @@ async function checkViewport(browser, name, width, height) {
     assert(desktopCombatSceneLayout.summary.bottom <= desktopCombatSceneLayout.center.bottom + 1, `${name}: desktop combat summary should fit visibly inside the battle center`);
     assert(desktopCombatSceneLayout.feedSlot.top >= desktopCombatSceneLayout.surface.bottom - 1, `${name}: desktop Scene Feed should sit below the combat stage`);
     assert(desktopCombatSceneLayout.feedSlot.top < desktopCombatSceneLayout.composer.top, `${name}: desktop Scene Feed should begin visibly above the combat composer`);
-    assert(desktopCombatSceneLayout.latestExchange.exists && desktopCombatSceneLayout.latestExchange.top < desktopCombatSceneLayout.composer.top, `${name}: newest desktop exchange should begin in the visible scene viewport`);
+    assert(desktopCombatSceneLayout.latestExchange.exists && desktopCombatSceneLayout.latestExchange.top < desktopCombatSceneLayout.composer.top, `${name}: newest desktop exchange should begin in the visible scene viewport; got ${JSON.stringify({ latestExchange: desktopCombatSceneLayout.latestExchange, composer: desktopCombatSceneLayout.composer, belt: desktopCombatSceneLayout.belt, buttons: desktopCombatSceneLayout.actionButtons })}`);
     assert(desktopCombatSceneLayout.composer.bottom <= desktopCombatSceneLayout.viewportHeight + 1, `${name}: desktop combat composer should stay inside the viewport`);
     assert(desktopCombatSceneLayout.actionButtons.length >= 5, `${name}: desktop combat composer should expose the primary action grid`);
     assert(desktopCombatSceneLayout.actionButtons.every(button => button.bottom <= desktopCombatSceneLayout.viewportHeight + 1 && button.width >= 58 && button.height >= 38), `${name}: desktop combat action buttons should remain visible and usable`);

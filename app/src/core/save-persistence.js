@@ -377,6 +377,7 @@ const YAW_SAVE_PERSISTENCE = {
             sceneExchangeId: app.combatState.sceneExchangeId || null,
             xpEarned: app.combatState.xpEarned || 0,
             activeActorId: unitRef(app.activeActor),
+            playerTurnReservation: this.serializableClone(app.combatState.playerTurnReservation || null, null),
             turnQueue: (app.combatState.turnQueue || []).map(entry => ({
                 unitId: unitRef(entry.unit),
                 initiative: entry.initiative || 0,
@@ -421,6 +422,7 @@ const YAW_SAVE_PERSISTENCE = {
         const partyAutonomyPaused = {};
         const partyPreferredRows = {};
         const partyRecruitmentContinuity = {};
+        const partyCompanionBonds = {};
         for (const unit of app.party || []) {
             const behavior = typeof YAW_COMPANION_BEHAVIOR !== 'undefined'
                 ? YAW_COMPANION_BEHAVIOR.get(app, unit)
@@ -436,6 +438,9 @@ const YAW_SAVE_PERSISTENCE = {
                 if (behavior?.preferredRow) partyPreferredRows[key] = behavior.preferredRow;
                 if (behavior?.recruitmentContinuity) {
                     partyRecruitmentContinuity[key] = this.serializableClone(behavior.recruitmentContinuity, null);
+                }
+                if (unit !== app.player && !unit?.mc && unit?.companionBond) {
+                    partyCompanionBonds[key] = this.serializableClone(unit.companionBond, null);
                 }
             }
         }
@@ -464,6 +469,7 @@ const YAW_SAVE_PERSISTENCE = {
             partyAutonomyPaused,
             partyPreferredRows,
             partyRecruitmentContinuity,
+            partyCompanionBonds,
             logEntries: this.serializableClone(app.log || [], []),
             explorationActorIds: this.serializableClone(app.explorationActorIds || [], []),
             explorationPartyTargetIds: this.serializableClone(app.explorationTargetIds || [], []),

@@ -126,6 +126,10 @@
       chest: unit.chest || null,
       bothParts: Boolean(unit.bothParts),
       creationOptions: unit.creationOptions && typeof unit.creationOptions === 'object' ? JSON.parse(JSON.stringify(unit.creationOptions)) : {},
+      bodyProfileKey: unit.bodyProfileKey || unit.bodyMass?.profile || null,
+      bodyMass: unit.bodyMass && typeof unit.bodyMass === 'object'
+        ? JSON.parse(JSON.stringify(unit.bodyMass))
+        : null,
       lifeStage: unit.lifeStage || unit.ageCategory || null,
       adultEligibility: unit.adultEligibility || null,
       adultEligible: typeof unit.adultEligible === 'boolean' ? unit.adultEligible : null,
@@ -299,6 +303,7 @@
     const partyAutonomyPaused = {};
     const partyPreferredRows = {};
     const partyRecruitmentContinuity = {};
+    const partyCompanionBonds = {};
     const partyUnitRefs = (appState.party || []).map(unit => ({
       id: unit?.id ? String(unit.id) : null,
       name: unit?.name || '',
@@ -319,6 +324,9 @@
         partyAutonomyPaused[key] = behavior.autonomyPaused === true;
         if (behavior.preferredRow) partyPreferredRows[key] = behavior.preferredRow;
         if (behavior.recruitmentContinuity) partyRecruitmentContinuity[key] = behavior.recruitmentContinuity;
+        if (unit !== appState.player && !unit?.mc && unit?.companionBond) {
+          partyCompanionBonds[key] = JSON.parse(JSON.stringify(unit.companionBond));
+        }
       }
     }
     const explorationActorIds = (appState.explorationActorIds || (appState.explorationActorId ? [appState.explorationActorId] : []))
@@ -337,6 +345,9 @@
       currentTurn: appState.combatState.currentTurn || 0,
       xpEarned: appState.combatState.xpEarned || 0,
       activeActorId: appState.activeActor ? unitRef(appState.activeActor) : null,
+      playerTurnReservation: appState.combatState.playerTurnReservation
+        ? JSON.parse(JSON.stringify(appState.combatState.playerTurnReservation))
+        : null,
       turnQueue: (appState.combatState.turnQueue || []).map(entry => ({
         unitId: unitRef(entry.unit),
         initiative: entry.initiative || 0,
@@ -402,6 +413,7 @@
         partyAutonomyPaused,
         partyPreferredRows,
         partyRecruitmentContinuity,
+        partyCompanionBonds,
         logEntries,
         explorationActorIds,
         explorationPartyTargetIds,

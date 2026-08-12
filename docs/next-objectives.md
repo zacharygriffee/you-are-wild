@@ -72,29 +72,21 @@ These reported gaps are accepted backlog items. They do not interrupt the
 active performance and visual-quality branch, and they require stable
 reproduction fixtures before gameplay code changes.
 
-1. **Audit Chew nourishment.** Chew currently spends the Feast hunger cost but
-   resolves as vitality and punishment damage with no automatic consumption
-   credit. Reproduce the reported hunger result for player and companion
-   actors, in single and group Chew, across hit, resisted, surviving, and
-   depleted-target outcomes. Decide whether actual mass removed should grant
-   bounded immediate nourishment, or whether Chew remains strictly an attack
-   and its cost, label, and feedback must make that clear. Any nourishment rule
-   must conserve food value so the same mass cannot feed the chewer once and
-   then grant full value again through later containment or digestion.
-2. **Design Combat Agency / Interruption V1.** Preserve the deterministic turn
-   queue, but do not leave the player without meaningful agency while automatic
-   combat events advance. Separate and specify:
-   - an always-available presentation pause or hold control;
-   - an out-of-turn emergency attempt to flee or stop party automation, with an
-     explicit cost, cooldown, or reservation against future player action;
-   - a pre-commit companion-intent preview such as "A party member is about to
-     do X," followed by a bounded opportunity to *try* to redirect or stop it;
-   - deterministic companion compliance or refusal based on authored state,
-     with every refusal or unavailable response narrated rather than surfaced
-     as a warning or error; and
-   - a separate priority contract for true instant or reaction actions, rather
-     than treating the existing readable, fast, and instant presentation modes
-     as mechanical priority.
+1. **Validate Chew nourishment.** The player selected bounded immediate
+   nourishment from actual body mass removed. The test-first integration and
+   exact fixture boundary are recorded in
+   [Gameplay Issues Reproduction](gameplay-issues-reproduction.md): Chew uses
+   the existing procedural, moddable, saved Body Mass Ledger and nourishes only
+   the actual participating chewers. Mass-driven global Vitality or Punishment
+   scaling remains a separate balance decision rather than an implicit part of
+   this fix.
+2. **Validate Combat Agency / Interruption V1.** The implemented contract now
+   provides shared Pause/Resume presentation, one companion intent preview,
+   one suggestion from stored legal alternatives, deterministic Bond-based
+   compliance/refusal, and a saved reservation that consumes the player's next
+   ordinary actionable turn. Keep true reaction priority, emergency player
+   Flee, loyalty decay, neglect, witnessed conduct, desertion, and hostility as
+   later explicit contracts rather than widening this V1 implicitly.
 3. **Audit unexplained companion flight and its narrative continuity.**
    Reproduce the reported combat in which Harpy appears in the opening turn
    order, then a later group Talk attempt reports that Harpy has fled even

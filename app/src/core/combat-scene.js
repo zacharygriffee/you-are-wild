@@ -134,6 +134,7 @@ const YAW_COMBAT_SCENE = {
         const description = this.turnDescription(app, actor);
         const pendingGroups = this.pendingGroupEntries(app);
         const selectedIntent = this.selectedIntentEntry(app, actor);
+        const companionIntentPreview = app.combatState?.companionIntentPreview || null;
         const turnOrder = this.turnOrderEntry(app, actor);
         const turnOrderLabel = app._label('combat.exchange.turnOrder', 'Turn order');
         const selectedIntentHtml = selectedIntent
@@ -142,10 +143,14 @@ const YAW_COMBAT_SCENE = {
         const pendingHtml = pendingGroups.length
             ? `<div class="combat-pending-groups" aria-label="${app._escapeHtml(app._label('combat.exchange.pendingTitle', 'Queued groups'))}"><div class="combat-exchange-title">${app._escapeHtml(app._label('combat.exchange.pendingTitle', 'Queued groups'))}</div>${pendingGroups.map(entry => `<div class="combat-pending-group"><span class="combat-exchange-intent">${app._escapeHtml(entry.action)}</span><span class="combat-exchange-text">${app._escapeHtml(entry.text)}</span></div>`).join('')}</div>`
             : '';
+        const companionIntentHtml = companionIntentPreview
+            ? `<div class="combat-intent-preview desktop-combat-intent-preview" data-command-preview="companion-intent"><div class="combat-intent-announcement" role="status" aria-live="polite"><div class="combat-exchange-title">${app._escapeHtml(app._label('combat.agency.intentTitle', 'Companion intent'))}</div><strong>${app._escapeHtml(companionIntentPreview.text)}</strong><span>${app._escapeHtml(companionIntentPreview.reason)}</span><small>${app._escapeHtml(app._label('combat.agency.intentUncommitted', 'Preview only — no action has committed yet.'))}</small></div>${YAW_COMPANION_BEHAVIOR.interventionControls(app)}</div>`
+            : '';
         return `<section class="combat-scene-summary" aria-label="${app._escapeHtml(app._label('combat.exchange.summary', 'Combat summary'))}">`
             + `<div class="combat-current-turn"><span>${app._escapeHtml(status)}</span><strong>${app._escapeHtml(actor?.name || app._label('ui.combat', 'Combat'))}</strong></div>`
             + `<div class="combat-turn-order" aria-label="${app._escapeHtml(turnOrderLabel)}"><div class="combat-exchange-title">${app._escapeHtml(turnOrderLabel)}</div><div class="combat-turn-order-row"><span>${app._escapeHtml(app._label('combat.exchange.currentActor', 'Current'))}</span><strong>${app._escapeHtml(turnOrder.currentName)}</strong></div><div class="combat-turn-order-row"><span>${app._escapeHtml(app._label('combat.exchange.nextActor', 'Next'))}</span><strong>${app._escapeHtml(turnOrder.nextName)}</strong></div></div>`
             + `<p>${app._escapeHtml(description)}</p>`
+            + companionIntentHtml
             + selectedIntentHtml
             + pendingHtml
             + `</section>`;

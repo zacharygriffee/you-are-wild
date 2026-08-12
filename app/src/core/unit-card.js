@@ -169,6 +169,20 @@ const YAW_UNIT_CARD = {
             `${app._label('capacity.balls', 'Reserve')}: ${app._containerSummary(unit, 'balls')}`
         ].join(' | ');
         const equipmentSummary = app._equipmentCompactSummary(unit);
+        const bodyMass = unit.bodyMass || null;
+        const bodyProfile = bodyMass && typeof YAW_BODY_MASS !== 'undefined'
+            ? YAW_BODY_MASS.profileFor(app, unit)
+            : null;
+        const chewAvailable = bodyMass && bodyProfile
+            ? Math.max(0, Number(bodyMass.current || 0) - Math.ceil(Number(bodyMass.maximum || 0) * bodyProfile.minimumViablePercent / 100))
+            : 0;
+        const bodyMassSummary = bodyMass
+            ? app._label('unit.bodyMassSummary', 'Body Mass: {current}/{maximum} · Chew nourishment: {available}', {
+                current: bodyMass.current,
+                maximum: bodyMass.maximum,
+                available: chewAvailable
+            })
+            : '';
         const rowLabel = app.combatState.active && unit.combatRow ? ` ${app._label('combat.row', 'Row')}:${app._combatRowLabel(unit.combatRow)}` : '';
         const turnBadge = app._turnOrderBadge(unit);
         const combatStatus = app._srOnly(app._combatStatusText(unit), 'role="status" aria-live="polite"');
@@ -207,6 +221,7 @@ const YAW_UNIT_CARD = {
                     ${isExpanded ? `<div class="unit-details">
                         <div style="display:grid;grid-template-columns:1fr;gap:8px;font-size:12px;">
                             <div style="color:${hasContained ? 'var(--accent-warning)' : 'var(--text-muted)'}">${capacitySummary}</div>
+                            ${bodyMassSummary ? `<div class="unit-body-mass" style="color:var(--text-muted)">${app._escapeHtml(bodyMassSummary)}</div>` : ''}
                             ${containmentDetail ? `<div class="unit-containment-detail" style="color:var(--accent-warning)">${app._escapeHtml(containmentDetail)}</div>` : ''}
                             <div style="color:var(--text-muted)"><span style="color:var(--text-primary)">${statLabels.equipment}:</span><br>${equipmentSummary}</div>
                         </div>

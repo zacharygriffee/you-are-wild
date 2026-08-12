@@ -8299,6 +8299,77 @@ test('Binary save export excludes local content acknowledgement and provider cre
   assertNotContains(JSON.stringify(loaded), sensitiveValues.contentAccess.schema, 'Decoded save should contain no content-access record');
 });
 
+test('Combat Agency V1 saves the unspent turn without serializing presentation callbacks or previews', () => {
+  const Binary = loadBinaryForTest();
+  const player = makeSerializableUnit('You', { id: 'player-agency-save' });
+  const ally = makeSerializableUnit('Ally', {
+    id: 'ally-agency-save',
+    companionBond: {
+      version: 1,
+      nextSeq: 3,
+      carriedWeight: 0,
+      prunedCount: 0,
+      events: [
+        { seq: 1, type: 'recruitment.bonded', weight: 26, day: 1, hour: 8, source: 'recruitment', by: 'player-agency-save', requestKey: null, dedupeKey: 'recruitment:bonded' },
+        { seq: 2, type: 'care.feed', weight: 3, day: 2, hour: 12, source: 'combat-resolution', by: 'player-agency-save', requestKey: null, dedupeKey: '2:care.feed:ally-agency-save' }
+      ]
+    }
+  });
+  const enemy = makeSerializableUnit('Enemy', { id: 'enemy-agency-save', disposition: 'enemy' });
+  const loaded = Binary.loadGame(Binary.saveGame({
+    player,
+    party: [player, ally],
+    creatures: [enemy],
+    location: { x: 0, y: 0 },
+    currentBiome: 'forest',
+    activeActor: ally,
+    combatState: {
+      active: true,
+      round: 3,
+      currentTurn: 1,
+      turnQueue: [
+        { unit: player, initiative: 20, actedThisRound: true },
+        { unit: ally, initiative: 15, actedThisRound: false },
+        { unit: enemy, initiative: 10, actedThisRound: false }
+      ],
+      syncActions: [],
+      presentationHeld: true,
+      presentationPending: true,
+      presentationCallback: () => 'must-not-serialize',
+      presentationText: 'must-not-serialize',
+      companionIntentPreview: { actorId: ally.id, action: 'fight', text: 'must-not-serialize' },
+      companionIntentTransaction: { actor: ally, primary: { action: 'fight' }, text: 'must-not-serialize' },
+      playerTurnReservation: {
+        version: 1,
+        status: 'reserved',
+        playerId: player.id,
+        companionId: ally.id,
+        companionName: ally.name,
+        sourceTurnKey: '3:1:ally-agency-save',
+        requestKey: 'flirt::enemy-agency-save',
+        requestedAction: 'flirt',
+        requestedTargetId: enemy.id,
+        requestedTargetName: enemy.name,
+        complied: true,
+        createdRound: 3,
+        createdTurn: 1
+      }
+    }
+  }));
+  const savedCombat = loaded.questState.combatState;
+  assertEqual(savedCombat.active, true, 'A held preview should still save an active encounter');
+  assertEqual(savedCombat.round, 3, 'The deterministic combat round should remain saved');
+  assertEqual(savedCombat.currentTurn, 1, 'The unspent companion turn should remain authoritative on reload');
+  assertEqual(savedCombat.turnQueue[1].unitId, 'ally-agency-save', 'Reload should reconstruct the same current companion from stable identity');
+  assertEqual(savedCombat.playerTurnReservation.requestKey, 'flirt::enemy-agency-save', 'The unspent player-turn cost should survive a binary save');
+  assertEqual(loaded.questState.partyCompanionBonds['ally-agency-save'].events[1].type, 'care.feed', 'The companion authored Bond ledger should survive a binary save');
+  assertEqual(Object.hasOwn(savedCombat, 'presentationHeld'), false, 'Presentation hold should remain transient');
+  assertEqual(Object.hasOwn(savedCombat, 'presentationCallback'), false, 'Executable presentation callbacks must never enter save data');
+  assertEqual(Object.hasOwn(savedCombat, 'companionIntentPreview'), false, 'The deterministic preview should be rebuilt instead of persisted');
+  assertEqual(Object.hasOwn(savedCombat, 'companionIntentTransaction'), false, 'The finite intent transaction should be rebuilt from the unspent queue turn');
+  assertNotContains(JSON.stringify(loaded), 'must-not-serialize', 'No presentation-only sentinel should enter exported save state');
+});
+
 test('Binary save uses live top-level stats when nested stats are stale', () => {
   const Binary = loadBinaryForTest();
   const player = makeSerializableUnit('You', {
@@ -8380,6 +8451,43 @@ test('Binary save compatibility metadata preserves multi-action practice and mod
   assertEqual(loaded.questState.playerCompatibility.combatStatus.terror.turns, 2, 'Binary compatibility metadata should preserve the player terror state outside the fixed legacy unit codec');
   assertEqual(loaded.questState.partyCompatibility[0].combatStatus.terror.by, 'Harpy', 'Party compatibility metadata should preserve causal terror provenance for combat restore');
   assertEqual(loaded.questState.partyResourceLedgers[0]['test-provider:ember'].current, 2, 'Binary compatibility metadata should preserve namespaced unit resource state outside the fixed legacy unit codec');
+});
+
+test('Binary save compatibility preserves conserved party body mass and Chew transactions', () => {
+  const Binary = loadBinaryForTest();
+  const player = makeSerializableUnit('You', {
+    id: 'body-mass-save-player',
+    size: 4,
+    bodyProfileKey: 'core:standard',
+    bodyMass: {
+      version: 1,
+      profile: 'core:standard',
+      maximum: 100,
+      current: 72,
+      regrowthProgress: 0,
+      transactions: [{
+        schema: 'yaw-body-mass-transaction-v1',
+        version: 1,
+        commitId: 'body-mass-save-player:0:8:1:chew-nourishment',
+        unitId: 'body-mass-save-player',
+        kind: 'chew',
+        amount: 28,
+        before: 100,
+        after: 72,
+        reason: 'chew-nourishment',
+        sourceId: 'chewer'
+      }]
+    }
+  });
+  const loaded = Binary.loadGame(Binary.saveGame({
+    player,
+    party: [player],
+    location: { x: 0, y: 0 },
+    currentBiome: 'forest'
+  }));
+
+  assertEqual(loaded.questState.partyCompatibility[0].bodyMass.current, 72, 'Save metadata should preserve the remaining conserved party mass');
+  assertEqual(loaded.questState.partyCompatibility[0].bodyMass.transactions[0].reason, 'chew-nourishment', 'Save metadata should preserve the Chew mass history');
 });
 
 test('Binary save/load preserves full world tile state', () => {
@@ -10223,8 +10331,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-control-belt {\n                order: 4;', 'mobile command belt should keep a stable layer after stage feedback');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 4;\n                position: fixed;', 'mobile combat action belt should stay reachable above the dock without being pushed by Scene Beats');
   assertContains(template, 'max-height: min(268px, 40dvh);\n                overflow-y: visible;', 'mobile combat action belt should reserve enough zero-scroll height for the primary intent grid');
-  assertContains(mobileCombatToolbeltContent, "if (app.targetSelection?.source === 'combat') return '';", 'mobile combat should hide the full intent grid during target confirmation phases');
-  assertContains(mobileCombatToolbeltContent, 'if (app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent) return \'\';', 'mobile combat should hide the full intent grid once a group intent is pending');
+  assertContains(mobileCombatToolbeltContent, "app.targetSelection?.source !== 'combat'", 'mobile combat should hide action intents during target confirmation while retaining presentation control');
+  assertContains(mobileCombatToolbeltContent, '!(app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent)', 'mobile combat should hide action intents once a group intent is pending while retaining presentation control');
+  assertContains(mobileCombatToolbeltContent, 'presentationControls(app, { compact: true, bare: true })', 'mobile combat should keep the finger-sized presentation hold in the compact intent grid');
   assertContains(mobileCombatToolbeltContent, "if (!app.combatPlanSelection.pendingIntent) return '';", 'mobile combat should not insert a duplicate group-cancel row before the intent grid');
   assertContains(mobileCombatToolbeltContent, 'app._combatPlanControls?.({ includeReset: false })', 'mobile group confirmation should rely on the command-sentence actor exit instead of a duplicate cancel button');
   assertContains(template, '.mobile-location-actions', 'mobile location actions should have bounded control-belt styling');
@@ -12321,6 +12430,10 @@ test('Body Mass Ledger V1 conserves pieces regrowth and corpse consumption witho
   assertEqual(unit.bodyMass.current, 108, 'Regrowth should wait for the authored interval');
   mass.tick(app, unit, 'digestion', 1);
   assertEqual(unit.bodyMass.current, 111, 'Renewable regrowth should credit only the authored amount');
+  const nourishment = mass.consume(app, unit, 100, { reason: 'fixture-chew' });
+  assertEqual(nourishment.amount, 87, 'Consumption should debit only mass above the authored viable floor');
+  assertEqual(unit.bodyMass.current, 24, 'Consumption should preserve the profile minimum viable mass for recoverable remains');
+  assertEqual(unit.bodyMass.transactions.at(-1).reason, 'fixture-chew', 'Mass nourishment should retain an auditable deterministic transaction');
   const corpse = { ...unit, kind: 'remains', size: 4 };
   mass.toCorpse(app, corpse);
   const transfer = mass.consumeCorpse(corpse, 1, 4);
@@ -13629,6 +13742,508 @@ test('Combat Event Pacing V1 follows bounded reading speed and supports explicit
   pacing.advance(app, () => { advanced++; });
   assertEqual(advanced, 2, 'Instant pacing should advance without a timer');
   assertEqual(pacing.delayMs(app, 'anything', { instant: true }), 0, 'An explicitly instant presentation should bypass delay regardless of reading speed');
+});
+
+test('Combat Agency V1 presentation hold retains one automatic continuation across pacing modes', () => {
+  const scheduled = [];
+  const cleared = [];
+  const pacing = new Function(
+    'window',
+    'setTimeout',
+    'clearTimeout',
+    `${combatPacingContent}\nreturn YAW_COMBAT_PACING;`
+  )({}, (callback, delay) => {
+    const timer = scheduled.length + 1;
+    scheduled.push({ callback, delay, timer });
+    return timer;
+  }, timer => cleared.push(timer));
+  const app = {
+    settings: { combatPacing: 'readable', combatReadSpeed: 20 },
+    log: [{ text: 'A companion prepares a deterministic action.' }],
+    combatState: { active: true },
+    renderDesktopCombatComposer() {},
+    renderMobileCombatToolbelt() {}
+  };
+  let advanced = 0;
+
+  pacing.advance(app, () => { advanced++; });
+  assertEqual(app.combatState.presentationPending, true, 'A readable automatic continuation should be pending');
+  assertEqual(pacing.hold(app), true, 'Presentation hold should activate during combat');
+  assertEqual(app.combatState.presentationHeld, true, 'Held state should be visible to both combat surfaces');
+  assertEqual(cleared[0], 1, 'Holding should cancel the active timer without dropping its continuation');
+  scheduled[0].callback();
+  assertEqual(advanced, 0, 'A cleared timer firing late must not commit the automatic continuation');
+
+  assertEqual(pacing.resume(app), true, 'Resume should release the presentation hold');
+  assertEqual(scheduled.length, 2, 'Readable resume should schedule the retained continuation once');
+  scheduled[1].callback();
+  assertEqual(advanced, 1, 'The retained continuation should commit exactly once after resume');
+  scheduled[1].callback();
+  assertEqual(advanced, 1, 'A completed timer callback must be idempotent');
+
+  app.settings.combatPacing = 'instant';
+  assertEqual(pacing.hold(app), true, 'Presentation can be held proactively before an instant automatic event');
+  pacing.advance(app, () => { advanced++; });
+  assertEqual(advanced, 1, 'Instant pacing must still respect an already-active presentation hold');
+  assertEqual(app.combatState.presentationPending, true, 'The instant continuation should remain pending while held');
+  assertEqual(pacing.resume(app), true, 'Instant presentation should resume explicitly');
+  assertEqual(advanced, 2, 'Instant resume should commit the retained continuation exactly once');
+  assertEqual(app.combatState.presentationPending, false, 'Resume should clear the completed pending continuation');
+
+  pacing.hold(app);
+  pacing.cancel(app);
+  assertEqual(app.combatState.presentationHeld, false, 'Combat teardown should clear transient presentation hold state');
+  assertEqual(app.combatState.presentationPending, false, 'Combat teardown should clear transient continuations');
+});
+
+test('Combat Agency V1 rejects a stale timer after combat state is replaced even when tokens collide', () => {
+  const scheduled = [];
+  const pacing = new Function(
+    'window',
+    'setTimeout',
+    'clearTimeout',
+    `${combatPacingContent}\nreturn YAW_COMBAT_PACING;`
+  )({}, callback => {
+    scheduled.push(callback);
+    return scheduled.length;
+  }, () => {});
+  const app = {
+    settings: { combatPacing: 'readable', combatReadSpeed: 20 },
+    combatState: { active: true },
+    renderDesktopCombatComposer() {},
+    renderMobileCombatToolbelt() {}
+  };
+  let oldCommits = 0;
+  let restoredCommits = 0;
+
+  pacing.schedule(app, () => { oldCommits++; }, 'Old companion intent');
+  const oldTimer = scheduled[0];
+  app.combatState = { active: true };
+  pacing.schedule(app, () => { restoredCommits++; }, 'Restored companion intent');
+  assertEqual(app.combatState.presentationToken, 1, 'The restored state should reproduce the old numeric timer token for the collision fixture');
+
+  oldTimer();
+  assertEqual(oldCommits, 0, 'A timer owned by the replaced combat state must not commit');
+  assertEqual(restoredCommits, 0, 'A stale timer must not steal the restored state continuation despite a matching token');
+  assertEqual(app.combatState.presentationPending, true, 'The restored continuation should remain pending after the stale timer');
+
+  scheduled[1]();
+  assertEqual(restoredCommits, 1, 'The timer owned by the restored combat state should commit exactly once');
+});
+
+test('Combat Agency V1 exposes shared hold controls and a deterministic companion intent preview', () => {
+  assertContains(combatPacingContent, 'presentationControls(app', 'Combat pacing should own one shared presentation-control contract');
+  assertContains(combatActionsContent, 'YAW_COMBAT_PACING.presentationControls(app', 'Desktop combat should expose the shared presentation control');
+  assertContains(mobileCombatToolbeltContent, 'YAW_COMBAT_PACING.presentationControls(app', 'Mobile combat should expose the shared presentation control');
+  assertContains(companionBehaviorContent, 'intentPreview(app, ally, result', 'Companion autonomy should create an intent preview from its already-ranked choice');
+  assertContains(companionBehaviorContent, 'YAW_COMBAT_PACING.schedule(app', 'Companion intent preview should use presentation pacing without reranking the choice');
+  assertContains(companionBehaviorContent, 'return this.executeChoice(app, ally, result);', 'Intent continuation should resolve through the existing companion execution path');
+  assertContains(combatSceneContent, 'companionIntentPreview', 'The desktop combat summary should render the transient companion intent preview');
+  assertContains(mobileCombatToolbeltContent, 'companionIntentPreview', 'The mobile toolbelt should render the same transient companion intent preview');
+  assertContains(combatSceneContent, 'interventionControls(app)', 'The desktop preview should expose the shared bounded intervention controls');
+  assertContains(mobileCombatToolbeltContent, 'interventionControls(app, { compact: true })', 'The mobile preview should expose the same bounded intervention controls');
+  assertContains(savePersistenceContent, 'partyCompanionBonds', 'Sparse saves should persist the authored Companion Bond ledger');
+  assertContains(combatSaveStateContent, 'playerTurnReservation', 'Combat restore should preserve an unspent intervention cost');
+});
+
+test('Companion Bond V1 migrates deterministically, excludes the player, and keeps authored event weights', () => {
+  const services = new Function(
+    'window',
+    'setTimeout',
+    'clearTimeout',
+    `${combatPacingContent}\n${companionBehaviorContent}\nreturn { behavior: YAW_COMPANION_BEHAVIOR };`
+  )({}, () => 1, () => {});
+  const player = { id: 'player', name: 'You', mc: true, CPun: 100, MPun: 100 };
+  const legacy = { id: 'legacy', name: 'Legacy', CPun: 50, MPun: 100, CPle: 10, MPle: 100 };
+  const submitted = {
+    id: 'submitted', name: 'Submitted', CPun: 50, MPun: 100, CPle: 10, MPle: 100,
+    companionBehavior: { recruitmentContinuity: { kind: 'submitted', day: 2, source: 'fixture' } },
+    companionBond: { events: [{ seq: 1, type: 'care.feed', weight: 999, day: 2 }] }
+  };
+  const dirty = [];
+  const app = {
+    player,
+    party: [player, legacy, submitted],
+    dayCount: 4,
+    timeHour: 12,
+    _unitSelectionId(unit) { return unit.id; },
+    markAutoSaveDirty(domains, reason) { dirty.push({ domains, reason }); }
+  };
+
+  player.companionBond = { events: [{ type: 'care.feed' }] };
+  assertEqual(services.behavior.normalizeBond(app, player), null, 'The player character must never receive a companion Bond ledger');
+  assertEqual(Object.hasOwn(player, 'companionBond'), false, 'Normalization should remove stray companion-only Bond state from the player');
+  assertEqual(services.behavior.bondProjection(app, legacy).score, 16, 'An old save should receive the stable legacy recruitment seed');
+  const submittedProjection = services.behavior.bondProjection(app, submitted);
+  assertEqual(submittedProjection.score, 3, 'Loaded event weights must be taken from authored definitions, not tampered save values');
+  assertEqual(submitted.companionBond.events[0].weight, 3, 'Normalization should overwrite a saved event weight with its authored value');
+
+  const before = { CPun: 50, CPle: 10 };
+  submitted.CPun = 60;
+  const firstCare = services.behavior.recordCareFromInteraction(app, { actor: player, target: submitted, action: 'feed', before });
+  const duplicateCare = services.behavior.recordCareFromInteraction(app, { actor: player, target: submitted, action: 'feed', before });
+  assert(firstCare, 'A successful player care action should author one Bond event');
+  assertEqual(duplicateCare, null, 'Repeated same-day care should not farm duplicate Bond events');
+  assert(dirty.some(entry => entry.reason === 'companion-bond:care.feed'), 'A new Bond event should dirty the persisted party ledger');
+
+  for (let index = 0; index < 60; index++) {
+    services.behavior.recordBondEvent(app, legacy, 'care.talk', { dedupeKey: `bounded:${index}` });
+  }
+  assertEqual(legacy.companionBond.events.length, services.behavior.BOND_EVENT_LIMIT, 'The saved event ledger should remain strictly bounded');
+  assertEqual(legacy.companionBond.prunedCount, 13, 'Pruned authored events should remain represented by the carried projection');
+  assertEqual(services.behavior.bondProjection(app, legacy).score, 100, 'The derived Bond projection should remain bounded after pruning');
+});
+
+test('Combat Agency V1 deterministically accepts or refuses one suggestion and always reserves the player turn', () => {
+  const services = new Function(
+    'window',
+    'setTimeout',
+    'clearTimeout',
+    `${combatPacingContent}\n${companionBehaviorContent}\nreturn { behavior: YAW_COMPANION_BEHAVIOR };`
+  )({}, () => 1, () => {});
+  const makeFixture = kind => {
+    const player = { id: 'player', name: 'You', mc: true, CPun: 100, MPun: 100 };
+    const ally = {
+      id: 'ally', name: 'Ally', CPun: 100, MPun: 100, CPle: 0, MPle: 100,
+      companionBehavior: { version: 2, duty: 'scout', stance: 'balanced', control: 'deterministic', recruitmentContinuity: { kind } }
+    };
+    const enemy = { id: 'enemy', name: 'Enemy', CPun: 100, MPun: 100 };
+    const primary = { action: 'fight', target: enemy, score: 90, command: { action: 'fight', targets: [enemy] } };
+    const requested = { action: 'flirt', target: enemy, score: 88, command: { action: 'flirt', targets: [enemy] } };
+    const log = [];
+    const app = {
+      player,
+      party: [player, ally],
+      creatures: [enemy],
+      dayCount: 1,
+      timeHour: 10,
+      combatState: {
+        active: true,
+        round: 2,
+        currentTurn: 1,
+        presentationHeld: true,
+        turnQueue: [{ unit: player }, { unit: ally }],
+        companionIntentPreview: { turnKey: '2:1:ally', text: 'preview' },
+        companionIntentTransaction: {
+          version: 1,
+          turnKey: '2:1:ally',
+          actor: ally,
+          behavior: ally.companionBehavior,
+          primary,
+          alternatives: [requested],
+          interventionUsed: false,
+          status: 'pending'
+        }
+      },
+      _unitSelectionId(unit) { return unit.id; },
+      _label(_key, fallback, values = {}) { return fallback.replace(/\{(\w+)\}/g, (_match, key) => values[key] ?? `{${key}}`); },
+      _uiLabel(key) { return key; },
+      _pushLog(text, type, metadata) { log.push({ text, type, metadata }); },
+      emitSceneBeat() {},
+      markAutoSaveDirty() {},
+      autoSave() {},
+      renderLog() {},
+      renderCombatSceneForTurn() {},
+      renderDesktopCombatComposer() {},
+      renderMobileCombatToolbelt() {}
+    };
+    return { app, player, ally, requested, log };
+  };
+
+  const trusted = makeFixture('bonded');
+  const accepted = services.behavior.requestIntervention(trusted.app, 0);
+  assertEqual(accepted.complies, true, 'A trusted companion should accept the low-departure fixture request');
+  assertEqual(trusted.app.combatState.companionIntentTransaction.requestedChoice, trusted.requested, 'Acceptance should redirect the existing finite transaction without reranking');
+  assertEqual(trusted.app.combatState.playerTurnReservation.status, 'reserved', 'An accepted request should reserve the player next ordinary turn');
+  assertEqual(services.behavior.requestIntervention(trusted.app, 0), false, 'Only one request may enter a companion intent transaction');
+
+  const submitted = makeFixture('submitted');
+  const refused = services.behavior.requestIntervention(submitted.app, 0);
+  assertEqual(refused.complies, false, 'A low-Bond companion should refuse the same deterministic request');
+  assertEqual(submitted.app.combatState.companionIntentTransaction.requestedChoice, null, 'Refusal should preserve the companion original plan');
+  assertEqual(submitted.app.combatState.playerTurnReservation.status, 'reserved', 'A refused request must still reserve the player next ordinary turn');
+  assert(submitted.log.some(entry => entry.metadata?.phase === 'companion-refusal'), 'Refusal should produce explicit player-facing causal narration');
+
+  const replay = makeFixture('submitted');
+  const replayed = services.behavior.requestIntervention(replay.app, 0);
+  assertEqual(replayed.complies, refused.complies, 'Identical Bond and ranking state should produce the same outcome without RNG or clocks');
+  assertEqual(replayed.difficulty, refused.difficulty, 'Identical preference departure should reproduce the same authored difficulty');
+
+  submitted.app.combatState.companionIntentTransaction = {
+    ...submitted.app.combatState.companionIntentTransaction,
+    actor: submitted.player,
+    interventionUsed: false,
+    status: 'pending'
+  };
+  assertEqual(services.behavior.interventionControls(submitted.app), '', 'A stale player-authored transaction must never expose companion-only suggestion controls');
+});
+
+test('Combat Agency V1 reload reconstruction preserves accepted intent and consumes exactly one ordinary player turn', () => {
+  const services = new Function(
+    'window',
+    'setTimeout',
+    'clearTimeout',
+    `${combatPacingContent}\n${companionBehaviorContent}\nreturn { behavior: YAW_COMPANION_BEHAVIOR };`
+  )({}, () => 1, () => {});
+  const player = { id: 'player', name: 'You', mc: true, CPun: 100, MPun: 100 };
+  const ally = { id: 'ally', name: 'Ally', CPun: 100, MPun: 100, companionBehavior: { recruitmentContinuity: { kind: 'bonded' } } };
+  const enemy = { id: 'enemy', name: 'Enemy', CPun: 100, MPun: 100 };
+  const requested = { action: 'flirt', target: enemy, score: 50, command: { action: 'flirt', targets: [enemy] } };
+  const requestKey = 'flirt::enemy';
+  let turns = 0;
+  const app = {
+    player,
+    party: [player, ally],
+    combatState: {
+      active: true,
+      round: 3,
+      currentTurn: 1,
+      turnQueue: [{ unit: player }, { unit: ally }],
+      playerTurnReservation: {
+        version: 1, status: 'reserved', playerId: 'player', companionId: 'ally', companionName: 'Ally',
+        sourceTurnKey: '3:1:ally', requestKey, complied: true
+      }
+    },
+    _unitSelectionId(unit) { return unit.id; },
+    _label(_key, fallback, values = {}) { return fallback.replace(/\{(\w+)\}/g, (_match, key) => values[key] ?? `{${key}}`); },
+    _uiLabel(key) { return key; },
+    _pushLog() {},
+    emitSceneBeat() {},
+    markAutoSaveDirty() {},
+    autoSave() {},
+    renderLog() {},
+    renderCombatSceneForTurn() {},
+    renderDesktopCombatComposer() {},
+    renderMobileCombatToolbelt() {},
+    nextTurn() { turns++; }
+  };
+  const transaction = services.behavior.beginIntentTransaction(app, ally, {
+    choice: { action: 'fight', target: enemy, score: 60, command: { action: 'fight', targets: [enemy] } },
+    rankedChoices: [
+      { action: 'fight', target: enemy, score: 60, command: { action: 'fight', targets: [enemy] } },
+      requested
+    ],
+    behavior: ally.companionBehavior
+  });
+  assertEqual(transaction.requestedChoice.action, 'flirt', 'Reload should rebuild an accepted request from stable choice identity');
+  assertEqual(transaction.interventionUsed, true, 'Reload should not permit a second request for the same companion turn');
+  assertEqual(services.behavior.consumePlayerTurnReservation(app, ally), false, 'The companion turn must never consume the player reservation');
+  assertEqual(services.behavior.consumePlayerTurnReservation(app, player), true, 'The next ordinary player turn should consume the reservation');
+  assertEqual(turns, 1, 'Reservation consumption should advance exactly one turn');
+  assertEqual(app.combatState.playerTurnReservation, null, 'The cost should clear only after that player turn is consumed');
+  assertEqual(services.behavior.consumePlayerTurnReservation(app, player), false, 'A consumed reservation must be idempotent');
+
+  app.combatState.currentTurn = 1;
+  app.combatState.companionIntentTransaction = null;
+  app.combatState.companionIntentPreview = null;
+  app.combatState.playerTurnReservation = {
+    version: 1, status: 'reserved', playerId: 'player', companionId: 'ally', companionName: 'Ally',
+    sourceTurnKey: '3:1:ally', requestKey: 'feast::enemy', complied: true
+  };
+  const staleTransaction = services.behavior.beginIntentTransaction(app, ally, {
+    choice: { action: 'fight', target: enemy, score: 60, command: { action: 'fight', targets: [enemy] } },
+    rankedChoices: [
+      { action: 'fight', target: enemy, score: 60, command: { action: 'fight', targets: [enemy] } },
+      requested
+    ],
+    behavior: ally.companionBehavior
+  });
+  assertEqual(staleTransaction.requestedChoiceMissing, true, 'Reload should detect when an accepted saved request is no longer among legal alternatives');
+  const stalePreview = services.behavior.intentPreview(app, ally, staleTransaction);
+  assertContains(stalePreview.reason, 'no longer legal', 'A stale accepted request should be explained before commitment instead of silently reverting');
+});
+
+test('Combat Agency V1 combat restore preserves only a valid companion-linked turn reservation', () => {
+  const service = new Function('window', `${combatSaveStateContent}\nreturn YAW_COMBAT_SAVE_STATE;`)({});
+  const player = { id: 'player', name: 'You', mc: true, CPun: 100 };
+  const ally = { id: 'ally', name: 'Ally', CPun: 100 };
+  const enemy = { id: 'enemy', name: 'Enemy', CPun: 100 };
+  const units = new Map([[player.id, player], [ally.id, ally], [enemy.id, enemy]]);
+  const app = {
+    player,
+    party: [player, ally],
+    creatures: [enemy],
+    cheats: {},
+    GAME_MODE: { NORMAL: 'normal', COMBAT: 'combat' },
+    _livingEnemies() { return [enemy]; },
+    _findUnitBySaveRef(ref) { return units.get(String(ref)) || null; },
+    _calcInitiative() { return 10; },
+    _normalizeExplorationSelections() {},
+    _sanitizeCombatState() {}
+  };
+  const savedCombat = {
+    active: true,
+    round: 4,
+    currentTurn: 1,
+    activeActorId: ally.id,
+    turnQueue: [
+      { unitId: player.id, initiative: 20, actedThisRound: true },
+      { unitId: ally.id, initiative: 15, actedThisRound: false },
+      { unitId: enemy.id, initiative: 10, actedThisRound: false }
+    ],
+    syncActions: [],
+    playerTurnReservation: {
+      version: 1,
+      status: 'reserved',
+      playerId: player.id,
+      companionId: ally.id,
+      companionName: ally.name,
+      sourceTurnKey: '4:1:ally',
+      requestKey: 'flirt::enemy',
+      requestedAction: 'flirt',
+      requestedTargetId: enemy.id,
+      requestedTargetName: enemy.name,
+      complied: true,
+      createdRound: 4,
+      createdTurn: 1
+    }
+  };
+
+  assertEqual(service.restoreCombatState(app, savedCombat), true, 'A live encounter fixture should restore');
+  assertEqual(app.combatState.playerTurnReservation.companionId, ally.id, 'A valid reservation should retain exact companion identity');
+  assertEqual(app.combatState.playerTurnReservation.complied, true, 'A valid reservation should retain the deterministic outcome');
+
+  service.restoreCombatState(app, {
+    ...savedCombat,
+    playerTurnReservation: { ...savedCombat.playerTurnReservation, companionId: 'missing' }
+  });
+  assertEqual(app.combatState.playerTurnReservation, null, 'A reservation for a missing companion should be discarded safely');
+
+  service.restoreCombatState(app, {
+    ...savedCombat,
+    playerTurnReservation: { ...savedCombat.playerTurnReservation, companionId: player.id }
+  });
+  assertEqual(app.combatState.playerTurnReservation, null, 'The player may not be restored as the companion subject of a request');
+});
+
+test('Combat Agency V1 holds a companion preview before committing the already-ranked choice', () => {
+  const services = new Function(
+    'window',
+    'setTimeout',
+    'clearTimeout',
+    `${combatPacingContent}\n${companionBehaviorContent}\nreturn { pacing: YAW_COMBAT_PACING, behavior: YAW_COMPANION_BEHAVIOR };`
+  )({}, () => { throw new Error('Instant held presentation should not create a timer'); }, () => {});
+  const player = { id: 'player', name: 'You', mc: true, CPun: 100, MPun: 100 };
+  const ally = {
+    id: 'ally', name: 'Ally', CPun: 100, MPun: 100, CPle: 0, MPle: 100, hunger: 0,
+    companionBehavior: { version: 2, duty: 'guard', stance: 'aggressive', control: 'deterministic', autonomyPaused: false }
+  };
+  const enemy = { id: 'enemy', name: 'Enemy', disposition: 'enemy', CPun: 100, MPun: 100, Figh: 8 };
+  const decisions = [];
+  const dispatched = [];
+  let validations = 0;
+  const app = {
+    player,
+    party: [player, ally],
+    creatures: [enemy],
+    DISPOSITION: { ENEMY: 'enemy' },
+    settings: { combatPacing: 'instant', combatReadSpeed: 32 },
+    combatState: { active: true, round: 2, currentTurn: 1, turnQueue: [{ unit: player }, { unit: ally }] },
+    _currentCombatActor() { return this.combatState.turnQueue[this.combatState.currentTurn]?.unit || null; },
+    _unitSelectionId(unit) { return unit?.id || unit?.name || ''; },
+    _buildPanelInteractionCommand(context) { return { ...context }; },
+    _validateInteractionCommand() { validations++; return { ok: true }; },
+    _dispatchInteractionCommand(command) { dispatched.push(command); return true; },
+    _canScavengeCorpse() { return false; },
+    _combatStateRoll() { return 0.5; },
+    _label(_key, fallback, values = {}) { return fallback.replace(/\{(\w+)\}/g, (_match, key) => values[key] ?? `{${key}}`); },
+    _uiLabel(key) { return key; },
+    _companionDutyLabel(key) { return key; },
+    _companionStanceLabel(key) { return key; },
+    _pushLog(text, type, metadata) { decisions.push({ text, type, metadata }); },
+    emitSceneBeat() {},
+    renderLog() {},
+    renderCombatSceneForTurn() {},
+    renderDesktopCombatComposer() {},
+    renderMobileCombatToolbelt() {}
+  };
+
+  services.pacing.hold(app);
+  assertEqual(services.behavior.takeTurn(app, ally), true, 'A held autonomous companion turn should create one pending transaction');
+  const preview = app.combatState.companionIntentPreview;
+  assertEqual(preview.actorId, 'ally', 'The preview should identify the exact current companion');
+  assertEqual(preview.action, 'fight', 'The preview should expose the already-ranked deterministic action');
+  assert(app.combatState.companionIntentTransaction, 'The preview should own one finite companion intent transaction');
+  assert(app.combatState.companionIntentTransaction.alternatives.length <= 3, 'The transaction should retain at most three pre-ranked alternatives');
+  assertEqual(dispatched.length, 0, 'Holding should prevent the previewed action from committing');
+  assertEqual(decisions.length, 0, 'A presentation preview should not masquerade as a committed decision beat');
+
+  const validationsAfterProposal = validations;
+  assertEqual(services.behavior.takeTurn(app, ally), true, 'Repeated turn processing should reuse the pending transaction');
+  assertEqual(dispatched.length, 0, 'Repeated processing while held must not duplicate the action');
+  assertEqual(validations, validationsAfterProposal, 'Repeated processing should not rebuild or rerank legal candidates');
+  services.pacing.resume(app);
+  assertEqual(app.combatState.companionIntentPreview, null, 'Resume should clear the transient preview at commitment');
+  assertEqual(app.combatState.companionIntentTransaction, null, 'Resume should close the finite transaction at commitment');
+  assertEqual(dispatched.length, 1, 'Resume should commit the stored companion choice exactly once');
+  assertEqual(decisions.filter(entry => entry.metadata?.phase === 'companion-decision').length, 1, 'The existing decision narration should be emitted exactly once at commitment');
+});
+
+test('Combat Agency V1 evaluates at most one pre-ranked fallback when a previewed choice becomes stale', () => {
+  const services = new Function(
+    'window',
+    'setTimeout',
+    'clearTimeout',
+    `${combatPacingContent}\n${companionBehaviorContent}\nreturn { pacing: YAW_COMBAT_PACING, behavior: YAW_COMPANION_BEHAVIOR };`
+  )({}, () => { throw new Error('Instant held presentation should not create a timer'); }, () => {});
+  const player = { id: 'player', name: 'You', mc: true, CPun: 100, MPun: 100 };
+  const ally = {
+    id: 'ally', name: 'Ally', CPun: 100, MPun: 100, CPle: 0, MPle: 100, hunger: 0,
+    companionBehavior: { version: 2, duty: 'guard', stance: 'aggressive', control: 'deterministic', autonomyPaused: false }
+  };
+  const enemy = { id: 'enemy', name: 'Enemy', disposition: 'enemy', CPun: 100, MPun: 100, Figh: 8 };
+  const dispatched = [];
+  const log = [];
+  let proposalComplete = false;
+  let commitValidations = 0;
+  let primaryAction = '';
+  const app = {
+    player,
+    party: [player, ally],
+    creatures: [enemy],
+    DISPOSITION: { ENEMY: 'enemy' },
+    settings: { combatPacing: 'instant', combatReadSpeed: 32 },
+    combatState: { active: true, round: 4, currentTurn: 1, turnQueue: [{ unit: player }, { unit: ally }] },
+    _currentCombatActor() { return this.combatState.turnQueue[this.combatState.currentTurn]?.unit || null; },
+    _unitSelectionId(unit) { return unit?.id || unit?.name || ''; },
+    _buildPanelInteractionCommand(context) { return { ...context }; },
+    _validateInteractionCommand(command) {
+      if (!proposalComplete) return { ok: true };
+      commitValidations++;
+      return command.action === primaryAction ? { ok: false, reason: 'stale-primary' } : { ok: true };
+    },
+    _dispatchInteractionCommand(command) { dispatched.push(command); return true; },
+    _canScavengeCorpse() { return false; },
+    _combatStateRoll() { return 0.5; },
+    _label(_key, fallback, values = {}) { return fallback.replace(/\{(\w+)\}/g, (_match, key) => values[key] ?? `{${key}}`); },
+    _uiLabel(key) { return key; },
+    _companionDutyLabel(key) { return key; },
+    _companionStanceLabel(key) { return key; },
+    _pushLog(text, type, metadata) { log.push({ text, type, metadata }); },
+    emitSceneBeat() {},
+    renderLog() {},
+    renderCombatSceneForTurn() {},
+    renderDesktopCombatComposer() {},
+    renderMobileCombatToolbelt() {},
+    nextTurn() { this._turns = (this._turns || 0) + 1; }
+  };
+
+  services.pacing.hold(app);
+  services.behavior.takeTurn(app, ally);
+  const transaction = app.combatState.companionIntentTransaction;
+  primaryAction = transaction.primary.action;
+  const expectedFallback = transaction.alternatives[0];
+  assert(expectedFallback, 'Fixture should retain one legal pre-ranked fallback');
+  assert(expectedFallback.action !== primaryAction, 'Fixture fallback should exercise a distinct action family');
+  proposalComplete = true;
+  services.pacing.resume(app);
+
+  assertEqual(commitValidations, 2, 'Commit should validate only the primary and one pre-ranked fallback');
+  assertEqual(dispatched.length, 1, 'A valid first fallback should commit exactly once');
+  assertEqual(dispatched[0].action, expectedFallback.action, 'Fallback commitment should use the stored ranking without a second candidate build');
+  assertEqual(app.combatState.lastCompanionIntentTransaction.fallbackEvaluated, true, 'Transaction evidence should record its single fallback evaluation');
+  assertEqual(app.combatState.lastCompanionIntentTransaction.committedAction, expectedFallback.action, 'Transaction evidence should identify the actual committed fallback');
+  assertEqual(log.filter(entry => entry.metadata?.phase === 'companion-fallback').length, 1, 'The stale primary should produce one causal fallback narration');
 });
 
 test('Module equipment uses existing slots bounded stats and declarative technique tags', () => {
@@ -17940,6 +18555,65 @@ test('New combat clears stale companion flight state before group actions', () =
   assertEqual(App.log.some(entry => String(entry?.text || '').includes('Harpy has fled')), false, 'New encounter should not falsely disclose that Harpy has fled');
 });
 
+test('Full-health Harpy flight requires an explicit causal status and remains consistent through save', () => {
+  const Binary = loadBinaryForTest();
+  const { App } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const player = makeUnit('You', { id: 'harpy-cause-player' });
+  const harpy = makeUnit('Harpy', {
+    id: 'harpy-cause-companion',
+    species: 'harpy',
+    CPun: 100,
+    MPun: 100,
+    disposition: App.DISPOSITION.PARTY,
+    flying: true
+  });
+  const enemy = makeUnit('Nightmare', { id: 'harpy-cause-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, harpy];
+  App.creatures = [enemy];
+  App.worldMeta = { seed: 'harpy-cause', generatorVersion: 7, mapModsHash: 'core' };
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), x: 0, y: 0, explored: true, creatures: [enemy], items: [] }]]);
+  App.explorationActorIds = [harpy.id];
+  App.explorationTargetIds = [`party:${harpy.id}`];
+  App.activeActor = harpy;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: harpy, initiative: 20 }, { unit: player, initiative: 10 }, { unit: enemy, initiative: 5 }],
+    syncActions: []
+  };
+  App.nextTurn = () => {};
+
+  assertEqual(App._isTimid(harpy), false, 'Harpy should not qualify for the outnumbered timid-flight gate');
+  assertEqual(App._attemptTimidAllyFlee(harpy), false, 'Full health and Harpy mobility alone should never create autonomous flight');
+  assertEqual(App.party.includes(harpy), true, 'A full-health Harpy should remain until an authored cause changes state');
+
+  App._applyFearStatus(harpy, { terror: true, turns: 1, by: enemy.name, source: 'fixture-explicit-terror' });
+  App.processTurn();
+
+  assertEqual(App.party.includes(harpy), false, 'Explicit Terror should remove only the affected companion from the active party');
+  assertEqual(App.combatState.turnQueue.some(entry => entry.unit === harpy), false, 'Flight should remove the companion from the authoritative turn queue');
+  assertEqual(App.explorationActorIds.includes(harpy.id), false, 'Flight should clear stale actor selection state');
+  assertEqual(App.explorationTargetIds.some(id => String(id).includes(harpy.id)), false, 'Flight should clear stale party-target selection state');
+  const destination = [...App.worldMap.values()].find(tile => (tile.creatures || []).includes(harpy));
+  assert(destination, 'The fled companion should remain recoverable on a deterministic safe adjacent tile');
+  assertEqual(harpy.lastFledAt.source, 'combat-terror', 'World placement should retain the exact authored flight source');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'breaks in terror and flees', 'The Activity Log should disclose the causal flight immediately');
+  assertContains((App.storyEvents || []).map(entry => entry.summary).join('\n'), 'breaks in terror and flees', 'The Scene Feed should disclose the causal flight immediately');
+
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  const savedHarpy = Object.values(loaded.worldMap)
+    .flatMap(tile => tile.creatures || [])
+    .find(unit => unit.id === harpy.id);
+  assert(savedHarpy, 'The fled companion world placement should survive the existing save format');
+  assertEqual(savedHarpy.lastFledAt.source, 'combat-terror', 'Save data should preserve the causal flight provenance');
+  assertEqual(loaded.party.some(unit => unit.name === harpy.name), false, 'Save data should not also duplicate the fled companion in the active party');
+});
+
 test('Timid ally combat flee is deterministic by combat state', () => {
   const buildCase = random => {
     const { App } = loadAppForCombat(random);
@@ -19528,6 +20202,58 @@ test('Chewing-enabled group feast applies vital damage without splitting pieces'
   assertEqual(App.party.includes(prey), true, 'Nonterminal vital-damage target should remain active');
   assert(prey.vitalRemaining < prey.vitalMax, 'Group chew should reduce prey vital integrity');
   assertContains(App.log[App.log.length - 1].text, 'chew into Prey', 'Group chew feast should log progressive vital and punishment damage');
+  assertContains(App.log[App.log.length - 1].text, 'body mass as nourishment', 'Group Chew should immediately disclose the conserved nourishment transfer');
+});
+
+test('Successful Chew nourishes each chewer from conserved target body mass', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Chewer', { id: 'chew-mass-actor', Feas: 30, hunger: 80, size: 4 });
+  const target = makeUnit('Prey', { id: 'chew-mass-target', size: 4, CPun: 100, MPun: 100, con: 0 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  App._combatActionRating = rating => rating;
+  App._combatDamageVariance = () => 0;
+  App._physicalDamageMultiplier = () => 1;
+  App._effectiveCon = () => 0;
+
+  const outcome = App._resolveChewAttack(actor, target, { mode: 'combat' });
+
+  assert(outcome.actualVitalDamage > 0, 'Chew fixture should remove actual Vitality');
+  assert(outcome.massConsumed > 0, 'Actual Vitality damage should remove bounded body mass');
+  assertEqual(target.bodyMass.maximum, target.size * 25, 'Default body mass should remain procedurally correlated with size');
+  assertEqual(target.bodyMass.current, target.bodyMass.maximum - outcome.massConsumed, 'Chew should debit the target conserved mass exactly once');
+  assertEqual(actor.hunger, 80 - outcome.hungerRelief, 'The actual chewer should receive the immediate hunger relief');
+  assertEqual(outcome.nourishmentParticipants[0].actor, actor, 'Nourishment must not redirect from the acting chewer to the player or another unit');
+  assertEqual(target.bodyMass.transactions.at(-1).reason, 'chew-nourishment', 'Chew should leave a deterministic mass transaction for save and history continuity');
+});
+
+test('Moddable body mass profiles change Chew nourishment without changing Chew damage', () => {
+  const { App, window } = loadAppForCombat(() => 0);
+  const denseProfile = window.YAW_BODY_MASS.register('fixture', 'dense-prey', {
+    massPerSize: 50,
+    minimumViablePercent: 25,
+    piecePercents: [10],
+    corpseYieldPercent: 100
+  });
+  const actor = makeUnit('Chewer', { id: 'chew-profile-actor', Feas: 20, hunger: 100, size: 4 });
+  const ordinary = makeUnit('Ordinary Prey', { id: 'chew-profile-ordinary', size: 4, CPun: 100, MPun: 100, con: 0 });
+  const dense = makeUnit('Dense Prey', { id: 'chew-profile-dense', size: 4, CPun: 100, MPun: 100, con: 0, bodyProfileKey: denseProfile.key });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [ordinary, dense];
+  App._combatActionRating = rating => rating;
+  App._combatDamageVariance = () => 0;
+  App._physicalDamageMultiplier = () => 1;
+  App._effectiveCon = () => 0;
+
+  const ordinaryOutcome = App._resolveChewAttack(actor, ordinary, { mode: 'combat' });
+  actor.hunger = 100;
+  const denseOutcome = App._resolveChewAttack(actor, dense, { mode: 'combat' });
+
+  assertEqual(denseOutcome.damage, ordinaryOutcome.damage, 'A body profile should not silently rebalance Vitality or punishment damage');
+  assertEqual(dense.bodyMass.maximum, ordinary.bodyMass.maximum * 2, 'Authored massPerSize should control available body mass at the same creature size');
+  assertEqual(denseOutcome.massConsumed, ordinaryOutcome.massConsumed * 2, 'The same proportional bite should communicate and grant the profile-authored nourishment');
 });
 
 test('Group feast respects explicit swallow sub-action when chewing is enabled', () => {
@@ -20665,8 +21391,9 @@ test('Many-to-many combat Chew resolves progressively with one cost and one prac
     assertEqual(vitalityDamage, punishmentDamage, 'Group Chew should preserve equal Vitality and punishment damage on every target');
     assertEqual(App._isCorpse(target), false, 'A progressive group Chew should leave a sufficiently healthy target standing');
   }
-  assertEqual(player.hunger, 12, 'Group Chew lead should pay the Feast cost once for the command');
-  assertEqual(ally.hunger, 22, 'Group Chew helper should pay the Feast cost once for the command');
+  assert(player.hunger < 12, 'Group Chew lead should pay one Feast cost and then receive their conserved nourishment share');
+  assert(ally.hunger < 22, 'Group Chew helper should pay one Feast cost and then receive their conserved nourishment share');
+  assert(first.bodyMass.current < first.bodyMass.maximum && second.bodyMass.current < second.bodyMass.maximum, 'Each damaged target should debit its own finite body mass ledger');
   assertEqual(player.multiActionPractice.multi.chew.commands, 1, 'Group Chew lead should train once across all targets');
   assertEqual(ally.multiActionPractice.multi.chew.commands, 1, 'Group Chew helper should train once across all targets');
   assertEqual(advanced, 1, 'Group Chew should advance exactly once after resolving all targets');
@@ -20807,7 +21534,8 @@ test('Mixed-reach group Chew narrates the blocked actor while a capable actor st
   assertContains(result, 'Eaglefolk chew into Harpy', 'The capable actor should receive the successful group outcome');
   assertNotContains(result, 'ZX, Eaglefolk chew into Harpy', 'The result should not credit the blocked actor with the successful Chew');
   assertEqual(player.hunger, 12, 'The blocked actor should still spend their committed Feast effort');
-  assertEqual(eaglefolk.hunger, 22, 'The capable actor should spend their committed Feast effort once');
+  assert(eaglefolk.hunger < 22, 'The capable actor should spend committed Feast effort once and receive the successful Chew nourishment');
+  assert(harpy.bodyMass.current < harpy.bodyMass.maximum, 'Only the successful Chew should debit target body mass');
   assertEqual(advanced, 1, 'The mixed group result should consume one coordinated resolution');
 });
 
@@ -27175,6 +27903,8 @@ test('Passive autonomous companions abandon Hold during an incapacitated-player 
   let advanced = 0;
   fixture.App.nextTurn = () => { advanced++; };
   fixture.App.allyTurn(fixture.ally);
+  assertContains(fixture.App.combatState.companionIntentPreview?.text || '', 'Passive Flyer intends to', 'Crisis autonomy should preview its chosen response before commitment');
+  assertEqual(drainScheduledCombat(fixture, 1), 1, 'Readable crisis autonomy should commit through one bounded intent continuation');
   const log = fixture.App.log.map(entry => entry.text).join('\n');
   assertContains(log, 'abandon their usual restraint', 'Crisis autonomy should narrate why a passive companion changes behavior');
   assertNotContains(log, 'Passive Flyer holds position.', 'A passive companion should not indefinitely Hold while the player is incapacitated and a useful action exists');
@@ -27270,6 +28000,9 @@ test('Restored autonomous stalemates receive a fresh bounded liveness guard', ()
   assertEqual(restored, true, 'The active autonomous encounter should restore');
   assertEqual(fixture.App.combatState.liveness.reason, 'combat-restored', 'Restore should initialize bounded liveness from the restored material state');
   assertEqual(fixture.App._resumeLoadedCombat(), true, 'Restored combat should resume through the authoritative processor');
+  assertEqual(fixture.App.combatState.presentationHeld, undefined, 'Reload should not restore presentation-only hold state');
+  assertEqual(fixture.App.combatState.companionIntentPreview?.actorId, fixture.ally.id, 'Reload should rebuild the current companion intent from the unspent queue turn');
+  assertEqual(fixture.App.combatState.companionIntentTransaction?.status, 'pending', 'Reload should rebuild one fresh finite transaction before commitment');
   const callbacks = drainScheduledCombat(fixture, 40);
   assert(callbacks < 40, 'Restored no-progress combat should resolve within the bounded callback guard');
   assertEqual(fixture.App.combatState.active, false, 'Restored autonomous stalemate should disengage instead of resuming forever');
@@ -36296,7 +37029,9 @@ test('Desktop panel lists default to compact tactical cards and preserve full de
   assertNotContains(partyHtml, 'data-command-control="set-companion-duty"', 'Expanded party cards should not duplicate Duty controls outside Holdings');
   assertNotContains(partyHtml, 'data-command-control="set-companion-stance"', 'Expanded party cards should not duplicate Stance controls outside Holdings');
   assertNotContains(partyHtml, 'data-command-control="set-companion-control"', 'Expanded party cards should not duplicate Control controls outside Holdings');
+  assertContains(partyHtml, 'Body Mass:', 'Expanded party cards should communicate conserved mass and available Chew nourishment');
   assertContains(creatureHtml, 'unit-card expanded', 'Expanded creature panel should restore full unit cards for details');
+  assertContains(creatureHtml, 'Chew nourishment:', 'Expanded creature cards should disclose the nourishment currently available to Chew');
 });
 
 test('Mobile party long-press menu exposes management actions', () => {

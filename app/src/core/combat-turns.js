@@ -169,10 +169,14 @@ const YAW_COMBAT_TURNS = {
             if (currentUnit.CPun <= 0) app._pushLog(app._label('combat.status.succumbsEnvelopment', '{name} succumbs to the envelopment!', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'status' });
             app.renderLog(); app.nextTurn(); return;
         }
+        if (currentUnit === app.player && YAW_COMPANION_BEHAVIOR.consumePlayerTurnReservation(app, currentUnit)) {
+            return;
+        }
         app.renderCombatSceneForTurn(currentUnit);
         app.renderParty();
         app.renderCreatures();
         app.renderMobileCombatToolbelt();
+        app.renderDesktopCombatComposer?.(currentUnit);
         app._writeCombatRefreshSnapshot();
         const isParty = app.party.includes(currentUnit);
         if (isParty && (currentUnit === app.player || companionControl === 'manual' || companionPaused)) {

@@ -554,6 +554,15 @@ async function runCompanionAutonomyButtonFlow(page) {
     glyph: getComputedStyle(element, '::before').content,
     cardWidth: element.closest('.micro-tactical-card')?.getBoundingClientRect().width || 0
   }));
+  const waitForGlyph = glyph => page.waitForFunction(
+    ({ selector, glyph: expectedGlyph }) => {
+      const element = document.querySelector(selector);
+      return Boolean(element && getComputedStyle(element, '::before').content.includes(expectedGlyph));
+    },
+    { selector: sceneSelector, glyph },
+    { timeout: 2000 }
+  );
+  await waitForGlyph('⏸');
   let state = await readState(button);
   assert.strictEqual(state.status, 'active', 'Active companion autonomy should expose active status');
   assert(state.glyph.includes('⏸'), `Active companion autonomy should render a Pause symbol (got ${state.glyph})`);
@@ -565,6 +574,7 @@ async function runCompanionAutonomyButtonFlow(page) {
   await button.click();
   await page.waitForSelector(`${sceneSelector}[data-autonomy-status="paused"]`);
   await page.waitForSelector(`${panelSelector}[data-autonomy-status="paused"]`);
+  await waitForGlyph('▶');
   state = await readState(button);
   assert(state.glyph.includes('▶'), `Paused companion autonomy should render a Play symbol (got ${state.glyph})`);
   panelState = await readState(panelButton);
@@ -587,6 +597,7 @@ async function runCompanionAutonomyButtonFlow(page) {
   await button.click();
   await page.waitForSelector(`${sceneSelector}[data-autonomy-status="active"]`);
   await page.waitForSelector(`${panelSelector}[data-autonomy-status="active"]`);
+  await waitForGlyph('⏸');
   state = await readState(button);
   assert(state.glyph.includes('⏸'), `Resumed companion autonomy should restore the Pause symbol (got ${state.glyph})`);
   panelState = await readState(panelButton);

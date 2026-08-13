@@ -858,17 +858,17 @@ test('Native provider profiles expose bounded edit and destructive removal flows
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.19.0', 'Release manifest should identify the current minor candidate');
-  assertEqual(releaseInfo.status, 'candidate', 'An unpublished release candidate must not identify itself as released');
-  assertEqual(releaseInfo.channel, 'development', 'An unpublished candidate should use the development channel');
-  assertEqual(Object.prototype.hasOwnProperty.call(releaseInfo, 'candidateFor'), false, 'The candidate should not introduce an undeclared target field');
-  assertEqual(releaseInfo.releasedAt, null, 'An unpublished candidate must not claim a release date');
+  assertEqual(releaseInfo.version, '0.19.0', 'Release manifest should identify the current minor release');
+  assertEqual(releaseInfo.status, 'released', 'The promoted release must identify itself as released');
+  assertEqual(releaseInfo.channel, 'alpha', 'The select-group release should use the alpha channel');
+  assertEqual(Object.prototype.hasOwnProperty.call(releaseInfo, 'candidateFor'), false, 'The release should not introduce an undeclared target field');
+  assertEqual(releaseInfo.releasedAt, '2026-08-13', 'The release must identify its operator-approved publication date');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Play or Pause autonomy control')), 'Release notes should describe per-companion autonomy control');
   assert(releaseInfo.notes.en.added.some(note => note.includes('Combat Agency V1')), 'Release notes should describe the bounded intent preview');
   assert(releaseInfo.notes.en.changed.some(note => note.includes('finite conserved body mass')), 'Release notes should describe finite-mass Chew nourishment');
   assert(releaseInfo.notes.en.fixed.some(note => note.includes('ground-only') && note.includes('legal attack path')), 'Release notes should describe reach-aware player flight');
-  assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('unpublished release candidate') && note.includes('0.18.3')), 'Release notes should preserve the published-versus-candidate boundary');
-  assert(releaseInfo.notes.es.added.some(note => note.includes('Combat Agency V1')), 'Spanish release notes should describe the same candidate boundary');
+  assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('select-group alpha') && note.includes('unadvertised')), 'Release notes should preserve the bounded alpha promotion boundary');
+  assert(releaseInfo.notes.es.added.some(note => note.includes('Combat Agency V1')), 'Spanish release notes should describe the same release boundary');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
   assertContains(buildContent, 'window.YAW_RELEASE = Object.freeze', 'Build should inject release metadata into the generated artifact');

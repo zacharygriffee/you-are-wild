@@ -1,20 +1,20 @@
 {
   "schema": 1,
   "version": "0.19.0",
-  "status": "candidate",
-  "releasedAt": null,
-  "channel": "development",
+  "status": "released",
+  "releasedAt": "2026-08-13",
+  "channel": "alpha",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Candidate compatibility: existing 0.10.x through 0.18.3 saves load through maintained additive migrations. Companion autonomy, Bond, interruption reservations, and body-mass nourishment initialize deterministically when older saves omit them.",
-      "mods": "Module API remains version 1. Existing minimum-version declarations remain valid; no new module permission or callback is introduced by this candidate."
+      "saves": "Release compatibility: existing 0.10.x through 0.18.3 saves load through maintained additive migrations. Companion autonomy, Bond, interruption reservations, and body-mass nourishment initialize deterministically when older saves omit them.",
+      "mods": "Module API remains version 1. Existing minimum-version declarations remain valid; no new module permission or callback is introduced by this release."
     },
     "es": {
-      "saves": "Compatibilidad de la candidata: las partidas 0.10.x a 0.18.3 cargan mediante migraciones aditivas mantenidas. La autonomia, el Vinculo, las reservas de interrupcion y la nutricion por masa corporal se inicializan de forma determinista cuando faltan en partidas antiguas.",
-      "mods": "La API de modulos sigue en la version 1. Los requisitos minimos existentes siguen validos; esta candidata no agrega permisos ni callbacks nuevos para modulos."
+      "saves": "Compatibilidad de la version: las partidas 0.10.x a 0.18.3 cargan mediante migraciones aditivas mantenidas. La autonomia, el Vinculo, las reservas de interrupcion y la nutricion por masa corporal se inicializan de forma determinista cuando faltan en partidas antiguas.",
+      "mods": "La API de modulos sigue en la version 1. Los requisitos minimos existentes siguen validos; esta version no agrega permisos ni callbacks nuevos para modulos."
     }
   },
   "notes": {
@@ -35,7 +35,7 @@
         "An automatic encounter in which neither side can make legal progress ends through explicit stalemate disengagement instead of assigning an unexplained player or companion flee."
       ],
       "knownIssues": [
-        "This is an unpublished release candidate. Version 0.18.3 remains the active released select-group alpha until an operator separately authorizes promotion and publication.",
+        "This select-group alpha is publicly accessible but intentionally unadvertised; broader promotion remains deferred.",
         "Combat Agency V1 reserves an ordinary future player turn; true reaction priority and emergency out-of-turn player Flee remain deferred.",
         "Companion Bond V1 does not yet model loyalty decay, needs, neglect, witnessed conduct, desertion, or hostility.",
         "Physical-device comfort and human review of English and Spanish player-facing copy remain operator observations.",
@@ -59,7 +59,7 @@
         "Un encuentro automatico en el que ningun bando puede progresar legalmente termina con una separacion explicita por estancamiento en vez de asignar una huida inexplicada al jugador o a un companero."
       ],
       "knownIssues": [
-        "Esta es una candidata no publicada. La version 0.18.3 sigue siendo la alfa activa para un grupo selecto hasta que el operador autorice por separado la promocion y la publicacion.",
+        "Esta alfa para un grupo selecto tiene acceso publico, pero no se anuncia; la promocion general sigue aplazada.",
         "Combat Agency V1 reserva un futuro turno ordinario del jugador; la prioridad real de reacciones y la Huida de emergencia fuera de turno siguen aplazadas.",
         "Companion Bond V1 aun no modela desgaste de lealtad, necesidades, abandono, conducta observada, desercion ni hostilidad.",
         "La comodidad en dispositivos fisicos y la revision humana del texto en ingles y espanol siguen siendo observaciones del operador.",

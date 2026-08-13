@@ -169,11 +169,11 @@ request.
   `0.18.3` and later use PolyForm Noncommercial 1.0.0 unless a later release
   or individual file expressly states otherwise.
 
-## Version 0.19.0 Candidate Compatibility
+## Version 0.19.0 Compatibility
 
-- Version 0.19.0 is an unpublished development candidate. Version 0.18.3
-  remains the active released select-group alpha until a separate operator
-  decision assigns a release date and promotion channel.
+- Version 0.19.0 is the released select-group alpha dated 2026-08-13. It is
+  publicly accessible but intentionally unadvertised; broader promotion remains
+  a separate operator decision.
 - Existing 0.10.x through 0.18.3 saves remain within the maintained additive
   migration contract. Save Schema remains 11 and Module API remains 1.
 - Older companions deterministically initialize per-companion autonomy and the
@@ -182,6 +182,6 @@ request.
   recruitment history, Duty, Stance, or Control.
 - No new module permission, callback, or minimum-version floor is introduced.
   Existing module declarations remain valid.
-- Final compatibility claims require exact-candidate older-save, companion
-  pause/intent, turn-reservation, Chew nourishment, reach-aware flight, and
-  offline/localhost/hosted parity smoke before the record may become released.
+- Final compatibility claims were accepted after exact-candidate older-save,
+  companion pause/intent, turn-reservation, Chew nourishment, reach-aware
+  flight, and offline/localhost/hosted parity smoke.

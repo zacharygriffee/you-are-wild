@@ -1,34 +1,33 @@
 # Release Readiness — 0.19.0
 
-Status: **candidate preparation — not published**
+Status: **released select-group alpha**
 
-This checklist records evidence for the exact 0.19.0 companion autonomy and
-Combat Agency candidate. Local or CI success does not assign a release date,
-publish Sites, create a tag or release asset, deploy a build, or promote the
-channel.
+This checklist records the accepted evidence and continuing observations for
+the exact 0.19.0 companion autonomy and Combat Agency release. Sites deployment
+and broader promotion remain separate operator actions.
 
-Candidate source base: `44e0dad3b9489a441e7d6ca842a446e9ee264af6`
-(merged PR #18).
+Accepted candidate main commit: `1f57aa5c934f216d015c7041cf53f5a1269ce962`
+(merged PR #19).
 
-Candidate branch: `codex/release-0.19.0-rc`.
+Promotion branch: `codex/release-0.19.0-promotion`.
 
-Local evidence last refreshed: **2026-08-12**.
+Evidence last refreshed: **2026-08-13**.
 
 ## Documentation and identity
 
-- [x] `app/release.json` identifies 0.19.0 as an unpublished development
-  candidate with no release date.
+- [x] `app/release.json` identifies 0.19.0 as a released alpha dated
+  2026-08-13.
 - [x] Save Schema remains 11 and Module API remains 1.
 - [x] Application package, lockfile root, first-party package, and Mod Author
   Kit production mirrors identify 0.19.0 without changing minimum-version
   floors.
-- [x] English and Spanish release copy describe only the post-0.18.3 candidate
+- [x] English and Spanish release copy describe only the post-0.18.3 release
   delta and its deliberate exclusions.
 - [x] `releases/0.19.0.md`, the development changelog, active objectives, and
   implemented evidence no longer describe merged player features as local-only
   or unfinished work.
 
-## Implemented candidate boundary
+## Implemented release boundary
 
 - [x] Per-companion Play/Pause is restricted to recruited non-player cards and
   the player's turn, preserves configured behavior and history, and exposes
@@ -59,9 +58,10 @@ Local evidence last refreshed: **2026-08-12**.
   phases.
 - [x] Canvas browser acceptance passes 17 cases; Tile Composition browser
   acceptance passes two origins across four viewports.
-- [x] Generated offline and hosted artifacts both identify 0.19.0 candidate
+- [x] Generated offline and hosted artifacts both identify 0.19.0 runtime
   metadata and retain their expected embedded/external atlas boundaries.
-- [ ] GitHub CI passes for the exact draft-PR head.
+- [x] GitHub CI passed for the exact candidate head and merged main commit
+  `1f57aa5c934f216d015c7041cf53f5a1269ce962`.
 
 ## Recommended human smoke
 
@@ -79,8 +79,8 @@ Local evidence last refreshed: **2026-08-12**.
 - [ ] Inspect the companion cards and intent controls on desktop and maintained
   phone widths, including active, paused, awaiting-direction, English, Spanish,
   and enlarged-text presentation.
-- [ ] Open the candidate through `file://` and localhost and compare its visible
-  version and mechanics with the hosted candidate artifact before publication.
+- [ ] Open the released artifact through `file://` and localhost and compare
+  its visible version and mechanics with the hosted artifact.
 
 ## Observed human-smoke follow-ups
 
@@ -91,16 +91,18 @@ Local evidence last refreshed: **2026-08-12**.
   the player can leave the current play surface through an explicit navigation
   path.
 
-## External/operator gates
+## Release decisions and continuing gates
 
-- [ ] Human smoke is accepted or any remaining observational item is explicitly
-  accepted as follow-up.
-- [ ] GitHub CI is green for the final candidate head.
-- [ ] The operator separately assigns a release date and changes candidate
-  metadata to a released channel.
+- [x] Human smoke was accepted; difficult-to-reproduce Terror observations and
+  the minor navigation UX items remain explicit follow-ups.
+- [x] GitHub CI is green for the final candidate head and exact merged main
+  commit.
+- [x] The operator assigned release date 2026-08-13 and the alpha channel.
 - [ ] A rollback-ready hosted version is selected before any Sites publication.
-- [ ] Any tag, release asset, deployment, publication, or promotion receives
-  explicit authorization.
+- [x] The operator authorized release publication after the protected promotion
+  merge; Sites deployment remains excluded.
+- [ ] Any Sites deployment or broader promotion receives separate explicit
+  authorization.
 
-The unchecked operator gates do not block preparation of a verified candidate.
-They do block claiming that 0.19.0 has been released or published.
+The unchecked items remain continuing observations or Sites-specific gates;
+they do not invalidate this exact released alpha record.

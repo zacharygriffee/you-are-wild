@@ -4,15 +4,14 @@ This file contains unfinished, approved, actionable work only. Completed work
 belongs in `changelog.md`; requirement evidence belongs in
 `backlog-completion-audit.md`; subsystem behavior belongs in focused doctrine.
 
-## 0.19.0 release-candidate maintenance
+## 0.19.0 released-alpha maintenance
 
-Version 0.18.3 remains the active released public-access alpha. Version 0.19.0
-is an unpublished development candidate containing the accepted companion
-autonomy controls, Combat Agency V1, Companion Bond V1, finite-mass Chew
-nourishment, and reach-aware player flight. Preparing or validating the
-candidate does not publish, deploy, tag, or promote it.
+Version 0.19.0 is the active select-group alpha containing the accepted
+companion autonomy controls, Combat Agency V1, Companion Bond V1, finite-mass
+Chew nourishment, and reach-aware player flight. It is publicly accessible but
+intentionally unadvertised; broader promotion remains separate.
 
-During 0.19.0 release-candidate maintenance, do not add new module
+During 0.19.0 released-alpha maintenance, do not add new module
 permissions, public UI slots, resolver effect types, saved schemas, media
 providers, biome-recipe modes, recovery profiles, population simulation,
 elemental semantics, crafting, commerce, or arbitrary module callbacks.
@@ -69,7 +68,7 @@ demonstrated contradiction:
 
 ## Later gameplay and mod work
 
-The following remain valid backlog, but none blocks the 0.19.0 candidate:
+The following remain valid backlog, but none invalidates the 0.19.0 release:
 
 - Companion Bond V2 observability and authored needs, neglect, and witnessed-
   conduct events; desertion and hostility require a later explicit threshold
@@ -99,8 +98,8 @@ The following remain valid backlog, but none blocks the 0.19.0 candidate:
 
 Commerce, paid mods, accounts, managed LLM entitlement, payment processors,
 public marketplace services, Pear seeding, mesh sidecars, and public-launch
-administration are separate tracks. They do not block this game candidate and
-must not be folded into 0.19.0 release preparation.
+administration are separate tracks. They do not block this released alpha and
+must not be folded into 0.19.0 patch maintenance.
 
 ## Delivery boundary
 

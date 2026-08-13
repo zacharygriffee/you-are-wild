@@ -82,6 +82,15 @@ Local evidence last refreshed: **2026-08-12**.
 - [ ] Open the candidate through `file://` and localhost and compare its visible
   version and mechanics with the hosted candidate artifact before publication.
 
+## Observed human-smoke follow-ups
+
+- [ ] **Minor UX:** Character Creation needs a clear Exit or Back control that
+  returns to the Main Menu without requiring the player to finish creating a
+  character.
+- [ ] **Minor UX:** The live-game context/app menu needs a Main Menu option so
+  the player can leave the current play surface through an explicit navigation
+  path.
+
 ## External/operator gates
 
 - [ ] Human smoke is accepted or any remaining observational item is explicitly

@@ -4,6 +4,25 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Recruited companion cards now expose individual Play/Pause autonomy controls
+  only during the player's turn. Active, paused, and awaiting-direction states
+  share the same desktop and mobile card contract, preserve the companion's
+  existing Duty, Stance, Control, identity, and history, and never apply to the
+  player character.
+- Combat Agency V1 holds one uncommitted autonomous companion intent, exposes
+  only stored legal alternatives, and lets the player make one suggestion. A
+  bounded saved Companion Bond ledger decides compliance without RNG; either
+  acceptance or refusal reserves and consumes the player's next ordinary
+  actionable combat turn exactly once.
+- Chew now nourishes only its actual participants from conserved finite body
+  mass removed from the target. Group transfers follow deterministic damage
+  contribution, older saves initialize the existing moddable Body Mass Ledger,
+  and global Vitality or Punishment scaling remains a separate balance choice.
+- Companion flight now discloses its authored cause and keeps queue, party,
+  world, selection, and save state aligned. A flying player under Terror holds
+  altitude against wholly unreachable ground-only attackers; reachable
+  flying, ranged, or anti-flying threats retain normal danger, and encounters
+  with no legal progress end through explicit stalemate disengagement.
 - Engine-neutral Terrain Scene V1 now drives one Canvas2D surface for local
   traversal and Survey navigation, with deterministic fixed chunks, semantic
   overlays, offline atlas art, bounded caching, and an explicit legacy

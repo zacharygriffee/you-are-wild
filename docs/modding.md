@@ -8,7 +8,7 @@ not doctrine.
 For a portable, self-contained snapshot that can be handed to an authoring
 agent without the game source, use the
 [Mod Author Kit](mod-author-kit/README.md). The kit freezes the current
-`0.18.3` package/API contracts, bounded vocabularies, inventories, templates,
+`0.19.0` package/API contracts, bounded vocabularies, inventories, templates,
 and source-independent release checklist in one directory.
 
 The copied kit includes a dependency-free static package validator:

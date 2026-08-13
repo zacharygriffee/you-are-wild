@@ -1,8 +1,9 @@
 # Gameplay Issues Reproduction — Chew, Combat Agency, and Flight
 
-Status: test-first working note on `codex/gameplay-issues-reproduction`, based on
-`origin/main` at `c365856`. This note records observed contracts and decision
-boundaries; it is not a release declaration.
+Status: **implemented evidence for the 0.19.0 release-candidate line**
+
+The test-first fixtures and contracts in this note were merged through PR #18
+at `44e0dad`. This remains implementation evidence, not a release declaration.
 
 ## 1. Chew nourishment
 

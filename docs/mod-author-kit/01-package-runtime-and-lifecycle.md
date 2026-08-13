@@ -9,7 +9,7 @@ New modules use exactly this outer shape:
   "packageType": "yaw-module",
   "packageVersion": 1,
   "packageId": "example_module",
-  "gameVersion": "0.18.3",
+  "gameVersion": "0.19.0",
   "trustBoundary": "trusted-local",
   "module": {
     "manifest": {
@@ -46,7 +46,7 @@ Rules:
 - `name` and `version` are required.
 - `gameVersion` records the packager version.
 - `minGameVersion` is the lowest honestly supported runtime.
-- Use `0.18.3` unless compatibility with an older contract was actually
+- Use `0.19.0` unless compatibility with an older contract was actually
   verified. Item Definition V2 and Perk Profile V1 require at least `0.16.0`.
 - `trustBoundary` must be `trusted-local` in both places.
 - `module.code` is JavaScript source executed once when the module enables.

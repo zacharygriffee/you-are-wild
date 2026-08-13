@@ -11055,6 +11055,9 @@
 
             <div id="create-validation" class="create-validation" role="alert" aria-live="polite"></div>
             <div style="display:grid;grid-template-columns:1fr;gap:8px;">
+                <button class="action-btn" type="button" data-command-surface="character-creation" data-command-mode="setup" data-command-control="return-to-main-menu" title="Return to Main Menu" aria-label="Return to Main Menu" data-i18n-title="ui.returnToMenu" data-i18n-aria-label="ui.returnToMenu" onclick="App.returnToMainMenu()">
+                    ← <span data-i18n="ui.returnToMenu">Return to Menu</span>
+                </button>
                 <button class="action-btn" type="button" data-command-surface="character-creation" data-command-mode="setup" data-command-control="randomize-character" data-i18n="create.random" onclick="App.randomizeCharacter()">Random Character</button>
                 <button class="action-btn primary create-submit" data-command-surface="character-creation" data-command-mode="setup" data-command-control="create-character" data-i18n="create.begin" onclick="createCharacter()">
                     Begin Adventure →
@@ -11112,6 +11115,7 @@
                         <button class="nav-btn" role="menuitem" data-host-catalog-entry hidden data-command-surface="app-system" data-command-mode="system" data-command-control="open-market" title="Open host catalog" aria-label="Open host catalog" data-i18n-title="market.openHostCatalogTitle" data-i18n-aria-label="market.openHostCatalogTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-mods" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-help" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="App.closeAppMenu(); App.showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="return-to-main-menu" title="Return to Main Menu" aria-label="Return to Main Menu" data-i18n-title="ui.returnToMenu" data-i18n-aria-label="ui.returnToMenu" onclick="App.returnToMainMenu()">↩ <span data-i18n="ui.returnToMenu">Return to Menu</span></button>
                     </div>
                 </div>
                 <div class="time-display" id="time-display">☀️ 08:00</div>

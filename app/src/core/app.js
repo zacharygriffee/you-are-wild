@@ -6671,6 +6671,11 @@
                 }
                 this.restoreOverlayReturnFocus(returnFocus, this.screen);
             },
+            returnToMainMenu() {
+                this.closeAppMenu();
+                this.settingsReturnScreen = null;
+                return this.showScreen('menu');
+            },
             showCharacterStats() {
                 return YAW_HOLDINGS.show(this, this.player, { tab: 'stats' });
             },

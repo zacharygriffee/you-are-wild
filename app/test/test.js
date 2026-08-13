@@ -9611,6 +9611,45 @@ test('Main menu keeps play primary and nests advanced system destinations', () =
   assertContains(template, '@media (max-height: 700px)', 'Short viewports should receive compact main-menu spacing');
 });
 
+test('Character creation and the live app menu provide an explicit return to the main menu', () => {
+  assertContains(template, 'data-command-surface="character-creation" data-command-mode="setup" data-command-control="return-to-main-menu"', 'Character creation should expose an explicit Back route');
+  assertContains(template, 'data-command-surface="app-system" data-command-mode="system" data-command-control="return-to-main-menu"', 'The live app menu should expose an explicit Main Menu route');
+  assertContains(template, 'onclick="App.returnToMainMenu()"', 'Both navigation controls should use the bounded return route');
+  assertContains(appContent, 'returnToMainMenu() {', 'App should expose a dedicated Main Menu navigation method');
+  assertContains(appContent, "return this.showScreen('menu');", 'Main Menu navigation should preserve the normal screen transition boundary');
+});
+
+test('Return to Main Menu closes the live menu and preserves the existing run', () => {
+  const screenIds = ['screen-menu', 'screen-settings', 'screen-game', 'screen-create', 'screen-mods', 'screen-market', 'save-manager'];
+  const { App, document } = loadAppForCombat(() => 0.5, {
+    querySelectorAll(selector, elements) {
+      if (selector !== '.screen') return [];
+      return screenIds.map(id => {
+        if (!elements.has(id)) elements.set(id, makeElement());
+        return elements.get(id);
+      });
+    }
+  });
+  const appShell = document.getElementById('app');
+  const game = document.getElementById('screen-game');
+  const menu = document.getElementById('screen-menu');
+  const appMenu = document.getElementById('app-menu');
+  App.player = makeUnit('Existing Player', { CPun: 80, MPun: 100 });
+  App.party = [App.player];
+  App.screen = 'game';
+  appShell.style.display = 'grid';
+  game.style.display = 'flex';
+  game.classList.add('active');
+  App.setAppMenuOpen(true);
+
+  App.returnToMainMenu();
+  assertEqual(App.screen, 'menu', 'Main Menu route should leave the player on the menu');
+  assertEqual(appShell.style.display, 'none', 'Main Menu route should hide the active game shell');
+  assertEqual(menu.style.display, 'flex', 'Main Menu route should show the main menu');
+  assertEqual(appMenu.classList.contains('open'), false, 'Main Menu route should close the app menu');
+  assertEqual(App.player.name, 'Existing Player', 'Main Menu route should not discard the active run');
+});
+
 test('New game flow is slot-aware and warns before destructive slot changes', () => {
   assertContains(template, 'App.showNewGameManager()', 'Main menu New Game should open slot selection');
   assertContains(template, "App.closeAppMenu(); App.showSaveManager('save')", 'App menu Save should open save-specific slot mode');

@@ -82,12 +82,23 @@ async function waitForCanvasAlpha(page, gridSelector) {
   }
 }
 
+function isExternalFontLoad(message) {
+  if (message.type() !== 'error') return false;
+  if (!/^Failed to load resource: the server responded with a status of 404/i.test(message.text())) return false;
+  try {
+    return ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(new URL(message.location().url).hostname);
+  } catch {
+    return false;
+  }
+}
+
 async function exerciseNavigation(page, viewport, origin) {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error?.message || error)));
   page.on('console', message => {
     const text = message.text();
     if (message.type() === 'warning' && /^Sparse save .* took \d+ms/m.test(text)) return;
+    if (isExternalFontLoad(message)) return;
     if (['warning', 'error'].includes(message.type())) errors.push(`${message.type()}: ${text}`);
   });
   await page.setViewportSize(viewport);

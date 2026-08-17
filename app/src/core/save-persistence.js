@@ -780,7 +780,19 @@ const YAW_SAVE_PERSISTENCE = {
         }
         state.dirty = true;
         this.sparseSaveState(app).queueState = 'scheduled';
-        return this.runAutoSave(app);
+        let saved = false;
+        while (true) {
+            const result = state.running
+                ? await state.running
+                : await this.runAutoSave(app);
+            saved = Boolean(result) || saved;
+            if (app._autoSaveSuppressed || !app.player || app.screen !== 'game') return saved;
+            if (state.timer) {
+                clearTimeout(state.timer);
+                state.timer = null;
+            }
+            if (!state.dirty && !state.running) return saved;
+        }
     },
 
     async autoSave(app) {

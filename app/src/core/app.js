@@ -6671,10 +6671,13 @@
                 }
                 this.restoreOverlayReturnFocus(returnFocus, this.screen);
             },
-            returnToMainMenu() {
+            async returnToMainMenu() {
+                const leavingGame = this.screen === 'game';
                 this.closeAppMenu();
                 this.settingsReturnScreen = null;
-                return this.showScreen('menu');
+                if (leavingGame) await this.autoSave({ immediate: true });
+                this.showScreen('menu');
+                return this.refreshContinueButton();
             },
             showCharacterStats() {
                 return YAW_HOLDINGS.show(this, this.player, { tab: 'stats' });

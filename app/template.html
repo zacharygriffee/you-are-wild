@@ -6883,6 +6883,7 @@
                 --mobile-dock-height: 58px;
                 --mobile-control-belt-compact-height: 112px;
                 --mobile-control-belt-max-height: 286px;
+                --mobile-combat-toolbelt-max-height: min(276px, 40dvh);
                 --mobile-scene-height: clamp(112px, 17dvh, 148px);
                 --mobile-map-height: 340px;
                 --mobile-map-frame-clearance: 10px;
@@ -8872,7 +8873,7 @@
                 width: auto;
                 background: rgba(26, 26, 46, 0.96);
                 box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.22);
-                max-height: min(268px, 40dvh);
+                max-height: var(--mobile-combat-toolbelt-max-height);
                 overflow-y: visible;
             }
 
@@ -10199,7 +10200,7 @@
             }
 
             .mobile-play-surface.combat-active .mobile-roster-sheet {
-                bottom: calc(var(--mobile-dock-height) + min(268px, 40dvh) + env(safe-area-inset-bottom) + 18px);
+                bottom: calc(var(--mobile-dock-height) + var(--mobile-combat-toolbelt-max-height) + env(safe-area-inset-bottom) + 18px);
                 max-height: min(38dvh, 360px);
             }
 

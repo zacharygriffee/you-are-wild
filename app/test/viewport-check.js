@@ -3748,7 +3748,10 @@ async function checkViewport(browser, name, width, height) {
       for (const label of intentLabels) {
         const match = groupIntentPhase.buttonRects.find(button => button.text.includes(label));
         assert(match, `${name}: group intent phase should expose ${label}`);
-        assert(match.bottom <= groupIntentPhase.dockTop + 1, `${name}: ${label} should be fully reachable above the fixed dock`);
+        assert(
+          match.bottom <= groupIntentPhase.dockTop + 1,
+          `${name}: ${label} should be fully reachable above the fixed dock; got ${JSON.stringify({ button: match, dockTop: groupIntentPhase.dockTop, scrollHeight: groupIntentPhase.beltScrollHeight, clientHeight: groupIntentPhase.beltClientHeight })}`
+        );
       }
       assert(!groupIntentPhase.buttonRects.some(button => button.text.includes('Commit Group')), `${name}: group intent phase should not show a group commit before an intent is pending`);
       assert(!groupIntentPhase.buttonRects.some(button => button.text === 'Cancel Group'), `${name}: group intent phase should not insert a duplicate Cancel Group row`);

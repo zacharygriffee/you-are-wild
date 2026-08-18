@@ -9611,6 +9611,96 @@ test('Main menu keeps play primary and nests advanced system destinations', () =
   assertContains(template, '@media (max-height: 700px)', 'Short viewports should receive compact main-menu spacing');
 });
 
+test('Character creation and the live app menu provide an explicit return to the main menu', () => {
+  assertContains(template, 'data-command-surface="character-creation" data-command-mode="setup" data-command-control="return-to-main-menu"', 'Character creation should expose an explicit Back route');
+  assertContains(template, 'data-command-surface="app-system" data-command-mode="system" data-command-control="return-to-main-menu"', 'The live app menu should expose an explicit Main Menu route');
+  assertContains(template, 'onclick="App.returnToMainMenu()"', 'Both navigation controls should use the bounded return route');
+  assertContains(appContent, 'async returnToMainMenu() {', 'App should expose a dedicated asynchronous Main Menu navigation method');
+  assertContains(appContent, "if (leavingGame) await this.autoSave({ immediate: true });", 'Main Menu navigation should flush game state before switching screens');
+  assertContains(appContent, "this.showScreen('menu');", 'Main Menu navigation should preserve the normal screen transition boundary');
+  assertContains(appContent, 'return this.refreshContinueButton();', 'Main Menu navigation should refresh Continue readiness after switching screens');
+});
+
+test('Return to Main Menu flushes the live run before switching screens', async () => {
+  const screenIds = ['screen-menu', 'screen-settings', 'screen-game', 'screen-create', 'screen-mods', 'screen-market', 'save-manager'];
+  const { App, document } = loadAppForCombat(() => 0.5, {
+    querySelectorAll(selector, elements) {
+      if (selector !== '.screen') return [];
+      return screenIds.map(id => {
+        if (!elements.has(id)) elements.set(id, makeElement());
+        return elements.get(id);
+      });
+    }
+  });
+  const appShell = document.getElementById('app');
+  const game = document.getElementById('screen-game');
+  const menu = document.getElementById('screen-menu');
+  const appMenu = document.getElementById('app-menu');
+  App.player = makeUnit('Existing Player', { CPun: 80, MPun: 100 });
+  App.party = [App.player];
+  App.screen = 'game';
+  appShell.style.display = 'grid';
+  game.style.display = 'flex';
+  game.classList.add('active');
+  App.setAppMenuOpen(true);
+  let finishSave;
+  const saveFinished = new Promise(resolve => { finishSave = resolve; });
+  const order = [];
+  App.autoSave = async options => {
+    assertEqual(options.immediate, true, 'Main Menu route should request an immediate autosave flush');
+    assertEqual(App.screen, 'game', 'Autosave flush should run while game persistence is still enabled');
+    order.push('save');
+    await saveFinished;
+    order.push('saved');
+    return true;
+  };
+  App.refreshContinueButton = async () => {
+    order.push('continue');
+    return true;
+  };
+
+  const transition = App.returnToMainMenu();
+  assertEqual(App.screen, 'game', 'Main Menu route should wait for the autosave before leaving game');
+  assertEqual(appMenu.classList.contains('open'), false, 'Main Menu route should close the app menu immediately');
+  finishSave();
+  await transition;
+  assertEqual(App.screen, 'menu', 'Main Menu route should leave the player on the menu');
+  assertEqual(appShell.style.display, 'none', 'Main Menu route should hide the active game shell');
+  assertEqual(menu.style.display, 'flex', 'Main Menu route should show the main menu');
+  assertEqual(App.player.name, 'Existing Player', 'Main Menu route should not discard the active run');
+  assertEqual(order.join(','), 'save,saved,continue', 'Continue readiness should refresh only after the pending save completes');
+});
+
+test('Return to Main Menu refreshes Continue readiness after the first run', async () => {
+  const screenIds = ['screen-menu', 'screen-settings', 'screen-game', 'screen-create', 'screen-mods', 'screen-market', 'save-manager'];
+  const { App, document } = loadAppForCombat(() => 0.5, {
+    querySelectorAll(selector, elements) {
+      if (selector !== '.screen') return [];
+      return screenIds.map(id => {
+        if (!elements.has(id)) elements.set(id, makeElement());
+        return elements.get(id);
+      });
+    }
+  });
+  const continueButton = document.getElementById('menu-continue');
+  App.player = makeUnit('First Player', { CPun: 80, MPun: 100 });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.autoSave = async () => true;
+  App.syncStartupReadinessUI = () => { continueButton.style.display = 'none'; };
+  let refreshes = 0;
+  App.refreshContinueButton = async () => {
+    refreshes += 1;
+    assertEqual(App.screen, 'menu', 'Continue readiness should refresh after menu entry');
+    continueButton.style.display = 'flex';
+    return true;
+  };
+
+  await App.returnToMainMenu();
+  assertEqual(refreshes, 1, 'Main Menu route should force one fresh Continue readiness check');
+  assertEqual(continueButton.style.display, 'flex', 'Fresh first-run save should expose Continue on the menu');
+});
+
 test('New game flow is slot-aware and warns before destructive slot changes', () => {
   assertContains(template, 'App.showNewGameManager()', 'Main menu New Game should open slot selection');
   assertContains(template, "App.closeAppMenu(); App.showSaveManager('save')", 'App menu Save should open save-specific slot mode');
@@ -34579,6 +34669,43 @@ test('Auto-save debounce coalesces rapid movement saves into one slot write', as
 
   await App.autoSave({ immediate: true });
   assertEqual(writes, 2, 'Immediate auto-save flush should still write when explicitly requested');
+});
+
+test('Immediate autosave flush drains changes queued behind an in-flight write', async () => {
+  const harness = loadAppForCombat(() => 0.5, { setTimeout });
+  const App = enableRealAutoSaveHarness(harness);
+  App.player = makeUnit('You', { id: 'overlap-save-player' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.persistWorldStateToMapStore = async () => 0;
+  App._dbGet = async () => null;
+  let manifestWrites = 0;
+  let releaseFirstWrite;
+  let signalFirstWrite;
+  const firstWriteStarted = new Promise(resolve => { signalFirstWrite = resolve; });
+  const firstWriteReleased = new Promise(resolve => { releaseFirstWrite = resolve; });
+  App._dbPut = async store => {
+    if (store !== 'saveManifests') return;
+    manifestWrites += 1;
+    if (manifestWrites === 1) {
+      signalFirstWrite();
+      await firstWriteReleased;
+    }
+  };
+
+  const inFlight = App.autoSave({ immediate: true });
+  await firstWriteStarted;
+  App.markSaveDirty('player', 'queued-during-save');
+  App.autoSave({ delayMs: 1000, reason: 'queued-during-save' });
+  const flushed = App.autoSave({ immediate: true });
+  releaseFirstWrite();
+  await flushed;
+  await inFlight;
+
+  assertEqual(manifestWrites, 2, 'Flush should persist the in-flight snapshot and the newer queued state');
+  assertEqual(App._autoSaveState.dirty, false, 'Flush should leave no queued dirty autosave state');
+  assertEqual(App._autoSaveState.timer, null, 'Flush should clear any follow-up autosave timer before resolving');
 });
 
 function enableRealAutoSaveHarness(harness) {

@@ -13,7 +13,6 @@
     <meta name="theme-color" content="#1a1a2e">
     <meta name="license" content="PolyForm Noncommercial License 1.0.0">
     <title>You Are Wild</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
 /* =============================================
            CSS VARIABLES - Dark Mode Theme
@@ -62,8 +61,10 @@
             --shadow-glow: 0 0 20px rgba(0, 212, 170, 0.3);
 
             /* Typography */
-            --font-body: 'Inter', -apple-system, sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
+            /* Keep the playable artifact self-contained: browser checks and
+               offline play must not depend on a third-party font request. */
+            --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+            --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
         }
 
         /* =============================================
@@ -6882,6 +6883,7 @@
                 --mobile-dock-height: 58px;
                 --mobile-control-belt-compact-height: 112px;
                 --mobile-control-belt-max-height: 286px;
+                --mobile-combat-toolbelt-max-height: min(276px, 40dvh);
                 --mobile-scene-height: clamp(112px, 17dvh, 148px);
                 --mobile-map-height: 340px;
                 --mobile-map-frame-clearance: 10px;
@@ -8871,7 +8873,7 @@
                 width: auto;
                 background: rgba(26, 26, 46, 0.96);
                 box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.22);
-                max-height: min(268px, 40dvh);
+                max-height: var(--mobile-combat-toolbelt-max-height);
                 overflow-y: visible;
             }
 
@@ -10198,7 +10200,7 @@
             }
 
             .mobile-play-surface.combat-active .mobile-roster-sheet {
-                bottom: calc(var(--mobile-dock-height) + min(268px, 40dvh) + env(safe-area-inset-bottom) + 18px);
+                bottom: calc(var(--mobile-dock-height) + var(--mobile-combat-toolbelt-max-height) + env(safe-area-inset-bottom) + 18px);
                 max-height: min(38dvh, 360px);
             }
 
@@ -11055,6 +11057,9 @@
 
             <div id="create-validation" class="create-validation" role="alert" aria-live="polite"></div>
             <div style="display:grid;grid-template-columns:1fr;gap:8px;">
+                <button class="action-btn" type="button" data-command-surface="character-creation" data-command-mode="setup" data-command-control="return-to-main-menu" title="Return to Main Menu" aria-label="Return to Main Menu" data-i18n-title="ui.returnToMenu" data-i18n-aria-label="ui.returnToMenu" onclick="App.returnToMainMenu()">
+                    ← <span data-i18n="ui.returnToMenu">Return to Menu</span>
+                </button>
                 <button class="action-btn" type="button" data-command-surface="character-creation" data-command-mode="setup" data-command-control="randomize-character" data-i18n="create.random" onclick="App.randomizeCharacter()">Random Character</button>
                 <button class="action-btn primary create-submit" data-command-surface="character-creation" data-command-mode="setup" data-command-control="create-character" data-i18n="create.begin" onclick="createCharacter()">
                     Begin Adventure →
@@ -11112,6 +11117,7 @@
                         <button class="nav-btn" role="menuitem" data-host-catalog-entry hidden data-command-surface="app-system" data-command-mode="system" data-command-control="open-market" title="Open host catalog" aria-label="Open host catalog" data-i18n-title="market.openHostCatalogTitle" data-i18n-aria-label="market.openHostCatalogTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="market.hostCatalog">Host Catalog</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-mods" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-help" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="App.closeAppMenu(); App.showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="return-to-main-menu" title="Return to Main Menu" aria-label="Return to Main Menu" data-i18n-title="ui.returnToMenu" data-i18n-aria-label="ui.returnToMenu" onclick="App.returnToMainMenu()">↩ <span data-i18n="ui.returnToMenu">Return to Menu</span></button>
                     </div>
                 </div>
                 <div class="time-display" id="time-display">☀️ 08:00</div>

@@ -1186,10 +1186,18 @@ async function runContextualVariantComposerFlow(page) {
       targetRoute: (menu?.innerHTML || '').includes("resolveExplorationTargetAction('fuck','fuck'")
     };
   });
-  assert.deepStrictEqual(state.scopes, ['self', 'target'], 'Targeted Play should use the same Self and Targets grouping contract');
-  assert.strictEqual(state.selfRoute, true, 'Targeted Play should keep its self route inside the submenu');
-  assert.strictEqual(state.targetRoute, true, 'Targeted Play should keep its marked-target route inside the submenu');
-  await page.locator('#desktop-intent-menu [data-command-control="back-variant"]').click();
+  assert.deepStrictEqual(state.scopes, ['target'], 'Targeted Play should expose only the composed target scope');
+  assert.strictEqual(state.selfRoute, false, 'Targeted Play should not offer a self route that can bypass the marked creature');
+  assert.strictEqual(state.targetRoute, true, 'Targeted Play should retain its marked-target route');
+  await page.locator('#desktop-intent-menu [data-command-intent="fuck:fuck"]').click();
+  state = await page.evaluate(() => ({
+    actorIds: [...(App.lastIntentCommand?.actorIds || [])],
+    targetIds: [...(App.lastIntentCommand?.targetIds || [])],
+    resolvedTarget: App.lastActionResolution?.target?.id || null
+  }));
+  assert.deepStrictEqual(state.actorIds, ['player-1', 'ally-1'], 'Targeted Play should retain every selected group actor');
+  assert.deepStrictEqual(state.targetIds, ['friendly-1'], 'Targeted Play should retain the marked creature id');
+  assert.strictEqual(state.resolvedTarget, 'friendly-1', 'Targeted Play should resolve against the marked creature object');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await setupAdventure(page);

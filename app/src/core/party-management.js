@@ -47,6 +47,7 @@ const YAW_PARTY_MANAGEMENT = {
 
     autonomyControl(app, unit, index, options = {}) {
         if (!unit || unit === app.player || unit.mc) return '';
+        if (!app.combatState?.active) return '';
         const status = this.autonomyStatus(app, unit);
         const canToggle = YAW_COMPANION_BEHAVIOR.canToggleAutonomy(app, unit);
         const action = status === 'active' ? 'pause' : (status === 'paused' ? 'play' : 'awaiting');

@@ -10422,7 +10422,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.has-control-belt', 'mobile play surface should reserve bottom space when the context belt is populated');
   assertContains(template, '.mobile-control-belt {\n                order: 4;', 'mobile command belt should keep a stable layer after stage feedback');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 4;\n                position: fixed;', 'mobile combat action belt should stay reachable above the dock without being pushed by Scene Beats');
-  assertContains(template, 'max-height: min(268px, 40dvh);\n                overflow-y: visible;', 'mobile combat action belt should reserve enough zero-scroll height for the primary intent grid');
+  assertContains(template, '--mobile-combat-toolbelt-max-height: min(276px, 40dvh);', 'mobile combat should reserve a shared font-safe toolbelt height');
+  assertContains(template, 'max-height: var(--mobile-combat-toolbelt-max-height);\n                overflow-y: visible;', 'mobile combat action belt should use the shared zero-scroll height for the primary intent grid');
   assertContains(mobileCombatToolbeltContent, "app.targetSelection?.source !== 'combat'", 'mobile combat should hide action intents during target confirmation while retaining presentation control');
   assertContains(mobileCombatToolbeltContent, '!(app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent)', 'mobile combat should hide action intents once a group intent is pending while retaining presentation control');
   assertContains(mobileCombatToolbeltContent, 'presentationControls(app, { compact: true, bare: true, iconOnly: true })', 'mobile combat should keep the finger-sized symbol-switching presentation hold in the compact status row');
@@ -13088,6 +13089,36 @@ test('Actor-scoped variants live beneath contextual interaction buttons without 
   assertEqual(actor.stomach.length, 0, 'Actor-owned Release should use the actor container');
   assertEqual(App.explorationTargetIds.join(','), 'creature:self-variant-marked', 'Resolving a self action should preserve the independent marked target');
   assertEqual(App.lastIntentCommand.scope, 'self', 'Self action dispatch should record its explicit scope');
+});
+
+test('Marked-target Play cannot silently replace the selected creature with a self target', () => {
+  const { App, body } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'target-play-player', CPle: 10, MPle: 100, Fuck: 40, Flir: 30, cha: 20 });
+  const mousefolk = makeUnit('Mousefolk', { id: 'target-play-mouse', CPle: 20, MPle: 100, Fuck: 35, Flir: 25, cha: 20 });
+  const bunnyfolk = makeUnit('Bunnyfolk', { id: 'target-play-bunny', CPle: 30, MPle: 100, Fuck: 35, Flir: 25, cha: 20 });
+  const horsefolk = makeUnit('Horsefolk', { id: 'target-play-horse', disposition: App.DISPOSITION.FRIENDLY, CPle: 10, MPle: 100, wis: 1 });
+  App.player = player;
+  App.party = [player, mousefolk, bunnyfolk];
+  App.creatures = [horsefolk];
+  App.explorationActorIds = [player.id, mousefolk.id, bunnyfolk.id];
+  App.explorationActorSelectionExplicit = true;
+  App.explorationTargetIds = ['creature:target-play-horse'];
+
+  App.openExplorationSubActionSheet('fuck', 'composer-tray', 'desktop');
+  assertContains(body.innerHTML, 'data-command-scope="target"', 'Marked-target Play should expose its target-scoped approach');
+  assertNotContains(body.innerHTML, 'data-command-scope="self"', 'Marked-target Play should not duplicate the same approach as a self action');
+  assertNotContains(body.innerHTML, 'resolveExplorationSelfSubAction', 'Marked-target Play should not offer a route that ignores the composed target');
+  assertContains(body.innerHTML, "resolveExplorationTargetAction('fuck','fuck','composer-tray')", 'Marked-target Play should commit through the selected-target route');
+
+  const actorSpiritBefore = [player.CPle, mousefolk.CPle, bunnyfolk.CPle];
+  assertEqual(App.resolveExplorationTargetAction('fuck', 'fuck', 'composer-tray'), true, 'Three selected actors should resolve Play on the marked creature');
+  assertEqual(App.lastIntentCommand.actorIds.join(','), 'target-play-player,target-play-mouse,target-play-bunny', 'Group Play should retain every selected actor');
+  assertEqual(App.lastIntentCommand.targetIds.join(','), 'target-play-horse', 'Group Play should retain Horsefolk as the selected target');
+  assertEqual(App.lastActionResolution.target, horsefolk, 'Group Play resolution should affect the marked Horsefolk object');
+  assertEqual(horsefolk.CPle > 10, true, 'Marked Horsefolk should receive the Play spirit effect');
+  assertEqual([player.CPle, mousefolk.CPle, bunnyfolk.CPle].join(','), actorSpiritBefore.join(','), 'Non-target actors should not be substituted as Play recipients');
+  assertContains(App.log[App.log.length - 1].text, 'focus on Horsefolk', 'Group Play narration should name the marked creature');
+  assertNotContains(App.log[App.log.length - 1].text, 'Bunnyfolk plays with Bunnyfolk', 'Group Play narration should never report the last actor as an accidental self target');
 });
 
 test('Actor-only Play exposes its sole SFW approach through the shared submenu', () => {
@@ -28398,7 +28429,7 @@ test('Party panel keeps companion behavior behind one focused route', () => {
   assertNotContains(html, 'setCompanionControl(1,this.value)', 'Ally card should not duplicate the Control selector');
 });
 
-test('Companion cards place autonomy between Actor and Target across the card gate', () => {
+test('Companion cards reserve Play/Pause for combat while preserving exploration status', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'card-player' });
   const ally = makeUnit('Ally', {
@@ -28416,11 +28447,10 @@ test('Companion cards place autonomy between Actor and Target across the card ga
     App.renderTacticalCard(ally, 1, 'party', { presentation: 'mobile', density: 'micro' })
   ]) {
     const actor = html.indexOf('data-command-control="focus-actor"');
-    const autonomy = html.indexOf('data-command-control="toggle-companion-autonomy"');
     const target = html.indexOf('data-command-control="focus-target"');
-    assert(actor >= 0 && autonomy > actor && target > autonomy, 'Every companion card presentation should order Actor, Play/Pause, then Target');
-    assertContains(html, 'data-autonomy-status="active"', 'Every companion card presentation should expose the visible autonomy state');
-    assertContains(html, 'disabled aria-disabled="true"', 'Exploration cards should keep Play/Pause unavailable outside the player combat turn');
+    assert(actor >= 0 && target > actor, 'Every exploration companion card presentation should preserve Actor then Target');
+    assertNotContains(html, 'data-command-control="toggle-companion-autonomy"', 'Exploration cards should hide the combat-only Play/Pause control');
+    assertContains(html, 'data-autonomy-status="active"', 'Exploration companion cards should still expose the limited autonomy state');
   }
   assertNotContains(App.renderUnitCard(player, 0, 'party'), 'toggle-companion-autonomy', 'The player detailed card should not receive companion autonomy controls');
   assertNotContains(App.renderTacticalCard(player, 0, 'party', { presentation: 'mobile', density: 'micro' }), 'toggle-companion-autonomy', 'The player micro-card should not receive companion autonomy controls');
@@ -28436,6 +28466,10 @@ test('Companion cards place autonomy between Actor and Target across the card ga
     syncActions: []
   };
   const playerTurnCard = App.renderTacticalCard(ally, 1, 'party', { presentation: 'desktop', density: 'medium' });
+  const actor = playerTurnCard.indexOf('data-command-control="toggle-combat-plan-actor"');
+  const autonomy = playerTurnCard.indexOf('data-command-control="toggle-companion-autonomy"');
+  const target = playerTurnCard.indexOf('data-command-control="focus-target"');
+  assert(actor >= 0 && autonomy > actor && target > autonomy, 'Combat companion cards should order Actor, Play/Pause, then Target');
   assertNotContains(playerTurnCard.match(/<button[^>]+toggle-companion-autonomy[^>]*>/)?.[0] || '', 'disabled', 'Companion Play/Pause should enable during the player turn');
   App.toggleCompanionAutonomy(1);
   const pausedPresentations = [

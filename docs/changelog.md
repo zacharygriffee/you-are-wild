@@ -4,6 +4,13 @@ This is a compact history of completed foundations. Git remains the authoritativ
 
 ## Current Foundations
 
+- Character Creation and the live app menu now provide explicit Main Menu
+  routes. Leaving a live run waits for pending autosave work, returns through
+  the normal screen boundary, and refreshes Continue readiness for a first save.
+- Marked-target Play no longer duplicates its target approach as a Self route,
+  so a composed group action cannot silently replace the selected creature
+  with the last actor. Exploration cards keep companion autonomy status visible
+  without presenting the combat-only Play/Pause control.
 - Recruited companion cards now expose individual Play/Pause autonomy controls
   only during the player's turn. Active, paused, and awaiting-direction states
   share the same desktop and mobile card contract, preserve the companion's

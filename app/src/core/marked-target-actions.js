@@ -137,11 +137,14 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const selfResolution = !isFight
             ? YAW_SUB_ACTIONS.resolve(app, action, { actors, scope: 'self', mode: 'adventure' })
             : null;
+        const targetVariantIds = new Set((targetResolution?.variants || []).map(variant => String(variant.id)));
+        const selfOnlyVariants = (selfResolution?.variants || []).filter(variant => !targetVariantIds.has(String(variant.id)));
         if (selfResolution) {
-            if (selfResolution.variants.length > 0) {
+            if (selfOnlyVariants.length > 0) {
                 groups.push({
                     scope: 'self',
                     label: app._label('variant.scope.self', 'Self'),
+                    excludeVariantIds: [...targetVariantIds],
                     selectCall: `App.resolveExplorationSelfSubAction('${app._escapeJsString(action)}','{id}','${app._escapeJsString(source || 'actor-belt')}')`
                 });
             }

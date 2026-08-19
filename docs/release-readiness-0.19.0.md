@@ -84,12 +84,15 @@ Evidence last refreshed: **2026-08-13**.
 
 ## Observed human-smoke follow-ups
 
-- [ ] **Minor UX:** Character Creation needs a clear Exit or Back control that
-  returns to the Main Menu without requiring the player to finish creating a
-  character.
-- [ ] **Minor UX:** The live-game context/app menu needs a Main Menu option so
-  the player can leave the current play surface through an explicit navigation
-  path.
+- [x] **Resolved after release:** Character Creation has a clear Back control
+  that returns to the Main Menu without requiring character completion.
+- [x] **Resolved after release:** The live-game app menu has a Main Menu option
+  that flushes pending autosave work before leaving the play surface and then
+  refreshes Continue readiness. Merged PR #22 records the implementation and
+  focused regression evidence at `d99f3f5dc85d50433ee7527bfce441e30f3aae56`.
+
+These post-release resolutions do not rewrite the tagged `v0.19.0` artifact.
+They belong to the planned 0.19.1 compatible maintenance candidate.
 
 ## Release decisions and continuing gates
 

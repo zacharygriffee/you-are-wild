@@ -4,14 +4,19 @@ This file contains unfinished, approved, actionable work only. Completed work
 belongs in `changelog.md`; requirement evidence belongs in
 `backlog-completion-audit.md`; subsystem behavior belongs in focused doctrine.
 
-## 0.19.0 released-alpha maintenance
+## 0.19.x released-alpha maintenance
 
 Version 0.19.0 is the active select-group alpha containing the accepted
 companion autonomy controls, Combat Agency V1, Companion Bond V1, finite-mass
 Chew nourishment, and reach-aware player flight. It is publicly accessible but
 intentionally unadvertised; broader promotion remains separate.
 
-During 0.19.0 released-alpha maintenance, do not add new module
+Compatible fixes merged after the `v0.19.0` tag are assigned to the planned
+0.19.1 maintenance candidate. Keep the runtime identity at released 0.19.0
+until that exact candidate is assembled; preparing or merging maintenance work
+does not publish, deploy, tag, or promote 0.19.1.
+
+During 0.19.x released-alpha maintenance, do not add new module
 permissions, public UI slots, resolver effect types, saved schemas, media
 providers, biome-recipe modes, recovery profiles, population simulation,
 elemental semantics, crafting, commerce, or arbitrary module callbacks.
@@ -99,7 +104,7 @@ The following remain valid backlog, but none invalidates the 0.19.0 release:
 Commerce, paid mods, accounts, managed LLM entitlement, payment processors,
 public marketplace services, Pear seeding, mesh sidecars, and public-launch
 administration are separate tracks. They do not block this released alpha and
-must not be folded into 0.19.0 patch maintenance.
+must not be folded into 0.19.x patch maintenance.
 
 ## Delivery boundary
 

@@ -130,18 +130,29 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const isFight = action === 'fight';
         if (!isFight && !app.SUB_ACTIONS[action]) return targets.length > 0 ? app.resolveExplorationTargetAction(action, null, source) : false;
         const actors = app._getExplorationActors();
+        const actorState = app._selectedExplorationActorState?.() || { actors, valid: true };
         const targetResolution = targets.length === 0 ? null : (isFight
             ? YAW_COMBAT_TECHNIQUES.resolve(app, { actors, targets, scope: 'target', mode: 'adventure' })
             : YAW_SUB_ACTIONS.resolve(app, action, { actors, targets, scope: 'target', mode: 'adventure' }));
         const groups = [];
-        const selfResolution = !isFight
+        const selfResolution = !isFight && actorState.valid
             ? YAW_SUB_ACTIONS.resolve(app, action, { actors, scope: 'self', mode: 'adventure' })
             : null;
+        const targetVariantIds = new Set((targetResolution?.variants || []).map(variant => String(variant.id)));
+        // The built-in Play approach is one shared route whose self form would
+        // silently discard the composed target. Other same-id variants can have
+        // different recipients and availability, such as a wounded actor using
+        // Tend on themself while a full-health marked target cannot receive it.
+        const excludedSelfVariantIds = action === 'fuck' && targetVariantIds.has('fuck')
+            ? new Set(['fuck'])
+            : new Set();
+        const selfVariants = (selfResolution?.variants || []).filter(variant => !excludedSelfVariantIds.has(String(variant.id)));
         if (selfResolution) {
-            if (selfResolution.variants.length > 0) {
+            if (selfVariants.length > 0) {
                 groups.push({
                     scope: 'self',
                     label: app._label('variant.scope.self', 'Self'),
+                    excludeVariantIds: [...excludedSelfVariantIds],
                     selectCall: `App.resolveExplorationSelfSubAction('${app._escapeJsString(action)}','{id}','${app._escapeJsString(source || 'actor-belt')}')`
                 });
             }

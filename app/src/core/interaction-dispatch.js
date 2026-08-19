@@ -282,7 +282,9 @@ const YAW_INTERACTION_DISPATCH = {
             planMode: command.planMode || command.plan?.mode || 'exploration'
         };
         if (valid.actionProfile) {
-            return YAW_ACTION_PROFILES.dispatch(app, this.profileCommand(command, valid.actionProfile));
+            const resolved = YAW_ACTION_PROFILES.dispatch(app, this.profileCommand(command, valid.actionProfile));
+            this.checkpointAdventure(app, command);
+            return resolved;
         }
         return this.dispatchAdventure(app, command);
     },
@@ -494,6 +496,16 @@ const YAW_INTERACTION_DISPATCH = {
         app._renderInteractionState?.({ exploration: true, toolbelt: false });
     },
 
+    checkpointAdventure(app, command = {}) {
+        const reason = `adventure-interaction:${command.action || 'unknown'}`;
+        app.markAutoSaveDirty?.([
+            'manifest', 'player', 'party', 'inventory', 'holdings',
+            'currentTile', 'worldTiles', 'combat', 'quests',
+            'sceneFeed', 'activityLog'
+        ], reason);
+        app.autoSave?.({ reason });
+    },
+
     dispatchAdventure(app, command) {
         if (!command || command.mode === 'combat') return false;
         if (typeof YAW_ACTION_PROFILES !== 'undefined' && YAW_ACTION_PROFILES.profile(command.action)) {
@@ -533,6 +545,7 @@ const YAW_INTERACTION_DISPATCH = {
             resolved = app.outsideManyToManyActionOnTargets(command.action, actors, targets, options);
         }
         if (resolved !== false && command.clearTargets) app.clearExplorationTargets();
+        this.checkpointAdventure(app, command);
         return resolved !== false;
     }
 };

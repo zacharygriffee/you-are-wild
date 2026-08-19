@@ -185,3 +185,16 @@ request.
 - Final compatibility claims were accepted after exact-candidate older-save,
   companion pause/intent, turn-reservation, Chew nourishment, reach-aware
   flight, and offline/localhost/hosted parity smoke.
+
+## Version 0.19.1 Maintenance Boundary
+
+- The post-0.19.0 navigation and regression fixes are compatible patch work.
+  They do not change Save Schema 11, Module API 1, minimum module versions, or
+  the deterministic offline contract.
+- The planned 0.19.1 candidate includes the explicit Main Menu routes merged in
+  PR #22, the companion autonomy glyph-test stabilization merged in PR #21,
+  marked-target interaction hardening, and combat-only Play/Pause presentation.
+- The tagged `v0.19.0` artifact remains the active released alpha until an
+  exact 0.19.1 candidate updates the authoritative release record and passes
+  the normal candidate gates. A maintenance merge alone does not publish,
+  deploy, tag, or promote 0.19.1.

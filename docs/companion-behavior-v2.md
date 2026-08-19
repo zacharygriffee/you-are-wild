@@ -11,8 +11,10 @@ fields mixed together:
 
 These values share one management surface but remain separate persisted facts.
 
-Each recruited companion card also exposes a per-companion Play/Pause control.
-It can be changed only during the player's combat turn. Pause suspends autonomous
+Each recruited companion card exposes a per-companion Play/Pause control during
+combat. Exploration cards keep the current autonomy status visible without
+presenting an unavailable control. Play/Pause can be changed only during the
+player's combat turn. Pause suspends autonomous
 choices while retaining the configured Control, Duty, Stance, recruitment
 history, and any already-committed group intent. A paused companion presents
 the normal player action surface on their turn, previews the deterministic

@@ -145,10 +145,14 @@ const YAW_INTENT_MENU = {
                 mode: context.mode || 'exploration',
                 preferred: context.preferred
             }));
-        const groups = groupContexts.map(group => ({
-            ...group,
-            resolution: resolveVariants(group.scope || 'target')
-        })).filter(group => group.resolution.variants.length > 0);
+        const groups = groupContexts.map(group => {
+            const resolution = resolveVariants(group.scope || 'target');
+            const excluded = new Set((group.excludeVariantIds || []).map(id => String(id)));
+            if (excluded.size > 0) {
+                resolution.variants = resolution.variants.filter(variant => !excluded.has(String(variant.id)));
+            }
+            return { ...group, resolution };
+        }).filter(group => group.resolution.variants.length > 0);
         app.closeIntentMenu();
         const source = String(context.source || 'sheet');
         const surface = this.surface(source, context.presentation);

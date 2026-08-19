@@ -417,6 +417,173 @@ async function exerciseMobileContainment(page) {
   });
 }
 
+async function exerciseExplorationReturnPersistence(page) {
+  return page.evaluate(async () => {
+    const makeUnit = (id, name, species, overrides = {}) => {
+      const speciesDef = App.species.find(entry => entry.id === species) || App.species[0] || { icon: '👤' };
+      const base = App._getSpeciesBaseStats(species);
+      return App._normalizeUnit({
+        id,
+        name,
+        species,
+        icon: speciesDef.icon,
+        level: 1,
+        MPun: 100,
+        CPun: 100,
+        MPle: 100,
+        CPle: 0,
+        Figh: base.Figh || 10,
+        Feas: base.Feas || 10,
+        Flir: base.Flir || 10,
+        Fuck: base.Fuck || 10,
+        Flee: base.Flee || 10,
+        Feed: base.Feed || 10,
+        str: base.str || 10,
+        con: base.con || 10,
+        spd: base.spd || 10,
+        int: base.int || 10,
+        wis: base.wis || 10,
+        cha: base.cha || 10,
+        size: App.SPECIES_SIZE[species] || 4,
+        appetite: 8,
+        hunger: 0,
+        stomach: [],
+        womb: [],
+        balls: [],
+        status: {},
+        disposition: App.DISPOSITION.NEUTRAL,
+        ...overrides
+      }, overrides);
+    };
+
+    const priorSave = YAW_SAVE_PERSISTENCE.autoSaveState(App).running;
+    if (priorSave) await priorSave;
+    App.cancelAutoSave?.();
+    App._autoSaveSuppressed = false;
+    await App.setContentTier('sfw');
+    App.alphaSession = null;
+    App.SAVE_DB_NAME = 'YAW_Saves';
+    App.WORLD_DB_NAME = 'YAW_Worlds';
+    App.activeSlot = 'slot2';
+    const player = makeUnit('return-player', 'You', 'human', {
+      disposition: App.DISPOSITION.PARTY,
+      hero: true,
+      mc: true,
+      ally: false,
+      obedient: true,
+      willing: true,
+      Flir: 100,
+      cha: 50,
+      hunger: 4
+    });
+    const target = makeUnit('return-target', 'Willow', 'deer', {
+      disposition: App.DISPOSITION.NEUTRAL,
+      wis: 1,
+      CPle: 0,
+      MPle: 100
+    });
+    App.player = player;
+    App.party = [player];
+    App.partyLeaderId = player.id;
+    App.creatures = [target];
+    App.inventory = [];
+    App.quests = [];
+    App.storyEvents = [];
+    App.sceneEvents = App.storyEvents;
+    App.latestStoryEvent = null;
+    App.latestSceneBeat = null;
+    App.storyEventSeq = 0;
+    App.log = [];
+    App.tileEvents = [];
+    App.location = { x: 0, y: 0 };
+    App.currentBiome = 'grove';
+    App.timeHour = 9;
+    App.dayCount = 0;
+    App.worldMeta = App._normalizeWorldMeta({
+      worldId: 'return-interaction-world',
+      seed: 'return-interaction-seed',
+      generatorVersion: 7,
+      mapModsHash: 'core-return-interaction',
+      createdAt: 1
+    });
+    App.worldMap = new Map();
+    App.tileDeltas = new Map();
+    App.exploredTiles = new Set(['0,0']);
+    App.superPatchMap = new Map();
+    App.worldMap.set('0,0', {
+      ...App.getBaseTile(0, 0),
+      x: 0,
+      y: 0,
+      explored: true,
+      biome: 'grove',
+      danger: 0,
+      creatures: App.creatures,
+      items: []
+    });
+    App.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
+    App.activeActor = null;
+    App.targetSelection = null;
+    App.combatTargetId = null;
+    App.combatTargetIds = [];
+    App.combatPlanSelection = null;
+    App.explorationActorIds = [player.id];
+    App.explorationActorId = player.id;
+    App.explorationActorSelectionExplicit = false;
+    App.explorationTargetIds = [target.id];
+    App.showScreen('game');
+    App.renderMap();
+    App.renderParty();
+    App.renderCreatures();
+    App.renderLog();
+
+    App.markAutoSaveDirty?.([
+      'manifest', 'player', 'party', 'inventory', 'holdings', 'currentTile',
+      'worldTiles', 'combat', 'quests', 'sceneFeed', 'activityLog', 'settings'
+    ], 'return-interaction-baseline');
+    const baselineSaved = await App.autoSave({ immediate: true });
+    const command = App._buildPanelInteractionCommand({
+      mode: 'adventure',
+      actors: [player],
+      targets: [target],
+      action: 'flirt',
+      source: 'ordinary-lifecycle-return',
+      targetType: 'marked',
+      clearTargets: true
+    });
+    const resolved = App._dispatchInteractionCommand(command);
+    const expectedHunger = player.hunger;
+    const expectedSpirit = target.CPle;
+    const expectedNarration = App.log[App.log.length - 1]?.text || '';
+    await App.returnToMainMenu();
+    const continueReady = Boolean(document.getElementById('menu-continue')?.offsetParent);
+    const slot2Manifest = await App._dbGet('saveManifests', 'slot2');
+    const slot2FullSave = await App._dbGet('saves', 'slot2');
+    const alerts = [];
+    const originalAlert = window.alert;
+    window.alert = message => alerts.push(String(message));
+    const loaded = await App.loadFromSlot('slot2');
+    window.alert = originalAlert;
+    const restoredTarget = App.creatures.find(unit => unit.id === target.id);
+    return {
+      baselineSaved,
+      resolved,
+      expectedHunger,
+      expectedSpirit,
+      expectedNarration,
+      continueReady,
+      slot2Manifest: Boolean(slot2Manifest),
+      slot2FullSave: Boolean(slot2FullSave),
+      alerts,
+      loaded,
+      restoredHunger: App.player?.hunger,
+      restoredSpirit: restoredTarget?.CPle,
+      narrationRestored: App.log.some(entry => entry.text === expectedNarration),
+      screen: App.screen,
+      horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+}
+
 async function main() {
   assert.ok(fs.existsSync(BUILD), 'Build missing; run npm run build first');
   const fixture = await serveBuild();
@@ -508,15 +675,42 @@ async function main() {
     assert.ok(!finalMobile.containment.some(entry => entry.id === 'lifecycle-release-prey'), 'released creature should stay outside containment after reload');
     assert.match(finalMobile.logText, /digests Morsel/i, 'Digest narration should survive reload');
     assert.match(finalMobile.logText, /Sprig is released/i, 'Release narration should survive reload');
+
+    await page.setViewportSize(DESKTOP);
+    const returnPersistence = await exerciseExplorationReturnPersistence(page);
+    assert.equal(returnPersistence.baselineSaved, true, 'return persistence fixture should establish a sparse-save baseline');
+    assert.equal(returnPersistence.resolved, true, 'ordinary Talk should resolve before returning to the menu');
+    assert.ok(returnPersistence.expectedHunger > 4, 'ordinary Talk should debit player hunger before return');
+    assert.ok(returnPersistence.expectedSpirit > 0, 'ordinary Talk should change the target before return');
+    assert.match(
+      returnPersistence.expectedNarration,
+      /Willow.*Spirit rises/i,
+      `ordinary Talk should narrate the changed state: ${JSON.stringify(returnPersistence)}`
+    );
+    assert.equal(returnPersistence.continueReady, true, 'Continue should be ready immediately after returning from the first slot2 run');
+    assert.equal(returnPersistence.slot2Manifest, true, 'interaction return should remain on the sparse-save path');
+    assert.equal(returnPersistence.slot2FullSave, false, 'interaction return should not require a fallback full save');
+    assert.deepEqual(returnPersistence.alerts, [], 'interaction Continue should not surface a load warning');
+    assert.equal(
+      returnPersistence.loaded,
+      true,
+      `Continue slot should reload after immediate menu return: ${JSON.stringify(returnPersistence)}`
+    );
+    assert.equal(returnPersistence.restoredHunger, returnPersistence.expectedHunger, 'menu return should preserve the interaction hunger cost');
+    assert.equal(returnPersistence.restoredSpirit, returnPersistence.expectedSpirit, 'menu return should preserve the target Spirit change');
+    assert.equal(returnPersistence.narrationRestored, true, 'menu return should preserve matching mechanics and narration');
+    assert.equal(returnPersistence.screen, 'game', 'continued interaction fixture should return to gameplay');
+    assert.equal(returnPersistence.horizontalOverflow, false, 'continued interaction fixture should not overflow horizontally');
     assert.deepEqual(failures, [], `ordinary lifecycle browser failures:\n${failures.join('\n')}`);
 
     console.log(JSON.stringify({
       suite: 'ordinary-adventure-lifecycle',
-      passed: 3,
+      passed: 4,
       phases: [
         { phase: 'desktop-seed-and-save', outcome: 'passed' },
         { phase: 'desktop-reload-and-mobile-actions', outcome: 'passed' },
-        { phase: 'mobile-reload-and-restoration', outcome: 'passed' }
+        { phase: 'mobile-reload-and-restoration', outcome: 'passed' },
+        { phase: 'interaction-return-and-continue', outcome: 'passed' }
       ]
     }, null, 2));
   } finally {

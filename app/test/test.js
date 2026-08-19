@@ -13121,6 +13121,35 @@ test('Marked-target Play cannot silently replace the selected creature with a se
   assertNotContains(App.log[App.log.length - 1].text, 'Bunnyfolk plays with Bunnyfolk', 'Group Play narration should never report the last actor as an accidental self target');
 });
 
+test('Marked-target Feed preserves a valid self Tend when the target Tend route is unavailable', () => {
+  const { App, body } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'target-feed-player', CPun: 50, MPun: 100, Feed: 20 });
+  const fullTarget = makeUnit('Full Target', {
+    id: 'target-feed-full',
+    disposition: App.DISPOSITION.FRIENDLY,
+    CPun: 100,
+    MPun: 100
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [fullTarget];
+  App.explorationActorIds = [player.id];
+  App.explorationActorSelectionExplicit = true;
+  App.explorationTargetIds = ['creature:target-feed-full'];
+
+  App.openExplorationSubActionSheet('feed', 'composer-tray', 'desktop');
+  assertContains(body.innerHTML, 'data-command-scope="self"', 'Marked-target Feed should retain its self-scoped variants');
+  assertContains(body.innerHTML, 'data-command-scope="target"', 'Marked-target Feed should retain the composed target scope');
+  assertContains(body.innerHTML, "resolveExplorationSelfSubAction('feed','tend','composer-tray')", 'A wounded actor should keep the valid self Tend route');
+  assertContains(body.innerHTML, "resolveExplorationTargetAction('feed','tend','composer-tray')", 'The full target should remain visible as the separate unavailable Tend route');
+
+  const targetCondition = fullTarget.CPun;
+  assertEqual(App.resolveExplorationSelfSubAction('feed', 'tend', 'composer-tray'), true, 'Self Tend should resolve without clearing the marked target');
+  assertEqual(player.CPun > 50, true, 'Self Tend should restore the wounded actor');
+  assertEqual(fullTarget.CPun, targetCondition, 'Self Tend should not redirect care to the full marked target');
+  assertEqual(App.explorationTargetIds.join(','), 'creature:target-feed-full', 'Self Tend should preserve the independent marked target');
+});
+
 test('Actor-only Play exposes its sole SFW approach through the shared submenu', () => {
   const { App, body } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', { id: 'direct-self-play', CPle: 10, MPle: 100, Fuck: 40 });

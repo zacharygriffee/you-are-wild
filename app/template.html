@@ -4476,7 +4476,7 @@
         }
 
         .unit-card.compact-tactical-card.has-corner-controls:not(.micro-tactical-card) .unit-header {
-            padding-top: 30px;
+            padding-top: 36px;
         }
 
         .unit-card.compact-tactical-card .corner-card-controls {
@@ -4484,6 +4484,7 @@
             left: 5px;
             right: 5px;
             z-index: 2;
+            flex-wrap: nowrap;
         }
 
         .corner-card-controls [data-corner-slot="agency"] {
@@ -6874,6 +6875,20 @@
 
             .stage.target-panel-empty {
                 grid-template-columns: minmax(0, var(--desktop-main-stage-width)) var(--desktop-side-rail-width) var(--desktop-side-rail-width);
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .corner-card-controls,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .corner-card-controls {
+                gap: 2px;
+            }
+
+            .panel-party .unit-card.compact-tactical-card.density-medium .corner-card-controls .action-btn,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .corner-card-controls .action-btn,
+            .panel-party .unit-card.compact-tactical-card.density-medium .corner-card-controls .presentation-corner-badge,
+            .panel-enemies .unit-card.compact-tactical-card.density-medium .corner-card-controls .presentation-corner-badge {
+                width: 34px;
+                min-width: 34px;
+                max-width: 34px;
             }
         }
 

@@ -4133,6 +4133,25 @@ async function checkViewport(browser, name, width, height) {
             height: rect.height
           };
         }),
+        companionCards: Array.from(document.querySelectorAll('#party-content .unit-card.compact-tactical-card'))
+          .filter(card => card.querySelector('[data-command-control="toggle-companion-autonomy"]'))
+          .map(card => {
+            const controls = card.querySelector('.corner-card-controls');
+            const info = card.querySelector('.unit-info');
+            const infoRect = info?.getBoundingClientRect();
+            const buttons = Array.from(controls?.querySelectorAll('button') || []).map(button => button.getBoundingClientRect());
+            const overlapArea = rect => {
+              if (!infoRect) return 0;
+              const overlapWidth = Math.max(0, Math.min(rect.right, infoRect.right) - Math.max(rect.left, infoRect.left));
+              const overlapHeight = Math.max(0, Math.min(rect.bottom, infoRect.bottom) - Math.max(rect.top, infoRect.top));
+              return Math.round(overlapWidth * overlapHeight);
+            };
+            return {
+              controlsFit: Boolean(controls && controls.scrollWidth <= controls.clientWidth + 1),
+              singleRow: new Set(buttons.map(rect => Math.round(rect.top))).size <= 1,
+              infoOverlap: buttons.reduce((sum, rect) => sum + overlapArea(rect), 0)
+            };
+          }),
         viewportHeight: innerHeight
       };
 
@@ -4167,6 +4186,8 @@ async function checkViewport(browser, name, width, height) {
     assert(desktopCombatSceneLayout.composer.bottom <= desktopCombatSceneLayout.viewportHeight + 1, `${name}: desktop combat composer should stay inside the viewport`);
     assert(desktopCombatSceneLayout.actionButtons.length >= 5, `${name}: desktop combat composer should expose the primary action grid`);
     assert(desktopCombatSceneLayout.actionButtons.every(button => button.bottom <= desktopCombatSceneLayout.viewportHeight + 1 && button.width >= 58 && button.height >= 38), `${name}: desktop combat action buttons should remain visible and usable`);
+    assert(desktopCombatSceneLayout.companionCards.length >= 2, `${name}: desktop combat fixture should expose companion autonomy cards`);
+    assert(desktopCombatSceneLayout.companionCards.every(card => card.controlsFit && card.singleRow && card.infoOverlap === 0), `${name}: companion card controls should stay on one row without bleeding into card information; got ${JSON.stringify(desktopCombatSceneLayout.companionCards)}`);
 
     const desktopDockStability = await page.evaluate(() => {
       const scroll = document.getElementById('desktop-scene-scroll');

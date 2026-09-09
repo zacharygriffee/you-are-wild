@@ -2543,7 +2543,8 @@
                 this._syncPlayerPartyReference();
                 debug.syncPlayerPartyMs = Math.round(now() - phaseStart);
                 phaseStart = now();
-                this._normalizeExplorationSelections();
+                // Saving must not replace the actor of an uncommitted command.
+                this._normalizeExplorationSelections({ preserveActors: true });
                 debug.normalizeSelectionsMs = Math.round(now() - phaseStart);
                 phaseStart = now();
                 this._syncCurrentTileCreatures();
@@ -3870,8 +3871,8 @@
                 return YAW_EXPLORATION_SELECTION.actorsForOptionalId(this, actorId);
             },
 
-            _normalizeExplorationSelections({ resetTargets = false } = {}) {
-                return YAW_EXPLORATION_SELECTION.normalize(this, { resetTargets });
+            _normalizeExplorationSelections({ resetTargets = false, preserveActors = false } = {}) {
+                return YAW_EXPLORATION_SELECTION.normalize(this, { resetTargets, preserveActors });
             },
 
             clearTileBoundExplorationTargets() {

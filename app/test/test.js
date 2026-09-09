@@ -22919,6 +22919,44 @@ test('Exploration selection normalization resets stale save-load state', () => {
   assertEqual(App.explorationTargetIds.length, 0, 'Selection normalization should clear target ids on load/reset');
 });
 
+test('Save preparation preserves stale and mixed actor selections until explicit correction', () => {
+  const persistence = new Function(`${savePersistenceContent}\nreturn YAW_SAVE_PERSISTENCE;`)();
+  for (const mode of ['full', 'sparse']) {
+    for (const actorIds of [['missing-actor'], ['ally-1', 'missing-actor']]) {
+      const { App } = loadAppForCombat(() => 0);
+      const player = makeUnit('You', { id: 'player-1' });
+      const ally = makeUnit('Ally', { id: 'ally-1' });
+      const target = makeUnit('Friendly', { id: 'friendly-1', CPle: 0, disposition: App.DISPOSITION.FRIENDLY });
+      App.player = player;
+      App.party = [player, ally];
+      App.creatures = [target];
+      App.combatState.active = false;
+      App.explorationActorIds = [...actorIds];
+      App.explorationActorId = actorIds[0];
+      App.explorationActorSelectionExplicit = true;
+      App.explorationTargetIds = ['creature:friendly-1'];
+      App.lastIntentCommand = null;
+
+      if (mode === 'full') App._prepareSaveSnapshot();
+      else persistence.prepareSparseState(App, ['party']);
+
+      assertEqual(App.explorationActorIds.join(','), actorIds.join(','), `${mode} save must not replace or shrink the requested actor set`);
+      assertEqual(App.explorationActorId, actorIds[0], `${mode} save must preserve the primary actor`);
+      assertEqual(App.explorationActorSelectionExplicit, true, `${mode} save must preserve explicit selection`);
+      assertEqual(App._selectedExplorationActorState().valid, false, `${mode} save must not validate an invalid command`);
+      assertEqual(App.resolveExplorationTargetAction('flirt', 'flirt', 'composer-tray'), false, `${mode} save must leave the action blocked for correction`);
+      assertEqual(target.CPle, 0, `${mode} save must not permit target mutation through a substituted actor`);
+      assertEqual(App.lastIntentCommand, null, `${mode} save must not cause a resolved command`);
+      assertEqual(App.explorationTargetIds.join(','), 'creature:friendly-1', `${mode} save must preserve the valid marked target`);
+
+      App.selectExplorationActor(1);
+      assertEqual(App._selectedExplorationActorState().valid, false, 'Toggling a valid actor must not silently erase the stale selection');
+      App.clearExplorationActors();
+      assertEqual(App._selectedExplorationActorState().valid, true, 'Explicit clearing should restore the ordinary player fallback');
+    }
+  }
+});
+
 test('Exploration selection save metadata persists party selections only', () => {
   const Binary = loadBinaryForTest();
   const player = makeUnit('You', { id: 'player-1' });

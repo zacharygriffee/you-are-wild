@@ -78,6 +78,14 @@ The following remain valid backlog, but none invalidates the 0.19.0 release:
 - Companion Bond V2 observability and authored needs, neglect, and witnessed-
   conduct events; desertion and hostility require a later explicit threshold
   and transition contract rather than being inferred from Hunger or Spirit;
+- Harm Intent, Consent, and Witnessed Hostility V1 design, preserved in
+  `harm-intent-consent-witnessed-hostility-v1-proposal.md`; its reaction phases,
+  willingness rules, witness scope, and persistent consequences require explicit
+  decisions before implementation;
+- companion control-design review, preserved in `companion-behavior-v2.md`:
+  Tactic replacement, optional intent-review cadence, a smaller no-player-agency
+  budget, and any later manual-control retirement remain proposals requiring
+  human acceptance and explicit migration decisions;
 - true reaction priority and emergency out-of-turn player Flee beyond Combat
   Agency V1's saved reservation of the next ordinary actionable turn;
 - regional population aggregation and offscreen service simulation;

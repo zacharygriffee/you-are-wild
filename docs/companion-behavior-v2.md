@@ -158,3 +158,39 @@ callbacks remain transient.
 - free-form AI actions or provider-owned outcomes;
 - independent companion movement during ordinary party traversal;
 - automatic searching, looting, healing, or structure interaction.
+
+## Preserved control-design proposals
+
+These proposals were recovered from pre-0.19.0 design work. Combat Agency V1
+already implements bounded intent transactions, deterministic compliance, and
+the player's saved ordinary-turn reservation. The proposals below extend that
+accepted baseline; they do not change current controls or authorize a migration.
+
+The intended long-term direction is direct player-character control with
+Autonomous or AI-assisted companions. Manual companion control remains
+supported. After sustained human acceptance, a separate decision may move it
+behind Advanced settings and, much later, consider debug or cheat-only access.
+Removing direct player-character control would be a different design decision.
+
+A proposed compact combat Tactic would replace the combat-facing Stance UI:
+Adaptive weighs current needs and relationships; Forceful favors pressure;
+Social favors conversation, de-escalation, and recruitment; Protective favors
+care, defense, repositioning, and credible retreat. Duty remains the exploration
+contribution and Control remains a separate fact. Tactics must only bias legal
+candidates. Shipping this replacement requires an explicit Stance migration
+and evidence that the four choices are distinct and understandable.
+
+The experimental intent-card workflow proposes high-impact review by default,
+optional review of every companion intent, and an Observe preference. Cards
+would show Tactic, proposed action, reason, and one bounded Intervene control.
+Review cadence must remain presentation-only; the current V1 intervention cost
+must remain explicit unless a separate contract changes it. Human acceptance
+must cover refusal fairness, review burden, and sustained phone use.
+
+The existing no-progress and automatic-round guards remain the accepted outer
+bound. The older prototype additionally explored a 12-automatic-action limit
+when the player cannot intervene. That number and the definition of available
+agency remain experimental. Any accepted replacement must preserve its budget
+across save/reload and must not depend on presentation speed or AI availability.
+AI remains limited to validated candidates with deterministic fallback and no
+recursive proposals or provider retries inside one turn.

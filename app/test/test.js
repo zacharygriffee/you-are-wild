@@ -11425,6 +11425,9 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const showExplorationActions = App.showExplorationActions.bind(App);
   App.showExplorationActions = function() {};
   App.autoSave = async function() {};
+  // Combat fixtures stub save reads/writes individually. Without a supplied
+  // IndexedDB implementation there is no sparse manifest for cleanup to delete.
+  if (!options.indexedDB) App._dbDelete = async function() {};
   App._pruneUnreferencedWorldStore = async function() { return 0; };
   App.settings.combatPacing = options.combatPacing || 'instant';
   return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners, moduleSystem, content: appWindow.__testContent, window: appWindow, showExplorationActions };
@@ -13141,7 +13144,10 @@ test('Marked-target Feed preserves a valid self Tend when the target Tend route 
   assertContains(body.innerHTML, 'data-command-scope="self"', 'Marked-target Feed should retain its self-scoped variants');
   assertContains(body.innerHTML, 'data-command-scope="target"', 'Marked-target Feed should retain the composed target scope');
   assertContains(body.innerHTML, "resolveExplorationSelfSubAction('feed','tend','composer-tray')", 'A wounded actor should keep the valid self Tend route');
-  assertContains(body.innerHTML, "resolveExplorationTargetAction('feed','tend','composer-tray')", 'The full target should remain visible as the separate unavailable Tend route');
+  const targetGroup = body.innerHTML.split('data-command-scope="target"')[1] || '';
+  const targetTend = targetGroup.match(/<button\b[^>]*data-command-intent="feed:tend"[^>]*>/)?.[0] || '';
+  assertContains(targetTend, 'disabled aria-disabled="true"', 'The full target should remain visible as the separate unavailable Tend route');
+  assertNotContains(targetTend, 'onclick=', 'An unavailable target Tend must not expose a callable action');
 
   const targetCondition = fullTarget.CPun;
   assertEqual(App.resolveExplorationSelfSubAction('feed', 'tend', 'composer-tray'), true, 'Self Tend should resolve without clearing the marked target');
@@ -38466,8 +38472,16 @@ test('Mod Manager presents URI asset bundles as reviewed code-free packages', ()
 });
 
 // === SUMMARY ===
+// Node can exit while awaiting a promise with no remaining event-loop handles.
+// Only the completed summary below may report success.
+process.exitCode = 1;
+let runningAsyncTest = null;
+process.on('beforeExit', () => {
+  console.error(`Test suite did not reach its summary${runningAsyncTest ? `; unresolved test: ${runningAsyncTest}` : ''}.`);
+});
 (async () => {
   for (const { name, fn, promise } of asyncTests) {
+    runningAsyncTest = name;
     try {
       if (promise) {
         const result = await promise;

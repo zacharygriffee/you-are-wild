@@ -6,16 +6,16 @@ belongs in `changelog.md`; requirement evidence belongs in
 
 ## 0.19.x released-alpha maintenance
 
-Version 0.19.1 is the selected maintenance release for the existing select-group
+Version 0.19.1 is the published maintenance release for the existing select-group
 alpha. It preserves the accepted 0.19.0 companion autonomy, Combat Agency V1,
 Companion Bond V1, finite-mass Chew nourishment, and reach-aware player flight.
 It adds the completed navigation, save/Continue, action-selection, offline-font,
 and companion-card corrections documented in `releases/0.19.1.md`.
 
-The operator authorized publishing this maintenance update on 2026-09-09.
-Publication and exact hosted readback are tracked in `release-readiness-0.19.1.md`;
-preparation alone is not evidence that the live site has changed. Broader
-promotion and the separate desktop-host package remain outside this update.
+The operator-authorized maintenance update was published and verified on
+2026-09-09. Publication, validation, and rollback evidence are recorded in
+`release-readiness-0.19.1.md`. Broader promotion and the separate desktop-host
+package remain outside this update.
 
 During 0.19.x released-alpha maintenance, do not add new module
 permissions, public UI slots, resolver effect types, saved schemas, media

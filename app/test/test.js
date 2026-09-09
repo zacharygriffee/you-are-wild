@@ -858,17 +858,17 @@ test('Native provider profiles expose bounded edit and destructive removal flows
 });
 
 test('Release manifest is the authoritative public version and compatibility source', () => {
-  assertEqual(releaseInfo.version, '0.19.0', 'Release manifest should identify the current minor release');
+  assertEqual(releaseInfo.version, '0.19.1', 'Release manifest should identify the current maintenance release');
   assertEqual(releaseInfo.status, 'released', 'The promoted release must identify itself as released');
   assertEqual(releaseInfo.channel, 'alpha', 'The select-group release should use the alpha channel');
   assertEqual(Object.prototype.hasOwnProperty.call(releaseInfo, 'candidateFor'), false, 'The release should not introduce an undeclared target field');
-  assertEqual(releaseInfo.releasedAt, '2026-08-13', 'The release must identify its operator-approved publication date');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('Play or Pause autonomy control')), 'Release notes should describe per-companion autonomy control');
-  assert(releaseInfo.notes.en.added.some(note => note.includes('Combat Agency V1')), 'Release notes should describe the bounded intent preview');
-  assert(releaseInfo.notes.en.changed.some(note => note.includes('finite conserved body mass')), 'Release notes should describe finite-mass Chew nourishment');
-  assert(releaseInfo.notes.en.fixed.some(note => note.includes('ground-only') && note.includes('legal attack path')), 'Release notes should describe reach-aware player flight');
+  assertEqual(releaseInfo.releasedAt, '2026-09-09', 'The release must identify its operator-approved publication date');
+  assert(releaseInfo.notes.en.added.some(note => note.includes('Main Menu')), 'Release notes should describe the added Main Menu routes');
+  assert(releaseInfo.notes.en.fixed.some(note => note.includes('Continue')), 'Release notes should describe corrected Continue persistence');
+  assert(releaseInfo.notes.en.changed.some(note => note.includes('Play/Pause')), 'Release notes should describe combat-only companion controls');
+  assert(releaseInfo.notes.en.fixed.some(note => note.includes('chosen actors')), 'Release notes should describe preserved actor selection during saving');
   assert(releaseInfo.notes.en.knownIssues.some(note => note.includes('select-group alpha') && note.includes('unadvertised')), 'Release notes should preserve the bounded alpha promotion boundary');
-  assert(releaseInfo.notes.es.added.some(note => note.includes('Combat Agency V1')), 'Spanish release notes should describe the same release boundary');
+  assert(releaseInfo.notes.es.added.some(note => note.includes('Menú principal')), 'Spanish release notes should describe the same maintenance boundary');
   assertEqual(releaseInfo.saveSchema, 11, 'Release manifest should identify the current sparse save schema');
   assertEqual(releaseInfo.moduleApi, 1, 'Release manifest should identify the public module API');
   assertContains(buildContent, 'window.YAW_RELEASE = Object.freeze', 'Build should inject release metadata into the generated artifact');
@@ -879,7 +879,7 @@ test('Release manifest is the authoritative public version and compatibility sou
 test('Elemental Species package stays within the supported species contribution boundary', () => {
   const packageData = JSON.parse(fs.readFileSync(ELEMENTAL_SPECIES_MOD_PACKAGE, 'utf8'));
   const manifest = packageData.module.manifest;
-  assertEqual(packageData.gameVersion, '0.19.0', 'Elemental package production metadata should target the current game build');
+  assertEqual(packageData.gameVersion, '0.19.1', 'Elemental package production metadata should target the current game build');
   assertEqual(manifest.minGameVersion, '0.14.0', 'Elemental package should require the doctrine-tested module surface');
   assertEqual(manifest.contentRating, 'safe', 'Elemental species identity content should remain safe-rated');
   assertEqual(manifest.permissions.length, 1, 'Elemental package should request only one capability');

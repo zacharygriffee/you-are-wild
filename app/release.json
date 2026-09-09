@@ -1,38 +1,38 @@
 {
   "schema": 1,
-  "version": "0.19.0",
+  "version": "0.19.1",
   "status": "released",
-  "releasedAt": "2026-08-13",
+  "releasedAt": "2026-09-09",
   "channel": "alpha",
   "saveSchema": 11,
   "moduleApi": 1,
   "compatibility": {
     "minimumBundledModuleVersion": "0.10.0",
     "en": {
-      "saves": "Release compatibility: existing 0.10.x through 0.18.3 saves load through maintained additive migrations. Companion autonomy, Bond, interruption reservations, and body-mass nourishment initialize deterministically when older saves omit them.",
-      "mods": "Module API remains version 1. Existing minimum-version declarations remain valid; no new module permission or callback is introduced by this release."
+      "saves": "Existing 0.10.x through 0.19.0 saves load through the maintained additive migrations. Save Schema remains 11; this maintenance release requires no manual migration.",
+      "mods": "Module API remains 1. Existing minimum-version declarations stay valid; no module permission, callback, or compatibility floor changes."
     },
     "es": {
-      "saves": "Compatibilidad de la version: las partidas 0.10.x a 0.18.3 cargan mediante migraciones aditivas mantenidas. La autonomia, el Vinculo, las reservas de interrupcion y la nutricion por masa corporal se inicializan de forma determinista cuando faltan en partidas antiguas.",
-      "mods": "La API de modulos sigue en la version 1. Los requisitos minimos existentes siguen validos; esta version no agrega permisos ni callbacks nuevos para modulos."
+      "saves": "Las partidas de las versiones 0.10.x a 0.19.0 se cargan mediante las migraciones aditivas existentes. El esquema de guardado sigue en 11; esta actualización de mantenimiento no requiere una migración manual.",
+      "mods": "La API de módulos sigue en 1. Los requisitos mínimos de versión siguen siendo válidos; no cambian los permisos, callbacks ni límites de compatibilidad."
     }
   },
   "notes": {
     "en": {
       "added": [
-        "Each recruited companion card has its own Play or Pause autonomy control during the player's turn, with active, paused, and awaiting-direction states; the player character never receives this control.",
-        "Combat Agency V1 previews an autonomous companion's uncommitted intent and up to three stored legal alternatives before the action resolves.",
-        "The player may suggest one stored alternative. A saved Companion Bond V1 ledger deterministically decides compliance or refusal from recruitment history and authored care events."
+        "Explicit Main Menu routes from Character Creation and the live-game menu; leaving play waits for pending saves and refreshes Continue availability."
       ],
       "changed": [
-        "A companion suggestion reserves the player's next ordinary actionable combat turn whether the companion complies or refuses; forced status skips resolve first without erasing or double-charging the reservation.",
-        "Chew now grants immediate nourishment only to participating chewers from the finite conserved body mass actually removed from the target, including deterministic proportional sharing for group Chew.",
-        "Paused companion preference and combat-intent controls preserve Duty, Stance, Control, identity, history, and the unspent deterministic turn through save and reload."
+        "Companion Play/Pause controls appear only during combat; exploration cards still show autonomy status.",
+        "Compact desktop companion controls stay on one row above card information, with coordinated mobile combat-tray and roster clearance.",
+        "The playable artifact uses system fonts instead of requesting external fonts, improving self-contained offline behavior."
       ],
       "fixed": [
-        "Companion flight now narrates its authored cause immediately and keeps the party, turn queue, world placement, selection, and saved state consistent.",
-        "A flying player no longer auto-flees under Terror when every living hostile is ground-only and has no legal attack path; reachable flying, ranged, or anti-flying attackers preserve normal danger behavior.",
-        "An automatic encounter in which neither side can make legal progress ends through explicit stalemate disengagement instead of assigning an unexplained player or companion flee."
+        "Completed adventure interactions are checkpointed so their state and consequences survive Continue and reload.",
+        "Immediate save flushing waits for in-flight saves and follow-up changes before leaving play.",
+        "Marked-target Play no longer offers a duplicate Self route that can replace the intended recipient; valid self-Tend remains available.",
+        "Sparse and full save preparation preserve the chosen actors; unavailable or mixed invalid selections stay blocked for correction instead of silently switching to the player.",
+        "Regression coverage now detects unfinished unit suites and exercises saving, Continue, action selection, and companion-card geometry."
       ],
       "knownIssues": [
         "This select-group alpha is publicly accessible but intentionally unadvertised; broader promotion remains deferred.",
@@ -44,19 +44,19 @@
     },
     "es": {
       "added": [
-        "Cada tarjeta de companero reclutado tiene su propio control Jugar o Pausar la autonomia durante el turno del jugador, con estados activo, pausado y esperando instrucciones; el personaje jugador nunca recibe este control.",
-        "Combat Agency V1 muestra la intencion aun no confirmada de un companero autonomo y hasta tres alternativas legales guardadas antes de resolver la accion.",
-        "El jugador puede sugerir una alternativa guardada. Un registro persistente Companion Bond V1 decide de forma determinista si el companero acepta o rechaza segun el reclutamiento y eventos de cuidado escritos."
+        "Rutas explícitas al Menú principal desde la creación de personaje y el menú de juego; al salir se espera a que terminen los guardados pendientes y se actualiza la disponibilidad de Continuar."
       ],
       "changed": [
-        "Sugerir una accion reserva el siguiente turno ordinario y util del jugador en combate tanto si el companero acepta como si rechaza; los estados forzados se resuelven primero sin borrar ni cobrar dos veces la reserva.",
-        "Masticar ahora alimenta de inmediato solo a quienes mastican usando la masa corporal finita y conservada que realmente se retira del objetivo, con reparto proporcional determinista para grupos.",
-        "Los controles de preferencia pausada e intencion conservan Deber, Postura, Control, identidad, historia y el turno determinista no gastado al guardar y recargar."
+        "Los controles Jugar/Pausar de los compañeros aparecen solo durante el combate; las tarjetas de exploración siguen mostrando su estado de autonomía.",
+        "Los controles de los compañeros permanecen en una sola fila sobre la información de la tarjeta en escritorios compactos; también se ajusta el espacio del panel de combate y del grupo en móviles.",
+        "El juego usa fuentes del sistema en lugar de solicitar fuentes externas, para funcionar mejor sin conexión."
       ],
       "fixed": [
-        "La huida de un companero ahora narra de inmediato su causa escrita y mantiene coherentes el grupo, la cola de turnos, la posicion en el mundo, la seleccion y la partida guardada.",
-        "Un jugador volador ya no huye automaticamente por Terror cuando todos los hostiles vivos estan en tierra y no tienen una ruta legal de ataque; los atacantes voladores, a distancia o antiaereos que puedan alcanzarlo conservan el peligro normal.",
-        "Un encuentro automatico en el que ningun bando puede progresar legalmente termina con una separacion explicita por estancamiento en vez de asignar una huida inexplicada al jugador o a un companero."
+        "Las interacciones de aventura completadas guardan su estado y sus consecuencias para que se conserven al Continuar o recargar.",
+        "El guardado inmediato espera a que terminen los guardados en curso y los cambios posteriores antes de salir del juego.",
+        "Jugar con un objetivo marcado ya no ofrece una ruta propia duplicada que pueda reemplazar al destinatario; el cuidado propio válido sigue disponible.",
+        "La preparación de guardados completos y dispersos conserva a los actores elegidos; las selecciones inválidas requieren corrección en lugar de cambiar silenciosamente al jugador.",
+        "Las pruebas de regresión detectan suites incompletas y comprueban guardados, Continuar, selección de acciones y distribución de los controles de compañeros."
       ],
       "knownIssues": [
         "Esta alfa para un grupo selecto tiene acceso publico, pero no se anuncia; la promocion general sigue aplazada.",

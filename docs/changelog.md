@@ -2,6 +2,18 @@
 
 This is a compact history of completed foundations. Git remains the authoritative implementation history.
 
+## 0.19.1 — Internal improvements
+
+- Added explicit Main Menu routes and reliable pending-save completion.
+- Preserved completed adventure interactions through Continue and reload.
+- Corrected marked-target Play while preserving legitimate self-Tend.
+- Kept stale or mixed actor selections blocked across sparse/full save
+  preparation instead of silently substituting the player.
+- Restricted companion Play/Pause to combat and fixed compact card overlap.
+- Improved mobile tray clearance and removed the external font dependency.
+- Made incomplete unit-suite execution fail visibly and expanded regression
+  coverage. Save Schema 11 and Module API 1 remain unchanged.
+
 ## Current Foundations
 
 - Character Creation and the live app menu now provide explicit Main Menu

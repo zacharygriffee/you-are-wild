@@ -3019,7 +3019,7 @@ async function runDesktopCompactCardRoundTripFlow(page) {
   assert.strictEqual(state.centerHasActorControls, false, 'Resolving desktop compact-card intent should keep center free of actor controls');
 }
 
-async function runStaleMarkedActorFlow(page) {
+async function runStaleMarkedActorFlow(page, saveMode = null) {
   await setupAdventure(page);
   await page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
   await page.evaluate(() => {
@@ -3051,6 +3051,12 @@ async function runStaleMarkedActorFlow(page) {
   assert.deepStrictEqual(state.actorIds, ['missing-actor'], 'Stale actor setup should preserve explicit invalid actor id');
   assert.deepStrictEqual(state.targetIds, ['creature:friendly-1'], 'Stale actor setup should preserve marked creature target');
   assert.strictEqual(state.centerHasActorControls, false, 'Stale actor composer should keep center free of actor controls');
+
+  // Force the save/action interleaving instead of relying on an autosave timer.
+  if (saveMode) await page.evaluate(mode => {
+    if (mode === 'full') App._prepareSaveSnapshot();
+    else YAW_SAVE_PERSISTENCE.prepareSparseState(App, ['party']);
+  }, saveMode);
 
   await page.locator(`#desktop-context-belt button[onclick*="openExplorationSubActionSheet('flirt','composer-tray','desktop')"]`).first().click();
   await chooseOpenApproach(page, 'flirt', 'flirt');
@@ -6178,6 +6184,8 @@ async function runUriFrenchLocaleLifecycleFlow(browser) {
     await runAdventureMarkedTargetFlow(page);
     await runDesktopCompactCardRoundTripFlow(page);
     await runStaleMarkedActorFlow(page);
+    await runStaleMarkedActorFlow(page, 'sparse');
+    await runStaleMarkedActorFlow(page, 'full');
     await runSelectionSemanticsFlow(page);
     await runCenterResourceSearchFlow(page);
     await runContextualCardIntentSourceFlow(page);

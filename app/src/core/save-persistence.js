@@ -263,7 +263,8 @@ const YAW_SAVE_PERSISTENCE = {
         debug.syncPlayerPartyMs = Math.round(now() - phaseStart);
         phaseStart = now();
         if (domains.has('player') || domains.has('party') || domains.has('combat') || domains.has('currentTile') || domains.has('worldTiles')) {
-            app._normalizeExplorationSelections();
+            // A background save must leave stale actors available for correction.
+            app._normalizeExplorationSelections({ preserveActors: true });
         }
         debug.normalizeSelectionsMs = Math.round(now() - phaseStart);
         phaseStart = now();

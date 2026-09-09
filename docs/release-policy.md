@@ -188,13 +188,15 @@ request.
 
 ## Version 0.19.1 Maintenance Boundary
 
-- The post-0.19.0 navigation and regression fixes are compatible patch work.
-  They do not change Save Schema 11, Module API 1, minimum module versions, or
-  the deterministic offline contract.
-- The planned 0.19.1 candidate includes the explicit Main Menu routes merged in
-  PR #22, the companion autonomy glyph-test stabilization merged in PR #21,
-  marked-target interaction hardening, and combat-only Play/Pause presentation.
-- The tagged `v0.19.0` artifact remains the active released alpha until an
-  exact 0.19.1 candidate updates the authoritative release record and passes
-  the normal candidate gates. A maintenance merge alone does not publish,
-  deploy, tag, or promote 0.19.1.
+- Version 0.19.1 packages compatible navigation, save/Continue, action-selection,
+  companion-control layout, and offline-font fixes after the 0.19.0 tag.
+- Save Schema remains 11, Module API remains 1, and existing minimum module
+  versions remain valid. No new gameplay or mod contract is introduced.
+- The release includes PRs #21, #22, #23, #29, #30, #31, and the deferred design
+  documentation from #32. Preserving a proposal does not approve its behavior.
+- The operator authorized the 0.19.1 publication on 2026-09-09. The exact
+  numbered package still requires the normal build, compatibility, wrapper,
+  rollback, and hosted-readback evidence in `release-readiness-0.19.1.md`.
+- The 0.19.0 tag and prior hosted version remain historical rollback references.
+  Broader promotion, terrain implementation, and desktop-host updates are
+  separate work.

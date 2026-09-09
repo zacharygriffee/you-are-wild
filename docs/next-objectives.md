@@ -6,15 +6,16 @@ belongs in `changelog.md`; requirement evidence belongs in
 
 ## 0.19.x released-alpha maintenance
 
-Version 0.19.0 is the active select-group alpha containing the accepted
-companion autonomy controls, Combat Agency V1, Companion Bond V1, finite-mass
-Chew nourishment, and reach-aware player flight. It is publicly accessible but
-intentionally unadvertised; broader promotion remains separate.
+Version 0.19.1 is the selected maintenance release for the existing select-group
+alpha. It preserves the accepted 0.19.0 companion autonomy, Combat Agency V1,
+Companion Bond V1, finite-mass Chew nourishment, and reach-aware player flight.
+It adds the completed navigation, save/Continue, action-selection, offline-font,
+and companion-card corrections documented in `releases/0.19.1.md`.
 
-Compatible fixes merged after the `v0.19.0` tag are assigned to the planned
-0.19.1 maintenance candidate. Keep the runtime identity at released 0.19.0
-until that exact candidate is assembled; preparing or merging maintenance work
-does not publish, deploy, tag, or promote 0.19.1.
+The operator authorized publishing this maintenance update on 2026-09-09.
+Publication and exact hosted readback are tracked in `release-readiness-0.19.1.md`;
+preparation alone is not evidence that the live site has changed. Broader
+promotion and the separate desktop-host package remain outside this update.
 
 During 0.19.x released-alpha maintenance, do not add new module
 permissions, public UI slots, resolver effect types, saved schemas, media
@@ -132,9 +133,11 @@ operator-mediated.
 - `release-readiness-0.18.2.md`
 - `release-readiness-0.18.3.md`
 - `release-readiness-0.19.0.md`
+- `release-readiness-0.19.1.md`
 - `releases/0.18.2.md`
 - `releases/0.18.3.md`
 - `releases/0.19.0.md`
+- `releases/0.19.1.md`
 - `map-art-layering-roadmap.md`
 - `architecture.md`
 - `backlog-completion-audit.md`

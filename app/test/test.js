@@ -11425,6 +11425,9 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const showExplorationActions = App.showExplorationActions.bind(App);
   App.showExplorationActions = function() {};
   App.autoSave = async function() {};
+  // Combat fixtures stub save reads/writes individually. Without a supplied
+  // IndexedDB implementation there is no sparse manifest for cleanup to delete.
+  if (!options.indexedDB) App._dbDelete = async function() {};
   App._pruneUnreferencedWorldStore = async function() { return 0; };
   App.settings.combatPacing = options.combatPacing || 'instant';
   return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners, moduleSystem, content: appWindow.__testContent, window: appWindow, showExplorationActions };
@@ -13141,7 +13144,10 @@ test('Marked-target Feed preserves a valid self Tend when the target Tend route 
   assertContains(body.innerHTML, 'data-command-scope="self"', 'Marked-target Feed should retain its self-scoped variants');
   assertContains(body.innerHTML, 'data-command-scope="target"', 'Marked-target Feed should retain the composed target scope');
   assertContains(body.innerHTML, "resolveExplorationSelfSubAction('feed','tend','composer-tray')", 'A wounded actor should keep the valid self Tend route');
-  assertContains(body.innerHTML, "resolveExplorationTargetAction('feed','tend','composer-tray')", 'The full target should remain visible as the separate unavailable Tend route');
+  const targetGroup = body.innerHTML.split('data-command-scope="target"')[1] || '';
+  const targetTend = targetGroup.match(/<button\b[^>]*data-command-intent="feed:tend"[^>]*>/)?.[0] || '';
+  assertContains(targetTend, 'disabled aria-disabled="true"', 'The full target should remain visible as the separate unavailable Tend route');
+  assertNotContains(targetTend, 'onclick=', 'An unavailable target Tend must not expose a callable action');
 
   const targetCondition = fullTarget.CPun;
   assertEqual(App.resolveExplorationSelfSubAction('feed', 'tend', 'composer-tray'), true, 'Self Tend should resolve without clearing the marked target');
@@ -22917,6 +22923,44 @@ test('Exploration selection normalization resets stale save-load state', () => {
   App._normalizeExplorationSelections({ resetTargets: true });
   assertEqual(App.explorationActorIds[0], 'player-1', 'Selection normalization should fall back to player actor');
   assertEqual(App.explorationTargetIds.length, 0, 'Selection normalization should clear target ids on load/reset');
+});
+
+test('Save preparation preserves stale and mixed actor selections until explicit correction', () => {
+  const persistence = new Function(`${savePersistenceContent}\nreturn YAW_SAVE_PERSISTENCE;`)();
+  for (const mode of ['full', 'sparse']) {
+    for (const actorIds of [['missing-actor'], ['ally-1', 'missing-actor']]) {
+      const { App } = loadAppForCombat(() => 0);
+      const player = makeUnit('You', { id: 'player-1' });
+      const ally = makeUnit('Ally', { id: 'ally-1' });
+      const target = makeUnit('Friendly', { id: 'friendly-1', CPle: 0, disposition: App.DISPOSITION.FRIENDLY });
+      App.player = player;
+      App.party = [player, ally];
+      App.creatures = [target];
+      App.combatState.active = false;
+      App.explorationActorIds = [...actorIds];
+      App.explorationActorId = actorIds[0];
+      App.explorationActorSelectionExplicit = true;
+      App.explorationTargetIds = ['creature:friendly-1'];
+      App.lastIntentCommand = null;
+
+      if (mode === 'full') App._prepareSaveSnapshot();
+      else persistence.prepareSparseState(App, ['party']);
+
+      assertEqual(App.explorationActorIds.join(','), actorIds.join(','), `${mode} save must not replace or shrink the requested actor set`);
+      assertEqual(App.explorationActorId, actorIds[0], `${mode} save must preserve the primary actor`);
+      assertEqual(App.explorationActorSelectionExplicit, true, `${mode} save must preserve explicit selection`);
+      assertEqual(App._selectedExplorationActorState().valid, false, `${mode} save must not validate an invalid command`);
+      assertEqual(App.resolveExplorationTargetAction('flirt', 'flirt', 'composer-tray'), false, `${mode} save must leave the action blocked for correction`);
+      assertEqual(target.CPle, 0, `${mode} save must not permit target mutation through a substituted actor`);
+      assertEqual(App.lastIntentCommand, null, `${mode} save must not cause a resolved command`);
+      assertEqual(App.explorationTargetIds.join(','), 'creature:friendly-1', `${mode} save must preserve the valid marked target`);
+
+      App.selectExplorationActor(1);
+      assertEqual(App._selectedExplorationActorState().valid, false, 'Toggling a valid actor must not silently erase the stale selection');
+      App.clearExplorationActors();
+      assertEqual(App._selectedExplorationActorState().valid, true, 'Explicit clearing should restore the ordinary player fallback');
+    }
+  }
 });
 
 test('Exploration selection save metadata persists party selections only', () => {
@@ -38428,8 +38472,16 @@ test('Mod Manager presents URI asset bundles as reviewed code-free packages', ()
 });
 
 // === SUMMARY ===
+// Node can exit while awaiting a promise with no remaining event-loop handles.
+// Only the completed summary below may report success.
+process.exitCode = 1;
+let runningAsyncTest = null;
+process.on('beforeExit', () => {
+  console.error(`Test suite did not reach its summary${runningAsyncTest ? `; unresolved test: ${runningAsyncTest}` : ''}.`);
+});
 (async () => {
   for (const { name, fn, promise } of asyncTests) {
+    runningAsyncTest = name;
     try {
       if (promise) {
         const result = await promise;
